@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   inkscape:version="1.0 (4035a4fb49, 2020-05-01)"
+   sodipodi:docname="arkit.svg"
+   id="svg73"
+   zoomAndPan="magnify"
+   width="583px"
+   viewBox="0 0 583 217"
+   version="1.1"
+   style="width:583px;height:217px;"
+   preserveAspectRatio="none"
+   height="217px"
+   contentStyleType="text/css"
+   contentScriptType="application/ecmascript">
+  <metadata
+     id="metadata77">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     inkscape:current-layer="svg73"
+     inkscape:window-maximized="1"
+     inkscape:window-y="-9"
+     inkscape:window-x="-9"
+     inkscape:cy="115.7638"
+     inkscape:cx="129.45445"
+     inkscape:zoom="2.0034305"
+     showgrid="false"
+     id="namedview75"
+     inkscape:window-height="1018"
+     inkscape:window-width="1920"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0"
+     guidetolerance="10"
+     gridtolerance="10"
+     objecttolerance="10"
+     borderopacity="1"
+     bordercolor="#666666"
+     pagecolor="#ffffff" />
+  <defs
+     id="defs2">
+    <script
+       type="text/plantuml"
+       id="script69"><![CDATA[MD5=[4f8a49363d5f9aaac1a635ddef15bce6]
+@startuml
+
+scale max 1920 width
+top to bottom direction
+
+skinparam nodesep 13
+skinparam ranksep 26
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Tahoma
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam dpi 150
+skinparam arrowColor black
+skinparam arrowThickness 0.5
+skinparam packageTitleAlignment left
+
+skinparam usecase {
+  borderThickness 0.5
+}
+
+skinparam rectangle {
+  borderThickness 0.5
+}
+
+skinparam component {
+  borderThickness 1
+}
+
+
+(App.vue)
+(EditableSlot.vue)
+(Frame.vue)
+(FrameLabel.vue)
+(<b>HelloWorld.vue</b>)
+(<b>main</b>)
+(<b>renderJSON</b>)
+(<b>shims-tsx.d</b>)
+(<b>shims-vue.d</b>)
+(store)
+(<b>types</b>)
+
+
+(App.vue) --> (Frame.vue)
+(App.vue) --> (store)
+(Frame.vue) --> (FrameLabel.vue)
+(Frame.vue) ---> (store)
+(FrameLabel.vue) --> (EditableSlot.vue)
+(<b>main</b>) -[thickness=1]> (App.vue)
+(<b>main</b>) -[thickness=1]> (store)
+
+@enduml
+
+
+' View and edit on https://arkit.pro
+]]></script>
+  </defs>
+  <ellipse
+     cx="111.1482"
+     cy="23.877399"
+     fill="#f8f8f8"
+     rx="37.648201"
+     ry="12.8774"
+     style="stroke:#383838;stroke-width:0.5"
+     id="ellipse4" />
+  <text
+     fill="#000000"
+     font-family="Tahoma, sans-serif"
+     font-size="12px"
+     lengthAdjust="spacingAndGlyphs"
+     textLength="49"
+     x="86.648201"
+     y="27.361799"
+     id="text6">App.vue</text>
+  <ellipse
+     cx="170.0788"
+     cy="191.1158"
+     fill="#f8f8f8"
+     rx="63.5788"
+     ry="15.1158"
+     style="stroke:#383838;stroke-width:0.5"
+     id="ellipse8" />
+  <text
+     fill="#000000"
+     font-family="Tahoma, sans-serif"
+     font-size="12px"
+     lengthAdjust="spacingAndGlyphs"
+     textLength="99"
+     x="120.5788"
+     y="194.6001"
+     id="text10">EditableSlot.vue</text>
+  <ellipse
+     cx="128.75481"
+     cy="79.877403"
+     fill="#f8f8f8"
+     rx="48.254799"
+     ry="12.8774"
+     style="stroke:#383838;stroke-width:0.5"
+     id="ellipse12" />
+  <text
+     fill="#000000"
+     font-family="Tahoma, sans-serif"
+     font-size="12px"
+     lengthAdjust="spacingAndGlyphs"
+     textLength="64"
+     x="96.754799"
+     y="83.361801"
+     id="text14">Frame.vue</text>
+  <ellipse
+     cx="169.7644"
+     cy="134.9529"
+     fill="#f8f8f8"
+     rx="62.7644"
+     ry="14.9529"
+     style="stroke:#383838;stroke-width:0.5"
+     id="ellipse16" />
+  <text
+     fill="#000000"
+     font-family="Tahoma, sans-serif"
+     font-size="12px"
+     lengthAdjust="spacingAndGlyphs"
+     textLength="97"
+     x="121.2644"
+     y="138.4373"
+     id="text18">FrameLabel.vue</text>
+  <ellipse
+     cx="33.041599"
+     cy="23.877399"
+     fill="#f8f8f8"
+     rx="27.041599"
+     ry="12.8774"
+     style="stroke:#383838;stroke-width:0.5"
+     id="ellipse24" />
+  <text
+     fill="#000000"
+     font-family="Tahoma, sans-serif"
+     font-size="12px"
+     font-weight="bold"
+     lengthAdjust="spacingAndGlyphs"
+     textLength="34"
+     x="16.041599"
+     y="27.361799"
+     id="text26">main</text>
+  <ellipse
+     cx="59.834499"
+     cy="190.8774"
+     fill="#f8f8f8"
+     rx="26.334499"
+     ry="12.8774"
+     style="stroke:#383838;stroke-width:0.5"
+     id="ellipse40" />
+  <text
+     fill="#000000"
+     font-family="Tahoma, sans-serif"
+     font-size="12px"
+     lengthAdjust="spacingAndGlyphs"
+     textLength="33"
+     x="43.334499"
+     y="194.3618"
+     id="text42">store</text>
+  <path
+     d="m 114.995,36.984 c 2.436,7.308 5.589,16.768 8.286,24.86"
+     fill="none"
+     id="App.vue-&gt;Frame.vue"
+     style="stroke:#000000;stroke-width:0.5" />
+  <polygon
+     fill="#000000"
+     points="123.3109,61.9316 118.2512,59.4018 124.892,66.675 125.8407,56.8719 "
+     style="stroke:#000000;stroke-width:0.5"
+     id="polygon49" />
+  <path
+     d="M 97.0261,36.417 C 88.8734,43.921 79.1987,54.461 74,66 58.1152,101.258 57.5757,147.6339 58.7049,172.4817"
+     fill="none"
+     id="App.vue-&gt;store"
+     style="stroke:#000000;stroke-width:0.5" />
+  <polygon
+     fill="#000000"
+     points="58.7187,172.7429 54.5122,168.9607 58.9838,177.7359 62.5009,168.5364 "
+     style="stroke:#000000;stroke-width:0.5"
+     id="polygon52" />
+  <path
+     d="m 138.304,93.027 c 5.262,6.803 11.945,15.4415 17.816,23.0312"
+     fill="none"
+     id="Frame.vue-&gt;FrameLabel.vue"
+     style="stroke:#000000;stroke-width:0.5" />
+  <polygon
+     fill="#000000"
+     points="156.2254,116.1938 150.614,115.4779 159.285,120.1484 156.9413,110.5825 "
+     style="stroke:#000000;stroke-width:0.5"
+     id="polygon55" />
+  <path
+     d="M 119.471,93.026 C 113.617,100.602 106.097,110.6793 100,120 88.435,137.6802 76.6024,158.8458 68.838,173.2408"
+     fill="none"
+     id="Frame.vue-&gt;store"
+     style="stroke:#000000;stroke-width:0.5" />
+  <polygon
+     fill="#000000"
+     points="68.7302,173.4419 67.0956,168.0263 66.367,177.8482 74.1457,171.8074 "
+     style="stroke:#000000;stroke-width:0.5"
+     id="polygon58" />
+  <path
+     d="m 170,150.1879 c 0,6.2751 0,13.7521 0,20.523"
+     fill="none"
+     id="FrameLabel.vue-&gt;EditableSlot.vue"
+     style="stroke:#000000;stroke-width:0.5" />
+  <polygon
+     fill="#000000"
+     points="170,170.7194 166,166.7194 170,175.7194 174,166.7194 "
+     style="stroke:#000000;stroke-width:0.5"
+     id="polygon61" />
+  <path
+     d="m 60.1172,24 c 2.5963,0 5.1926,0 7.7889,0"
+     fill="none"
+     id="&lt;b&gt;main&lt;/b&gt;-&gt;App.vue"
+     style="stroke:#000000;stroke-width:1" />
+  <polygon
+     fill="#000000"
+     points="68.2354,24 64.2354,28 73.2354,24 64.2354,20 "
+     style="stroke:#000000;stroke-width:1"
+     id="polygon64" />
+  <path
+     d="M 34.2028,37.139 C 36.5235,59.558 42.0967,108.9222 50,150 c 1.4441,7.5059 3.4234,15.7096 5.24,22.723"
+     fill="none"
+     id="&lt;b&gt;main&lt;/b&gt;-&gt;store"
+     style="stroke:#000000;stroke-width:1" />
+  <polygon
+     fill="#000000"
+     points="55.31,172.9885 50.4216,170.1417 56.586,177.8229 58.1567,168.1001 "
+     style="stroke:#000000;stroke-width:1"
+     id="polygon67" />
+</svg>
