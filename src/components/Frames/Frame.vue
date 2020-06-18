@@ -52,12 +52,6 @@ export default Vue.extend({
             // `False` if a single line frame and `True` if a block
             compound : false,
 
-            // This is an array as there are more than one labels for if.
-            // Note that the slot variable of each objects tells if the
-            // Label needs an editable slot as well attached to it. 
-            //frameLabel: [{label :'if' , slot : true},{label :':' , slot : false}],
-            // frameLabel: null,
-
             // The body can be one of the following two:
             // 1) An editable slot, if our `Frame` is a single-line statement (eg. method call, variable assignment)
             // 2) A `Frame` in order to hold more frames in it 
@@ -68,11 +62,9 @@ export default Vue.extend({
 
     computed:
     {
-
+        // Frame label holds the initialisation object for the frame
         frameLabel : function() 
         {
-            // console.log("code=" + this.$props.type); 
-            // console.log(store.state.frames.find(o => o.name === this.$data.$codeText));
             return store.state.frames.find(o => o.name === this.$data.$codeText).labels;
         }        
     },

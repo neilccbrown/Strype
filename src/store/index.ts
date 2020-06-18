@@ -7,6 +7,10 @@ export default new Vuex.Store({
     state: 
     {
         id : 1,
+        
+        // This is an array with the frame declaration objects.
+        // Note that the slot variable of each objects tells if the
+        // Label needs an editable slot as well attached to it.
         frames: 
         [
             { 
