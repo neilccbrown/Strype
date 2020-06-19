@@ -23,7 +23,7 @@ import EditableSlot from './EditableSlot.vue';
 //     Component    //
 //////////////////////
 export default Vue.extend({
-    name: 'FrameLabel',
+    name: 'FrameHeader',
     
     components: 
     {

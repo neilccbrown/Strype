@@ -11,11 +11,11 @@
         <button>Add</button>
     </form>
 
-    <draggable v-model="frameTypes" v-for="frame in frameTypes" v-bind:key="frame.frameType+'-id:'+frame.id">
+    <draggable v-model="frames" v-for="frame in frames" v-bind:key="frame.frameType+'-id:'+frame.id">
         <Frame v-bind:id="frame.id" v-bind:type="frame.frameType" v-bind:parent="0"/>
     </draggable>
     
-  
+
   </div>
 </template>
 
@@ -25,10 +25,12 @@
 //      Imports     //
 //////////////////////
 import Vue from 'vue';
-import Frame from './components/Frames/Frame.vue';
+import Frame from './components/Frame.vue';
 import { BootstrapVue, IconsPlugin } from 'bootstrap-vue';
-import store from './store';
+import store from './store/store';
 import draggable from 'vuedraggable';
+import { FrameObject } from './types/types';
+
 
 //////////////////////
 //     Component    //
@@ -49,7 +51,7 @@ export default Vue.extend({
             newFrameType : "",
             // The array with all the frames in our app.
             // Currently every item is an object of: {frameType , id}
-            frameTypes : []
+            frames : [] as FrameObject[]
         }
 
         
@@ -60,7 +62,7 @@ export default Vue.extend({
         //add the new frame and increase the ID by 1
         addNewFrame: function () 
         {
-            this.frameTypes.push({frameType: this.newFrameType,id: store.state.id})
+            this.frames.push({frameType: this.newFrameType,id: store.state.nextAvailableID})
             store.commit('increaseID')
         },
     }

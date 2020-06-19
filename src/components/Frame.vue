@@ -1,6 +1,6 @@
 <template>
   <div>
-    <FrameLabel v-if="frameLabel !== null" v-bind:parent="id" v-bind:labels="frameLabel"/>
+    <FrameHeader v-if="frameLabel !== null" v-bind:parent="id" v-bind:labels="frameLabel"/>
 
   </div>
 </template>
@@ -12,18 +12,10 @@
 //////////////////////
 import Vue from 'vue';
 import { BootstrapVue, IconsPlugin } from 'bootstrap-vue';
-import FrameLabel from '../FrameLabel.vue';
-import store from '../../store';
+import FrameHeader from './FrameHeader.vue';
+import store from '.././store/store';
 
-////////////////////////////
-//   Type Declarations    //
-////////////////////////////
-declare module 'vue/types/vue' {
-  // 3. Declare augmentation for Vue
-  interface Vue {
-    $codeText: string;
-  }
-}
+
 
 //////////////////////
 //     Component    //
@@ -33,22 +25,21 @@ export default Vue.extend({
     store,
     components:
     {
-        FrameLabel
+        FrameHeader
     },
 
-    props: 
+    props:
     {
         id: Number, // Unique Indentifier for each Frame
         type: String, //Type of the Frame
         parent: Number // ID of the parent
+
+        // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
     },
 
     data: function () 
     {
         return{
-            //Assign the props to internal <data> variables
-            $codeText : this.$props.type,
-            parentId :  this.$props.parent,
             // `False` if a single line frame and `True` if a block
             compound : false,
 
@@ -65,7 +56,7 @@ export default Vue.extend({
         // Frame label holds the initialisation object for the frame
         frameLabel : function() 
         {
-            return store.state.frames.find(o => o.name === this.$data.$codeText).labels;
+            return store.state.framesDefinitions.find(o => o.name === this.type).labels;
         }        
     },
 
@@ -85,5 +76,22 @@ export default Vue.extend({
         //  code:string = this.codeText;
         // frameLabel : this.$store.state.frames.find(o => o.name === this.codeText)
         //    return store.getters.getLabelsByName(this.$codeText)
+
+
+        ////////////////////////////
+        //   Type Declarations    //
+        ////////////////////////////
+        // declare module 'vue/types/vue' {
+        //   // 3. Declare augmentation for Vue
+        //   interface Vue {
+        //     $codeText: string;
+        //   }
+        // }
+
+        // $codeText : this.$props.type,
+
+        // return store.state.framesDefinitions.find(o => o.name === this.$data.$codeText).labels;
+
+        // const typ = this.$props.type as string;
 
 </script>
