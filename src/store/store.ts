@@ -27,7 +27,7 @@ export default new Vuex.Store({
                     name: "return",
                     labels: [{ label: 'return', slot: true }]
                 }
-            ] as unknown as FramesDefinitions[],
+            ] as FramesDefinitions[],
         test : "test" as string
     },
     getters:
