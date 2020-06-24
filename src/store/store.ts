@@ -1,16 +1,16 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import { FramesDefinitions } from './../types/types';
+import { FramesDefinitions, FrameObject } from './../types/types';
 
 Vue.use(Vuex)
 
 export default new Vuex.Store({
-    state: 
+    state:
     {
-        nextAvailableID : 1 as number,
-        
+        nextAvailableID: 1 as number,
+
         framesDefinitions:
-        [
+            [
                 {
                     name: "if",
                     labels: [{ label: 'if', slot: true }, { label: ' :', slot: false }]
@@ -27,30 +27,38 @@ export default new Vuex.Store({
                     name: "return",
                     labels: [{ label: 'return', slot: true }]
                 }
-            ] as FramesDefinitions[]
-       
+            ] as FramesDefinitions[],
+        
+        framesObjects : [] as FrameObject[]
+
     },
     getters:
     {
-        getLabelsByName : function(state, type: string)
-        {
-            return state.framesDefinitions.find(o => o.name === type);
+        getLabelsByName: (state) => (type: string) => {
+            const frameDef = state.framesDefinitions.find(o => o.name === type);
+            if (frameDef)
+                return frameDef.labels;
+            else
+                return [];
         }
     },
-    mutations: 
+    mutations:
     {
-        increaseID (state) 
-        {
+        addFrameObject(state, fobj: FrameObject) {
+            state.framesObjects.push(fobj);
             state.nextAvailableID++;
+        },
+        updateFramesOrder(state, value) {
+            state.framesObjects = value;
         }
     },
-    actions: 
+    actions:
     {
-        
+
     },
-    modules: 
+    modules:
     {
-    
+
     }
 })
 

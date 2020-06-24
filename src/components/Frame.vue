@@ -1,7 +1,6 @@
 <template>
   <div>
     <FrameHeader v-if="frameLabel !== null" v-bind:parent="id" v-bind:labels="frameLabel"/>
-
   </div>
 </template>
 
@@ -11,7 +10,6 @@
 //      Imports     //
 //////////////////////
 import Vue from 'vue';
-import { BootstrapVue, IconsPlugin } from 'bootstrap-vue';
 import FrameHeader from './FrameHeader.vue';
 import store from '.././store/store';
 
@@ -56,7 +54,7 @@ export default Vue.extend({
         // Frame label holds the initialisation object for the frame
         frameLabel : function() 
         {
-            return store.state.framesDefinitions.find(o => o.name === this.type).labels;
+            return this.$store.getters.getLabelsByName(this.type);
         }        
     },
 

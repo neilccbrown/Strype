@@ -1,8 +1,8 @@
 <template>
     <div class="block">
         <div class="next-to-eachother" v-for="item in labels" v-bind:key="item.label + parent">
-            <div>{{item.label}}</div>
-            <EditableSlot v-if="item.slot" default-text="Default display text"/>
+            <div class="next-to-eachother">{{item.label}}</div>
+            <EditableSlot class="editable-input" v-if="item.slot" default-text="Default display text"/>
         </div>
     </div>
 </template>
@@ -15,7 +15,6 @@
 //      Imports     //
 //////////////////////
 import Vue from 'vue';
-import { BootstrapVue, IconsPlugin } from 'bootstrap-vue';
 import EditableSlot from './EditableSlot.vue';
 
 
@@ -57,5 +56,10 @@ export default Vue.extend({
 {
     display: inline-block;
 }
+
+.editable-input
+ {
+     margin:0px 5px 0px 5px;
+ }
 
 </style>

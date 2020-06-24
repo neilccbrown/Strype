@@ -1,13 +1,11 @@
 <template>
-    <form>
+    <div class="next-to-eachother">
         <input type="text" v-model="code" v-bind:placeholder="defaultText" v-on:change="changeHandler">
-    </form>
+    </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
-
-import { BootstrapVue, IconsPlugin } from 'bootstrap-vue';
 
 export default Vue.extend({
     name: 'EditableSlot',
@@ -22,17 +20,6 @@ export default Vue.extend({
         return{
             code: ""
         }
-    },
-    
-    methods:
-    {
-        changeHandler: function()
-        {
-            this.$data.code = this.$data.code.split('').reverse().join('')
-        }
     }
-
-    
-
 });
 </script>

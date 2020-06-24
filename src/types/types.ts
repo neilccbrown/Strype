@@ -11,6 +11,10 @@ export interface FrameObject
     id : number
 }
 
+export interface FrameLabel{
+    label: string,
+    slot: boolean
+}
 
 // This is an array with all the frame Definitions objects.
 // Note that the slot variable of each objects tells if the
@@ -19,5 +23,5 @@ export interface FramesDefinitions
 {
     // [x: string]: any;
     name : string,
-    labels : [{ label : string , slot : boolean}]
+    labels : FrameLabel[]
 }
