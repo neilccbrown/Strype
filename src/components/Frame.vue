@@ -1,95 +1,95 @@
 <template>
-  <div>
-    <FrameHeader v-if="frameLabel !== null" v-bind:parent="id" v-bind:labels="frameLabel"/>
+  <div :style="frameStyle" class="block">
+    <FrameHeader
+      v-if="frameLabel !== null"
+      v-bind:frameId="id"
+      v-bind:labels="frameLabel"
+    />
+    <FrameBody
+       v-bind:frameId="id"
+    />
+    <Frame
+        v-for="frame in jointframes"
+        v-bind:key="frame.frameType+'-id:'+frame.id"
+        v-bind:id="frame.id"
+        v-bind:type="frame.frameType"
+        v-bind:isJointFrame="true"       
+    />
   </div>
 </template>
 
 <script lang="ts">
-
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from 'vue';
-import FrameHeader from './FrameHeader.vue';
-import store from '.././store/store';
-
-
+import Vue from "vue";
+import FrameHeader from "./FrameHeader.vue";
+import store from ".././store/store";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
-    name: 'Frame',
-    store,
-    components:
-    {
-        FrameHeader
+  name: "Frame",
+  store,
+  
+  components: {
+    FrameHeader,
+  },
+
+  beforeCreate: function() {
+    const components = this.$options.components;
+    if (components != undefined)
+      components.FrameBody = require("./FrameBody.vue").default;
+  },
+
+  props: {
+    id: Number, // Unique Indentifier for each Frame
+    type: String, //Type of the Frame
+    parent: Number, //ID of the parent
+    isJointFrame: Boolean //Flag indicating this frame is a joint frame or not
+
+    // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
+  },
+
+  data: function() {
+    return {
+      // `False` if a single line frame and `True` if a block
+      compound: false,
+
+      // The body can be one of the following two:
+      // 1) An editable slot, if our `Frame` is a single-line statement (eg. method call, variable assignment)
+      // 2) A `Frame` in order to hold more frames in it
+      body: null
+    };
+  },
+
+  computed: {
+    // Frame label holds the initialisation object for the frame
+    frameLabel: function() {
+      return this.$store.getters.getLabelsByName(this.type);
     },
-
-    props:
-    {
-        id: Number, // Unique Indentifier for each Frame
-        type: String, //Type of the Frame
-        parent: Number // ID of the parent
-
-        // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
+    jointframes: function() {
+      return store.getters.getJointFramesForFrameId(this.$props.id);
     },
-
-    data: function () 
-    {
-        return{
-            // `False` if a single line frame and `True` if a block
-            compound : false,
-
-            // The body can be one of the following two:
-            // 1) An editable slot, if our `Frame` is a single-line statement (eg. method call, variable assignment)
-            // 2) A `Frame` in order to hold more frames in it 
-            body : null
-           
-        }
-    },
-
-    computed:
-    {
-        // Frame label holds the initialisation object for the frame
-        frameLabel : function() 
-        {
-            return this.$store.getters.getLabelsByName(this.type);
-        }        
-    },
-
-    
-
+    frameStyle: function() {
+      return (this.isJointFrame===true) 
+      ? {} 
+      : {
+          "border-left" : "6px solid " + this.$store.getters.getColourByName(this.type) +" !important",
+          "background-color": this.$store.getters.getColourByName(this.type) + "33 !important",
+          "padding-left": "2px"
+      };
+    }
+  }
 });
-
-//////////////////////////
-//      JUND YARD       //
-/////////////////////////
-        //frameLabel: this.getFrameLabelWithType(this.$props.type)
-        // frameLabel : (this.codeText) => (store.getters.getLabelsByName((typeof this.codeText === 'string')?this.codeText:"");)
-        // frameLabel : store.getters.getLabelsByName(this.codeText)
-        // frameLabel : store.getters.getLabelsByName(this.codeText)
-        // frameLabel : this.$store.getters.getLabelsByName(this.codeText)
-        // var code:this.codeText,
-        //  code:string = this.codeText;
-        // frameLabel : this.$store.state.frames.find(o => o.name === this.codeText)
-        //    return store.getters.getLabelsByName(this.$codeText)
-
-
-        ////////////////////////////
-        //   Type Declarations    //
-        ////////////////////////////
-        // declare module 'vue/types/vue' {
-        //   // 3. Declare augmentation for Vue
-        //   interface Vue {
-        //     $codeText: string;
-        //   }
-        // }
-
-        // $codeText : this.$props.type,
-
-        // return store.state.framesDefinitions.find(o => o.name === this.$data.$codeText).labels;
-
-        // const typ = this.$props.type as string;
-
 </script>
+
+<style lang="scss">
+.block 
+{
+    color: #000 !important;
+    margin-top: 7px;
+}
+
+</style>

@@ -3,6 +3,9 @@
     <form v-on:submit.prevent="addNewFrame">
       <label for="new-frame">What Frame to add?</label>
       <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" />
+      <select name="" v-model="currentParentId">
+        <option v-for="n in 21" :value="n-1"  v-bind:key="'parentID'+ (n-1)">in parent id {{n-1}}</option>
+      </select> 
       <button>Add</button>
     </form>
 
@@ -12,7 +15,7 @@
         v-bind:key="frame.frameType+'-id:'+frame.id"
         v-bind:id="frame.id"
         v-bind:type="frame.frameType"
-        v-bind:parent="0"
+        v-bind:isJointFrame="false"
       />
     </Draggable>
   </div>
@@ -41,7 +44,8 @@ export default Vue.extend({
 
   data: function() {
     return {
-      newFrameType: ""
+      newFrameType: "",
+      currentParentId: 0
     };
   },
 
@@ -49,7 +53,8 @@ export default Vue.extend({
     frames: {
       // getter of the frames objects in store
       get: function() {
-        return store.state.framesObjects;
+     
+        return store.getters.getFramesForParentId(0);
       },
       // setter the frames objects in store
       set: function(value) {
@@ -59,13 +64,18 @@ export default Vue.extend({
   },
 
   methods: {
-    //add the new frame and increase the ID by 1
+    //add the new frame
     addNewFrame: function() {
+      const isJointFrame = store.getters.getIsJointFrame(this.$data.currentParentId, this.$data.newFrameType);
       store.commit("addFrameObject", {
         frameType: this.$data.newFrameType,
-        id: store.state.nextAvailableID
+        id: store.state.nextAvailableID,
+        parentId: (isJointFrame) ? -1 : this.$data.currentParentId,
+        childrenIds: [],
+        jointParentId: (isJointFrame) ? this.$data.currentParentId : -1,
+        jointFrameIds: []
       });
-    }
+    }   
   }
 });
 </script>
@@ -75,8 +85,11 @@ export default Vue.extend({
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+
+#app form {
+  text-align: center;
 }
 </style>

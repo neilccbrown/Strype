@@ -1,13 +1,11 @@
 <template>
-    <div class="block">
-        <div class="next-to-eachother" v-for="item in labels" v-bind:key="item.label + parent">
+    <div>
+        <div class="next-to-eachother" v-for="item in labels" v-bind:key="item.label + frameId">
             <div class="next-to-eachother">{{item.label}}</div>
             <EditableSlot class="editable-input" v-if="item.slot" default-text="Default display text"/>
         </div>
     </div>
 </template>
-
-
 
 <script lang="ts">
 
@@ -34,7 +32,7 @@ export default Vue.extend({
         // We need an array of labels in the case there are more
         // than one labels in the frame (e.g. `with` ... `as ... )
         labels : Array,
-        parent: Number
+        frameId: Number
     }
 
 });
@@ -43,15 +41,6 @@ export default Vue.extend({
 
 
 <style lang="scss">
-.block 
-{
-    color: #000 !important;
-    background-color: #ddffff !important;
-    border-left: 6px solid #2c3e50 !important;
-    border-left-color: rgb(204, 204, 204);
-    margin-top: 7px;
-}
-
 .next-to-eachother
 {
     display: inline-block;

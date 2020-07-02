@@ -1,6 +1,6 @@
 <template>
     <div class="next-to-eachother">
-        <input type="text" v-model="code" v-bind:placeholder="defaultText" v-on:change="changeHandler">
+        <input type="text" v-model="code" v-bind:placeholder="defaultText" >
     </div>
 </template>
 
