@@ -1,24 +1,33 @@
 <template>
   <div id="app">
-    <form v-on:submit.prevent="addNewFrame">
-      <label for="new-frame">What Frame to add?</label>
-      <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" />
-      <select name="" v-model="currentParentId">
-        <option v-for="n in 21" :value="n-1"  v-bind:key="'parentID'+ (n-1)">in parent id {{n-1}}</option>
-      </select> 
-      <button>Add</button>
-    </form>
+      <div class="left">
+        <form v-on:submit.prevent="addNewFrame">
+            <label for="new-frame">What Frame to add?</label>
+                <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" />
+            <select name="" v-model="currentParentId">
+                <option v-for="n in 21" :value="n-1"  v-bind:key="'parentID'+ (n-1)">in parent id {{n-1}}</option>
+            </select> 
+            <button>Add</button>
+        </form>
+        <form v-on:submit.prevent="testFrameInitialisation">
+            <button>Initialise State</button>
+        </form>
+        
 
-    <Draggable v-model="frames">
-      <Frame
-        v-for="frame in frames"
-        v-bind:key="frame.frameType+'-id:'+frame.id"
-        v-bind:id="frame.id"
-        v-bind:type="frame.frameType"
-        v-bind:isJointFrame="false"
-        v-bind:caretVisibility="frame.caretVisibility"
-      />
-    </Draggable>
+        <Draggable v-model="frames2" group="a">
+            <Frame
+                v-for="frame in frames"
+                v-bind:key="frame.frameType+'-id:'+frame.id"
+                v-bind:id="frame.id"
+                v-bind:type="frame.frameType"
+                v-bind:isJointFrame="false"
+                v-bind:caretVisibility="frame.caretVisibility"
+            />
+        </Draggable>
+    </div>
+    <div class="right">
+        <textarea v-model="mymodel"></textarea>
+    </div>
   </div>
 </template>
 
@@ -51,16 +60,41 @@ export default Vue.extend({
   },
 
   computed: {
-    frames: {
-      // getter of the frames objects in store
-      get: function() {
-     
-        return store.getters.getFramesForParentId(0);
-      },
-      // setter the frames objects in store
-      set: function(value) {
-        store.commit("updateFramesOrder", value);
-      }
+    frames: 
+    {
+        // gets the frames objects which are in the root 
+        get: function() 
+        {
+            return store.getters.getFramesForParentId(0);
+        },
+        // setter the frames objects in store
+        set: function(value) 
+        {
+            store.commit("updateFramesOrder", value);
+        }
+    },
+    frames2: 
+    {
+        // get all the frame objects to connect them to the draggable
+        get: function() 
+        {
+            return store.getters.getFrameObjects();
+        },
+        // setter the frames objects in store
+        set: function(value) 
+        {
+            store.commit("updateFramesOrder", value);
+        }
+    },
+
+    mymodel: 
+    {
+
+        get() {
+
+            return JSON.stringify( store.getters.getFrameObjects() , null , '\t' )
+
+        }
     }
   },
 
@@ -77,7 +111,11 @@ export default Vue.extend({
         jointFrameIds: [],
         caretVisibility: false
       });
-    }   
+    },
+    
+    testFrameInitialisation: function() {
+        store.commit("stateInitialisation", [{"frameType":"if","id":1,"parentId":0,"childrenIds":[4,5,7],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"if","id":2,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"if","id":3,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":4,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":5,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":6,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"funcdef","id":7,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false}]);
+    }
   }
 });
 </script>
@@ -89,9 +127,20 @@ export default Vue.extend({
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
   margin-top: 60px;
+  display: flex;
 }
 
 #app form {
   text-align: center;
+}
+
+.left
+{
+    width: 50%;
+}
+
+.right
+{
+    width: 50%;
 }
 </style>

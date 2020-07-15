@@ -162,11 +162,16 @@ export default new Vuex.Store({
                 return frameDef.colour;
             else
                 return "#000";
+        },
+
+        getFrameObjects: (state) => () => {
+            return state.framesObjects;
         }
     },
     mutations:
     {
-        addFrameObject(state, fobj: FrameObject) {
+        addFrameObject(state, fobj: FrameObject) 
+        {
             state.framesObjects.push(fobj);
             if (fobj.parentId > 0)
             {
@@ -176,9 +181,15 @@ export default new Vuex.Store({
                 state.framesObjects.find(f => f.id===fobj.jointParentId)?.jointFrameIds.push(fobj.id);
             }
             state.nextAvailableID++;
+            
         },
         updateFramesOrder(state, value) {
             state.framesObjects = value;
+        },
+
+        stateInitialisation(state, initialState: FrameObject[])
+        {
+            state.framesObjects = initialState;
         }
     },
     actions:
@@ -191,9 +202,16 @@ export default new Vuex.Store({
     }
 })
 
+ 
+
+
+
+
+
+
 
 //////////////////////////
-//      JUND YARD       //
+//      JUNK YARD       //
 /////////////////////////
 
      // getLabelsByName: (state) => (type:string) => 
@@ -203,3 +221,31 @@ export default new Vuex.Store({
         // getLabelsByName(state) {
         //     return (type:string) => state.frames.find(o => o.name === type);
         //     }
+
+
+
+        // state.framesObjects.push(fobj);
+        //     if (fobj.parentId > 0)
+        //     {
+        //         state.framesObjects.find(f => f.id===fobj.parentId)?.childrenIds.push(fobj.id);
+        //     }
+        //     else if (fobj.jointParentId > 0){
+        //         state.framesObjects.find(f => f.id===fobj.jointParentId)?.jointFrameIds.push(fobj.id);
+        //     }
+        //     state.nextAvailableID++;
+
+        // Adding frame in the root (without parent)
+            // if(fobj.parentId === 0) 
+            // {
+            //     state.framesObjects.push(fobj);
+            // }
+            // // Adding the frame as a child
+            // if (fobj.parentId > 0)
+            // {
+
+            //     state.framesObjects.find(f => f.id===fobj.parentId)?.childrenIds.push(fobj.id);
+            // }
+            // else if (fobj.jointParentId > 0){
+            //     state.framesObjects.find(f => f.id===fobj.jointParentId)?.jointFrameIds.push(fobj.id);
+            // }
+            // state.nextAvailableID++;
