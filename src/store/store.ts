@@ -118,7 +118,6 @@ export default new Vuex.Store({
             ] as FramesDefinitions[],
         
         framesObjects : [] as FrameObject[]
-
     },
     getters:
     {

@@ -1,20 +1,23 @@
 <template>
-  <div :style="frameStyle" class="block">
-    <FrameHeader
-      v-if="frameLabel !== null"
-      v-bind:frameId="id"
-      v-bind:labels="frameLabel"
-    />
-    <FrameBody
-       v-bind:frameId="id"
-    />
-    <Frame
-        v-for="frame in jointframes"
-        v-bind:key="frame.frameType+'-id:'+frame.id"
-        v-bind:id="frame.id"
-        v-bind:type="frame.frameType"
-        v-bind:isJointFrame="true"       
-    />
+    <div> 
+        <div :style="frameStyle" class="block">
+            <FrameHeader
+                v-if="frameLabel !== null"
+                v-bind:frameId="id"
+                v-bind:labels="frameLabel"
+            />
+            <FrameBody
+                v-bind:frameId="id"
+            />
+            <Frame
+                v-for="frame in jointframes"
+                v-bind:key="frame.frameType+'-id:'+frame.id"
+                v-bind:id="frame.id"
+                v-bind:type="frame.frameType"
+                v-bind:isJointFrame="true"       
+            />
+        </div>
+        <Caret v-if="caretVisibility"/>
   </div>
 </template>
 
@@ -24,7 +27,9 @@
 //////////////////////
 import Vue from "vue";
 import FrameHeader from "./FrameHeader.vue";
+import Caret from "./Caret.vue"
 import store from ".././store/store";
+
 
 //////////////////////
 //     Component    //
@@ -35,6 +40,7 @@ export default Vue.extend({
   
   components: {
     FrameHeader,
+    Caret
   },
 
   beforeCreate: function() {
@@ -47,8 +53,8 @@ export default Vue.extend({
     id: Number, // Unique Indentifier for each Frame
     type: String, //Type of the Frame
     parent: Number, //ID of the parent
-    isJointFrame: Boolean //Flag indicating this frame is a joint frame or not
-
+    isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
+    caretVisibility: Boolean //Flag indicating this caret is visible or not
     // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
   },
 
