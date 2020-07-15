@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <div id="temp-container">
     <form v-on:submit.prevent="addNewFrame">
       <label for="new-frame">What Frame to add?</label>
       <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" />
@@ -8,7 +9,6 @@
       </select> 
       <button>Add</button>
     </form>
-
     <Draggable v-model="frames">
       <Frame
         v-for="frame in frames"
@@ -18,6 +18,8 @@
         v-bind:isJointFrame="false"
       />
     </Draggable>
+    </div>
+    <Commands />
   </div>
 </template>
 
@@ -27,6 +29,7 @@
 //////////////////////
 import Vue from "vue";
 import Frame from "./components/Frame.vue";
+import Commands from "./components/Commands.vue"
 import store from "./store/store";
 import Draggable from "vuedraggable";
 
@@ -39,7 +42,8 @@ export default Vue.extend({
 
   components: {
     Frame,
-    Draggable
+    Draggable,
+    Commands
   },
 
   data: function() {
@@ -82,15 +86,26 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+body{
+  margin: 0px;
+}
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
-  margin-top: 60px;
+  display:flex;  
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 100vh;
 }
 
 #app form {
   text-align: center;
+}
+
+#temp-container {
+  margin-top: 60px;
+  flex-grow: 1;
 }
 </style>
