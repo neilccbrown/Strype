@@ -1,12 +1,13 @@
 <template>
   <div class="content-children">
-    <Draggable v-model="frames2"  group="a">
+    <Draggable v-model="frames" group="a" draggable=".frame" @start="drag=true" @end="drag=false">
         <Frame
             v-for="frame in frames"
             v-bind:key="frame.frameType+'-id:'+frame.id"
             v-bind:id="frame.id"
             v-bind:type="frame.frameType"
             v-bind:isJointFrame="false"
+            class="frame"
         />
     </Draggable>
   </div>
@@ -57,24 +58,11 @@ export default Vue.extend({
         // setter the frames objects in store
         set: function(value) 
         {
-            store.commit("updateFramesOrder", value);
-        }
-    },
-
-    frames2: 
-    {
-        // get all the frame objects to connect them to the draggable
-        get: function() 
-        {
-            return store.getters.getFrameObjects();
-        },
-        // setter the frames objects in store
-        set: function(value) 
-        {
-            store.commit("updateFramesOrder", value);
+            store.commit("updateFramesOrder", {value: value, parentID: this.$props.frameId});
         }
     }
   }
+
 });
 </script>
 

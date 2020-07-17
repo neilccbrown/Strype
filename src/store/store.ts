@@ -183,9 +183,21 @@ export default new Vuex.Store({
             state.nextAvailableID++;
             
         },
-        updateFramesOrder(state, value) {
-            state.framesObjects = value;
+       // Data holds the new state and the parentID of the frame where the change was made
+       updateFramesOrder(state, data) 
+       {
+            let frameArray = state.framesObjects.find(f => f.id===data.parentID);
+            frameArray = data.value;
+            // if(data.parentID > 0)
+            // {
+            //     state.framesObjects.find(f => f.id===data.parentID) = data.value;
+            // }
+            // else
+            // {
+            //     state.framesObjects = data.value;
+            // }
         },
+
 
         stateInitialisation(state, initialState: FrameObject[])
         {

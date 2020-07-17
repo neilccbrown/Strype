@@ -14,7 +14,7 @@
         </form>
         
 
-        <Draggable v-model="frames2" group="a">
+        <Draggable v-model="frames" group="a" draggable=".frame" @start="drag=true" @end="drag=false">
             <Frame
                 v-for="frame in frames"
                 v-bind:key="frame.frameType+'-id:'+frame.id"
@@ -22,6 +22,7 @@
                 v-bind:type="frame.frameType"
                 v-bind:isJointFrame="false"
                 v-bind:caretVisibility="frame.caretVisibility"
+                class="frame"
             />
         </Draggable>
     </div>
@@ -65,35 +66,20 @@ export default Vue.extend({
         // gets the frames objects which are in the root 
         get: function() 
         {
-            return store.getters.getFramesForParentId(0);
+            return store.getters.getFramesForParentId(this.$props.currentParentId);
         },
         // setter the frames objects in store
         set: function(value) 
         {
-            store.commit("updateFramesOrder", value);
-        }
-    },
-    frames2: 
-    {
-        // get all the frame objects to connect them to the draggable
-        get: function() 
-        {
-            return store.getters.getFrameObjects();
-        },
-        // setter the frames objects in store
-        set: function(value) 
-        {
-            store.commit("updateFramesOrder", value);
+            store.commit("updateFramesOrder", {value: value, parentID: 0});
         }
     },
 
+    //this helps for debugging purposes --> printing the state in the screen
     mymodel: 
     {
-
         get() {
-
             return JSON.stringify( store.getters.getFrameObjects() , null , '\t' )
-
         }
     }
   },
