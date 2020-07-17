@@ -19,7 +19,7 @@ export interface FrameObject
 
 export interface FrameLabel{
     label: string,
-    slot: boolean
+    slot: boolean,
 }
 
 // This is an array with all the frame Definitions objects.
@@ -32,12 +32,18 @@ export interface FramesDefinitions
     labels : FrameLabel[],
     allowChildren: boolean,
     jointFrameTypes: string[],
-    colour: string
+    colour: string,
 }
 
 export interface ErrorSlotPayload
 {
     frameId: number,
     slotId: number,
-    code: string
+    code: string,
+}
+export interface FrameCommand
+{
+    type: string,
+    description: string,
+    shortcut: string,
 }

@@ -11,7 +11,6 @@ import store from ".././store/store";
 export default Vue.extend({
     name: 'EditableSlot',
     store,
-
     props: 
     {
         defaultText: String,
@@ -24,11 +23,16 @@ export default Vue.extend({
             code: store.getters.getContentForFrameSlot(this.$parent.$props.frameId, this.$props.slotIndex)
         }
     },
-     methods:{
-        updateSlotStore: function ()
+    methods:{
+        onFocus: function() {
+            store.commit('toggleEditFlag');
+        },
+        onBlur: function ()
         {
+            store.commit('toggleEditFlag');
             store.commit("setFrameEditorSlot", {frameId:this.$parent.$props.frameId, slotId: this.$props.slotIndex, code: this.$data.code});
         }
     }
+
 });
 </script>

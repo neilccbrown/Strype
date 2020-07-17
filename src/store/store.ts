@@ -9,6 +9,10 @@ export default new Vuex.Store({
     {
         nextAvailableID: 1 as number,
 
+        currentFrameID: 0,
+
+        isEditing: false,
+
         framesDefinitions:
             [
                 {
@@ -189,6 +193,12 @@ export default new Vuex.Store({
         },
         updateFramesOrder(state, value) {
             state.framesObjects = value;
+        },
+        updateCurrentFrameID(state, id: number) {
+            state.currentFrameID = id;
+        },
+        toggleEditFlag(state) {
+            state.isEditing = !state.isEditing;
         }
     },
     actions:
