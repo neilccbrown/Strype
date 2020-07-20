@@ -8,7 +8,7 @@
         v-for="frameCommand in frameCommands" 
         v-bind:key="frameCommand.type"
         v-bind:type="frameCommand.type"
-        v-bind:shortcut="frameCommand.shortcut"
+        v-bind:shortcut="(frameCommand.symbol !== undefined) ? frameCommand.symbol : frameCommand.shortcut"
         v-bind:description="frameCommand.description" />
     </div>
   </div>

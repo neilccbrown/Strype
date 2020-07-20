@@ -40,7 +40,7 @@ export default new Vuex.Store({
                     name: "for",
                     labels: [{ label: 'for', slot: true }, { label: 'in', slot: true }, { label: ' :', slot: false }],
                     allowChildren: true,
-                    jointFrameTypes: [],
+                    jointFrameTypes: ["else"],
                     colour: "#EA72C0"
                 },
                 {
@@ -66,7 +66,7 @@ export default new Vuex.Store({
                 },
                 {
                     name: "varassign",
-                    labels: [{ label: 'var', slot: true },{ label: '=', slot: false },{ label: '', slot: true }],
+                    labels: [{ label: 'let', slot: true },{ label: '=', slot: false },{ label: '', slot: true }],
                     allowChildren: false,
                     colour: "#72EAC0"
                 },
@@ -100,7 +100,7 @@ export default new Vuex.Store({
                 },
                 {
                     name: "finally",
-                    labels: [{ label: 'except:', slot: false }],
+                    labels: [{ label: 'finally:', slot: false }],
                     allowChildren: true,
                     jointFrameTypes: [],
                     colour: ""
@@ -118,6 +118,13 @@ export default new Vuex.Store({
                     allowChildren: false,
                     jointFrameTypes: [],
                     colour: "#AAAAAA"
+                },
+                {
+                    name: "with",
+                    labels: [{ label: 'with', slot: true }, { label: 'as', slot: true }, { label: ':', slot: false}],
+                    allowChildren: true,
+                    jointFrameTypes: [],
+                    colour: "#f5a70c"
                 }
             ] as FramesDefinitions[],
         

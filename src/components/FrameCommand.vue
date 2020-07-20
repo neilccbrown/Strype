@@ -19,7 +19,7 @@ export default Vue.extend({
 
   props: {
     type: String, //Type of the Frame Command
-    shortcut: String, //the keyboard shortcut to add the frame
+    shortcut: String, //the keyboard shortcut to add the frame (displayed in the UI, it can be a symbolic representation)
     description: String //the description of the frame
   }
 });
@@ -32,5 +32,9 @@ export default Vue.extend({
 
 .frame-cmd-btn {
   margin-right:5px;
+  width: 24px;
+  background-color: #efefef;
+  border-radius: 4px;
+  border: 1px solid #d0d0d0;
 }
 </style>

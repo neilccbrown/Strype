@@ -3,7 +3,7 @@
     <div id="temp-container">
     <form v-on:submit.prevent="addNewFrame">
       <label for="new-frame">What Frame to add?</label>
-      <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" />
+      <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" v-on:blur="toggleEdition" v-on:focus="toggleEdition"/>
       <select name="" v-model="currentParentId">
         <option v-for="n in 21" :value="n-1"  v-bind:key="'parentID'+ (n-1)">in parent id {{n-1}}</option>
       </select> 
@@ -80,6 +80,9 @@ export default Vue.extend({
         jointFrameIds: [],
         contentDict:{}
       });
+    },
+    toggleEdition : function(){
+      store.commit('toggleEditFlag');
     }   
   }
 });
