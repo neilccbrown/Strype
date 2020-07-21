@@ -5,7 +5,7 @@
             <label for="new-frame">What Frame to add?</label>
                 <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" />
             <select name="" v-model="currentParentId">
-                <option v-for="n in 21" :value="n-1"  v-bind:key="'parentID'+ (n-1)">in parent id {{n-1}}</option>
+                <option v-for="n in 21" :value="n-1"  v-bind:key="'parentId'+ (n-1)">in parent id {{n-1}}</option>
             </select> 
             <button>Add</button>
         </form>
@@ -14,7 +14,7 @@
         </form>
         
 
-        <Draggable v-model="frames" group="a" draggable=".frame" @start="drag=true" @end="drag=false">
+        <Draggable v-model="frames" group="a" draggable=".frame" >
             <Frame
                 v-for="frame in frames"
                 v-bind:key="frame.frameType+'-id:'+frame.id"
@@ -64,14 +64,14 @@ export default Vue.extend({
     frames: 
     {
         // gets the frames objects which are in the root 
-        get: function() 
+        get: function(this) 
         {
-            return store.getters.getFramesForParentId(this.$props.currentParentId);
+            return store.getters.getFramesForParentId(0);
         },
         // setter the frames objects in store
         set: function(value) 
         {
-            store.commit("updateFramesOrder", {value: value, parentID: 0});
+            store.commit("updateFramesOrder", {value: value, selectedFrameId: event.target.__vue__._props.frameId,  newParentId: 0});
         }
     },
 
@@ -90,7 +90,7 @@ export default Vue.extend({
       const isJointFrame = store.getters.getIsJointFrame(this.$data.currentParentId, this.$data.newFrameType);
       store.commit("addFrameObject", {
         frameType: this.$data.newFrameType,
-        id: store.state.nextAvailableID,
+        id: store.state.nextAvailableId,
         parentId: (isJointFrame) ? -1 : this.$data.currentParentId,
         childrenIds: [],
         jointParentId: (isJointFrame) ? this.$data.currentParentId : -1,
@@ -99,8 +99,13 @@ export default Vue.extend({
       });
     },
     
-    testFrameInitialisation: function() {
-        store.commit("stateInitialisation", [{"frameType":"if","id":1,"parentId":0,"childrenIds":[4,5,7],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"if","id":2,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"if","id":3,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":4,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":5,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":6,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"funcdef","id":7,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false}]);
+    testFrameInitialisation: function() 
+    {
+        const initialState = [{"frameType":"if","id":1,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"funcdef","id":2,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":3,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"while","id":4,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"return","id":5,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false}];
+        for(const frame of initialState)
+        {
+            store.commit("addFrameObject", frame);
+        }
     }
   }
 });

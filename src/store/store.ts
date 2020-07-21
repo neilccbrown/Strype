@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import Vuex from 'vuex'
+import Vuex, { Store } from 'vuex'
 import { FramesDefinitions, FrameObject } from './../types/types';
 
 Vue.use(Vuex)
@@ -7,7 +7,7 @@ Vue.use(Vuex)
 export default new Vuex.Store({
     state:
     {
-        nextAvailableID: 1 as number,
+        nextAvailableId: 1 as number,
 
         framesDefinitions:
             [
@@ -117,18 +117,19 @@ export default new Vuex.Store({
                 }
             ] as FramesDefinitions[],
         
-        framesObjects : [] as FrameObject[]
+        frameObjects : {}
     },
     getters:
     {
         getFramesForParentId: (state) => (id: number) => {
-            return state.framesObjects.filter(f => f.parentId === id);
+            console.log(Object.values(state.frameObjects).filter(f => f.parentId === id));
+            return Object.values(state.frameObjects).filter(f => f.parentId === id);
         },
         getJointFramesForFrameId: (state) => (id: number) => {
-            const jointFrameIds = state.framesObjects.find(f => f.id === id)?.jointFrameIds;
+            const jointFrameIds = state.frameObjects[id]?.jointFrameIds;
             const jointFrames: FrameObject[] = [];
             jointFrameIds?.forEach((jointFrameId: number) => {
-                const jointFrame = state.framesObjects.find(f => f.id === jointFrameId);
+                const jointFrame = state.frameObjects[jointFrameId];
                 if(jointFrame !== undefined)
                     jointFrames.push(jointFrame);
             });
@@ -136,7 +137,7 @@ export default new Vuex.Store({
         },
         getIsJointFrame: (state) => (parentId: number, frameType: string) => {
             //this getter checks if a frame type identified by "frameType" is listed as a joint frame (e.g. "else" for "if")
-            const parentType = state.framesObjects.find(f => f.id === parentId)?.frameType;
+            const parentType = state.frameObjects[parentId]?.frameType;
             if(parentType !== undefined) {
                 return state.framesDefinitions.find(fd => fd.name === parentType)?.jointFrameTypes.includes(frameType);
             }
@@ -165,43 +166,67 @@ export default new Vuex.Store({
         },
 
         getFrameObjects: (state) => () => {
-            return state.framesObjects;
+            return Object.values(state.frameObjects);
         }
     },
     mutations:
     {
         addFrameObject(state, fobj: FrameObject) 
         {
-            state.framesObjects.push(fobj);
+            state.frameObjects[fobj.id] = fobj;
             if (fobj.parentId > 0)
             {
-                state.framesObjects.find(f => f.id===fobj.parentId)?.childrenIds.push(fobj.id);
+                state.frameObjects[fobj.parentId]?.childrenIds.push(fobj.id);
             }
             else if (fobj.jointParentId > 0){
-                state.framesObjects.find(f => f.id===fobj.jointParentId)?.jointFrameIds.push(fobj.id);
+                state.frameObjects[fobj.jointParentId]?.jointFrameIds.push(fobj.id);
             }
-            state.nextAvailableID++;
+            state.nextAvailableId++;
             
         },
-       // Data holds the new state and the parentID of the frame where the change was made
+        
+       // Data holds the new state and the parentId of the frame where the change was made
+       // It is called two times! one form the list the frame was moved to
+       // and one from the list that the frame was dragged from (IFF the drag parent and the drop parent frames are not the same parent)
        updateFramesOrder(state, data) 
        {
-            let frameArray = state.framesObjects.find(f => f.id===data.parentID);
-            frameArray = data.value;
-            // if(data.parentID > 0)
-            // {
-            //     state.framesObjects.find(f => f.id===data.parentID) = data.value;
-            // }
-            // else
-            // {
-            //     state.framesObjects = data.value;
-            // }
-        },
+            const oldParentId = state.frameObjects[data.selectedFrameId].parentId;
+
+            // If old == new parent then we are moving within the same parent
+            if (oldParentId !== data.newParentId)
+            {
+                // Remove the moved frame from the old parent. No parent object exists for PId:0
+                if (oldParentId>0)
+                {
+                    const oldParent = state.frameObjects[oldParentId];
+                    oldParent.childrenIds = oldParent.childrenIds.filter(item => item !== data.selectedFrameId);
+                }
+                // Change the PId of the moved frame
+                state.frameObjects[data.selectedFrameId].parentId = data.newParentId;
+            }
+
+            // Add the moved frame to the new parent's list with the correct order
+            // In the case where the new parent is the root PId=0 no need to update children list
+            if(data.newParentId !==0)
+            {
+                const newParent = state.frameObjects[data.newParentId];
+                newParent.childrenIds = Array.from(data.value.map(item => item.id).values());
+            }
+            else
+            {
+                // Get all the 
+                state.frameObjects = data.value;
+            }
 
 
-        stateInitialisation(state, initialState: FrameObject[])
-        {
-            state.framesObjects = initialState;
+            
+
+            // console.log("value");
+            // console.log(data.value);
+            // console.log("newParentId");
+            // console.log(data.newParentId);
+
+        
         }
     },
     actions:
@@ -216,48 +241,3 @@ export default new Vuex.Store({
 
  
 
-
-
-
-
-
-
-//////////////////////////
-//      JUNK YARD       //
-/////////////////////////
-
-     // getLabelsByName: (state) => (type:string) => 
-        // {
-        //     return state.frames.find(o => o.name == type);
-        // }
-        // getLabelsByName(state) {
-        //     return (type:string) => state.frames.find(o => o.name === type);
-        //     }
-
-
-
-        // state.framesObjects.push(fobj);
-        //     if (fobj.parentId > 0)
-        //     {
-        //         state.framesObjects.find(f => f.id===fobj.parentId)?.childrenIds.push(fobj.id);
-        //     }
-        //     else if (fobj.jointParentId > 0){
-        //         state.framesObjects.find(f => f.id===fobj.jointParentId)?.jointFrameIds.push(fobj.id);
-        //     }
-        //     state.nextAvailableID++;
-
-        // Adding frame in the root (without parent)
-            // if(fobj.parentId === 0) 
-            // {
-            //     state.framesObjects.push(fobj);
-            // }
-            // // Adding the frame as a child
-            // if (fobj.parentId > 0)
-            // {
-
-            //     state.framesObjects.find(f => f.id===fobj.parentId)?.childrenIds.push(fobj.id);
-            // }
-            // else if (fobj.jointParentId > 0){
-            //     state.framesObjects.find(f => f.id===fobj.jointParentId)?.jointFrameIds.push(fobj.id);
-            // }
-            // state.nextAvailableID++;

@@ -1,16 +1,14 @@
 <template>
-  <div class="content-children">
-    <Draggable v-model="frames" group="a" draggable=".frame" @start="drag=true" @end="drag=false">
+    <Draggable v-model="frames" group="a" draggable=".frame" >
         <Frame
             v-for="frame in frames"
             v-bind:key="frame.frameType+'-id:'+frame.id"
             v-bind:id="frame.id"
             v-bind:type="frame.frameType"
             v-bind:isJointFrame="false"
-            class="frame"
+            class="frame content-children"
         />
     </Draggable>
-  </div>
 </template>
 
 <script lang="ts">
@@ -58,9 +56,21 @@ export default Vue.extend({
         // setter the frames objects in store
         set: function(value) 
         {
-            store.commit("updateFramesOrder", {value: value, parentID: this.$props.frameId});
+            // The selected frame's id  ==>  event.target.__vue__._props.frameId
+            // new parent's id   ==>  this.frameId
+            store.commit("updateFramesOrder", {value: value, selectedFrameId: event.target.__vue__._props.frameId,  newParentId: this.$props.frameId});
+            //store.commit("updateFramesOrder", {});
         }
     }
+  },
+
+  methods:
+  {
+      setChosenFrame: function()
+      {
+            // console.log(this.$props.frameId);       
+            // console.log(event);
+      }
   }
 
 });
