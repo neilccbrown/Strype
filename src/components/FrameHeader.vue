@@ -2,7 +2,7 @@
     <div>
         <div class="next-to-eachother" v-for="item in labels" v-bind:key="item.label + frameId">
             <div class="next-to-eachother">{{item.label}}</div>
-            <EditableSlot class="editable-input" v-if="item.slot" default-text="Default display text"/>
+            <EditableSlot class="editable-input" v-if="item.slot" default-text="Default display text" v-bind:slotIndex="labels.indexOf(item)"/>
         </div>
     </div>
 </template>

@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import { FramesDefinitions, FrameObject } from './../types/types';
+import { FramesDefinitions, FrameObject, ErrorSlotPayload } from './../types/types';
 
 Vue.use(Vuex)
 
@@ -125,6 +125,10 @@ export default new Vuex.Store({
         getFramesForParentId: (state) => (id: number) => {
             return state.framesObjects.filter(f => f.parentId === id);
         },
+        getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
+            const retCode = state.framesObjects.find(f=> f.id===frameId)?.contentDict[slotId]
+            return (retCode !== undefined) ? retCode : "";
+        },
         getJointFramesForFrameId: (state) => (id: number) => {
             const jointFrameIds = state.framesObjects.find(f => f.id === id)?.jointFrameIds;
             const jointFrames: FrameObject[] = [];
@@ -177,6 +181,11 @@ export default new Vuex.Store({
                 state.framesObjects.find(f => f.id===fobj.jointParentId)?.jointFrameIds.push(fobj.id);
             }
             state.nextAvailableID++;
+        },
+        setFrameEditorSlot(state, payload: ErrorSlotPayload) {
+            const contentDict = state.framesObjects.find(f => f.id===payload.frameId)?.contentDict;
+            if(contentDict !== undefined) 
+                contentDict[payload.slotId] = payload.code
         },
         updateFramesOrder(state, value) {
             state.framesObjects = value;

@@ -73,7 +73,8 @@ export default Vue.extend({
         parentId: (isJointFrame) ? -1 : this.$data.currentParentId,
         childrenIds: [],
         jointParentId: (isJointFrame) ? this.$data.currentParentId : -1,
-        jointFrameIds: []
+        jointFrameIds: [],
+        contentDict:{}
       });
     }   
   }
