@@ -46,4 +46,5 @@ export interface FrameCommand
     type: string,
     description: string,
     shortcut: string,
+    symbol?: string,
 }

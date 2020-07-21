@@ -1,6 +1,6 @@
 <template>
     <div class="next-to-eachother">
-        <input type="text" v-model="code" v-bind:placeholder="defaultText" v-on:blur="updateSlotStore">
+        <input type="text" v-model="code" v-bind:placeholder="defaultText" v-on:focus="onFocus" v-on:blur="onBlur">
     </div>
 </template>
 
@@ -20,7 +20,7 @@ export default Vue.extend({
     data: function () 
     {
         return{
-            code: store.getters.getContentForFrameSlot(this.$parent.$props.frameId, this.$props.slotIndex)
+            code: store.getters.getContentForFrameSlot(this.$parent.$props.frameId, this.$props.slotIndex),
         }
     },
     methods:{

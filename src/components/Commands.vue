@@ -39,19 +39,19 @@ export default Vue.extend({
  },
   methods: {
     onKeyUp: function(event: KeyboardEvent) {
-      if(store.state.isEditing===false && this.frameCommands[event.key] !== undefined)
-      {
+      if(store.state.isEditing===false && this.frameCommands[event.key] !== undefined){
         //add the frame in the editor
         const frameCommand = this.frameCommands[event.key];
         const isJointFrame = store.getters.getIsJointFrame(store.state.currentFrameID, frameCommand.type);
         store.commit('addFrameObject', {
-        frameType: frameCommand.type,
-        id: store.state.nextAvailableID,
-        parentId: (isJointFrame) ? -1 : store.state.currentFrameID,
-        childrenIds: [],
-        jointParentId: (isJointFrame) ? store.state.currentFrameID : -1,
-        jointFrameIds: []
-      })
+          frameType: frameCommand.type,
+          id: store.state.nextAvailableID,
+          parentId: (isJointFrame) ? -1 : store.state.currentFrameID,
+          childrenIds: [],
+          jointParentId: (isJointFrame) ? store.state.currentFrameID : -1,
+          jointFrameIds: [],
+          contentDict:{},
+        })
       }
     }
   }
