@@ -1,35 +1,38 @@
 <template>
-  <div id="app">
-      <div class="left">
-        <form v-on:submit.prevent="addNewFrame">
-            <label for="new-frame">What Frame to add?</label>
-                <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" />
-            <select name="" v-model="currentParentId">
-                <option v-for="n in 21" :value="n-1"  v-bind:key="'parentId'+ (n-1)">in parent id {{n-1}}</option>
-            </select> 
-            <button>Add</button>
-        </form>
-        <form v-on:submit.prevent="testFrameInitialisation">
-            <button>Initialise State</button>
-        </form>
-        
+    <div id="app">
+        <div id="temp-container">          
+            <div class="left">
+                <form v-on:submit.prevent="addNewFrame">
+                    <label for="new-frame">What Frame to add?</label>
+                        <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" v-on:blur="toggleEdition" v-on:focus="toggleEdition"/>
+                    <select name="" v-model="currentParentId">
+                        <option v-for="n in 21" :value="n-1"  v-bind:key="'parentId'+ (n-1)">in parent id {{n-1}}</option>
+                    </select> 
+                    <button>Add</button>
+                </form>
+                <form v-on:submit.prevent="testFrameInitialisation">
+                    <button>Initialise State</button>
+                </form>
+                
 
-        <Draggable v-model="frames" group="a" draggable=".frame" v-on:change="handleDragAndDrop($event)">
-            <Frame
-                v-for="frame in frames"
-                v-bind:key="frame.frameType+'-id:'+frame.id"
-                v-bind:id="frame.id"
-                v-bind:type="frame.frameType"
-                v-bind:isJointFrame="false"
-                v-bind:caretVisibility="frame.caretVisibility"
-                class="frame"
-            />
-        </Draggable>
+                <Draggable v-model="frames" group="a" draggable=".frame" v-on:change="handleDragAndDrop($event)">
+                    <Frame
+                        v-for="frame in frames"
+                        v-bind:key="frame.frameType+'-id:'+frame.id"
+                        v-bind:id="frame.id"
+                        v-bind:type="frame.frameType"
+                        v-bind:isJointFrame="false"
+                        v-bind:caretVisibility="frame.caretVisibility"
+                        class="frame"
+                    />
+                </Draggable>
+            </div>
+            <div class="right">
+                <textarea v-model="mymodel"></textarea>
+            </div>
+        </div>
+        <Commands />
     </div>
-    <div class="right">
-        <textarea v-model="mymodel"></textarea>
-    </div>
-  </div>
 </template>
 
 <script lang="ts">
@@ -38,6 +41,7 @@
 //////////////////////
 import Vue from "vue";
 import Frame from "./components/Frame.vue";
+import Commands from "./components/Commands.vue"
 import store from "./store/store";
 import Draggable from "vuedraggable";
 
@@ -50,7 +54,8 @@ export default Vue.extend({
 
   components: {
     Frame,
-    Draggable
+    Draggable,
+    Commands
   },
 
   data: function() {
@@ -109,8 +114,14 @@ export default Vue.extend({
         childrenIds: [],
         jointParentId: (isJointFrame) ? this.$data.currentParentId : -1,
         jointFrameIds: [],
-        caretVisibility: false
+        caretVisibility: false,
+         contentDict:{}
       });
+    },
+
+    toggleEdition : function()
+    {
+      store.commit('toggleEditFlag');
     },
     
     testFrameInitialisation: function() 
@@ -126,18 +137,24 @@ export default Vue.extend({
     {
         store.commit("updateFramesOrder", {event: event, eventParentId: 0});
     }
+       
   }
 });
 </script>
 
 <style lang="scss">
+body{
+  margin: 0px;
+}
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
-  margin-top: 60px;
   display: flex;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 100vh;
 }
 
 #app form {
@@ -152,5 +169,10 @@ export default Vue.extend({
 .right
 {
     width: 50%;
+}
+
+#temp-container {
+  margin-top: 60px;
+  flex-grow: 1;
 }
 </style>

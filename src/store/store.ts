@@ -1,6 +1,6 @@
-import Vue from 'vue'
-import Vuex, { Store } from 'vuex'
-import { FramesDefinitions, FrameObject } from './../types/types';
+import Vue from 'vue';
+import Vuex, { Store } from 'vuex';
+import { FramesDefinitions, FrameObject , ErrorSlotPayload} from './../types/types';
 
 Vue.use(Vuex)
 
@@ -8,6 +8,10 @@ export default new Vuex.Store({
     state:
     {
         nextAvailableId: 1 as number,
+
+        currentFrameID: 0,
+
+        isEditing: false,
 
         framesDefinitions:
             [
@@ -36,7 +40,7 @@ export default new Vuex.Store({
                     name: "for",
                     labels: [{ label: 'for', slot: true }, { label: 'in', slot: true }, { label: ' :', slot: false }],
                     allowChildren: true,
-                    jointFrameTypes: [],
+                    jointFrameTypes: ["else"],
                     colour: "#EA72C0"
                 },
                 {
@@ -62,7 +66,7 @@ export default new Vuex.Store({
                 },
                 {
                     name: "varassign",
-                    labels: [{ label: 'var', slot: true },{ label: '=', slot: false },{ label: '', slot: true }],
+                    labels: [{ label: 'let', slot: true },{ label: '=', slot: false },{ label: '', slot: true }],
                     allowChildren: false,
                     colour: "#72EAC0"
                 },
@@ -96,7 +100,7 @@ export default new Vuex.Store({
                 },
                 {
                     name: "finally",
-                    labels: [{ label: 'except:', slot: false }],
+                    labels: [{ label: 'finally:', slot: false }],
                     allowChildren: true,
                     jointFrameTypes: [],
                     colour: ""
@@ -114,6 +118,13 @@ export default new Vuex.Store({
                     allowChildren: false,
                     jointFrameTypes: [],
                     colour: "#AAAAAA"
+                },
+                {
+                    name: "with",
+                    labels: [{ label: 'with', slot: true }, { label: 'as', slot: true }, { label: ':', slot: false}],
+                    allowChildren: true,
+                    jointFrameTypes: [],
+                    colour: "#f5a70c"
                 }
             ] as FramesDefinitions[],
         
@@ -124,6 +135,10 @@ export default new Vuex.Store({
         getFramesForParentId: (state) => (id: number) => {
             //Get the childrenIds of this frame and based on these return the children objects corresponding to them    
             return state.frameObjects[id].childrenIds.map(a => state.frameObjects[a]).filter(a => a)
+        },
+        getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
+            const retCode = state.framesObjects.find(f=> f.id===frameId)?.contentDict[slotId]
+            return (retCode !== undefined) ? retCode : "";
         },
         getJointFramesForFrameId: (state) => (id: number) => {
             const jointFrameIds = state.frameObjects[id]?.jointFrameIds;
@@ -211,6 +226,17 @@ export default new Vuex.Store({
 
         },
 
+        setFrameEditorSlot(state, payload: ErrorSlotPayload) {
+            const contentDict = state.framesObjects.find(f => f.id===payload.frameId)?.contentDict;
+            if(contentDict !== undefined) 
+                contentDict[payload.slotId] = payload.code
+        },
+        updateCurrentFrameID(state, id: number) {
+            state.currentFrameID = id;
+        },
+        toggleEditFlag(state) {
+            state.isEditing = !state.isEditing;
+        }
     },
     actions:
     {
