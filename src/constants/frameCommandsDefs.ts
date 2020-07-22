@@ -1,85 +1,85 @@
-import { FrameCommand } from './../types/types';
+import { FrameCommand, Definitions } from "@/types/types";
 
 
 const frameCommandsDefs: {[id: string]: FrameCommand} = {
     "i": {
-        type: "if",
+        type: Definitions.IfDefinition,
         description: "if",
         shortcut: "i"
     },
     "l": {
-        type: "elseif",
+        type: Definitions.ElseIfDefinition,
         description: "elseif",
         shortcut: "l"
     },
     "e": {
-        type: "else",
+        type: Definitions.ElseDefinition,
         description: "else",
         shortcut: "e"
     },
     "f": {
-        type: "for",
+        type: Definitions.ForDefinition,
         description: "for",
         shortcut: "f"
     },
     "w": {
-        type: "while",
+        type: Definitions.WhileDefinition,
         description: "while",
         shortcut: "w"
     },
     "=": {
-        type: "varassign",
+        type: Definitions.VarAssignDefinition,
         description: "variable assignment",
         shortcut: "="
     },
-    " ": {
-        type: "statement",
-        description: "empty statement",
-        shortcut: " ",
-        symbol: "⌴"//"␣"
-    },
+    // " ": {
+    //     type: Definitions.IfDefinition,
+    //     description: "empty statement",
+    //     shortcut: " ",
+    //     symbol: "⌴"//"␣"
+    // },
     "r": {
-        type: "return",
+        type: Definitions.ReturnDefinition,
         description: "return",
         shortcut: "r"
     },
     "d": {
-        type: "funcdef",
+        type: Definitions.FuncDefDefinition,
         description: "function definition",
         shortcut: "d"
     },
     "c": {
-        type: "comment",
+        type: Definitions.CommentDefinition,
         description: "comment",
         shortcut: "c"
     },
     "t": {
-        type: "try",
+        type: Definitions.TryDefinition,
         description: "try",
         shortcut: "t"
     },
     "x": {
-        type: "except",
+        type: Definitions.ExceptDefinition,
         description: "except",
         shortcut: "x"
     },
     "n": {
-        type: "finally",
+        type: Definitions.FinallyDefinition,
         description: "finally",
         shortcut: "n"
     },
     "m": {
-        type: "import",
+        type: Definitions.ImportDefinition,
         description: "import",
         shortcut: "m"
     },
     "o": {
-        type: "fromimport",
+        type: Definitions.FromImportDefinition,
         description: "from ... import",
         shortcut: "o"
     },
     "h": {
-        type: "with",
+        type: Definitions.WithDefinition,
         description: "with",
         shortcut: "h"
     }
