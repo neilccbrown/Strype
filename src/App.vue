@@ -1,26 +1,38 @@
 <template>
-  <div id="app">
-    <div id="temp-container">
-    <form v-on:submit.prevent="addNewFrame">
-      <label for="new-frame">What Frame to add?</label>
-      <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" v-on:blur="toggleEdition" v-on:focus="toggleEdition"/>
-      <select name="" v-model="currentParentId">
-        <option v-for="n in 21" :value="n-1"  v-bind:key="'parentID'+ (n-1)">in parent id {{n-1}}</option>
-      </select> 
-      <button>Add</button>
-    </form>
-    <Draggable v-model="frames">
-      <Frame
-        v-for="frame in frames"
-        v-bind:key="frame.frameType+'-id:'+frame.id"
-        v-bind:id="frame.id"
-        v-bind:type="frame.frameType"
-        v-bind:isJointFrame="false"
-      />
-    </Draggable>
+    <div id="app">
+        <div id="temp-container">          
+            <div class="left">
+                <form v-on:submit.prevent="addNewFrame">
+                    <label for="new-frame">What Frame to add?</label>
+                        <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" v-on:blur="toggleEdition" v-on:focus="toggleEdition"/>
+                    <select name="" v-model="currentParentId">
+                        <option v-for="n in 21" :value="n-1"  v-bind:key="'parentId'+ (n-1)">in parent id {{n-1}}</option>
+                    </select> 
+                    <button>Add</button>
+                </form>
+                <form v-on:submit.prevent="testFrameInitialisation">
+                    <button>Initialise State</button>
+                </form>
+                
+
+                <Draggable v-model="frames" group="a" draggable=".frame" v-on:change="handleDragAndDrop($event)">
+                    <Frame
+                        v-for="frame in frames"
+                        v-bind:key="frame.frameType+'-id:'+frame.id"
+                        v-bind:id="frame.id"
+                        v-bind:type="frame.frameType"
+                        v-bind:isJointFrame="false"
+                        v-bind:caretVisibility="frame.caretVisibility"
+                        class="frame"
+                    />
+                </Draggable>
+            </div>
+            <div class="right">
+                <textarea v-model="mymodel"></textarea>
+            </div>
+        </div>
+        <Commands />
     </div>
-    <Commands />
-  </div>
 </template>
 
 <script lang="ts">
@@ -53,17 +65,41 @@ export default Vue.extend({
     };
   },
 
+  beforeCreate: function() 
+  {
+      store.commit("addFrameObject", {
+        frameType: null,
+        id: 0,
+        parentId: -1,
+        childrenIds: [],
+        jointParentId: -1,
+        jointFrameIds: [],
+        caretVisibility: false
+      });
+  },
+
   computed: {
-    frames: {
-      // getter of the frames objects in store
-      get: function() {
-     
-        return store.getters.getFramesForParentId(0);
-      },
-      // setter the frames objects in store
-      set: function(value) {
-        store.commit("updateFramesOrder", value);
-      }
+    frames: 
+    {
+        // gets the frames objects which are in the root 
+        get: function(this) 
+        {
+            return store.getters.getFramesForParentId(0);
+        },
+        // setter
+        set: function(value) 
+        {
+            // Nothing to be done here. 
+           // Event handlers call mutations which change the state
+        }
+    },
+
+    //this helps for debugging purposes --> printing the state in the screen
+    mymodel: 
+    {
+        get() {
+            return JSON.stringify( store.getters.getFrameObjects() , null , '\t' )
+        }
     }
   },
 
@@ -73,17 +109,35 @@ export default Vue.extend({
       const isJointFrame = store.getters.getIsJointFrame(this.$data.currentParentId, this.$data.newFrameType);
       store.commit("addFrameObject", {
         frameType: this.$data.newFrameType,
-        id: store.state.nextAvailableID,
+        id: store.state.nextAvailableId,
         parentId: (isJointFrame) ? -1 : this.$data.currentParentId,
         childrenIds: [],
         jointParentId: (isJointFrame) ? this.$data.currentParentId : -1,
         jointFrameIds: [],
-        contentDict:{}
+        caretVisibility: false,
+         contentDict:{}
       });
     },
-    toggleEdition : function(){
+
+    toggleEdition : function()
+    {
       store.commit('toggleEditFlag');
-    }   
+    },
+    
+    testFrameInitialisation: function() 
+    {
+        const initialState = [{"frameType":"if","id":1,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"funcdef","id":2,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":3,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"while","id":4,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"return","id":5,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false}];
+        for(const frame of initialState)
+        {
+            store.commit("addFrameObject", frame);
+        }
+    },
+
+    handleDragAndDrop: function(event: Event)
+    {
+        store.commit("updateFramesOrder", {event: event, eventParentId: 0});
+    }
+       
   }
 });
 </script>
@@ -97,7 +151,7 @@ body{
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
-  display:flex;  
+  display: flex;
   box-sizing: border-box;
   height: 100%;
   min-height: 100vh;
@@ -105,6 +159,16 @@ body{
 
 #app form {
   text-align: center;
+}
+
+.left
+{
+    width: 50%;
+}
+
+.right
+{
+    width: 50%;
 }
 
 #temp-container {

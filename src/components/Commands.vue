@@ -45,7 +45,7 @@ export default Vue.extend({
         const isJointFrame = store.getters.getIsJointFrame(store.state.currentFrameID, frameCommand.type);
         store.commit('addFrameObject', {
           frameType: frameCommand.type,
-          id: store.state.nextAvailableID,
+          id: store.state.nextAvailableId,
           parentId: (isJointFrame) ? -1 : store.state.currentFrameID,
           childrenIds: [],
           jointParentId: (isJointFrame) ? store.state.currentFrameID : -1,

@@ -1,13 +1,13 @@
-import Vue from 'vue'
-import Vuex from 'vuex'
-import { FramesDefinitions, FrameObject, ErrorSlotPayload } from './../types/types';
+import Vue from 'vue';
+import Vuex, { Store } from 'vuex';
+import { FramesDefinitions, FrameObject , ErrorSlotPayload} from './../types/types';
 
 Vue.use(Vuex)
 
 export default new Vuex.Store({
     state:
     {
-        nextAvailableID: 1 as number,
+        nextAvailableId: 1 as number,
 
         currentFrameID: 0,
 
@@ -128,23 +128,23 @@ export default new Vuex.Store({
                 }
             ] as FramesDefinitions[],
         
-        framesObjects : [] as FrameObject[]
-
+        frameObjects : {} as {[id: number]: FrameObject}
     },
     getters:
     {
         getFramesForParentId: (state) => (id: number) => {
-            return state.framesObjects.filter(f => f.parentId === id);
+            //Get the childrenIds of this frame and based on these return the children objects corresponding to them    
+            return state.frameObjects[id].childrenIds.map(a => state.frameObjects[a]).filter(a => a)
         },
         getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
             const retCode = state.framesObjects.find(f=> f.id===frameId)?.contentDict[slotId]
             return (retCode !== undefined) ? retCode : "";
         },
         getJointFramesForFrameId: (state) => (id: number) => {
-            const jointFrameIds = state.framesObjects.find(f => f.id === id)?.jointFrameIds;
+            const jointFrameIds = state.frameObjects[id]?.jointFrameIds;
             const jointFrames: FrameObject[] = [];
             jointFrameIds?.forEach((jointFrameId: number) => {
-                const jointFrame = state.framesObjects.find(f => f.id === jointFrameId);
+                const jointFrame = state.frameObjects[jointFrameId];
                 if(jointFrame !== undefined)
                     jointFrames.push(jointFrame);
             });
@@ -152,7 +152,7 @@ export default new Vuex.Store({
         },
         getIsJointFrame: (state) => (parentId: number, frameType: string) => {
             //this getter checks if a frame type identified by "frameType" is listed as a joint frame (e.g. "else" for "if")
-            const parentType = state.framesObjects.find(f => f.id === parentId)?.frameType;
+            const parentType = state.frameObjects[parentId]?.frameType;
             if(parentType !== undefined) {
                 return state.framesDefinitions.find(fd => fd.name === parentType)?.jointFrameTypes.includes(frameType);
             }
@@ -178,28 +178,58 @@ export default new Vuex.Store({
                 return frameDef.colour;
             else
                 return "#000";
+        },
+
+        getFrameObjects: (state) => () => {
+            return Object.values(state.frameObjects);
         }
     },
     mutations:
     {
-        addFrameObject(state, fobj: FrameObject) {
-            state.framesObjects.push(fobj);
-            if (fobj.parentId > 0)
-            {
-                state.framesObjects.find(f => f.id===fobj.parentId)?.childrenIds.push(fobj.id);
+        addFrameObject(state, fobj: FrameObject) 
+        {
+
+            // Add the new frame to the list
+            // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
+            Vue.set(state.frameObjects, fobj.id, fobj);
+            
+            // Add the frame id to its parent's childrenIds list
+            Vue.set(state.frameObjects[fobj.parentId].childrenIds, state.frameObjects[fobj.parentId].childrenIds.length, fobj.id);
+            
+            if (fobj.jointParentId > 0){
+                state.frameObjects[fobj.jointParentId]?.jointFrameIds.push(fobj.id);
             }
-            else if (fobj.jointParentId > 0){
-                state.framesObjects.find(f => f.id===fobj.jointParentId)?.jointFrameIds.push(fobj.id);
-            }
-            state.nextAvailableID++;
+            state.nextAvailableId++;
+            
         },
+        
+        updateFramesOrder(state, data) 
+        {
+            const eventType = Object.keys(data.event)[0];
+        
+            if(eventType === "added")
+            {
+                // Add the id to the parent's childreId list
+                state.frameObjects[data.eventParentId].childrenIds.splice(data.event[eventType].newIndex,0,data.event[eventType].element.id);
+            }
+            else if (eventType === "moved") 
+            {
+                // First delete the frameId from the children list and then add it again in the new position                
+                state.frameObjects[data.eventParentId].childrenIds.splice(data.event[eventType].oldIndex,1);
+                state.frameObjects[data.eventParentId].childrenIds.splice(data.event[eventType].newIndex,0,data.event[eventType].element.id);
+            } 
+            else if (eventType === "removed") 
+            {
+                // Remove the id from the parent's childreId list
+                state.frameObjects[data.eventParentId].childrenIds.splice(data.event[eventType].oldIndex,1);
+            }
+
+        },
+
         setFrameEditorSlot(state, payload: ErrorSlotPayload) {
             const contentDict = state.framesObjects.find(f => f.id===payload.frameId)?.contentDict;
             if(contentDict !== undefined) 
                 contentDict[payload.slotId] = payload.code
-        },
-        updateFramesOrder(state, value) {
-            state.framesObjects = value;
         },
         updateCurrentFrameID(state, id: number) {
             state.currentFrameID = id;
@@ -218,15 +248,5 @@ export default new Vuex.Store({
     }
 })
 
+ 
 
-//////////////////////////
-//      JUND YARD       //
-/////////////////////////
-
-     // getLabelsByName: (state) => (type:string) => 
-        // {
-        //     return state.frames.find(o => o.name == type);
-        // }
-        // getLabelsByName(state) {
-        //     return (type:string) => state.frames.find(o => o.name === type);
-        //     }
