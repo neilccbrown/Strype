@@ -124,7 +124,7 @@ export default Vue.extend({
 
     handleDragAndDrop: function(event: Event)
     {
-        store.commit("updateFramesOrder2", {event: event, eventParentId: 0});
+        store.commit("updateFramesOrder", {event: event, eventParentId: 0});
     }
   }
 });
