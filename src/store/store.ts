@@ -137,7 +137,7 @@ export default new Vuex.Store({
             return state.frameObjects[id].childrenIds.map(a => state.frameObjects[a]).filter(a => a)
         },
         getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
-            const retCode = state.framesObjects.find(f=> f.id===frameId)?.contentDict[slotId]
+            const retCode = state.frameObjects[frameId]?.contentDict[slotId]
             return (retCode !== undefined) ? retCode : "";
         },
         getJointFramesForFrameId: (state) => (id: number) => {
@@ -209,7 +209,7 @@ export default new Vuex.Store({
         
             if(eventType === "added")
             {
-                // Add the id to the parent's childreId list
+                // Add the id to the parent's childrenId list
                 state.frameObjects[data.eventParentId].childrenIds.splice(data.event[eventType].newIndex,0,data.event[eventType].element.id);
             }
             else if (eventType === "moved") 
@@ -220,14 +220,14 @@ export default new Vuex.Store({
             } 
             else if (eventType === "removed") 
             {
-                // Remove the id from the parent's childreId list
+                // Remove the id from the parent's childrenId list
                 state.frameObjects[data.eventParentId].childrenIds.splice(data.event[eventType].oldIndex,1);
             }
 
         },
 
         setFrameEditorSlot(state, payload: ErrorSlotPayload) {
-            const contentDict = state.framesObjects.find(f => f.id===payload.frameId)?.contentDict;
+            const contentDict = state.frameObjects[payload.frameId]?.contentDict;
             if(contentDict !== undefined) 
                 contentDict[payload.slotId] = payload.code
         },
