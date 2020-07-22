@@ -1,5 +1,5 @@
 <template>
-    <Draggable v-model="frames" group="a" draggable=".frame" >
+    <Draggable v-model="frames" group="a" draggable=".frame" v-on:change="handleDragAndDrop($event)">
         <Frame
             v-for="frame in frames"
             v-bind:key="frame.frameType+'-id:'+frame.id"
@@ -53,23 +53,20 @@ export default Vue.extend({
         {
             return store.getters.getFramesForParentId(this.$props.frameId);
         },
-        // setter the frames objects in store
+        // setter
         set: function(value) 
         {
-            // The selected frame's id  ==>  event.target.__vue__._props.frameId
-            // new parent's id   ==>  this.frameId
-            store.commit("updateFramesOrder", {value: value, selectedFrameId: event.target.__vue__._props.frameId,  newParentId: this.$props.frameId});
-            //store.commit("updateFramesOrder", {});
+           // Nothing to be done here. 
+           // Event handlers call mutations which change the state
         }
     }
   },
 
   methods:
   {
-      setChosenFrame: function()
+      handleDragAndDrop: function(event: Event)
       {
-            // console.log(this.$props.frameId);       
-            // console.log(event);
+            store.commit("updateFramesOrder2", {event: event, eventParentId: this.$props.frameId});
       }
   }
 

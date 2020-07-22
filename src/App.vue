@@ -14,7 +14,7 @@
         </form>
         
 
-        <Draggable v-model="frames" group="a" draggable=".frame" >
+        <Draggable v-model="frames" group="a" draggable=".frame" v-on:change="handleDragAndDrop($event)">
             <Frame
                 v-for="frame in frames"
                 v-bind:key="frame.frameType+'-id:'+frame.id"
@@ -60,6 +60,19 @@ export default Vue.extend({
     };
   },
 
+  beforeCreate: function() 
+  {
+      store.commit("addFrameObject", {
+        frameType: null,
+        id: 0,
+        parentId: -1,
+        childrenIds: [],
+        jointParentId: -1,
+        jointFrameIds: [],
+        caretVisibility: false
+      });
+  },
+
   computed: {
     frames: 
     {
@@ -68,10 +81,11 @@ export default Vue.extend({
         {
             return store.getters.getFramesForParentId(0);
         },
-        // setter the frames objects in store
+        // setter
         set: function(value) 
         {
-            store.commit("updateFramesOrder", {value: value, selectedFrameId: event.target.__vue__._props.frameId,  newParentId: 0});
+            // Nothing to be done here. 
+           // Event handlers call mutations which change the state
         }
     },
 
@@ -106,6 +120,11 @@ export default Vue.extend({
         {
             store.commit("addFrameObject", frame);
         }
+    },
+
+    handleDragAndDrop: function(event: Event)
+    {
+        store.commit("updateFramesOrder2", {event: event, eventParentId: 0});
     }
   }
 });
