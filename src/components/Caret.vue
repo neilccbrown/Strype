@@ -1,15 +1,10 @@
 <template>
-    <div 
-        class="caret" 
-    > 
-    </div>
+    <div class="caret"></div>
 </template>
 
 <script lang="ts">
-
 //////////////////////
-import Vue from 'vue';
-
+import Vue from "vue";
 
 //////////////////////
 /**
@@ -19,49 +14,20 @@ import Vue from 'vue';
  */
 
 export default Vue.extend({
-    name: 'Caret',
-  
-    props: 
-    {
-        focused: Boolean    // Tells if the caret is focused==visible or not.
-    },
+    name: "Caret",
 
+    props: {
+        focused: Boolean, // Tells if the caret is focused==visible or not.
+    },
 });
 </script>
 
 <style lang="scss">
-
-.caret
-{
+.caret {
     margin-top: 3px;
     width: 120px;
-    background-color: #FFB831;
+    background-color: #ffb831;
     border-radius: 6px;
     height: 6px;
 }
-
 </style>
-
-
-
-
-
-///////////////////////
-//     JUNK YARD     //
-///////////////////////
-
-// v-visible="focused"
-// data: function () 
-// {
-//     return {
-//         focused: true
-//     }
-// },
-
-// directives:
-// {
-//     visible: function(el, binding) 
-//     {
-//         el.style.visibility = binding.value ? 'visible' : 'hidden'
-//     }
-// }

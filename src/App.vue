@@ -2,10 +2,15 @@
     <div id="app">
         <div id="temp-container">
             <div class="left">
-                <Draggable v-model="frames" group="a" draggable=".frame" v-on:change="handleDragAndDrop($event)">
+                <Draggable
+                    v-model="frames"
+                    group="a"
+                    draggable=".frame"
+                    v-on:change="handleDragAndDrop($event)"
+                >
                     <Frame
                         v-for="frame in frames"
-                        v-bind:key="frame.frameType.type+'-id:'+frame.id"
+                        v-bind:key="frame.frameType.type + '-id:' + frame.id"
                         v-bind:id="frame.id"
                         v-bind:frameType="frame.frameType"
                         v-bind:isJointFrame="false"
@@ -45,63 +50,50 @@ export default Vue.extend({
         Commands,
     },
 
-    data: function() {
+    data: function () {
         return {
             newFrameType: "",
             currentParentId: 0,
         };
     },
 
-  beforeCreate: function()
-  {
-      store.commit("addFrameObject", {
-        frameType: null,
-        id: 0,
-        parentId: -1,
-        childrenIds: [],
-        jointParentId: -1,
-        jointFrameIds: [],
-        caretVisibility: false
-      });
-  },
-
-  computed: {
-    frames:
-    {
-        // gets the frames objects which are in the root
-        get: function(this)
-        {
-            return store.getters.getFramesForParentId(0);
+    computed: {
+        frames: {
+            // gets the frames objects which are in the root
+            get: function (this) {
+                return store.getters.getFramesForParentId(0);
+            },
+            // setter
+            set: function () {
+                // Nothing to be done here.
+                // Event handlers call mutations which change the state
+            },
         },
-        // setter
-        set: function(value)
-        {
-            // Nothing to be done here.
-           // Event handlers call mutations which change the state
-        }
+
+        //this helps for debugging purposes --> printing the state in the screen
+        mymodel: {
+            get() {
+                return JSON.stringify(
+                    store.getters.getFrameObjects(),
+                    null,
+                    "  "
+                );
+            },
+        },
     },
 
-    //this helps for debugging purposes --> printing the state in the screen
-    mymodel:
-    {
-        get() {
-            return JSON.stringify( store.getters.getFrameObjects() , null , '\t' )
-        }
-    }
-  },
+    methods: {
+        toggleEdition: function () {
+            store.commit("toggleEditFlag");
+        },
 
-  methods: {
-    toggleEdition : function()
-    {
-      store.commit('toggleEditFlag');
+        handleDragAndDrop: function (event: Event) {
+            store.commit("updateFramesOrder", {
+                event: event,
+                eventParentId: 0,
+            });
+        },
     },
-
-    handleDragAndDrop: function(event: Event)
-    {
-        store.commit("updateFramesOrder", {event: event, eventParentId: 0});
-    }
-
-  }
 });
 </script>
 
@@ -124,13 +116,11 @@ body {
     text-align: center;
 }
 
-.left
-{
+.left {
     width: 50%;
 }
 
-.right
-{
+.right {
     width: 50%;
 }
 

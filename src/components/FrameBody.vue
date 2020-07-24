@@ -9,8 +9,9 @@
             v-for="frame in frames"
             v-bind:key="frame.frameType + '-id:' + frame.id"
             v-bind:id="frame.id"
-            v-bind:type="frame.frameType"
+            v-bind:frameType="frame.frameType"
             v-bind:isJointFrame="false"
+            class="frame content-children"
         />
     </Draggable>
 </template>
@@ -36,12 +37,6 @@ export default Vue.extend({
         Draggable,
     },
 
-    beforeCreate: function() {
-        const components = this.$options.components;
-        if (components != undefined)
-            components.Frame = require("./Frame.vue").default;
-    },
-
     props: {
         frameId: Number,
     },
@@ -49,11 +44,11 @@ export default Vue.extend({
     computed: {
         frames: {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-            get: function() {
+            get: function () {
                 return store.getters.getFramesForParentId(this.$props.frameId);
             },
             // setter
-            set: function(value) {
+            set: function () {
                 // Nothing to be done here.
                 // Event handlers call mutations which change the state
             },
@@ -61,7 +56,7 @@ export default Vue.extend({
     },
 
     methods: {
-        handleDragAndDrop: function(event: Event) {
+        handleDragAndDrop: function (event: Event) {
             store.commit("updateFramesOrder", {
                 event: event,
                 eventParentId: this.$props.frameId,
