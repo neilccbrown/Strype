@@ -5,12 +5,16 @@
         draggable=".frame"
         v-on:change="handleDragAndDrop($event)"
     >
+        <Caret v-if="caretBody" />
+
         <Frame
             v-for="frame in frames"
             v-bind:key="frame.frameType + '-id:' + frame.id"
             v-bind:id="frame.id"
             v-bind:frameType="frame.frameType"
             v-bind:isJointFrame="false"
+            v-bind:caretBody="frame.caretBody"
+            v-bind:caretBelow="frame.caretBelow"
             class="frame content-children"
         />
     </Draggable>
@@ -23,6 +27,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import Frame from "./Frame.vue";
+import Caret from "@/components/Caret.vue";
 import Draggable from "vuedraggable";
 
 //////////////////////
@@ -35,10 +40,13 @@ export default Vue.extend({
     components: {
         Frame,
         Draggable,
+        Caret
     },
 
     props: {
         frameId: Number,
+        caretBody: Boolean, //Flag indicating this caret is visible or not
+
     },
 
     computed: {

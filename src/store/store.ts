@@ -1,7 +1,8 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, Position } from "@/types/types";
 import initialState from "@/store/initial-state";
+import frameCommandsDefs from "@/constants/frameCommandsDefs";
 
 Vue.use(Vuex);
 
@@ -9,7 +10,7 @@ export default new Vuex.Store({
     state: {
         nextAvailableId: 16 as number,
 
-        currentFrameID: 0,
+        currentFrame: {id: 0, caretPosition: Position.body} as CurrentFrame,
 
         isEditing: false,
 
@@ -49,8 +50,11 @@ export default new Vuex.Store({
         getFrameObjects: state => () => {
             return Object.values(state.frameObjects);
         },
+    
     },
+    
     mutations: {
+
         addFrameObject(state, fobj: FrameObject) {
             // Add the new frame to the list
             // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
@@ -107,13 +111,81 @@ export default new Vuex.Store({
             if (contentDict !== undefined)
                 contentDict[payload.slotId] = payload.code;
         },
-        updateCurrentFrameID(state, id: number) {
-            state.currentFrameID = id;
-        },
+
         toggleEditFlag(state) {
             state.isEditing = !state.isEditing;
         },
+
+        changeCaretPosition(state, eventType: string) {
+
+            let newId = state.currentFrame.id;
+            let newPosition = state.currentFrame.caretPosition;
+
+            //Turn off previous caret
+            state.frameObjects[newId].caretBelow = false;
+            state.frameObjects[newId].caretBody = false;
+
+            if (eventType === "ArrowDown") {
+                if(state.currentFrame.caretPosition === Position.body) {
+                    //if the currentFrame has children
+                    if(state.frameObjects[state.currentFrame.id].childrenIds.length > 0) {
+
+                        // The first child becomes the current frame
+                        newId = state.frameObjects[state.currentFrame.id].childrenIds[0];
+
+                        // If the child allows children go to its body, else to its bottom
+                        newPosition = (state.frameObjects[newId].frameType?.allowChildren)? Position.body : Position.below;
+
+                    }
+                    //if the currentFrame has NO children go bellow it
+                    else {
+                        newPosition = Position.below;
+                    }
+                }
+                else {
+                    const currentFrameParentId = state.frameObjects[state.currentFrame.id].parentId;
+                    const currentFrameParent  = state.frameObjects[currentFrameParentId];
+                    const currentFrameIndexInParent = currentFrameParent.childrenIds.indexOf(state.currentFrame.id);
+
+                    // If not in the end of parent's children list
+                    if( currentFrameIndexInParent + 1 < currentFrameParent.childrenIds.length) {
+
+                        // The next child becomes the current frame
+                        newId = currentFrameParent.childrenIds[currentFrameIndexInParent + 1];
+
+                        // If the new current frame allows children go to its body, else to its bottom
+                        newPosition = (state.frameObjects[newId].frameType?.allowChildren)? Position.body : Position.below;
+
+                    }
+                    else {
+                        newId = (currentFrameParentId !== 0)? currentFrameParentId : 0;
+
+                        newPosition = Position.below;
+                    }
+                }
+            }
+
+            Vue.set(
+                state.currentFrame, 
+                "id", 
+                newId
+            );
+
+            Vue.set(
+                state.currentFrame, 
+                "caretPosition", 
+                newPosition
+            );
+
+            Vue.set(
+                state.frameObjects[newId],
+                (newPosition === Position.body)? "caretBody" : "caretBelow",
+                true
+            );
+        }
+
     },
+
     actions: {
         updateFramesOrder({ commit }, payload) {
             commit("updateFramesOrder", payload);

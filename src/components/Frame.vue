@@ -5,7 +5,10 @@
             v-bind:frameId="id"
             v-bind:labels="frameType.labels"
         />
-        <FrameBody v-bind:frameId="id" />
+        <FrameBody 
+            v-bind:frameId="id" 
+            v-bind:caretBody="caretBody"
+        />
         <Frame
             v-for="frame in jointframes"
             v-bind:key="frame.frameType.type + '-id:' + frame.id"
@@ -13,7 +16,7 @@
             v-bind:frameType="frame.frameType"
             v-bind:isJointFrame="true"
         />
-        <Caret v-if="caretVisibility" />
+        <Caret v-if="caretBelow" />
     </div>
 </template>
 
@@ -53,8 +56,8 @@ export default Vue.extend({
         }, //Type of the Frame
         parent: Number, //ID of the parent
         isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
-        caretVisibility: Boolean, //Flag indicating this caret is visible or not
-
+        caretBody: Boolean, 
+        caretBelow: Boolean,
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
     },
 
