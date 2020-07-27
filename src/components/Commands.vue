@@ -40,7 +40,10 @@ export default Vue.extend({
     },
 
     created: function() {
-        window.addEventListener("keyup", this.onKeyUp);
+        window.addEventListener(
+            "keyup",
+            this.onKeyUp
+        );
     },
     methods: {
         onKeyUp: function(event: KeyboardEvent) {
@@ -54,17 +57,20 @@ export default Vue.extend({
                     store.state.currentFrameID,
                     frameCommand.type.type
                 );
-                store.commit("addFrameObject", {
-                    frameType: frameCommand.type,
-                    id: store.state.nextAvailableId,
-                    parentId: isJointFrame ? -1 : store.state.currentFrameID,
-                    childrenIds: [],
-                    jointParentId: isJointFrame
-                        ? store.state.currentFrameID
-                        : -1,
-                    jointFrameIds: [],
-                    contentDict: {},
-                });
+                store.commit(
+                    "addFrameObject",
+                    {
+                        frameType: frameCommand.type,
+                        id: store.state.nextAvailableId,
+                        parentId: isJointFrame ? -1 : store.state.currentFrameID,
+                        childrenIds: [],
+                        jointParentId: isJointFrame
+                            ? store.state.currentFrameID
+                            : -1,
+                        jointFrameIds: [],
+                        contentDict: {},
+                    }
+                );
             }
         },
     },
