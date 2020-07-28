@@ -1,26 +1,18 @@
 <template>
     <div id="app">
-        <div id="temp-container">          
+        <div id="temp-container">
             <div class="left">
-                <form v-on:submit.prevent="addNewFrame">
-                    <label for="new-frame">What Frame to add?</label>
-                        <input v-model="newFrameType" id="new-frame" placeholder="E.g. if, for, while" v-on:blur="toggleEdition" v-on:focus="toggleEdition"/>
-                    <select name="" v-model="currentParentId">
-                        <option v-for="n in 21" :value="n-1"  v-bind:key="'parentId'+ (n-1)">in parent id {{n-1}}</option>
-                    </select> 
-                    <button>Add</button>
-                </form>
-                <form v-on:submit.prevent="testFrameInitialisation">
-                    <button>Initialise State</button>
-                </form>
-                
-
-                <Draggable v-model="frames" group="a" draggable=".frame" v-on:change="handleDragAndDrop($event)">
+                <Draggable
+                    v-model="frames"
+                    group="a"
+                    draggable=".frame"
+                    v-on:change="handleDragAndDrop($event)"
+                >
                     <Frame
                         v-for="frame in frames"
-                        v-bind:key="frame.frameType+'-id:'+frame.id"
+                        v-bind:key="frame.frameType.type + '-id:' + frame.id"
                         v-bind:id="frame.id"
-                        v-bind:type="frame.frameType"
+                        v-bind:frameType="frame.frameType"
                         v-bind:isJointFrame="false"
                         v-bind:caretVisibility="frame.caretVisibility"
                         class="frame"
@@ -40,139 +32,103 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import Frame from "./components/Frame.vue";
-import Commands from "./components/Commands.vue"
-import store from "./store/store";
+import Frame from "@/components/Frame.vue";
+import Commands from "@/components/Commands.vue";
+import store from "@/store/store";
 import Draggable from "vuedraggable";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
-  name: "App",
-  store,
+    name: "App",
+    store,
 
-  components: {
-    Frame,
-    Draggable,
-    Commands
-  },
+    components: {
+        Frame,
+        Draggable,
+        Commands,
+    },
 
-  data: function() {
-    return {
-      newFrameType: "",
-      currentParentId: 0
-    };
-  },
+    data: function () {
+        return {
+            newFrameType: "",
+            currentParentId: 0,
+        };
+    },
 
-  beforeCreate: function() 
-  {
-      store.commit("addFrameObject", {
-        frameType: null,
-        id: 0,
-        parentId: -1,
-        childrenIds: [],
-        jointParentId: -1,
-        jointFrameIds: [],
-        caretVisibility: false
-      });
-  },
-
-  computed: {
-    frames: 
-    {
-        // gets the frames objects which are in the root 
-        get: function(this) 
-        {
-            return store.getters.getFramesForParentId(0);
+    computed: {
+        frames: {
+            // gets the frames objects which are in the root
+            get: function (this) {
+                return store.getters.getFramesForParentId(0);
+            },
+            // setter
+            set: function () {
+                // Nothing to be done here.
+                // Event handlers call mutations which change the state
+            },
         },
-        // setter
-        set: function(value) 
-        {
-            // Nothing to be done here. 
-           // Event handlers call mutations which change the state
-        }
+
+        //this helps for debugging purposes --> printing the state in the screen
+        mymodel: {
+            get() {
+                return JSON.stringify(
+                    store.getters.getFrameObjects(),
+                    null,
+                    "  "
+                );
+            },
+        },
     },
 
-    //this helps for debugging purposes --> printing the state in the screen
-    mymodel: 
-    {
-        get() {
-            return JSON.stringify( store.getters.getFrameObjects() , null , '\t' )
-        }
-    }
-  },
+    methods: {
+        toggleEdition: function () {
+            store.commit("toggleEditFlag");
+        },
 
-  methods: {
-    //add the new frame
-    addNewFrame: function() {
-      const isJointFrame = store.getters.getIsJointFrame(this.$data.currentParentId, this.$data.newFrameType);
-      store.commit("addFrameObject", {
-        frameType: this.$data.newFrameType,
-        id: store.state.nextAvailableId,
-        parentId: (isJointFrame) ? -1 : this.$data.currentParentId,
-        childrenIds: [],
-        jointParentId: (isJointFrame) ? this.$data.currentParentId : -1,
-        jointFrameIds: [],
-        caretVisibility: false,
-         contentDict:{}
-      });
+        handleDragAndDrop: function (event: Event) {
+            store.commit(
+                "updateFramesOrder",
+                {
+                    event: event,
+                    eventParentId: 0,
+                }
+            );
+        },
     },
-
-    toggleEdition : function()
-    {
-      store.commit('toggleEditFlag');
-    },
-    
-    testFrameInitialisation: function() 
-    {
-        const initialState = [{"frameType":"if","id":1,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"funcdef","id":2,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"for","id":3,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"while","id":4,"parentId":1,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false},{"frameType":"return","id":5,"parentId":0,"childrenIds":[],"jointParentId":-1,"jointFrameIds":[],"caretVisibility":false}];
-        for(const frame of initialState)
-        {
-            store.commit("addFrameObject", frame);
-        }
-    },
-
-    handleDragAndDrop: function(event: Event)
-    {
-        store.commit("updateFramesOrder", {event: event, eventParentId: 0});
-    }
-       
-  }
 });
 </script>
 
 <style lang="scss">
-body{
-  margin: 0px;
+body {
+    margin: 0px;
 }
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
-  display: flex;
-  box-sizing: border-box;
-  height: 100%;
-  min-height: 100vh;
+    font-family: Avenir, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: #2c3e50;
+    display: flex;
+    box-sizing: border-box;
+    height: 100%;
+    min-height: 100vh;
 }
 
 #app form {
-  text-align: center;
+    text-align: center;
 }
 
-.left
-{
+.left {
     width: 50%;
 }
 
-.right
-{
+.right {
     width: 50%;
 }
 
 #temp-container {
-  margin-top: 60px;
-  flex-grow: 1;
+    margin-top: 60px;
+    flex-grow: 1;
 }
 </style>

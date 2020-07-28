@@ -1,90 +1,90 @@
-import { FrameCommand } from './../types/types';
+import { FrameCommand, Definitions } from "@/types/types";
 
 
 const frameCommandsDefs: {[id: string]: FrameCommand} = {
     "i": {
-        type: "if",
+        type: Definitions.IfDefinition,
         description: "if",
-        shortcut: "i"
+        shortcut: "i",
     },
     "l": {
-        type: "elseif",
+        type: Definitions.ElseIfDefinition,
         description: "elseif",
-        shortcut: "l"
+        shortcut: "l",
     },
     "e": {
-        type: "else",
+        type: Definitions.ElseDefinition,
         description: "else",
-        shortcut: "e"
+        shortcut: "e",
     },
     "f": {
-        type: "for",
+        type: Definitions.ForDefinition,
         description: "for",
-        shortcut: "f"
+        shortcut: "f",
     },
     "w": {
-        type: "while",
+        type: Definitions.WhileDefinition,
         description: "while",
-        shortcut: "w"
+        shortcut: "w",
     },
     "=": {
-        type: "varassign",
+        type: Definitions.VarAssignDefinition,
         description: "variable assignment",
-        shortcut: "="
+        shortcut: "=",
     },
-    " ": {
-        type: "statement",
-        description: "empty statement",
-        shortcut: " ",
-        symbol: "⌴"//"␣"
-    },
+    // " ": {
+    //     type: Definitions.IfDefinition,
+    //     description: "empty statement",
+    //     shortcut: " ",
+    //     symbol: "⌴"//"␣"
+    // },
     "r": {
-        type: "return",
+        type: Definitions.ReturnDefinition,
         description: "return",
-        shortcut: "r"
+        shortcut: "r",
     },
     "d": {
-        type: "funcdef",
+        type: Definitions.FuncDefDefinition,
         description: "function definition",
-        shortcut: "d"
+        shortcut: "d",
     },
     "c": {
-        type: "comment",
+        type: Definitions.CommentDefinition,
         description: "comment",
-        shortcut: "c"
+        shortcut: "c",
     },
     "t": {
-        type: "try",
+        type: Definitions.TryDefinition,
         description: "try",
-        shortcut: "t"
+        shortcut: "t",
     },
     "x": {
-        type: "except",
+        type: Definitions.ExceptDefinition,
         description: "except",
-        shortcut: "x"
+        shortcut: "x",
     },
     "n": {
-        type: "finally",
+        type: Definitions.FinallyDefinition,
         description: "finally",
-        shortcut: "n"
+        shortcut: "n",
     },
     "m": {
-        type: "import",
+        type: Definitions.ImportDefinition,
         description: "import",
-        shortcut: "m"
+        shortcut: "m",
     },
     "o": {
-        type: "fromimport",
+        type: Definitions.FromImportDefinition,
         description: "from ... import",
-        shortcut: "o"
+        shortcut: "o",
     },
     "h": {
-        type: "with",
+        type: Definitions.WithDefinition,
         description: "with",
-        shortcut: "h"
-    }
+        shortcut: "h",
+    },
 };
 
 export default {
-    FrameCommandsDefs: frameCommandsDefs
+    FrameCommandsDefs: frameCommandsDefs,
 }
