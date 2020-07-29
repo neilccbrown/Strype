@@ -6,6 +6,7 @@
             v-bind:labels="frameType.labels"
         />
         <FrameBody 
+            v-if="allowChildren"
             v-bind:frameId="id" 
             v-bind:caretBody="caretBody"
         />
@@ -15,6 +16,8 @@
             v-bind:id="frame.id"
             v-bind:frameType="frame.frameType"
             v-bind:isJointFrame="true"
+            v-bind:allowChildren="frame.frameType.allowChildren"
+
         />
         <Caret v-if="caretBelow" />
     </div>
@@ -49,6 +52,7 @@ export default Vue.extend({
     },
 
     props: {
+        // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
         id: Number, // Unique Indentifier for each Frame
         frameType: {
             type: Object,
@@ -58,7 +62,7 @@ export default Vue.extend({
         isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
         caretBody: Boolean, 
         caretBelow: Boolean,
-        // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
+        allowChildren: Boolean,
     },
 
     data: function() {

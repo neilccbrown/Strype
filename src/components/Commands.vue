@@ -49,22 +49,7 @@ export default Vue.extend({
                 this.frameCommands[event.key] !== undefined
             ) {
                 //add the frame in the editor
-                const frameCommand = this.frameCommands[event.key];
-                const isJointFrame = store.getters.getIsJointFrame(
-                    store.state.currentFrame.id,
-                    frameCommand.type.type
-                );
-                store.commit("addFrameObject", {
-                    frameType: frameCommand.type,
-                    id: store.state.nextAvailableId,
-                    parentId: isJointFrame ? -1 : store.state.currentFrame.id,
-                    childrenIds: [],
-                    jointParentId: isJointFrame
-                        ? store.state.currentFrame.id
-                        : -1,
-                    jointFrameIds: [],
-                    contentDict: {},
-                });
+                store.dispatch("addFrameWithCommand", this.frameCommands[event.key].type);
             }
         },
     },

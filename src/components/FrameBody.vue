@@ -9,12 +9,13 @@
 
         <Frame
             v-for="frame in frames"
-            v-bind:key="frame.frameType + '-id:' + frame.id"
+            v-bind:key="frame.frameType.type  + '-id:' + frame.id"
             v-bind:id="frame.id"
             v-bind:frameType="frame.frameType"
             v-bind:isJointFrame="false"
             v-bind:caretBody="frame.caretBody"
             v-bind:caretBelow="frame.caretBelow"
+            v-bind:allowChildren="frame.frameType.allowChildren"
             class="frame content-children"
         />
     </Draggable>
@@ -65,7 +66,7 @@ export default Vue.extend({
 
     methods: {
         handleDragAndDrop: function (event: Event) {
-            store.commit("updateFramesOrder", {
+            store.dispatch("updateFramesOrder", {
                 event: event,
                 eventParentId: this.$props.frameId,
             });

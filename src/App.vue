@@ -16,6 +16,7 @@
                         v-bind:isJointFrame="false"
                         v-bind:caretBody="frame.caretBody"
                         v-bind:caretBelow="frame.caretBelow"
+                        v-bind:allowChildren="frame.frameType.allowChildren"
                         class="frame"
                     />
                 </Draggable>
@@ -86,7 +87,6 @@ export default Vue.extend({
     created: function() {
         window.addEventListener("keyup", this.onKeyUp);
     },
-
     methods: {
         toggleEdition: function () {
             store.commit("toggleEditFlag");
@@ -102,7 +102,7 @@ export default Vue.extend({
         onKeyUp: function(event: KeyboardEvent) {
             if (store.state.isEditing === false && (event.key === "ArrowDown" || event.key=="ArrowUp")) 
             {
-                store.commit("changeCaretPosition", event.key);
+                store.dispatch("changeCaretPosition", event.key);
             }
         },
         
