@@ -66,10 +66,18 @@ export default new Vuex.Store({
 
             // Add the new frame to the list
             // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
-            Vue.set(state.frameObjects, newFrame.id, newFrame);
+            Vue.set(
+                state.frameObjects, 
+                newFrame.id, 
+                newFrame
+            );
             
             // Add the frame id to its parent's childrenIds list
-            state.frameObjects[parentToAdd].childrenIds.splice(indexToAdd,0,newFrame.id);
+            state.frameObjects[parentToAdd].childrenIds.splice(
+                indexToAdd,
+                0,
+                newFrame.id
+            );
 
         },
 
@@ -83,7 +91,8 @@ export default new Vuex.Store({
                     0,
                     data.event[eventType].element.id
                 );
-            } else if (eventType === "moved") {
+            }
+            else if (eventType === "moved") {
                 // First delete the frameId from the children list and then add it again in the new position
                 state.frameObjects[data.eventParentId].childrenIds.splice(
                     data.event[eventType].oldIndex,
@@ -94,7 +103,8 @@ export default new Vuex.Store({
                     0,
                     data.event[eventType].element.id
                 );
-            } else if (eventType === "removed") {
+            }
+            else if (eventType === "removed") {
                 // Remove the id from the parent's childrenId list
                 state.frameObjects[data.eventParentId].childrenIds.splice(
                     data.event[eventType].oldIndex,
@@ -133,7 +143,6 @@ export default new Vuex.Store({
 
                         // If the child allows children go to its body, else to its bottom
                         newPosition = (state.frameObjects[newId].frameType?.allowChildren)? Position.body : Position.below;
-
                     }
                     //if the currentFrame has NO children go bellow it
                     else {
@@ -218,22 +227,31 @@ export default new Vuex.Store({
                 true
             );
 
-        }
+        },
 
     },
 
     actions: {
         updateFramesOrder({ commit }, payload) {
-            commit("updateFramesOrder", payload);
+            commit(
+                "updateFramesOrder", 
+                payload
+            );
         },
 
         changeCaretPosition({commit}, payload) {
-            commit("changeCaretWithKeyboard", payload);
+            commit(
+                "changeCaretWithKeyboard", 
+                payload
+            );
         },
 
         addFrameWithCommand({commit, state, getters}, payload) {
             //Prepare the newFrame object based on the frameType
-            const isJointFrame = getters.getIsJointFrame(state.currentFrame.id, payload);
+            const isJointFrame = getters.getIsJointFrame(
+                state.currentFrame.id, 
+                payload
+            );
             
             const newFrame = {
                 frameType: payload,
@@ -247,8 +265,11 @@ export default new Vuex.Store({
                 contentDict: {},
             };
 
-            commit("addFrameObject",newFrame);
-        }
+            commit(
+                "addFrameObject",
+                newFrame
+            );
+        },
     },
     modules: {},
 });

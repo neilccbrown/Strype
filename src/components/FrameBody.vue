@@ -41,7 +41,7 @@ export default Vue.extend({
     components: {
         Frame,
         Draggable,
-        Caret
+        Caret,
     },
 
     props: {
@@ -66,10 +66,13 @@ export default Vue.extend({
 
     methods: {
         handleDragAndDrop: function (event: Event) {
-            store.dispatch("updateFramesOrder", {
-                event: event,
-                eventParentId: this.$props.frameId,
-            });
+            store.dispatch(
+                "updateFramesOrder", 
+                {
+                    event: event,
+                    eventParentId: this.$props.frameId,
+                }
+            );
         },
     },
 });

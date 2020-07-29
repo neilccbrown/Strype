@@ -52,7 +52,10 @@ export default Vue.extend({
                 this.frameCommands[event.key] !== undefined
             ) {
                 //add the frame in the editor
-                store.dispatch("addFrameWithCommand", this.frameCommands[event.key].type);
+                store.dispatch(
+                    "addFrameWithCommand",
+                    this.frameCommands[event.key].type
+                );
             }
         },
     },

@@ -85,7 +85,11 @@ export default Vue.extend({
     },
 
     created: function() {
-        window.addEventListener("keyup", this.onKeyUp);
+        window.addEventListener(
+            "keyup",
+            this.onKeyUp
+        );
+
     },
     methods: {
         toggleEdition: function () {
@@ -103,9 +107,15 @@ export default Vue.extend({
         },
 
         onKeyUp: function(event: KeyboardEvent) {
-            if (store.state.isEditing === false && (event.key === "ArrowDown" || event.key=="ArrowUp")) 
-            {
-                store.dispatch("changeCaretPosition", event.key);
+            if (
+                store.state.isEditing === false && (
+                    event.key === "ArrowDown" || event.key=="ArrowUp"
+                )) {
+                store.dispatch(
+                    "changeCaretPosition",
+                    event.key
+                );
+
             }
         },
         

@@ -14,7 +14,7 @@ module.exports = {
     rules: {
         quotes: ["error", "double"],
         curly: "error",
-        "brace-style": ["error", "1tbs"],
+        "brace-style": ["error", "stroustrup"],
         "arrow-parens": ["error", "always"],
         "function-call-argument-newline": ["error", "always"],
         "function-paren-newline": ["error", "multiline"],
