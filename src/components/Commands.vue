@@ -48,6 +48,15 @@ export default Vue.extend({
     methods: {
         onKeyUp: function(event: KeyboardEvent) {
             if (
+                event.key === "ArrowDown" || event.key=="ArrowUp"
+            ) {
+                store.dispatch(
+                    "changeCaretPosition",
+                    event.key
+                );
+
+            }
+            else if (
                 store.state.isEditing === false &&
                 this.frameCommands[event.key] !== undefined
             ) {

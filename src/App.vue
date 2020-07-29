@@ -14,8 +14,7 @@
                         v-bind:id="frame.id"
                         v-bind:frameType="frame.frameType"
                         v-bind:isJointFrame="false"
-                        v-bind:caretBody="frame.caretBody"
-                        v-bind:caretBelow="frame.caretBelow"
+                        v-bind:caretVisibility="frame.caretVisibility"
                         v-bind:allowChildren="frame.frameType.allowChildren"
                         class="frame"
                     />
@@ -84,13 +83,13 @@ export default Vue.extend({
         },
     },
 
-    created: function() {
-        window.addEventListener(
-            "keyup",
-            this.onKeyUp
-        );
+    // created: function() {
+    //     window.addEventListener(
+    //         "keyup",
+    //         this.onKeyUp
+    //     );
 
-    },
+    // },
     methods: {
         toggleEdition: function () {
             store.commit("toggleEditFlag");
@@ -108,9 +107,8 @@ export default Vue.extend({
 
         onKeyUp: function(event: KeyboardEvent) {
             if (
-                store.state.isEditing === false && (
-                    event.key === "ArrowDown" || event.key=="ArrowUp"
-                )) {
+                event.key === "ArrowDown" || event.key=="ArrowUp"
+            ) {
                 store.dispatch(
                     "changeCaretPosition",
                     event.key

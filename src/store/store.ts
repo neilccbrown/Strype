@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, Position, FramesDefinitions } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions } from "@/types/types";
 import initialState from "@/store/initial-state";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
 
@@ -10,7 +10,7 @@ export default new Vuex.Store({
     state: {
         nextAvailableId: 16 as number,
 
-        currentFrame: {id: 0, caretPosition: Position.body} as CurrentFrame,
+        currentFrame: {id: 0, caretPosition: CaretPosition.body} as CurrentFrame,
 
         isEditing: false,
 
@@ -57,7 +57,7 @@ export default new Vuex.Store({
         addFrameObject(state, newFrame: FrameObject) {
             let indexToAdd = 0;
             let parentToAdd = state.currentFrame.id;
-            if(state.currentFrame.caretPosition === Position.below) {
+            if(state.currentFrame.caretPosition === CaretPosition.below) {
                 //calculate index in parent
                 parentToAdd = state.frameObjects[state.currentFrame.id].parentId;
                 const currentFrameParent  = state.frameObjects[parentToAdd];
@@ -78,6 +78,13 @@ export default new Vuex.Store({
                 0,
                 newFrame.id
             );
+
+            if (newFrame.jointParentId > 0) {
+                state.frameObjects[newFrame.jointParentId]?.jointFrameIds.push(
+                    newFrame.id
+                );
+            }
+
 
         },
 
@@ -130,11 +137,10 @@ export default new Vuex.Store({
             let newPosition = state.currentFrame.caretPosition;
 
             //Turn off previous caret
-            state.frameObjects[newId].caretBelow = false;
-            state.frameObjects[newId].caretBody = false;
+            state.frameObjects[newId].caretVisibility = CaretPosition.none;
 
             if (eventType === "ArrowDown") {
-                if(state.currentFrame.caretPosition === Position.body) {
+                if(state.currentFrame.caretPosition === CaretPosition.body) {
                     //if the currentFrame has children
                     if(state.frameObjects[state.currentFrame.id].childrenIds.length > 0) {
 
@@ -142,11 +148,11 @@ export default new Vuex.Store({
                         newId = state.frameObjects[state.currentFrame.id].childrenIds[0];
 
                         // If the child allows children go to its body, else to its bottom
-                        newPosition = (state.frameObjects[newId].frameType?.allowChildren)? Position.body : Position.below;
+                        newPosition = (state.frameObjects[newId].frameType?.allowChildren) ? CaretPosition.body : CaretPosition.below;
                     }
-                    //if the currentFrame has NO children go bellow it
+                    //if the currentFrame has NO children go below it
                     else {
-                        newPosition = Position.below;
+                        newPosition = CaretPosition.below;
                     }
                 }
                 else {
@@ -161,19 +167,18 @@ export default new Vuex.Store({
                         newId = currentFrameParent.childrenIds[currentFrameIndexInParent + 1];
 
                         // If the new current frame allows children go to its body, else to its bottom
-                        newPosition = (state.frameObjects[newId].frameType?.allowChildren)? Position.body : Position.below;
-
+                        newPosition = (state.frameObjects[newId].frameType?.allowChildren)? CaretPosition.body : CaretPosition.below;
                     }
                     else {
                         newId = (currentFrameParentId !== 0)? currentFrameParentId : 0;
 
-                        newPosition = Position.below;
+                        newPosition = CaretPosition.below;
                     }
                 }
             }
             else if (eventType === "ArrowUp") {
-                // If ((not allow children && I am bellow) || I am in body) ==> I go out of the frame
-                if ( (!state.frameObjects[state.currentFrame.id].frameType?.allowChildren && state.currentFrame.caretPosition === Position.below) || state.currentFrame.caretPosition === Position.body){
+                // If ((not allow children && I am below) || I am in body) ==> I go out of the frame
+                if ( (!state.frameObjects[state.currentFrame.id].frameType?.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body){
                     
                     const currentFrameParentId = state.frameObjects[state.currentFrame.id].parentId;
                     const currentFrameParent  = state.frameObjects[currentFrameParentId];
@@ -184,14 +189,15 @@ export default new Vuex.Store({
                         // Goto parent's previous child below
                         newId = currentFrameParent.childrenIds[currentFrameIndexInParent - 1];
 
-                        newPosition = Position.below;
+                        newPosition = CaretPosition.below;
                     }
                     else {
-                        newId = (currentFrameParentId !== 0)? currentFrameParentId : 0;
-                        newPosition = Position.body;
+                        newId = (currentFrameParentId !== 0) ? currentFrameParentId : 0;
+
+                        newPosition = CaretPosition.body;
                     }
                 }
-                else { // That only validates for (Allow children && position == bellow) ==> I go in the frame
+                else { // That only validates for (Allow children && position == below) ==> I go in the frame
                     
                     const currentFrameChildrenLength = state.frameObjects[state.currentFrame.id].childrenIds.length;
                     //if the currentFrame has children
@@ -200,10 +206,10 @@ export default new Vuex.Store({
                         // Current's last child becomes the current frame
                         newId = state.frameObjects[state.currentFrame.id].childrenIds[currentFrameChildrenLength-1];
 
-                        newPosition = Position.below;
+                        newPosition = CaretPosition.below;
                     }
                     else {
-                        newPosition = Position.body;
+                        newPosition = CaretPosition.body;
                     }
                 
                 }
@@ -223,8 +229,8 @@ export default new Vuex.Store({
 
             Vue.set(
                 state.frameObjects[newId],
-                (newPosition === Position.body)? "caretBody" : "caretBelow",
-                true
+                "caretVisibility",
+                newPosition
             );
 
         },

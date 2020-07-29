@@ -8,7 +8,7 @@
         <FrameBody 
             v-if="allowChildren"
             v-bind:frameId="id" 
-            v-bind:caretBody="caretBody"
+            v-bind:caretVisibility="caretVisibility"
         />
         <Frame
             v-for="frame in jointframes"
@@ -19,7 +19,7 @@
             v-bind:allowChildren="frame.frameType.allowChildren"
 
         />
-        <Caret v-if="caretBelow" />
+        <Caret v-show="caretVisibility===caretPosition.below" />
     </div>
 </template>
 
@@ -31,7 +31,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
-import { FramesDefinitions, DefaultFramesDefinition } from "@/types/types";
+import { FramesDefinitions, DefaultFramesDefinition, CaretPosition } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -61,21 +61,8 @@ export default Vue.extend({
         }, //Type of the Frame
         parent: Number, //ID of the parent
         isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
-        caretBody: Boolean, 
-        caretBelow: Boolean,
+        caretVisibility: String,
         allowChildren: Boolean,
-    },
-
-    data: function() {
-        return {
-            // `False` if a single line frame and `True` if a block
-            compound: false,
-
-            // The body can be one of the following two:
-            // 1) An editable slot, if our `Frame` is a single-line statement (eg. method call, variable assignment)
-            // 2) A `Frame` in order to hold more frames in it
-            body: null,
-        };
     },
 
     computed: {
@@ -98,6 +85,10 @@ export default Vue.extend({
                     }33 !important`,
                     "padding-left": "2px",
                 };
+        },
+        // Needed in order to use the `CaretPosition` type in the v-show
+        caretPosition: function(){
+            return CaretPosition;
         },
     },
 });

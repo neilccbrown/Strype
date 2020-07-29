@@ -5,7 +5,7 @@
         draggable=".frame"
         v-on:change="handleDragAndDrop($event)"
     >
-        <Caret v-if="caretBody" />
+        <Caret v-show="caretVisibility===caretPosition.body" />
 
         <Frame
             v-for="frame in frames"
@@ -13,8 +13,7 @@
             v-bind:id="frame.id"
             v-bind:frameType="frame.frameType"
             v-bind:isJointFrame="false"
-            v-bind:caretBody="frame.caretBody"
-            v-bind:caretBelow="frame.caretBelow"
+            v-bind:caretVisibility="frame.caretVisibility"
             v-bind:allowChildren="frame.frameType.allowChildren"
             class="frame content-children"
         />
@@ -27,9 +26,11 @@
 //////////////////////
 import Vue from "vue";
 import store from "@/store/store";
-import Frame from "./Frame.vue";
+import Frame from "@/components/Frame.vue";
 import Caret from "@/components/Caret.vue";
 import Draggable from "vuedraggable";
+import { CaretPosition } from "@/types/types";
+
 
 //////////////////////
 //     Component    //
@@ -46,8 +47,7 @@ export default Vue.extend({
 
     props: {
         frameId: Number,
-        caretBody: Boolean, //Flag indicating this caret is visible or not
-
+        caretVisibility: String, //Flag indicating this caret is visible or not
     },
 
     computed: {
@@ -61,6 +61,10 @@ export default Vue.extend({
                 // Nothing to be done here.
                 // Event handlers call mutations which change the state
             },
+        },
+        // Needed in order to use the `CaretPosition` type in the v-show
+        caretPosition: function(){
+            return CaretPosition;
         },
     },
 
