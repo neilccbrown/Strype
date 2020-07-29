@@ -1,4 +1,4 @@
-import { FrameObject } from "@/types/types";
+import { FrameObject, CaretPosition } from "@/types/types";
 
 const initialState: { [id: number]: FrameObject } = {
     0: {
@@ -8,7 +8,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     1: {
         frameType: {
@@ -27,7 +27,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     2: {
         frameType: {
@@ -46,7 +46,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     3: {
         frameType: {
@@ -62,7 +62,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     4: {
         frameType: {
@@ -82,7 +82,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     5: {
         frameType: {
@@ -101,7 +101,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     6: {
         frameType: {
@@ -120,7 +120,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     7: {
         frameType: {
@@ -136,7 +136,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     8: {
         frameType: {
@@ -156,7 +156,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     9: {
         frameType: {
@@ -172,7 +172,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     10: {
         frameType: {
@@ -188,7 +188,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     11: {
         frameType: {
@@ -207,7 +207,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     12: {
         frameType: {
@@ -226,7 +226,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     13: {
         frameType: {
@@ -245,7 +245,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     14: {
         frameType: {
@@ -264,7 +264,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
     15: {
         frameType: {
@@ -284,7 +284,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: -1,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: false,
+        caretVisibility: CaretPosition.none,
     },
 };
 

@@ -48,28 +48,22 @@ export default Vue.extend({
     methods: {
         onKeyUp: function(event: KeyboardEvent) {
             if (
+                event.key === "ArrowDown" || event.key=="ArrowUp"
+            ) {
+                store.dispatch(
+                    "changeCaretPosition",
+                    event.key
+                );
+
+            }
+            else if (
                 store.state.isEditing === false &&
                 this.frameCommands[event.key] !== undefined
             ) {
                 //add the frame in the editor
-                const frameCommand = this.frameCommands[event.key];
-                const isJointFrame = store.getters.getIsJointFrame(
-                    store.state.currentFrameID,
-                    frameCommand.type.type
-                );
-                store.commit(
-                    "addFrameObject",
-                    {
-                        frameType: frameCommand.type,
-                        id: store.state.nextAvailableId,
-                        parentId: isJointFrame ? -1 : store.state.currentFrameID,
-                        childrenIds: [],
-                        jointParentId: isJointFrame
-                            ? store.state.currentFrameID
-                            : -1,
-                        jointFrameIds: [],
-                        contentDict: {},
-                    }
+                store.dispatch(
+                    "addFrameWithCommand",
+                    this.frameCommands[event.key].type
                 );
             }
         },
