@@ -47,8 +47,9 @@ export default Vue.extend({
 
     beforeCreate: function() {
         const components = this.$options.components;
-        if (components !== undefined)
+        if (components !== undefined) {
             components.FrameBody = require("./FrameBody.vue").default;
+        }
     },
 
     props: {
@@ -89,14 +90,14 @@ export default Vue.extend({
             return this.isJointFrame === true
                 ? {}
                 : {
-                      "border-left": `6px solid ${
-                          (this.frameType as FramesDefinitions).colour
-                      } !important`,
-                      "background-color": `${
-                          (this.frameType as FramesDefinitions).colour
-                      }33 !important`,
-                      "padding-left": "2px",
-                  };
+                    "border-left": `6px solid ${
+                        (this.frameType as FramesDefinitions).colour
+                    } !important`,
+                    "background-color": `${
+                        (this.frameType as FramesDefinitions).colour
+                    }33 !important`,
+                    "padding-left": "2px",
+                };
         },
     },
 });

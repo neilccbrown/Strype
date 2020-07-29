@@ -40,7 +40,10 @@ export default Vue.extend({
     },
 
     created: function() {
-        window.addEventListener("keyup", this.onKeyUp);
+        window.addEventListener(
+            "keyup",
+            this.onKeyUp
+        );
     },
     methods: {
         onKeyUp: function(event: KeyboardEvent) {

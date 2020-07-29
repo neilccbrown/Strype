@@ -17,37 +17,36 @@ export default new Vuex.Store({
         frameObjects: initialState,
     },
     getters: {
-        getFramesForParentId: state => (id: number) => {
+        getFramesForParentId: (state) => (id: number) => {
             //Get the childrenIds of this frame and based on these return the children objects corresponding to them
             return state.frameObjects[id].childrenIds
-                .map(a => state.frameObjects[a])
-                .filter(a => a);
+                .map((a) => state.frameObjects[a])
+                .filter((a) => a);
         },
-        getContentForFrameSlot: state => (frameId: number, slotId: number) => {
+        getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
             const retCode = state.frameObjects[frameId]?.contentDict[slotId];
             return retCode !== undefined ? retCode : "";
         },
-        getJointFramesForFrameId: state => (id: number) => {
+        getJointFramesForFrameId: (state) => (id: number) => {
             const jointFrameIds = state.frameObjects[id]?.jointFrameIds;
             const jointFrames: FrameObject[] = [];
             jointFrameIds?.forEach((jointFrameId: number) => {
                 const jointFrame = state.frameObjects[jointFrameId];
-                if (jointFrame !== undefined) jointFrames.push(jointFrame);
+                if (jointFrame !== undefined) {
+                    jointFrames.push(jointFrame);
+                }
             });
             return jointFrames;
         },
-        getIsJointFrame: state => (parentId: number, frameType: string) => {
+        getIsJointFrame: (state) => (parentId: number, frameType: string) => {
             //this getter checks if a frame type identified by "frameType" is listed as a joint frame (e.g. "else" for "if")
             const parentType = state.frameObjects[parentId]?.frameType;
-            // if(parentType !== undefined) {
-            //     return state.framesDefinitions.find(fd => fd.name === parentType)?.jointFrameTypes.includes(frameType);
-            // }
             if (parentType !== undefined) {
                 return parentType.jointFrameTypes.includes(frameType);
             }
             return false;
         },
-        getFrameObjects: state => () => {
+        getFrameObjects: (state) => () => {
             return Object.values(state.frameObjects);
         },
     
@@ -105,10 +104,10 @@ export default new Vuex.Store({
         },
 
         setFrameEditorSlot(state, payload: ErrorSlotPayload) {
-            const contentDict =
-                state.frameObjects[payload.frameId]?.contentDict;
-            if (contentDict !== undefined)
+            const contentDict = state.frameObjects[payload.frameId]?.contentDict;
+            if (contentDict !== undefined) {
                 contentDict[payload.slotId] = payload.code;
+            }
         },
 
         toggleEditFlag(state) {

@@ -5,32 +5,32 @@ const frameCommandsDefs: {[id: string]: FrameCommand} = {
     "i": {
         type: Definitions.IfDefinition,
         description: "if",
-        shortcut: "i"
+        shortcut: "i",
     },
     "l": {
         type: Definitions.ElseIfDefinition,
         description: "elseif",
-        shortcut: "l"
+        shortcut: "l",
     },
     "e": {
         type: Definitions.ElseDefinition,
         description: "else",
-        shortcut: "e"
+        shortcut: "e",
     },
     "f": {
         type: Definitions.ForDefinition,
         description: "for",
-        shortcut: "f"
+        shortcut: "f",
     },
     "w": {
         type: Definitions.WhileDefinition,
         description: "while",
-        shortcut: "w"
+        shortcut: "w",
     },
     "=": {
         type: Definitions.VarAssignDefinition,
         description: "variable assignment",
-        shortcut: "="
+        shortcut: "=",
     },
     // " ": {
     //     type: Definitions.IfDefinition,
@@ -41,50 +41,50 @@ const frameCommandsDefs: {[id: string]: FrameCommand} = {
     "r": {
         type: Definitions.ReturnDefinition,
         description: "return",
-        shortcut: "r"
+        shortcut: "r",
     },
     "d": {
         type: Definitions.FuncDefDefinition,
         description: "function definition",
-        shortcut: "d"
+        shortcut: "d",
     },
     "c": {
         type: Definitions.CommentDefinition,
         description: "comment",
-        shortcut: "c"
+        shortcut: "c",
     },
     "t": {
         type: Definitions.TryDefinition,
         description: "try",
-        shortcut: "t"
+        shortcut: "t",
     },
     "x": {
         type: Definitions.ExceptDefinition,
         description: "except",
-        shortcut: "x"
+        shortcut: "x",
     },
     "n": {
         type: Definitions.FinallyDefinition,
         description: "finally",
-        shortcut: "n"
+        shortcut: "n",
     },
     "m": {
         type: Definitions.ImportDefinition,
         description: "import",
-        shortcut: "m"
+        shortcut: "m",
     },
     "o": {
         type: Definitions.FromImportDefinition,
         description: "from ... import",
-        shortcut: "o"
+        shortcut: "o",
     },
     "h": {
         type: Definitions.WithDefinition,
         description: "with",
-        shortcut: "h"
-    }
+        shortcut: "h",
+    },
 };
 
 export default {
-    FrameCommandsDefs: frameCommandsDefs
+    FrameCommandsDefs: frameCommandsDefs,
 }

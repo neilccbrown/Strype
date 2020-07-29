@@ -36,11 +36,14 @@ export default Vue.extend({
         },
         onBlur: function() {
             store.commit("toggleEditFlag");
-            store.commit("setFrameEditorSlot", {
-                frameId: this.$parent.$props.frameId,
-                slotId: this.$props.slotIndex,
-                code: this.$data.code,
-            });
+            store.commit(
+                "setFrameEditorSlot",
+                {
+                    frameId: this.$parent.$props.frameId,
+                    slotId: this.$props.slotIndex,
+                    code: this.$data.code,
+                }
+            );
         },
     },
 });
