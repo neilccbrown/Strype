@@ -72,23 +72,6 @@ export default new Vuex.Store({
             // Add the frame id to its parent's childrenIds list
             state.frameObjects[parentToAdd].childrenIds.splice(indexToAdd,0,newFrame.id);
 
-            // Add the new frame to the list
-            // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
-            // Vue.set(state.frameObjects, fobj.id, fobj);
-
-            // // Add the frame id to its parent's childrenIds list
-            // Vue.set(
-            //     state.frameObjects[fobj.parentId].childrenIds,
-            //     state.frameObjects[fobj.parentId].childrenIds.length,
-            //     fobj.id
-            // );
-
-            // if (fobj.jointParentId > 0) {
-            //     state.frameObjects[fobj.jointParentId]?.jointFrameIds.push(
-            //         fobj.id
-            //     );
-            // }
-            // state.nextAvailableId++;
         },
 
         updateFramesOrder(state, data) {
