@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-CCimport { FrameObject, ErrorSlotPayload, CurrentFrame, Position, FramesDefinitions } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, Position, FramesDefinitions } from "@/types/types";
 import initialState from "@/store/initial-state";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
 
