@@ -98,13 +98,20 @@ export default new Vuex.Store({
                     0,
                     data.event[eventType].element.id
                 );
+                // Set the new parentId to the the added frame
+                Vue.set(
+                    state.frameObjects[ data.event[eventType].element.id],
+                    "parentId",
+                    data.eventParentId
+                );
             }
             else if (eventType === "moved") {
-                // First delete the frameId from the children list and then add it again in the new position
+                // Delete the frameId from the children list 
                 state.frameObjects[data.eventParentId].childrenIds.splice(
                     data.event[eventType].oldIndex,
                     1
                 );
+                // Add it again in the new position
                 state.frameObjects[data.eventParentId].childrenIds.splice(
                     data.event[eventType].newIndex,
                     0,

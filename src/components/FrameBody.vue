@@ -4,9 +4,9 @@
         group="a"
         draggable=".frame"
         v-on:change="handleDragAndDrop($event)"
+        class="frame-body-container"
     >
         <Caret v-show="caretVisibility===caretPosition.body" />
-
         <Frame
             v-for="frame in frames"
             v-bind:key="frame.frameType.type  + '-id:' + frame.id"
@@ -84,6 +84,16 @@ export default Vue.extend({
 
 <style lang="scss">
 .content-children {
-    margin-left: 20px;
+    margin-left: 0px;
+}
+
+.frame-body-container {
+    background-color: #FFF !important;
+    padding-bottom: 4px;
+    padding-top: 4px;
+    margin-bottom: 4px;
+    margin-right: 0px;
+    border: 0px;
+    border-color: #000 !important;
 }
 </style>
