@@ -2,7 +2,6 @@ import Vue from "vue";
 import Vuex from "vuex";
 import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions } from "@/types/types";
 import initialState from "@/store/initial-state";
-import frameCommandsDefs from "@/constants/frameCommandsDefs";
 
 Vue.use(Vuex);
 
@@ -38,18 +37,20 @@ export default new Vuex.Store({
             });
             return jointFrames;
         },
-        getIsJointFrame: (state) => (parentId: number, frameType: string) => {
+        getIsJointFrame: (state) => (parentId: number, frameType: FramesDefinitions) => {
             //this getter checks if a frame type identified by "frameType" is listed as a joint frame (e.g. "else" for "if")
             const parentType = state.frameObjects[parentId]?.frameType;
             if (parentType !== undefined) {
-                return parentType.jointFrameTypes.includes(frameType);
+                return parentType.jointFrameTypes.includes(frameType.type);
             }
             return false;
         },
         getFrameObjects: (state) => () => {
             return Object.values(state.frameObjects);
         },
-    
+        getCurrentFrameObject: (state) => () => {
+            return state.frameObjects[state.currentFrame.id];
+        },
     },
     
     mutations: {
@@ -155,7 +156,7 @@ export default new Vuex.Store({
                         newId = state.frameObjects[state.currentFrame.id].childrenIds[0];
 
                         // If the child allows children go to its body, else to its bottom
-                        newPosition = (state.frameObjects[newId].frameType?.allowChildren) ? CaretPosition.body : CaretPosition.below;
+                        newPosition = (state.frameObjects[newId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
                     }
                     //if the currentFrame has NO children go below it
                     else {
@@ -185,7 +186,7 @@ export default new Vuex.Store({
             }
             else if (eventType === "ArrowUp") {
                 // If ((not allow children && I am below) || I am in body) ==> I go out of the frame
-                if ( (!state.frameObjects[state.currentFrame.id].frameType?.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body){
+                if ( (!state.frameObjects[state.currentFrame.id].frameType.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body){
                     
                     const currentFrameParentId = state.frameObjects[state.currentFrame.id].parentId;
                     const currentFrameParent  = state.frameObjects[currentFrameParentId];
