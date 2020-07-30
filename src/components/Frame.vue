@@ -9,6 +9,7 @@
             v-if="allowChildren"
             v-bind:frameId="id" 
             v-bind:caretVisibility="caretVisibility"
+            v-on:choose="togleCaret($event)"
         />
         <Frame
             v-for="frame in jointframes"
@@ -89,6 +90,12 @@ export default Vue.extend({
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition: function(){
             return CaretPosition;
+        },
+    },
+
+    methods: {
+        togleCaret: function (event: MouseEvent) {
+            console.log(event);
         },
     },
 });

@@ -82,14 +82,7 @@ export default Vue.extend({
             },
         },
     },
-
-    // created: function() {
-    //     window.addEventListener(
-    //         "keyup",
-    //         this.onKeyUp
-    //     );
-
-    // },
+    
     methods: {
         toggleEdition: function () {
             store.commit("toggleEditFlag");
@@ -103,18 +96,6 @@ export default Vue.extend({
                     eventParentId: 0,
                 }
             );
-        },
-
-        onKeyUp: function(event: KeyboardEvent) {
-            if (
-                event.key === "ArrowDown" || event.key=="ArrowUp"
-            ) {
-                store.dispatch(
-                    "changeCaretPosition",
-                    event.key
-                );
-
-            }
         },
         
     },
