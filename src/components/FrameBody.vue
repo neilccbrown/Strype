@@ -1,23 +1,27 @@
 <template>
-    <Draggable
-        v-model="frames"
-        group="a"
-        draggable=".frame"
-        v-on:change="handleDragAndDrop($event)"
+    <div 
         class="frame-body-container"
+        v-on:click.self="toggleCaret($event)"
     >
-        <Caret v-show="caretVisibility===caretPosition.body" />
-        <Frame
-            v-for="frame in frames"
-            v-bind:key="frame.frameType.type  + '-id:' + frame.id"
-            v-bind:id="frame.id"
-            v-bind:frameType="frame.frameType"
-            v-bind:isJointFrame="false"
-            v-bind:caretVisibility="frame.caretVisibility"
-            v-bind:allowChildren="frame.frameType.allowChildren"
-            class="frame content-children"
-        />
-    </Draggable>
+        <Draggable
+            v-model="frames"
+            group="a"
+            draggable=".frame"
+            v-on:change="handleDragAndDrop($event)"
+        >
+            <Caret v-show="caretVisibility===caretPosition.body" />
+            <Frame
+                v-for="frame in frames"
+                v-bind:key="frame.frameType.type  + '-id:' + frame.id"
+                v-bind:id="frame.id"
+                v-bind:frameType="frame.frameType"
+                v-bind:isJointFrame="false"
+                v-bind:caretVisibility="frame.caretVisibility"
+                v-bind:allowChildren="frame.frameType.allowChildren"
+                class="frame content-children"
+            />
+        </Draggable>
+    </div>
 </template>
 
 <script lang="ts">
@@ -78,6 +82,13 @@ export default Vue.extend({
                 }
             );
         },
+
+        toggleCaret: function (event: MouseEvent) {
+            store.dispatch(
+                "toggleCaret",
+                {id:this.frameId, caretPosition: CaretPosition.body}
+            );
+        },
     },
 });
 </script>
@@ -89,7 +100,7 @@ export default Vue.extend({
 
 .frame-body-container {
     background-color: #FFF !important;
-    padding-bottom: 4px;
+    // padding-bottom: 4px;
     padding-top: 4px;
     margin-bottom: 4px;
     margin-right: 0px;

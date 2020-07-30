@@ -242,6 +242,31 @@ export default new Vuex.Store({
 
         },
 
+        setCurrentFrame(state, newCurrentFrame: CurrentFrame) {
+
+            Vue.set(
+                state.frameObjects[state.currentFrame.id],
+                "caretVisibility",
+                CaretPosition.none
+            );
+            Vue.set(
+                state.currentFrame, 
+                "id", 
+                newCurrentFrame.id
+            );
+
+            Vue.set(
+                state.currentFrame, 
+                "caretPosition", 
+                newCurrentFrame.caretPosition
+            );
+
+            Vue.set(
+                state.frameObjects[newCurrentFrame.id],
+                "caretVisibility",
+                newCurrentFrame.caretPosition
+            );
+        },
     },
 
     actions: {
@@ -283,6 +308,14 @@ export default new Vuex.Store({
                 newFrame
             );
         },
+
+        toggleCaret({commit}, newCurrent) {
+            commit(
+                "setCurrentFrame",
+                newCurrent
+            );
+        },
+
     },
     modules: {},
 });

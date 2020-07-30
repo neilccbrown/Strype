@@ -10,7 +10,6 @@
                 v-if="allowChildren"
                 v-bind:frameId="id" 
                 v-bind:caretVisibility="caretVisibility"
-                v-on:choose="togleCaret($event)"
             />
             <Frame
                 v-for="frame in jointframes"
@@ -19,8 +18,12 @@
                 v-bind:frameType="frame.frameType"
                 v-bind:isJointFrame="true"
                 v-bind:allowChildren="frame.frameType.allowChildren"
-
-                />
+            />
+        </div>
+        <div 
+            class="frame-bottom-selector"
+            v-on:click.self="toggleCaret($event)"
+        >
         </div>
         <Caret v-show="caretVisibility===caretPosition.below" />
     </div>
@@ -96,18 +99,26 @@ export default Vue.extend({
     },
 
     methods: {
-        togleCaret: function (event: MouseEvent) {
-            console.log(event);
+        toggleCaret: function (event: MouseEvent) {
+            store.dispatch(
+                "toggleCaret",
+                {id:this.id, caretPosition: CaretPosition.below}
+            );
         },
     },
+
 });
+
 </script>
 
 <style lang="scss">
 .block {
     color: #000 !important;
-    margin-top: 4px;
+    // margin-top: 4px;
     padding-right: 4px;
     padding-bottom: 1px;
+}
+.frame-bottom-selector {
+    padding-bottom: 4px;
 }
 </style>
