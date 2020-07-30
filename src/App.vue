@@ -123,11 +123,11 @@ body {
 }
 
 .left {
-    width: 50%;
+    width: 70%;
 }
 
 .right {
-    width: 50%;
+    width: 30%;
 }
 
 #temp-container {
