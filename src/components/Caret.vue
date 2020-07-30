@@ -16,9 +16,6 @@ import Vue from "vue";
 export default Vue.extend({
     name: "Caret",
 
-    props: {
-        focused: Boolean, // Tells if the caret is focused==visible or not.
-    },
 });
 </script>
 

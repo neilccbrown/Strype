@@ -82,14 +82,7 @@ export default Vue.extend({
             },
         },
     },
-
-    // created: function() {
-    //     window.addEventListener(
-    //         "keyup",
-    //         this.onKeyUp
-    //     );
-
-    // },
+    
     methods: {
         toggleEdition: function () {
             store.commit("toggleEditFlag");
@@ -103,18 +96,6 @@ export default Vue.extend({
                     eventParentId: 0,
                 }
             );
-        },
-
-        onKeyUp: function(event: KeyboardEvent) {
-            if (
-                event.key === "ArrowDown" || event.key=="ArrowUp"
-            ) {
-                store.dispatch(
-                    "changeCaretPosition",
-                    event.key
-                );
-
-            }
         },
         
     },
@@ -142,11 +123,11 @@ body {
 }
 
 .left {
-    width: 50%;
+    width: 70%;
 }
 
 .right {
-    width: 50%;
+    width: 30%;
 }
 
 #temp-container {

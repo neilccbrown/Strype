@@ -1,24 +1,30 @@
 <template>
-    <div :style="frameStyle" class="block">
-        <FrameHeader
-            v-if="frameType.labels !== null"
-            v-bind:frameId="id"
-            v-bind:labels="frameType.labels"
-        />
-        <FrameBody 
-            v-if="allowChildren"
-            v-bind:frameId="id" 
-            v-bind:caretVisibility="caretVisibility"
-        />
-        <Frame
-            v-for="frame in jointframes"
-            v-bind:key="frame.frameType.type + '-id:' + frame.id"
-            v-bind:id="frame.id"
-            v-bind:frameType="frame.frameType"
-            v-bind:isJointFrame="true"
-            v-bind:allowChildren="frame.frameType.allowChildren"
-
-        />
+    <div>
+        <div :style="frameStyle" class="block">
+            <FrameHeader
+                v-if="frameType.labels !== null"
+                v-bind:frameId="id"
+                v-bind:labels="frameType.labels"
+            />
+            <FrameBody 
+                v-if="allowChildren"
+                v-bind:frameId="id" 
+                v-bind:caretVisibility="caretVisibility"
+            />
+            <Frame
+                v-for="frame in jointframes"
+                v-bind:key="frame.frameType.type + '-id:' + frame.id"
+                v-bind:id="frame.id"
+                v-bind:frameType="frame.frameType"
+                v-bind:isJointFrame="true"
+                v-bind:allowChildren="frame.frameType.allowChildren"
+            />
+        </div>
+        <div 
+            class="frame-bottom-selector"
+            v-on:click.self="toggleCaret($event)"
+        >
+        </div>
         <Caret v-show="caretVisibility===caretPosition.below" />
     </div>
 </template>
@@ -91,12 +97,28 @@ export default Vue.extend({
             return CaretPosition;
         },
     },
+
+    methods: {
+        toggleCaret: function (event: MouseEvent) {
+            store.dispatch(
+                "toggleCaret",
+                {id:this.id, caretPosition: CaretPosition.below}
+            );
+        },
+    },
+
 });
+
 </script>
 
 <style lang="scss">
 .block {
     color: #000 !important;
-    margin-top: 7px;
+    // margin-top: 4px;
+    padding-right: 4px;
+    padding-bottom: 1px;
+}
+.frame-bottom-selector {
+    padding-bottom: 4px;
 }
 </style>
