@@ -55,10 +55,25 @@ export interface FramesDefinitions {
     colour: string;
 }
 
-//all the indentifiers of the types
-const typesIdentification = {
+// Identifiers of the containers
+const ContainerTypesIdentifiers = {
+    root: "root",
+    importsContainer: "importsContainer",
+    funcDefsContainer: "funcDefsContainer",
+    framesMainContainer: "mainContainer",
+}
+
+// Identifiers of the frame types
+const ImportFrameTypesIdentifiers = {
+    import: "import",
+    fromimport: "fromimport",
+}
+const FuncDefIdentifiers = {
+    funcdef: "funcdef",
+}
+
+const StandardFrameTypesIdentifiers = {
     empty: "",
-    root: "rootFrame",
     if: "if",
     elseif: "elseif",
     else: "else",
@@ -67,17 +82,20 @@ const typesIdentification = {
     try: "try",
     except: "except",
     finally: "finally",
-    funcdef: "funcdef",
     with: "with",
     return: "return",
     varassign: "varassign",
-    import: "import",
-    fromimport: "fromimport",
     comment: "comment",
 }
 
+const AllFrameTypesIdentifier = {
+    ...ImportFrameTypesIdentifiers,
+    ...FuncDefIdentifiers,
+    ...StandardFrameTypesIdentifiers,
+}
+
 export const DefaultFramesDefinition: FramesDefinitions = {
-    type: typesIdentification.empty,
+    type: StandardFrameTypesIdentifiers.empty,
     labels: [],
     allowChildren: false,
     forbiddenChildrenTypes: [],
@@ -88,35 +106,68 @@ export const DefaultFramesDefinition: FramesDefinitions = {
 export const BlockDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     allowChildren: true,
-    forbiddenChildrenTypes:[typesIdentification.else, typesIdentification.elseif, typesIdentification.except, typesIdentification.finally],
+    forbiddenChildrenTypes:[StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elseif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally],
 };
 
 export const StatementDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
-    forbiddenChildrenTypes: Object.values(typesIdentification),
+    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier),
 };
 
 // Container frames
-export const RootFrameDefinition: FramesDefinitions = {
+export const RootContainerFrameDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.root,
+    type: ContainerTypesIdentifiers.root,
+}
+
+export const ImportsContainerDefinition: FramesDefinitions = {
+    ...BlockDefinition,
+    type: ContainerTypesIdentifiers.importsContainer,
+    labels: [
+        { label: "Imports:", slot: false },
+    ],
+    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
+        .filter((frameTypeDef: string) => Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef)),
+    colour: "#FFFFF",
+}
+
+export const FuncDefContainerDefinition: FramesDefinitions = {
+    ...BlockDefinition,
+    type: ContainerTypesIdentifiers.funcDefsContainer,
+    labels: [
+        { label: "Function Definitions:", slot: false },
+    ],
+    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
+        .filter((frameTypeDef: string) => Object.values(FuncDefIdentifiers).includes(frameTypeDef)),
+    colour: "#FFFFF",
+}
+
+export const MainFramesContainerDefinition: FramesDefinitions = {
+    ...BlockDefinition,
+    type: ContainerTypesIdentifiers.funcDefsContainer,
+    labels: [
+        { label: "Your code:", slot: false },
+    ],
+    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
+        .filter((frameTypeDef: string) => Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef)),
+    colour: "#FFFFF",
 }
 
 // Blocks
 export const IfDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.if,
+    type: StandardFrameTypesIdentifiers.if,
     labels: [
         { label: "if", slot: true },
         { label: ":", slot: false },
     ],
-    jointFrameTypes: [typesIdentification.elseif, typesIdentification.else],
+    jointFrameTypes: [StandardFrameTypesIdentifiers.elseif, StandardFrameTypesIdentifiers.else],
     colour: "#EA9C72",
 };
 
 export const ElseIfDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.elseif,
+    type: StandardFrameTypesIdentifiers.elseif,
     labels: [
         { label: "elif", slot: true },
         { label: ":", slot: false },
@@ -125,25 +176,25 @@ export const ElseIfDefinition: FramesDefinitions = {
 
 export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.else,
+    type: StandardFrameTypesIdentifiers.else,
     labels: [{ label: "else:", slot: false }],
 };
 
 export const ForDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.for,
+    type: StandardFrameTypesIdentifiers.for,
     labels: [
         { label: "for", slot: true },
         { label: "in", slot: true },
         { label: ":", slot: false },
     ],
-    jointFrameTypes:[typesIdentification.else],
+    jointFrameTypes:[StandardFrameTypesIdentifiers.else],
     colour: "#EA72C0",
 };
 
 export const WhileDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.while,
+    type: StandardFrameTypesIdentifiers.while,
     labels: [
         { label: "while", slot: true },
         { label: ":", slot: false },
@@ -153,15 +204,15 @@ export const WhileDefinition: FramesDefinitions = {
 
 export const TryDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.try,
+    type: StandardFrameTypesIdentifiers.try,
     labels: [{ label: "try:", slot: true }],
-    jointFrameTypes: [typesIdentification.except, typesIdentification.else, typesIdentification.finally],
+    jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "#EA0000",
 };
 
 export const ExceptDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.except,
+    type: StandardFrameTypesIdentifiers.except,
     labels: [
         { label: "except", slot: true },
         { label: ":", slot: false },
@@ -171,7 +222,7 @@ export const ExceptDefinition: FramesDefinitions = {
 
 export const FinallyDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.finally,
+    type: StandardFrameTypesIdentifiers.finally,
     labels: [
         { label: "finally", slot: true },
         { label: ":", slot: false },
@@ -181,7 +232,7 @@ export const FinallyDefinition: FramesDefinitions = {
 
 export const FuncDefDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.funcdef,
+    type: FuncDefIdentifiers.funcdef,
     labels: [
         { label: "def:", slot: true },
         { label: "(", slot: true },
@@ -192,7 +243,7 @@ export const FuncDefDefinition: FramesDefinitions = {
 
 export const WithDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: typesIdentification.with,
+    type: StandardFrameTypesIdentifiers.with,
     labels: [
         { label: "with", slot: true },
         { label: "as", slot: true },
@@ -204,14 +255,14 @@ export const WithDefinition: FramesDefinitions = {
 // Statements
 export const ReturnDefinition: FramesDefinitions = {
     ...StatementDefinition,
-    type: typesIdentification.return,
+    type: StandardFrameTypesIdentifiers.return,
     labels: [{ label: "return", slot: true }],
     colour: "#EFF779",
 };
 
 export const VarAssignDefinition: FramesDefinitions = {
     ...StatementDefinition,
-    type: typesIdentification.varassign,
+    type: StandardFrameTypesIdentifiers.varassign,
     labels: [
         { label: "var", slot: true },
         { label: "=", slot: true },
@@ -221,14 +272,14 @@ export const VarAssignDefinition: FramesDefinitions = {
 
 export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
-    type: typesIdentification.import,
+    type: ImportFrameTypesIdentifiers.import,
     labels: [{ label: "import", slot: true }],
     colour: "#FFFFFF",
 };
 
 export const FromImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
-    type: typesIdentification.fromimport,
+    type: ImportFrameTypesIdentifiers.fromimport,
     labels: [
         { label: "from", slot: true },
         { label: "import", slot: true },
@@ -238,13 +289,19 @@ export const FromImportDefinition: FramesDefinitions = {
 
 export const CommentDefinition: FramesDefinitions = {
     ...StatementDefinition,
-    type: typesIdentification.comment,
+    type: StandardFrameTypesIdentifiers.comment,
     labels: [{ label: "Comment:", slot: true }],
     colour: "#AAAAAA",
 };
 
+export const FrameContainersDefinitions = {
+    RootContainerFrameDefinition,
+    ImportsContainerDefinition,
+    FuncDefContainerDefinition,
+    MainFramesContainerDefinition,
+}
+
 export const Definitions = {
-    RootFrameDefinition,
     IfDefinition,
     ElseIfDefinition,
     ElseDefinition,

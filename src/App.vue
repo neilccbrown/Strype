@@ -2,13 +2,7 @@
     <div id="app">
         <div id="temp-container">
             <div class="left">
-                <Draggable
-                    v-model="frames"
-                    group="a"
-                    draggable=".frame"
-                    v-on:change="handleDragAndDrop($event)"
-                >
-                    <Frame
+               <Frame
                         v-for="frame in frames"
                         v-bind:key="frame.frameType.type + '-id:' + frame.id"
                         v-bind:id="frame.id"
@@ -16,9 +10,7 @@
                         v-bind:isJointFrame="false"
                         v-bind:caretVisibility="frame.caretVisibility"
                         v-bind:allowChildren="frame.frameType.allowChildren"
-                        class="frame"
                     />
-                </Draggable>
             </div>
             <div class="right">
                 <textarea v-model="mymodel"></textarea>
@@ -36,7 +28,6 @@ import Vue from "vue";
 import Frame from "@/components/Frame.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
-import Draggable from "vuedraggable";
 
 //////////////////////
 //     Component    //
@@ -47,7 +38,6 @@ export default Vue.extend({
 
     components: {
         Frame,
-        Draggable,
         Commands,
     },
 
