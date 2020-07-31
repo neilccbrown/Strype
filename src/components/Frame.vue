@@ -11,6 +11,12 @@
                 v-bind:frameId="id" 
                 v-bind:caretVisibility="caretVisibility"
             />
+            <div 
+                class="frame-bottom-selector"
+                v-on:click.self="toggleCaret($event)"
+            >
+            </div>
+            <Caret v-show="caretVisibility===caretPosition.below" />
             <Frame
                 v-for="frame in jointframes"
                 v-bind:key="frame.frameType.type + '-id:' + frame.id"
@@ -21,12 +27,6 @@
                 v-bind:caretVisibility="frame.caretVisibility"
             />
         </div>
-        <div 
-            class="frame-bottom-selector"
-            v-on:click.self="toggleCaret($event)"
-        >
-        </div>
-        <Caret v-show="caretVisibility===caretPosition.below" />
     </div>
 </template>
 
