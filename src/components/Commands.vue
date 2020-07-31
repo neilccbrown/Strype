@@ -1,5 +1,11 @@
 <template>
     <div class="container">
+        <div>
+            <button v-on:click="flash">Connect Serial</button>
+            <button v-on:click="downloadHex">Download Hex</button>
+            <button v-on:click="downloadPython">Download Python</button>
+        </div>
+        <hr />
         <div class="temp-div">
             <span>temp div here --> components for Python/microbit</span>
         </div>
@@ -24,6 +30,8 @@ import Vue from "vue";
 import store from "@/store/store";
 import FrameCommand from "@/components/FrameCommand.vue";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
+import { flashData } from "@/helpers/webUSB";
+import { downloadHex, downloadPython } from "@/helpers/download";
 
 export default Vue.extend({
     name: "Commands",
@@ -34,19 +42,34 @@ export default Vue.extend({
     },
 
     computed: {
-        frameCommands: function() {
+        frameCommands: function () {
             return frameCommandsDefs.FrameCommandsDefs;
         },
     },
 
-    created: function() {
+    created: function () {
         window.addEventListener(
             "keyup",
             this.onKeyUp
         );
     },
     methods: {
-        onKeyUp: function(event: KeyboardEvent) {
+        flash: function () {
+            if (navigator.usb) {
+                flashData();
+            } else {
+                alert("This browser does not support webUSB connections. Please use a browser such as Google Chrome.");
+            }
+        },
+        downloadHex: function () {
+            console.log("asdf");
+            downloadHex();
+        },
+        downloadPython: function () {
+            console.log("rewq");
+            downloadPython();
+        },
+        onKeyUp: function (event: KeyboardEvent) {
             if (
                 event.key === "ArrowDown" || event.key=="ArrowUp"
             ) {

@@ -31,6 +31,10 @@ export interface CurrentFrame {
     caretPosition: CaretPosition;
 }
 
+export interface EditorFrameObjects {
+    [id: number]: FrameObject;
+}
+
 // This is an array with all the frame Definitions objects.
 // Note that the slot variable of each objects tells if the
 // Label needs an editable slot as well attached to it.
@@ -122,7 +126,7 @@ export const WhileDefinition: FramesDefinitions = {
 export const TryDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: "try",
-    labels: [{ label: "try:", slot: true }],
+    labels: [{ label: "try:", slot: false }],
     jointFrameTypes: ["except", "else", "finally"],
     colour: "#EA0000",
 };
@@ -141,8 +145,7 @@ export const FinallyDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: "finally",
     labels: [
-        { label: "finally", slot: true },
-        { label: ":", slot: false },
+        { label: "finally:", slot: false },
     ],
     colour: "",
 };
@@ -170,6 +173,13 @@ export const WithDefinition: FramesDefinitions = {
 };
 
 // Statements
+export const EmptyDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: "empty",
+    labels: [{ label: "", slot: true }],
+    colour: "#FFFFFF",
+};
+
 export const ReturnDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: "return",
@@ -222,6 +232,7 @@ export const Definitions = {
     FinallyDefinition,
     FuncDefDefinition,
     WithDefinition,
+    EmptyDefinition,
     ReturnDefinition,
     VarAssignDefinition,
     ImportDefinition,

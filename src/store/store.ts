@@ -1,8 +1,9 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions } from "@/types/types";
-import initialState from "@/store/initial-state";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
+// import initialState from "@/store/initial-state";
+import initialState from "@/store/test";
 
 Vue.use(Vuex);
 
@@ -49,9 +50,9 @@ export default new Vuex.Store({
         getFrameObjects: (state) => () => {
             return Object.values(state.frameObjects);
         },
-    
+
     },
-    
+
     mutations: {
 
         addFrameObject(state, newFrame: FrameObject) {
@@ -67,11 +68,11 @@ export default new Vuex.Store({
             // Add the new frame to the list
             // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
             Vue.set(
-                state.frameObjects, 
-                newFrame.id, 
+                state.frameObjects,
+                newFrame.id,
                 newFrame
             );
-            
+
             // Add the frame id to its parent's childrenIds list
             state.frameObjects[parentToAdd].childrenIds.splice(
                 indexToAdd,
@@ -106,7 +107,7 @@ export default new Vuex.Store({
                 );
             }
             else if (eventType === "moved") {
-                // Delete the frameId from the children list 
+                // Delete the frameId from the children list
                 state.frameObjects[data.eventParentId].childrenIds.splice(
                     data.event[eventType].oldIndex,
                     1
@@ -186,11 +187,11 @@ export default new Vuex.Store({
             else if (eventType === "ArrowUp") {
                 // If ((not allow children && I am below) || I am in body) ==> I go out of the frame
                 if ( (!state.frameObjects[state.currentFrame.id].frameType?.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body){
-                    
+
                     const currentFrameParentId = state.frameObjects[state.currentFrame.id].parentId;
                     const currentFrameParent  = state.frameObjects[currentFrameParentId];
                     const currentFrameIndexInParent = currentFrameParent.childrenIds.indexOf(state.currentFrame.id);
-                    
+
                     // If the current is not on the top of its parent's children
                     if (currentFrameIndexInParent > 0) {
                         // Goto parent's previous child below
@@ -205,11 +206,11 @@ export default new Vuex.Store({
                     }
                 }
                 else { // That only validates for (Allow children && position == below) ==> I go in the frame
-                    
+
                     const currentFrameChildrenLength = state.frameObjects[state.currentFrame.id].childrenIds.length;
                     //if the currentFrame has children
                     if (currentFrameChildrenLength > 0) {
-                        
+
                         // Current's last child becomes the current frame
                         newId = state.frameObjects[state.currentFrame.id].childrenIds[currentFrameChildrenLength-1];
 
@@ -218,19 +219,19 @@ export default new Vuex.Store({
                     else {
                         newPosition = CaretPosition.body;
                     }
-                
+
                 }
             }
 
             Vue.set(
-                state.currentFrame, 
-                "id", 
+                state.currentFrame,
+                "id",
                 newId
             );
 
             Vue.set(
-                state.currentFrame, 
-                "caretPosition", 
+                state.currentFrame,
+                "caretPosition",
                 newPosition
             );
 
@@ -250,14 +251,14 @@ export default new Vuex.Store({
                 CaretPosition.none
             );
             Vue.set(
-                state.currentFrame, 
-                "id", 
+                state.currentFrame,
+                "id",
                 newCurrentFrame.id
             );
 
             Vue.set(
-                state.currentFrame, 
-                "caretPosition", 
+                state.currentFrame,
+                "caretPosition",
                 newCurrentFrame.caretPosition
             );
 
@@ -272,14 +273,14 @@ export default new Vuex.Store({
     actions: {
         updateFramesOrder({ commit }, payload) {
             commit(
-                "updateFramesOrder", 
+                "updateFramesOrder",
                 payload
             );
         },
 
         changeCaretPosition({commit}, payload) {
             commit(
-                "changeCaretWithKeyboard", 
+                "changeCaretWithKeyboard",
                 payload
             );
         },
@@ -287,10 +288,10 @@ export default new Vuex.Store({
         addFrameWithCommand({commit, state, getters}, payload) {
             //Prepare the newFrame object based on the frameType
             const isJointFrame = getters.getIsJointFrame(
-                state.currentFrame.id, 
+                state.currentFrame.id,
                 payload
             );
-            
+
             const newFrame = {
                 frameType: payload,
                 id: state.nextAvailableId++,

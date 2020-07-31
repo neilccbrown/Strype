@@ -37,6 +37,7 @@ import Frame from "@/components/Frame.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
+import Parser from "./parser/parser";
 
 //////////////////////
 //     Component    //
@@ -82,7 +83,15 @@ export default Vue.extend({
             },
         },
     },
-    
+
+    beforeCreate: function() {
+        const parser = new Parser();
+        const x = parser.parse();
+        const errors = parser.getErrorsFormatted(x);
+        console.log(errors);
+        console.log(x);
+    },
+
     methods: {
         toggleEdition: function () {
             store.commit("toggleEditFlag");
@@ -97,7 +106,7 @@ export default Vue.extend({
                 }
             );
         },
-        
+
     },
 
 });

@@ -1,6 +1,6 @@
-import { FrameObject, CaretPosition } from "@/types/types";
+import { CaretPosition, EditorFrameObjects } from "@/types/types";
 
-const initialState: { [id: number]: FrameObject } = {
+const initialState: EditorFrameObjects = {
     0: {
         id: 0,
         parentId: -1,
@@ -26,7 +26,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "true" },
         caretVisibility: CaretPosition.none,
     },
     2: {
@@ -45,7 +45,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "1 < 2" },
         caretVisibility: CaretPosition.none,
     },
     3: {
@@ -81,7 +81,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [5],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "x", 1: "range(1, 10)" },
         caretVisibility: CaretPosition.none,
     },
     5: {
@@ -100,7 +100,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "true" },
         caretVisibility: CaretPosition.none,
     },
     6: {
@@ -119,7 +119,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "a", 1: "2" },
         caretVisibility: CaretPosition.none,
     },
     7: {
@@ -135,7 +135,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "2" },
         caretVisibility: CaretPosition.none,
     },
     8: {
@@ -155,7 +155,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "myFunction", 1: "x" },
         caretVisibility: CaretPosition.none,
     },
     9: {
@@ -171,13 +171,13 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "This is a comment" },
         caretVisibility: CaretPosition.none,
     },
     10: {
         frameType: {
             type: "try",
-            labels: [{ label: "try:", slot: true }],
+            labels: [{ label: "try:", slot: false }],
             allowChildren: true,
             jointFrameTypes: ["except", "else", "finally"],
             colour: "#EA0000",
@@ -206,16 +206,13 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "ValueError" },
         caretVisibility: CaretPosition.none,
     },
     12: {
         frameType: {
             type: "finally",
-            labels: [
-                { label: "finally", slot: true },
-                { label: ":", slot: false },
-            ],
+            labels: [{ label: "finally:", slot: false }],
             allowChildren: true,
             jointFrameTypes: [],
             colour: "",
@@ -244,7 +241,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "1 == 2" },
         caretVisibility: CaretPosition.none,
     },
     14: {
@@ -263,7 +260,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "microbit", 1: "*" },
         caretVisibility: CaretPosition.none,
     },
     15: {
@@ -283,7 +280,7 @@ const initialState: { [id: number]: FrameObject } = {
         childrenIds: [],
         jointParentId: -1,
         jointFrameIds: [],
-        contentDict: {},
+        contentDict: { 0: "open(file)", 1: "f" },
         caretVisibility: CaretPosition.none,
     },
 };
