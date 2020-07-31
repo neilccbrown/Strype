@@ -57,16 +57,15 @@ export default Vue.extend({
         flash: function () {
             if (navigator.usb) {
                 flashData();
-            } else {
+            }
+            else {
                 alert("This browser does not support webUSB connections. Please use a browser such as Google Chrome.");
             }
         },
         downloadHex: function () {
-            console.log("asdf");
             downloadHex();
         },
         downloadPython: function () {
-            console.log("rewq");
             downloadPython();
         },
         onKeyUp: function (event: KeyboardEvent) {

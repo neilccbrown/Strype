@@ -181,7 +181,6 @@ export default class Parser {
         if (!inputCode) {
             code = this.parse();
         }
-        console.log(TPyParser.findAllErrors(code));
         return TPyParser.findAllErrors(code);
     }
 

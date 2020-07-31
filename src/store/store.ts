@@ -1,7 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions } from "@/types/types";
-import frameCommandsDefs from "@/constants/frameCommandsDefs";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition } from "@/types/types";
 // import initialState from "@/store/initial-state";
 import initialState from "@/store/test";
 

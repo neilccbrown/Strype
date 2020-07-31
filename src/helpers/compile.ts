@@ -6,7 +6,6 @@ function compileCode(): Compiler {
     const out = parser.parse();
 
     const errors = parser.getErrorsFormatted(out);
-    console.log(errors);
     if (errors) {
         throw Error(errors);
     }
@@ -20,7 +19,8 @@ export function compileHex() {
     try {
         const hex = compileCode().getIntelHex();
         return hex;
-    } catch (error) {
+    }
+    catch (error) {
         alert(error);
     }
 }
@@ -29,7 +29,8 @@ export function compileBlob() {
     try {
         const blob = compileCode().getBlob();
         return blob;
-    } catch (error) {
+    }
+    catch (error) {
         alert(error);
     }
 }
@@ -38,7 +39,8 @@ export async function compileBuffer() {
     try {
         const buffer = await compileCode().getBuffer();
         return buffer;
-    } catch (error) {
+    }
+    catch (error) {
         alert(error);
     }
 }

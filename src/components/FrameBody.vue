@@ -1,5 +1,5 @@
 <template>
-    <div 
+    <div
         class="frame-body-container"
         v-on:click.self="toggleCaret($event)"
     >
@@ -75,7 +75,7 @@ export default Vue.extend({
     methods: {
         handleDragAndDrop: function (event: Event) {
             store.dispatch(
-                "updateFramesOrder", 
+                "updateFramesOrder",
                 {
                     event: event,
                     eventParentId: this.$props.frameId,
@@ -83,7 +83,7 @@ export default Vue.extend({
             );
         },
 
-        toggleCaret: function (event: MouseEvent) {
+        toggleCaret: function () {
             store.dispatch(
                 "toggleCaret",
                 {id:this.frameId, caretPosition: CaretPosition.body}

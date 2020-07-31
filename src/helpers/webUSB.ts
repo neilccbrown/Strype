@@ -38,7 +38,8 @@ export async function flashData() {
             await daplink.disconnect();
             alert("done");
         }
-    } catch (error) {
+    }
+    catch (error) {
         console.error(error.message || error);
     }
 }

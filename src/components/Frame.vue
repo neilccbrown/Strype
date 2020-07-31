@@ -6,9 +6,9 @@
                 v-bind:frameId="id"
                 v-bind:labels="frameType.labels"
             />
-            <FrameBody 
+            <FrameBody
                 v-if="allowChildren"
-                v-bind:frameId="id" 
+                v-bind:frameId="id"
                 v-bind:caretVisibility="caretVisibility"
             />
             <Frame
@@ -20,7 +20,7 @@
                 v-bind:allowChildren="frame.frameType.allowChildren"
             />
         </div>
-        <div 
+        <div
             class="frame-bottom-selector"
             v-on:click.self="toggleCaret($event)"
         >
