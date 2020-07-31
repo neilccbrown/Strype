@@ -69,9 +69,7 @@ export default new Vuex.Store({
     mutations: {
 
         addFrameObject(state, newFrame: FrameObject) {
-            console.log("In Adding new frame")
-            console.log(newFrame)
-
+ 
             let indexToAdd = 0;
             const isAddingJointFrame = (newFrame.jointParentId > -1);
             const parentToAdd = (isAddingJointFrame) ? newFrame.jointParentId : newFrame.parentId;
@@ -160,23 +158,25 @@ export default new Vuex.Store({
 
             const currentFrame = state.frameObjects[state.currentFrame.id];
             
+            // Create the list of children + joints with which the caret will work
             let childrenAndJointFramesIds = [] as number[];
-            /*if( current has jointed_children OR current has jointParent )
-                {
-                    tempList = state.frameObjects[current.parent].childrenIds;
-                    tempList.splice(index of jointParent , 0, jointed_children);
-                }*/
+            let parentId = 0;
+            
+            if(currentFrame.id !== 0){
+
+                parentId = (currentFrame.jointParentId > -1) ? state.frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
+            }
+            childrenAndJointFramesIds = [...state.frameObjects[parentId].childrenIds];
+
+            // Joint frames are added to a temp list and caret works with this list instead.
             if (currentFrame.jointFrameIds.length > 0 || currentFrame.jointParentId > -1) {
-                const parentId = (currentFrame.jointParentId > -1) ? state.frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
-                childrenAndJointFramesIds = state.frameObjects[parentId].childrenIds;
+
                 const jointParentId = (currentFrame.jointParentId > -1) ? currentFrame.jointParentId : currentFrame.id;
                 const indexOfJointParent = childrenAndJointFramesIds.indexOf(jointParentId);
-                /*childrenAndJointFrameList = childrenAndJointFrameList.slice(
-                    0,
-                    indexOfJointParent + 1
-                ).concat(state.frameObjects[jointParentId].jointFrameIds);*/
+
+                //the joint frames are added to the temporary list
                 childrenAndJointFramesIds.splice(
-                    indexOfJointParent,
+                    indexOfJointParent+1,
                     0,
                     ...state.frameObjects[jointParentId].jointFrameIds
                 )
@@ -184,24 +184,29 @@ export default new Vuex.Store({
 
             if (eventType === "ArrowDown") {
                 if (state.currentFrame.caretPosition === CaretPosition.body) {
-                    console.log("down at body")
-                    //if the currentFrame has children / joint frames
-                    if (childrenAndJointFramesIds.length > 0) {
+
+                    //if the currentFrame has children
+                    if (state.frameObjects[state.currentFrame.id].childrenIds.length > 0) {
 
                         // The first child / joint frame becomes the current frame
-                        newId = childrenAndJointFramesIds[0];
+                        newId = state.frameObjects[state.currentFrame.id].childrenIds[0];
 
                         // If the child / joint frame allows children go to its body, else to its bottom
                         newPosition = (state.frameObjects[newId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
                     }
-                    //if the currentFrame has NO children go below it
+                    // If there are joint frames and I am not the last one
+                    else if(childrenAndJointFramesIds.indexOf(currentFrame.id) +1 < childrenAndJointFramesIds.length) {
+
+                        newId = childrenAndJointFramesIds[childrenAndJointFramesIds.indexOf(currentFrame.id)+1] 
+                    }
+                    //if the currentFrame has NO children or more joints
                     else {
+    
                         newPosition = CaretPosition.below;
                     }
                 }
                 else {
-                    console.log("down at bottom")
-
+                    
                     const currentFrameParentId = state.frameObjects[state.currentFrame.id].parentId;
                     const currentFrameIndexInParent = childrenAndJointFramesIds.indexOf(state.currentFrame.id);
 
@@ -250,7 +255,8 @@ export default new Vuex.Store({
 
                         // Current's last child becomes the current frame
                         newId = state.frameObjects[state.currentFrame.id].childrenIds[currentFrameChildrenLength - 1];
-
+                        const newFramesJointFrames = state.frameObjects[newId].jointFrameIds;
+                        newId = ( newFramesJointFrames.length > 0) ? newFramesJointFrames[newFramesJointFrames.length-1] : newId;
                         newPosition = CaretPosition.below;
                     }
                     else {
@@ -320,21 +326,17 @@ export default new Vuex.Store({
                 "changeCaretWithKeyboard",
                 payload
             );
-            console.log(`Current Frame id = ${state.currentFrame.id} type = ${state.frameObjects[state.currentFrame.id].frameType.type} caret = ${state.currentFrame.caretPosition}`)
             const cfo = this.getters.getCurrentContainerFrame();
             state.currentContainerFrameId = cfo.id;
-            console.log(`Current container Frame id = ${state.currentContainerFrameId} type = ${state.frameObjects[cfo.id].frameType.type} caret = ${cfo.caretVisibility}`)
 
         },
 
         addFrameWithCommand({ commit, state, getters }, payload: FramesDefinitions) {
             //Prepare the newFrame object based on the frameType
-            console.log("in addframewithcommand, currentcontainer = " + state.currentContainerFrameId)
             const isJointFrame = getters.getIsJointFrame(
                 state.currentContainerFrameId,
                 payload
             );
-            console.log("jointframe? " + isJointFrame)
 
             const newFrame = {
                 frameType: payload,
