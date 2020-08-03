@@ -246,12 +246,8 @@ export default new Vuex.Store({
             }
             else if (eventType === "ArrowUp") {
 
-                console.log(`Up!! Current Frame: id=${currentFrame.id} caret=${state.currentFrame.caretPosition}`);
-                console.log("jointframeflag = "+jointFramesFlag)
                 // only when going up and, if the previous frame is part of a compound or another container we need to add it in the list
                 if(!jointFramesFlag) {
-                    console.log("children + joint list: ")
-                    console.log(childrenAndJointFramesIds)
                  
                     const indexOfCurrentInParent = childrenAndJointFramesIds.indexOf(currentFrame.id);
                     const previousId = childrenAndJointFramesIds[indexOfCurrentInParent - 1];
@@ -269,10 +265,7 @@ export default new Vuex.Store({
                             0,
                             ...previousSubLeveFrameIds  
                         );
-                    }
-                    console.log("AFTER LIST UPDATE")
-                    console.log(childrenAndJointFramesIds)
-                 
+                    }                 
                 }
 
                 // If ((not allow children && I am below) || I am in body) ==> I go out of the frame
@@ -281,9 +274,7 @@ export default new Vuex.Store({
                     // const currentFrameParent  = state.frameObjects[currentFrameParentId];
                     // const currentFrameIndexInParent = currentFrameParent.childrenIds.indexOf(state.currentFrame.id);
                     const currentFrameIndex = childrenAndJointFramesIds.indexOf(state.currentFrame.id);
-                    console.log("children + joint list /2: ")
-                    console.log(childrenAndJointFramesIds)
-                 
+                  
                     // If the current is not on the top of its parent's children
                     if (currentFrameIndex > 0) {
                         // Goto parent's previous child below
@@ -293,14 +284,12 @@ export default new Vuex.Store({
                         newPosition = (Object.values(ContainerTypesIdentifiers).includes(state.frameObjects[newId].frameType.type)) ? CaretPosition.body : CaretPosition.below;
                     }
                     else {
-                        console.log("knuuuu")
                         newId = (parentId !== 0)? parentId : currentFrame.id;
 
                         newPosition = CaretPosition.body;
                     }
                 }
                 else { // That only validates for (Allow children && position == below) ==> I go in the frame
-                    console.log("hello")
                     const currentFrameChildrenLength = currentFrame.childrenIds.length;
                     //if the currentFrame has children
                     if (currentFrameChildrenLength > 0) {
