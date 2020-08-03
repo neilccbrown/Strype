@@ -2,15 +2,13 @@
     <div id="app">
         <div id="temp-container">
             <div class="left">
-               <Frame
-                        v-for="frame in frames"
-                        v-bind:key="frame.frameType.type + '-id:' + frame.id"
-                        v-bind:id="frame.id"
-                        v-bind:frameType="frame.frameType"
-                        v-bind:isJointFrame="false"
-                        v-bind:caretVisibility="frame.caretVisibility"
-                        v-bind:allowChildren="frame.frameType.allowChildren"
-                    />
+               <FrameContainer
+                        v-for="container in containerFrames"
+                        v-bind:key="container.frameType.type + '-id:' + container.id"
+                        v-bind:id="container.id"
+                        v-bind:containerLabel="container.frameType.labels[0].label"
+                        v-bind:caretVisibility="container.caretVisibility"
+                />
             </div>
             <div class="right">
                 <textarea v-model="mymodel"></textarea>
@@ -25,7 +23,7 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import Frame from "@/components/Frame.vue";
+import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
 
@@ -37,7 +35,7 @@ export default Vue.extend({
     store,
 
     components: {
-        Frame,
+        FrameContainer,
         Commands,
     },
 
@@ -49,17 +47,11 @@ export default Vue.extend({
     },
 
     computed: {
-        frames: {
-            // gets the frames objects which are in the root
-            get: function (this) {
+        containerFrames: 
+            // gets the container frames objects which are in the root
+            function (this) {
                 return store.getters.getFramesForParentId(0);
             },
-            // setter
-            set: function () {
-                // Nothing to be done here.
-                // Event handlers call mutations which change the state
-            },
-        },
 
         //this helps for debugging purposes --> printing the state in the screen
         mymodel: {
@@ -76,16 +68,6 @@ export default Vue.extend({
     methods: {
         toggleEdition: function () {
             store.commit("toggleEditFlag");
-        },
-
-        handleDragAndDrop: function (event: Event) {
-            store.commit(
-                "updateFramesOrder",
-                {
-                    event: event,
-                    eventParentId: 0,
-                }
-            );
         },
         
     },

@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, ContainerTypesIdentifiers } from "@/types/types";
 import initialState from "@/store/initial-state";
 
 Vue.use(Vuex);
@@ -9,7 +9,7 @@ export default new Vuex.Store({
     state: {
         nextAvailableId: 16 as number,
 
-        currentFrame: { id: 0, caretPosition: CaretPosition.body } as CurrentFrame,
+        currentFrame: { id: -1, caretPosition: CaretPosition.body } as CurrentFrame,
 
         currentContainerFrameId: 0,
 
@@ -177,14 +177,14 @@ export default new Vuex.Store({
             
             if(currentFrame.id !== 0){
 
-                parentId = (currentFrame.jointParentId > -1) ? state.frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
+                parentId = (currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
             }
             childrenAndJointFramesIds = [...state.frameObjects[parentId].childrenIds];
 
             // Joint frames are added to a temp list and caret works with this list instead.
-            if (currentFrame.jointFrameIds.length > 0 || currentFrame.jointParentId > -1) {
+            if (currentFrame.jointFrameIds.length > 0 || currentFrame.jointParentId > 0) {
 
-                const jointParentId = (currentFrame.jointParentId > -1) ? currentFrame.jointParentId : currentFrame.id;
+                const jointParentId = (currentFrame.jointParentId > 0) ? currentFrame.jointParentId : currentFrame.id;
                 const indexOfJointParent = childrenAndJointFramesIds.indexOf(jointParentId);
 
                 //the joint frames are added to the temporary list
@@ -197,8 +197,6 @@ export default new Vuex.Store({
                 jointFramesFlag = true;
             }
 
-
-
             if (eventType === "ArrowDown") {
                 if(state.currentFrame.caretPosition === CaretPosition.body) {
                     //if the currentFrame has children
@@ -210,9 +208,18 @@ export default new Vuex.Store({
                         // If the child allows children go to its body, else to its bottom
                         newPosition = (state.frameObjects[newId].frameType?.allowChildren) ? CaretPosition.body : CaretPosition.below;
                     }
-                    //if the currentFrame has NO children go below it
+                    //if the currentFrame has NO children go below it, except if it is a container --> next container
                     else {
-                        newPosition = CaretPosition.below;
+                        if(Object.values(ContainerTypesIdentifiers).includes(currentFrame.frameType.type)){
+                            if(childrenAndJointFramesIds.indexOf(currentFrame.id) + 1 < childrenAndJointFramesIds.length){
+                                newId = childrenAndJointFramesIds[childrenAndJointFramesIds.indexOf(currentFrame.id) + 1];
+                                newPosition = CaretPosition.body;
+                            }
+                            //else we stay where we are.
+                        }
+                        else{
+                            newPosition = CaretPosition.below;
+                        }                        
                     }
                 }
                 else {
@@ -231,7 +238,7 @@ export default new Vuex.Store({
                         newPosition = (state.frameObjects[newId].frameType?.allowChildren)? CaretPosition.body : CaretPosition.below;
                     }
                     else {
-                        newId = (parentId !== 0)? parentId : currentFrame.id;
+                        newId = (parentId > 0)? parentId : currentFrame.id;
 
                         newPosition = CaretPosition.below;
                     }
@@ -239,46 +246,61 @@ export default new Vuex.Store({
             }
             else if (eventType === "ArrowUp") {
 
-                // only when going up and, if the previous frame is part of a compound we need to add it in the list
+                console.log(`Up!! Current Frame: id=${currentFrame.id} caret=${state.currentFrame.caretPosition}`);
+                console.log("jointframeflag = "+jointFramesFlag)
+                // only when going up and, if the previous frame is part of a compound or another container we need to add it in the list
                 if(!jointFramesFlag) {
+                    console.log("children + joint list: ")
+                    console.log(childrenAndJointFramesIds)
+                 
                     const indexOfCurrentInParent = childrenAndJointFramesIds.indexOf(currentFrame.id);
                     const previousId = childrenAndJointFramesIds[indexOfCurrentInParent - 1];
-                    const previousJointFrameIds = state.frameObjects[previousId].jointFrameIds;
+                    //get the previous container's children if the current frame is a container (OR keep self it first container),
+                    //otherwise, get the previous frame's joint frames
+                    const previousSubLeveFrameIds = (Object.values(ContainerTypesIdentifiers).includes(currentFrame.frameType.type)) ?
+                        ((indexOfCurrentInParent !== 0) ? state.frameObjects[previousId].childrenIds : currentFrame.childrenIds) :
+                        state.frameObjects[previousId].jointFrameIds;
 
                     //  If the previous has joint frames
-                    if(previousJointFrameIds.length > 0) {
+                    if(previousSubLeveFrameIds.length > 0) {
                         //the last joint frames are added to the temporary list
                         childrenAndJointFramesIds.splice(
                             indexOfCurrentInParent,
                             0,
-                            ...state.frameObjects[previousId].jointFrameIds
+                            ...previousSubLeveFrameIds  
                         );
                     }
+                    console.log("AFTER LIST UPDATE")
+                    console.log(childrenAndJointFramesIds)
+                 
                 }
 
                 // If ((not allow children && I am below) || I am in body) ==> I go out of the frame
                 if ( (!currentFrame.frameType?.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body){
-                    
                     // const currentFrameParentId = currentFrame.parentId;
                     // const currentFrameParent  = state.frameObjects[currentFrameParentId];
                     // const currentFrameIndexInParent = currentFrameParent.childrenIds.indexOf(state.currentFrame.id);
                     const currentFrameIndex = childrenAndJointFramesIds.indexOf(state.currentFrame.id);
-
+                    console.log("children + joint list /2: ")
+                    console.log(childrenAndJointFramesIds)
+                 
                     // If the current is not on the top of its parent's children
                     if (currentFrameIndex > 0) {
                         // Goto parent's previous child below
                         newId = childrenAndJointFramesIds[currentFrameIndex - 1];
 
-                        newPosition = CaretPosition.below;
+                        //the caret position is below except for Containers where it is always body
+                        newPosition = (Object.values(ContainerTypesIdentifiers).includes(state.frameObjects[newId].frameType.type)) ? CaretPosition.body : CaretPosition.below;
                     }
                     else {
+                        console.log("knuuuu")
                         newId = (parentId !== 0)? parentId : currentFrame.id;
 
                         newPosition = CaretPosition.body;
                     }
                 }
                 else { // That only validates for (Allow children && position == below) ==> I go in the frame
-                    
+                    console.log("hello")
                     const currentFrameChildrenLength = currentFrame.childrenIds.length;
                     //if the currentFrame has children
                     if (currentFrameChildrenLength > 0) {

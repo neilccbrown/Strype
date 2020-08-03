@@ -56,23 +56,29 @@ export interface FramesDefinitions {
 }
 
 // Identifiers of the containers
-const ContainerTypesIdentifiers = {
+export const ContainerTypesIdentifiers = {
     root: "root",
     importsContainer: "importsContainer",
     funcDefsContainer: "funcDefsContainer",
     framesMainContainer: "mainContainer",
 }
 
+const CommmentFrameTypesIdentifier = {
+    comment: "comment",
+}
 // Identifiers of the frame types
 const ImportFrameTypesIdentifiers = {
+    ...CommmentFrameTypesIdentifier,
     import: "import",
     fromimport: "fromimport",
 }
 const FuncDefIdentifiers = {
+    ...CommmentFrameTypesIdentifier,
     funcdef: "funcdef",
 }
 
 const StandardFrameTypesIdentifiers = {
+    ...CommmentFrameTypesIdentifier,
     empty: "",
     if: "if",
     elseif: "elseif",
@@ -85,7 +91,6 @@ const StandardFrameTypesIdentifiers = {
     with: "with",
     return: "return",
     varassign: "varassign",
-    comment: "comment",
 }
 
 const AllFrameTypesIdentifier = {

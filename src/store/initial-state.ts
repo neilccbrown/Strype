@@ -9,7 +9,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: CaretPosition.body,
+        caretVisibility: CaretPosition.none,
     },
     "-1": {
         id: -1,
@@ -19,7 +19,7 @@ const initialState: { [id: number]: FrameObject } = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: CaretPosition.none,
+        caretVisibility: CaretPosition.body,
     },
     "-2": {
         id: -2,
@@ -84,7 +84,7 @@ const initialState: { [id: number]: FrameObject } = {
     5: {
         id: 5,
         frameType : ReturnDefinition,
-        parentId: -3,
+        parentId: 1,
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],

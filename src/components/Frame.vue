@@ -99,10 +99,10 @@ export default Vue.extend({
     },
 
     methods: {
-        toggleCaret: function (event: MouseEvent) {
+        toggleCaret: function () {
             store.dispatch(
                 "toggleCaret",
-                {id:this.id, caretPosition: CaretPosition.below}
+                {id:this.$props.id, caretPosition: CaretPosition.below}
             );
         },
     },
