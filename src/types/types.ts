@@ -68,12 +68,10 @@ const CommmentFrameTypesIdentifier = {
 }
 // Identifiers of the frame types
 const ImportFrameTypesIdentifiers = {
-    ...CommmentFrameTypesIdentifier,
     import: "import",
     fromimport: "fromimport",
 }
 const FuncDefIdentifiers = {
-    ...CommmentFrameTypesIdentifier,
     funcdef: "funcdef",
 }
 
@@ -111,7 +109,9 @@ export const DefaultFramesDefinition: FramesDefinitions = {
 export const BlockDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     allowChildren: true,
-    forbiddenChildrenTypes:[StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elseif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally],
+    forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+        .concat(Object.values(FuncDefIdentifiers))
+        .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elseif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
 };
 
 export const StatementDefinition: FramesDefinitions = {
@@ -132,7 +132,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
         { label: "Imports:", slot: false },
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
-        .filter((frameTypeDef: string) => Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef)),
+        .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommmentFrameTypesIdentifier.comment),
     colour: "#FFFFF",
 }
 
@@ -143,7 +143,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
         { label: "Function Definitions:", slot: false },
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
-        .filter((frameTypeDef: string) => Object.values(FuncDefIdentifiers).includes(frameTypeDef)),
+        .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommmentFrameTypesIdentifier.comment),
     colour: "#FFFFF",
 }
 
@@ -153,8 +153,8 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     labels: [
         { label: "Your code:", slot: false },
     ],
-    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
-        .filter((frameTypeDef: string) => Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef)),
+    forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
+        .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
     colour: "#FFFFF",
 }
 

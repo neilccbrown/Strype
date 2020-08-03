@@ -98,6 +98,9 @@ export default Vue.extend({
                 "toggleCaret",
                 {id:this.$props.id, caretPosition: CaretPosition.body}
             );
+            //expand the container
+            this.isCollapsed = true
+            this.toggleCollapse();
         },
     },
 });
@@ -116,7 +119,7 @@ export default Vue.extend({
 }
 .frame-container-label-span {
     margin-left: 5px;
-    cursor:pointer;
+    cursor:default;
 }
 
 </style>
