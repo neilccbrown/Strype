@@ -35,7 +35,17 @@ export default Vue.extend({
 
     computed: {
         frameCommands: function() {
-            return frameCommandsDefs.FrameCommandsDefs;
+            const currentFrameType = store.getters.getCurrentFrameObject().frameType;
+            const forbiddenTypes = (currentFrameType !== undefined) ? currentFrameType.forbiddenChildrenTypes : [];
+            const joinedTypes = (currentFrameType !== undefined) ? currentFrameType.jointFrameTypes : [];
+            const filteredCommands = { ...frameCommandsDefs.FrameCommandsDefs};
+            for (const frameType in frameCommandsDefs.FrameCommandsDefs) {
+                if(forbiddenTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type) 
+                    && !joinedTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type)){
+                    delete filteredCommands[frameType];
+                }
+            }
+            return filteredCommands;
         },
     },
 

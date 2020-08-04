@@ -11,6 +11,12 @@
                 v-bind:frameId="id" 
                 v-bind:caretVisibility="caretVisibility"
             />
+            <div 
+                class="frame-bottom-selector"
+                v-on:click.self="toggleCaret($event)"
+            >
+            </div>
+            <Caret v-show="caretVisibility===caretPosition.below" />
             <Frame
                 v-for="frame in jointframes"
                 v-bind:key="frame.frameType.type + '-id:' + frame.id"
@@ -18,14 +24,9 @@
                 v-bind:frameType="frame.frameType"
                 v-bind:isJointFrame="true"
                 v-bind:allowChildren="frame.frameType.allowChildren"
+                v-bind:caretVisibility="frame.caretVisibility"
             />
         </div>
-        <div 
-            class="frame-bottom-selector"
-            v-on:click.self="toggleCaret($event)"
-        >
-        </div>
-        <Caret v-show="caretVisibility===caretPosition.below" />
     </div>
 </template>
 
@@ -65,7 +66,6 @@ export default Vue.extend({
             type: Object,
             default: () => DefaultFramesDefinition,
         }, //Type of the Frame
-        parent: Number, //ID of the parent
         isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
         caretVisibility: String,
         allowChildren: Boolean,
@@ -99,10 +99,10 @@ export default Vue.extend({
     },
 
     methods: {
-        toggleCaret: function (event: MouseEvent) {
+        toggleCaret: function () {
             store.dispatch(
                 "toggleCaret",
-                {id:this.id, caretPosition: CaretPosition.below}
+                {id:this.$props.id, caretPosition: CaretPosition.below}
             );
         },
     },
