@@ -246,20 +246,26 @@ export default new Vuex.Store({
                  
                     const indexOfCurrentInParent = childrenAndJointFramesIds.indexOf(currentFrame.id);
                     const previousId = childrenAndJointFramesIds[indexOfCurrentInParent - 1];
-                    //get the previous container's children if the current frame is a container (OR keep self it first container),
-                    //otherwise, get the previous frame's joint frames
-                    const previousSubLeveFrameIds = (currentFrame.id < 0) ?
-                        ((indexOfCurrentInParent !== 0) ? state.frameObjects[previousId].childrenIds : currentFrame.childrenIds) :
-                        state.frameObjects[previousId].jointFrameIds;
 
-                    //  If the previous has joint frames
-                    if(previousSubLeveFrameIds.length > 0) {
-                        //the last joint frames are added to the temporary list
-                        childrenAndJointFramesIds.splice(
-                            indexOfCurrentInParent,
-                            0,
-                            ...previousSubLeveFrameIds  
-                        );
+                    // If the previous is simply my parent, there is not need to check whether he has JointChildren as even if he has
+                    // I am already above them (in his body). (if the prevID is undefined, that means I am the first child)
+                    if(previousId !== undefined && previousId !== currentFrame.parentId){
+
+                        //get the previous container's children if the current frame is a container (OR keep self it first container),
+                        //otherwise, get the previous frame's joint frames
+                        const previousSubLevelFrameIds = (currentFrame.id < 0) ?
+                            ((indexOfCurrentInParent !== 0) ? state.frameObjects[previousId].childrenIds : currentFrame.childrenIds) :
+                            state.frameObjects[previousId].jointFrameIds;
+
+                        //  If the previous has joint frames
+                        if(previousSubLevelFrameIds.length > 0) {
+                            //the last joint frames are added to the temporary list
+                            childrenAndJointFramesIds.splice(
+                                indexOfCurrentInParent,
+                                0,
+                                ...previousSubLevelFrameIds  
+                            );
+                        }
                     }                 
                 }
 

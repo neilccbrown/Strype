@@ -1,7 +1,7 @@
 <template>
     <div 
         class="frame-body-container"
-        v-on:click.self="toggleCaret($event)"
+        v-on:click.self="toggleCaret()"
     >
         <Draggable
             v-model="frames"
@@ -83,7 +83,7 @@ export default Vue.extend({
             );
         },
 
-        toggleCaret: function (event: MouseEvent) {
+        toggleCaret: function () {
             store.dispatch(
                 "toggleCaret",
                 {id:this.frameId, caretPosition: CaretPosition.body}

@@ -67,13 +67,13 @@ export default Vue.extend({
         // frameLabel: function() {
         //     return this.$store.getters.getLabelsByName(this.frameType);
         // },
-        frames: function() {
+        frames(): number[]{//: function() {
             return store.getters.getFramesForParentId(this.id);
         },
         // Needed in order to use the `CaretPosition` type in the v-show
-        caretPosition: function(){
+        caretPosition(): typeof CaretPosition {//: function(){
             return CaretPosition;
-        },
+        }, 
     },
 
     methods: {
@@ -99,7 +99,7 @@ export default Vue.extend({
                 {id:this.$props.id, caretPosition: CaretPosition.body}
             );
             //expand the container
-            this.isCollapsed = true
+            this.$data.isCollapsed = true;
             this.toggleCollapse();
         },
     },
@@ -117,7 +117,7 @@ export default Vue.extend({
     background-color: transparent;
     border-color: transparent;
 }
-.frame-container-label-span {
+.frame-container-label-span {       
     margin-left: 5px;
     cursor:default;
 }
