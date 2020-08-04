@@ -22,7 +22,7 @@ export default Vue.extend({
         slotIndex: Number,
     },
 
-    data: function() {
+    data() {
         return {
             code: store.getters.getContentForFrameSlot(
                 this.$parent.$props.frameId,
@@ -31,10 +31,10 @@ export default Vue.extend({
         };
     },
     methods: {
-        onFocus: function() {
+        onFocus(): void {
             store.commit("toggleEditFlag");
         },
-        onBlur: function() {
+        onBlur(): void {
             store.commit("toggleEditFlag");
             store.commit(
                 "setFrameEditorSlot",

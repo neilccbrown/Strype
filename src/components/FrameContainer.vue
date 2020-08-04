@@ -33,7 +33,7 @@ import Frame from "@/components/Frame.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
-import { CaretPosition } from "@/types/types";
+import { CaretPosition, FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -48,7 +48,7 @@ export default Vue.extend({
         Draggable,
     },
 
-    data: function () {
+    data() {
         return {
             collapseButtonLabel: "\u25BC",
             containerStyle: {display:"block"},
@@ -63,28 +63,32 @@ export default Vue.extend({
     },
 
     computed: {
-        // Frame label holds the initialisation object for the frame
-        // frameLabel: function() {
-        //     return this.$store.getters.getLabelsByName(this.frameType);
-        // },
-        frames(): number[]{//: function() {
-            return store.getters.getFramesForParentId(this.id);
+        frames: {
+            // gets the frames objects which are nested in here (i.e. have this frameID as parent)
+            get(): FrameObject[] {
+                return store.getters.getFramesForParentId(this.$props.id);
+            },
+            // setter
+            set(): void {
+            // Nothing to be done here.
+            // Event handlers call mutations which change the state
+            },
         },
         // Needed in order to use the `CaretPosition` type in the v-show
-        caretPosition(): typeof CaretPosition {//: function(){
+        caretPosition(): typeof CaretPosition {
             return CaretPosition;
         }, 
     },
 
     methods: {
-        toggleCollapse: function () {
+        toggleCollapse(): void {
             this.$data.isCollapsed = !this.$data.isCollapsed;
             //update the button label
             this.$data.collapseButtonLabel = (this.$data.isCollapsed) ? "\u25B6" : "\u25BC";
             //update the div style
             this.$data.containerStyle = (this.$data.isCollapsed) ? {display:"none"} : {display:"block"};
         },
-        handleDragAndDrop: function (event: Event) {
+        handleDragAndDrop(event: Event): void {
             store.commit(
                 "updateFramesOrder",
                 {
@@ -93,7 +97,7 @@ export default Vue.extend({
                 }
             );
         },
-        toggleCaret: function () {
+        toggleCaret(): void {
             store.dispatch(
                 "toggleCaret",
                 {id:this.$props.id, caretPosition: CaretPosition.body}

@@ -27,7 +27,7 @@ export default Vue.extend({
     },
 
     methods: {
-        onClick: function() {
+        onClick(): void {
             //add the frame in the editor
             store.dispatch(
                 "addFrameWithCommand",

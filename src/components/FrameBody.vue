@@ -33,7 +33,7 @@ import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import Caret from "@/components/Caret.vue";
 import Draggable from "vuedraggable";
-import { CaretPosition } from "@/types/types";
+import { CaretPosition, FrameObject } from "@/types/types";
 
 
 //////////////////////
@@ -57,23 +57,24 @@ export default Vue.extend({
     computed: {
         frames: {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-            get: function () {
+            get(): FrameObject[] {
                 return store.getters.getFramesForParentId(this.$props.frameId);
             },
             // setter
-            set: function () {
+            set(): void {
                 // Nothing to be done here.
                 // Event handlers call mutations which change the state
             },
         },
+
         // Needed in order to use the `CaretPosition` type in the v-show
-        caretPosition: function(){
+        caretPosition(): typeof CaretPosition {
             return CaretPosition;
-        },
+        }, 
     },
 
     methods: {
-        handleDragAndDrop: function (event: Event) {
+        handleDragAndDrop(event: Event): void {
             store.dispatch(
                 "updateFramesOrder", 
                 {
@@ -83,7 +84,7 @@ export default Vue.extend({
             );
         },
 
-        toggleCaret: function () {
+        toggleCaret(): void {
             store.dispatch(
                 "toggleCaret",
                 {id:this.frameId, caretPosition: CaretPosition.body}

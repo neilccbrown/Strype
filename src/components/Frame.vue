@@ -38,7 +38,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
-import { FramesDefinitions, DefaultFramesDefinition, CaretPosition } from "@/types/types";
+import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -52,7 +52,7 @@ export default Vue.extend({
         Caret,
     },
 
-    beforeCreate: function() {
+    beforeCreate() {
         const components = this.$options.components;
         if (components !== undefined) {
             components.FrameBody = require("./FrameBody.vue").default;
@@ -72,14 +72,10 @@ export default Vue.extend({
     },
 
     computed: {
-        // Frame label holds the initialisation object for the frame
-        // frameLabel: function() {
-        //     return this.$store.getters.getLabelsByName(this.frameType);
-        // },
-        jointframes: function() {
+        jointframes(): FrameObject[] {
             return store.getters.getJointFramesForFrameId(this.id);
         },
-        frameStyle: function() {
+        frameStyle(): Record<string, string> {
             return this.isJointFrame === true
                 ? {}
                 : {
@@ -93,13 +89,13 @@ export default Vue.extend({
                 };
         },
         // Needed in order to use the `CaretPosition` type in the v-show
-        caretPosition: function(){
+        caretPosition(): typeof CaretPosition {
             return CaretPosition;
         },
     },
 
     methods: {
-        toggleCaret: function () {
+        toggleCaret(): void {
             store.dispatch(
                 "toggleCaret",
                 {id:this.$props.id, caretPosition: CaretPosition.below}

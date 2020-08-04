@@ -36,7 +36,7 @@ export interface ErrorSlotPayload {
     slotId: number;
     code: string;
 }
-export interface FrameCommand {
+export interface FrameCommandDef {
     type: FramesDefinitions;
     description: string;
     shortcut: string;

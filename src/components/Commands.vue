@@ -24,6 +24,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import FrameCommand from "@/components/FrameCommand.vue";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
+import { FrameCommandDef } from "../types/types";
 
 export default Vue.extend({
     name: "Commands",
@@ -34,7 +35,7 @@ export default Vue.extend({
     },
 
     computed: {
-        frameCommands: function() {
+        frameCommands(): Record<string, FrameCommandDef> {
             const currentFrameType = store.getters.getCurrentFrameObject().frameType;
             const forbiddenTypes = (currentFrameType !== undefined) ? currentFrameType.forbiddenChildrenTypes : [];
             const joinedTypes = (currentFrameType !== undefined) ? currentFrameType.jointFrameTypes : [];
@@ -49,14 +50,14 @@ export default Vue.extend({
         },
     },
 
-    created: function() {
+    created() {
         window.addEventListener(
             "keyup",
             this.onKeyUp
         );
     },
     methods: {
-        onKeyUp: function(event: KeyboardEvent) {
+        onKeyUp(event: KeyboardEvent) {
             if (
                 event.key === "ArrowDown" || event.key=="ArrowUp"
             ) {
