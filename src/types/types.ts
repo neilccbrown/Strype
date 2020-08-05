@@ -268,7 +268,7 @@ export const WithDefinition: FramesDefinitions = {
 // Statements
 export const EmptyDefinition: FramesDefinitions = {
     ...StatementDefinition,
-    type: "empty",
+    type: StandardFrameTypesIdentifiers.empty,
     labels: [{ label: "", slot: true }],
     colour: "#FFFFFF",
 };
