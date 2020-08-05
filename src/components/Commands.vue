@@ -90,7 +90,7 @@ export default Vue.extend({
         );
     },
     methods: {
-        flash: function () {
+        flash() {
             if (navigator.usb) {
                 flashData();
             }
@@ -98,10 +98,10 @@ export default Vue.extend({
                 alert("This browser does not support webUSB connections. Please use a browser such as Google Chrome.");
             }
         },
-        downloadHex: function () {
+        downloadHex() {
             downloadHex();
         },
-        downloadPython: function () {
+        downloadPython() {
             downloadPython();
         },
         onKeyUp(event: KeyboardEvent) {

@@ -1,4 +1,4 @@
-import { EditorFrameObjects, FrameObject, CaretPosition, RootContainerFrameDefinition, IfDefinition, ElseDefinition, ForDefinition, WhileDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, ReturnDefinition } from "@/types/types";
+import { EditorFrameObjects, CaretPosition, RootContainerFrameDefinition, IfDefinition, ElseDefinition, ForDefinition, WhileDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, ReturnDefinition } from "@/types/types";
 
 const initialState: EditorFrameObjects = {
     0: {

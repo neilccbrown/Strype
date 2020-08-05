@@ -64,7 +64,7 @@ export default Vue.extend({
         },
     },
 
-    beforeCreate: function() {
+    beforeCreate() {
         const parser = new Parser();
         const x = parser.parse();
         const errors = parser.getErrorsFormatted(x);
