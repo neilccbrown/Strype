@@ -47,8 +47,8 @@ export default Vue.extend({
             let forbiddenTypes = (store.state.currentFrame.caretPosition === CaretPosition.body) ? 
                 currentFrame.frameType.forbiddenChildrenTypes :
                 ((currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes : store.state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes) ;
-            console.log("Forbidden: ");
-            console.log(forbiddenTypes);
+         
+         
             //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
             //and we validate "else" if there is not already an else in the joint frame root or elif following in a if joint structure
             let joinedTypes = (store.state.currentFrame.caretPosition === CaretPosition.below) ?
@@ -66,8 +66,6 @@ export default Vue.extend({
                     joinedTypes = joinedTypes.filter((type) => type !== ElseDefinition.type);
                     //and forbid every frame (we are in an intermediate joint, no frame should be added except Elif)
                     forbiddenTypes = Object.values(AllFrameTypesIdentifier);
-                    console.log("Forbidden 2: ");
-                    console.log(forbiddenTypes);
                 }
             }
             
