@@ -11,6 +11,12 @@
                 v-bind:frameId="id"
                 v-bind:caretVisibility="caretVisibility"
             />
+            <div 
+                class="frame-bottom-selector"
+                v-on:click.self="toggleCaret($event)"
+            >
+            </div>
+            <Caret v-show="caretVisibility===caretPosition.below" />
             <Frame
                 v-for="frame in jointframes"
                 v-bind:key="frame.frameType.type + '-id:' + frame.id"
@@ -18,14 +24,9 @@
                 v-bind:frameType="frame.frameType"
                 v-bind:isJointFrame="true"
                 v-bind:allowChildren="frame.frameType.allowChildren"
+                v-bind:caretVisibility="frame.caretVisibility"
             />
         </div>
-        <div
-            class="frame-bottom-selector"
-            v-on:click.self="toggleCaret($event)"
-        >
-        </div>
-        <Caret v-show="caretVisibility===caretPosition.below" />
     </div>
 </template>
 
@@ -37,7 +38,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
-import { FramesDefinitions, DefaultFramesDefinition, CaretPosition } from "@/types/types";
+import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -51,7 +52,7 @@ export default Vue.extend({
         Caret,
     },
 
-    beforeCreate: function() {
+    beforeCreate() {
         const components = this.$options.components;
         if (components !== undefined) {
             components.FrameBody = require("./FrameBody.vue").default;
@@ -65,21 +66,16 @@ export default Vue.extend({
             type: Object,
             default: () => DefaultFramesDefinition,
         }, //Type of the Frame
-        parent: Number, //ID of the parent
         isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
         caretVisibility: String,
         allowChildren: Boolean,
     },
 
     computed: {
-        // Frame label holds the initialisation object for the frame
-        // frameLabel: function() {
-        //     return this.$store.getters.getLabelsByName(this.frameType);
-        // },
-        jointframes: function() {
+        jointframes(): FrameObject[] {
             return store.getters.getJointFramesForFrameId(this.id);
         },
-        frameStyle: function() {
+        frameStyle(): Record<string, string> {
             return this.isJointFrame === true
                 ? {}
                 : {
@@ -93,16 +89,16 @@ export default Vue.extend({
                 };
         },
         // Needed in order to use the `CaretPosition` type in the v-show
-        caretPosition: function(){
+        caretPosition(): typeof CaretPosition {
             return CaretPosition;
         },
     },
 
     methods: {
-        toggleCaret: function (event: MouseEvent) {
+        toggleCaret(): void {
             store.dispatch(
                 "toggleCaret",
-                {id:this.id, caretPosition: CaretPosition.below}
+                {id:this.$props.id, caretPosition: CaretPosition.below}
             );
         },
     },
