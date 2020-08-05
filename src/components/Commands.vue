@@ -24,7 +24,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import FrameCommand from "@/components/FrameCommand.vue";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
-import { FrameCommandDef, CaretPosition, FrameObject } from "../types/types";
+import { FrameCommandDef, CaretPosition, FrameObject } from "@/types/types";
 
 export default Vue.extend({
     name: "Commands",

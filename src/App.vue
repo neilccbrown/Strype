@@ -26,7 +26,7 @@ import Vue from "vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
-import { FrameObject } from "./types/types";
+import { FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -40,7 +40,7 @@ export default Vue.extend({
         Commands,
     },
 
-    data () {
+    data() {
         return {
             newFrameType: "",
             currentParentId: 0,
