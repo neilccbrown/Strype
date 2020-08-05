@@ -1,7 +1,7 @@
-import { FrameCommand, Definitions } from "@/types/types";
+import { FrameCommandDef, Definitions } from "@/types/types";
 
 
-const frameCommandsDefs: {[id: string]: FrameCommand} = {
+const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
     "i": {
         type: Definitions.IfDefinition,
         description: "if",
@@ -32,12 +32,6 @@ const frameCommandsDefs: {[id: string]: FrameCommand} = {
         description: "variable assignment",
         shortcut: "=",
     },
-    // " ": {
-    //     type: Definitions.IfDefinition,
-    //     description: "empty statement",
-    //     shortcut: " ",
-    //     symbol: "⌴"//"␣"
-    // },
     "r": {
         type: Definitions.ReturnDefinition,
         description: "return",

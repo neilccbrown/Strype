@@ -26,6 +26,7 @@ import Vue from "vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
+import { FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -39,34 +40,31 @@ export default Vue.extend({
         Commands,
     },
 
-    data: function () {
+    data() {
         return {
             newFrameType: "",
             currentParentId: 0,
         };
     },
 
-    computed: {
-        containerFrames: 
-            // gets the container frames objects which are in the root
-            function (this) {
-                return store.getters.getFramesForParentId(0);
-            },
+    computed: {            
+        // gets the container frames objects which are in the root
+        containerFrames(): FrameObject[] {
+            return store.getters.getFramesForParentId(0);
+        },
 
         //this helps for debugging purposes --> printing the state in the screen
-        mymodel: {
-            get() {
-                return JSON.stringify(
-                    store.getters.getFrameObjects(),
-                    null,
-                    "  "
-                );
-            },
+        mymodel(): string {
+            return JSON.stringify(
+                store.getters.getFrameObjects(),
+                null,
+                "  "
+            );
         },
     },
     
     methods: {
-        toggleEdition: function () {
+        toggleEdition(): void {
             store.commit("toggleEditFlag");
         },
         
