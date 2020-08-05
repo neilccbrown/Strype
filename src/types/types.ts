@@ -91,7 +91,7 @@ const StandardFrameTypesIdentifiers = {
     varassign: "varassign",
 }
 
-const AllFrameTypesIdentifier = {
+export const AllFrameTypesIdentifier = {
     ...ImportFrameTypesIdentifiers,
     ...FuncDefIdentifiers,
     ...StandardFrameTypesIdentifiers,
@@ -177,6 +177,7 @@ export const ElseIfDefinition: FramesDefinitions = {
         { label: "elif", slot: true },
         { label: ":", slot: false },
     ],
+    jointFrameTypes: [StandardFrameTypesIdentifiers.elseif, StandardFrameTypesIdentifiers.else],
 };
 
 export const ElseDefinition: FramesDefinitions = {
