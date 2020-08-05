@@ -93,7 +93,7 @@ export default new Vuex.Store({
             // Adding a joint frame
             if (state.currentFrame.caretPosition === CaretPosition.below) {
                 //calculate index in parent list
-                const childToCheck = (state.frameObjects[state.currentFrame.id].jointParentId > 0) ?
+                const childToCheck = (state.frameObjects[state.currentFrame.id].jointParentId > 0 && newFrame.jointParentId == 0) ?
                     state.frameObjects[state.currentFrame.id].jointParentId :
                     state.currentFrame.id;
                 indexToAdd = listToUpdate.indexOf(childToCheck) + 1;
