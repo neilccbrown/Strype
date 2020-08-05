@@ -24,7 +24,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import FrameCommand from "@/components/FrameCommand.vue";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
-import { FrameCommandDef } from "../types/types";
+import { FrameCommandDef, CaretPosition, FrameObject } from "../types/types";
 
 export default Vue.extend({
     name: "Commands",
@@ -36,9 +36,19 @@ export default Vue.extend({
 
     computed: {
         frameCommands(): Record<string, FrameCommandDef> {
-            const currentFrameType = store.getters.getCurrentFrameObject().frameType;
-            const forbiddenTypes = (currentFrameType !== undefined) ? currentFrameType.forbiddenChildrenTypes : [];
-            const joinedTypes = (currentFrameType !== undefined) ? currentFrameType.jointFrameTypes : [];
+            const currentFrame  = store.getters.getCurrentFrameObject() as FrameObject;
+            
+            //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
+            const forbiddenTypes = (store.state.currentFrame.caretPosition === CaretPosition.body) ? 
+                currentFrame.frameType.forbiddenChildrenTypes :
+                ((currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes : store.state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes) ;
+            
+            //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
+            const joinedTypes = (store.state.currentFrame.caretPosition === CaretPosition.below) ?
+                (currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId].frameType.jointFrameTypes : currentFrame.frameType.jointFrameTypes : 
+                [];
+
+            //remove the commands that are forbidden and not defined as joint frames
             const filteredCommands = { ...frameCommandsDefs.FrameCommandsDefs};
             for (const frameType in frameCommandsDefs.FrameCommandsDefs) {
                 if(forbiddenTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type) 
@@ -67,15 +77,26 @@ export default Vue.extend({
                 );
 
             }
-            else if (
-                store.state.isEditing === false &&
-                this.frameCommands[event.key] !== undefined
-            ) {
-                //add the frame in the editor
-                store.dispatch(
-                    "addFrameWithCommand",
-                    this.frameCommands[event.key].type
-                );
+            else if (store.state.isEditing === false) {
+                switch(event.key){
+                case "Delete" :
+                case "Backspace":
+                    //delete a frame
+                    store.dispatch(
+                        "deleteCurrentFrame",
+                        event.key
+                    );
+                    break;
+                default:
+                    //add the frame in the editor if allowed otherwise, do nothing
+                    if(this.frameCommands[event.key] !== undefined){
+                        store.dispatch(
+                            "addFrameWithCommand",
+                            this.frameCommands[event.key].type                
+                        );
+                    }
+               
+                }                
             }
         },
     },
