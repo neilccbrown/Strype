@@ -5,20 +5,27 @@
             <span class="frame-container-label-span" v-on:click.self="toggleCaret($event)">{{containerLabel}}</span>
         </div>
 
-        <Caret v-show="caretVisibility===caretPosition.body" />
-        
         <div :style="containerStyle">
+            <Caret v-show="caretVisibility===caretPosition.body" />
+
             <Draggable
-                v-model="frames" group="a" draggable=".frame" v-on:change="handleDragAndDrop($event)">
-                    <Frame 
-                        v-for="frame in frames" 
-                        v-bind:key="frame.frameType.type + '-id:' + frame.id"
-                        v-bind:id="frame.id"
-                        v-bind:frameType="frame.frameType"
-                        v-bind:isJointFrame="false"
-                        v-bind:allowChildren="frame.frameType.allowChildren"
-                        v-bind:caretVisibility="frame.caretVisibility"
-                        class="frame" />
+                v-model="frames" 
+                :group="draggableGroup"
+                v-on:change="handleDragAndDrop($event)"
+                animation="200"
+                v-bind:key="'Draggagle-'+this.id"
+                draggable=".frame"
+            >
+                <Frame 
+                    v-for="frame in frames" 
+                    v-bind:key="frame.frameType.type + '-id:' + frame.id"
+                    v-bind:id="frame.id"
+                    v-bind:frameType="frame.frameType"
+                    v-bind:isJointFrame="false"
+                    v-bind:allowChildren="frame.frameType.allowChildren"
+                    v-bind:caretVisibility="frame.caretVisibility"
+                    class="frame" 
+                />
             </Draggable>
         </div>
     </div>
@@ -33,7 +40,7 @@ import Frame from "@/components/Frame.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject } from "@/types/types";
+import { CaretPosition, FrameObject, DraggableGroupTypes } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -74,10 +81,15 @@ export default Vue.extend({
             // Event handlers call mutations which change the state
             },
         },
+
+        draggableGroup(): DraggableGroupTypes {
+            return store.getters.getDraggableGroupById(this.$props.id); 
+        },
+        
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
-        }, 
+        },
     },
 
     methods: {

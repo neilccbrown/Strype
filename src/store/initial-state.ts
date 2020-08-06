@@ -136,7 +136,7 @@ const initialState: EditorFrameObjects = {
         id: 12,
         parentId: 8,
         childrenIds: [],
-        jointParentId: -1,
+        jointParentId: 1,
         jointFrameIds: [],
         contentDict: {0: "print (\"test C\")"},
         caretVisibility: CaretPosition.none,
@@ -156,7 +156,7 @@ const initialState: EditorFrameObjects = {
         id: 13,
         parentId: 9,
         childrenIds: [],
-        jointParentId: -1,
+        jointParentId: 0,
         jointFrameIds: [],
         contentDict: {0: "print (\"test B\" + str(val))"},
         caretVisibility: CaretPosition.none,
@@ -176,11 +176,12 @@ const initialState: EditorFrameObjects = {
         id: 14,
         parentId: 10,
         childrenIds: [],
-        jointParentId: -1,
+        jointParentId: 0,
         jointFrameIds: [],
         contentDict: {0: "print(\"You will never get here :)\")"},
         caretVisibility: CaretPosition.none,
     },
+
 };
 
 export default initialState;

@@ -32,12 +32,6 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         description: "variable assignment",
         shortcut: "=",
     },
-    " ": {
-        type: Definitions.EmptyDefinition,
-        description: "empty statement",
-        shortcut: " ",
-        symbol: "⌴",//"␣"
-    },
     "r": {
         type: Definitions.ReturnDefinition,
         description: "return",

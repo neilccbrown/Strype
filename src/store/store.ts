@@ -78,6 +78,9 @@ export default new Vuex.Store({
         getCurrentFrameObject: (state) => () => {
             return state.frameObjects[state.currentFrame.id];
         },
+        getDraggableGroupById: (state) => (id: number) => {
+            return state.frameObjects[id].frameType.draggableGroup;
+        },
     },
 
     mutations: {
@@ -105,7 +108,6 @@ export default new Vuex.Store({
                 0,
                 newFrame.id
             );
-
 
             // Add the new frame to the list
             // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
@@ -312,6 +314,15 @@ export default new Vuex.Store({
 
                         // If the new current frame allows children go to its body, else to its bottom
                         newPosition = (state.frameObjects[newId].frameType.allowChildren)? CaretPosition.body : CaretPosition.below;
+                    }
+                    // If that's the content of a container, go to the next container if possible (body)
+                    else if(currentFrame.parentId < 0){
+                        const containers = state.frameObjects[0].childrenIds;
+                        const indexOfCurrentContainer = containers.indexOf(currentFrame.parentId);
+                        if(indexOfCurrentContainer + 1 < containers.length) {
+                            newId = containers[indexOfCurrentContainer + 1];
+                            newPosition = CaretPosition.body;
+                        }
                     }
                     // If that's the content of a container, go to the next container if possible (body)
                     else if(currentFrame.parentId < 0){
