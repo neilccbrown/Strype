@@ -82,13 +82,8 @@ export default Vue.extend({
             },
         },
 
-        draggableGroup: {
-            get(): DraggableGroupTypes {
-                return store.getters.getDraggableGroupById(this.$props.id);
-            },
-            set(): void {
-                // Nothing to be done here.
-            },
+        draggableGroup(): DraggableGroupTypes {
+            return store.getters.getDraggableGroupById(this.$props.id); 
         },
         
         // Needed in order to use the `CaretPosition` type in the v-show
