@@ -219,7 +219,7 @@ export const WhileDefinition: FramesDefinitions = {
 export const TryDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.try,
-    labels: [{ label: "try:", slot: true }],
+    labels: [{ label: "try:", slot: false }],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "#EA0000",
 };
@@ -270,7 +270,7 @@ export const EmptyDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.empty,
     labels: [{ label: "", slot: true }],
-    colour: "#FFFFFF",
+    colour: "#220983",
 };
 
 export const ReturnDefinition: FramesDefinitions = {

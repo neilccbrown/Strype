@@ -26,7 +26,6 @@ import Vue from "vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
-import Parser from "./parser/parser";
 import { FrameObject } from "@/types/types";
 
 //////////////////////
@@ -62,14 +61,6 @@ export default Vue.extend({
                 "  "
             );
         },
-    },
-
-    beforeCreate() {
-        const parser = new Parser();
-        const x = parser.parse();
-        const errors = parser.getErrorsFormatted(x);
-        console.log(errors);
-        console.log(x);
     },
 
     methods: {

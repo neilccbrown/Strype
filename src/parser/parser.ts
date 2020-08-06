@@ -1,4 +1,4 @@
-import { FrameObject, IfDefinition, WhileDefinition, ForDefinition, FuncDefDefinition, TryDefinition, WithDefinition, EmptyDefinition, VarAssignDefinition, ReturnDefinition, CommentDefinition, FromImportDefinition, ImportDefinition, FrameContainersDefinitions } from "@/types/types";
+import { FrameObject, IfDefinition, WhileDefinition, ForDefinition, FuncDefDefinition, TryDefinition, WithDefinition, EmptyDefinition, VarAssignDefinition, ReturnDefinition, CommentDefinition, FromImportDefinition, ImportDefinition, FrameContainersDefinitions, ElseIfDefinition, ElseDefinition, ExceptDefinition, FinallyDefinition } from "@/types/types";
 import store from "@/store/store";
 import { TPyParser, ErrorInfo } from "tigerpython-parser";
 
@@ -10,6 +10,39 @@ export default class Parser {
 
         output +=
             `if ${frame.contentDict[0]}:\n` +
+            this.parseFrames(
+                store.getters.getFramesForParentId(frame.id),
+                indent + INDENT
+            );
+
+        //joint frames
+        output += 
+            this.parseFrames(
+                store.getters.getJointFramesForFrameId(frame.id),
+                indent
+            );
+
+        return output;
+    }
+
+    private parseElseIf(frame: FrameObject, indent: string): string {
+        let output = indent;
+
+        output +=
+            `elif ${frame.contentDict[0]}:\n` +
+            this.parseFrames(
+                store.getters.getFramesForParentId(frame.id),
+                indent + INDENT
+            );
+
+        return output;
+    }
+
+    private parseElse(frame: FrameObject, indent: string): string {
+        let output = indent;
+
+        output +=
+            "else:\n" +
             this.parseFrames(
                 store.getters.getFramesForParentId(frame.id),
                 indent + INDENT
@@ -39,6 +72,12 @@ export default class Parser {
                 indent + INDENT
             );
 
+        //joint frames
+        output += 
+          this.parseFrames(
+              store.getters.getJointFramesForFrameId(frame.id),
+              indent
+          )    
         return output;
     }
 
@@ -60,6 +99,43 @@ export default class Parser {
             store.getters.getFramesForParentId(frame.id),
             indent + INDENT
         );
+
+        //joint frames
+        output += 
+            this.parseFrames(
+                store.getters.getJointFramesForFrameId(frame.id),
+                indent
+            )    
+
+        return output;
+    }
+
+    private parseExcept(frame: FrameObject, indent: string): string {
+        let output = indent;
+
+        const exceptDetail = (frame.contentDict[0] !== undefined) ?
+            " " + frame.contentDict[0]:
+            "";
+
+        output +=
+            `except${exceptDetail}:\n` +
+            this.parseFrames(
+                store.getters.getFramesForParentId(frame.id),
+                indent + INDENT
+            );
+
+        return output;
+    }
+
+    private parseFinally(frame: FrameObject, indent: string): string {
+        let output = indent;
+
+        output +=
+            "finally:\n" +
+            this.parseFrames(
+                store.getters.getFramesForParentId(frame.id),
+                indent + INDENT
+            );
 
         return output;
     }
@@ -85,6 +161,18 @@ export default class Parser {
                 indent
             );
             break;
+        case ElseIfDefinition.type:
+            output += this.parseElseIf(
+                block,
+                indent
+            );
+            break;
+        case ElseDefinition.type:
+            output += this.parseElse(
+                block,
+                indent
+            );
+            break;
         case WhileDefinition.type:
             output += this.parseWhile(
                 block,
@@ -105,6 +193,18 @@ export default class Parser {
             break;
         case TryDefinition.type:
             output += this.parseTry(
+                block,
+                indent
+            );
+            break;
+        case ExceptDefinition.type:
+            output += this.parseExcept(
+                block,
+                indent
+            );
+            break;
+        case FinallyDefinition.type:
+            output += this.parseFinally(
                 block,
                 indent
             );
