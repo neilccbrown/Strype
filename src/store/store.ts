@@ -189,7 +189,7 @@ export default new Vuex.Store({
         },
 
         updateFramesOrder(state, data) {
-            const eventType = data.event.keys[0];
+            const eventType = Object.keys(data.event)[0];
 
             if (eventType === "added") {
                 // Add the id to the parent's childrenId list
