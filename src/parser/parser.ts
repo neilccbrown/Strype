@@ -1,4 +1,4 @@
-import { FrameObject } from "@/types/types";
+import { FrameObject, IfDefinition, WhileDefinition, ForDefinition, FuncDefDefinition, TryDefinition, WithDefinition, EmptyDefinition, VarAssignDefinition, ReturnDefinition, CommentDefinition, FromImportDefinition, ImportDefinition, FrameContainersDefinitions } from "@/types/types";
 import store from "@/store/store";
 import { TPyParser, ErrorInfo } from "tigerpython-parser";
 
@@ -78,38 +78,38 @@ export default class Parser {
     private parseBlock(block: FrameObject, indent: string): string {
         let output = "";
 
-        switch (block.frameType?.type) {
-        case "if":
+        switch (block.frameType.type) {
+        case IfDefinition.type:
             output += this.parseIf(
                 block,
                 indent
             );
             break;
-        case "while":
+        case WhileDefinition.type:
             output += this.parseWhile(
                 block,
                 indent
             );
             break;
-        case "for":
+        case ForDefinition.type:
             output += this.parseFor(
                 block,
                 indent
             );
             break;
-        case "funcdef":
+        case FuncDefDefinition.type:
             output += this.parseFuncDef(
                 block,
                 indent
             );
             break;
-        case "try":
+        case TryDefinition.type:
             output += this.parseTry(
                 block,
                 indent
             );
             break;
-        case "with":
+        case WithDefinition.type:
             output += this.parseWith(
                 block,
                 indent
@@ -123,23 +123,23 @@ export default class Parser {
     private parseStatement(statement: FrameObject, indent = ""): string {
         let output = indent;
 
-        switch (statement.frameType?.type) {
-        case "empty":
+        switch (statement.frameType.type) {
+        case EmptyDefinition.type:
             output += `${statement.contentDict[0]}\n`;
             break;
-        case "varassign":
+        case VarAssignDefinition.type:
             output += `${statement.contentDict[0]} = ${statement.contentDict[1]}\n`;
             break;
-        case "return":
+        case ReturnDefinition.type:
             output += `return ${statement.contentDict[0]}\n`
             break;
-        case "comment":
+        case CommentDefinition.type:
             output += `# ${statement.contentDict[0]}\n`
             break;
-        case "fromimport":
+        case FromImportDefinition.type:
             output += `from ${statement.contentDict[0]} import ${statement.contentDict[1]}\n`
             break;
-        case "import":
+        case ImportDefinition.type:
             output += `import ${statement.contentDict[0]}\n`
             break;
         }
@@ -150,13 +150,17 @@ export default class Parser {
     private parseFrames(codeUnits: FrameObject[], indent = ""): string {
         let output = "";
 
+        //if the current frame is a container, we don't parse it as such
+        //but parse directly its chidren (frames that it contains)
         for (const frame of codeUnits) {
-            output += frame.frameType?.allowChildren
-                ? this.parseBlock(
-                    frame,
-                    indent
-                )
-                : this.parseStatement(
+            output += frame.frameType.allowChildren ?
+                (Object.values(FrameContainersDefinitions).includes(frame.frameType)) ? 
+                    this.parseFrames(store.getters.getFramesForParentId(frame.id)) :
+                    this.parseBlock(
+                        frame,
+                        indent
+                    ) : 
+                this.parseStatement(
                     frame,
                     indent
                 );
