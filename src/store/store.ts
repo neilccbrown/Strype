@@ -51,6 +51,9 @@ export default new Vuex.Store({
         getCurrentFrameObject: (state) => () => {
             return state.frameObjects[state.currentFrame.id];
         },
+        getDraggableGroupById: (state) => (id: number) => {
+            return state.frameObjects[id].frameType.draggableGroup;
+        },
     },
 
     mutations: {
@@ -225,7 +228,6 @@ export default new Vuex.Store({
                     // If that's the content of a container, go to the next container if possible (body)
                     else if(currentFrame.parentId < 0){
                         const containers = state.frameObjects[0].childrenIds;
-                        console.log(containers)
                         const indexOfCurrentContainer = containers.indexOf(currentFrame.parentId);
                         if(indexOfCurrentContainer + 1 < containers.length) {
                             newId = containers[indexOfCurrentContainer + 1];

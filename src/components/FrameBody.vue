@@ -3,13 +3,16 @@
         class="frame-body-container"
         v-on:click.self="toggleCaret()"
     >
+        <Caret v-show="caretVisibility===caretPosition.body" />
+
         <Draggable
             v-model="frames"
-            group="a"
-            draggable=".frame"
+            group="code"
             v-on:change="handleDragAndDrop($event)"
+            animation="200"
+            v-bind:key="'Draggagle-'+this.frameId"
+            draggable=".frame"
         >
-            <Caret v-show="caretVisibility===caretPosition.body" />
             <Frame
                 v-for="frame in frames"
                 v-bind:key="frame.frameType.type  + '-id:' + frame.id"
@@ -33,7 +36,7 @@ import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import Caret from "@/components/Caret.vue";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject } from "@/types/types";
+import { CaretPosition, FrameObject, DraggableGroupTypes } from "@/types/types";
 
 
 //////////////////////
@@ -64,6 +67,15 @@ export default Vue.extend({
             set(): void {
                 // Nothing to be done here.
                 // Event handlers call mutations which change the state
+            },
+        },
+
+        draggableGroup: {
+            get(): DraggableGroupTypes {
+                return store.getters.getDraggableGroupById(this.$props.frameId);
+            },
+            set(): void {
+                // Nothing to be done here.
             },
         },
 
