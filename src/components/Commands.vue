@@ -29,7 +29,7 @@ import FrameCommand from "@/components/FrameCommand.vue";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
 import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { FrameCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, ElseDefinition, IfDefinition, TryDefinition, FinallyDefinition, ExceptDefinition, ElseIfDefinition } from "@/types/types";
+import { FrameCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, ElseDefinition, IfDefinition, TryDefinition, FinallyDefinition, ExceptDefinition } from "@/types/types";
 
 export default Vue.extend({
     name: "Commands",
@@ -82,25 +82,23 @@ export default Vue.extend({
                 if(rootJointFrame.jointFrameIds.length > 0) {
                     const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
                         || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
-                    const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === FinallyDefinition) !== undefined);
-                    const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ElseDefinition) !== undefined);
-                    const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ExceptDefinition) !== undefined);
-                    const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
-
+                  
                     //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
                     if(isCurrentFrameIntermediateJointFrame ) {
                         forbiddenTypes = Object.values(AllFrameTypesIdentifier);
                     }
                   
-                    switch(rootJointFrame.frameType){
-                    case IfDefinition:
+                    if(rootJointFrame.frameType === IfDefinition){                    
                         if(isCurrentFrameIntermediateJointFrame) {
                             joinedTypes = joinedTypes.filter((type) => type !== ElseDefinition.type);
                         }
-                        break;
-                    case TryDefinition:
-                        switch(currentFrame.frameType){
-                        case TryDefinition:
+                    }
+                    else if (rootJointFrame.frameType === TryDefinition){
+                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === FinallyDefinition) !== undefined);
+                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ElseDefinition) !== undefined);
+                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ExceptDefinition) !== undefined);
+
+                        if(currentFrame.frameType === TryDefinition){
                             if(hasElse && !hasFinally){
                                 joinedTypes.splice(
                                     joinedTypes.indexOf(FinallyDefinition.type),
@@ -117,9 +115,10 @@ export default Vue.extend({
                                     }
                                 });
                             }
-                            break;
-                        case ExceptDefinition:
+                        }
+                        else if( currentFrame.frameType === ExceptDefinition){
                             //if this isn't the last expect in the joint frames structure, we need to know what is following it.
+                            const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
                             if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
                                 if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]].frameType === ExceptDefinition){
                                     uniqueJointFrameTypes.forEach((frameType) => {
@@ -138,13 +137,7 @@ export default Vue.extend({
                                     );                                   
                                 }
                             }
-                            break
-                        default:
-                            break;
                         }
-                        break;
-                    default:
-                        break;
                     }
                 }
 
