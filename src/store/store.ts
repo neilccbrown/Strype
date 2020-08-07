@@ -324,15 +324,6 @@ export default new Vuex.Store({
                             newPosition = CaretPosition.body;
                         }
                     }
-                    // If that's the content of a container, go to the next container if possible (body)
-                    else if(currentFrame.parentId < 0){
-                        const containers = state.frameObjects[0].childrenIds;
-                        const indexOfCurrentContainer = containers.indexOf(currentFrame.parentId);
-                        if(indexOfCurrentContainer + 1 < containers.length) {
-                            newId = containers[indexOfCurrentContainer + 1];
-                            newPosition = CaretPosition.body;
-                        }
-                    }
                     else {
                         newId = (parentId > 0)? parentId : currentFrame.id;
 

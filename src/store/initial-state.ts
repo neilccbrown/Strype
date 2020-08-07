@@ -136,7 +136,7 @@ const initialState: EditorFrameObjects = {
         id: 12,
         parentId: 8,
         childrenIds: [],
-        jointParentId: 1,
+        jointParentId: 0,
         jointFrameIds: [],
         contentDict: {0: "print (\"test C\")"},
         caretVisibility: CaretPosition.none,
