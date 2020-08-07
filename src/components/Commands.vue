@@ -29,7 +29,7 @@ import FrameCommand from "@/components/FrameCommand.vue";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
 import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { FrameCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, ElseDefinition, IfDefinition } from "@/types/types";
+import { FrameCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, ElseDefinition, IfDefinition, TryDefinition, FinallyDefinition, ExceptDefinition, ElseIfDefinition } from "@/types/types";
 
 export default Vue.extend({
     name: "Commands",
@@ -50,23 +50,104 @@ export default Vue.extend({
          
          
             //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
-            //and we validate "else" if there is not already an else in the joint frame root or elif following in a if joint structure
             let joinedTypes = (store.state.currentFrame.caretPosition === CaretPosition.below) ?
                 [...currentFrame.frameType.jointFrameTypes] : 
                 [];
-                
+
+            //update the list of joint frames depending on where we are in the joint frames structure to respect the rules
             if(joinedTypes.length > 0){
                 const rootJointFrame = (currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId] : currentFrame
-                if(rootJointFrame.jointFrameIds.filter((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ElseDefinition).length > 0){
-                    joinedTypes = joinedTypes.filter((type) => type !== ElseDefinition.type);
+
+                //Remove "finally" in joint frames allwed after "else" if we are in anything else than in a "try"
+                if(rootJointFrame.frameType !== TryDefinition && joinedTypes.includes(FinallyDefinition.type)){
+                    joinedTypes.splice(
+                        joinedTypes.indexOf(FinallyDefinition.type),
+                        1
+                    );
                 }
-                //specific case of else in an if statement: do not add before an elif (= cant add else if not in last position in joint frames)
-                if(rootJointFrame.frameType === IfDefinition
-                    &&  rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length - 1) {
-                    joinedTypes = joinedTypes.filter((type) => type !== ElseDefinition.type);
-                    //and forbid every frame (we are in an intermediate joint, no frame should be added except Elif)
-                    forbiddenTypes = Object.values(AllFrameTypesIdentifier);
+
+                //remove joint frames that can ony be included once if already in the current joint frames structure
+                const uniqueJointFrameTypes = [ElseDefinition, FinallyDefinition];
+                uniqueJointFrameTypes.forEach((frameDef) => {
+                    if(joinedTypes.includes(frameDef.type) &&
+                        rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === frameDef) !== undefined){
+                        joinedTypes.splice(
+                            joinedTypes.indexOf(frameDef.type),
+                            1
+                        );
+                    }
+                });
+                
+                //ensure the intermediate following joint frames orders are respected: if > elseif > else and try > except > else > finally
+                if(rootJointFrame.jointFrameIds.length > 0) {
+                    const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
+                        || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
+                    const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === FinallyDefinition) !== undefined);
+                    const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ElseDefinition) !== undefined);
+                    const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ExceptDefinition) !== undefined);
+                    const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
+
+                    //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
+                    if(isCurrentFrameIntermediateJointFrame ) {
+                        forbiddenTypes = Object.values(AllFrameTypesIdentifier);
+                    }
+                  
+                    switch(rootJointFrame.frameType){
+                    case IfDefinition:
+                        if(isCurrentFrameIntermediateJointFrame) {
+                            joinedTypes = joinedTypes.filter((type) => type !== ElseDefinition.type);
+                        }
+                        break;
+                    case TryDefinition:
+                        switch(currentFrame.frameType){
+                        case TryDefinition:
+                            if(hasElse && !hasFinally){
+                                joinedTypes.splice(
+                                    joinedTypes.indexOf(FinallyDefinition.type),
+                                    1
+                                );
+                            }
+                            if(hasExcept){
+                                uniqueJointFrameTypes.forEach((frameType) => {
+                                    if(joinedTypes.includes(frameType.type)){
+                                        joinedTypes.splice(
+                                            joinedTypes.indexOf(frameType.type),
+                                            1
+                                        );
+                                    }
+                                });
+                            }
+                            break;
+                        case ExceptDefinition:
+                            //if this isn't the last expect in the joint frames structure, we need to know what is following it.
+                            if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
+                                if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]].frameType === ExceptDefinition){
+                                    uniqueJointFrameTypes.forEach((frameType) => {
+                                        if(joinedTypes.includes(frameType.type)){
+                                            joinedTypes.splice(
+                                                joinedTypes.indexOf(frameType.type),
+                                                1
+                                            );
+                                        }
+                                    }); 
+                                }
+                                else if(hasElse){
+                                    joinedTypes.splice(
+                                        joinedTypes.indexOf(ElseDefinition.type),
+                                        1
+                                    );                                   
+                                }
+                            }
+                            break
+                        default:
+                            break;
+                        }
+                        break;
+                    default:
+                        break;
+                    }
                 }
+
             }
             
             //remove the commands that are forbidden and not defined as joint frames

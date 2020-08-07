@@ -94,20 +94,24 @@ const FuncDefIdentifiers = {
     funcdef: "funcdef",
 }
 
+export const JointFrameIdentifiers = {
+    elseif: "elseif",
+    else: "else",
+    except: "except",
+    finally: "finally",
+}
+
 const StandardFrameTypesIdentifiers = {
     ...CommmentFrameTypesIdentifier,
     empty: "",
     if: "if",
-    elseif: "elseif",
-    else: "else",
     for: "for",
     while: "while",
     try: "try",
-    except: "except",
-    finally: "finally",
     with: "with",
     return: "return",
     varassign: "varassign",
+    ...JointFrameIdentifiers,
 }
 
 export const AllFrameTypesIdentifier = {
@@ -211,6 +215,7 @@ export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.else,
     labels: [{ label: "else:", slot: false }],
+    jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
 };
 
 export const ForDefinition: FramesDefinitions = {
@@ -250,6 +255,7 @@ export const ExceptDefinition: FramesDefinitions = {
         { label: "except", slot: true },
         { label: ":", slot: false },
     ],
+    jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "",
 };
 
