@@ -50,18 +50,18 @@ export default Vue.extend({
          
          
             //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
-            let joinedTypes = (store.state.currentFrame.caretPosition === CaretPosition.below) ?
+            let jointTypes = (store.state.currentFrame.caretPosition === CaretPosition.below) ?
                 [...currentFrame.frameType.jointFrameTypes] : 
                 [];
 
             //update the list of joint frames depending on where we are in the joint frames structure to respect the rules
-            if(joinedTypes.length > 0){
+            if(jointTypes.length > 0){
                 const rootJointFrame = (currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId] : currentFrame
 
                 //Remove "finally" in joint frames allwed after "else" if we are in anything else than in a "try"
-                if(rootJointFrame.frameType !== TryDefinition && joinedTypes.includes(FinallyDefinition.type)){
-                    joinedTypes.splice(
-                        joinedTypes.indexOf(FinallyDefinition.type),
+                if(rootJointFrame.frameType !== TryDefinition && jointTypes.includes(FinallyDefinition.type)){
+                    jointTypes.splice(
+                        jointTypes.indexOf(FinallyDefinition.type),
                         1
                     );
                 }
@@ -69,10 +69,10 @@ export default Vue.extend({
                 //remove joint frames that can ony be included once if already in the current joint frames structure
                 const uniqueJointFrameTypes = [ElseDefinition, FinallyDefinition];
                 uniqueJointFrameTypes.forEach((frameDef) => {
-                    if(joinedTypes.includes(frameDef.type) &&
+                    if(jointTypes.includes(frameDef.type) &&
                         rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === frameDef) !== undefined){
-                        joinedTypes.splice(
-                            joinedTypes.indexOf(frameDef.type),
+                        jointTypes.splice(
+                            jointTypes.indexOf(frameDef.type),
                             1
                         );
                     }
@@ -90,7 +90,7 @@ export default Vue.extend({
                   
                     if(rootJointFrame.frameType === IfDefinition){                    
                         if(isCurrentFrameIntermediateJointFrame) {
-                            joinedTypes = joinedTypes.filter((type) => type !== ElseDefinition.type);
+                            jointTypes = jointTypes.filter((type) => type !== ElseDefinition.type);
                         }
                     }
                     else if (rootJointFrame.frameType === TryDefinition){
@@ -100,16 +100,16 @@ export default Vue.extend({
 
                         if(currentFrame.frameType === TryDefinition){
                             if(hasElse && !hasFinally){
-                                joinedTypes.splice(
-                                    joinedTypes.indexOf(FinallyDefinition.type),
+                                jointTypes.splice(
+                                    jointTypes.indexOf(FinallyDefinition.type),
                                     1
                                 );
                             }
                             if(hasExcept){
                                 uniqueJointFrameTypes.forEach((frameType) => {
-                                    if(joinedTypes.includes(frameType.type)){
-                                        joinedTypes.splice(
-                                            joinedTypes.indexOf(frameType.type),
+                                    if(jointTypes.includes(frameType.type)){
+                                        jointTypes.splice(
+                                            jointTypes.indexOf(frameType.type),
                                             1
                                         );
                                     }
@@ -122,17 +122,17 @@ export default Vue.extend({
                             if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
                                 if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]].frameType === ExceptDefinition){
                                     uniqueJointFrameTypes.forEach((frameType) => {
-                                        if(joinedTypes.includes(frameType.type)){
-                                            joinedTypes.splice(
-                                                joinedTypes.indexOf(frameType.type),
+                                        if(jointTypes.includes(frameType.type)){
+                                            jointTypes.splice(
+                                                jointTypes.indexOf(frameType.type),
                                                 1
                                             );
                                         }
                                     }); 
                                 }
                                 else if(hasElse){
-                                    joinedTypes.splice(
-                                        joinedTypes.indexOf(ElseDefinition.type),
+                                    jointTypes.splice(
+                                        jointTypes.indexOf(ElseDefinition.type),
                                         1
                                     );                                   
                                 }
@@ -147,7 +147,7 @@ export default Vue.extend({
             const filteredCommands = { ...frameCommandsDefs.FrameCommandsDefs};
             for (const frameType in frameCommandsDefs.FrameCommandsDefs) {
                 if(forbiddenTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type) 
-                    && !joinedTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type)){
+                    && !jointTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type)){
                     delete filteredCommands[frameType];
                 }
             }
