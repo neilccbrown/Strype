@@ -143,9 +143,10 @@ export default new Vuex.Store({
                 }
                 else{
                     //we "replace" the frame to delete by its content in its parent's location
+                    //note: the content is its children and the children of its potential joint frames
                     const frameToDelete = state.frameObjects[payload.frameToDeleteId];
                     const isFrameToDeleteJointFrame = (frameToDelete.jointParentId > 0);
-                    const isFrameToDeleteRootJointFrame = (frameToDelete.frameType.jointFrameTypes.keys.length > 0);
+                    const isFrameToDeleteRootJointFrame = (frameToDelete.jointParentId === 0 && frameToDelete.frameType.jointFrameTypes.length > 0);
                     let parentIdOfFrameToDelete = frameToDelete.parentId; 
                     //if the current frame is a joint frame, we find the "parent": the root of the structure if it's the first joint, the joint before otherwise
                     if (isFrameToDeleteJointFrame) {
@@ -512,13 +513,21 @@ export default new Vuex.Store({
             //use a copy of the siblings (because we may need to alter the list)
             const listOfSiblings = (currentFrame.jointParentId > 0) ? [...state.frameObjects[parentId].jointFrameIds] : [...state.frameObjects[parentId].childrenIds];
             //if the current frame is the root of a joint frame, we need to add its joint frames as immediate siblings
-            if(currentFrame.frameType.jointFrameTypes.length > 0){
+            if(currentFrame.parentId !== 0 && currentFrame.frameType.jointFrameTypes.length > 0){
                 const jointFrames = currentFrame.jointFrameIds;
                 listOfSiblings.splice(
                     listOfSiblings.indexOf(currentFrame.id) + 1,
                     0,
                     ...jointFrames
                 );
+            }
+            //if the current frame is part of a joint frames structure (not the root), we had the next sibling of its joint frame root
+            else if(currentFrame.jointParentId > 0){
+                const listOfJointRootSiblings = state.frameObjects[state.frameObjects[parentId].parentId].childrenIds;
+                const indexOfJointRootInParent = listOfJointRootSiblings.indexOf(parentId);
+                if(indexOfJointRootInParent + 1 < listOfJointRootSiblings.length){
+                    listOfSiblings.push(listOfJointRootSiblings[indexOfJointRootInParent + 1]);
+                }
             }
 
             const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id) ;
