@@ -20,10 +20,20 @@ export interface FrameLabel {
     slot: boolean;
 }
 
+// There are three groups of draggable frames.
+// You can drag from the main code to the body of a method and vice-versa, 
+// but you cannot drag from/to imports or drag method signatures
+export enum DraggableGroupTypes {
+    imports = "imports",
+    code = "code",
+    functionSignatures = "functionSignatures",
+    none = "none",
+}
+
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
-    none = "none"
+    none = "none",
 }
 
 export interface CurrentFrame {
@@ -53,6 +63,7 @@ export interface FramesDefinitions {
     forbiddenChildrenTypes: string[];
     jointFrameTypes: string[];
     colour: string;
+    draggableGroup: DraggableGroupTypes;
 }
 
 // Identifiers of the containers
@@ -104,6 +115,7 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: [],
     jointFrameTypes: [],
     colour: "",
+    draggableGroup: DraggableGroupTypes.none,
 };
 
 export const BlockDefinition: FramesDefinitions = {
@@ -112,17 +124,20 @@ export const BlockDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
         .concat(Object.values(FuncDefIdentifiers))
         .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elseif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
+    draggableGroup: DraggableGroupTypes.code,
 };
 
 export const StatementDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier),
+    draggableGroup: DraggableGroupTypes.code,
 };
 
 // Container frames
 export const RootContainerFrameDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.root,
+    draggableGroup: DraggableGroupTypes.none,
 }
 
 export const ImportsContainerDefinition: FramesDefinitions = {
@@ -134,6 +149,8 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommmentFrameTypesIdentifier.comment),
     colour: "#FFFFF",
+    draggableGroup: DraggableGroupTypes.imports,
+
 }
 
 export const FuncDefContainerDefinition: FramesDefinitions = {
@@ -145,6 +162,8 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommmentFrameTypesIdentifier.comment),
     colour: "#FFFFF",
+    draggableGroup: DraggableGroupTypes.functionSignatures,
+
 }
 
 export const MainFramesContainerDefinition: FramesDefinitions = {
@@ -245,6 +264,7 @@ export const FuncDefDefinition: FramesDefinitions = {
         { label: ")", slot: false },
     ],
     colour: "#0C3DED",
+    draggableGroup: DraggableGroupTypes.functionSignatures,
 };
 
 export const WithDefinition: FramesDefinitions = {
@@ -281,6 +301,7 @@ export const ImportDefinition: FramesDefinitions = {
     type: ImportFrameTypesIdentifiers.import,
     labels: [{ label: "import", slot: true }],
     colour: "#FFFFFF",
+    draggableGroup: DraggableGroupTypes.imports,
 };
 
 export const FromImportDefinition: FramesDefinitions = {
@@ -291,6 +312,7 @@ export const FromImportDefinition: FramesDefinitions = {
         { label: "import", slot: true },
     ],
     colour: "#FFFFFF",
+    draggableGroup: DraggableGroupTypes.imports,
 };
 
 export const CommentDefinition: FramesDefinitions = {

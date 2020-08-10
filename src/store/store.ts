@@ -78,6 +78,9 @@ export default new Vuex.Store({
         getCurrentFrameObject: (state) => () => {
             return state.frameObjects[state.currentFrame.id];
         },
+        getDraggableGroupById: (state) => (id: number) => {
+            return state.frameObjects[id].frameType.draggableGroup;
+        },
     },
 
     mutations: {
