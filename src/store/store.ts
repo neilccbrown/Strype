@@ -119,13 +119,13 @@ export default new Vuex.Store({
             );
         },
 
-        deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
+        deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren: boolean}) {
             //if delete is pressed
             //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
             //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
             //if backspace is pressed
             //  case current frame is Container --> do nothing, a container cannot be deleted
-            //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent
+            //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings are inserted in the grandparent to replace the current frame's parent
             //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
             //(*) with all sub levels children
             
@@ -533,53 +533,53 @@ export default new Vuex.Store({
                 }
             }
 
-            const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id) ;
+            const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
+            let frameToDeleteId = 0;
+            let deleteChildren = false;
 
             if(payload === "Delete"){
                 //retrieve the frame to delete 
                 if(state.currentFrame.caretPosition === CaretPosition.body){
                     if(currentFrame.childrenIds.length > 0){
-                        commit(
-                            "deleteFrame",
-                            {key:payload,frameToDeleteId: currentFrame.childrenIds[0]}
-                        );
+                        frameToDeleteId = currentFrame.childrenIds[0];
                     }
                 }
                 else{
                     if(indexOfCurrentFrame + 1 < listOfSiblings.length){
+                        frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
+                    }                   
+                }
+            }
+            else {
+                if (currentFrame.id > 0) {
+                    if(state.currentFrame.caretPosition === CaretPosition.body ){
+                        //just move the cursor one level up
                         commit(
-                            "deleteFrame",
-                            {key:payload,frameToDeleteId: listOfSiblings[indexOfCurrentFrame + 1]}
+                            "changeCaretWithKeyboard",
+                            "ArrowUp"
                         );
                     }
-                   
+                    else{
+                        //move the cursor up to the previous sibling bottom if available, otherwise body of parent
+                        const newId = (indexOfCurrentFrame - 1 >= 0) ? listOfSiblings[indexOfCurrentFrame - 1] : parentId;
+                        const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
+                        commit(
+                            "setCurrentFrame",
+                            {id:newId, caretPosition: newPosition}
+                        );
+                        deleteChildren = true;
+                    }
+                    frameToDeleteId = currentFrame.id;
                 }
             }
-            else if (currentFrame.id > 0) {
-                let deleteChildren = false;
-                if(state.currentFrame.caretPosition === CaretPosition.body ){
-                    //just move the cursor one level up
-                    commit(
-                        "changeCaretWithKeyboard",
-                        "ArrowUp"
-                    );
-                }
-                else{
-                    //move the cursor up to the previous sibling bottom if available, otherwise body of parent
-                    const newId = (indexOfCurrentFrame - 1 >= 0) ? listOfSiblings[indexOfCurrentFrame - 1] : parentId;
-                    const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
-                    commit(
-                        "setCurrentFrame",
-                        {id:newId, caretPosition: newPosition}
-                    );
-                    deleteChildren = true;
-                }
+
+            //Delete the frame if a frame to delete has been found
+            if(frameToDeleteId > 0){
                 commit(
                     "deleteFrame",
-                    {key:payload,frameToDeleteId: currentFrame.id,  deleteChildren: deleteChildren}
+                    {key:payload,frameToDeleteId: frameToDeleteId,  deleteChildren: deleteChildren}
                 );
-
-            }
+            }            
         },
 
         toggleCaret({ commit }, newCurrent) {
