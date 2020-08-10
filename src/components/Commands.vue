@@ -48,7 +48,6 @@ export default Vue.extend({
                 currentFrame.frameType.forbiddenChildrenTypes :
                 ((currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes : store.state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes) ;
          
-         
             //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
             let jointTypes = (store.state.currentFrame.caretPosition === CaretPosition.below) ?
                 [...currentFrame.frameType.jointFrameTypes] : 

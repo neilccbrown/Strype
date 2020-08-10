@@ -145,9 +145,10 @@ export default new Vuex.Store({
                 }
                 else{
                     //we "replace" the frame to delete by its content in its parent's location
+                    //note: the content is its children and the children of its potential joint frames
                     const frameToDelete = state.frameObjects[payload.frameToDeleteId];
                     const isFrameToDeleteJointFrame = (frameToDelete.jointParentId > 0);
-                    const isFrameToDeleteRootJointFrame = (frameToDelete.frameType.jointFrameTypes.keys.length > 0);
+                    const isFrameToDeleteRootJointFrame = (frameToDelete.jointParentId === 0 && frameToDelete.frameType.jointFrameTypes.length > 0);
                     let parentIdOfFrameToDelete = frameToDelete.parentId; 
                     //if the current frame is a joint frame, we find the "parent": the root of the structure if it's the first joint, the joint before otherwise
                     if (isFrameToDeleteJointFrame) {
@@ -189,7 +190,7 @@ export default new Vuex.Store({
         },
 
         updateFramesOrder(state, data) {
-            const eventType = Object.keys(data.event)[0];
+            const eventType = data.event.keys[0];
 
             if (eventType === "added") {
                 // Add the id to the parent's childrenId list
@@ -514,7 +515,7 @@ export default new Vuex.Store({
             //use a copy of the siblings (because we may need to alter the list)
             const listOfSiblings = (currentFrame.jointParentId > 0) ? [...state.frameObjects[parentId].jointFrameIds] : [...state.frameObjects[parentId].childrenIds];
             //if the current frame is the root of a joint frame, we need to add its joint frames as immediate siblings
-            if(currentFrame.frameType.jointFrameTypes.length > 0){
+            if(currentFrame.parentId !== 0 && currentFrame.frameType.jointFrameTypes.length > 0){
                 const jointFrames = currentFrame.jointFrameIds;
                 listOfSiblings.splice(
                     listOfSiblings.indexOf(currentFrame.id) + 1,
@@ -522,54 +523,62 @@ export default new Vuex.Store({
                     ...jointFrames
                 );
             }
+            //if the current frame is part of a joint frames structure (not the root), we had the next sibling of its joint frame root
+            else if(currentFrame.jointParentId > 0){
+                const listOfJointRootSiblings = state.frameObjects[state.frameObjects[parentId].parentId].childrenIds;
+                const indexOfJointRootInParent = listOfJointRootSiblings.indexOf(parentId);
+                if(indexOfJointRootInParent + 1 < listOfJointRootSiblings.length){
+                    listOfSiblings.push(listOfJointRootSiblings[indexOfJointRootInParent + 1]);
+                }
+            }
 
-            const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id) ;
+            const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
+            let frameToDeleteId = 0;
+            let deleteChildren = false;
 
             if(payload === "Delete"){
                 //retrieve the frame to delete 
                 if(state.currentFrame.caretPosition === CaretPosition.body){
                     if(currentFrame.childrenIds.length > 0){
-                        commit(
-                            "deleteFrame",
-                            {key:payload,frameToDeleteId: currentFrame.childrenIds[0]}
-                        );
+                        frameToDeleteId = currentFrame.childrenIds[0];
                     }
                 }
                 else{
                     if(indexOfCurrentFrame + 1 < listOfSiblings.length){
+                        frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
+                    }                   
+                }
+            }
+            else {
+                if (currentFrame.id > 0) {
+                    if(state.currentFrame.caretPosition === CaretPosition.body ){
+                        //just move the cursor one level up
                         commit(
-                            "deleteFrame",
-                            {key:payload,frameToDeleteId: listOfSiblings[indexOfCurrentFrame + 1]}
+                            "changeCaretWithKeyboard",
+                            "ArrowUp"
                         );
                     }
-                   
+                    else{
+                        //move the cursor up to the previous sibling bottom if available, otherwise body of parent
+                        const newId = (indexOfCurrentFrame - 1 >= 0) ? listOfSiblings[indexOfCurrentFrame - 1] : parentId;
+                        const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
+                        commit(
+                            "setCurrentFrame",
+                            {id:newId, caretPosition: newPosition}
+                        );
+                        deleteChildren = true;
+                    }
+                    frameToDeleteId = currentFrame.id;
                 }
             }
-            else if (currentFrame.id > 0) {
-                let deleteChildren = false;
-                if(state.currentFrame.caretPosition === CaretPosition.body ){
-                    //just move the cursor one level up
-                    commit(
-                        "changeCaretWithKeyboard",
-                        "ArrowUp"
-                    );
-                }
-                else{
-                    //move the cursor up to the previous sibling bottom if available, otherwise body of parent
-                    const newId = (indexOfCurrentFrame - 1 >= 0) ? listOfSiblings[indexOfCurrentFrame - 1] : parentId;
-                    const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
-                    commit(
-                        "setCurrentFrame",
-                        {id:newId, caretPosition: newPosition}
-                    );
-                    deleteChildren = true;
-                }
+
+            //Delete the frame if a frame to delete has been found
+            if(frameToDeleteId > 0){
                 commit(
                     "deleteFrame",
-                    {key:payload,frameToDeleteId: currentFrame.id,  deleteChildren: deleteChildren}
+                    {key:payload,frameToDeleteId: frameToDeleteId,  deleteChildren: deleteChildren}
                 );
-
-            }
+            }            
         },
 
         toggleCaret({ commit }, newCurrent) {
