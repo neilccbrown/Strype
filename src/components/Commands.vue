@@ -55,7 +55,7 @@ export default Vue.extend({
 
             //update the list of joint frames depending on where we are in the joint frames structure to respect the rules
             if(jointTypes.length > 0){
-                const rootJointFrame = (currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId] : currentFrame
+                const rootJointFrame = (currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId] : currentFrame;
 
                 //Remove "finally" in joint frames allwed after "else" if we are in anything else than in a "try"
                 if(rootJointFrame.frameType !== TryDefinition && jointTypes.includes(FinallyDefinition.type)){
@@ -87,6 +87,7 @@ export default Vue.extend({
                         forbiddenTypes = Object.values(AllFrameTypesIdentifier);
                     }
                   
+                    //workout what types can be left for if and try joint frames structures.
                     if(rootJointFrame.frameType === IfDefinition){                    
                         if(isCurrentFrameIntermediateJointFrame) {
                             jointTypes = jointTypes.filter((type) => type !== ElseDefinition.type);
