@@ -1,5 +1,5 @@
 <template>
-    <div 
+    <div
         class="frame-body-container"
         v-on:click.self="toggleCaret()"
     >
@@ -8,7 +8,8 @@
         <Draggable
             v-model="frames"
             group="code"
-            v-on:change="handleDragAndDrop($event)"
+            v-on:choose="print($event)"
+            v-on:change.self="handleDragAndDrop($event)"
             animation="200"
             v-bind:key="'Draggagle-'+this.frameId"
             draggable=".frame"
@@ -82,6 +83,7 @@ export default Vue.extend({
 
     methods: {
         handleDragAndDrop(event: Event): void {
+            
             store.dispatch(
                 "updateFramesOrder", 
                 {
@@ -96,6 +98,10 @@ export default Vue.extend({
                 "toggleCaret",
                 {id:this.frameId, caretPosition: CaretPosition.body}
             );
+        },
+        print(event: Event): void {
+            console.log("FrameBody's drag and drop");
+            console.log(event);
         },
     },
 });

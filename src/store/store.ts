@@ -54,6 +54,12 @@ export default new Vuex.Store({
         getDraggableGroupById: (state) => (id: number) => {
             return state.frameObjects[id].frameType.draggableGroup;
         },
+        getDraggableJointGroupById: (state) => (id: number) => {
+            const frame = state.frameObjects[id];
+            // If the frame has joint children, return their draggableGroup; otherwise return code
+            return frame.frameType.innerJointDraggableGroup;
+        },
+        
     },
 
     mutations: {
@@ -355,6 +361,7 @@ export default new Vuex.Store({
                 newCurrentFrame.caretPosition
             );
         },
+        
     },
 
     actions: {

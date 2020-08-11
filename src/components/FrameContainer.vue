@@ -11,7 +11,8 @@
             <Draggable
                 v-model="frames" 
                 :group="draggableGroup"
-                v-on:change="handleDragAndDrop($event)"
+                v-on:choose="print($event)"
+                v-on:change.self="handleDragAndDrop($event)"
                 animation="200"
                 v-bind:key="'Draggagle-'+this.id"
                 draggable=".frame"
@@ -119,6 +120,11 @@ export default Vue.extend({
             //expand the container
             this.$data.isCollapsed = true;
             this.toggleCollapse();
+        },
+
+        print(event: Event): void {
+            console.log("FrameContainer's drag and drop");
+            console.log(event);
         },
     },
 });
