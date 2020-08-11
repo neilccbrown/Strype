@@ -8,7 +8,6 @@
         <Draggable
             v-model="frames"
             group="code"
-            v-on:choose="print($event)"
             v-on:change.self="handleDragAndDrop($event)"
             animation="200"
             v-bind:key="'Draggagle-'+this.frameId"
@@ -99,10 +98,7 @@ export default Vue.extend({
                 {id:this.frameId, caretPosition: CaretPosition.body}
             );
         },
-        print(event: Event): void {
-            console.log("FrameBody's drag and drop");
-            console.log(event);
-        },
+        
     },
 });
 </script>

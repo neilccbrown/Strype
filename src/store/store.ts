@@ -26,13 +26,23 @@ export default new Vuex.Store({
             const retCode = state.frameObjects[frameId]?.contentDict[slotId];
             return retCode !== undefined ? retCode : "";
         },
-        getJointFramesForFrameId: (state) => (id: number) => {
+        getJointFramesForFrameId: (state) => (id: number, group: string) => {
             const jointFrameIds = state.frameObjects[id]?.jointFrameIds;
             const jointFrames: FrameObject[] = [];
             jointFrameIds?.forEach((jointFrameId: number) => {
                 const jointFrame = state.frameObjects[jointFrameId];
                 if (jointFrame !== undefined) {
-                    jointFrames.push(jointFrame);
+                    //this frame should have the same draggableGroup with the parent Joint frame for it to be Draggable)
+                    if (group === "draggable" && jointFrame.frameType.draggableGroup === state.frameObjects[id].frameType.innerJointDraggableGroup) {
+                        jointFrames.push(jointFrame);
+                    }
+                    //this frame should not have the same draggableGroup with the parent Joint frame for it to be Static (undraggable)
+                    else if (group === "static" && jointFrame.frameType.draggableGroup !== state.frameObjects[id].frameType.innerJointDraggableGroup) {
+                        jointFrames.push(jointFrame);
+                    }
+                    else if (group === "all") {
+                        jointFrames.push(jointFrame);
+                    }
                 }
             });
             return jointFrames;
@@ -107,28 +117,37 @@ export default new Vuex.Store({
         updateFramesOrder(state, data) {
             const eventType = Object.keys(data.event)[0];
 
+            //If we are moving a joint frame the list to be updated is it's parents jointFrameIds list.
+            const listToUpdate = (data.event[eventType].element.jointParentId > 0 ) ?
+                state.frameObjects[data.eventParentId].jointFrameIds : 
+                state.frameObjects[data.eventParentId].childrenIds;
+
             if (eventType === "added") {
                 // Add the id to the parent's childrenId list
-                state.frameObjects[data.eventParentId].childrenIds.splice(
+                listToUpdate.splice(
                     data.event[eventType].newIndex,
                     0,
                     data.event[eventType].element.id
                 );
-                // Set the new parentId to the the added frame
-                Vue.set(
-                    state.frameObjects[data.event[eventType].element.id],
-                    "parentId",
-                    data.eventParentId
-                );
+
+                if(data.event[eventType].element.jointParentId == 0) {
+                    // Set the new parentId to the the added frame
+                    Vue.set(
+                        state.frameObjects[data.event[eventType].element.id],
+                        "parentId",
+                        data.eventParentId
+                    );
+                }
+                
             }
             else if (eventType === "moved") {
                 // Delete the frameId from the children list 
-                state.frameObjects[data.eventParentId].childrenIds.splice(
+                listToUpdate.splice(
                     data.event[eventType].oldIndex,
                     1
                 );
                 // Add it again in the new position
-                state.frameObjects[data.eventParentId].childrenIds.splice(
+                listToUpdate.splice(
                     data.event[eventType].newIndex,
                     0,
                     data.event[eventType].element.id
@@ -136,7 +155,7 @@ export default new Vuex.Store({
             }
             else if (eventType === "removed") {
                 // Remove the id from the parent's childrenId list
-                state.frameObjects[data.eventParentId].childrenIds.splice(
+                listToUpdate.splice(
                     data.event[eventType].oldIndex,
                     1
                 );

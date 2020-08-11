@@ -208,7 +208,7 @@ export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.else,
     labels: [{ label: "else:", slot: false }],
-    draggableGroup: DraggableGroupTypes.ifCompound,
+    draggableGroup: DraggableGroupTypes.none,
 };
 
 export const ForDefinition: FramesDefinitions = {
@@ -239,6 +239,7 @@ export const TryDefinition: FramesDefinitions = {
     labels: [{ label: "try:", slot: true }],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "#EA0000",
+    innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
 };
 
 export const ExceptDefinition: FramesDefinitions = {
@@ -260,7 +261,7 @@ export const FinallyDefinition: FramesDefinitions = {
         { label: ":", slot: false },
     ],
     colour: "",
-    draggableGroup: DraggableGroupTypes.tryCompound,
+    draggableGroup: DraggableGroupTypes.none,
 };
 
 export const FuncDefDefinition: FramesDefinitions = {
