@@ -254,7 +254,6 @@ export default new Vuex.Store({
             // Create the list of children + joints with which the caret will work with
             let childrenAndJointFramesIds = [] as number[];
             let parentId = 0;
-            let jointFramesFlag = false;
             
             if(currentFrame.id !== 0){
 
@@ -274,8 +273,6 @@ export default new Vuex.Store({
                     0,
                     ...state.frameObjects[jointParentId].jointFrameIds
                 );
-
-                jointFramesFlag = true;
             }
 
             if (eventType === "ArrowDown") {
@@ -335,31 +332,28 @@ export default new Vuex.Store({
             else if (eventType === "ArrowUp") {
 
                 // only when going up and, if the previous frame is part of a compound or another container we need to add it in the list
-                if(!jointFramesFlag) {
-                 
-                    const indexOfCurrentInParent = childrenAndJointFramesIds.indexOf(currentFrame.id);
-                    const previousId = childrenAndJointFramesIds[indexOfCurrentInParent - 1];
+                const indexOfCurrentInParent = childrenAndJointFramesIds.indexOf(currentFrame.id);
+                const previousId = childrenAndJointFramesIds[indexOfCurrentInParent - 1];
 
-                    // If the previous is simply my parent, there is not need to check whether he has JointChildren as even if he has
-                    // I am already above them (in his body). (if the prevID is undefined, that means I am the first child)
-                    if(previousId !== undefined && previousId !== currentFrame.parentId){
+                // If the previous is simply my parent, there is not need to check whether he has JointChildren as even if he has
+                // I am already above them (in his body). (if the prevID is undefined, that means I am the first child)
+                if(previousId !== undefined && previousId !== currentFrame.parentId){
 
-                        //get the previous container's children if the current frame is a container (OR keep self it first container),
-                        //otherwise, get the previous frame's joint frames
-                        const previousSubLevelFrameIds = (currentFrame.id < 0) ?
-                            ((indexOfCurrentInParent !== 0) ? state.frameObjects[previousId].childrenIds : currentFrame.childrenIds) :
-                            state.frameObjects[previousId].jointFrameIds;
+                    //get the previous container's children if the current frame is a container (OR keep self it first container),
+                    //otherwise, get the previous frame's joint frames
+                    const previousSubLevelFrameIds = (currentFrame.id < 0) ?
+                        ((indexOfCurrentInParent !== 0) ? state.frameObjects[previousId].childrenIds : currentFrame.childrenIds) :
+                        state.frameObjects[previousId].jointFrameIds;
 
-                        //  If the previous has joint frames
-                        if(previousSubLevelFrameIds.length > 0) {
-                            //the last joint frames are added to the temporary list
-                            childrenAndJointFramesIds.splice(
-                                indexOfCurrentInParent,
-                                0,
-                                ...previousSubLevelFrameIds  
-                            );
-                        }
-                    }                 
+                    //  If the previous has joint frames
+                    if(previousSubLevelFrameIds.length > 0) {
+                        //the last joint frames are added to the temporary list
+                        childrenAndJointFramesIds.splice(
+                            indexOfCurrentInParent,
+                            0,
+                            ...previousSubLevelFrameIds  
+                        );
+                    }
                 }
 
                 // If ((not allow children && I am below) || I am in body) ==> I go out of the frame
