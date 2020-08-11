@@ -6,9 +6,9 @@
                 v-bind:frameId="id"
                 v-bind:labels="frameType.labels"
             />
-            <FrameBody 
+            <FrameBody
                 v-if="allowChildren"
-                v-bind:frameId="id" 
+                v-bind:frameId="id"
                 v-bind:caretVisibility="caretVisibility"
             />
             <div 

@@ -109,7 +109,6 @@ export default new Vuex.Store({
                 newFrame.id
             );
 
-
             // Add the new frame to the list
             // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
             Vue.set(
@@ -119,13 +118,13 @@ export default new Vuex.Store({
             );
         },
 
-        deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren: boolean}) {
+        deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
             //if delete is pressed
             //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
             //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
             //if backspace is pressed
             //  case current frame is Container --> do nothing, a container cannot be deleted
-            //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings are inserted in the grandparent to replace the current frame's parent
+            //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent
             //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
             //(*) with all sub levels children
             
@@ -191,8 +190,8 @@ export default new Vuex.Store({
         },
 
         updateFramesOrder(state, data) {
-            const eventType = data.event.keys[0];
-
+            const eventType = Object.keys(data.event)[0];
+            
             if (eventType === "added") {
                 // Add the id to the parent's childrenId list
                 state.frameObjects[data.eventParentId].childrenIds.splice(
@@ -208,7 +207,7 @@ export default new Vuex.Store({
                 );
             }
             else if (eventType === "moved") {
-                // Delete the frameId from the children list 
+                // Delete the frameId from the children list
                 state.frameObjects[data.eventParentId].childrenIds.splice(
                     data.event[eventType].oldIndex,
                     1
@@ -388,7 +387,7 @@ export default new Vuex.Store({
                     const currentFrameChildrenLength = currentFrame.childrenIds.length;
                     //if the currentFrame has children
                     if (currentFrameChildrenLength > 0) {
-                        
+
                         // Current's last child becomes the current frame
                         newId = currentFrame.childrenIds[currentFrameChildrenLength-1];
 
@@ -397,7 +396,7 @@ export default new Vuex.Store({
                     else {
                         newPosition = CaretPosition.body;
                     }
-                
+
                 }
             }
 

@@ -89,9 +89,7 @@ export default Vue.extend({
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
-        }, 
-
-
+        },
     },
 
     methods: {
