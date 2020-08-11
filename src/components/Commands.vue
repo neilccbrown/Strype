@@ -65,7 +65,7 @@ export default Vue.extend({
                     );
                 }
 
-                //remove joint frames that can ony be included once if already in the current joint frames structure
+                //remove joint frames that can ony be included once if they already are in the current joint frames structure
                 const uniqueJointFrameTypes = [ElseDefinition, FinallyDefinition];
                 uniqueJointFrameTypes.forEach((frameDef) => {
                     if(jointTypes.includes(frameDef.type) &&
@@ -88,7 +88,8 @@ export default Vue.extend({
                     }
                   
                     //workout what types can be left for if and try joint frames structures.
-                    if(rootJointFrame.frameType === IfDefinition){                    
+                    if(rootJointFrame.frameType === IfDefinition){  
+                        //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
                         if(isCurrentFrameIntermediateJointFrame) {
                             jointTypes = jointTypes.filter((type) => type !== ElseDefinition.type);
                         }
@@ -98,6 +99,7 @@ export default Vue.extend({
                         const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ElseDefinition) !== undefined);
                         const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ExceptDefinition) !== undefined);
 
+                        //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
                         if(currentFrame.frameType === TryDefinition){
                             if(hasElse && !hasFinally){
                                 jointTypes.splice(
@@ -120,6 +122,9 @@ export default Vue.extend({
                             //if this isn't the last expect in the joint frames structure, we need to know what is following it.
                             const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
                             if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
+                                //This "except" is not the last joint frame: we check if the following joint frame is "except"
+                                //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
+                                //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
                                 if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]].frameType === ExceptDefinition){
                                     uniqueJointFrameTypes.forEach((frameType) => {
                                         if(jointTypes.includes(frameType.type)){
@@ -130,9 +135,11 @@ export default Vue.extend({
                                         }
                                     }); 
                                 }
-                                else if(hasElse){
+                                //And if this "except" frame is followed by an "else" but no "finally" is present, we remove "finally"
+                                //to avoid "... except > finally > else"
+                                else if(hasElse && !hasFinally){
                                     jointTypes.splice(
-                                        jointTypes.indexOf(ElseDefinition.type),
+                                        jointTypes.indexOf(FinallyDefinition.type),
                                         1
                                     );                                   
                                 }
@@ -148,7 +155,10 @@ export default Vue.extend({
             for (const frameType in frameCommandsDefs.FrameCommandsDefs) {
                 if(forbiddenTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type) 
                     && !jointTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type)){
-                    delete filteredCommands[frameType];
+                    Vue.delete(
+                        filteredCommands,
+                        frameType
+                    );
                 }
             }
             return filteredCommands;
