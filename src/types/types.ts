@@ -43,6 +43,14 @@ export interface CurrentFrame {
     caretPosition: CaretPosition;
 }
 
+export interface EditorFrameObjects {
+    [id: number]: FrameObject;
+}
+
+// This is an array with all the frame Definitions objects.
+// Note that the slot variable of each objects tells if the
+// Label needs an editable slot as well attached to it.
+
 export interface ErrorSlotPayload {
     frameId: number;
     slotId: number;
@@ -89,23 +97,27 @@ const FuncDefIdentifiers = {
     funcdef: "funcdef",
 }
 
+export const JointFrameIdentifiers = {
+    elif: "elif",
+    else: "else",
+    except: "except",
+    finally: "finally",
+}
+
 const StandardFrameTypesIdentifiers = {
     ...CommmentFrameTypesIdentifier,
     empty: "",
     if: "if",
-    elif: "elif",
-    else: "else",
     for: "for",
     while: "while",
     try: "try",
-    except: "except",
-    finally: "finally",
     with: "with",
     return: "return",
     varassign: "varassign",
+    ...JointFrameIdentifiers,
 }
 
-const AllFrameTypesIdentifier = {
+export const AllFrameTypesIdentifier = {
     ...ImportFrameTypesIdentifiers,
     ...FuncDefIdentifiers,
     ...StandardFrameTypesIdentifiers,
@@ -202,6 +214,7 @@ export const ElifDefinition: FramesDefinitions = {
         { label: ":", slot: false },
     ],
     draggableGroup: DraggableGroupTypes.ifCompound,
+    jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
 };
 
 export const ElseDefinition: FramesDefinitions = {
@@ -209,6 +222,7 @@ export const ElseDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.else,
     labels: [{ label: "else:", slot: false }],
     draggableGroup: DraggableGroupTypes.none,
+    jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
 };
 
 export const ForDefinition: FramesDefinitions = {
@@ -236,7 +250,7 @@ export const WhileDefinition: FramesDefinitions = {
 export const TryDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.try,
-    labels: [{ label: "try:", slot: true }],
+    labels: [{ label: "try:", slot: false }],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "#EA0000",
     innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
@@ -249,6 +263,7 @@ export const ExceptDefinition: FramesDefinitions = {
         { label: "except", slot: true },
         { label: ":", slot: false },
     ],
+    jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "",
     draggableGroup: DraggableGroupTypes.tryCompound,
 };
@@ -257,8 +272,7 @@ export const FinallyDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.finally,
     labels: [
-        { label: "finally", slot: true },
-        { label: ":", slot: false },
+        { label: "finally:", slot: false },
     ],
     colour: "",
     draggableGroup: DraggableGroupTypes.none,
@@ -288,6 +302,13 @@ export const WithDefinition: FramesDefinitions = {
 };
 
 // Statements
+export const EmptyDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: StandardFrameTypesIdentifiers.empty,
+    labels: [{ label: "", slot: true }],
+    colour: "#220983",
+};
+
 export const ReturnDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.return,
@@ -349,6 +370,7 @@ export const Definitions = {
     FinallyDefinition,
     FuncDefDefinition,
     WithDefinition,
+    EmptyDefinition,
     ReturnDefinition,
     VarAssignDefinition,
     ImportDefinition,

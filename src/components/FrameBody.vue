@@ -84,7 +84,7 @@ export default Vue.extend({
         handleDragAndDrop(event: Event): void {
             
             store.dispatch(
-                "updateFramesOrder", 
+                "updateFramesOrder",
                 {
                     event: event,
                     eventParentId: this.$props.frameId,
