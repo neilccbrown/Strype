@@ -1,6 +1,6 @@
 <template>
     <div class="frame-cmd-container" v-on:click="onClick">
-        <button class="frame-cmd-btn">{{ shortcut }}</button>
+        <button class="frame-cmd-btn">{{ symbol }}</button>
         <span value="description">{{ description }}</span>
     </div>
 </template>
@@ -22,7 +22,8 @@ export default Vue.extend({
 
     props: {
         type: String, //Type of the Frame Command
-        shortcut: String, //the keyboard shortcut to add the frame (displayed in the UI, it can be a symbolic representation)
+        shortcut: String, //the keyboard shortcut to add the frame 
+        symbol: String, //the displayed shortcut in the UI, it can be a symbolic representation
         description: String, //the description of the frame
     },
 

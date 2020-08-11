@@ -11,7 +11,8 @@
                 v-for="frameCommand in frameCommands"
                 v-bind:key="frameCommand.type.type"
                 v-bind:type="frameCommand.type.type"
-                v-bind:shortcut="
+                v-bind:shortcut="frameCommand.shortcut"
+                v-bind:symbol="
                     frameCommand.symbol !== undefined
                         ? frameCommand.symbol
                         : frameCommand.shortcut
