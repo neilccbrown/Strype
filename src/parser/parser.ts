@@ -1,4 +1,4 @@
-import { FrameObject, IfDefinition, WhileDefinition, ForDefinition, FuncDefDefinition, TryDefinition, WithDefinition, EmptyDefinition, VarAssignDefinition, ReturnDefinition, CommentDefinition, FromImportDefinition, ImportDefinition, FrameContainersDefinitions, ElseIfDefinition, ElseDefinition, ExceptDefinition, FinallyDefinition } from "@/types/types";
+import { FrameObject, IfDefinition, WhileDefinition, ForDefinition, FuncDefDefinition, TryDefinition, WithDefinition, EmptyDefinition, VarAssignDefinition, ReturnDefinition, CommentDefinition, FromImportDefinition, ImportDefinition, FrameContainersDefinitions, ElifDefinition, ElseDefinition, ExceptDefinition, FinallyDefinition } from "@/types/types";
 import store from "@/store/store";
 import { TPyParser, ErrorInfo } from "tigerpython-parser";
 
@@ -25,7 +25,7 @@ export default class Parser {
         return output;
     }
 
-    private parseElseIf(frame: FrameObject, indent: string): string {
+    private parseElif(frame: FrameObject, indent: string): string {
         let output = indent;
 
         output +=
@@ -161,8 +161,8 @@ export default class Parser {
                 indent
             );
             break;
-        case ElseIfDefinition.type:
-            output += this.parseElseIf(
+        case ElifDefinition.type:
+            output += this.parseElif(
                 block,
                 indent
             );
