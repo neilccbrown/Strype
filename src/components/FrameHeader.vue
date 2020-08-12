@@ -35,7 +35,7 @@ export default Vue.extend({
 
     props: {
         // We need an array of labels in the case there are more
-        // than one labels in the frame (e.g. `with` ... `as ... ) 
+        // than a label in the frame (e.g. `with` ... `as ... ) 
         labels: Array,
         frameId: Number,
     },
@@ -48,7 +48,6 @@ export default Vue.extend({
 }
 
 .editable-input {
-    
     margin: 0px 5px 0px 5px;
 }
 </style>

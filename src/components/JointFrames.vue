@@ -1,7 +1,7 @@
 <template>
     <div class="joint-frame-container">
         <Draggable 
-            v-model="draggableJointFrames"
+            v-model="jointFrames"
             :group="jointDraggableGroup"
             v-on:change.self="handleDragAndDrop($event)"
             animation="200"
@@ -9,26 +9,18 @@
             draggable=".frame"
         >
             <Frame
-                v-for="frame in draggableJointFrames"
+                v-for="frame in jointFrames"
                 v-bind:key="frame.frameType.type + '-id:' + frame.id"
                 v-bind:id="frame.id"
                 v-bind:frameType="frame.frameType"
                 v-bind:isJointFrame="true"
                 v-bind:allowChildren="frame.frameType.allowChildren"
                 v-bind:caretVisibility="frame.caretVisibility"
-                class="frame joint-frame-child"
+                v-bind:class="{frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
+                class="joint-frame-child"
             />
         </Draggable>
-        <Frame
-            v-for="frame in staticJointFrames"
-            v-bind:key="frame.frameType.type + '-id:' + frame.id"
-            v-bind:id="frame.id"
-            v-bind:frameType="frame.frameType"
-            v-bind:isJointFrame="true"
-            v-bind:allowChildren="frame.frameType.allowChildren"
-            v-bind:caretVisibility="frame.caretVisibility"
-            class="frame joint-frame-child"
-        />  
+        
     </div>
 </template>
 
@@ -62,25 +54,11 @@ export default Vue.extend({
 
     computed: {
 
-        draggableJointFrames: {
+        jointFrames: {
             get(): FrameObject[] {
                 return store.getters.getJointFramesForFrameId(
                     this.$props.jointParentId,
-                    "draggable"
-                )
-            },
-            // setter
-            set(): void {
-                // Nothing to be done here.
-                // Event handlers call mutations which change the state
-            },
-        },
-
-        staticJointFrames: {
-            get(): FrameObject[] {
-                return store.getters.getJointFramesForFrameId(
-                    this.$props.jointParentId,
-                    "static"
+                    "all"
                 )
             },
             // setter

@@ -93,7 +93,6 @@ export default new Vuex.Store({
         },
         getDraggableJointGroupById: (state) => (id: number) => {
             const frame = state.frameObjects[id];
-            // If the frame has joint children, return their draggableGroup; otherwise return code
             return frame.frameType.innerJointDraggableGroup;
         },
         
