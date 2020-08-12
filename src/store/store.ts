@@ -540,7 +540,7 @@ export default new Vuex.Store({
                     listOfSiblings.indexOf(currentFrame.id) + 1,
                     0,
                     ...jointFrames
-                );
+                );                
             }
             //if the current frame is part of a joint frames structure (not the root), we had the next sibling of its joint frame root
             else if(currentFrame.jointParentId > 0){
@@ -554,6 +554,7 @@ export default new Vuex.Store({
             const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
             let frameToDeleteId = 0;
             let deleteChildren = false;
+            let performMoveCaret = false;
 
             if(payload === "Delete"){
                 //retrieve the frame to delete 
@@ -570,6 +571,20 @@ export default new Vuex.Store({
             }
             else {
                 if (currentFrame.id > 0) {
+                    performMoveCaret = true;
+                    frameToDeleteId = currentFrame.id;
+                }
+            }
+
+            //Delete the frame if a frame to delete has been found
+            if(frameToDeleteId > 0){
+                //if the frame to delete is a root joint frame, and has joint frames, we ask for the user to confirm the deletion
+                if(state.frameObjects[frameToDeleteId].jointFrameIds.length > 0
+                    && !confirm("This action will delete the full joint frame structure.\nDo you want to continue?")) {
+                    return;
+                }
+
+                if(performMoveCaret){
                     if(state.currentFrame.caretPosition === CaretPosition.body ){
                         //just move the cursor one level up
                         commit(
@@ -587,12 +602,8 @@ export default new Vuex.Store({
                         );
                         deleteChildren = true;
                     }
-                    frameToDeleteId = currentFrame.id;
                 }
-            }
-
-            //Delete the frame if a frame to delete has been found
-            if(frameToDeleteId > 0){
+                
                 commit(
                     "deleteFrame",
                     {key:payload,frameToDeleteId: frameToDeleteId,  deleteChildren: deleteChildren}
