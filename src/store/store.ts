@@ -32,6 +32,43 @@ const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frame
     delete listOfFrames[frameId];
 }
 
+const countRecursiveChildren = function(listOfFrames: Record<number, FrameObject>, frameId: number, countLimit?: number): number {
+    // This method counts all recursive children (i.e. children, grand children, ...) of a frame.
+    // The countLimit is a threshold to reach where we can stop recursion. Therefore the number of children returned IS NOT guaranted
+    // to be less than the limit: it just means we don't look at any more siblings/sub children if we reached this limit.
+    // If this argument isn't passed in the method, all recursive children are counted until we reach the end of the tree.
+    
+    const currentChildrenIds = listOfFrames[frameId].childrenIds;
+    const currentJointFramesIds = listOfFrames[frameId].jointFrameIds;
+    
+    let childrenCount = currentChildrenIds.length;
+    if(countLimit === undefined || childrenCount < countLimit){
+        //if there is no limit set, or if we haven't reached it, we look at the subchildren
+        currentChildrenIds.forEach((childId: number) => childrenCount += countRecursiveChildren(
+            listOfFrames, 
+            childId, 
+            countLimit
+        ));
+        //if there is no limit set, or if we haven't reached it, we look at the children of the joint frames
+        if(countLimit === undefined || childrenCount < countLimit){
+            //for the joint frame structure, if a joint frame has at least one child, we count is as its parent 
+            //child to give it a count.
+            currentJointFramesIds.forEach((jointFrameId: number) => {
+                if(listOfFrames[jointFrameId].childrenIds.length > 0){
+                    childrenCount++;
+                }
+                childrenCount += countRecursiveChildren(
+                    listOfFrames, 
+                    jointFrameId, 
+                    countLimit
+                );
+            });
+        }
+    }
+
+    return childrenCount;
+}
+
 export default new Vuex.Store({
     state: {
         nextAvailableId: 16 as number,
@@ -39,6 +76,8 @@ export default new Vuex.Store({
         currentFrame: { id: -1, caretPosition: CaretPosition.body } as CurrentFrame,
 
         isEditing: false,
+
+        isMessageBannerOn: false,
 
         frameObjects: initialState,
     },
@@ -270,8 +309,6 @@ export default new Vuex.Store({
 
             //Turn off previous caret
             state.frameObjects[newId].caretVisibility = CaretPosition.none;
-
-
 
             const currentFrame = state.frameObjects[state.currentFrame.id];
             
@@ -554,7 +591,6 @@ export default new Vuex.Store({
             const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
             let frameToDeleteId = 0;
             let deleteChildren = false;
-            let performMoveCaret = false;
 
             if(payload === "Delete"){
                 //retrieve the frame to delete 
@@ -571,20 +607,6 @@ export default new Vuex.Store({
             }
             else {
                 if (currentFrame.id > 0) {
-                    performMoveCaret = true;
-                    frameToDeleteId = currentFrame.id;
-                }
-            }
-
-            //Delete the frame if a frame to delete has been found
-            if(frameToDeleteId > 0){
-                //if the frame to delete is a root joint frame, and has joint frames, we ask for the user to confirm the deletion
-                if(state.frameObjects[frameToDeleteId].jointFrameIds.length > 0
-                    && !confirm("This action will delete the full joint frame structure.\nDo you want to continue?")) {
-                    return;
-                }
-
-                if(performMoveCaret){
                     if(state.currentFrame.caretPosition === CaretPosition.body ){
                         //just move the cursor one level up
                         commit(
@@ -602,8 +624,21 @@ export default new Vuex.Store({
                         );
                         deleteChildren = true;
                     }
+                    frameToDeleteId = currentFrame.id;
                 }
-                
+            }
+
+            //before actually deleting the frame(s), we check if the user should be notified of a large deletion
+            if(countRecursiveChildren(
+                state.frameObjects,
+                frameToDeleteId,
+                3
+            ) >= 3){
+                state.isMessageBannerOn = true;
+            }
+
+            //Delete the frame if a frame to delete has been found
+            if(frameToDeleteId > 0){
                 commit(
                     "deleteFrame",
                     {key:payload,frameToDeleteId: frameToDeleteId,  deleteChildren: deleteChildren}

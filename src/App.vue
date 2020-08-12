@@ -1,6 +1,9 @@
 <template>
     <div id="app">
-        <div id="temp-container">
+        <div id="editor">
+            <div class="top">
+                <MessageBanner v-if="showMessage"/>
+            </div>
             <div class="left">
                <FrameContainer
                         v-for="container in containerFrames"
@@ -23,6 +26,7 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
+import MessageBanner from "@/components/MessageBanner.vue"
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
@@ -36,6 +40,7 @@ export default Vue.extend({
     store,
 
     components: {
+        MessageBanner,
         FrameContainer,
         Commands,
     },
@@ -60,6 +65,10 @@ export default Vue.extend({
                 null,
                 "  "
             );
+        },
+
+        showMessage(): boolean {
+            return store.state.isMessageBannerOn;
         },
     },
 
@@ -87,8 +96,12 @@ body {
     min-height: 100vh;
 }
 
-#app form {
+.top {
     text-align: center;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    flex-grow: 1;
+    height: 50px;
 }
 
 .left {
@@ -99,8 +112,8 @@ body {
     width: 30%;
 }
 
-#temp-container {
-    margin-top: 60px;
+#editor {
+    margin-top: 0px;
     flex-grow: 1;
 }
 </style>
