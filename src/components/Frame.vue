@@ -17,14 +17,9 @@
             >
             </div>
             <Caret v-show="caretVisibility===caretPosition.below" />
-            <Frame
-                v-for="frame in jointframes"
-                v-bind:key="frame.frameType.type + '-id:' + frame.id"
-                v-bind:id="frame.id"
-                v-bind:frameType="frame.frameType"
-                v-bind:isJointFrame="true"
-                v-bind:allowChildren="frame.frameType.allowChildren"
-                v-bind:caretVisibility="frame.caretVisibility"
+            <JointFrames 
+                v-if="hasJointFrameObjects"
+                v-bind:jointParentId="id"
             />
         </div>
     </div>
@@ -38,7 +33,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
-import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, FrameObject } from "@/types/types";
+import { FramesDefinitions, DefaultFramesDefinition, CaretPosition } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -55,7 +50,8 @@ export default Vue.extend({
     beforeCreate() {
         const components = this.$options.components;
         if (components !== undefined) {
-            components.FrameBody = require("./FrameBody.vue").default;
+            components.FrameBody = require("@/components/FrameBody.vue").default;
+            components.JointFrames = require("@/components/JointFrames.vue").default;
         }
     },
 
@@ -72,8 +68,11 @@ export default Vue.extend({
     },
 
     computed: {
-        jointframes(): FrameObject[] {
-            return store.getters.getJointFramesForFrameId(this.id);
+        hasJointFrameObjects(): boolean {
+            return store.getters.getJointFramesForFrameId(
+                this.id,
+                "all"
+            ).length >0;
         },
         frameStyle(): Record<string, string> {
             return this.isJointFrame === true
@@ -88,10 +87,12 @@ export default Vue.extend({
                     "padding-left": "2px",
                 };
         },
+
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
         },
+        
     },
 
     methods: {

@@ -8,8 +8,8 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         shortcut: "i",
     },
     "l": {
-        type: Definitions.ElseIfDefinition,
-        description: "elseif",
+        type: Definitions.ElifDefinition,
+        description: "elif",
         shortcut: "l",
     },
     "e": {

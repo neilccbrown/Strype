@@ -8,7 +8,7 @@
         <Draggable
             v-model="frames"
             group="code"
-            v-on:change="handleDragAndDrop($event)"
+            v-on:change.self="handleDragAndDrop($event)"
             animation="200"
             v-bind:key="'Draggagle-'+this.frameId"
             draggable=".frame"
@@ -82,6 +82,7 @@ export default Vue.extend({
 
     methods: {
         handleDragAndDrop(event: Event): void {
+            
             store.dispatch(
                 "updateFramesOrder",
                 {
@@ -97,6 +98,7 @@ export default Vue.extend({
                 {id:this.frameId, caretPosition: CaretPosition.body}
             );
         },
+        
     },
 });
 </script>
