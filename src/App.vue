@@ -62,12 +62,11 @@ export default Vue.extend({
             );
         },
     },
-    
+
     methods: {
         toggleEdition(): void {
             store.commit("toggleEditFlag");
         },
-        
     },
 
 });

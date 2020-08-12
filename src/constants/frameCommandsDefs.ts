@@ -8,8 +8,8 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         shortcut: "i",
     },
     "l": {
-        type: Definitions.ElseIfDefinition,
-        description: "elseif",
+        type: Definitions.ElifDefinition,
+        description: "elif",
         shortcut: "l",
     },
     "e": {
@@ -31,6 +31,12 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         type: Definitions.VarAssignDefinition,
         description: "variable assignment",
         shortcut: "=",
+    },
+    " ": {
+        type: Definitions.EmptyDefinition,
+        description: "empty statement",
+        shortcut: " ",
+        symbol: "⌴",//"␣"
     },
     "r": {
         type: Definitions.ReturnDefinition,

@@ -11,7 +11,7 @@
             <Draggable
                 v-model="frames" 
                 :group="draggableGroup"
-                v-on:change="handleDragAndDrop($event)"
+                v-on:change.self="handleDragAndDrop($event)"
                 animation="200"
                 v-bind:key="'Draggagle-'+this.id"
                 draggable=".frame"
@@ -89,9 +89,7 @@ export default Vue.extend({
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
-        }, 
-
-
+        },
     },
 
     methods: {
@@ -120,6 +118,7 @@ export default Vue.extend({
             this.$data.isCollapsed = true;
             this.toggleCollapse();
         },
+
     },
 });
 

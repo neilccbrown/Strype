@@ -1,0 +1,105 @@
+<template>
+    <div class="joint-frame-container">
+        <Draggable 
+            v-model="jointFrames"
+            :group="jointDraggableGroup"
+            v-on:change.self="handleDragAndDrop($event)"
+            animation="200"
+            v-bind:key="'Draggagle-Joint-'+this.jointParentId"
+            draggable=".frame"
+        >
+            <Frame
+                v-for="frame in jointFrames"
+                v-bind:key="frame.frameType.type + '-id:' + frame.id"
+                v-bind:id="frame.id"
+                v-bind:frameType="frame.frameType"
+                v-bind:isJointFrame="true"
+                v-bind:allowChildren="frame.frameType.allowChildren"
+                v-bind:caretVisibility="frame.caretVisibility"
+                v-bind:class="{frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
+                class="joint-frame-child"
+            />
+        </Draggable>
+        
+    </div>
+</template>
+
+<script lang="ts">
+//////////////////////
+//      Imports     //
+//////////////////////
+import Vue from "vue";
+import store from "@/store/store";
+import Frame from "@/components/Frame.vue";
+import Draggable from "vuedraggable";
+import { FrameObject, DraggableGroupTypes } from "@/types/types";
+
+
+//////////////////////
+//     Component    //
+//////////////////////
+export default Vue.extend({
+    name: "JointFrames",
+    store,
+
+    components: {
+        Frame,
+        Draggable,
+    },
+
+    props: {
+        // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
+        jointParentId: Number, // Unique Indentifier for each Frame
+    },
+
+    computed: {
+
+        jointFrames: {
+            get(): FrameObject[] {
+                return store.getters.getJointFramesForFrameId(
+                    this.$props.jointParentId,
+                    "all"
+                )
+            },
+            // setter
+            set(): void {
+                // Nothing to be done here.
+                // Event handlers call mutations which change the state
+            },
+        },
+
+        jointDraggableGroup(): DraggableGroupTypes {
+            return store.getters.getDraggableJointGroupById(this.$props.jointParentId); 
+        },
+
+    },
+
+    methods: {
+
+        handleDragAndDrop(event: Event): void {
+            store.dispatch(
+                "updateFramesOrder", 
+                {
+                    event: event,
+                    eventParentId: this.$props.jointParentId,
+                }
+            );
+        },
+
+    },
+
+});
+</script>
+
+<style lang="scss">
+.content-children {
+    margin-left: 0px;
+}
+
+.joint-frame-container {
+    visibility: visible;
+}
+.joint-frame-child {
+    visibility: visible;
+}
+</style>
