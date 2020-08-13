@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, MessageDefinitions } from "@/types/types";
 import initialState from "@/store/initial-state";
 
 Vue.use(Vuex);
@@ -78,6 +78,8 @@ export default new Vuex.Store({
         isEditing: false,
 
         isMessageBannerOn: false,
+
+        currentMessageType: MessageDefinitions.NoMessage,
 
         frameObjects: initialState,
     },
@@ -637,6 +639,7 @@ export default new Vuex.Store({
                 frameToDeleteId,
                 3
             ) >= 3){
+                state.currentMessageType = MessageDefinitions.LargeDeletionMessageDefinition;
                 state.isMessageBannerOn = true;
             }
 

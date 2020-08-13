@@ -2,7 +2,11 @@
     <div id="app">
         <div id="editor">
             <div class="top">
-                <MessageBanner v-if="showMessage"/>
+                <MessageBanner 
+                    v-if="!showMessage"
+                    v-bind:message="message.message"
+                    v-bind:buttons="message.buttons"
+                />
             </div>
             <div class="left">
                <FrameContainer
@@ -30,7 +34,7 @@ import MessageBanner from "@/components/MessageBanner.vue"
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
-import { FrameObject } from "@/types/types";
+import { FrameObject, MessageDefinition } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -69,6 +73,18 @@ export default Vue.extend({
 
         showMessage(): boolean {
             return store.state.isMessageBannerOn;
+        },
+
+        message(): MessageDefinition {
+            console.log("passing buttons:")
+            console.log(store.state.currentMessageType.buttons)
+            let button;
+            for(button in store.state.currentMessageType.buttons ){
+                console.log("1 button :")
+                console.log(button)
+                console.log(store.state.currentMessageType.buttons[button].label)
+            }
+            return store.state.currentMessageType
         },
     },
 });

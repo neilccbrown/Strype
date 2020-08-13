@@ -377,3 +377,49 @@ export const Definitions = {
     FromImportDefinition,
     CommentDefinition,
 };
+
+export interface MessageButton {
+    label: string;
+    action: VoidFunction | string;
+}
+
+export const MessageDefinedActions = {
+    closeBanner: "close",
+    undo: "undo",
+}
+
+export interface MessageDefinition {
+    type: string;
+    message: string;
+    buttons: MessageButton[];
+}
+
+const MessageTypeIdentifiers = {
+    noMessage: "none",
+    largeDeletion: "largeDeletion",
+}
+
+const NoMessage: MessageDefinition = {
+    type: MessageTypeIdentifiers.noMessage,
+    message: "",
+    buttons: [],
+};
+
+const LargeDeletionMessageDefinition: MessageDefinition = {
+    type: MessageTypeIdentifiers.largeDeletion,
+    message: "(not localised message): You just deleted a large piece of code. If you didn't mean to, you can: ",
+    buttons:[{label: "Undo", action:MessageDefinedActions.undo}],
+};
+
+const TestYesNoMessageDefinition: MessageDefinition = {
+    type: MessageTypeIdentifiers.largeDeletion,
+    message: "Simple test Yes/No ",
+    buttons:[{label: "Oui", action:(() => alert("OUI !"))}, {label: "Non", action:MessageDefinedActions.closeBanner}],
+};
+
+
+export const MessageDefinitions = {
+    NoMessage,
+    LargeDeletionMessageDefinition,
+    TestYesNoMessageDefinition,
+};
