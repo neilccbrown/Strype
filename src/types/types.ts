@@ -378,6 +378,10 @@ export const Definitions = {
     CommentDefinition,
 };
 
+/**
+ *  Types for the messages banner
+ **/
+
 export interface MessageButton {
     label: string;
     action: VoidFunction | string;
@@ -399,27 +403,33 @@ const MessageTypeIdentifiers = {
     largeDeletion: "largeDeletion",
 }
 
+//empty message
 const NoMessage: MessageDefinition = {
     type: MessageTypeIdentifiers.noMessage,
     message: "",
     buttons: [],
 };
 
+//message for large deletation (undo)
 const LargeDeletionMessageDefinition: MessageDefinition = {
     type: MessageTypeIdentifiers.largeDeletion,
-    message: "(not localised message): You just deleted a large piece of code. If you didn't mean to, you can: ",
-    buttons:[{label: "Undo", action:MessageDefinedActions.undo}],
+    message: "messageBannerMessage.deleteLargeCode",
+    buttons:[{label: "buttonLabel.undo", action:MessageDefinedActions.undo}],
 };
 
+// THIS IS FOR TEST ONLY --> DELETE LATER
+// it's an example of a message with yes/no button, 
+// and a function action (yes) and a named action (no)
 const TestYesNoMessageDefinition: MessageDefinition = {
     type: MessageTypeIdentifiers.largeDeletion,
-    message: "Simple test Yes/No ",
-    buttons:[{label: "Oui", action:(() => alert("OUI !"))}, {label: "Non", action:MessageDefinedActions.closeBanner}],
+    message: "messageBannerMessage.yesnoTest",
+    buttons:[{label: "buttonLabel.yes", action:(() => alert("OUI !"))}, {label: "buttonLabel.no", action:MessageDefinedActions.closeBanner}],
 };
 
 
 export const MessageDefinitions = {
     NoMessage,
     LargeDeletionMessageDefinition,
+    //TO REMOVE LATER
     TestYesNoMessageDefinition,
 };

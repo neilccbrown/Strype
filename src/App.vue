@@ -3,7 +3,7 @@
         <div id="editor">
             <div class="top">
                 <MessageBanner 
-                    v-if="!showMessage"
+                    v-if="showMessage"
                     v-bind:message="message.message"
                     v-bind:buttons="message.buttons"
                 />
@@ -76,14 +76,6 @@ export default Vue.extend({
         },
 
         message(): MessageDefinition {
-            console.log("passing buttons:")
-            console.log(store.state.currentMessageType.buttons)
-            let button;
-            for(button in store.state.currentMessageType.buttons ){
-                console.log("1 button :")
-                console.log(button)
-                console.log(store.state.currentMessageType.buttons[button].label)
-            }
             return store.state.currentMessageType
         },
     },

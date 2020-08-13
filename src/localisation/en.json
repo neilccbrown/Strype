@@ -1,0 +1,14 @@
+{
+  "messageBannerMessage": {
+      "deleteLargeCode": "You just deleted a large piece of code. If you didn't mean to, you can:",
+      "yesnoTest": "Simple test Yes/No Change to another language?"
+  },
+  "buttonLabel":{
+      "undo": "Undo",
+      "yes": "yes",
+      "no": "no",
+      "connectSerial": "Connect serial",
+      "downloadHex": "Download Hex",
+      "downloadPython": "Dowload Python"
+  }
+}

@@ -1,13 +1,13 @@
 <template>
     <div class="message-banner-container">
-        <span>{{message}}</span>
+        <span v-t="message"></span>
         <span class="message-banner-cross" v-on:click="close">&#x2716;</span>
         <br/>
         <button 
             v-for="button in buttons"
             v-bind:key="'messageButton-'+buttons.indexOf(button)"
-            v-on:click="onButtonClick(button.action)">
-            {{button.label}}
+            v-on:click="onButtonClick(button.action)"
+            v-t="button.label">
             </button>
     </div>
 </template>
@@ -31,6 +31,8 @@ export default Vue.extend({
             store.commit("toggleMessageBanner");
         },
         onButtonClick(payload: VoidFunction | string){
+            // If the type of the action associated with this button is a function
+            // we run this function. If the type is string then we run a predefined action. 
             if((typeof payload) === "function"){
                 (payload as VoidFunction)();
             }
