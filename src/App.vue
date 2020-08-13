@@ -71,13 +71,6 @@ export default Vue.extend({
             return store.state.isMessageBannerOn;
         },
     },
-
-    methods: {
-        toggleEdition(): void {
-            store.commit("toggleEditFlag");
-        },
-    },
-
 });
 </script>
 

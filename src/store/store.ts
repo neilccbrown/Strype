@@ -502,6 +502,9 @@ export default new Vuex.Store({
             );
         },
         
+        toggleMessageBanner(state) {
+            state.isMessageBannerOn = !state.isMessageBannerOn;
+        },
     },
 
     actions: {
