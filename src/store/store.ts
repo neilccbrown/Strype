@@ -282,7 +282,7 @@ export default new Vuex.Store({
                     //if the frame to delete is a joint frame, we remove it from its parent
                     if(isFrameToDeleteJointFrame){
                         state.frameObjects[state.frameObjects[payload.frameToDeleteId].jointParentId].jointFrameIds.splice(
-                            state.frameObjects[parentIdOfFrameToDelete].jointFrameIds.indexOf(payload.frameToDeleteId),
+                            state.frameObjects[state.frameObjects[payload.frameToDeleteId].jointParentId].jointFrameIds.indexOf(payload.frameToDeleteId),
                             1
                         );
                     }
