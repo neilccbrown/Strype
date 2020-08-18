@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, EditableFocusPayload } from "@/types/types";
 import initialState from "@/store/initial-state";
 
 Vue.use(Vuex);
@@ -30,13 +30,92 @@ const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frame
         1
     );
     delete listOfFrames[frameId];
-}
+};
+const getParent = (listOfFrames: Record<number, FrameObject>, currentFrame: FrameObject) => {
+    let parentId = 0;
+    if(currentFrame.id !== 0){
+        parentId = (currentFrame.jointParentId > 0) ? listOfFrames[currentFrame.jointParentId].parentId : currentFrame.parentId;
+    }
+    return parentId;
+};
+const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, currentFrameId: number, caretPosition: CaretPosition, direction: string) => {
+    const currentFrame = listOfFrames[currentFrameId];
+            
+    // Create the list of children + joints with which the caret will work with
+    let childrenAndJointFramesIds = [] as number[];
+    const parentId = getParent(
+        listOfFrames, 
+        currentFrame
+    );
+
+    childrenAndJointFramesIds = [...listOfFrames[parentId].childrenIds];    
+    
+    // Joint frames are added to a temp list and caret works with this list instead.
+    if (currentFrame.jointFrameIds.length > 0 || currentFrame.jointParentId > 0) {
+
+        const jointParentId = (currentFrame.jointParentId > 0) ? currentFrame.jointParentId : currentFrame.id;
+        const indexOfJointParent = childrenAndJointFramesIds.indexOf(jointParentId);
+
+        //the joint frames are added to the temporary list
+        childrenAndJointFramesIds.splice(
+            indexOfJointParent+1,
+            0,
+            ...listOfFrames[jointParentId].jointFrameIds
+        );
+    }
+    
+    if (direction === "up") {
+        // when going up and, if the previous frame is part of a compound or another container we need to add it in the list
+        const indexOfCurrentInParent = childrenAndJointFramesIds.indexOf(currentFrame.id);
+        const previousId = childrenAndJointFramesIds[indexOfCurrentInParent - 1];
+
+        // If the previous is simply my parent, there is not need to check whether he has JointChildren as even if he has
+        // I am already above them (in his body). (if the prevID is undefined, that means I am the first child)
+        if(previousId !== undefined && previousId !== currentFrame.parentId){
+
+            //get the previous container's children if the current frame is a container (OR keep self it first container),
+            //otherwise, get the previous frame's joint frames
+            // const previousSubLevelFrameIds = (currentFrame.id < 0) ?
+            //     ((indexOfCurrentInParent !== 0) ? listOfFrames[previousId].childrenIds : currentFrame.childrenIds) :
+            //     listOfFrames[previousId].jointFrameIds;
+                        
+            const previousSubLevelFrameIds = 
+                (currentFrame.id < 0) ?
+                    ((indexOfCurrentInParent > 0) ? 
+                        listOfFrames[previousId].childrenIds : 
+                        []
+                    ) :
+                    listOfFrames[previousId].jointFrameIds;
+           
+            //the last joint frames are added to the temporary list
+            childrenAndJointFramesIds.splice(
+                indexOfCurrentInParent,
+                0,
+                ...previousSubLevelFrameIds  
+            );
+
+        }
+    }
+    else {
+        if(caretPosition === CaretPosition.body){
+            // add its children to the list
+            childrenAndJointFramesIds.splice(
+                childrenAndJointFramesIds.indexOf(currentFrame.id)+1,
+                0,
+                ...currentFrame.childrenIds
+            );
+        }
+    }
+    
+    return childrenAndJointFramesIds;
+};
+
 
 export default new Vuex.Store({
     state: {
         nextAvailableId: 16 as number,
 
-        currentFrame: { id: -1, caretPosition: CaretPosition.body } as CurrentFrame,
+        currentFrame: { id: 3, caretPosition: CaretPosition.below } as CurrentFrame,//{ id: -1, caretPosition: CaretPosition.body } as CurrentFrame,
 
         isEditing: false,
 
@@ -50,7 +129,7 @@ export default new Vuex.Store({
                 .filter((a) => a);
         },
         getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
-            const retCode = state.frameObjects[frameId]?.contentDict[slotId];
+            const retCode = state.frameObjects[frameId]?.contentDict[slotId].code;
             return retCode !== undefined ? retCode : "";
         },
         getJointFramesForFrameId: (state) => (id: number, group: string) => {
@@ -94,6 +173,15 @@ export default new Vuex.Store({
         getDraggableJointGroupById: (state) => (id: number) => {
             const frame = state.frameObjects[id];
             return frame.frameType.innerJointDraggableGroup;
+        },
+        getIsEditing: (state) => () => {
+            return state.isEditing;
+        },
+        getIsEditableFocused: (state) => (id: number, slotIndex: number) => {
+            return state.frameObjects[id].contentDict[slotIndex].focused;
+        },
+        getAllowChildren: (state) => (id: number) => {
+            return state.frameObjects[id].frameType.allowChildren;
         },
         
     },
@@ -255,12 +343,24 @@ export default new Vuex.Store({
         setFrameEditorSlot(state, payload: ErrorSlotPayload) {
             const contentDict = state.frameObjects[payload.frameId]?.contentDict;
             if (contentDict !== undefined) {
-                contentDict[payload.slotId] = payload.code;
+                contentDict[payload.slotId].code = payload.code;
             }
         },
 
-        toggleEditFlag(state) {
-            state.isEditing = !state.isEditing;
+        toggleEditFlag(state, editing) {
+            Vue.set(
+                state,
+                "isEditing", 
+                editing
+            );
+        },
+
+        setEditableFocus(state, payload: EditableFocusPayload) {
+            Vue.set(
+                state.frameObjects[payload.frameId].contentDict[payload.slotId],
+                "focused",
+                payload.focused
+            );
         },
 
         changeCaretWithKeyboard(state, eventType: string) {
@@ -271,35 +371,27 @@ export default new Vuex.Store({
             //Turn off previous caret
             state.frameObjects[newId].caretVisibility = CaretPosition.none;
 
-
-
             const currentFrame = state.frameObjects[state.currentFrame.id];
             
             // Create the list of children + joints with which the caret will work with
             let childrenAndJointFramesIds = [] as number[];
-            let parentId = 0;
+            const parentId = getParent(
+                state.frameObjects,
+                currentFrame
+            );
             
-            if(currentFrame.id !== 0){
 
-                parentId = (currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
-            }
-            childrenAndJointFramesIds = [...state.frameObjects[parentId].childrenIds];
 
-            // Joint frames are added to a temp list and caret works with this list instead.
-            if (currentFrame.jointFrameIds.length > 0 || currentFrame.jointParentId > 0) {
-
-                const jointParentId = (currentFrame.jointParentId > 0) ? currentFrame.jointParentId : currentFrame.id;
-                const indexOfJointParent = childrenAndJointFramesIds.indexOf(jointParentId);
-
-                //the joint frames are added to the temporary list
-                childrenAndJointFramesIds.splice(
-                    indexOfJointParent+1,
-                    0,
-                    ...state.frameObjects[jointParentId].jointFrameIds
+            if (eventType === "ArrowDown") {            
+                
+                childrenAndJointFramesIds = 
+                childrenListWithJointFrames(
+                    state.frameObjects, 
+                    currentFrame.id,
+                    state.currentFrame.caretPosition, 
+                    "down"
                 );
-            }
 
-            if (eventType === "ArrowDown") {
                 if(state.currentFrame.caretPosition === CaretPosition.body) {
                     //if the currentFrame has children
                     if(currentFrame.childrenIds.length > 0) {
@@ -355,30 +447,13 @@ export default new Vuex.Store({
             }
             else if (eventType === "ArrowUp") {
 
-                // only when going up and, if the previous frame is part of a compound or another container we need to add it in the list
-                const indexOfCurrentInParent = childrenAndJointFramesIds.indexOf(currentFrame.id);
-                const previousId = childrenAndJointFramesIds[indexOfCurrentInParent - 1];
-
-                // If the previous is simply my parent, there is not need to check whether he has JointChildren as even if he has
-                // I am already above them (in his body). (if the prevID is undefined, that means I am the first child)
-                if(previousId !== undefined && previousId !== currentFrame.parentId){
-
-                    //get the previous container's children if the current frame is a container (OR keep self it first container),
-                    //otherwise, get the previous frame's joint frames
-                    const previousSubLevelFrameIds = (currentFrame.id < 0) ?
-                        ((indexOfCurrentInParent !== 0) ? state.frameObjects[previousId].childrenIds : currentFrame.childrenIds) :
-                        state.frameObjects[previousId].jointFrameIds;
-
-                    //  If the previous has joint frames
-                    if(previousSubLevelFrameIds.length > 0) {
-                        //the last joint frames are added to the temporary list
-                        childrenAndJointFramesIds.splice(
-                            indexOfCurrentInParent,
-                            0,
-                            ...previousSubLevelFrameIds  
-                        );
-                    }
-                }
+                childrenAndJointFramesIds = 
+                childrenListWithJointFrames(
+                    state.frameObjects, 
+                    currentFrame.id, 
+                    state.currentFrame.caretPosition,
+                    "up"
+                );
 
                 // If ((not allow children && I am below) || I am in body) ==> I go out of the frame
                 if ( (!currentFrame.frameType.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body){
@@ -475,10 +550,10 @@ export default new Vuex.Store({
             );
         },
 
-        changeCaretPosition({ commit }, payload) {
+        changeCaretPosition({ commit }, key) {
             commit(
                 "changeCaretWithKeyboard",
-                payload
+                key
             );
         },
 
@@ -510,7 +585,15 @@ export default new Vuex.Store({
                     ? (state.frameObjects[state.currentFrame.id].jointParentId > 0) ? state.frameObjects[state.currentFrame.id].jointParentId : state.currentFrame.id
                     : 0,
                 jointFrameIds: [],
-                contentDict: {},
+                contentDict:
+                    //find each editable slot and create an empty & unfosed entry for it
+                    payload.labels.filter((el)=> el.slot).reduce(
+                        (acc, cur, idx) => ({ 
+                            ...acc, 
+                            [idx]: {code: "", focused: false},
+                        }),
+                        {}
+                    ),
             };
 
             commit(
@@ -530,43 +613,30 @@ export default new Vuex.Store({
             //(*) with all sub levels children
 
             const currentFrame = state.frameObjects[state.currentFrame.id];
-            const parentId = (currentFrame.jointParentId > 0) ? currentFrame.jointParentId : currentFrame.parentId;
-            //use a copy of the siblings (because we may need to alter the list)
-            const listOfSiblings = (currentFrame.jointParentId > 0) ? [...state.frameObjects[parentId].jointFrameIds] : [...state.frameObjects[parentId].childrenIds];
-            //if the current frame is the root of a joint frame, we need to add its joint frames as immediate siblings
-            if(currentFrame.parentId !== 0 && currentFrame.frameType.jointFrameTypes.length > 0){
-                const jointFrames = currentFrame.jointFrameIds;
-                listOfSiblings.splice(
-                    listOfSiblings.indexOf(currentFrame.id) + 1,
-                    0,
-                    ...jointFrames
-                );
-            }
-            //if the current frame is part of a joint frames structure (not the root), we had the next sibling of its joint frame root
-            else if(currentFrame.jointParentId > 0){
-                const listOfJointRootSiblings = state.frameObjects[state.frameObjects[parentId].parentId].childrenIds;
-                const indexOfJointRootInParent = listOfJointRootSiblings.indexOf(parentId);
-                if(indexOfJointRootInParent + 1 < listOfJointRootSiblings.length){
-                    listOfSiblings.push(listOfJointRootSiblings[indexOfJointRootInParent + 1]);
-                }
-            }
+
+            // Create the list of children + joints with which the caret will work with
+            const parentId = getParent(
+                state.frameObjects,
+                currentFrame
+            );
+                   
+            const listOfSiblings = 
+            childrenListWithJointFrames(
+                state.frameObjects, 
+                currentFrame.id, 
+                state.currentFrame.caretPosition,
+                "down"
+            );
 
             const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
             let frameToDeleteId = 0;
             let deleteChildren = false;
 
             if(payload === "Delete"){
-                //retrieve the frame to delete 
-                if(state.currentFrame.caretPosition === CaretPosition.body){
-                    if(currentFrame.childrenIds.length > 0){
-                        frameToDeleteId = currentFrame.childrenIds[0];
-                    }
-                }
-                else{
-                    if(indexOfCurrentFrame + 1 < listOfSiblings.length){
-                        frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
-                    }                   
-                }
+                if(indexOfCurrentFrame + 1 < listOfSiblings.length){
+                    frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
+                } 
+
             }
             else {
                 if (currentFrame.id > 0) {
@@ -607,6 +677,141 @@ export default new Vuex.Store({
             );
         },
 
+        leftRightKey({commit, state} , key) {
+            let editFlag = state.isEditing;
+            
+            if(editFlag) {
+
+                const currentEditableSlots = state.frameObjects[state.currentFrame.id].contentDict;
+                const indexCurSlot = Object.values(currentEditableSlots).indexOf(Object.values(currentEditableSlots).find((slot)=> slot.focused)!);
+                const change = (key === "ArrowRight") ? 1: -1;
+
+                // if we won't exceed the editable slots
+                if( indexCurSlot + change >= 0 && indexCurSlot + change <= Object.values(currentEditableSlots).length - 1 ){
+                    commit(
+                        "setEditableFocus",
+                        {
+                            frameId: state.currentFrame.id,
+                            slotId: indexCurSlot,
+                            focused: false,
+                        }
+                    );
+                    commit(
+                        "setEditableFocus",
+                        {
+                            frameId: state.currentFrame.id,
+                            slotId: indexCurSlot + change,
+                            focused: true,
+                        }
+                    );
+                }
+                // Else we are at the edge and we need to change move caret
+                else {
+
+                    commit(
+                        "toggleEditFlag",
+                        false
+                    );
+
+                    // The caret is set to Body, so with a right click we just show it. With a left click, we move up
+                    if(key === "ArrowLeft") {
+                        commit(
+                            "changeCaretWithKeyboard",
+                            "ArrowUp"
+                        );
+                    }
+                }
+                
+                
+            }
+
+            else { 
+                const currentFrame = state.frameObjects[state.currentFrame.id];
+                // next == next | previous
+                let nextFrame = 0;
+                //  direction = up | down
+                let directionDown = true;
+
+                if(key === "ArrowRight") {
+                    const parent = state.frameObjects[currentFrame.parentId];
+                    //In the case we are in the body and there are no children OR caret bellow and last in parent, move the caret
+                    if ((state.currentFrame.caretPosition === CaretPosition.body && !(currentFrame.childrenIds.length >0)) || (state.currentFrame.caretPosition === CaretPosition.below && parent.childrenIds.indexOf(currentFrame.id) === parent.childrenIds.length-1)) {
+                        commit(
+                            "changeCaretWithKeyboard",
+                            "ArrowDown"
+                        );
+                        return;
+                    }
+                    else {
+                        const framesIdList = 
+                        childrenListWithJointFrames(
+                            state.frameObjects,
+                            currentFrame.id,
+                            state.currentFrame.caretPosition,
+                            "down"
+                        );
+                        // avoid getting an out of bound exception
+                        nextFrame = (framesIdList.indexOf(currentFrame.id)+1 < framesIdList.length) ? framesIdList[framesIdList.indexOf(currentFrame.id)+1] : framesIdList[framesIdList.length - 1];   
+                    }
+                }
+                else {
+                    // If bellow a frame that does not allow children OR in the body, we check for this frame's slots
+                    if((state.currentFrame.caretPosition === CaretPosition.below && !state.frameObjects[currentFrame.id].frameType.allowChildren) || state.currentFrame.caretPosition === CaretPosition.body)  {
+                        nextFrame = currentFrame.id;
+                    }
+                    // in the case where you are bellow and you are simply going in it body
+                    else if (state.currentFrame.caretPosition == CaretPosition.below) {
+                        commit(
+                            "changeCaretWithKeyboard",
+                            "ArrowUp"
+                        );
+                        return;
+                    }
+                    else {
+                        const framesIdList = 
+                        childrenListWithJointFrames(
+                            state.frameObjects,
+                            currentFrame.id,
+                            state.currentFrame.caretPosition,
+                            "up"
+                        );
+                        // avoid getting an out of bound exception
+                        nextFrame = (framesIdList.indexOf(currentFrame.id) > 0) ? framesIdList[framesIdList.indexOf(currentFrame.id)-1] : framesIdList[0];
+                    }
+                    directionDown = false;
+                }
+
+                //If there are editable slots, go in the first
+                const editableSlotsNumber = Object.keys(state.frameObjects[nextFrame]?.contentDict).length;
+
+                if(editableSlotsNumber > 0) {
+
+                    editFlag = true;
+
+                    commit(
+                        "setEditableFocus",
+                        {
+                            frameId: state.frameObjects[nextFrame].id,
+                            slotId: (directionDown)? 0 : editableSlotsNumber -1,
+                            focused: true,
+                        }
+                    );
+                }
+                else {
+                    //In the case of no editable slots, just move the caret
+                    commit(
+                        "changeCaretWithKeyboard",
+                        (directionDown)? "ArrowDown" : "ArrowUp"
+                    );
+                }
+
+                commit(
+                    "toggleEditFlag",
+                    editFlag
+                );
+            }
+        },
     },
     modules: {},
 });
+

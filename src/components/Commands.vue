@@ -70,7 +70,7 @@ export default Vue.extend({
                 const uniqueJointFrameTypes = [ElseDefinition, FinallyDefinition];
                 uniqueJointFrameTypes.forEach((frameDef) => {
                     if(jointTypes.includes(frameDef.type) &&
-                        rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === frameDef) !== undefined){
+                        rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
                         jointTypes.splice(
                             jointTypes.indexOf(frameDef.type),
                             1
@@ -96,9 +96,9 @@ export default Vue.extend({
                         }
                     }
                     else if (rootJointFrame.frameType === TryDefinition){
-                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === FinallyDefinition) !== undefined);
-                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ElseDefinition) !== undefined);
-                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ExceptDefinition) !== undefined);
+                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === FinallyDefinition) !== undefined);
+                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === ElseDefinition) !== undefined);
+                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === ExceptDefinition) !== undefined);
 
                         //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
                         if(currentFrame.frameType === TryDefinition){
@@ -126,7 +126,7 @@ export default Vue.extend({
                                 //This "except" is not the last joint frame: we check if the following joint frame is "except"
                                 //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
                                 //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
-                                if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]].frameType === ExceptDefinition){
+                                if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType === ExceptDefinition){
                                     uniqueJointFrameTypes.forEach((frameType) => {
                                         if(jointTypes.includes(frameType.type)){
                                             jointTypes.splice(
@@ -169,9 +169,30 @@ export default Vue.extend({
     created() {
         window.addEventListener(
             "keyup",
-            this.onKeyUp
+            //Labda is used instead of `function` here as it preserves `this`
+            (event: KeyboardEvent) => {
+                if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
+                    //first we remove the focus of the current active element (to avoid editable slots to keep it)
+                    (document.activeElement as HTMLElement).blur();
+                    store.dispatch(
+                        "changeCaretPosition",
+                        event.key
+                    );
+                }
+                else if (!store.state.isEditing && ( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
+                    store.dispatch(
+                        "leftRightKey",
+                        event.key
+                    );
+                }
+                else {
+                    this.onKeyUp(event);
+                }
+                
+            }
         );
     },
+
     methods: {
         flash() {
             if (navigator.usb) {
@@ -188,28 +209,15 @@ export default Vue.extend({
             downloadPython();
         },
         onKeyUp(event: KeyboardEvent) {
-            if (
-                event.key === "ArrowDown" || event.key=="ArrowUp"
-            ) {
-                //first we remove the focus of the current active element (to avoid editable slots to keep it)
-                (document.activeElement as HTMLElement).blur();
-                store.dispatch(
-                    "changeCaretPosition",
-                    event.key
-                );
-
-            }
-            else if (store.state.isEditing === false) {
-                switch(event.key){
-                case "Delete" :
-                case "Backspace":
+            if (store.state.isEditing === false) {
+                if(event.key == "Delete" || event.key == "Backspace"){
                     //delete a frame
                     store.dispatch(
                         "deleteCurrentFrame",
                         event.key
                     );
-                    break;
-                default:
+                }
+                else{
                     //add the frame in the editor if allowed otherwise, do nothing
                     if(this.frameCommands[event.key] !== undefined){
                         store.dispatch(

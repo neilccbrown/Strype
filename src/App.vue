@@ -1,18 +1,13 @@
 <template>
     <div id="app">
         <div id="temp-container">
-            <div class="left">
-               <FrameContainer
-                        v-for="container in containerFrames"
-                        v-bind:key="container.frameType.type + '-id:' + container.id"
-                        v-bind:id="container.id"
-                        v-bind:containerLabel="container.frameType.labels[0].label"
-                        v-bind:caretVisibility="container.caretVisibility"
-                />
-            </div>
-            <div class="right">
-                <textarea v-model="mymodel"></textarea>
-            </div>
+            <FrameContainer
+                    v-for="container in containerFrames"
+                    v-bind:key="container.frameType.type + '-id:' + container.id"
+                    v-bind:id="container.id"
+                    v-bind:containerLabel="container.frameType.labels[0].label"
+                    v-bind:caretVisibility="container.caretVisibility"
+            />
         </div>
         <Commands />
     </div>
@@ -52,20 +47,14 @@ export default Vue.extend({
         containerFrames(): FrameObject[] {
             return store.getters.getFramesForParentId(0);
         },
-
-        //this helps for debugging purposes --> printing the state in the screen
-        mymodel(): string {
-            return JSON.stringify(
-                store.getters.getFrameObjects(),
-                null,
-                "  "
-            );
-        },
     },
 
     methods: {
         toggleEdition(): void {
-            store.commit("toggleEditFlag");
+            store.commit(
+                "toggleEditFlag",
+                false
+            );
         },
     },
 

@@ -3,7 +3,7 @@
         class="frame-body-container"
         v-on:click.self="toggleCaret()"
     >
-        <Caret v-show="caretVisibility===caretPosition.body" />
+        <Caret v-show=" caretVisibility === caretPosition.body  && !isEditing" />
 
         <Draggable
             v-model="frames"
@@ -57,6 +57,12 @@ export default Vue.extend({
         caretVisibility: String, //Flag indicating this caret is visible or not
     },
 
+    // data() {
+    //     return {
+    //         isEditing: store.getters.getIsEditing(),
+    //     };
+    // },
+
     computed: {
         frames: {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
@@ -78,6 +84,10 @@ export default Vue.extend({
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
         }, 
+
+        isEditing(): boolean {
+            return store.getters.getIsEditing();
+        },
     },
 
     methods: {

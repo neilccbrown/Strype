@@ -11,6 +11,7 @@
                 v-if="item.slot"
                 default-text="Default display text"
                 v-bind:slotIndex="labels.indexOf(item)"
+                v-bind:frameId="frameId"
             />
         </div>
     </div>

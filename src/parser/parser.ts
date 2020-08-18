@@ -9,7 +9,7 @@ export default class Parser {
         let output = indent;
 
         output +=
-            `if ${frame.contentDict[0]}:\n` +
+            `if ${frame.contentDict[0].code}:\n` +
             this.parseFrames(
                 store.getters.getFramesForParentId(frame.id),
                 indent + INDENT
@@ -29,7 +29,7 @@ export default class Parser {
         let output = indent;
 
         output +=
-            `elif ${frame.contentDict[0]}:\n` +
+            `elif ${frame.contentDict[0].code}:\n` +
             this.parseFrames(
                 store.getters.getFramesForParentId(frame.id),
                 indent + INDENT
@@ -54,7 +54,7 @@ export default class Parser {
     private parseWhile(frame: FrameObject, indent: string): string {
         let output = indent;
 
-        output += `while ${frame.contentDict[0]}:\n` + this.parseFrames(
+        output += `while ${frame.contentDict[0].code}:\n` + this.parseFrames(
             store.getters.getFramesForParentId(frame.id),
             indent + INDENT
         );
@@ -66,7 +66,7 @@ export default class Parser {
         let output = indent;
 
         output +=
-            `for ${frame.contentDict[0]} in ${frame.contentDict[1]}:\n` +
+            `for ${frame.contentDict[0].code} in ${frame.contentDict[1].code}:\n` +
             this.parseFrames(
                 store.getters.getFramesForParentId(frame.id),
                 indent + INDENT
@@ -84,7 +84,7 @@ export default class Parser {
     private parseFuncDef(frame: FrameObject, indent: string): string {
         let output = indent;
 
-        output += `def ${frame.contentDict[0]}(${frame.contentDict[1]}):\n` + this.parseFrames(
+        output += `def ${frame.contentDict[0].code}(${frame.contentDict[1].code}):\n` + this.parseFrames(
             store.getters.getFramesForParentId(frame.id),
             indent + INDENT
         );
@@ -113,8 +113,8 @@ export default class Parser {
     private parseExcept(frame: FrameObject, indent: string): string {
         let output = indent;
 
-        const exceptDetail = (frame.contentDict[0] !== undefined) ?
-            " " + frame.contentDict[0]:
+        const exceptDetail = (frame.contentDict[0].code !== undefined) ?
+            " " + frame.contentDict[0].code:
             "";
 
         output +=
@@ -143,7 +143,7 @@ export default class Parser {
     private parseWith(frame: FrameObject, indent: string): string {
         let output = indent;
 
-        output += `with ${frame.contentDict[0]} as ${frame.contentDict[1]}:\n` + this.parseFrames(
+        output += `with ${frame.contentDict[0].code} as ${frame.contentDict[1].code}:\n` + this.parseFrames(
             store.getters.getFramesForParentId(frame.id),
             indent + INDENT
         );
@@ -225,22 +225,22 @@ export default class Parser {
 
         switch (statement.frameType.type) {
         case EmptyDefinition.type:
-            output += `${statement.contentDict[0]}\n`;
+            output += `${statement.contentDict[0].code}\n`;
             break;
         case VarAssignDefinition.type:
-            output += `${statement.contentDict[0]} = ${statement.contentDict[1]}\n`;
+            output += `${statement.contentDict[0].code} = ${statement.contentDict[1].code}\n`;
             break;
         case ReturnDefinition.type:
-            output += `return ${statement.contentDict[0]}\n`
+            output += `return ${statement.contentDict[0].code}\n`
             break;
         case CommentDefinition.type:
-            output += `# ${statement.contentDict[0]}\n`
+            output += `# ${statement.contentDict[0].code}\n`
             break;
         case FromImportDefinition.type:
-            output += `from ${statement.contentDict[0]} import ${statement.contentDict[1]}\n`
+            output += `from ${statement.contentDict[0].code} import ${statement.contentDict[1].code}\n`
             break;
         case ImportDefinition.type:
-            output += `import ${statement.contentDict[0]}\n`
+            output += `import ${statement.contentDict[0].code}\n`
             break;
         }
 

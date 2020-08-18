@@ -16,7 +16,7 @@
                 v-on:click.self="toggleCaret($event)"
             >
             </div>
-            <Caret v-show="caretVisibility===caretPosition.below" />
+            <Caret v-show=" caretVisibility === caretPosition.below && !isEditing" />
             <JointFrames 
                 v-if="hasJointFrameObjects"
                 v-bind:jointParentId="id"
@@ -74,6 +74,7 @@ export default Vue.extend({
                 "all"
             ).length >0;
         },
+
         frameStyle(): Record<string, string> {
             return this.isJointFrame === true
                 ? {}
@@ -91,6 +92,10 @@ export default Vue.extend({
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
+        },
+
+        isEditing(): boolean {
+            return store.getters.getIsEditing();
         },
         
     },
