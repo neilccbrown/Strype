@@ -43,10 +43,7 @@ const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, 
             
     // Create the list of children + joints with which the caret will work with
     let childrenAndJointFramesIds = [] as number[];
-    const parentId = getParent(
-        listOfFrames, 
-        currentFrame
-    );
+    const parentId = getParent(listOfFrames,currentFrame);
 
     childrenAndJointFramesIds = [...listOfFrames[parentId].childrenIds];    
     
@@ -375,10 +372,8 @@ export default new Vuex.Store({
             
             // Create the list of children + joints with which the caret will work with
             let childrenAndJointFramesIds = [] as number[];
-            const parentId = getParent(
-                state.frameObjects,
-                currentFrame
-            );
+            const parentId = getParent(state.frameObjects,currentFrame);
+
             
 
 
@@ -615,10 +610,8 @@ export default new Vuex.Store({
             const currentFrame = state.frameObjects[state.currentFrame.id];
 
             // Create the list of children + joints with which the caret will work with
-            const parentId = getParent(
-                state.frameObjects,
-                currentFrame
-            );
+            const parentId = getParent(state.frameObjects,currentFrame);
+
                    
             const listOfSiblings = 
             childrenListWithJointFrames(

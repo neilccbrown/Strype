@@ -225,7 +225,7 @@ export default Vue.extend({
                             this.frameCommands[event.key].type                
                         );
                     }
-               
+                    
                 }                
             }
         },
