@@ -28,7 +28,6 @@ export default Vue.extend({
         defaultText: String,
         slotIndex: Number,
         frameId: Number,
-        focus: Boolean,
     },
 
     data() {
@@ -41,32 +40,34 @@ export default Vue.extend({
     },
 
     computed: {
-        focused: {
+        focused(): boolean {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-            get(): boolean {
-                return store.getters.getIsEditableFocused(
-                    this.$props.frameId,
-                    this.$props.slotIndex
-                );
-            },
-            // setter
-            set(): void {
-                // Nothing to be done here.
-            },
+            const newFocused = store.getters.getIsEditableFocused(
+                this.$props.frameId,
+                this.$props.slotIndex
+            );
+            return newFocused;
         },
     },
 
+   
     directives: {
         focus: {
-            // Used so the store can set the focus of this element
-            update: function (el,binding) {
-                if(binding.value){
+            //This is needed to set the focus when a frame with slots has just been added (i.e. when `leftRightKey` is called after `addFrameWithCommand` in Commands.vue)
+            inserted: function (el,binding) {
+                if(binding.value) {
                     el.focus();
-                    // this.onFocus();
                 }
-                else {
-                    el.blur();
-                    // this.onBlur();
+            },
+            // Used so the store can set the focus of this element
+            componentUpdated: function (el, binding) {
+                if(binding.value !== binding.oldValue) {
+                    if(binding.value){
+                        el.focus();
+                    }
+                    else {
+                        el.blur();
+                    }
                 }
             },
         },

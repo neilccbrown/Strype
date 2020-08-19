@@ -70,16 +70,9 @@ export default Vue.extend({
     },
 
     computed: {
-        frames: {
+        frames(): FrameObject[] {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-            get(): FrameObject[] {
-                return store.getters.getFramesForParentId(this.$props.id);
-            },
-            // setter
-            set(): void {
-            // Nothing to be done here.
-            // Event handlers call mutations which change the state
-            },
+            return store.getters.getFramesForParentId(this.$props.id);
         },
 
         draggableGroup(): DraggableGroupTypes {

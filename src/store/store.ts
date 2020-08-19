@@ -374,9 +374,6 @@ export default new Vuex.Store({
             let childrenAndJointFramesIds = [] as number[];
             const parentId = getParent(state.frameObjects,currentFrame);
 
-            
-
-
             if (eventType === "ArrowDown") {            
                 
                 childrenAndJointFramesIds = 
@@ -595,6 +592,7 @@ export default new Vuex.Store({
                 "addFrameObject",
                 newFrame
             );
+            
         },
 
         deleteCurrentFrame({commit, state}, payload: string){

@@ -219,10 +219,14 @@ export default Vue.extend({
                 }
                 else{
                     //add the frame in the editor if allowed otherwise, do nothing
-                    if(this.frameCommands[event.key] !== undefined){
+                    if(this.frameCommands[event.key.toLowerCase()] !== undefined){
                         store.dispatch(
                             "addFrameWithCommand",
-                            this.frameCommands[event.key].type                
+                            this.frameCommands[event.key.toLowerCase()].type                
+                        );
+                        store.dispatch(
+                            "leftRightKey",
+                            "ArrowRight"                
                         );
                     }
                     
