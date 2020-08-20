@@ -18,6 +18,7 @@ export interface FrameObject {
 export interface FrameLabel {
     label: string;
     slot: boolean;
+    defaultText: string;
 }
 
 // There are three groups of draggable frames.
@@ -165,7 +166,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.importsContainer,
     labels: [
-        { label: "Imports:", slot: false },
+        { label: "Imports:", slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommmentFrameTypesIdentifier.comment),
@@ -178,7 +179,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.funcDefsContainer,
     labels: [
-        { label: "Function Definitions:", slot: false },
+        { label: "Function Definitions:", slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommmentFrameTypesIdentifier.comment),
@@ -191,7 +192,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.funcDefsContainer,
     labels: [
-        { label: "Your code:", slot: false },
+        { label: "Your code:", slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
@@ -203,8 +204,8 @@ export const IfDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.if,
     labels: [
-        { label: "if", slot: true },
-        { label: ":", slot: false },
+        { label: "if", slot: true, defaultText: "condition" },
+        { label: ":", slot: false, defaultText: "" },
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
     colour: "#EA9C72",
@@ -215,8 +216,8 @@ export const ElifDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.elif,
     labels: [
-        { label: "elif", slot: true },
-        { label: ":", slot: false },
+        { label: "elif", slot: true, defaultText: "condition"},
+        { label: ":", slot: false, defaultText: ""},
     ],
     draggableGroup: DraggableGroupTypes.ifCompound,
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
@@ -225,7 +226,7 @@ export const ElifDefinition: FramesDefinitions = {
 export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.else,
-    labels: [{ label: "else:", slot: false }],
+    labels: [{ label: "else:", slot: false, defaultText: ""}],
     draggableGroup: DraggableGroupTypes.none,
     jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
 };
@@ -234,9 +235,9 @@ export const ForDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.for,
     labels: [
-        { label: "for", slot: true },
-        { label: "in", slot: true },
-        { label: ":", slot: false },
+        { label: "for", slot: true, defaultText: "identifier" },
+        { label: "in", slot: true, defaultText: "list"},
+        { label: ":", slot: false, defaultText: ""},
     ],
     jointFrameTypes:[StandardFrameTypesIdentifiers.else],
     colour: "#EA72C0",
@@ -246,8 +247,8 @@ export const WhileDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.while,
     labels: [
-        { label: "while", slot: true },
-        { label: ":", slot: false },
+        { label: "while", slot: true, defaultText: "condition" },
+        { label: ":", slot: false, defaultText: ""},
     ],
     colour: "#9C72EA",
 };
@@ -255,7 +256,7 @@ export const WhileDefinition: FramesDefinitions = {
 export const TryDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.try,
-    labels: [{ label: "try:", slot: false }],
+    labels: [{ label: "try:", slot: false, defaultText: ""}],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "#EA0000",
     innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
@@ -265,8 +266,8 @@ export const ExceptDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.except,
     labels: [
-        { label: "except", slot: true },
-        { label: ":", slot: false },
+        { label: "except", slot: true, defaultText: "exception"},
+        { label: ":", slot: false, defaultText: ""},
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "",
@@ -277,7 +278,7 @@ export const FinallyDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.finally,
     labels: [
-        { label: "finally:", slot: false },
+        { label: "finally:", slot: false, defaultText: ""},
     ],
     colour: "",
     draggableGroup: DraggableGroupTypes.none,
@@ -287,9 +288,9 @@ export const FuncDefDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: FuncDefIdentifiers.funcdef,
     labels: [
-        { label: "def:", slot: true },
-        { label: "(", slot: true },
-        { label: ")", slot: false },
+        { label: "def:", slot: true, defaultText: "name"},
+        { label: "(", slot: true, defaultText: "arguments" },
+        { label: ")", slot: false, defaultText: ""},
     ],
     colour: "#0C3DED",
     draggableGroup: DraggableGroupTypes.functionSignatures,
@@ -299,9 +300,9 @@ export const WithDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.with,
     labels: [
-        { label: "with", slot: true },
-        { label: "as", slot: true },
-        { label: ":", slot: false },
+        { label: "with", slot: true, defaultText: "expression"},
+        { label: "as", slot: true, defaultText: "identifier"},
+        { label: ":", slot: false, defaultText: ""},
     ],
     colour: "#0C3DED",
 };
@@ -310,14 +311,14 @@ export const WithDefinition: FramesDefinitions = {
 export const EmptyDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.empty,
-    labels: [{ label: "", slot: true }],
+    labels: [{ label: "", slot: true, defaultText: "method call"}],
     colour: "#220983",
 };
 
 export const ReturnDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.return,
-    labels: [{ label: "return", slot: true }],
+    labels: [{ label: "return", slot: true, defaultText: "expression"}],
     colour: "#EFF779",
 };
 
@@ -325,8 +326,8 @@ export const VarAssignDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.varassign,
     labels: [
-        { label: "var", slot: true },
-        { label: "=", slot: true },
+        { label: "var", slot: true, defaultText: "name"},
+        { label: "=", slot: true, defaultText: "value"},
     ],
     colour: "#72EAC0",
 };
@@ -334,7 +335,7 @@ export const VarAssignDefinition: FramesDefinitions = {
 export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
-    labels: [{ label: "import", slot: true }],
+    labels: [{ label: "import", slot: true, defaultText: "module"}],
     colour: "#FFFFFF",
     draggableGroup: DraggableGroupTypes.imports,
 };
@@ -343,8 +344,8 @@ export const FromImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.fromimport,
     labels: [
-        { label: "from", slot: true },
-        { label: "import", slot: true },
+        { label: "from", slot: true, defaultText: "package"},
+        { label: "import", slot: true, defaultText: "module"},
     ],
     colour: "#FFFFFF",
     draggableGroup: DraggableGroupTypes.imports,
@@ -353,7 +354,7 @@ export const FromImportDefinition: FramesDefinitions = {
 export const CommentDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.comment,
-    labels: [{ label: "Comment:", slot: true }],
+    labels: [{ label: "#", slot: true, defaultText: "your comment"}],
     colour: "#AAAAAA",
 };
 

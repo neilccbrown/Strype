@@ -9,7 +9,7 @@
             <EditableSlot
                 class="editable-input"
                 v-if="item.slot"
-                default-text="Default display text"
+                v-bind:default-text="item.defaultText"
                 v-bind:slotIndex="index"
                 v-bind:frameId="frameId"
             />
