@@ -48,6 +48,10 @@ export interface EditorFrameObjects {
     [id: number]: FrameObject;
 }
 
+export interface LineAndSlotPositions {
+    [line: number]: {id: number ; slotStarts: number[]};
+}
+
 // This is an array with all the frame Definitions objects.
 // Note that the slot variable of each objects tells if the
 // Label needs an editable slot as well attached to it.
@@ -204,8 +208,8 @@ export const IfDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.if,
     labels: [
-        { label: "if", slot: true, defaultText: "condition" },
-        { label: ":", slot: false, defaultText: "" },
+        { label: "if (", slot: true, defaultText: "condition" },
+        { label: ") :", slot: false, defaultText: "" },
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
     colour: "#EA9C72",
@@ -216,8 +220,8 @@ export const ElifDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.elif,
     labels: [
-        { label: "elif", slot: true, defaultText: "condition"},
-        { label: ":", slot: false, defaultText: ""},
+        { label: "elif (", slot: true, defaultText: "condition"},
+        { label: ") :", slot: false, defaultText: ""},
     ],
     draggableGroup: DraggableGroupTypes.ifCompound,
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
@@ -235,9 +239,9 @@ export const ForDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.for,
     labels: [
-        { label: "for", slot: true, defaultText: "identifier" },
-        { label: "in", slot: true, defaultText: "list"},
-        { label: ":", slot: false, defaultText: ""},
+        { label: "for ", slot: true, defaultText: "identifier" },
+        { label: " in ", slot: true, defaultText: "list"},
+        { label: " :", slot: false, defaultText: ""},
     ],
     jointFrameTypes:[StandardFrameTypesIdentifiers.else],
     colour: "#EA72C0",
@@ -247,8 +251,8 @@ export const WhileDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.while,
     labels: [
-        { label: "while", slot: true, defaultText: "condition" },
-        { label: ":", slot: false, defaultText: ""},
+        { label: "while (", slot: true, defaultText: "condition" },
+        { label: ") :", slot: false, defaultText: ""},
     ],
     colour: "#9C72EA",
 };
@@ -266,7 +270,7 @@ export const ExceptDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.except,
     labels: [
-        { label: "except", slot: true, defaultText: "exception"},
+        { label: "except ", slot: true, defaultText: "exception"},
         { label: ":", slot: false, defaultText: ""},
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
@@ -288,9 +292,9 @@ export const FuncDefDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: FuncDefIdentifiers.funcdef,
     labels: [
-        { label: "def:", slot: true, defaultText: "name"},
+        { label: "def ", slot: true, defaultText: "name"},
         { label: "(", slot: true, defaultText: "arguments" },
-        { label: ")", slot: false, defaultText: ""},
+        { label: "):", slot: false, defaultText: ""},
     ],
     colour: "#0C3DED",
     draggableGroup: DraggableGroupTypes.functionSignatures,
@@ -300,9 +304,9 @@ export const WithDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.with,
     labels: [
-        { label: "with", slot: true, defaultText: "expression"},
-        { label: "as", slot: true, defaultText: "identifier"},
-        { label: ":", slot: false, defaultText: ""},
+        { label: "with ", slot: true, defaultText: "expression"},
+        { label: " as ", slot: true, defaultText: "identifier"},
+        { label: " :", slot: false, defaultText: ""},
     ],
     colour: "#0C3DED",
 };
@@ -318,7 +322,7 @@ export const EmptyDefinition: FramesDefinitions = {
 export const ReturnDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.return,
-    labels: [{ label: "return", slot: true, defaultText: "expression"}],
+    labels: [{ label: "return ", slot: true, defaultText: "expression"}],
     colour: "#EFF779",
 };
 
@@ -326,8 +330,8 @@ export const VarAssignDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.varassign,
     labels: [
-        { label: "var", slot: true, defaultText: "name"},
-        { label: "=", slot: true, defaultText: "value"},
+        { label: "", slot: true, defaultText: "identifier"},
+        { label: " = ", slot: true, defaultText: "value"},
     ],
     colour: "#72EAC0",
 };
@@ -335,7 +339,7 @@ export const VarAssignDefinition: FramesDefinitions = {
 export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
-    labels: [{ label: "import", slot: true, defaultText: "module"}],
+    labels: [{ label: "import ", slot: true, defaultText: "module"}],
     colour: "#FFFFFF",
     draggableGroup: DraggableGroupTypes.imports,
 };
@@ -344,8 +348,8 @@ export const FromImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.fromimport,
     labels: [
-        { label: "from", slot: true, defaultText: "package"},
-        { label: "import", slot: true, defaultText: "module"},
+        { label: "from ", slot: true, defaultText: "package"},
+        { label: "import ", slot: true, defaultText: "module"},
     ],
     colour: "#FFFFFF",
     draggableGroup: DraggableGroupTypes.imports,
@@ -354,7 +358,7 @@ export const FromImportDefinition: FramesDefinitions = {
 export const CommentDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.comment,
-    labels: [{ label: "#", slot: true, defaultText: "your comment"}],
+    labels: [{ label: "# ", slot: true, defaultText: "your comment"}],
     colour: "#AAAAAA",
 };
 
