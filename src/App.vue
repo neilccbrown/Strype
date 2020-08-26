@@ -22,6 +22,8 @@ import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
 import { FrameObject } from "@/types/types";
+// import "./custom.scss";
+
 
 //////////////////////
 //     Component    //

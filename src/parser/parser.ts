@@ -113,7 +113,7 @@ export default class Parser {
                                     ((index<array.length-1)? (array[index+1] > error.offset) : true)
                         }
                     ), 
-                    value: true,
+                    error: error.msg,
                 })
             });
 

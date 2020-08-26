@@ -182,9 +182,12 @@ export default new Vuex.Store({
         },
 
         getErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
-            return state.frameObjects[frameId].contentDict[slotIndex].erroneous;
+            return state.frameObjects[frameId].contentDict[slotIndex].error !== "";
         },
         
+        getErrorForSlot: (state) => (frameId: number, slotIndex: number) => {
+            return state.frameObjects[frameId].contentDict[slotIndex].error;
+        },
     },
 
     mutations: {
@@ -536,12 +539,13 @@ export default new Vuex.Store({
             );
         },
 
-        setSlotErroneous(state, payload: {frameId: number; slotIndex: number; value: boolean}) {
+        setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
             Vue.set(
                 state.frameObjects[payload.frameId].contentDict[payload.slotIndex],
-                "erroneous",
-                payload.value
+                "error",
+                payload.error
             );
+
         },
         
     },

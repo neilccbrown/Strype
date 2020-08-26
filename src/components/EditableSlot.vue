@@ -12,7 +12,15 @@
             v-on:keyup.up.prevent.stop="onUDKeyUp($event)"
             v-on:keyup.down.prevent.stop="onUDKeyUp($event)"
             v-bind:class="{error: erroneous}"
+            v-bind:id="id"
         />
+        <b-popover
+          v-if="erroneous"
+          v-bind:target="id"
+          title="Error!"
+          triggers="hover focus"
+          v-bind:content="errorMessage"
+        ></b-popover>
     </div>
 </template>
 
@@ -51,6 +59,17 @@ export default Vue.extend({
 
         erroneous(): boolean {
             return store.getters.getErroneousSlot(
+                this.$props.frameId,
+                this.$props.slotIndex
+            );
+        },
+
+        id(): string {
+            return "input_frameId_"+this.$props.frameId+"_slot_"+this.$props.slotId;
+        },
+
+        errorMessage(): string{
+            return store.getters.getErrorForSlot(
                 this.$props.frameId,
                 this.$props.slotIndex
             );

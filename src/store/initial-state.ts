@@ -48,7 +48,7 @@ const initialState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: {code : "Foo", focused: false, erroneous :false} },
+        contentDict: { 0: {code : "Foo", focused: false, error :""} },
         caretVisibility: CaretPosition.none,
     },
     2: {
@@ -68,7 +68,7 @@ const initialState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: {code :  "", focused: false, erroneous :false} },
+        contentDict: { 0: {code :  "", focused: false, error :""} },
         caretVisibility: CaretPosition.below,
     },
 
