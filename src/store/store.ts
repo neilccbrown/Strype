@@ -119,9 +119,9 @@ export default new Vuex.Store({
         frameObjects: initialState,
     },
     getters: {
-        getFramesForParentId: (state) => (id: number) => {
+        getFramesForParentId: (state) => (frameId: number) => {
             //Get the childrenIds of this frame and based on these return the children objects corresponding to them
-            return state.frameObjects[id].childrenIds
+            return state.frameObjects[frameId].childrenIds
                 .map((a) => state.frameObjects[a])
                 .filter((a) => a);
         },
@@ -129,18 +129,18 @@ export default new Vuex.Store({
             const retCode = state.frameObjects[frameId]?.contentDict[slotId].code;
             return retCode !== undefined ? retCode : "";
         },
-        getJointFramesForFrameId: (state) => (id: number, group: string) => {
-            const jointFrameIds = state.frameObjects[id]?.jointFrameIds;
+        getJointFramesForFrameId: (state) => (frameId: number, group: string) => {
+            const jointFrameIds = state.frameObjects[frameId]?.jointFrameIds;
             const jointFrames: FrameObject[] = [];
             jointFrameIds?.forEach((jointFrameId: number) => {
                 const jointFrame = state.frameObjects[jointFrameId];
                 if (jointFrame !== undefined) {
                     //this frame should have the same draggableGroup with the parent Joint frame for it to be Draggable)
-                    if (group === "draggable" && jointFrame.frameType.draggableGroup === state.frameObjects[id].frameType.innerJointDraggableGroup) {
+                    if (group === "draggable" && jointFrame.frameType.draggableGroup === state.frameObjects[frameId].frameType.innerJointDraggableGroup) {
                         jointFrames.push(jointFrame);
                     }
                     //this frame should not have the same draggableGroup with the parent Joint frame for it to be Static (undraggable)
-                    else if (group === "static" && jointFrame.frameType.draggableGroup !== state.frameObjects[id].frameType.innerJointDraggableGroup) {
+                    else if (group === "static" && jointFrame.frameType.draggableGroup !== state.frameObjects[frameId].frameType.innerJointDraggableGroup) {
                         jointFrames.push(jointFrame);
                     }
                     else if (group === "all") {
@@ -164,21 +164,25 @@ export default new Vuex.Store({
         getCurrentFrameObject: (state) => () => {
             return state.frameObjects[state.currentFrame.id];
         },
-        getDraggableGroupById: (state) => (id: number) => {
-            return state.frameObjects[id].frameType.draggableGroup;
+        getDraggableGroupById: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].frameType.draggableGroup;
         },
-        getDraggableJointGroupById: (state) => (id: number) => {
-            const frame = state.frameObjects[id];
+        getDraggableJointGroupById: (state) => (frameId: number) => {
+            const frame = state.frameObjects[frameId];
             return frame.frameType.innerJointDraggableGroup;
         },
         getIsEditing: (state) => () => {
             return state.isEditing;
         },
-        getIsEditableFocused: (state) => (id: number, slotIndex: number) => {
-            return state.frameObjects[id].contentDict[slotIndex].focused;
+        getIsEditableFocused: (state) => (frameId: number, slotIndex: number) => {
+            return state.frameObjects[frameId].contentDict[slotIndex].focused;
         },
-        getAllowChildren: (state) => (id: number) => {
-            return state.frameObjects[id].frameType.allowChildren;
+        getAllowChildren: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].frameType.allowChildren;
+        },
+
+        getErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
+            return state.frameObjects[frameId].contentDict[slotIndex].erroneous;
         },
         
     },
@@ -531,6 +535,14 @@ export default new Vuex.Store({
                 newCurrentFrame.caretPosition
             );
         },
+
+        setSlotErroneous(state, payload: {frameId: number; slotIndex: number; value: boolean}) {
+            Vue.set(
+                state.frameObjects[payload.frameId].contentDict[payload.slotIndex],
+                "erroneous",
+                payload.value
+            );
+        },
         
     },
 
@@ -578,7 +590,7 @@ export default new Vuex.Store({
                     : 0,
                 jointFrameIds: [],
                 contentDict:
-                    //find each editable slot and create an empty & unfosed entry for it
+                    //find each editable slot and create an empty & unfocused entry for it
                     payload.labels.filter((el)=> el.slot).reduce(
                         (acc, cur, idx) => ({ 
                             ...acc, 

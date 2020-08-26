@@ -11,6 +11,7 @@
             v-on:keyup.right.prevent.stop="onLRKeyUp($event)"
             v-on:keyup.up.prevent.stop="onUDKeyUp($event)"
             v-on:keyup.down.prevent.stop="onUDKeyUp($event)"
+            v-bind:class="{error: erroneous}"
         />
     </div>
 </template>
@@ -42,11 +43,17 @@ export default Vue.extend({
     computed: {
         focused(): boolean {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-            const newFocused = store.getters.getIsEditableFocused(
+            return store.getters.getIsEditableFocused(
                 this.$props.frameId,
                 this.$props.slotIndex
             );
-            return newFocused;
+        },
+
+        erroneous(): boolean {
+            return store.getters.getErroneousSlot(
+                this.$props.frameId,
+                this.$props.slotIndex
+            );
         },
     },
 
@@ -157,3 +164,10 @@ export default Vue.extend({
     },
 });
 </script>
+
+<style lang="scss">
+.error {
+    border: 1px solid #d66;
+}
+
+</style>

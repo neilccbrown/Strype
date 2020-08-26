@@ -12,7 +12,7 @@ export interface FrameObject {
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
-    contentDict: { [id: number]: {code: string ; focused: boolean} }; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
+    contentDict: { [index: number]: {code: string ; focused: boolean ; erroneous: boolean} }; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
 }
 
 export interface FrameLabel {
@@ -49,7 +49,7 @@ export interface EditorFrameObjects {
 }
 
 export interface LineAndSlotPositions {
-    [line: number]: {id: number ; slotStarts: number[]};
+    [line: number]: {frameId: number ; slotStarts: number[]};
 }
 
 // This is an array with all the frame Definitions objects.

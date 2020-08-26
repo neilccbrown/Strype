@@ -1,4 +1,4 @@
-import { ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, FrameObject, IfDefinition, WhileDefinition, ForDefinition, FuncDefDefinition, TryDefinition, WithDefinition, EmptyDefinition, VarAssignDefinition, ReturnDefinition, CommentDefinition, FromImportDefinition, ImportDefinition, FrameContainersDefinitions, ElifDefinition, ElseDefinition, ExceptDefinition, FinallyDefinition, LineAndSlotPositions } from "@/types/types";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
 import store from "@/store/store";
 import { TPyParser, ErrorInfo } from "tigerpython-parser";
 
@@ -18,21 +18,32 @@ export default class Parser {
             indent + INDENT
         );
         
-        
         return output;
     }
+    
     private parseStatement(statement: FrameObject, indent = ""): string {
         let output = indent;
-        
+        const positions: number[] = [];
+        // let currPosition = 0;
         let slot = 0;
+
         statement.frameType.labels.forEach( (label) => {
-            output += label.label + ((label.slot) ? statement.contentDict[slot++].code: "");
+            
+            output += label.label;// + ((label.slot) ? statement.contentDict[slot++].code: "");
+
+            //if there is an editable slot
+            if(label.slot){
+                // Record its vertical position
+                positions.push(output.length);
+                
+                // add its code to the output
+                output += statement.contentDict[slot++].code;
+            }
         });
-
         output += "\n";
-        // let positions: number[] = [];
+        
 
-        // this.framePositionMap[this.line] = {id: statement.id , slotStarts: positions};
+        this.framePositionMap[this.line] = {frameId: statement.id , slotStarts: positions};
 
         return output;
     }
@@ -79,24 +90,35 @@ export default class Parser {
         if (!inputCode) {
             code = this.parse();
         }
-        // console.log(TPyParser.parse(code));
-        console.log("errors");
-        console.log(TPyParser.findAllErrors(code));
-        console.log("positions");
-        console.log(this.framePositionMap);
-        console.log("code");
-        console.log(code);
         return TPyParser.findAllErrors(code);
     }
 
     public getErrorsFormatted(inputCode = ""): string {
         const errors = this.getErrors(inputCode);
         let errorString = "";
+        
         if (errors.length > 0) {
             errorString = `${errors.map((e: any) => {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
             })}`;
+
+            // For each error, show red border around its input in the UI
+            errors.forEach((error) => {
+                store.commit("setSlotErroneous", {
+                    frameId: this.framePositionMap[error.line].frameId,
+                    // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
+                    slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
+                        (element, index, array) => {
+                            return element<=error.offset && 
+                                    ((index<array.length-1)? (array[index+1] > error.offset) : true)
+                        }
+                    ), 
+                    value: true,
+                })
+            });
+
         }
+
         return errorString;
     }
 
