@@ -1,5 +1,5 @@
 <template>
-    <div class="container">
+    <div class="commands">
         <div>
             <button v-on:click="flash">Connect Serial</button>
             <button v-on:click="downloadHex">Download Hex</button>
@@ -238,10 +238,11 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.container {
+.commands {
     border-left: #383b40 1px solid;
     color: rgb(37, 35, 35);
     background-color: lightblue;
-    width: 300px;
+    // width: 300px;
+
 }
 </style>

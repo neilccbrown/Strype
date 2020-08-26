@@ -5,7 +5,7 @@
             <span class="frame-container-label-span" v-on:click.self="toggleCaret($event)">{{containerLabel}}</span>
         </div>
 
-        <div :style="containerStyle">
+        <div v-bind:style="containerStyle">
             <Caret v-show="caretVisibility===caretPosition.body" />
 
             <Draggable
@@ -131,5 +131,7 @@ export default Vue.extend({
     margin-left: 5px;
     cursor:default;
 }
+
+
 
 </style>
