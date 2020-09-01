@@ -170,10 +170,12 @@ export default Vue.extend({
         },
 
         onUDKeyUp(event: KeyboardEvent) {
-            if( event.key === "ArrowDown" ) {
-                this.onBlur();
-            }
-            else {
+
+            // In any case the focus is lost
+            this.onBlur();
+
+            //If the up arrow is pressed you need to move the caret as well.
+            if( event.key === "ArrowUp" ) {
                 store.dispatch(
                     "changeCaretPosition",
                     event.key
