@@ -598,7 +598,7 @@ export default new Vuex.Store({
                     payload.labels.filter((el)=> el.slot).reduce(
                         (acc, cur, idx) => ({ 
                             ...acc, 
-                            [idx]: {code: "", focused: false},
+                            [idx]: {code: "", focused: false, error: ""},
                         }),
                         {}
                     ),
