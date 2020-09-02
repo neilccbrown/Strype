@@ -124,6 +124,7 @@ const StandardFrameTypesIdentifiers = {
     break: "break",
     continue: "continue",
     try: "try",
+    raise: "raise",
     with: "with",
     return: "return",
     varassign: "varassign",
@@ -357,6 +358,14 @@ export const ContinueDefinition: FramesDefinitions = {
     colour: "#1f784a",
 };
 
+export const RaiseDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: StandardFrameTypesIdentifiers.raise,
+    labels: [
+        { label: "raise", slot: true, defaultText: "exception" },
+    ],
+    colour: "#a337c4",
+};
 
 export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
@@ -410,6 +419,7 @@ export const Definitions = {
     WhileDefinition,
     BreakDefinition,
     ContinueDefinition,
+    RaiseDefinition,
     TryDefinition,
     ExceptDefinition,
     FinallyDefinition,

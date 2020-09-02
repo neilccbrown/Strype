@@ -68,6 +68,11 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         description: "try",
         shortcut: "t",
     },
+    "a" : {
+        type: Definitions.RaiseDefinition,
+        description: "raise",
+        shortcut: "a",
+    },
     "x": {
         type: Definitions.ExceptDefinition,
         description: "except",
