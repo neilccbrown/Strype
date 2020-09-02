@@ -103,6 +103,7 @@ const ImportFrameTypesIdentifiers = {
     import: "import",
     fromimport: "fromimport",
     importas: "importas",
+    fromimportas: "fromimportas",
 }
 const FuncDefIdentifiers = {
     funcdef: "funcdef",
@@ -180,7 +181,6 @@ export const ImportsContainerDefinition: FramesDefinitions = {
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommmentFrameTypesIdentifier.comment),
     colour: "#FFFFF",
     draggableGroup: DraggableGroupTypes.imports,
-
 }
 
 export const FuncDefContainerDefinition: FramesDefinitions = {
@@ -397,6 +397,18 @@ export const ImportAsDefinition: FramesDefinitions = {
     draggableGroup: DraggableGroupTypes.imports,
 };
 
+export const FromImportAsDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: ImportFrameTypesIdentifiers.fromimportas,
+    labels: [
+        { label: "from ", slot: true, defaultText: "module"},
+        { label: "import ", slot: true, defaultText: "function/class"},
+        { label: "as ", slot: true, defaultText: "module"},
+    ],
+    colour: "#FFFFFF",
+    draggableGroup: DraggableGroupTypes.imports,
+};
+
 export const CommentDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.comment,
@@ -430,6 +442,7 @@ export const Definitions = {
     VarAssignDefinition,
     ImportDefinition,
     FromImportDefinition,
+    FromImportAsDefinition,
     ImportAsDefinition,
     CommentDefinition,
 };

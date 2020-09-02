@@ -98,6 +98,11 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         description: "import ... as",
         shortcut: "p",
     },
+    "s": {
+        type: Definitions.FromImportAsDefinition,
+        description: "from ... import ... as",
+        shortcut: "s",
+    },
     "h": {
         type: Definitions.WithDefinition,
         description: "with",
