@@ -12,11 +12,21 @@ export default class Parser {
 
     private parseBlock(block: FrameObject, indent: string): string {
         let output = "";
+        const children = store.getters.getFramesForParentId(block.id);
 
-        output += this.parseStatement(block,indent) + this.parseFrames(
-            store.getters.getFramesForParentId(block.id),
-            indent + INDENT
-        );
+        output += 
+            this.parseStatement(block,indent) + 
+            ((block.frameType.allowChildren && children.length > 0)?
+                this.parseFrames(
+                    store.getters.getFramesForParentId(block.id),
+                    indent + INDENT
+                ) :
+                this.parseStatement({} as FrameObject,indent)) // empty bodies are added as empty lines in the code
+            + 
+            this.parseFrames(
+                store.getters.getJointFramesForFrameId(block.id, "all"), 
+                indent + INDENT
+            );
         
         return output;
     }
@@ -27,9 +37,9 @@ export default class Parser {
         // let currPosition = 0;
         let slot = 0;
 
-        statement.frameType.labels.forEach( (label) => {
+        statement.frameType?.labels.forEach( (label) => {
             
-            output += label.label;// + ((label.slot) ? statement.contentDict[slot++].code: "");
+            output += label.label;
 
             //if there is an editable slot
             if(label.slot){
@@ -41,32 +51,29 @@ export default class Parser {
             }
         });
         output += "\n";
-        
-
+    
         this.framePositionMap[this.line] = {frameId: statement.id , slotStarts: positions};
+        
+        this.line += 1;
 
         return output;
     }
 
     private parseFrames(codeUnits: FrameObject[], indent = ""): string {
         let output = "";
-        let lineCode = ""
+        let lineCode = "";
+
         //if the current frame is a container, we don't parse it as such
         //but parse directly its children (frames that it contains)
         for (const frame of codeUnits) {
-            lineCode = frame.frameType.allowChildren ?
+            lineCode = frame.frameType.allowChildren 
+                ?
                 (Object.values(FrameContainersDefinitions).includes(frame.frameType)) ? 
                     this.parseFrames(store.getters.getFramesForParentId(frame.id)) :
-                    this.parseBlock(
-                        frame,
-                        indent
-                    ) : 
-                this.parseStatement(
-                    frame,
-                    indent
-                );
+                    this.parseBlock(frame, indent) 
+                : 
+                this.parseStatement(frame,indent);
 
-            this.line += (lineCode !== "")? 1 : 0;
             output += lineCode;
         }
 
@@ -101,9 +108,12 @@ export default class Parser {
             errorString = `${errors.map((e: any) => {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
             })}`;
-
+            console.log("code");
+            console.log(inputCode);
+            console.log(errors);
+            console.log(this.framePositionMap);
             // For each error, show red border around its input in the UI
-            errors.forEach((error) => {
+            errors.forEach((error: ErrorInfo) => {
                 store.commit("setSlotErroneous", {
                     frameId: this.framePositionMap[error.line].frameId,
                     // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
@@ -118,6 +128,7 @@ export default class Parser {
             });
 
         }
+        
 
         return errorString;
     }

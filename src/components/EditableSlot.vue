@@ -127,6 +127,7 @@ export default Vue.extend({
             
         },
         onBlur(): void {
+
             store.commit(
                 "toggleEditFlag",
                 false
@@ -141,14 +142,37 @@ export default Vue.extend({
                 }
             );
 
-            store.commit(
-                "setFrameEditorSlot",
-                {
-                    frameId: this.$parent.$props.frameId,
-                    slotId: this.$props.slotIndex,
-                    code: this.$data.code,
+            if(this.$data.code !== "") {
+                store.commit(
+                    "setFrameEditorSlot",
+                    {
+                        frameId: this.$parent.$props.frameId,
+                        slotId: this.$props.slotIndex,
+                        code: this.$data.code,
+                    }   
+                );
+                //if the user entered text on previously left blank slot, remove the error
+                if(this.errorMessage === "Input slot cannot be empty") {
+                    store.commit(
+                        "setSlotErroneous", 
+                        {
+                            frameId: this.$parent.$props.frameId, 
+                            slotIndex: this.$props.slotIndex, 
+                            error: "",
+                        }
+                    );
                 }
-            );
+            }
+            else {
+                store.commit(
+                    "setSlotErroneous", 
+                    {
+                        frameId: this.$parent.$props.frameId, 
+                        slotIndex: this.$props.slotIndex, 
+                        error: "Input slot cannot be empty",
+                    }
+                );
+            }
         },
 
         onLRKeyUp(event: KeyboardEvent) {
