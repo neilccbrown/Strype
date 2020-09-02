@@ -27,6 +27,16 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         description: "while",
         shortcut: "w",
     },
+    "b" : {
+        type: Definitions.BreakDefinition,
+        description: "break",
+        shortcut: "b",
+    },
+    "u" : {
+        type: Definitions.ContinueDefinition,
+        description: "continue",
+        shortcut: "u",
+    },
     "=": {
         type: Definitions.VarAssignDefinition,
         description: "variable assignment",
@@ -77,6 +87,11 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         type: Definitions.FromImportDefinition,
         description: "from ... import",
         shortcut: "o",
+    },
+    "p": {
+        type: Definitions.ImportAsDefinition,
+        description: "import ... as",
+        shortcut: "p",
     },
     "h": {
         type: Definitions.WithDefinition,

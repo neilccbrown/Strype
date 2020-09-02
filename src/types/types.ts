@@ -102,6 +102,7 @@ const CommmentFrameTypesIdentifier = {
 const ImportFrameTypesIdentifiers = {
     import: "import",
     fromimport: "fromimport",
+    importas: "importas",
 }
 const FuncDefIdentifiers = {
     funcdef: "funcdef",
@@ -120,6 +121,8 @@ const StandardFrameTypesIdentifiers = {
     if: "if",
     for: "for",
     while: "while",
+    break: "break",
+    continue: "continue",
     try: "try",
     with: "with",
     return: "return",
@@ -336,6 +339,25 @@ export const VarAssignDefinition: FramesDefinitions = {
     colour: "#72EAC0",
 };
 
+export const BreakDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: StandardFrameTypesIdentifiers.break,
+    labels: [
+        { label: "break", slot: false, defaultText: "" },
+    ],
+    colour: "#25eaf5",
+};
+
+export const ContinueDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: StandardFrameTypesIdentifiers.continue,
+    labels: [
+        { label: "continue", slot: false, defaultText: "" },
+    ],
+    colour: "#1f784a",
+};
+
+
 export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
@@ -348,8 +370,19 @@ export const FromImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.fromimport,
     labels: [
-        { label: "from ", slot: true, defaultText: "package"},
+        { label: "from ", slot: true, defaultText: "module"},
+        { label: "import ", slot: true, defaultText: "function/class"},
+    ],
+    colour: "#FFFFFF",
+    draggableGroup: DraggableGroupTypes.imports,
+};
+
+export const ImportAsDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: ImportFrameTypesIdentifiers.importas,
+    labels: [
         { label: "import ", slot: true, defaultText: "module"},
+        { label: "as ", slot: true, defaultText: "module"},
     ],
     colour: "#FFFFFF",
     draggableGroup: DraggableGroupTypes.imports,
@@ -375,6 +408,8 @@ export const Definitions = {
     ElseDefinition,
     ForDefinition,
     WhileDefinition,
+    BreakDefinition,
+    ContinueDefinition,
     TryDefinition,
     ExceptDefinition,
     FinallyDefinition,
@@ -385,5 +420,6 @@ export const Definitions = {
     VarAssignDefinition,
     ImportDefinition,
     FromImportDefinition,
+    ImportAsDefinition,
     CommentDefinition,
 };

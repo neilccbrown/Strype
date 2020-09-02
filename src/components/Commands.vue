@@ -30,7 +30,7 @@ import FrameCommand from "@/components/FrameCommand.vue";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
 import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { FrameCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, ElseDefinition, IfDefinition, TryDefinition, FinallyDefinition, ExceptDefinition } from "@/types/types";
+import { FrameCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, ElseDefinition, IfDefinition, TryDefinition, FinallyDefinition, ExceptDefinition, ForDefinition, WhileDefinition, BreakDefinition, ContinueDefinition } from "@/types/types";
 
 export default Vue.extend({
     name: "Commands",
@@ -46,8 +46,32 @@ export default Vue.extend({
 
             //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
             let forbiddenTypes = (store.state.currentFrame.caretPosition === CaretPosition.body) ? 
-                currentFrame.frameType.forbiddenChildrenTypes :
-                ((currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes : store.state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes) ;
+                [...currentFrame.frameType.forbiddenChildrenTypes] :
+                ((currentFrame.jointParentId > 0) ? [...store.state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes] : [...store.state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes]);
+         
+            //as there is no static rule for showing the "break" or "continue" statements,
+            //we need to check if the current frame is within a "for" or a "while" loop.
+            //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
+            let canShowLoopBreakers = false;
+            let frameToCheckId = (store.state.currentFrame.caretPosition === CaretPosition.body) ? 
+                currentFrame.id:
+                ((currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId].id : store.state.frameObjects[currentFrame.parentId].id) ;
+            
+            while(frameToCheckId > 0 && !canShowLoopBreakers){
+                const frameToCheckType = store.state.frameObjects[frameToCheckId].frameType;
+                canShowLoopBreakers = (frameToCheckType === ForDefinition || frameToCheckType === WhileDefinition);
+                frameToCheckId = store.state.frameObjects[frameToCheckId].parentId;
+            }
+
+            if(!canShowLoopBreakers){
+                //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
+                //so if we cannot show "break" and "continue" : we add them from the list of forbidden
+                forbiddenTypes.splice(
+                    0,
+                    0,
+                    ...[BreakDefinition.type, ContinueDefinition.type]
+                );
+            }
          
             //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
             let jointTypes = (store.state.currentFrame.caretPosition === CaretPosition.below) ?
