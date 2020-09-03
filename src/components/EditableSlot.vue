@@ -37,6 +37,7 @@ export default Vue.extend({
         defaultText: String,
         slotIndex: Number,
         frameId: Number,
+        optionalSlot: Boolean,
     },
 
     data() {
@@ -152,7 +153,7 @@ export default Vue.extend({
                     }   
                 );
                 //if the user entered text on previously left blank slot, remove the error
-                if(this.errorMessage === "Input slot cannot be empty") {
+                if(!this.$props.optionalSlot && this.errorMessage === "Input slot cannot be empty") {
                     store.commit(
                         "setSlotErroneous", 
                         {
@@ -161,9 +162,10 @@ export default Vue.extend({
                             error: "",
                         }
                     );
+                    store.commit("removePreCompileErrors",this.id);
                 }
             }
-            else {
+            else if(!this.$props.optionalSlot){
                 store.commit(
                     "setSlotErroneous", 
                     {
@@ -172,6 +174,7 @@ export default Vue.extend({
                         error: "Input slot cannot be empty",
                     }
                 );
+                store.commit("addPreCompileErrors",this.id);
             }
         },
 

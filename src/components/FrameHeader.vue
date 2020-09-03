@@ -12,6 +12,7 @@
                 v-bind:default-text="item.defaultText"
                 v-bind:slotIndex="index"
                 v-bind:frameId="frameId"
+                v-bind:optionalSlot="item.optionalSlot"
             />
         </div>
     </div>

@@ -206,7 +206,12 @@ export default Vue.extend({
             downloadHex();
         },
         downloadPython() {
-            downloadPython();
+            if(store.getters.getPreCompileErrors().length>0) {
+                alert("Please fix existing errors first.");
+            }
+            else {
+                downloadPython();
+            }
         },
         onKeyUp(event: KeyboardEvent) {
             if (store.state.isEditing === false) {

@@ -1,7 +1,9 @@
 <template>
     <div
         class="frame-body-container"
+        v-bind:class="{error: empty}"
         v-on:click.self="toggleCaret()"
+        v-bind:id="id"
     >
         <Caret v-show=" caretVisibility === caretPosition.body  && !isEditing" />
 
@@ -24,6 +26,13 @@
                 class="frame content-children"
             />
         </Draggable>
+        <b-popover
+          v-if="empty"
+          v-bind:target="id"
+          title="Error!"
+          triggers="hover focus"
+          content="Body cannot be empty"
+        ></b-popover>
     </div>
 </template>
 
@@ -57,12 +66,6 @@ export default Vue.extend({
         caretVisibility: String, //Flag indicating this caret is visible or not
     },
 
-    // data() {
-    //     return {
-    //         isEditing: store.getters.getIsEditing(),
-    //     };
-    // },
-
     computed: {
         frames(): FrameObject[] {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
@@ -81,6 +84,27 @@ export default Vue.extend({
         isEditing(): boolean {
             return store.getters.getIsEditing();
         },
+
+        id(): string {
+            return "frameBodyId_"+this.$props.frameId;
+        },
+
+        empty(): boolean {
+            let empty = false;
+            if(this.frames.length < 1 && this.caretVisibility !== this.caretPosition.body) {
+                empty = true;
+                store.commit("addPreCompileErrors",this.id);                
+            }
+            else {
+                store.commit("removePreCompileErrors",this.id);
+            }
+            return empty;
+        },
+
+    },
+
+    beforeDestroy() {
+        store.commit("removePreCompileErrors",this.id);
     },
 
     methods: {
@@ -119,5 +143,9 @@ export default Vue.extend({
     margin-right: 0px;
     border: 0px;
     border-color: #000 !important;
+}
+
+.error {
+    border: 1px solid #d66 !important;
 }
 </style>

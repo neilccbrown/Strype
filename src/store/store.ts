@@ -117,6 +117,8 @@ export default new Vuex.Store({
         isEditing: false,
 
         frameObjects: initialState,
+
+        preCompileErrors: [] as string[],
     },
     getters: {
         getFramesForParentId: (state) => (frameId: number) => {
@@ -187,6 +189,14 @@ export default new Vuex.Store({
         
         getErrorForSlot: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].error;
+        },
+
+        getPreCompileErrors: (state) => () => {
+            return state.preCompileErrors;
+        },
+
+        getPreCompileErrorExists: (state) => (id: string) => {
+            return state.preCompileErrors.includes(id);
         },
     },
 
@@ -546,6 +556,22 @@ export default new Vuex.Store({
                 payload.error
             );
 
+        },
+
+        addPreCompileErrors(state, id: string ) {
+            //if it exists remove it else add it
+            if(!state.preCompileErrors.includes(id)) {
+                state.preCompileErrors.push(id);
+                console.log("added -"+this.id);
+            }
+        },
+        removePreCompileErrors(state, id: string ) {
+            //if it exists remove it else add it
+            if(state.preCompileErrors.includes(id)) {
+                // state.preCompileErrors = state.preCompileErrors.filter((el) => el!==id)
+                state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
+                console.log("removed -"+this.id);
+            }
         },
         
     },
