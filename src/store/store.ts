@@ -186,9 +186,17 @@ export default new Vuex.Store({
         getErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].error !== "";
         },
+
+        getErroneousFrame: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].error !== "";
+        },
         
         getErrorForSlot: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].error;
+        },
+
+        getErrorForFrame: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].error;
         },
 
         getPreCompileErrors: (state) => () => {
@@ -555,14 +563,41 @@ export default new Vuex.Store({
                 "error",
                 payload.error
             );
+        },
 
+        setFrameErroneous(state, payload: {frameId: number; error: string}){
+            Vue.set(
+                state.frameObjects[payload.frameId],
+                "error",
+                payload.error
+            );
+        },
+
+        clearAllErrors(state) {
+            Object.keys(state.frameObjects).forEach((id: any) => {
+                if(state.frameObjects[id].error !==""){
+                    Vue.set(
+                        state.frameObjects[id],
+                        "error",
+                        ""
+                    );
+                }
+                if(Object.keys(state.frameObjects[id].contentDict).length > 0){
+                    Object.keys(state.frameObjects[id].contentDict).forEach((slot: any) => {
+                        Vue.set(
+                            state.frameObjects[id].contentDict[slot],
+                            "error",
+                            ""
+                        );
+                    });
+                }
+            });  
         },
 
         addPreCompileErrors(state, id: string ) {
             //if it exists remove it else add it
             if(!state.preCompileErrors.includes(id)) {
                 state.preCompileErrors.push(id);
-                console.log("added -"+this.id);
             }
         },
         removePreCompileErrors(state, id: string ) {
@@ -570,7 +605,6 @@ export default new Vuex.Store({
             if(state.preCompileErrors.includes(id)) {
                 // state.preCompileErrors = state.preCompileErrors.filter((el) => el!==id)
                 state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
-                console.log("removed -"+this.id);
             }
         },
         
@@ -628,6 +662,7 @@ export default new Vuex.Store({
                         }),
                         {}
                     ),
+                error: "",
             };
 
             commit(

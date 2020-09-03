@@ -128,7 +128,6 @@ export default Vue.extend({
             
         },
         onBlur(): void {
-
             store.commit(
                 "toggleEditFlag",
                 false

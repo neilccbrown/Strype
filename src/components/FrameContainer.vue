@@ -19,7 +19,7 @@
                 <Frame 
                     v-for="frame in frames" 
                     v-bind:key="frame.frameType.type + '-id:' + frame.id"
-                    v-bind:id="frame.id"
+                    v-bind:frameId="frame.id"
                     v-bind:frameType="frame.frameType"
                     v-bind:isJointFrame="false"
                     v-bind:allowChildren="frame.frameType.allowChildren"

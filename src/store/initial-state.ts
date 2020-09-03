@@ -50,6 +50,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code : "Foo", focused: false, error :""} },
         caretVisibility: CaretPosition.none,
+        error: "",
     },
     2: {
         frameType: TryDefinition,
@@ -60,6 +61,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.none,
+        error: "",
     },
     3: {
         frameType: IfDefinition,
@@ -70,6 +72,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "", focused: false, error :""} },
         caretVisibility: CaretPosition.below,
+        error: "",
     },
 
 };

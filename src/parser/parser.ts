@@ -113,18 +113,27 @@ export default class Parser {
             console.log(errors);
             console.log(this.framePositionMap);
             // For each error, show red border around its input in the UI
+            store.commit("clearAllErrors");
             errors.forEach((error: ErrorInfo) => {
-                store.commit("setSlotErroneous", {
-                    frameId: this.framePositionMap[error.line].frameId,
-                    // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
-                    slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
-                        (element, index, array) => {
-                            return element<=error.offset && 
-                                    ((index<array.length-1)? (array[index+1] > error.offset) : true)
-                        }
-                    ), 
-                    error: error.msg,
-                })
+                if( this.framePositionMap[error.line] !== undefined && (error.offset < this.framePositionMap[error.line].slotStarts[0] || error.offset >= inputCode.split(/\n/)[error.line].length)) {
+                    store.commit("setFrameErroneous", {
+                        frameId: this.framePositionMap[error.line].frameId,
+                        error: error.msg,
+                    });
+                }
+                else {
+                    store.commit("setSlotErroneous", {
+                        frameId: this.framePositionMap[error.line].frameId,
+                        // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
+                        slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
+                            (element, index, array) => {
+                                return element<=error.offset && 
+                                        ((index<array.length-1)? (array[index+1] > error.offset) : true)
+                            }
+                        ), 
+                        error: error.msg,
+                    });
+                }
             });
 
         }
