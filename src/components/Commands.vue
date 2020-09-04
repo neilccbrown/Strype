@@ -1,5 +1,5 @@
 <template>
-    <div class="container">
+    <div class="commands">
         <div>
             <button v-on:click="flash">Connect Serial</button>
             <button v-on:click="downloadHex">Download Hex</button>
@@ -70,7 +70,7 @@ export default Vue.extend({
                 const uniqueJointFrameTypes = [ElseDefinition, FinallyDefinition];
                 uniqueJointFrameTypes.forEach((frameDef) => {
                     if(jointTypes.includes(frameDef.type) &&
-                        rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === frameDef) !== undefined){
+                        rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
                         jointTypes.splice(
                             jointTypes.indexOf(frameDef.type),
                             1
@@ -96,9 +96,9 @@ export default Vue.extend({
                         }
                     }
                     else if (rootJointFrame.frameType === TryDefinition){
-                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === FinallyDefinition) !== undefined);
-                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ElseDefinition) !== undefined);
-                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId].frameType === ExceptDefinition) !== undefined);
+                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === FinallyDefinition) !== undefined);
+                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === ElseDefinition) !== undefined);
+                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === ExceptDefinition) !== undefined);
 
                         //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
                         if(currentFrame.frameType === TryDefinition){
@@ -126,7 +126,7 @@ export default Vue.extend({
                                 //This "except" is not the last joint frame: we check if the following joint frame is "except"
                                 //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
                                 //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
-                                if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]].frameType === ExceptDefinition){
+                                if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType === ExceptDefinition){
                                     uniqueJointFrameTypes.forEach((frameType) => {
                                         if(jointTypes.includes(frameType.type)){
                                             jointTypes.splice(
@@ -169,9 +169,52 @@ export default Vue.extend({
     created() {
         window.addEventListener(
             "keyup",
-            this.onKeyUp
+            //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
+            (event: KeyboardEvent) => {
+                if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
+                    //first we remove the focus of the current active element (to avoid editable slots to keep it)
+                    (document.activeElement as HTMLElement).blur();
+                    store.dispatch(
+                        "changeCaretPosition",
+                        event.key
+                    );
+                }
+                else if (!store.getters.getIsEditing() && ( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
+                    store.dispatch(
+                        "leftRightKey",
+                        event.key
+                    );
+                }
+                // All other keys
+                else {
+                    if (store.getters.getIsEditing() === false) {
+                        if(event.key == "Delete" || event.key == "Backspace"){
+                            //delete a frame
+                            store.dispatch(
+                                "deleteCurrentFrame",
+                                event.key
+                            );
+                        }
+                        else{
+                            //add the frame in the editor if allowed otherwise, do nothing
+                            if(this.frameCommands[event.key.toLowerCase()] !== undefined){
+                                store.dispatch(
+                                    "addFrameWithCommand",
+                                    this.frameCommands[event.key.toLowerCase()].type                
+                                );
+                                store.dispatch(
+                                    "leftRightKey",
+                                    "ArrowRight"                
+                                );
+                            } 
+                        }                
+                    }
+                }
+                
+            }
         );
     },
+
     methods: {
         flash() {
             if (navigator.usb) {
@@ -185,38 +228,11 @@ export default Vue.extend({
             downloadHex();
         },
         downloadPython() {
-            downloadPython();
-        },
-        onKeyUp(event: KeyboardEvent) {
-            if (
-                event.key === "ArrowDown" || event.key=="ArrowUp"
-            ) {
-                store.dispatch(
-                    "changeCaretPosition",
-                    event.key
-                );
-
+            if(store.getters.getPreCompileErrors().length>0) {
+                alert("Please fix existing errors first.");
             }
-            else if (store.state.isEditing === false) {
-                switch(event.key){
-                case "Delete" :
-                case "Backspace":
-                    //delete a frame
-                    store.dispatch(
-                        "deleteCurrentFrame",
-                        event.key
-                    );
-                    break;
-                default:
-                    //add the frame in the editor if allowed otherwise, do nothing
-                    if(this.frameCommands[event.key] !== undefined){
-                        store.dispatch(
-                            "addFrameWithCommand",
-                            this.frameCommands[event.key].type                
-                        );
-                    }
-               
-                }                
+            else {
+                downloadPython();
             }
         },
     },
@@ -224,10 +240,11 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.container {
+.commands {
     border-left: #383b40 1px solid;
     color: rgb(37, 35, 35);
     background-color: lightblue;
-    width: 300px;
+    // width: 300px;
+
 }
 </style>

@@ -5,7 +5,7 @@
             <span class="frame-container-label-span" v-on:click.self="toggleCaret($event)">{{containerLabel}}</span>
         </div>
 
-        <div :style="containerStyle">
+        <div v-bind:style="containerStyle">
             <Caret v-show="caretVisibility===caretPosition.body" />
 
             <Draggable
@@ -13,13 +13,14 @@
                 :group="draggableGroup"
                 v-on:change.self="handleDragAndDrop($event)"
                 animation="200"
-                v-bind:key="'Draggagle-'+this.id"
-                draggable=".frame"
+                filter = ".editableSlot"
+                preventOnFilter= "false"
+                v-bind:key="'Draggagle-Container-'+this.id"
             >
                 <Frame 
                     v-for="frame in frames" 
                     v-bind:key="frame.frameType.type + '-id:' + frame.id"
-                    v-bind:id="frame.id"
+                    v-bind:frameId="frame.id"
                     v-bind:frameType="frame.frameType"
                     v-bind:isJointFrame="false"
                     v-bind:allowChildren="frame.frameType.allowChildren"
@@ -70,16 +71,9 @@ export default Vue.extend({
     },
 
     computed: {
-        frames: {
+        frames(): FrameObject[] {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-            get(): FrameObject[] {
-                return store.getters.getFramesForParentId(this.$props.id);
-            },
-            // setter
-            set(): void {
-            // Nothing to be done here.
-            // Event handlers call mutations which change the state
-            },
+            return store.getters.getFramesForParentId(this.$props.id);
         },
 
         draggableGroup(): DraggableGroupTypes {
@@ -138,5 +132,7 @@ export default Vue.extend({
     margin-left: 5px;
     cursor:default;
 }
+
+
 
 </style>

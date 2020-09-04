@@ -1,4 +1,4 @@
-import { EditorFrameObjects, CaretPosition, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, CommentDefinition, TryDefinition } from "@/types/types";
+import { EditorFrameObjects, CaretPosition, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, CommentDefinition, TryDefinition, IfDefinition } from "@/types/types";
 
 const initialState: EditorFrameObjects = {
     0: {
@@ -19,7 +19,7 @@ const initialState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: CaretPosition.body,
+        caretVisibility: CaretPosition.none,
     },
     "-2": {
         id: -2,
@@ -28,14 +28,14 @@ const initialState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: "This is a comment" },
+        contentDict: { },
         caretVisibility: CaretPosition.none,
     },
     "-3": {
         id: -3,
         frameType : MainFramesContainerDefinition,
         parentId: 0,
-        childrenIds: [1,2],
+        childrenIds: [3,1,2],
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
@@ -48,8 +48,9 @@ const initialState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: "Testing Try frame (try)." },
+        contentDict: { 0: {code : "Foo", focused: false, error :""} },
         caretVisibility: CaretPosition.none,
+        error: "",
     },
     2: {
         frameType: TryDefinition,
@@ -60,6 +61,18 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.none,
+        error: "",
+    },
+    3: {
+        frameType: IfDefinition,
+        id: 3,
+        parentId: -3,
+        childrenIds: [],
+        jointParentId: 0,
+        jointFrameIds: [],
+        contentDict: { 0: {code :  "", focused: false, error :""} },
+        caretVisibility: CaretPosition.below,
+        error: "",
     },
 
 };

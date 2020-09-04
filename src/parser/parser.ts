@@ -1,269 +1,78 @@
-import { FrameObject, IfDefinition, WhileDefinition, ForDefinition, FuncDefDefinition, TryDefinition, WithDefinition, EmptyDefinition, VarAssignDefinition, ReturnDefinition, CommentDefinition, FromImportDefinition, ImportDefinition, FrameContainersDefinitions, ElifDefinition, ElseDefinition, ExceptDefinition, FinallyDefinition } from "@/types/types";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
 import store from "@/store/store";
 import { TPyParser, ErrorInfo } from "tigerpython-parser";
 
 const INDENT = "    ";
 
+
 export default class Parser {
-    private parseIf(frame: FrameObject, indent: string): string {
-        let output = indent;
 
-        output +=
-            `if ${frame.contentDict[0]}:\n` +
-            this.parseFrames(
-                store.getters.getFramesForParentId(frame.id),
-                indent + INDENT
-            );
-
-        //joint frames
-        output += 
-            this.parseFrames(
-                store.getters.getJointFramesForFrameId(frame.id),
-                indent
-            );
-
-        return output;
-    }
-
-    private parseElif(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        output +=
-            `elif ${frame.contentDict[0]}:\n` +
-            this.parseFrames(
-                store.getters.getFramesForParentId(frame.id),
-                indent + INDENT
-            );
-
-        return output;
-    }
-
-    private parseElse(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        output +=
-            "else:\n" +
-            this.parseFrames(
-                store.getters.getFramesForParentId(frame.id),
-                indent + INDENT
-            );
-
-        return output;
-    }
-
-    private parseWhile(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        output += `while ${frame.contentDict[0]}:\n` + this.parseFrames(
-            store.getters.getFramesForParentId(frame.id),
-            indent + INDENT
-        );
-
-        return output;
-    }
-
-    private parseFor(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        output +=
-            `for ${frame.contentDict[0]} in ${frame.contentDict[1]}:\n` +
-            this.parseFrames(
-                store.getters.getFramesForParentId(frame.id),
-                indent + INDENT
-            );
-
-        //joint frames
-        output += 
-          this.parseFrames(
-              store.getters.getJointFramesForFrameId(frame.id),
-              indent
-          )    
-        return output;
-    }
-
-    private parseFuncDef(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        output += `def ${frame.contentDict[0]}(${frame.contentDict[1]}):\n` + this.parseFrames(
-            store.getters.getFramesForParentId(frame.id),
-            indent + INDENT
-        );
-
-        return output;
-    }
-
-    private parseTry(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        output += "try:\n" + this.parseFrames(
-            store.getters.getFramesForParentId(frame.id),
-            indent + INDENT
-        );
-
-        //joint frames
-        output += 
-            this.parseFrames(
-                store.getters.getJointFramesForFrameId(frame.id),
-                indent
-            )    
-
-        return output;
-    }
-
-    private parseExcept(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        const exceptDetail = (frame.contentDict[0] !== undefined) ?
-            " " + frame.contentDict[0]:
-            "";
-
-        output +=
-            `except${exceptDetail}:\n` +
-            this.parseFrames(
-                store.getters.getFramesForParentId(frame.id),
-                indent + INDENT
-            );
-
-        return output;
-    }
-
-    private parseFinally(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        output +=
-            "finally:\n" +
-            this.parseFrames(
-                store.getters.getFramesForParentId(frame.id),
-                indent + INDENT
-            );
-
-        return output;
-    }
-
-    private parseWith(frame: FrameObject, indent: string): string {
-        let output = indent;
-
-        output += `with ${frame.contentDict[0]} as ${frame.contentDict[1]}:\n` + this.parseFrames(
-            store.getters.getFramesForParentId(frame.id),
-            indent + INDENT
-        );
-
-        return output;
-    }
+    private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
+    private line = 0;
 
     private parseBlock(block: FrameObject, indent: string): string {
         let output = "";
+        const children = store.getters.getFramesForParentId(block.id);
 
-        switch (block.frameType.type) {
-        case IfDefinition.type:
-            output += this.parseIf(
-                block,
-                indent
+        output += 
+            this.parseStatement(block,indent) + 
+            ((block.frameType.allowChildren && children.length > 0)?
+                this.parseFrames(
+                    store.getters.getFramesForParentId(block.id),
+                    indent + INDENT
+                ) :
+                this.parseStatement({} as FrameObject,indent)) // empty bodies are added as empty lines in the code
+            + 
+            this.parseFrames(
+                store.getters.getJointFramesForFrameId(block.id, "all"), 
+                indent + INDENT
             );
-            break;
-        case ElifDefinition.type:
-            output += this.parseElif(
-                block,
-                indent
-            );
-            break;
-        case ElseDefinition.type:
-            output += this.parseElse(
-                block,
-                indent
-            );
-            break;
-        case WhileDefinition.type:
-            output += this.parseWhile(
-                block,
-                indent
-            );
-            break;
-        case ForDefinition.type:
-            output += this.parseFor(
-                block,
-                indent
-            );
-            break;
-        case FuncDefDefinition.type:
-            output += this.parseFuncDef(
-                block,
-                indent
-            );
-            break;
-        case TryDefinition.type:
-            output += this.parseTry(
-                block,
-                indent
-            );
-            break;
-        case ExceptDefinition.type:
-            output += this.parseExcept(
-                block,
-                indent
-            );
-            break;
-        case FinallyDefinition.type:
-            output += this.parseFinally(
-                block,
-                indent
-            );
-            break;
-        case WithDefinition.type:
-            output += this.parseWith(
-                block,
-                indent
-            );
-            break;
-        }
-
+        
         return output;
     }
-
+    
     private parseStatement(statement: FrameObject, indent = ""): string {
         let output = indent;
+        const positions: number[] = [];
+        let currSlotIndex = 0;
 
-        switch (statement.frameType.type) {
-        case EmptyDefinition.type:
-            output += `${statement.contentDict[0]}\n`;
-            break;
-        case VarAssignDefinition.type:
-            output += `${statement.contentDict[0]} = ${statement.contentDict[1]}\n`;
-            break;
-        case ReturnDefinition.type:
-            output += `return ${statement.contentDict[0]}\n`
-            break;
-        case CommentDefinition.type:
-            output += `# ${statement.contentDict[0]}\n`
-            break;
-        case FromImportDefinition.type:
-            output += `from ${statement.contentDict[0]} import ${statement.contentDict[1]}\n`
-            break;
-        case ImportDefinition.type:
-            output += `import ${statement.contentDict[0]}\n`
-            break;
-        }
+        statement.frameType.labels.forEach( (label) => {
+            
+            output += label.label;
+
+            //if there is an editable slot
+            if(label.slot){
+                // Record its vertical position
+                positions.push(output.length);
+                
+                // add its code to the output
+                output += statement.contentDict[currSlotIndex++].code;
+            }
+        });
+        output += "\n";
+    
+        this.framePositionMap[this.line] = {frameId: statement.id , slotStarts: positions};
+        
+        this.line += 1;
 
         return output;
     }
 
     private parseFrames(codeUnits: FrameObject[], indent = ""): string {
         let output = "";
+        let lineCode = "";
 
         //if the current frame is a container, we don't parse it as such
-        //but parse directly its chidren (frames that it contains)
+        //but parse directly its children (frames that it contains)
         for (const frame of codeUnits) {
-            output += frame.frameType.allowChildren ?
+            lineCode = frame.frameType.allowChildren ?
                 (Object.values(FrameContainersDefinitions).includes(frame.frameType)) ? 
                     this.parseFrames(store.getters.getFramesForParentId(frame.id)) :
-                    this.parseBlock(
-                        frame,
-                        indent
-                    ) : 
-                this.parseStatement(
-                    frame,
-                    indent
-                );
+                    this.parseBlock(frame, indent) 
+                : 
+                this.parseStatement(frame,indent);
+
+            output += lineCode;
         }
 
         return output;
@@ -281,6 +90,7 @@ export default class Parser {
 
     public getErrors(inputCode = ""): ErrorInfo[] {
         TPyParser.setLanguage("en");
+        TPyParser.warningAsErrors = false;
         let code: string = inputCode;
         if (!inputCode) {
             code = this.parse();
@@ -291,11 +101,42 @@ export default class Parser {
     public getErrorsFormatted(inputCode = ""): string {
         const errors = this.getErrors(inputCode);
         let errorString = "";
+        
         if (errors.length > 0) {
             errorString = `${errors.map((e: any) => {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
             })}`;
+            console.log("code");
+            console.log(inputCode);
+            console.log(errors);
+            console.log(this.framePositionMap);
+            // For each error, show red border around its input in the UI
+            store.commit("clearAllErrors");
+            errors.forEach((error: ErrorInfo) => {
+                if( this.framePositionMap[error.line] !== undefined && (error.offset < this.framePositionMap[error.line].slotStarts[0] || error.offset >= inputCode.split(/\n/)[error.line].length)) {
+                    store.commit("setFrameErroneous", {
+                        frameId: this.framePositionMap[error.line].frameId,
+                        error: error.msg,
+                    });
+                }
+                else {
+                    store.commit("setSlotErroneous", {
+                        frameId: this.framePositionMap[error.line].frameId,
+                        // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
+                        slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
+                            (element, index, array) => {
+                                return element<=error.offset && 
+                                        ((index<array.length-1)? (array[index+1] > error.offset) : true)
+                            }
+                        ), 
+                        error: error.msg,
+                    });
+                }
+            });
+
         }
+        
+
         return errorString;
     }
 
