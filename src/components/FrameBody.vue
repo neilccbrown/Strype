@@ -11,9 +11,10 @@
             v-model="frames"
             group="code"
             v-on:change.self="handleDragAndDrop($event)"
-            animation="200"
-            v-bind:key="'Draggagle-'+this.frameId"
-            draggable=".frame"
+            animation= "200"
+            filter= ".editableSlot"
+            preventOnFilter= "false"
+            v-bind:key="'Draggagle-Body-'+this.frameId"
         >
             <Frame
                 v-for="frame in frames"

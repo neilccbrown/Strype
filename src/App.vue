@@ -55,7 +55,7 @@ export default Vue.extend({
     methods: {
         toggleEdition(): void {
             store.commit(
-                "toggleEditFlag",
+                "setEditFlag",
                 false
             );
         },
@@ -74,10 +74,7 @@ html,body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: #2c3e50;
-    // display: flex;
     box-sizing: border-box;
-    // height: 100%;
-    // min-height: 100vh;
 }
 
 #app form {

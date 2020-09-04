@@ -2,17 +2,19 @@
     <div class="next-to-eachother">
         <input
             type="text"
+            class="editableSlot"
             v-model="code"
             v-bind:placeholder="defaultText"
-            v-on:focus="onFocus"
             v-on:blur="onBlur"
             v-focus="focused"
+            v-on:click.stop.self="onFocus($event)"
             v-on:keyup.left.prevent.stop="onLRKeyUp($event)"
             v-on:keyup.right.prevent.stop="onLRKeyUp($event)"
             v-on:keyup.up.prevent.stop="onUDKeyUp($event)"
             v-on:keyup.down.prevent.stop="onUDKeyUp($event)"
             v-bind:class="{error: erroneous}"
             v-bind:id="id"
+            v-bind:key="id"
         />
         <b-popover
           v-if="erroneous"
@@ -51,7 +53,6 @@ export default Vue.extend({
 
     computed: {
         focused(): boolean {
-            // gets the frames objects which are nested in here (i.e. have this frameID as parent)
             return store.getters.getIsEditableFocused(
                 this.$props.frameId,
                 this.$props.slotIndex
@@ -59,7 +60,7 @@ export default Vue.extend({
         },
 
         erroneous(): boolean {
-            return store.getters.getErroneousSlot(
+            return store.getters.getIsErroneousSlot(
                 this.$props.frameId,
                 this.$props.slotIndex
             );
@@ -102,13 +103,12 @@ export default Vue.extend({
 
 
     methods: {
-        onFocus(): void {
-
+        onFocus(event: MouseEvent): void {
             store.commit(
-                "toggleEditFlag",
+                "setEditFlag",
                 true
             );
-            //We need to first set the curretFrame to this so that the user
+            //First set the curretFrame to this frame
             store.commit(
                 "setCurrentFrame",
                 {
@@ -116,7 +116,7 @@ export default Vue.extend({
                     caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
             );
-
+            //Then store which editable has the focus
             store.commit(
                 "setEditableFocus",
                 {
@@ -129,7 +129,7 @@ export default Vue.extend({
         },
         onBlur(): void {
             store.commit(
-                "toggleEditFlag",
+                "setEditFlag",
                 false
             );
 
@@ -197,7 +197,7 @@ export default Vue.extend({
 
         onUDKeyUp(event: KeyboardEvent) {
 
-            // In any case the focus is lost
+            // In any case the focus is lost, and the caret is shown (below by default)
             this.onBlur();
 
             //If the up arrow is pressed you need to move the caret as well.

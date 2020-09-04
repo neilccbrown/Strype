@@ -13,8 +13,9 @@
                 :group="draggableGroup"
                 v-on:change.self="handleDragAndDrop($event)"
                 animation="200"
-                v-bind:key="'Draggagle-'+this.id"
-                draggable=".frame"
+                filter = ".editableSlot"
+                preventOnFilter= "false"
+                v-bind:key="'Draggagle-Container-'+this.id"
             >
                 <Frame 
                     v-for="frame in frames" 

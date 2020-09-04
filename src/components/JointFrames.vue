@@ -5,8 +5,9 @@
             :group="jointDraggableGroup"
             v-on:change.self="handleDragAndDrop($event)"
             animation="200"
+            filter= ".editableSlot"
+            preventOnFilter= "false"
             v-bind:key="'Draggagle-Joint-'+this.jointParentId"
-            draggable=".frame"
         >
             <Frame
                 v-for="frame in jointFrames"

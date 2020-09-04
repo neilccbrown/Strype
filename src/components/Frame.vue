@@ -2,7 +2,7 @@
     <div>
         <div 
             v-bind:style="frameStyle" 
-            class="block" 
+            class="block frameDiv" 
             v-bind:class="{error: erroneous}"
             v-bind:id="id"
         >
@@ -111,7 +111,7 @@ export default Vue.extend({
         },
 
         erroneous(): boolean {
-            return store.getters.getErroneousFrame(
+            return store.getters.getIsErroneousFrame(
                 this.$props.frameId
             );
         },
@@ -144,7 +144,6 @@ export default Vue.extend({
 <style lang="scss">
 .block {
     color: #000 !important;
-    // margin-top: 4px;
     padding-right: 4px;
     padding-bottom: 1px;
 }

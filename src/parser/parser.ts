@@ -34,10 +34,9 @@ export default class Parser {
     private parseStatement(statement: FrameObject, indent = ""): string {
         let output = indent;
         const positions: number[] = [];
-        // let currPosition = 0;
-        let slot = 0;
+        let currSlotIndex = 0;
 
-        statement.frameType?.labels.forEach( (label) => {
+        statement.frameType.labels.forEach( (label) => {
             
             output += label.label;
 
@@ -47,7 +46,7 @@ export default class Parser {
                 positions.push(output.length);
                 
                 // add its code to the output
-                output += statement.contentDict[slot++].code;
+                output += statement.contentDict[currSlotIndex++].code;
             }
         });
         output += "\n";
@@ -66,8 +65,7 @@ export default class Parser {
         //if the current frame is a container, we don't parse it as such
         //but parse directly its children (frames that it contains)
         for (const frame of codeUnits) {
-            lineCode = frame.frameType.allowChildren 
-                ?
+            lineCode = frame.frameType.allowChildren ?
                 (Object.values(FrameContainersDefinitions).includes(frame.frameType)) ? 
                     this.parseFrames(store.getters.getFramesForParentId(frame.id)) :
                     this.parseBlock(frame, indent) 
