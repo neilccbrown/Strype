@@ -244,7 +244,13 @@ export default new Vuex.Store({
         getPreCompileErrorExists: (state) => (id: string) => {
             return state.preCompileErrors.includes(id);
         },
-    },
+        getIsMessageBannerOn: (state) => () => {
+            return state.isMessageBannerOn;
+        },
+        getCurrentMessageType: (state) => () => {
+            return state.currentMessageType;
+        },
+    }, 
 
     mutations: {
 

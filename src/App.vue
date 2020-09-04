@@ -63,13 +63,11 @@ export default Vue.extend({
         },
 
         showMessage(): boolean {
-            return store.state.isMessageBannerOn;
+            return store.getters.getIsMessageBannerOn();
         },
 
         message(): MessageDefinition {
-            console.log("there is a current message type:")
-            console.log(store.state.currentMessageType)
-            return store.state.currentMessageType
+            return store.getters.getCurrentMessageType();
         },
     },
 
@@ -102,6 +100,5 @@ html,body {
     margin-top: 5px;
     margin-bottom: 5px;
     margin-left:10px;
-    height: 50px;
 }
 </style>
