@@ -1,27 +1,26 @@
 <template>
-    <div id="app">
-        <div id="editor">
-            <div class="top">
-                <MessageBanner 
-                    v-if="showMessage"
-                    v-bind:message="message.message"
-                    v-bind:buttons="message.buttons"
-                />
-            </div>
-            <div class="left">
-               <FrameContainer
+    <div id="app" class="container-fluid h-100">
+        <div class="row h-100">
+            <div id="editor" class="col-8">
+                <div class="top">
+                    <MessageBanner 
+                        v-if="showMessage"
+                        v-bind:message="message.message"
+                        v-bind:buttons="message.buttons"
+                    />
+                </div>
+                <div>
+                    <FrameContainer
                         v-for="container in containerFrames"
                         v-bind:key="container.frameType.type + '-id:' + container.id"
                         v-bind:id="container.id"
                         v-bind:containerLabel="container.frameType.labels[0].label"
                         v-bind:caretVisibility="container.caretVisibility"
-                />
+                    />
+                </div>
             </div>
-            <div class="right">
-                <textarea v-model="mymodel"></textarea>
-            </div>
+            <Commands class="col-4 h-100" />
         </div>
-        <Commands />
     </div>
 </template>
 
@@ -35,6 +34,7 @@ import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
 import { FrameObject, MessageDefinition } from "@/types/types";
+
 
 //////////////////////
 //     Component    //
@@ -62,59 +62,46 @@ export default Vue.extend({
             return store.getters.getFramesForParentId(0);
         },
 
-        //this helps for debugging purposes --> printing the state in the screen
-        mymodel(): string {
-            return JSON.stringify(
-                store.getters.getFrameObjects(),
-                null,
-                "  "
-            );
-        },
-
         showMessage(): boolean {
             return store.state.isMessageBannerOn;
         },
 
         message(): MessageDefinition {
+            console.log("there is a current message type:")
+            console.log(store.state.currentMessageType)
             return store.state.currentMessageType
+        },
+    },
+
+    methods: {
+        toggleEdition(): void {
+            store.commit(
+                "setEditFlag",
+                false
+            );
         },
     },
 });
 </script>
 
 <style lang="scss">
-body {
+html,body {
     margin: 0px;
+    height: 100%;
 }
 #app {
     font-family: Avenir, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: #2c3e50;
-    display: flex;
     box-sizing: border-box;
-    height: 100%;
-    min-height: 100vh;
 }
 
 .top {
     text-align: center;
     margin-top: 5px;
-    margin-bottom: 15px;
-    flex-grow: 1;
+    margin-bottom: 5px;
+    margin-left:10px;
     height: 50px;
-}
-
-.left {
-    width: 70%;
-}
-
-.right {
-    width: 30%;
-}
-
-#editor {
-    margin-top: 0px;
-    flex-grow: 1;
 }
 </style>

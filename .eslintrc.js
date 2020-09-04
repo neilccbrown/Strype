@@ -16,8 +16,8 @@ module.exports = {
         curly: "error",
         "brace-style": ["error", "stroustrup"],
         "arrow-parens": ["error", "always"],
-        "function-call-argument-newline": ["error", "always"],
-        "function-paren-newline": ["error", "multiline"],
+        "function-call-argument-newline": ["error", "consistent"],
+        "function-paren-newline": ["error", "consistent"],
         indent: ["error", 4, { FunctionDeclaration: { parameters: "first" } }],
         "comma-dangle": [
             "error",

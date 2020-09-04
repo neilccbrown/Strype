@@ -2,6 +2,12 @@ import Vue from "vue";
 import App from "@/App.vue";
 import store from "@/store/store";
 import i18n from "./i18n"
+import { BootstrapVue } from "bootstrap-vue";
+import "bootstrap/dist/css/bootstrap.css";
+import "bootstrap-vue/dist/bootstrap-vue.css";
+
+// Install BootstrapVue
+Vue.use(BootstrapVue);
 
 Vue.config.productionTip = false;
 
