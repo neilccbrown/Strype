@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, EditableFocusPayload } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, EditableFocusPayload, ToggleFrameLabelCommandDef } from "@/types/types";
 import initialState from "@/store/initial-state";
 
 Vue.use(Vuex);
@@ -31,6 +31,7 @@ const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frame
     );
     delete listOfFrames[frameId];
 };
+
 const getParent = (listOfFrames: Record<number, FrameObject>, currentFrame: FrameObject) => {
     let parentId = 0;
     if(currentFrame.id !== 0){
@@ -38,6 +39,7 @@ const getParent = (listOfFrames: Record<number, FrameObject>, currentFrame: Fram
     }
     return parentId;
 };
+
 const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, currentFrameId: number, caretPosition: CaretPosition, direction: string) => {
     const currentFrame = listOfFrames[currentFrameId];
             
@@ -107,7 +109,6 @@ const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, 
     return childrenAndJointFramesIds;
 };
 
-
 export default new Vuex.Store({
     state: {
         nextAvailableId: 16 as number,
@@ -176,6 +177,25 @@ export default new Vuex.Store({
         },
         getIsEditableFocused: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].focused;
+        },
+        getCurrentFrameToggleFrameLabelCommands: (state) => () => {
+            const commands: ToggleFrameLabelCommandDef[] = [];
+            state.frameObjects[state.currentFrame.id].frameType.labels.forEach((labelDef) => {
+                const command = labelDef.toggleLabelCommand;
+                if(command !== undefined){
+                    commands.push(command);
+                }
+            });
+            return commands;
+        },
+        getIsCurrentFrameLabelShown: (state) => (frameId: number, slotIndex: number) => {
+            //for an optional label, the corresponding contentDict is always definined with a shown value
+            if(state.frameObjects[frameId].frameType.labels[slotIndex]?.optionalLabel === true){
+                return (state.frameObjects[frameId].contentDict[slotIndex].shown);
+            }
+
+            //not optional label --> it's never hidden so we don't need to check any flag
+            return true;
         },
         getAllowChildren: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.allowChildren;
@@ -291,7 +311,10 @@ export default new Vuex.Store({
                         );
                     }
                     //and finally, delete the frame
-                    delete state.frameObjects[payload.frameToDeleteId] 
+                    Vue.delete(
+                        state.frameObjects,
+                        payload.frameToDeleteId
+                    );
                 }
             }
         },
@@ -547,7 +570,21 @@ export default new Vuex.Store({
             );
 
         },
-        
+
+        toggleFrameLabel(state, commandType: string) {
+            //Toggle the current frame label that matches the type specified in the payload.
+            //Note: the contentDict object storing that information may not yet contain data
+
+            //Get the FrameLabel matching the type
+            const frameLabeToTogglelIndex = state.frameObjects[state.currentFrame.id].frameType.labels.findIndex((frameLabel) => frameLabel?.toggleLabelCommand?.type === commandType);
+            
+            //toggle the "shown" property of in the contentDict for that label
+            Vue.set(
+                state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex],
+                "shown",
+                !state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].shown
+            );
+        },        
     },
 
     actions: {
@@ -595,10 +632,11 @@ export default new Vuex.Store({
                 jointFrameIds: [],
                 contentDict:
                     //find each editable slot and create an empty & unfocused entry for it
+                    //optional labels are not visible by default, not optional labels are visible by default
                     payload.labels.filter((el)=> el.slot).reduce(
                         (acc, cur, idx) => ({ 
                             ...acc, 
-                            [idx]: {code: "", focused: false, error: ""},
+                            [idx]: {code: "", focused: false, error: "", shown:(!(cur?.optionalLabel!==true))},
                         }),
                         {}
                     ),

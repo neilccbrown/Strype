@@ -1,6 +1,6 @@
 import { FrameCommandDef, Definitions } from "@/types/types";
 
-
+//Commands for Frame insertion
 const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
     "i": {
         type: Definitions.IfDefinition,
@@ -88,27 +88,13 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         description: "import",
         shortcut: "m",
     },
-    "o": {
-        type: Definitions.FromImportDefinition,
-        description: "from ... import",
-        shortcut: "o",
-    },
-    "p": {
-        type: Definitions.ImportAsDefinition,
-        description: "import ... as",
-        shortcut: "p",
-    },
-    "s": {
-        type: Definitions.FromImportAsDefinition,
-        description: "from ... import ... as",
-        shortcut: "s",
-    },
     "h": {
         type: Definitions.WithDefinition,
         description: "with",
         shortcut: "h",
     },
 };
+
 
 export default {
     FrameCommandsDefs: frameCommandsDefs,

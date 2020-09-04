@@ -65,7 +65,7 @@ export default Vue.extend({
         },
 
         id(): string {
-            return "input_frameId_"+this.$props.frameId+"_slot_"+this.$props.slotId;
+            return "input_frameId_"+this.$props.frameId+"_slot_"+this.$props.slotIndex;
         },
 
         errorMessage(): string{

@@ -32,7 +32,7 @@ export default class Parser {
             output += label.label;// + ((label.slot) ? statement.contentDict[slot++].code: "");
 
             //if there is an editable slot
-            if(label.slot){
+            if(label.slot && statement.contentDict[slot].shown){
                 // Record its vertical position
                 positions.push(output.length);
                 

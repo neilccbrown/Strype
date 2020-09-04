@@ -1,7 +1,7 @@
 <template>
     <div class="frame-cmd-container" v-on:click="onClick">
         <button class="frame-cmd-btn">{{ symbol }}</button>
-        <span value="description">{{ description }}</span>
+        <span>{{ description }}</span>
     </div>
 </template>
 

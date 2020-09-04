@@ -20,6 +20,17 @@
                 v-bind:description="frameCommand.description"
             />
         </div>
+        <hr />
+        <div class="toggleFrameLabelCommands">
+            <ToggleFrameLabelCommand
+                v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
+                v-bind:key="toggleFrameLabelCommand.type"
+                v-bind:type="toggleFrameLabelCommand.type"
+                v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
+                v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
+                v-bind:description="toggleFrameLabelCommand.displayCommandText"
+            />
+        </div>
     </div>
 </template>
 
@@ -28,9 +39,10 @@ import Vue from "vue";
 import store from "@/store/store";
 import FrameCommand from "@/components/FrameCommand.vue";
 import frameCommandsDefs from "@/constants/frameCommandsDefs";
+import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { FrameCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, ElseDefinition, IfDefinition, TryDefinition, FinallyDefinition, ExceptDefinition, ForDefinition, WhileDefinition, BreakDefinition, ContinueDefinition } from "@/types/types";
+import { FrameCommandDef,ToggleFrameLabelCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, Definitions } from "@/types/types";
 
 export default Vue.extend({
     name: "Commands",
@@ -38,6 +50,7 @@ export default Vue.extend({
 
     components: {
         FrameCommand,
+        ToggleFrameLabelCommand,
     },
 
     computed: {
@@ -59,7 +72,7 @@ export default Vue.extend({
             
             while(frameToCheckId > 0 && !canShowLoopBreakers){
                 const frameToCheckType = store.state.frameObjects[frameToCheckId].frameType;
-                canShowLoopBreakers = (frameToCheckType === ForDefinition || frameToCheckType === WhileDefinition);
+                canShowLoopBreakers = (frameToCheckType === Definitions.ForDefinition || frameToCheckType === Definitions.WhileDefinition);
                 frameToCheckId = store.state.frameObjects[frameToCheckId].parentId;
             }
 
@@ -69,7 +82,7 @@ export default Vue.extend({
                 forbiddenTypes.splice(
                     0,
                     0,
-                    ...[BreakDefinition.type, ContinueDefinition.type]
+                    ...[Definitions.BreakDefinition.type, Definitions.ContinueDefinition.type]
                 );
             }
          
@@ -83,15 +96,15 @@ export default Vue.extend({
                 const rootJointFrame = (currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId] : currentFrame;
 
                 //Remove "finally" in joint frames allwed after "else" if we are in anything else than in a "try"
-                if(rootJointFrame.frameType !== TryDefinition && jointTypes.includes(FinallyDefinition.type)){
+                if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
                     jointTypes.splice(
-                        jointTypes.indexOf(FinallyDefinition.type),
+                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
                         1
                     );
                 }
 
                 //remove joint frames that can ony be included once if they already are in the current joint frames structure
-                const uniqueJointFrameTypes = [ElseDefinition, FinallyDefinition];
+                const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
                 uniqueJointFrameTypes.forEach((frameDef) => {
                     if(jointTypes.includes(frameDef.type) &&
                         rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
@@ -113,22 +126,22 @@ export default Vue.extend({
                     }
                   
                     //workout what types can be left for if and try joint frames structures.
-                    if(rootJointFrame.frameType === IfDefinition){  
+                    if(rootJointFrame.frameType === Definitions.IfDefinition){  
                         //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
                         if(isCurrentFrameIntermediateJointFrame) {
-                            jointTypes = jointTypes.filter((type) => type !== ElseDefinition.type);
+                            jointTypes = jointTypes.filter((type) => type !== Definitions.ElseDefinition.type);
                         }
                     }
-                    else if (rootJointFrame.frameType === TryDefinition){
-                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === FinallyDefinition) !== undefined);
-                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === ElseDefinition) !== undefined);
-                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === ExceptDefinition) !== undefined);
+                    else if (rootJointFrame.frameType === Definitions.TryDefinition){
+                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === Definitions.FinallyDefinition) !== undefined);
+                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === Definitions.ElseDefinition) !== undefined);
+                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === Definitions.ExceptDefinition) !== undefined);
 
                         //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
-                        if(currentFrame.frameType === TryDefinition){
+                        if(currentFrame.frameType === Definitions.TryDefinition){
                             if(hasElse && !hasFinally){
                                 jointTypes.splice(
-                                    jointTypes.indexOf(FinallyDefinition.type),
+                                    jointTypes.indexOf(Definitions.FinallyDefinition.type),
                                     1
                                 );
                             }
@@ -143,14 +156,14 @@ export default Vue.extend({
                                 });
                             }
                         }
-                        else if( currentFrame.frameType === ExceptDefinition){
+                        else if( currentFrame.frameType === Definitions.ExceptDefinition){
                             //if this isn't the last expect in the joint frames structure, we need to know what is following it.
                             const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
                             if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
                                 //This "except" is not the last joint frame: we check if the following joint frame is "except"
                                 //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
                                 //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
-                                if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType === ExceptDefinition){
+                                if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType === Definitions.ExceptDefinition){
                                     uniqueJointFrameTypes.forEach((frameType) => {
                                         if(jointTypes.includes(frameType.type)){
                                             jointTypes.splice(
@@ -164,7 +177,7 @@ export default Vue.extend({
                                 //to avoid "... except > finally > else"
                                 else if(hasElse && !hasFinally){
                                     jointTypes.splice(
-                                        jointTypes.indexOf(FinallyDefinition.type),
+                                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
                                         1
                                     );                                   
                                 }
@@ -187,6 +200,15 @@ export default Vue.extend({
                 }
             }
             return filteredCommands;
+        },
+
+        toggleFrameLabelCommands(): ToggleFrameLabelCommandDef[] {
+            //We retrieve the toggle frame label commands associated with the current frame (if editable slots are focused (i.e. editing))
+            if(store.getters.getIsEditing()){
+                return store.getters.getCurrentFrameToggleFrameLabelCommands();
+            }
+            
+            return [];
         },
     },
 
