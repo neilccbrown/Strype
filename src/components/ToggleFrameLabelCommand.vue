@@ -47,7 +47,7 @@ export default Vue.extend({
             //toggle the frame label 
             //note: we use mousedown event instead of click 
             //to be sure it is called before blur is triggered on editable slots
-            store.commit(
+            store.dispatch(
                 "toggleFrameLabel",
                 this.$props.type
             );

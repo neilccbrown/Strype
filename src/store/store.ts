@@ -2,6 +2,7 @@ import Vue from "vue";
 import Vuex from "vuex";
 import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, EditableFocusPayload, ToggleFrameLabelCommandDef } from "@/types/types";
 import initialState from "@/store/initial-state";
+import {getEditableSlotId} from "@/helpers/editor"
 
 Vue.use(Vuex);
 
@@ -29,7 +30,12 @@ const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frame
         listToUpdate.indexOf(frameId),
         1
     );
-    delete listOfFrames[frameId];
+
+    //Now we can delete the frame from the list of frameObjects
+    Vue.delete(
+        listOfFrames,
+        frameId
+    );
 };
 
 const getParent = (listOfFrames: Record<number, FrameObject>, currentFrame: FrameObject) => {
@@ -190,7 +196,7 @@ export default new Vuex.Store({
         getIsCurrentFrameLabelShown: (state) => (frameId: number, slotIndex: number) => {
             //for an optional label, the corresponding contentDict is always definined with a shown value
             if(state.frameObjects[frameId].frameType.labels[slotIndex]?.optionalLabel === true){
-                return (state.frameObjects[frameId].contentDict[slotIndex].shown);
+                return (state.frameObjects[frameId].contentDict[slotIndex].shownLabel);
             }
 
             //not optional label --> it's never hidden so we don't need to check any flag
@@ -619,28 +625,13 @@ export default new Vuex.Store({
                 state.preCompileErrors.push(id);
             }
         },
+
         removePreCompileErrors(state, id: string ) {
             //if it exists remove it else add it
             if(state.preCompileErrors.includes(id)) {
-                // state.preCompileErrors = state.preCompileErrors.filter((el) => el!==id)
                 state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
             }
         },
-
-        toggleFrameLabel(state, commandType: string) {
-            //Toggle the current frame label that matches the type specified in the payload.
-            //Note: the contentDict object storing that information may not yet contain data
-
-            //Get the FrameLabel matching the type
-            const frameLabeToTogglelIndex = state.frameObjects[state.currentFrame.id].frameType.labels.findIndex((frameLabel) => frameLabel?.toggleLabelCommand?.type === commandType);
-            
-            //toggle the "shown" property of in the contentDict for that label
-            Vue.set(
-                state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex],
-                "shown",
-                !state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].shown
-            );
-        },        
     },
 
     actions: {
@@ -692,7 +683,7 @@ export default new Vuex.Store({
                     payload.labels.filter((el)=> el.slot).reduce(
                         (acc, cur, idx) => ({ 
                             ...acc, 
-                            [idx]: {code: "", focused: false, error: "", shown:(!(cur?.optionalLabel!==true))},
+                            [idx]: {code: "", focused: false, error: "", shownLabel:(!cur?.optionalLabel ?? true)},
                         }),
                         {}
                     ),
@@ -913,6 +904,41 @@ export default new Vuex.Store({
                 );
             }
         },
+        
+        //Toggle the current frame label that matches the type specified in the payload.
+        toggleFrameLabel({commit, state}, commandType: string) {
+
+            //Get the FrameLabel (index) matching the type
+            const frameLabeToTogglelIndex = state.frameObjects[state.currentFrame.id].frameType.labels.findIndex((frameLabel) => frameLabel?.toggleLabelCommand?.type === commandType);
+            
+            const changeShowLabelTo =  !state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].shownLabel;
+            //toggle the "shownLabel" property of in the contentDict for that label
+            Vue.set(
+                state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex],
+                "shownLabel",
+                changeShowLabelTo
+            );
+
+            //update the precompiled errors based on the visibility of the label (if the label isn't shown, no error should be raised)
+            const slotId = getEditableSlotId(state.currentFrame.id, frameLabeToTogglelIndex);
+            if(changeShowLabelTo){
+                //we show the label: add the slot in precompiled error if the slot is empty
+                if(state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].code.trim().length == 0){
+                    commit(
+                        "addPreCompileErrors",
+                        slotId
+                    );
+                }
+            }
+            else{
+                //we hide the label: remove the slot in precompiled error
+                commit(
+                    "removePreCompileErrors",
+                    slotId
+                );
+            }
+
+        },        
     },
     modules: {},
 });

@@ -37,18 +37,17 @@ export default class Parser {
         let currSlotIndex = 0;
 
         statement.frameType.labels.forEach( (label) => {
-            
-            output += label.label;
+            if(statement.contentDict[currSlotIndex].shownLabel) {
+                output += label.label;
 
-            //if there is an editable slot
-            if(label.slot && statement.contentDict[currSlotIndex].shown){
-                // Record its vertical position
-                positions.push(output.length);
-                
-                // add its code to the output
-                output += statement.contentDict[currSlotIndex].code;
-
-                currSlotIndex++
+                //if there is an editable slot
+                if(label.slot){
+                    // Record its vertical position
+                    positions.push(output.length);
+                    
+                    // add its code to the output
+                    output += statement.contentDict[currSlotIndex++].code;
+                }
             }
         });
         output += "\n";
