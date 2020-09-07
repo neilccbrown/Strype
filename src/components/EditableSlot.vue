@@ -103,7 +103,7 @@ export default Vue.extend({
 
 
     methods: {
-        onFocus(event: MouseEvent): void {
+        onFocus(): void {
             store.commit(
                 "setEditFlag",
                 true

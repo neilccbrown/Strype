@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, EditableFocusPayload } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, MessageDefinitions, EditableFocusPayload } from "@/types/types";
 import initialState from "@/store/initial-state";
 
 Vue.use(Vuex);
@@ -104,6 +104,43 @@ const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, 
 };
 
 
+const countRecursiveChildren = function(listOfFrames: Record<number, FrameObject>, frameId: number, countLimit?: number): number {
+    // This method counts all recursive children (i.e. children, grand children, ...) of a frame.
+    // The countLimit is a threshold to reach where we can stop recursion. Therefore the number of children returned IS NOT guaranted
+    // to be less than the limit: it just means we don't look at any more siblings/sub children if we reached this limit.
+    // If this argument isn't passed in the method, all recursive children are counted until we reach the end of the tree.
+    
+    const currentChildrenIds = listOfFrames[frameId].childrenIds;
+    const currentJointFramesIds = listOfFrames[frameId].jointFrameIds;
+    
+    let childrenCount = currentChildrenIds.length;
+    if(countLimit === undefined || childrenCount < countLimit){
+        //if there is no limit set, or if we haven't reached it, we look at the subchildren
+        currentChildrenIds.forEach((childId: number) => childrenCount += countRecursiveChildren(
+            listOfFrames, 
+            childId, 
+            countLimit
+        ));
+        //if there is no limit set, or if we haven't reached it, we look at the children of the joint frames
+        if(countLimit === undefined || childrenCount < countLimit){
+            //for the joint frame structure, if a joint frame has at least one child, we count is as its parent 
+            //child to give it a count.
+            currentJointFramesIds.forEach((jointFrameId: number) => {
+                if(listOfFrames[jointFrameId].childrenIds.length > 0){
+                    childrenCount++;
+                }
+                childrenCount += countRecursiveChildren(
+                    listOfFrames, 
+                    jointFrameId, 
+                    countLimit
+                );
+            });
+        }
+    }
+
+    return childrenCount;
+}
+
 export default new Vuex.Store({
     state: {
         nextAvailableId: 16 as number,
@@ -111,6 +148,10 @@ export default new Vuex.Store({
         currentFrame: { id: 3, caretPosition: CaretPosition.below } as CurrentFrame,
 
         isEditing: false,
+
+        isMessageBannerOn: false,
+
+        currentMessageType: MessageDefinitions.NoMessage,
 
         frameObjects: initialState,
 
@@ -203,7 +244,13 @@ export default new Vuex.Store({
         getPreCompileErrorExists: (state) => (id: string) => {
             return state.preCompileErrors.includes(id);
         },
-    },
+        getIsMessageBannerOn: (state) => () => {
+            return state.isMessageBannerOn;
+        },
+        getCurrentMessageType: (state) => () => {
+            return state.currentMessageType;
+        },
+    }, 
 
     mutations: {
 
@@ -604,6 +651,9 @@ export default new Vuex.Store({
             }
         },
         
+        toggleMessageBanner(state) {
+            state.isMessageBannerOn = !state.isMessageBannerOn;
+        },
     },
 
     actions: {
@@ -683,7 +733,6 @@ export default new Vuex.Store({
             // Create the list of children + joints with which the caret will work with
             const parentId = getParent(state.frameObjects,currentFrame);
 
-                   
             const listOfSiblings = 
             childrenListWithJointFrames(
                 state.frameObjects, 
@@ -723,6 +772,16 @@ export default new Vuex.Store({
                     }
                     frameToDeleteId = currentFrame.id;
                 }
+            }
+
+            //before actually deleting the frame(s), we check if the user should be notified of a large deletion
+            if(countRecursiveChildren(
+                state.frameObjects,
+                frameToDeleteId,
+                3
+            ) >= 3){
+                state.currentMessageType = MessageDefinitions.LargeDeletionMessageDefinition;
+                state.isMessageBannerOn = true;
             }
 
             //Delete the frame if a frame to delete has been found

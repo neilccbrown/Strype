@@ -6,6 +6,7 @@
         "serve": "vue-cli-service serve",
         "serve:https": "HTTPS=true vue-cli-service serve",
         "build": "vue-cli-service build",
+        "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/localisation/**/*.json'",
         "lint": "vue-cli-service lint"
     },
     "dependencies": {
@@ -19,6 +20,7 @@
         "node-hid": "^1.3.0",
         "tigerpython-parser": "git+https://github.com/a-vorontsov/TigerPython-Parser.git",
         "vue": "^2.6.12",
+        "vue-i18n": "^8.17.3",
         "vuedraggable": "^2.24.1",
         "vuex": "^3.5.1"
     },
@@ -42,6 +44,7 @@
         "sass": "^1.26.10",
         "sass-loader": "^8.0.2",
         "typescript": "^3.9.7",
+        "vue-cli-plugin-i18n": "~1.0.1",
         "vue-template-compiler": "^2.6.12"
     },
     "lint-staged": {
