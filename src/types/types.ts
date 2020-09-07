@@ -79,7 +79,7 @@ export interface EditableFocusPayload {
     slotId: number;
     focused: boolean;
 }
-export interface FrameCommandDef {
+export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string;
     shortcut: string;
@@ -384,9 +384,9 @@ export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
     labels: [
-        { label: "from ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommand.importFrom, optionalSlot: false},
+        { label: "from ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommandDefs.importFrom, optionalSlot: false},
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
-        { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommand.importAs, optionalSlot: false},
+        { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommandDefs.importAs, optionalSlot: false},
     ],    
     colour: "#FFFFFF",
     draggableGroup: DraggableGroupTypes.imports,

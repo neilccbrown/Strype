@@ -1,7 +1,7 @@
-import { FrameCommandDef, Definitions } from "@/types/types";
+import { AddFrameCommandDef, Definitions } from "@/types/types";
 
 //Commands for Frame insertion
-const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
+const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef} = {
     "i": {
         type: Definitions.IfDefinition,
         description: "if",
@@ -97,5 +97,5 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
 
 
 export default {
-    FrameCommandsDefs: frameCommandsDefs,
+    AddFrameCommandsDefs: addFrameCommandsDefs,
 }

@@ -17,5 +17,5 @@ const toggleFrameLabelsDefs: {[type: string]: ToggleFrameLabelCommandDef} = {
 };
 
 export default {
-    ToggleFrameLabelCommand: toggleFrameLabelsDefs,
+    ToggleFrameLabelCommandDefs: toggleFrameLabelsDefs,
 }
