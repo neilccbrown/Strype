@@ -25,7 +25,7 @@ export default class Parser {
             + 
             this.parseFrames(
                 store.getters.getJointFramesForFrameId(block.id, "all"), 
-                indent + INDENT
+                indent
             );
         
         return output;
