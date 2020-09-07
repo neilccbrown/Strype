@@ -52,6 +52,7 @@ const initialState: EditorFrameObjects = {
             1: {code : "inImport", focused: false, error :"", shown: true},
             2: {code : "inAs", focused: false, error :"", shown: false} },
         caretVisibility: CaretPosition.none,
+        error: "",
     },
     2: {
         frameType: Definitions.TryDefinition,
@@ -62,6 +63,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.none,
+        error: "",
     },
     3: {
         frameType: Definitions.IfDefinition,
@@ -72,6 +74,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "", focused: false, error :"", shown: true} },
         caretVisibility: CaretPosition.below,
+        error: "",
     },
 };
 

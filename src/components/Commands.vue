@@ -215,7 +215,7 @@ export default Vue.extend({
     created() {
         window.addEventListener(
             "keyup",
-            //Labda is used instead of `function` here as it preserves `this`
+            //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
                 if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     //first we remove the focus of the current active element (to avoid editable slots to keep it)
@@ -225,14 +225,36 @@ export default Vue.extend({
                         event.key
                     );
                 }
-                else if (!store.state.isEditing && ( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
+                else if (!store.getters.getIsEditing() && ( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
                     store.dispatch(
                         "leftRightKey",
                         event.key
                     );
                 }
+                // All other keys
                 else {
-                    this.onKeyUp(event);
+                    if (store.getters.getIsEditing() === false) {
+                        if(event.key == "Delete" || event.key == "Backspace"){
+                            //delete a frame
+                            store.dispatch(
+                                "deleteCurrentFrame",
+                                event.key
+                            );
+                        }
+                        else{
+                            //add the frame in the editor if allowed otherwise, do nothing
+                            if(this.frameCommands[event.key.toLowerCase()] !== undefined){
+                                store.dispatch(
+                                    "addFrameWithCommand",
+                                    this.frameCommands[event.key.toLowerCase()].type                
+                                );
+                                store.dispatch(
+                                    "leftRightKey",
+                                    "ArrowRight"                
+                                );
+                            } 
+                        }                
+                    }
                 }
                 
             }
@@ -252,31 +274,11 @@ export default Vue.extend({
             downloadHex();
         },
         downloadPython() {
-            downloadPython();
-        },
-        onKeyUp(event: KeyboardEvent) {
-            if (store.state.isEditing === false) {
-                if(event.key == "Delete" || event.key == "Backspace"){
-                    //delete a frame
-                    store.dispatch(
-                        "deleteCurrentFrame",
-                        event.key
-                    );
-                }
-                else{
-                    //add the frame in the editor if allowed otherwise, do nothing
-                    if(this.frameCommands[event.key.toLowerCase()] !== undefined){
-                        store.dispatch(
-                            "addFrameWithCommand",
-                            this.frameCommands[event.key.toLowerCase()].type                
-                        );
-                        store.dispatch(
-                            "leftRightKey",
-                            "ArrowRight"                
-                        );
-                    }
-                    
-                }                
+            if(store.getters.getPreCompileErrors().length>0) {
+                alert("Please fix existing errors first.");
+            }
+            else {
+                downloadPython();
             }
         },
     },

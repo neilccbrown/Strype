@@ -1,14 +1,19 @@
 <template>
     <div>
-        <div :style="frameStyle" class="block">
+        <div 
+            v-bind:style="frameStyle" 
+            class="block frameDiv" 
+            v-bind:class="{error: erroneous}"
+            v-bind:id="id"
+        >
             <FrameHeader
                 v-if="frameType.labels !== null"
-                v-bind:frameId="id"
+                v-bind:frameId="frameId"
                 v-bind:labels="frameType.labels"
             />
             <FrameBody
                 v-if="allowChildren"
-                v-bind:frameId="id"
+                v-bind:frameId="frameId"
                 v-bind:caretVisibility="caretVisibility"
             />
             <div 
@@ -19,9 +24,16 @@
             <Caret v-show=" caretVisibility === caretPosition.below && !isEditing" />
             <JointFrames 
                 v-if="hasJointFrameObjects"
-                v-bind:jointParentId="id"
+                v-bind:jointParentId="frameId"
             />
         </div>
+        <b-popover
+          v-if="erroneous"
+          v-bind:target="id"
+          title="Error!"
+          triggers="hover focus"
+          v-bind:content="errorMessage"
+        ></b-popover>
     </div>
 </template>
 
@@ -57,7 +69,7 @@ export default Vue.extend({
 
     props: {
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
-        id: Number, // Unique Indentifier for each Frame
+        frameId: Number, // Unique Indentifier for each Frame
         frameType: {
             type: Object,
             default: () => DefaultFramesDefinition,
@@ -70,7 +82,7 @@ export default Vue.extend({
     computed: {
         hasJointFrameObjects(): boolean {
             return store.getters.getJointFramesForFrameId(
-                this.id,
+                this.frameId,
                 "all"
             ).length >0;
         },
@@ -97,6 +109,22 @@ export default Vue.extend({
         isEditing(): boolean {
             return store.getters.getIsEditing();
         },
+
+        erroneous(): boolean {
+            return store.getters.getIsErroneousFrame(
+                this.$props.frameId
+            );
+        },
+
+        id(): string {
+            return "frame_id_"+this.$props.frameId;
+        },
+
+        errorMessage(): string{
+            return store.getters.getErrorForFrame(
+                this.$props.frameId
+            );
+        },
         
     },
 
@@ -104,7 +132,7 @@ export default Vue.extend({
         toggleCaret(): void {
             store.dispatch(
                 "toggleCaret",
-                {id:this.$props.id, caretPosition: CaretPosition.below}
+                {id:this.$props.frameId, caretPosition: CaretPosition.below}
             );
         },
     },
@@ -116,11 +144,14 @@ export default Vue.extend({
 <style lang="scss">
 .block {
     color: #000 !important;
-    // margin-top: 4px;
     padding-right: 4px;
     padding-bottom: 1px;
 }
 .frame-bottom-selector {
     padding-bottom: 4px;
+}
+
+.error {
+    border: 1px solid #d66 !important;
 }
 </style>

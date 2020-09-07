@@ -74,10 +74,6 @@ const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, 
 
             //get the previous container's children if the current frame is a container (OR keep self it first container),
             //otherwise, get the previous frame's joint frames
-            // const previousSubLevelFrameIds = (currentFrame.id < 0) ?
-            //     ((indexOfCurrentInParent !== 0) ? listOfFrames[previousId].childrenIds : currentFrame.childrenIds) :
-            //     listOfFrames[previousId].jointFrameIds;
-                        
             const previousSubLevelFrameIds = 
                 (currentFrame.id < 0) ?
                     ((indexOfCurrentInParent > 0) ? 
@@ -113,11 +109,13 @@ export default new Vuex.Store({
     state: {
         nextAvailableId: 16 as number,
 
-        currentFrame: { id: 3, caretPosition: CaretPosition.below } as CurrentFrame,//{ id: -1, caretPosition: CaretPosition.body } as CurrentFrame,
+        currentFrame: { id: 3, caretPosition: CaretPosition.below } as CurrentFrame,
 
         isEditing: false,
 
         frameObjects: initialState,
+
+        preCompileErrors: [] as string[],
     },
     getters: {
         getFramesForParentId: (state) => (frameId: number) => {
@@ -128,10 +126,11 @@ export default new Vuex.Store({
         },
         getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
             const retCode = state.frameObjects[frameId]?.contentDict[slotId].code;
-            return retCode !== undefined ? retCode : "";
+            // return "" if it is undefined
+            return retCode ?? "";
         },
         getJointFramesForFrameId: (state) => (frameId: number, group: string) => {
-            const jointFrameIds = state.frameObjects[frameId]?.jointFrameIds;
+            const jointFrameIds = state.frameObjects[frameId].jointFrameIds;
             const jointFrames: FrameObject[] = [];
             jointFrameIds?.forEach((jointFrameId: number) => {
                 const jointFrame = state.frameObjects[jointFrameId];
@@ -201,12 +200,28 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].frameType.allowChildren;
         },
 
-        getErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
+        getIsErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].error !== "";
+        },
+
+        getIsErroneousFrame: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].error !== "";
         },
         
         getErrorForSlot: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].error;
+        },
+
+        getErrorForFrame: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].error;
+        },
+
+        getPreCompileErrors: (state) => () => {
+            return state.preCompileErrors;
+        },
+
+        getPreCompileErrorExists: (state) => (id: string) => {
+            return state.preCompileErrors.includes(id);
         },
     },
 
@@ -374,7 +389,8 @@ export default new Vuex.Store({
             }
         },
 
-        toggleEditFlag(state, editing) {
+        // It may be called more than once from the same place and thus requires the editing value
+        setEditFlag(state, editing) {
             Vue.set(
                 state,
                 "isEditing", 
@@ -568,7 +584,47 @@ export default new Vuex.Store({
                 "error",
                 payload.error
             );
+        },
 
+        setFrameErroneous(state, payload: {frameId: number; error: string}){
+            Vue.set(
+                state.frameObjects[payload.frameId],
+                "error",
+                payload.error
+            );
+        },
+
+        clearAllErrors(state) {
+            Object.keys(state.frameObjects).forEach((id: any) => {
+                if(state.frameObjects[id].error !==""){
+                    Vue.set(
+                        state.frameObjects[id],
+                        "error",
+                        ""
+                    );
+                }
+                Object.keys(state.frameObjects[id].contentDict).forEach((slot: any) => {
+                    Vue.set(
+                        state.frameObjects[id].contentDict[slot],
+                        "error",
+                        ""
+                    );
+                });
+            });  
+        },
+
+        addPreCompileErrors(state, id: string ) {
+            //if it exists remove it else add it
+            if(!state.preCompileErrors.includes(id)) {
+                state.preCompileErrors.push(id);
+            }
+        },
+        removePreCompileErrors(state, id: string ) {
+            //if it exists remove it else add it
+            if(state.preCompileErrors.includes(id)) {
+                // state.preCompileErrors = state.preCompileErrors.filter((el) => el!==id)
+                state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
+            }
         },
 
         toggleFrameLabel(state, commandType: string) {
@@ -640,6 +696,7 @@ export default new Vuex.Store({
                         }),
                         {}
                     ),
+                error: "",
             };
 
             commit(
@@ -754,7 +811,7 @@ export default new Vuex.Store({
                 else {
 
                     commit(
-                        "toggleEditFlag",
+                        "setEditFlag",
                         false
                     );
 
@@ -772,7 +829,7 @@ export default new Vuex.Store({
 
             else { 
                 const currentFrame = state.frameObjects[state.currentFrame.id];
-                // next == next | previous
+                // By nextFrame we mean either the next or the previous frame, depending on the direction
                 let nextFrame = 0;
                 //  direction = up | down
                 let directionDown = true;
@@ -827,7 +884,7 @@ export default new Vuex.Store({
                 }
 
                 //If there are editable slots, go in the first
-                const editableSlotsNumber = Object.keys(state.frameObjects[nextFrame]?.contentDict).length;
+                const editableSlotsNumber = Object.keys(state.frameObjects[nextFrame].contentDict).length;
 
                 if(editableSlotsNumber > 0) {
 
@@ -851,7 +908,7 @@ export default new Vuex.Store({
                 }
 
                 commit(
-                    "toggleEditFlag",
+                    "setEditFlag",
                     editFlag
                 );
             }
