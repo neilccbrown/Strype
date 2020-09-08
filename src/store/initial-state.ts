@@ -1,4 +1,4 @@
-import { EditorFrameObjects, CaretPosition, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, CommentDefinition, TryDefinition, IfDefinition } from "@/types/types";
+import {CaretPosition, EditorFrameObjects, Definitions, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
 
 const initialState: EditorFrameObjects = {
     0: {
@@ -15,7 +15,7 @@ const initialState: EditorFrameObjects = {
         id: -1,
         frameType : ImportsContainerDefinition,
         parentId: 0,
-        childrenIds: [],
+        childrenIds: [1],
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
@@ -35,25 +35,27 @@ const initialState: EditorFrameObjects = {
         id: -3,
         frameType : MainFramesContainerDefinition,
         parentId: 0,
-        childrenIds: [3,1,2],
+        childrenIds: [3,2],
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.none,
     },
     1: {
-        frameType: CommentDefinition,
+        frameType: Definitions.ImportDefinition,
         id: 1,
-        parentId: -3,
+        parentId: -1,
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: {code : "Foo", focused: false, error :""} },
+        contentDict: { 0: {code : "inFrom", focused: false, error :"", shownLabel: false},
+            1: {code : "inImport", focused: false, error :"", shownLabel: true},
+            2: {code : "inAs", focused: false, error :"", shownLabel: false} },
         caretVisibility: CaretPosition.none,
         error: "",
     },
     2: {
-        frameType: TryDefinition,
+        frameType: Definitions.TryDefinition,
         id: 2,
         parentId: -3,
         childrenIds: [],
@@ -64,17 +66,16 @@ const initialState: EditorFrameObjects = {
         error: "",
     },
     3: {
-        frameType: IfDefinition,
+        frameType: Definitions.IfDefinition,
         id: 3,
         parentId: -3,
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: {code :  "", focused: false, error :""} },
+        contentDict: { 0: {code :  "", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.below,
         error: "",
     },
-
 };
 
 export default initialState;

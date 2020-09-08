@@ -1,7 +1,9 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, FramesDefinitions, MessageDefinitions, EditableFocusPayload } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef } from "@/types/types";
+import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
+import {getEditableSlotId} from "@/helpers/editor"
 
 Vue.use(Vuex);
 
@@ -29,8 +31,14 @@ const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frame
         listToUpdate.indexOf(frameId),
         1
     );
-    delete listOfFrames[frameId];
+
+    //Now we can delete the frame from the list of frameObjects
+    Vue.delete(
+        listOfFrames,
+        frameId
+    );
 };
+
 const getParent = (listOfFrames: Record<number, FrameObject>, currentFrame: FrameObject) => {
     let parentId = 0;
     if(currentFrame.id !== 0){
@@ -38,6 +46,7 @@ const getParent = (listOfFrames: Record<number, FrameObject>, currentFrame: Fram
     }
     return parentId;
 };
+
 const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, currentFrameId: number, caretPosition: CaretPosition, direction: string) => {
     const currentFrame = listOfFrames[currentFrameId];
             
@@ -102,7 +111,6 @@ const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, 
     
     return childrenAndJointFramesIds;
 };
-
 
 const countRecursiveChildren = function(listOfFrames: Record<number, FrameObject>, frameId: number, countLimit?: number): number {
     // This method counts all recursive children (i.e. children, grand children, ...) of a frame.
@@ -216,6 +224,172 @@ export default new Vuex.Store({
         },
         getIsEditableFocused: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].focused;
+        },
+        getCurrentFrameAddFrameCommands: (state) => () => {
+            const currentFrame  = state.frameObjects[state.currentFrame.id];
+
+            //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
+            let forbiddenTypes = (state.currentFrame.caretPosition === CaretPosition.body) ? 
+                [...currentFrame.frameType.forbiddenChildrenTypes] :
+                ((currentFrame.jointParentId > 0) ? [...state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes] : [...state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes]);
+         
+            //as there is no static rule for showing the "break" or "continue" statements,
+            //we need to check if the current frame is within a "for" or a "while" loop.
+            //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
+            let canShowLoopBreakers = false;
+            let frameToCheckId = (state.currentFrame.caretPosition === CaretPosition.body) ? 
+                currentFrame.id:
+                ((currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId].id : state.frameObjects[currentFrame.parentId].id) ;
+            
+            while(frameToCheckId > 0 && !canShowLoopBreakers){
+                const frameToCheckType = state.frameObjects[frameToCheckId].frameType;
+                canShowLoopBreakers = (frameToCheckType === Definitions.ForDefinition || frameToCheckType === Definitions.WhileDefinition);
+                frameToCheckId = state.frameObjects[frameToCheckId].parentId;
+            }
+
+            if(!canShowLoopBreakers){
+                //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
+                //so if we cannot show "break" and "continue" : we add them from the list of forbidden
+                forbiddenTypes.splice(
+                    0,
+                    0,
+                    ...[Definitions.BreakDefinition.type, Definitions.ContinueDefinition.type]
+                );
+            }
+         
+            //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
+            let jointTypes = (state.currentFrame.caretPosition === CaretPosition.below) ?
+                [...currentFrame.frameType.jointFrameTypes] : 
+                [];
+
+            //update the list of joint frames depending on where we are in the joint frames structure to respect the rules
+            if(jointTypes.length > 0){
+                const rootJointFrame = (currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId] : currentFrame;
+
+                //Remove "finally" in joint frames allwed after "else" if we are in anything else than in a "try"
+                if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
+                    jointTypes.splice(
+                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
+                        1
+                    );
+                }
+
+                //remove joint frames that can ony be included once if they already are in the current joint frames structure
+                const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
+                uniqueJointFrameTypes.forEach((frameDef) => {
+                    if(jointTypes.includes(frameDef.type) &&
+                        rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
+                        jointTypes.splice(
+                            jointTypes.indexOf(frameDef.type),
+                            1
+                        );
+                    }
+                });
+                
+                //ensure the intermediate following joint frames orders are respected: if > elseif > else and try > except > else > finally
+                if(rootJointFrame.jointFrameIds.length > 0) {
+                    const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
+                        || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
+                  
+                    //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
+                    if(isCurrentFrameIntermediateJointFrame ) {
+                        forbiddenTypes = Object.values(AllFrameTypesIdentifier);
+                    }
+                  
+                    //workout what types can be left for if and try joint frames structures.
+                    if(rootJointFrame.frameType === Definitions.IfDefinition){  
+                        //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
+                        if(isCurrentFrameIntermediateJointFrame) {
+                            jointTypes = jointTypes.filter((type) => type !== Definitions.ElseDefinition.type);
+                        }
+                    }
+                    else if (rootJointFrame.frameType === Definitions.TryDefinition){
+                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === Definitions.FinallyDefinition) !== undefined);
+                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === Definitions.ElseDefinition) !== undefined);
+                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === Definitions.ExceptDefinition) !== undefined);
+
+                        //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
+                        if(currentFrame.frameType === Definitions.TryDefinition){
+                            if(hasElse && !hasFinally){
+                                jointTypes.splice(
+                                    jointTypes.indexOf(Definitions.FinallyDefinition.type),
+                                    1
+                                );
+                            }
+                            if(hasExcept){
+                                uniqueJointFrameTypes.forEach((frameType) => {
+                                    if(jointTypes.includes(frameType.type)){
+                                        jointTypes.splice(
+                                            jointTypes.indexOf(frameType.type),
+                                            1
+                                        );
+                                    }
+                                });
+                            }
+                        }
+                        else if( currentFrame.frameType === Definitions.ExceptDefinition){
+                            //if this isn't the last expect in the joint frames structure, we need to know what is following it.
+                            const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
+                            if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
+                                //This "except" is not the last joint frame: we check if the following joint frame is "except"
+                                //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
+                                //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
+                                if(state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType === Definitions.ExceptDefinition){
+                                    uniqueJointFrameTypes.forEach((frameType) => {
+                                        if(jointTypes.includes(frameType.type)){
+                                            jointTypes.splice(
+                                                jointTypes.indexOf(frameType.type),
+                                                1
+                                            );
+                                        }
+                                    }); 
+                                }
+                                //And if this "except" frame is followed by an "else" but no "finally" is present, we remove "finally"
+                                //to avoid "... except > finally > else"
+                                else if(hasElse && !hasFinally){
+                                    jointTypes.splice(
+                                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
+                                        1
+                                    );                                   
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+            
+            //remove the commands that are forbidden and not defined as joint frames
+            const filteredCommands = { ...addFrameCommandsDefs.AddFrameCommandsDefs};
+            for (const frameType in addFrameCommandsDefs.AddFrameCommandsDefs) {
+                if(forbiddenTypes.includes(addFrameCommandsDefs.AddFrameCommandsDefs[frameType].type.type) 
+                    && !jointTypes.includes(addFrameCommandsDefs.AddFrameCommandsDefs[frameType].type.type)){
+                    Vue.delete(
+                        filteredCommands,
+                        frameType
+                    );
+                }
+            }
+            return filteredCommands;
+        },
+        getCurrentFrameToggleFrameLabelCommands: (state) => () => {
+            const commands: ToggleFrameLabelCommandDef[] = [];
+            state.frameObjects[state.currentFrame.id].frameType.labels.forEach((labelDef) => {
+                const command = labelDef.toggleLabelCommand;
+                if(command !== undefined){
+                    commands.push(command);
+                }
+            });
+            return commands;
+        },
+        getIsCurrentFrameLabelShown: (state) => (frameId: number, slotIndex: number) => {
+            //for an optional label, the corresponding contentDict is always definined with a shown value
+            if(state.frameObjects[frameId].frameType.labels[slotIndex]?.optionalLabel === true){
+                return (state.frameObjects[frameId].contentDict[slotIndex].shownLabel);
+            }
+
+            //not optional label --> it's never hidden so we don't need to check any flag
+            return true;
         },
         getAllowChildren: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.allowChildren;
@@ -353,7 +527,10 @@ export default new Vuex.Store({
                         );
                     }
                     //and finally, delete the frame
-                    delete state.frameObjects[payload.frameToDeleteId] 
+                    Vue.delete(
+                        state.frameObjects,
+                        payload.frameToDeleteId
+                    );
                 }
             }
         },
@@ -643,10 +820,10 @@ export default new Vuex.Store({
                 state.preCompileErrors.push(id);
             }
         },
+
         removePreCompileErrors(state, id: string ) {
             //if it exists remove it else add it
             if(state.preCompileErrors.includes(id)) {
-                // state.preCompileErrors = state.preCompileErrors.filter((el) => el!==id)
                 state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
             }
         },
@@ -701,10 +878,11 @@ export default new Vuex.Store({
                 jointFrameIds: [],
                 contentDict:
                     //find each editable slot and create an empty & unfocused entry for it
+                    //optional labels are not visible by default, not optional labels are visible by default
                     payload.labels.filter((el)=> el.slot).reduce(
                         (acc, cur, idx) => ({ 
                             ...acc, 
-                            [idx]: {code: "", focused: false, error: ""},
+                            [idx]: {code: "", focused: false, error: "", shownLabel:(!cur?.optionalLabel ?? true)},
                         }),
                         {}
                     ),
@@ -904,10 +1082,15 @@ export default new Vuex.Store({
                     directionDown = false;
                 }
 
-                //If there are editable slots, go in the first
-                const editableSlotsNumber = Object.keys(state.frameObjects[nextFrame].contentDict).length;
+                //If there are editable slots, go in the first available slot
+                const editableSlotsIndexes: number[] = [];
+                Object.entries(state.frameObjects[nextFrame].contentDict).forEach((entry) => {
+                    if(entry[1].shownLabel){
+                        editableSlotsIndexes.push(parseInt(entry[0]));
+                    }
+                });
 
-                if(editableSlotsNumber > 0) {
+                if(editableSlotsIndexes.length > 0) {
 
                     editFlag = true;
 
@@ -915,7 +1098,7 @@ export default new Vuex.Store({
                         "setEditableFocus",
                         {
                             frameId: state.frameObjects[nextFrame].id,
-                            slotId: (directionDown)? 0 : editableSlotsNumber -1,
+                            slotId: (directionDown)? editableSlotsIndexes[0] : editableSlotsIndexes[editableSlotsIndexes.length -1],
                             focused: true,
                         }
                     );
@@ -934,6 +1117,41 @@ export default new Vuex.Store({
                 );
             }
         },
+        
+        //Toggle the current frame label that matches the type specified in the payload.
+        toggleFrameLabel({commit, state}, commandType: string) {
+
+            //Get the FrameLabel (index) matching the type
+            const frameLabeToTogglelIndex = state.frameObjects[state.currentFrame.id].frameType.labels.findIndex((frameLabel) => frameLabel?.toggleLabelCommand?.type === commandType);
+            
+            const changeShowLabelTo =  !state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].shownLabel;
+            //toggle the "shownLabel" property of in the contentDict for that label
+            Vue.set(
+                state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex],
+                "shownLabel",
+                changeShowLabelTo
+            );
+
+            //update the precompiled errors based on the visibility of the label (if the label isn't shown, no error should be raised)
+            const slotId = getEditableSlotId(state.currentFrame.id, frameLabeToTogglelIndex);
+            if(changeShowLabelTo){
+                //we show the label: add the slot in precompiled error if the slot is empty
+                if(state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].code.trim().length == 0){
+                    commit(
+                        "addPreCompileErrors",
+                        slotId
+                    );
+                }
+            }
+            else{
+                //we hide the label: remove the slot in precompiled error
+                commit(
+                    "removePreCompileErrors",
+                    slotId
+                );
+            }
+
+        },        
     },
     modules: {},
 });

@@ -7,17 +7,28 @@
         </div>
         <hr />
         <div class="frameCommands">
-            <FrameCommand
-                v-for="frameCommand in frameCommands"
-                v-bind:key="frameCommand.type.type"
-                v-bind:type="frameCommand.type.type"
-                v-bind:shortcut="frameCommand.shortcut"
+            <AddFrameCommand
+                v-for="addFrameCommand in addFrameCommands"
+                v-bind:key="addFrameCommand.type.type"
+                v-bind:type="addFrameCommand.type.type"
+                v-bind:shortcut="addFrameCommand.shortcut"
                 v-bind:symbol="
-                    frameCommand.symbol !== undefined
-                        ? frameCommand.symbol
-                        : frameCommand.shortcut
+                    addFrameCommand.symbol !== undefined
+                        ? addFrameCommand.symbol
+                        : addFrameCommand.shortcut
                 "
-                v-bind:description="frameCommand.description"
+                v-bind:description="addFrameCommand.description"
+            />
+        </div>
+        <hr />
+        <div class="toggleFrameLabelCommands">
+            <ToggleFrameLabelCommand
+                v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
+                v-bind:key="toggleFrameLabelCommand.type"
+                v-bind:type="toggleFrameLabelCommand.type"
+                v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
+                v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
+                v-bind:description="toggleFrameLabelCommand.displayCommandText"
             />
         </div>
     </div>
@@ -26,143 +37,35 @@
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import FrameCommand from "@/components/FrameCommand.vue";
-import frameCommandsDefs from "@/constants/frameCommandsDefs";
+import AddFrameCommand from "@/components/AddFrameCommand.vue";
+import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { FrameCommandDef, CaretPosition, FrameObject, AllFrameTypesIdentifier, ElseDefinition, IfDefinition, TryDefinition, FinallyDefinition, ExceptDefinition } from "@/types/types";
+import { AddFrameCommandDef,ToggleFrameLabelCommandDef } from "@/types/types";
+import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
 
 export default Vue.extend({
     name: "Commands",
     store,
 
     components: {
-        FrameCommand,
+        AddFrameCommand,
+        ToggleFrameLabelCommand,
     },
 
     computed: {
-        frameCommands(): Record<string, FrameCommandDef> {
-            const currentFrame  = store.getters.getCurrentFrameObject() as FrameObject;
+        addFrameCommands(): Record<string, AddFrameCommandDef> {
+            //We retrieve the add frame commands associated with the current frame
+            return store.getters.getCurrentFrameAddFrameCommands();
+        },
 
-            //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
-            let forbiddenTypes = (store.state.currentFrame.caretPosition === CaretPosition.body) ? 
-                currentFrame.frameType.forbiddenChildrenTypes :
-                ((currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes : store.state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes) ;
-         
-            //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
-            let jointTypes = (store.state.currentFrame.caretPosition === CaretPosition.below) ?
-                [...currentFrame.frameType.jointFrameTypes] : 
-                [];
-
-            //update the list of joint frames depending on where we are in the joint frames structure to respect the rules
-            if(jointTypes.length > 0){
-                const rootJointFrame = (currentFrame.jointParentId > 0) ? store.state.frameObjects[currentFrame.jointParentId] : currentFrame;
-
-                //Remove "finally" in joint frames allwed after "else" if we are in anything else than in a "try"
-                if(rootJointFrame.frameType !== TryDefinition && jointTypes.includes(FinallyDefinition.type)){
-                    jointTypes.splice(
-                        jointTypes.indexOf(FinallyDefinition.type),
-                        1
-                    );
-                }
-
-                //remove joint frames that can ony be included once if they already are in the current joint frames structure
-                const uniqueJointFrameTypes = [ElseDefinition, FinallyDefinition];
-                uniqueJointFrameTypes.forEach((frameDef) => {
-                    if(jointTypes.includes(frameDef.type) &&
-                        rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
-                        jointTypes.splice(
-                            jointTypes.indexOf(frameDef.type),
-                            1
-                        );
-                    }
-                });
-                
-                //ensure the intermediate following joint frames orders are respected: if > elseif > else and try > except > else > finally
-                if(rootJointFrame.jointFrameIds.length > 0) {
-                    const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
-                        || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
-                  
-                    //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
-                    if(isCurrentFrameIntermediateJointFrame ) {
-                        forbiddenTypes = Object.values(AllFrameTypesIdentifier);
-                    }
-                  
-                    //workout what types can be left for if and try joint frames structures.
-                    if(rootJointFrame.frameType === IfDefinition){  
-                        //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
-                        if(isCurrentFrameIntermediateJointFrame) {
-                            jointTypes = jointTypes.filter((type) => type !== ElseDefinition.type);
-                        }
-                    }
-                    else if (rootJointFrame.frameType === TryDefinition){
-                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === FinallyDefinition) !== undefined);
-                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === ElseDefinition) !== undefined);
-                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => store.state.frameObjects[jointFrameId]?.frameType === ExceptDefinition) !== undefined);
-
-                        //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
-                        if(currentFrame.frameType === TryDefinition){
-                            if(hasElse && !hasFinally){
-                                jointTypes.splice(
-                                    jointTypes.indexOf(FinallyDefinition.type),
-                                    1
-                                );
-                            }
-                            if(hasExcept){
-                                uniqueJointFrameTypes.forEach((frameType) => {
-                                    if(jointTypes.includes(frameType.type)){
-                                        jointTypes.splice(
-                                            jointTypes.indexOf(frameType.type),
-                                            1
-                                        );
-                                    }
-                                });
-                            }
-                        }
-                        else if( currentFrame.frameType === ExceptDefinition){
-                            //if this isn't the last expect in the joint frames structure, we need to know what is following it.
-                            const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
-                            if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
-                                //This "except" is not the last joint frame: we check if the following joint frame is "except"
-                                //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
-                                //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
-                                if(store.state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType === ExceptDefinition){
-                                    uniqueJointFrameTypes.forEach((frameType) => {
-                                        if(jointTypes.includes(frameType.type)){
-                                            jointTypes.splice(
-                                                jointTypes.indexOf(frameType.type),
-                                                1
-                                            );
-                                        }
-                                    }); 
-                                }
-                                //And if this "except" frame is followed by an "else" but no "finally" is present, we remove "finally"
-                                //to avoid "... except > finally > else"
-                                else if(hasElse && !hasFinally){
-                                    jointTypes.splice(
-                                        jointTypes.indexOf(FinallyDefinition.type),
-                                        1
-                                    );                                   
-                                }
-                            }
-                        }
-                    }
-                }
-
+        toggleFrameLabelCommands(): ToggleFrameLabelCommandDef[] {
+            //We retrieve the toggle frame label commands associated with the current frame (if editable slots are focused (i.e. editing))
+            if(store.getters.getIsEditing()){
+                return store.getters.getCurrentFrameToggleFrameLabelCommands();
             }
             
-            //remove the commands that are forbidden and not defined as joint frames
-            const filteredCommands = { ...frameCommandsDefs.FrameCommandsDefs};
-            for (const frameType in frameCommandsDefs.FrameCommandsDefs) {
-                if(forbiddenTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type) 
-                    && !jointTypes.includes(frameCommandsDefs.FrameCommandsDefs[frameType].type.type)){
-                    Vue.delete(
-                        filteredCommands,
-                        frameType
-                    );
-                }
-            }
-            return filteredCommands;
+            return [];
         },
     },
 
@@ -178,40 +81,68 @@ export default Vue.extend({
                         "changeCaretPosition",
                         event.key
                     );
-                }
-                else if (!store.getters.getIsEditing() && ( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
-                    store.dispatch(
-                        "leftRightKey",
-                        event.key
-                    );
-                }
-                // All other keys
+                }            
                 else {
-                    if (store.getters.getIsEditing() === false) {
-                        if(event.key == "Delete" || event.key == "Backspace"){
-                            //delete a frame
+                    const isEditing = store.getters.getIsEditing();
+                    if(isEditing){
+                        //find if there is a toggle frame label command triggered --> if not, do nothing special
+                        const toggleFrameCmdType = 
+                                    this.toggleFrameLabelCommands.find((toggleCmd) => {
+                                        let isModifierOn = true;
+                                        toggleCmd.modifierKeyShortcuts.forEach((modifer) => {
+                                            switch(modifer){
+                                            case KeyModifier.ctrl:
+                                                isModifierOn = isModifierOn && event.ctrlKey;
+                                                break;
+                                            case KeyModifier.shift:
+                                                isModifierOn = isModifierOn && event.shiftKey;
+                                                break;
+                                            case KeyModifier.alt:
+                                                isModifierOn = isModifierOn && event.altKey;
+                                                break;
+                                            }
+                                        });
+                                        //if the modifiers are on, and the shortcut key is the right one, return true
+                                        return isModifierOn && toggleCmd.keyShortcut === event.key.toLowerCase();
+                                    })?.type
+                                    ?? "";
+                        //if there is match with a toggle command, we run it (otherwise, do nothing)
+                        if(toggleFrameCmdType !== "") {
+                            store.dispatch(
+                                "toggleFrameLabel",
+                                toggleFrameCmdType
+                            );
+                        }
+                    }
+                    //cases when there is no editing:
+                    else{
+                        if (( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
+                            store.dispatch(
+                                "leftRightKey",
+                                event.key
+                            );
+                        }
+                        else if(event.key == "Delete" || event.key == "Backspace"){
+                        //delete a frame
                             store.dispatch(
                                 "deleteCurrentFrame",
                                 event.key
                             );
                         }
-                        else{
-                            //add the frame in the editor if allowed otherwise, do nothing
-                            if(this.frameCommands[event.key.toLowerCase()] !== undefined){
-                                store.dispatch(
-                                    "addFrameWithCommand",
-                                    this.frameCommands[event.key.toLowerCase()].type                
-                                );
-                                store.dispatch(
-                                    "leftRightKey",
-                                    "ArrowRight"                
-                                );
-                            } 
-                        }                
+                        //add the frame in the editor if allowed
+                        else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
+                            store.dispatch(
+                                "addFrameWithCommand",
+                                this.addFrameCommands[event.key.toLowerCase()].type                
+                            );
+                            store.dispatch(
+                                "leftRightKey",
+                                "ArrowRight"                
+                            );
+                        }
                     }
                 }
-                
-            }
+            }                
         );
     },
 

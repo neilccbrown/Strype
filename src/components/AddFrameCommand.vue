@@ -1,7 +1,7 @@
 <template>
     <div class="frame-cmd-container" v-on:click="onClick">
         <button class="frame-cmd-btn">{{ symbol }}</button>
-        <span value="description">{{ description }}</span>
+        <span>{{ description }}</span>
     </div>
 </template>
 
@@ -11,13 +11,13 @@
 //////////////////////
 import Vue from "vue";
 import store from "@/store/store";
-import frameCommandsDefs from "@/constants/frameCommandsDefs";
+import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
-    name: "FrameCommand",
+    name: "AddFrameCommand",
     store,
 
     props: {
@@ -32,7 +32,7 @@ export default Vue.extend({
             //add the frame in the editor
             store.dispatch(
                 "addFrameWithCommand",
-                frameCommandsDefs.FrameCommandsDefs[this.shortcut].type
+                addFrameCommandsDefs.AddFrameCommandsDefs[this.shortcut].type
             );
         },
     },

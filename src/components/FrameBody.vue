@@ -61,7 +61,7 @@ export default Vue.extend({
         Draggable,
         Caret,
     },
-
+    
     props: {
         frameId: Number,
         caretVisibility: String, //Flag indicating this caret is visible or not
@@ -87,7 +87,7 @@ export default Vue.extend({
         },
 
         id(): string {
-            return "frameBodyId_"+this.$props.frameId;
+            return "frameBodyId_" + this.$props.frameId;
         },
 
         empty(): boolean {

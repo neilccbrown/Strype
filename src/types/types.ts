@@ -1,3 +1,5 @@
+import toggleFrameLabelsDefs, {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"; 
+
 // Type Definitions
 
 /**
@@ -12,12 +14,21 @@ export interface FrameObject {
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
-    contentDict: { [index: number]: {code: string ; focused: boolean ; error: string} }; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
+    contentDict: { [index: number]: {code: string ; focused: boolean ; error: string; shownLabel: boolean}}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
     error?: string;
+}
+
+export interface ToggleFrameLabelCommandDef {
+    type: string;
+    modifierKeyShortcuts: KeyModifier[];
+    keyShortcut: string;
+    displayCommandText: string;
 }
 
 export interface FrameLabel {
     label: string;
+    optionalLabel?: boolean;
+    toggleLabelCommand?: ToggleFrameLabelCommandDef;
     slot: boolean;
     defaultText: string;
     optionalSlot?: boolean;
@@ -68,7 +79,7 @@ export interface EditableFocusPayload {
     slotId: number;
     focused: boolean;
 }
-export interface FrameCommandDef {
+export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string;
     shortcut: string;
@@ -103,8 +114,8 @@ const CommentFrameTypesIdentifier = {
 // Identifiers of the frame types
 const ImportFrameTypesIdentifiers = {
     import: "import",
-    fromimport: "fromimport",
 }
+
 const FuncDefIdentifiers = {
     funcdef: "funcdef",
 }
@@ -122,7 +133,10 @@ const StandardFrameTypesIdentifiers = {
     if: "if",
     for: "for",
     while: "while",
+    break: "break",
+    continue: "continue",
     try: "try",
+    raise: "raise",
     with: "with",
     return: "return",
     varassign: "varassign",
@@ -178,7 +192,6 @@ export const ImportsContainerDefinition: FramesDefinitions = {
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#FFFFF",
     draggableGroup: DraggableGroupTypes.imports,
-
 }
 
 export const FuncDefContainerDefinition: FramesDefinitions = {
@@ -338,21 +351,41 @@ export const VarAssignDefinition: FramesDefinitions = {
     colour: "#72EAC0",
 };
 
+export const BreakDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: StandardFrameTypesIdentifiers.break,
+    labels: [
+        { label: "break", slot: false, defaultText: "" },
+    ],
+    colour: "#25eaf5",
+};
+
+export const ContinueDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: StandardFrameTypesIdentifiers.continue,
+    labels: [
+        { label: "continue", slot: false, defaultText: "" },
+    ],
+    colour: "#1f784a",
+};
+
+export const RaiseDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: StandardFrameTypesIdentifiers.raise,
+    labels: [
+        { label: "raise", slot: true, defaultText: "exception", optionalSlot: true },
+    ],
+    colour: "#a337c4",
+};
+
 export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
-    labels: [{ label: "import ", slot: true, defaultText: "module", optionalSlot: false}],
-    colour: "#FFFFFF",
-    draggableGroup: DraggableGroupTypes.imports,
-};
-
-export const FromImportDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: ImportFrameTypesIdentifiers.fromimport,
     labels: [
-        { label: "from ", slot: true, defaultText: "package", optionalSlot: false},
-        { label: "import ", slot: true, defaultText: "module", optionalSlot: false},
-    ],
+        { label: "from ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommandDefs.importFrom, optionalSlot: false},
+        { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
+        { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommandDefs.importAs, optionalSlot: false},
+    ],    
     colour: "#FFFFFF",
     draggableGroup: DraggableGroupTypes.imports,
 };
@@ -377,6 +410,9 @@ export const Definitions = {
     ElseDefinition,
     ForDefinition,
     WhileDefinition,
+    BreakDefinition,
+    ContinueDefinition,
+    RaiseDefinition,
     TryDefinition,
     ExceptDefinition,
     FinallyDefinition,
@@ -386,7 +422,6 @@ export const Definitions = {
     ReturnDefinition,
     VarAssignDefinition,
     ImportDefinition,
-    FromImportDefinition,
     CommentDefinition,
 };
 

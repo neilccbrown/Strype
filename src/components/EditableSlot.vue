@@ -30,7 +30,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import { CaretPosition} from "@/types/types";
-
+import { getEditableSlotId } from "@/helpers/editor";
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -51,6 +51,10 @@ export default Vue.extend({
         };
     },
 
+    beforeDestroy() {
+        store.commit("removePreCompileErrors",this.id);
+    },
+
     computed: {
         focused(): boolean {
             return store.getters.getIsEditableFocused(
@@ -67,7 +71,7 @@ export default Vue.extend({
         },
 
         id(): string {
-            return "input_frameId_"+this.$props.frameId+"_slot_"+this.$props.slotId;
+            return getEditableSlotId(this.$props.frameId, this.$props.slotIndex);
         },
 
         errorMessage(): string{

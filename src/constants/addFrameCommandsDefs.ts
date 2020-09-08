@@ -1,7 +1,7 @@
-import { FrameCommandDef, Definitions } from "@/types/types";
+import { AddFrameCommandDef, Definitions } from "@/types/types";
 
-
-const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
+//Commands for Frame insertion
+const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef} = {
     "i": {
         type: Definitions.IfDefinition,
         description: "if",
@@ -26,6 +26,16 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         type: Definitions.WhileDefinition,
         description: "while",
         shortcut: "w",
+    },
+    "b" : {
+        type: Definitions.BreakDefinition,
+        description: "break",
+        shortcut: "b",
+    },
+    "u" : {
+        type: Definitions.ContinueDefinition,
+        description: "continue",
+        shortcut: "u",
     },
     "=": {
         type: Definitions.VarAssignDefinition,
@@ -58,6 +68,11 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         description: "try",
         shortcut: "t",
     },
+    "a" : {
+        type: Definitions.RaiseDefinition,
+        description: "raise",
+        shortcut: "a",
+    },
     "x": {
         type: Definitions.ExceptDefinition,
         description: "except",
@@ -73,11 +88,6 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
         description: "import",
         shortcut: "m",
     },
-    "o": {
-        type: Definitions.FromImportDefinition,
-        description: "from ... import",
-        shortcut: "o",
-    },
     "h": {
         type: Definitions.WithDefinition,
         description: "with",
@@ -85,6 +95,7 @@ const frameCommandsDefs: {[id: string]: FrameCommandDef} = {
     },
 };
 
+
 export default {
-    FrameCommandsDefs: frameCommandsDefs,
+    AddFrameCommandsDefs: addFrameCommandsDefs,
 }

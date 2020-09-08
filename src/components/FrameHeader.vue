@@ -4,6 +4,7 @@
             class="next-to-eachother"
             v-for="(item, index) in labels"
             v-bind:key="item.label + frameId"
+            v-bind:class="{hidden: isLabelHidden(index)}"
         >
             <div class="next-to-eachother">{{ item.label }}</div>
             <EditableSlot
@@ -24,12 +25,14 @@
 //////////////////////
 import Vue from "vue";
 import EditableSlot from "@/components/EditableSlot.vue";
+import store from "@/store/store";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "FrameHeader",
+    store,
 
     components: {
         EditableSlot,
@@ -41,6 +44,12 @@ export default Vue.extend({
         labels: Array,
         frameId: Number,
     },
+
+    methods: {
+        isLabelHidden(slotIndex: number): boolean { 
+            return !store.getters.getIsCurrentFrameLabelShown(this.$props.frameId, slotIndex);
+        },
+    },
 });
 </script>
 
@@ -51,5 +60,9 @@ export default Vue.extend({
 
 .editable-input {
     margin: 0px 5px 0px 5px;
+}
+
+.hidden {
+    display: none;
 }
 </style>
