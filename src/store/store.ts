@@ -982,18 +982,17 @@ export default new Vuex.Store({
             let editFlag = state.isEditing;
             
             if(editFlag) {
-
-                const currentEditableSlots = state.frameObjects[state.currentFrame.id].contentDict;
-                const indexCurSlot = Object.values(currentEditableSlots).indexOf(Object.values(currentEditableSlots).find((slot)=> slot.focused)!);
+                const currentEditableSlots = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).filter((slot) => slot[1].shownLabel);
+                const posCurSlot = currentEditableSlots.findIndex((slot) => slot[1].focused);
                 const change = (key === "ArrowRight") ? 1: -1;
 
                 // if we won't exceed the editable slots
-                if( indexCurSlot + change >= 0 && indexCurSlot + change <= Object.values(currentEditableSlots).length - 1 ){
+                if( posCurSlot + change >= 0 && posCurSlot + change <= currentEditableSlots.length - 1 ){
                     commit(
                         "setEditableFocus",
                         {
                             frameId: state.currentFrame.id,
-                            slotId: indexCurSlot,
+                            slotId: currentEditableSlots[posCurSlot][0],
                             focused: false,
                         }
                     );
@@ -1001,7 +1000,7 @@ export default new Vuex.Store({
                         "setEditableFocus",
                         {
                             frameId: state.currentFrame.id,
-                            slotId: indexCurSlot + change,
+                            slotId: currentEditableSlots[posCurSlot + change][0],
                             focused: true,
                         }
                     );
@@ -1022,10 +1021,7 @@ export default new Vuex.Store({
                         );
                     }
                 }
-                
-                
             }
-
             else { 
                 const currentFrame = state.frameObjects[state.currentFrame.id];
                 // By nextFrame we mean either the next or the previous frame, depending on the direction
@@ -1124,7 +1120,7 @@ export default new Vuex.Store({
             //Get the FrameLabel (index) matching the type
             const frameLabeToTogglelIndex = state.frameObjects[state.currentFrame.id].frameType.labels.findIndex((frameLabel) => frameLabel?.toggleLabelCommand?.type === commandType);
             
-            const changeShowLabelTo =  !state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].shownLabel;
+            const changeShowLabelTo = !state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].shownLabel;
             //toggle the "shownLabel" property of in the contentDict for that label
             Vue.set(
                 state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex],

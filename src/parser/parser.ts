@@ -35,9 +35,9 @@ export default class Parser {
         let output = indent;
         const positions: number[] = [];
         let currSlotIndex = 0;
-
+            
         statement.frameType.labels.forEach( (label) => {
-            if(statement.contentDict[currSlotIndex].shownLabel) {
+            if(!label.slot || statement.contentDict[currSlotIndex].shownLabel) {
                 output += label.label;
 
                 //if there is an editable slot
@@ -46,9 +46,11 @@ export default class Parser {
                     positions.push(output.length);
                     
                     // add its code to the output
-                    output += statement.contentDict[currSlotIndex++].code;
+                    console.log("print: " + statement.contentDict[currSlotIndex].code)
+                    output += statement.contentDict[currSlotIndex].code + " ";
                 }
             }
+            currSlotIndex++;
         });
         output += "\n";
     
