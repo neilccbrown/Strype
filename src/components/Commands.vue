@@ -81,41 +81,12 @@ export default Vue.extend({
                         "changeCaretPosition",
                         event.key
                     );
-                }
-                else if (!store.getters.getIsEditing() && ( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
-                    store.dispatch(
-                        "leftRightKey",
-                        event.key
-                    );
-                }
-                // All other keys
+                }            
                 else {
                     const isEditing = store.getters.getIsEditing();
-                    if(!isEditing && (event.key == "Delete" || event.key == "Backspace")){
-                        //delete a frame
-                        store.dispatch(
-                            "deleteCurrentFrame",
-                            event.key
-                        );
-                    }
-                    else{
-                        //add the frame in the editor if allowed
-                        if(!isEditing && this.addFrameCommands[event.key.toLowerCase()] !== undefined){
-                            store.dispatch(
-                                "addFrameWithCommand",
-                                this.addFrameCommands[event.key.toLowerCase()].type                
-                            );
-                            store.dispatch(
-                                "leftRightKey",
-                                "ArrowRight"                
-                            );
-                        } 
-                        //otherwise, check if there a key combination matching a toggle label command (when editing is true)
-                        //(and if not, do nothing)
-                        else {
-                            //find what currently displayed toggle frame label command match the key combination
-                            if(isEditing){
-                                const toggleFrameCmdType = 
+                    if(isEditing){
+                        //find if there is a toggle frame label command triggered --> if not, do nothing special
+                        const toggleFrameCmdType = 
                                     this.toggleFrameLabelCommands.find((toggleCmd) => {
                                         let isModifierOn = true;
                                         toggleCmd.modifierKeyShortcuts.forEach((modifer) => {
@@ -135,19 +106,43 @@ export default Vue.extend({
                                         return isModifierOn && toggleCmd.keyShortcut === event.key.toLowerCase();
                                     })?.type
                                     ?? "";
-                                //if there is match with a toggle command, we run it (otherwise, do nothing)
-                                if(toggleFrameCmdType !== "") {
-                                    store.dispatch(
-                                        "toggleFrameLabel",
-                                        toggleFrameCmdType
-                                    );
-                                }
-                            }
+                        //if there is match with a toggle command, we run it (otherwise, do nothing)
+                        if(toggleFrameCmdType !== "") {
+                            store.dispatch(
+                                "toggleFrameLabel",
+                                toggleFrameCmdType
+                            );
                         }
-                    }                
+                    }
+                    //cases when there is no editing:
+                    else{
+                        if (( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
+                            store.dispatch(
+                                "leftRightKey",
+                                event.key
+                            );
+                        }
+                        else if(event.key == "Delete" || event.key == "Backspace"){
+                        //delete a frame
+                            store.dispatch(
+                                "deleteCurrentFrame",
+                                event.key
+                            );
+                        }
+                        //add the frame in the editor if allowed
+                        else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
+                            store.dispatch(
+                                "addFrameWithCommand",
+                                this.addFrameCommands[event.key.toLowerCase()].type                
+                            );
+                            store.dispatch(
+                                "leftRightKey",
+                                "ArrowRight"                
+                            );
+                        }
+                    }
                 }
-                
-            }
+            }                
         );
     },
 
