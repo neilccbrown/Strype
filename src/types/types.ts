@@ -1,4 +1,4 @@
-import toggleFrameLabelsDefs from "@/constants/toggleFrameLabelCommandsDefs"; 
+import toggleFrameLabelsDefs, {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"; 
 
 // Type Definitions
 
@@ -20,7 +20,7 @@ export interface FrameObject {
 
 export interface ToggleFrameLabelCommandDef {
     type: string;
-    modifierKeyShortcuts: string[];
+    modifierKeyShortcuts: KeyModifier[];
     keyShortcut: string;
     displayCommandText: string;
 }
@@ -114,10 +114,8 @@ const CommentFrameTypesIdentifier = {
 // Identifiers of the frame types
 const ImportFrameTypesIdentifiers = {
     import: "import",
-    fromimport: "fromimport",
-    importas: "importas",
-    fromimportas: "fromimportas",
 }
+
 const FuncDefIdentifiers = {
     funcdef: "funcdef",
 }

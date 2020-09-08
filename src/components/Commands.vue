@@ -42,6 +42,7 @@ import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { AddFrameCommandDef,ToggleFrameLabelCommandDef } from "@/types/types";
+import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
 
 export default Vue.extend({
     name: "Commands",
@@ -89,28 +90,61 @@ export default Vue.extend({
                 }
                 // All other keys
                 else {
-                    if (store.getters.getIsEditing() === false) {
-                        if(event.key == "Delete" || event.key == "Backspace"){
-                            //delete a frame
-                            store.dispatch(
-                                "deleteCurrentFrame",
-                                event.key
-                            );
-                        }
-                        else{
-                            //add the frame in the editor if allowed otherwise, do nothing
-                            if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
-                                store.dispatch(
-                                    "addFrameWithCommand",
-                                    this.addFrameCommands[event.key.toLowerCase()].type                
-                                );
-                                store.dispatch(
-                                    "leftRightKey",
-                                    "ArrowRight"                
-                                );
-                            } 
-                        }                
+                    const isEditing = store.getters.getIsEditing();
+                    if(!isEditing && (event.key == "Delete" || event.key == "Backspace")){
+                        //delete a frame
+                        store.dispatch(
+                            "deleteCurrentFrame",
+                            event.key
+                        );
                     }
+                    else{
+                        //add the frame in the editor if allowed
+                        if(!isEditing && this.addFrameCommands[event.key.toLowerCase()] !== undefined){
+                            store.dispatch(
+                                "addFrameWithCommand",
+                                this.addFrameCommands[event.key.toLowerCase()].type                
+                            );
+                            store.dispatch(
+                                "leftRightKey",
+                                "ArrowRight"                
+                            );
+                        } 
+                        //otherwise, check if there a key combination matching a toggle label command (when editing is true)
+                        //(and if not, do nothing)
+                        else {
+                            //find what currently displayed toggle frame label command match the key combination
+                            if(isEditing){
+                                const toggleFrameCmdType = 
+                                    this.toggleFrameLabelCommands.find((toggleCmd) => {
+                                        let isModifierOn = true;
+                                        toggleCmd.modifierKeyShortcuts.forEach((modifer) => {
+                                            switch(modifer){
+                                            case KeyModifier.ctrl:
+                                                isModifierOn = isModifierOn && event.ctrlKey;
+                                                break;
+                                            case KeyModifier.shift:
+                                                isModifierOn = isModifierOn && event.shiftKey;
+                                                break;
+                                            case KeyModifier.alt:
+                                                isModifierOn = isModifierOn && event.altKey;
+                                                break;
+                                            }
+                                        });
+                                        //if the modifiers are on, and the shortcut key is the right one, return true
+                                        return isModifierOn && toggleCmd.keyShortcut === event.key.toLowerCase();
+                                    })?.type
+                                    ?? "";
+                                //if there is match with a toggle command, we run it (otherwise, do nothing)
+                                if(toggleFrameCmdType !== "") {
+                                    store.dispatch(
+                                        "toggleFrameLabel",
+                                        toggleFrameCmdType
+                                    );
+                                }
+                            }
+                        }
+                    }                
                 }
                 
             }
