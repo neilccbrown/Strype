@@ -1082,10 +1082,15 @@ export default new Vuex.Store({
                     directionDown = false;
                 }
 
-                //If there are editable slots, go in the first
-                const editableSlotsNumber = Object.keys(state.frameObjects[nextFrame].contentDict).length;
+                //If there are editable slots, go in the first available slot
+                const editableSlotsIndexes: number[] = [];
+                Object.entries(state.frameObjects[nextFrame].contentDict).forEach((entry) => {
+                    if(entry[1].shownLabel){
+                        editableSlotsIndexes.push(parseInt(entry[0]));
+                    }
+                });
 
-                if(editableSlotsNumber > 0) {
+                if(editableSlotsIndexes.length > 0) {
 
                     editFlag = true;
 
@@ -1093,7 +1098,7 @@ export default new Vuex.Store({
                         "setEditableFocus",
                         {
                             frameId: state.frameObjects[nextFrame].id,
-                            slotId: (directionDown)? 0 : editableSlotsNumber -1,
+                            slotId: (directionDown)? editableSlotsIndexes[0] : editableSlotsIndexes[editableSlotsIndexes.length -1],
                             focused: true,
                         }
                     );
