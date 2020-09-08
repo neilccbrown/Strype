@@ -21,7 +21,7 @@
                 v-on:click.self="toggleCaret($event)"
             >
             </div>
-            <Caret v-show=" caretVisibility === caretPosition.below && !isEditing" />
+            <Caret v-show="(caretVisibility === caretPosition.below) && !isEditing" />
             <JointFrames 
                 v-if="hasJointFrameObjects"
                 v-bind:jointParentId="frameId"
