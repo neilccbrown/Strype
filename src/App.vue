@@ -1,14 +1,23 @@
 <template>
     <div id="app" class="container-fluid h-100">
         <div class="row h-100">
-            <div class="col-8">
-                <FrameContainer
-                    v-for="container in containerFrames"
-                    v-bind:key="container.frameType.type + '-id:' + container.id"
-                    v-bind:id="container.id"
-                    v-bind:containerLabel="container.frameType.labels[0].label"
-                    v-bind:caretVisibility="container.caretVisibility"
-                />
+            <div id="editor" class="col-8">
+                <div class="top">
+                    <MessageBanner 
+                        v-if="showMessage"
+                        v-bind:message="message.message"
+                        v-bind:buttons="message.buttons"
+                    />
+                </div>
+                <div>
+                    <FrameContainer
+                        v-for="container in containerFrames"
+                        v-bind:key="container.frameType.type + '-id:' + container.id"
+                        v-bind:id="container.id"
+                        v-bind:containerLabel="container.frameType.labels[0].label"
+                        v-bind:caretVisibility="container.caretVisibility"
+                    />
+                </div>
             </div>
             <Commands class="col-4 h-100" />
         </div>
@@ -20,10 +29,11 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
+import MessageBanner from "@/components/MessageBanner.vue"
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
-import { FrameObject } from "@/types/types";
+import { FrameObject, MessageDefinition } from "@/types/types";
 
 
 //////////////////////
@@ -34,6 +44,7 @@ export default Vue.extend({
     store,
 
     components: {
+        MessageBanner,
         FrameContainer,
         Commands,
     },
@@ -50,6 +61,14 @@ export default Vue.extend({
         containerFrames(): FrameObject[] {
             return store.getters.getFramesForParentId(0);
         },
+
+        showMessage(): boolean {
+            return store.getters.getIsMessageBannerOn();
+        },
+
+        message(): MessageDefinition {
+            return store.getters.getCurrentMessageType();
+        },
     },
 
     methods: {
@@ -60,7 +79,6 @@ export default Vue.extend({
             );
         },
     },
-
 });
 </script>
 
@@ -77,12 +95,10 @@ html,body {
     box-sizing: border-box;
 }
 
-#app form {
+.top {
     text-align: center;
-}
-
-#temp-container {
-    margin-top: 60px;
-    flex-grow: 1;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left:10px;
 }
 </style>
