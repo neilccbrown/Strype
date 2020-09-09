@@ -16,6 +16,7 @@
             v-bind:class="{editableSlot: focused, error: erroneous}"
             v-bind:id="id"
             v-bind:key="id"
+            v-autowidth="{maxWidth: '960px', minWidth: '20px', comfortZone: 0}"
         />
         <b-popover
           v-if="erroneous"
