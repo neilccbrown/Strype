@@ -1,6 +1,6 @@
 <template>
     <div class="next-to-eachother">
-        <input
+        <AutosizeInput
             type="text"
             v-model="code"
             v-bind:placeholder="defaultText"
@@ -16,7 +16,6 @@
             v-bind:class="{editableSlot: focused, error: erroneous}"
             v-bind:id="id"
             v-bind:key="id"
-            v-autowidth="{maxWidth: '960px', minWidth: '20px', comfortZone: 0}"
             class="input"
         />
         <b-popover
@@ -34,10 +33,16 @@ import Vue from "vue";
 import store from "@/store/store";
 import { CaretPosition} from "@/types/types";
 import { getEditableSlotId } from "@/helpers/editor";
+import AutosizeInput from "vue-autosize-input";
 
 export default Vue.extend({
     name: "EditableSlot",
     store,
+
+    components: {
+        AutosizeInput,
+    },
+
     props: {
         defaultText: String,
         slotIndex: Number,
