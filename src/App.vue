@@ -1,6 +1,6 @@
 <template>
-    <div id="app" class="container-fluid h-100">
-        <div class="row h-100">
+    <div id="app" class="container-fluid">
+        <div class="row">
             <div id="editor" class="col-8">
                 <div class="top">
                     <MessageBanner 
@@ -19,7 +19,7 @@
                     />
                 </div>
             </div>
-            <Commands class="col-4 h-100" />
+            <Commands class="col-4" />
         </div>
     </div>
 </template>
@@ -94,6 +94,7 @@ html,body {
     color: #2c3e50;
     background-color: #bbc6b6;
     box-sizing: border-box;
+
 }
 
 .top {

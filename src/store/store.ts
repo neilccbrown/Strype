@@ -151,7 +151,7 @@ const countRecursiveChildren = function(listOfFrames: Record<number, FrameObject
 
 export default new Vuex.Store({
     state: {
-        nextAvailableId: 16 as number,
+        nextAvailableId: 20 as number,
 
         currentFrame: { id: 3, caretPosition: CaretPosition.below } as CurrentFrame,
 
