@@ -123,9 +123,10 @@ export default Vue.extend({
     margin-bottom: 5px;
     margin-left:10px;
     border: #888 1px solid;
+    background-color: #ececc8;
 }
 .frame-container-btn-collapse {
-    background-color: transparent;
+    background-color: #ececc8;
     border-color: transparent;
 }
 .frame-container-label-span {       

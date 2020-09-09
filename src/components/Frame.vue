@@ -96,7 +96,7 @@ export default Vue.extend({
                     } !important`,
                     "background-color": `${
                         (this.frameType as FramesDefinitions).colour
-                    }33 !important`,
+                    } !important`,
                     "padding-left": "2px",
                 };
         },

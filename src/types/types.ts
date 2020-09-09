@@ -228,7 +228,7 @@ export const IfDefinition: FramesDefinitions = {
         { label: ") :", slot: false, defaultText: ""},
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
-    colour: "#EA9C72",
+    colour: "#E0E0E5",
     innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
 };
 
@@ -260,7 +260,7 @@ export const ForDefinition: FramesDefinitions = {
         { label: " :", slot: false, defaultText: ""},
     ],
     jointFrameTypes:[StandardFrameTypesIdentifiers.else],
-    colour: "#EA72C0",
+    colour: "#e4d6ce",
 };
 
 export const WhileDefinition: FramesDefinitions = {
@@ -270,7 +270,7 @@ export const WhileDefinition: FramesDefinitions = {
         { label: "while (", slot: true, defaultText: "condition", optionalSlot: false},
         { label: ") :", slot: false, defaultText: ""},
     ],
-    colour: "#9C72EA",
+    colour: "#e4d6ce",
 };
 
 export const TryDefinition: FramesDefinitions = {
@@ -278,7 +278,7 @@ export const TryDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.try,
     labels: [{ label: "try:", slot: false, defaultText: ""}],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
-    colour: "#EA0000",
+    colour: "#c7d9dc",
     innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
 };
 

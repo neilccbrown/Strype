@@ -179,7 +179,7 @@ export default Vue.extend({
 .commands {
     border-left: #383b40 1px solid;
     color: rgb(37, 35, 35);
-    background-color: lightblue;
+    background-color: #e2e7e0;
     // width: 300px;
 
 }

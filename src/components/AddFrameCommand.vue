@@ -49,7 +49,7 @@ export default Vue.extend({
     margin-right: 5px;
     cursor: pointer;
     width: 24px;
-    background-color: #efefef;
+    background-color: #fefefe;
     border-radius: 4px;
     border: 1px solid #d0d0d0;
 }
