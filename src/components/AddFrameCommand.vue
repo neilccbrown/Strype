@@ -1,5 +1,5 @@
 <template>
-    <div class="frame-cmd-container" v-on:click="onClick">
+    <div class="frame-cmd-container" @click="onClick">
         <button class="frame-cmd-btn">{{ symbol }}</button>
         <span>{{ description }}</span>
     </div>
@@ -49,7 +49,7 @@ export default Vue.extend({
     margin-right: 5px;
     cursor: pointer;
     width: 24px;
-    background-color: #efefef;
+    background-color: #fefefe;
     border-radius: 4px;
     border: 1px solid #d0d0d0;
 }

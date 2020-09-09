@@ -2,7 +2,7 @@
     <div
         class="frame-body-container"
         v-bind:class="{error: empty}"
-        v-on:click.self="toggleCaret()"
+        @click.self="toggleCaret()"
         v-bind:id="id"
     >
         <Caret v-show=" caretVisibility === caretPosition.body  && !isEditing" />
@@ -10,7 +10,7 @@
         <Draggable
             v-model="frames"
             group="code"
-            v-on:change.self="handleDragAndDrop($event)"
+            @change.self="handleDragAndDrop($event)"
             animation= "200"
             filter= ".editableSlot"
             preventOnFilter= "false"

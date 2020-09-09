@@ -25,7 +25,7 @@ export default class Parser {
             + 
             this.parseFrames(
                 store.getters.getJointFramesForFrameId(block.id, "all"), 
-                indent + INDENT
+                indent
             );
         
         return output;
@@ -109,10 +109,7 @@ export default class Parser {
             errorString = `${errors.map((e: any) => {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
             })}`;
-            console.log("code");
-            console.log(inputCode);
-            console.log(errors);
-            console.log(this.framePositionMap);
+
             // For each error, show red border around its input in the UI
             store.commit("clearAllErrors");
             errors.forEach((error: ErrorInfo) => {

@@ -2,18 +2,18 @@
     <div class="next-to-eachother">
         <input
             type="text"
-            class="editableSlot"
             v-model="code"
             v-bind:placeholder="defaultText"
-            v-on:blur="onBlur"
             v-focus="focused"
-            v-on:focus="onFocus()"
-            v-on:click.stop.self="onFocus()"
-            v-on:keyup.left.prevent.stop="onLRKeyUp($event)"
-            v-on:keyup.right.prevent.stop="onLRKeyUp($event)"
-            v-on:keyup.up.prevent.stop="onUDKeyUp($event)"
-            v-on:keyup.down.prevent.stop="onUDKeyUp($event)"
-            v-bind:class="{error: erroneous}"
+            @blur="onBlur"
+            @focus="onFocus($event)"
+            @click="onFocus($event)"
+            @dblclick="onFocus($event)"
+            @keyup.left.prevent.stop="onLRKeyUp($event)"
+            @keyup.right.prevent.stop="onLRKeyUp($event)"
+            @keyup.up.prevent.stop="onUDKeyUp($event)"
+            @keyup.down.prevent.stop="onUDKeyUp($event)"
+            v-bind:class="{editableSlot: focused, error: erroneous}"
             v-bind:id="id"
             v-bind:key="id"
         />
@@ -108,11 +108,30 @@ export default Vue.extend({
 
 
     methods: {
-        onFocus(): void {
+
+        //Apparently focus happens first before blur when moving from one slot to another.
+        onFocus(event: Event): void {
+
+            const input: HTMLInputElement = event.target as HTMLInputElement;
+
+            // Double click selects all text
+            if(event.type==="dblclick") {
+                input.select();
+            }
+            // Else take the cursor to the begining
+            else {
+                input.setSelectionRange(0,0);
+            }
+            // if the focus is already on this slot, no need to re-focus
+            if(event.type !== "focus" && this.focused && store.getters.getIsEditableFocused(this.$props.frameId,this.$props.slotIndex)){
+                return;
+            }
+            
             store.commit(
                 "setEditFlag",
                 true
             );
+
             //First set the curretFrame to this frame
             store.commit(
                 "setCurrentFrame",
@@ -132,7 +151,9 @@ export default Vue.extend({
             );
             
         },
+
         onBlur(): void {
+
             store.commit(
                 "setEditFlag",
                 false
@@ -180,6 +201,7 @@ export default Vue.extend({
                 );
                 store.commit("addPreCompileErrors",this.id);
             }
+
         },
 
         onLRKeyUp(event: KeyboardEvent) {

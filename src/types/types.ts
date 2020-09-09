@@ -34,6 +34,7 @@ export interface FrameLabel {
     optionalSlot?: boolean;
 }
 
+
 // There are three groups of draggable frames.
 // You can drag from the main code to the body of a method and vice-versa, 
 // but you cannot drag from/to imports or drag method signatures
@@ -227,7 +228,7 @@ export const IfDefinition: FramesDefinitions = {
         { label: ") :", slot: false, defaultText: ""},
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
-    colour: "#EA9C72",
+    colour: "#E0E0E5",
     innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
 };
 
@@ -259,7 +260,7 @@ export const ForDefinition: FramesDefinitions = {
         { label: " :", slot: false, defaultText: ""},
     ],
     jointFrameTypes:[StandardFrameTypesIdentifiers.else],
-    colour: "#EA72C0",
+    colour: "#E4D6CE",
 };
 
 export const WhileDefinition: FramesDefinitions = {
@@ -269,7 +270,7 @@ export const WhileDefinition: FramesDefinitions = {
         { label: "while (", slot: true, defaultText: "condition", optionalSlot: false},
         { label: ") :", slot: false, defaultText: ""},
     ],
-    colour: "#9C72EA",
+    colour: "#E4D6CE",
 };
 
 export const TryDefinition: FramesDefinitions = {
@@ -277,7 +278,7 @@ export const TryDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.try,
     labels: [{ label: "try:", slot: false, defaultText: ""}],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
-    colour: "#EA0000",
+    colour: "#C7D9DC",
     innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
 };
 
@@ -357,7 +358,7 @@ export const BreakDefinition: FramesDefinitions = {
     labels: [
         { label: "break", slot: false, defaultText: "" },
     ],
-    colour: "#25eaf5",
+    colour: "#25EAF5",
 };
 
 export const ContinueDefinition: FramesDefinitions = {
@@ -366,7 +367,7 @@ export const ContinueDefinition: FramesDefinitions = {
     labels: [
         { label: "continue", slot: false, defaultText: "" },
     ],
-    colour: "#1f784a",
+    colour: "#1F784A",
 };
 
 export const RaiseDefinition: FramesDefinitions = {
@@ -375,7 +376,7 @@ export const RaiseDefinition: FramesDefinitions = {
     labels: [
         { label: "raise", slot: true, defaultText: "exception", optionalSlot: true },
     ],
-    colour: "#a337c4",
+    colour: "#A337C4",
 };
 
 export const ImportDefinition: FramesDefinitions = {

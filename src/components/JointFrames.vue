@@ -2,8 +2,8 @@
     <div class="joint-frame-container">
         <Draggable 
             v-model="jointFrames"
-            :group="jointDraggableGroup"
-            v-on:change.self="handleDragAndDrop($event)"
+            v-bind:group="jointDraggableGroup"
+            @change.self="handleDragAndDrop($event)"
             animation="200"
             filter= ".editableSlot"
             preventOnFilter= "false"
