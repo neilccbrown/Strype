@@ -1,9 +1,9 @@
 <template>
     <div class="commands">
         <div>
-            <button @:click="flash">Connect Serial</button>
-            <button @:click="downloadHex">Download Hex</button>
-            <button @:click="downloadPython">Download Python</button>
+            <button @click="flash">Connect Serial</button>
+            <button @click="downloadHex">Download Hex</button>
+            <button @click="downloadPython">Download Python</button>
         </div>
         <hr />
         <div class="frameCommands">
@@ -156,7 +156,12 @@ export default Vue.extend({
             }
         },
         downloadHex() {
-            downloadHex();
+            if(store.getters.getPreCompileErrors().length>0) {
+                alert("Please fix existing errors first.");
+            }
+            else {
+                downloadHex();
+            }
         },
         downloadPython() {
             if(store.getters.getPreCompileErrors().length>0) {
