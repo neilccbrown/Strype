@@ -12,8 +12,7 @@
             group="code"
             @change.self="handleDragAndDrop($event)"
             animation= "200"
-            filter= ".editableSlot"
-            preventOnFilter= "false"
+            :disabled="isEditing"
             v-bind:key="'Draggagle-Body-'+this.frameId"
         >
             <Frame

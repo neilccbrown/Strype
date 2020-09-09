@@ -6,9 +6,9 @@
             v-bind:placeholder="defaultText"
             v-focus="focused"
             @blur="onBlur"
-            @focus="onFocus($event)"
-            @click="onFocus($event)"
-            @dblclick="onFocus($event)"
+            @focus="onFocus()"
+            @click="onFocus()"
+            @dblclick="onFocus()"
             @keyup.left.prevent.stop="onLRKeyUp($event)"
             @keyup.right.prevent.stop="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
@@ -111,23 +111,7 @@ export default Vue.extend({
     methods: {
 
         //Apparently focus happens first before blur when moving from one slot to another.
-        onFocus(event: Event): void {
-
-            const input: HTMLInputElement = event.target as HTMLInputElement;
-
-            // Double click selects all text
-            if(event.type==="dblclick") {
-                input.select();
-            }
-            // Else take the cursor to the begining
-            else {
-                input.setSelectionRange(0,0);
-            }
-            // if the focus is already on this slot, no need to re-focus
-            if(event.type !== "focus" && this.focused && store.getters.getIsEditableFocused(this.$props.frameId,this.$props.slotIndex)){
-                return;
-            }
-            
+        onFocus(): void {
             store.commit(
                 "setEditFlag",
                 true

@@ -5,8 +5,7 @@
             v-bind:group="jointDraggableGroup"
             @change.self="handleDragAndDrop($event)"
             animation="200"
-            filter= ".editableSlot"
-            preventOnFilter= "false"
+            :disabled="isEditing"
             v-bind:key="'Draggagle-Joint-'+this.jointParentId"
         >
             <Frame
@@ -66,6 +65,9 @@ export default Vue.extend({
             return store.getters.getDraggableJointGroupById(this.$props.jointParentId); 
         },
 
+        isEditing(): boolean {
+            return store.getters.getIsEditing();
+        },
     },
 
     methods: {
