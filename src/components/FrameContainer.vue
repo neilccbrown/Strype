@@ -13,8 +13,7 @@
                 v-bind:group="draggableGroup"
                 @change.self="handleDragAndDrop($event)"
                 animation="200"
-                filter = ".editableSlot"
-                preventOnFilter= "false"
+                :disabled="isEditing"
                 v-bind:key="'Draggagle-Container-'+this.id"
             >
                 <Frame 
@@ -83,6 +82,10 @@ export default Vue.extend({
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
+        },
+
+        isEditing(): boolean {
+            return store.getters.getIsEditing();
         },
     },
 
