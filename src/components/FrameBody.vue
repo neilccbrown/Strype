@@ -137,15 +137,16 @@ export default Vue.extend({
 
 .frame-body-container {
     background-color: #FFF !important;
-    // padding-bottom: 4px;
     padding-top: 4px;
     margin-bottom: 4px;
     margin-right: 0px;
-    border: 0px;
     border-color: #000 !important;
+    border-radius: 8px;
+
 }
 
 .error {
     border: 1px solid #d66 !important;
+
 }
 </style>

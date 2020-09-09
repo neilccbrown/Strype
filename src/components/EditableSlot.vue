@@ -17,6 +17,7 @@
             v-bind:id="id"
             v-bind:key="id"
             v-autowidth="{maxWidth: '960px', minWidth: '20px', comfortZone: 0}"
+            class="input"
         />
         <b-popover
           v-if="erroneous"
@@ -226,7 +227,12 @@ export default Vue.extend({
 
 <style lang="scss">
 .error {
-    border: 1px solid #d66;
+    border: 1px solid #FF0000 !important;
+}
+
+.input {
+    border-radius: 5px;
+    border: 1px solid #B4B4B4;
 }
 
 </style>
