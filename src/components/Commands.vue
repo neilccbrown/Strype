@@ -1,9 +1,9 @@
 <template>
     <div class="commands">
         <div>
-            <button v-on:click="flash">Connect Serial</button>
-            <button v-on:click="downloadHex">Download Hex</button>
-            <button v-on:click="downloadPython">Download Python</button>
+            <button @:click="flash">Connect Serial</button>
+            <button @:click="downloadHex">Download Hex</button>
+            <button @:click="downloadPython">Download Python</button>
         </div>
         <hr />
         <div class="frameCommands">

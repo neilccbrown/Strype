@@ -18,7 +18,7 @@
             />
             <div 
                 class="frame-bottom-selector"
-                v-on:click.self="toggleCaret($event)"
+                @click.self="toggleCaret($event)"
             >
             </div>
             <Caret v-show="(caretVisibility === caretPosition.below) && !isEditing" />

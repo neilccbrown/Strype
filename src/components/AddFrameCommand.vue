@@ -1,5 +1,5 @@
 <template>
-    <div class="frame-cmd-container" v-on:click="onClick">
+    <div class="frame-cmd-container" @click="onClick">
         <button class="frame-cmd-btn">{{ symbol }}</button>
         <span>{{ description }}</span>
     </div>

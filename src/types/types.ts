@@ -34,6 +34,7 @@ export interface FrameLabel {
     optionalSlot?: boolean;
 }
 
+
 // There are three groups of draggable frames.
 // You can drag from the main code to the body of a method and vice-versa, 
 // but you cannot drag from/to imports or drag method signatures

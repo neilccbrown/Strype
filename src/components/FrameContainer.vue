@@ -1,8 +1,8 @@
 <template>
     <div class="frame-container">
         <div class="frame-container-header">
-            <button class="frame-container-btn-collapse" v-on:click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span class="frame-container-label-span" v-on:click.self="toggleCaret($event)">{{containerLabel}}</span>
+            <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <span class="frame-container-label-span" @click.self="toggleCaret($event)">{{containerLabel}}</span>
         </div>
 
         <div v-bind:style="containerStyle">
@@ -10,8 +10,8 @@
 
             <Draggable
                 v-model="frames" 
-                :group="draggableGroup"
-                v-on:change.self="handleDragAndDrop($event)"
+                v-bind:group="draggableGroup"
+                @change.self="handleDragAndDrop($event)"
                 animation="200"
                 filter = ".editableSlot"
                 preventOnFilter= "false"
