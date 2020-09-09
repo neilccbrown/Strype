@@ -228,7 +228,7 @@ export const IfDefinition: FramesDefinitions = {
         { label: ") :", slot: false, defaultText: ""},
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
-    colour: "#E0E0E5",
+    colour: "#E0DFE4",
     innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
 };
 
@@ -270,7 +270,7 @@ export const WhileDefinition: FramesDefinitions = {
         { label: "while (", slot: true, defaultText: "condition", optionalSlot: false},
         { label: ") :", slot: false, defaultText: ""},
     ],
-    colour: "#E4D6CE",
+    colour: "#E4D5D5",
 };
 
 export const TryDefinition: FramesDefinitions = {
@@ -332,14 +332,14 @@ export const EmptyDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.empty,
     labels: [{ label: "", slot: true, defaultText: "method call", optionalSlot: true}],
-    colour: "#220983",
+    colour: "#F6F2E9",
 };
 
 export const ReturnDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.return,
     labels: [{ label: "return ", slot: true, defaultText: "expression", optionalSlot: true}],
-    colour: "#EFF779",
+    colour: "#F6F2E9",
 };
 
 export const VarAssignDefinition: FramesDefinitions = {
@@ -349,7 +349,7 @@ export const VarAssignDefinition: FramesDefinitions = {
         { label: "", slot: true, defaultText: "identifier", optionalSlot: false},
         { label: " = ", slot: true, defaultText: "value", optionalSlot: false},
     ],
-    colour: "#72EAC0",
+    colour: "#F6F2E9",
 };
 
 export const BreakDefinition: FramesDefinitions = {
@@ -358,7 +358,7 @@ export const BreakDefinition: FramesDefinitions = {
     labels: [
         { label: "break", slot: false, defaultText: "" },
     ],
-    colour: "#25EAF5",
+    colour: "#F6F2E9",
 };
 
 export const ContinueDefinition: FramesDefinitions = {
@@ -367,7 +367,7 @@ export const ContinueDefinition: FramesDefinitions = {
     labels: [
         { label: "continue", slot: false, defaultText: "" },
     ],
-    colour: "#1F784A",
+    colour: "#F6F2E9",
 };
 
 export const RaiseDefinition: FramesDefinitions = {
@@ -376,7 +376,7 @@ export const RaiseDefinition: FramesDefinitions = {
     labels: [
         { label: "raise", slot: true, defaultText: "exception", optionalSlot: true },
     ],
-    colour: "#A337C4",
+    colour: "#F6F2E9",
 };
 
 export const ImportDefinition: FramesDefinitions = {
@@ -395,7 +395,7 @@ export const CommentDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.comment,
     labels: [{ label: "# ", slot: true, defaultText: "your comment", optionalSlot: true}],
-    colour: "#AAAAAA",
+    colour: "#F6F2E9",
 };
 
 export const FrameContainersDefinitions = {

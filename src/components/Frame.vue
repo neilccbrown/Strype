@@ -91,9 +91,6 @@ export default Vue.extend({
             return this.isJointFrame === true
                 ? {}
                 : {
-                    "border-left": `6px solid ${
-                        (this.frameType as FramesDefinitions).colour
-                    } !important`,
                     "background-color": `${
                         (this.frameType as FramesDefinitions).colour
                     } !important`,
@@ -145,13 +142,16 @@ export default Vue.extend({
 .block {
     color: #000 !important;
     padding-right: 4px;
+    padding-top: 1px;
     padding-bottom: 1px;
+    border-radius: 8px;
+    border: 1px solid #B4B4B4;
 }
 .frame-bottom-selector {
     padding-bottom: 4px;
 }
 
 .error {
-    border: 1px solid #d66 !important;
+    border: 1px solid #FF0000 !important;
 }
 </style>

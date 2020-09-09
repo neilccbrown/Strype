@@ -23,7 +23,7 @@ export default Vue.extend({
 .caret {
     margin-top: 3px;
     width: 120px;
-    background-color: #ffb831;
+    background-color: #3467FE;
     border-radius: 6px;
     height: 6px;
 }
