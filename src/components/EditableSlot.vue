@@ -8,7 +8,8 @@
             v-on:blur="onBlur"
             v-focus="focused"
             v-on:focus="onFocus()"
-            v-on:click.stop.self="onFocus()"
+            v-on:click="onFocus($event)"
+            v-on:dblclick="onFocus($event)"
             v-on:keyup.left.prevent.stop="onLRKeyUp($event)"
             v-on:keyup.right.prevent.stop="onLRKeyUp($event)"
             v-on:keyup.up.prevent.stop="onUDKeyUp($event)"
@@ -108,7 +109,22 @@ export default Vue.extend({
 
 
     methods: {
-        onFocus(): void {
+
+        onFocus(event: MouseEvent): void {
+            console.log(event.type);
+
+            const input: HTMLInputElement = event.target as HTMLInputElement;
+            if(event.type==="dblclick") {
+                input.select();
+            }
+            else {
+                input.setSelectionRange(0,0);
+            }
+            //if the focus is already on this slot, no need to re-focus
+            if(store.getters.getIsEditableFocused && store.getters.getIsEditableFocused(this.$props.frameId,this.$props.slotIndex)){
+                return;
+            }
+            
             store.commit(
                 "setEditFlag",
                 true
@@ -133,6 +149,7 @@ export default Vue.extend({
             
         },
         onBlur(): void {
+
             store.commit(
                 "setEditFlag",
                 false
@@ -180,6 +197,7 @@ export default Vue.extend({
                 );
                 store.commit("addPreCompileErrors",this.id);
             }
+
         },
 
         onLRKeyUp(event: KeyboardEvent) {
