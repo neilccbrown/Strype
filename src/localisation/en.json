@@ -13,5 +13,8 @@
       "uploadToMicrobit": "Upload to micro:bit",
       "downloadHex": "Download Hex",
       "downloadPython": "Dowload Python"
+  },
+  "actions": {
+    "uploadingToMicrobit": "Uploading to micro:bit ..."
   }
 }

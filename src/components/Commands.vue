@@ -6,7 +6,16 @@
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
         </div>
         <div v-if="showProgress" class="progress progressContainer">
-            <div class="progress-bar progress-bar-striped bg-info" role="progressbar" :style="progressPercentWidthStyle" :aria-valuenow="progressPercent" aria-valuemin="0" aria-valuemax="100"></div>
+            <div 
+                class="progress-bar progress-bar-striped bg-info" 
+                role="progressbar"
+                :style="progressPercentWidthStyle" 
+                :aria-valuenow="progressPercent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                >
+                <span v-t="'actions.uploadingToMicrobit'" class="progress-bar-text"></span>
+            </div>
         </div>
         <hr />
         <div class="frameCommands">
@@ -44,7 +53,7 @@ import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage} from "@/types/types";
+import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
 
 export default Vue.extend({
@@ -180,14 +189,14 @@ export default Vue.extend({
                         //don't leave the message for ever
                         setTimeout(()=>store.commit(
                             "toggleMessageBanner"
-                        ), 5000);
+                        ), 7000);
                     },
                     onUploadFailureHandler: (error) => {
                         this.$data.showProgress = false;
  
                         const message = MessageDefinitions.UploadFailureMicrobitMessageDefinition;
                         const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                        msgObj.args.errorMsg = msgObj.args.errorMsg.replace("{error_placeholder}", error);
+                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
 
                         store.commit(
                             "setMessageBanner",
@@ -232,10 +241,25 @@ export default Vue.extend({
 .commands {
     border-left: #383b40 1px solid;
     color: rgb(37, 35, 35);
-    background-color: #e2e7e0;
+    background-color: #E2E7E0;
 }
 
 .progressContainer {
     margin-top: 5px;
+    background-color: #E2E7E0 !important;
+    border: 1px lightgrey solid;
+}
+
+@mixin centerer {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.progress-bar-text {
+    @include centerer;
+    color:#fefefe !important;
+    text-align: left !important;
+    font-weight: bold;
 }
 </style>

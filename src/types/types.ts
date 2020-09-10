@@ -435,6 +435,15 @@ export interface MessageButton {
     action: VoidFunction | string;
 }
 
+export interface FormattedMessageArgKeyValuePlaceholder {
+    key: string;
+    placeholderName: string;
+}
+
+export const FormattedMessageArgKeyValuePlaceholders: {[id: string]: FormattedMessageArgKeyValuePlaceholder} = {
+    error: {key:"errorMsg", placeholderName : "{error_placeholder}"},
+}
+
 export interface FormattedMessage {
     path: string;
     args: { [id: string]: string};
@@ -487,7 +496,12 @@ const UploadSuccessMicrobitMessageDefinition: MessageDefinition = {
 //message for upload code failure in microbit progress
 const UploadFailureMicrobitMessageDefinition: MessageDefinition = {
     type: MessageTypeIdentifiers.uploadSuccessMicrobit,
-    message: {path: "messageBannerMessage.uploadFailureMicrobit", args: {errorMsg: "{error_placeholder}"}},
+    message: {
+        path: "messageBannerMessage.uploadFailureMicrobit",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
+        },
+    },
     //buttons:[{label:"buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
     buttons:[],
 };
