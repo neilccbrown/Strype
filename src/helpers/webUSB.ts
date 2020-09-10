@@ -1,5 +1,6 @@
 import * as DAPjs from "dapjs";
 import { compileBuffer } from "./compile";
+import {WebUSBListener} from "@/types/types"
 
 async function getUSBAccess() {
     const device = await navigator.usb.requestDevice({
@@ -7,7 +8,6 @@ async function getUSBAccess() {
     });
     return device;
 }
-
 
 export async function connectUSB() {
     const device = await getUSBAccess();
@@ -18,13 +18,20 @@ export async function connectUSB() {
     return daplink;
 }
 
-export async function flashData() {
+export async function flashData(listener: WebUSBListener) {
     const daplink = await connectUSB();
+
+    let progressValue = 0;
 
     daplink.on(
         DAPjs.DAPLink.EVENT_PROGRESS,
         (progress) => {
-            console.log(Math.ceil(progress * 100));
+            const currProgressValue = Math.ceil(progress * 100);
+            //only trigger actions when a change is notified
+            if(currProgressValue !== progressValue){
+                listener.onUploadProgressHandler(currProgressValue);
+                progressValue = currProgressValue;
+            }
         }
     );
 
@@ -36,10 +43,13 @@ export async function flashData() {
             await daplink.flash(buffer);
 
             await daplink.disconnect();
-            alert("done");
+
+            listener.onUploadSuccessHandler();
         }
     }
-    catch (error) {
+    catch (error) { 
         console.error(error.message || error);
+
+        listener.onUploadFailureHandler(error.message);
     }
 }

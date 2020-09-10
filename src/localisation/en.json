@@ -1,13 +1,16 @@
 {
   "messageBannerMessage": {
       "deleteLargeCode": "You just deleted a large piece of code. If you didn't mean to, you can:",
-      "yesnoTest": "Simple test Yes/No Change to another language?"
+      "yesnoTest": "Simple test Yes/No Change to another language?",
+      "uploadSuccessMicrobit": "Upload to micro:bit completed.",
+      "uploadFailureMicrobit": "Upload to micro:bit failed with error \"{errorMsg}\""
   },
   "buttonLabel":{
       "undo": "Undo",
       "yes": "yes",
       "no": "no",
-      "connectSerial": "Connect serial",
+      "ok": "OK",
+      "uploadToMicrobit": "Upload to micro:bit",
       "downloadHex": "Download Hex",
       "downloadPython": "Dowload Python"
   }
