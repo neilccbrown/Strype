@@ -526,6 +526,7 @@ const UploadFailureMicrobitMessageDefinition: MessageDefinition = {
     path: imagePaths.empty,
 };
 
+
 // THIS IS FOR TEST ONLY --> DELETE LATER
 // it's an example of a message with yes/no button, 
 // and a function action (yes) and a named action (no)
@@ -552,4 +553,5 @@ export interface WebUSBListener {
     onUploadProgressHandler: {(percent: number): void};
     onUploadSuccessHandler: VoidFunction;
     onUploadFailureHandler: {(errorMsg: string): void};
+
 }
