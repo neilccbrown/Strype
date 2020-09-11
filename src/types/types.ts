@@ -553,5 +553,4 @@ export interface WebUSBListener {
     onUploadProgressHandler: {(percent: number): void};
     onUploadSuccessHandler: VoidFunction;
     onUploadFailureHandler: {(errorMsg: string): void};
-
 }
