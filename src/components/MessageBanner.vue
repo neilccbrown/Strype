@@ -5,7 +5,7 @@
         <br/>
         <button 
             v-for="button in buttons"
-            v-bind:key="'messageButton-'+buttons.indexOf(button)"
+            v-bind:key="'messageButton-'+ buttons.indexOf(button)"
             v-on:click="onButtonClick(button.action)"
             v-t="button.label">
             </button>
@@ -15,14 +15,17 @@
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { MessageDefinedActions } from "@/types/types";
+import { DefaultFormattedMessage, MessageDefinedActions } from "@/types/types";
 
 export default Vue.extend({
     name: "MessageBanner",
     store,
 
     props:{
-        message: String,
+        message: {
+            type: Object,
+            default: () => DefaultFormattedMessage,
+        },
         buttons: Array,
     },
 

@@ -5,7 +5,7 @@
                 <div class="top">
                     <MessageBanner 
                         v-if="showMessage"
-                        v-bind:message="message.message"
+                        v-bind:message="getMessageObject(message.message)"
                         v-bind:buttons="message.buttons"
                     />
                 </div>
@@ -33,7 +33,7 @@ import MessageBanner from "@/components/MessageBanner.vue"
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
-import { FrameObject, MessageDefinition } from "@/types/types";
+import { FormattedMessage, FrameObject, MessageDefinition } from "@/types/types";
 
 
 //////////////////////
@@ -77,6 +77,13 @@ export default Vue.extend({
                 "setEditFlag",
                 false
             );
+        },
+
+        getMessageObject(msg: string | FormattedMessage): FormattedMessage{
+            if(typeof msg === "string"){
+                return {path:msg, args:{}};
+            }
+            return msg;
         },
     },
 });
