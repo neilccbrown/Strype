@@ -435,6 +435,25 @@ export interface MessageButton {
     action: VoidFunction | string;
 }
 
+export interface FormattedMessageArgKeyValuePlaceholder {
+    key: string;
+    placeholderName: string;
+}
+
+export const FormattedMessageArgKeyValuePlaceholders: {[id: string]: FormattedMessageArgKeyValuePlaceholder} = {
+    error: {key:"errorMsg", placeholderName : "{error_placeholder}"},
+}
+
+export interface FormattedMessage {
+    path: string;
+    args: { [id: string]: string};
+}
+
+export const DefaultFormattedMessage: FormattedMessage = {
+    path: "",
+    args: {},
+}
+
 export const MessageDefinedActions = {
     closeBanner: "close",
     undo: "undo",
@@ -447,7 +466,7 @@ export enum imagePaths {
 
 export interface MessageDefinition {
     type: string;
-    message: string;
+    message: string | FormattedMessage;
     buttons: MessageButton[];
     path: imagePaths;
 }
@@ -456,6 +475,7 @@ export const MessageTypes = {
     noMessage: "none",
     largeDeletion: "largeDeletion",
     imageDisplay: "imageDisplay",
+    uploadSuccessMicrobit:"uploadSuccessMicrobit",
 }
 
 //empty message
@@ -474,7 +494,7 @@ const LargeDeletionMessageDefinition: MessageDefinition = {
     path: imagePaths.empty,
 };
 
-//empty message
+//download hex message
 const downloadHex: MessageDefinition = {
     type: MessageTypes.imageDisplay,
     message: "",
@@ -482,6 +502,29 @@ const downloadHex: MessageDefinition = {
     path: imagePaths.transferHexFile,
 };
 
+//message for upload code success in microbit progress
+const UploadSuccessMicrobitMessageDefinition: MessageDefinition = {
+    type: MessageTypes.uploadSuccessMicrobit,
+    message: "messageBannerMessage.uploadSuccessMicrobit",
+    //buttons:[{label:"buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    buttons:[],
+    path: imagePaths.empty,
+
+};
+
+//message for upload code failure in microbit progress
+const UploadFailureMicrobitMessageDefinition: MessageDefinition = {
+    type: MessageTypes.uploadSuccessMicrobit,
+    message: {
+        path: "messageBannerMessage.uploadFailureMicrobit",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
+        },
+    },
+    //buttons:[{label:"buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    buttons:[],
+    path: imagePaths.empty,
+};
 
 // THIS IS FOR TEST ONLY --> DELETE LATER
 // it's an example of a message with yes/no button, 
@@ -493,12 +536,20 @@ const TestYesNoMessageDefinition: MessageDefinition = {
     path: imagePaths.empty,
 };
 
-
 export const MessageDefinitions = {
     NoMessage,
     LargeDeletionMessageDefinition,
+    UploadSuccessMicrobitMessageDefinition,
+    UploadFailureMicrobitMessageDefinition,
     //TO REMOVE LATER
     TestYesNoMessageDefinition,
     downloadHex,
 };
 
+//WebUSB listener
+export interface WebUSBListener {
+    //Callback functions called on the listener by the webUSB.ts file
+    onUploadProgressHandler: {(percent: number): void};
+    onUploadSuccessHandler: VoidFunction;
+    onUploadFailureHandler: {(errorMsg: string): void};
+}

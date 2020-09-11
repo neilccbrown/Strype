@@ -1,7 +1,7 @@
 <template>
     <b-modal
-        v-if="message.type === messageTypes.imageDisplay"
-        v-bind:visible="message.type === messageTypes.imageDisplay"
+        v-if="showModal"
+        v-bind:visible="showModal"
         hide-footer
         size="xl"
         @close="close()"
@@ -33,7 +33,7 @@
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes} from "@/types/types";
+import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, DefaultFormattedMessage} from "@/types/types";
 
 export default Vue.extend({
     name: "MessageBanner",
@@ -48,16 +48,19 @@ export default Vue.extend({
     created() {
         this.image = require("@/assets/images/"+this.message.path);
     },
+    //Updated is needed in case one message pops and before its gone another is shown
+    updated() {
+        this.image = require("@/assets/images/"+this.message.path);
+    },
 
     computed: {
         message(): MessageDefinition {
             return store.getters.getCurrentMessage();
         },
 
-        // Needed in order to use the `MessageTypes` type in the v-if
-        messageTypes(): typeof MessageTypes {
-            return MessageTypes;
-        }, 
+        showModal(): boolean{
+            return this.message.type === MessageTypes.imageDisplay
+        },
     },
 
     methods: {
