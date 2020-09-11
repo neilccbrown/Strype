@@ -440,38 +440,57 @@ export const MessageDefinedActions = {
     undo: "undo",
 }
 
+export enum imagePaths {
+    empty = "",
+    transferHexFile = "transferHexFile.svg",
+}
+
 export interface MessageDefinition {
     type: string;
     message: string;
     buttons: MessageButton[];
+    path: imagePaths;
 }
 
-const MessageTypeIdentifiers = {
+export const MessageTypes = {
     noMessage: "none",
     largeDeletion: "largeDeletion",
+    imageDisplay: "imageDisplay",
 }
 
 //empty message
 const NoMessage: MessageDefinition = {
-    type: MessageTypeIdentifiers.noMessage,
+    type: MessageTypes.noMessage,
     message: "",
     buttons: [],
+    path: imagePaths.empty,
 };
 
 //message for large deletation (undo)
 const LargeDeletionMessageDefinition: MessageDefinition = {
-    type: MessageTypeIdentifiers.largeDeletion,
+    type: MessageTypes.largeDeletion,
     message: "messageBannerMessage.deleteLargeCode",
     buttons:[{label: "buttonLabel.undo", action:MessageDefinedActions.undo}],
+    path: imagePaths.empty,
 };
+
+//empty message
+const downloadHex: MessageDefinition = {
+    type: MessageTypes.imageDisplay,
+    message: "",
+    buttons: [],
+    path: imagePaths.transferHexFile,
+};
+
 
 // THIS IS FOR TEST ONLY --> DELETE LATER
 // it's an example of a message with yes/no button, 
 // and a function action (yes) and a named action (no)
 const TestYesNoMessageDefinition: MessageDefinition = {
-    type: MessageTypeIdentifiers.largeDeletion,
+    type: MessageTypes.largeDeletion,
     message: "messageBannerMessage.yesnoTest",
     buttons:[{label: "buttonLabel.yes", action:(() => alert("OUI !"))}, {label: "buttonLabel.no", action:MessageDefinedActions.closeBanner}],
+    path: imagePaths.empty,
 };
 
 
@@ -480,4 +499,6 @@ export const MessageDefinitions = {
     LargeDeletionMessageDefinition,
     //TO REMOVE LATER
     TestYesNoMessageDefinition,
+    downloadHex,
 };
+

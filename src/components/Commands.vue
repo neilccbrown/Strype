@@ -41,7 +41,7 @@ import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef } from "@/types/types";
+import { AddFrameCommandDef,MessageDefinitions,ToggleFrameLabelCommandDef } from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
 
 export default Vue.extend({
@@ -160,7 +160,8 @@ export default Vue.extend({
                 alert("Please fix existing errors first.");
             }
             else {
-                downloadHex();
+                downloadHex(); 
+                store.dispatch("setMessageBanner", MessageDefinitions.downloadHex);
             }
         },
         downloadPython() {
