@@ -157,9 +157,7 @@ export default new Vuex.Store({
 
         isEditing: false,
 
-        isMessageBannerOn: false,
-
-        currentMessageType: MessageDefinitions.NoMessage,
+        currentMessage: MessageDefinitions.NoMessage,
 
         frameObjects: initialState,
 
@@ -419,10 +417,10 @@ export default new Vuex.Store({
             return state.preCompileErrors.includes(id);
         },
         getIsMessageBannerOn: (state) => () => {
-            return state.isMessageBannerOn;
+            return state.currentMessage !== MessageDefinitions.NoMessage;
         },
-        getCurrentMessageType: (state) => () => {
-            return state.currentMessageType;
+        getCurrentMessage: (state) => () => {
+            return state.currentMessage;
         },
     }, 
 
@@ -828,14 +826,14 @@ export default new Vuex.Store({
             }
         },
         
-        toggleMessageBanner(state) {
-            state.isMessageBannerOn = !state.isMessageBannerOn;
+        setMessageBanner(state, messageType: MessageDefinition) {
+            Vue.set(
+                state,
+                "currentMessage",
+                messageType
+            );
         },
 
-        setMessageBanner(state, message: MessageDefinition){
-            state.isMessageBannerOn = true;
-            state.currentMessageType = message;
-        },
     },
 
     actions: {
@@ -963,8 +961,10 @@ export default new Vuex.Store({
                 frameToDeleteId,
                 3
             ) >= 3){
-                state.currentMessageType = MessageDefinitions.LargeDeletionMessageDefinition;
-                state.isMessageBannerOn = true;
+                commit(
+                    "setMessageBanner",
+                    MessageDefinitions.LargeDeletionMessageDefinition
+                );
             }
 
             //Delete the frame if a frame to delete has been found
@@ -1152,7 +1152,23 @@ export default new Vuex.Store({
                 );
             }
 
-        },        
+        },
+        
+        setMessageBanner({commit}, message: MessageDefinition){
+            switch (message) {    
+            case MessageDefinitions.NoMessage:
+                commit("setMessageBanner", MessageDefinitions.NoMessage);
+                break;
+            case MessageDefinitions.downloadHex:
+                commit("setMessageBanner", MessageDefinitions.downloadHex);
+                break;
+            case MessageDefinitions.LargeDeletionMessageDefinition:
+                commit("setMessageBanner", MessageDefinitions.LargeDeletionMessageDefinition);
+                break;
+            default:
+                break;
+            }
+        },
     },
     modules: {},
 });

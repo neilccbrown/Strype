@@ -140,6 +140,7 @@ export default Vue.extend({
     padding-top: 4px;
     margin-bottom: 4px;
     margin-right: 0px;
+    margin-left: 12px;
     border-color: #000 !important;
     border-radius: 8px;
 

@@ -222,7 +222,8 @@ export default Vue.extend({
                 alert("Please fix existing errors first.");
             }
             else {
-                downloadHex();
+                downloadHex(); 
+                store.dispatch("setMessageBanner", MessageDefinitions.downloadHex);
             }
         },
         downloadPython() {
