@@ -39,7 +39,7 @@ const initialState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: CaretPosition.none,
+        caretVisibility: CaretPosition.body,
     },
     1: {
         frameType: Definitions.ImportDefinition,
@@ -132,7 +132,7 @@ const initialState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {0: {code :  "True", focused: false, error :"", shownLabel: true} },
-        caretVisibility: CaretPosition.body,
+        caretVisibility: CaretPosition.none,
         error: "",
     },
     9: {
