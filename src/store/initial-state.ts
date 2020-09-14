@@ -75,7 +75,7 @@ const initialState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: { 0: {code :  "At start:", focused: false, error :"", shownLabel: true} },
-        caretVisibility: CaretPosition.below,
+        caretVisibility: CaretPosition.none,
         error: "",
     },
     4: {
@@ -132,7 +132,7 @@ const initialState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {0: {code :  "True", focused: false, error :"", shownLabel: true} },
-        caretVisibility: CaretPosition.none,
+        caretVisibility: CaretPosition.body,
         error: "",
     },
     9: {
