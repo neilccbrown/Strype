@@ -156,7 +156,7 @@ export default new Vuex.Store({
 
         nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number,
 
-        currentFrame: { id: 8, caretPosition: CaretPosition.body } as CurrentFrame,
+        currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
         isEditing: false,
 

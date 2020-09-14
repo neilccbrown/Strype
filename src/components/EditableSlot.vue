@@ -85,7 +85,7 @@ export default Vue.extend({
         },
 
         inputSize(): number{
-            return this.code.length > this.defaultText.length ? this.code.length : this.defaultText.length;
+            return (this.code.length > this.defaultText.length) ? this.code.length : this.defaultText.length;
         },
     },
 
