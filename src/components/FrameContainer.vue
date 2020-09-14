@@ -98,7 +98,7 @@ export default Vue.extend({
             this.$data.containerStyle = (this.$data.isCollapsed) ? {display:"none"} : {display:"block"};
         },
         handleDragAndDrop(event: Event): void {
-            store.commit(
+            store.dispatch(
                 "updateFramesOrder",
                 {
                     event: event,

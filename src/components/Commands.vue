@@ -104,7 +104,14 @@ export default Vue.extend({
                         "changeCaretPosition",
                         event.key
                     );
-                }            
+                }
+                else if(event.ctrlKey && (event.key === "z" || event.key === "y")) {
+                    //undo-redo
+                    store.dispatch(
+                        "undoRedo",
+                        (event.key === "z")
+                    );
+                }             
                 else {
                     const isEditing = store.getters.getIsEditing();
                     if(isEditing){

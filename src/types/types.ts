@@ -531,3 +531,9 @@ export interface WebUSBListener {
     onUploadSuccessHandler: VoidFunction;
     onUploadFailureHandler: {(errorMsg: string): void};
 }
+
+//Object difference
+export interface ObjectPropertyDiff {
+    propertyPath: string;
+    value: any;
+}

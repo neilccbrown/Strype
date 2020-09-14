@@ -1,9 +1,10 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import {getEditableSlotId} from "@/helpers/editor"
+import {getObjectPropertiesDiffferences} from "@/helpers/generic"
 
 Vue.use(Vuex);
 
@@ -164,7 +165,12 @@ export default new Vuex.Store({
         frameObjects: initialState,
 
         preCompileErrors: [] as string[],
+
+        diffToPreviousState: [] as ObjectPropertyDiff[],
+
+        diffToNextState: [] as ObjectPropertyDiff[],
     },
+
     getters: {
         getFramesForParentId: (state) => (frameId: number) => {
             //Get the childrenIds of this frame and based on these return the children objects corresponding to them
@@ -836,13 +842,64 @@ export default new Vuex.Store({
             state.isMessageBannerOn = true;
             state.currentMessageType = message;
         },
+
+        applyStateUndoRedoChanges(state, isUndo: boolean){
+            //performing the change if there is any change recoreded in the state
+            let changeList = [] as ObjectPropertyDiff[]
+            if(isUndo && state.diffToPreviousState.length > 0){
+                changeList = state.diffToPreviousState;
+            }
+            else if(!isUndo && state.diffToNextState.length > 0){
+                changeList = state.diffToNextState;
+            }
+
+            if(changeList.length > 0){
+                //if the value in the changes isn't "null" --> replaced/add, otherwise, delete.
+                changeList.forEach((changeEntry: ObjectPropertyDiff) => {
+                    //we reconstruct what in the state should be changed based on the difference path
+                    const stateParts = changeEntry.propertyPath.split(".");
+                    const property = stateParts[stateParts.length -1];
+                    stateParts.pop();
+                    let statePartToChange = state as {[id: string]: any};
+                    stateParts.forEach((part) => statePartToChange = statePartToChange[part])
+                    if(changeEntry.value != null){
+                        Vue.set(
+                            statePartToChange,
+                            property,
+                            changeEntry.value
+                        );
+                    }
+                    else{
+                        Vue.delete(
+                            statePartToChange,
+                            property
+                        );
+                    }
+                })
+            }
+
+        },
     },
 
     actions: {
-        updateFramesOrder({ commit }, payload) {
+        updateFramesOrder({ state, commit }, payload) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+   
             commit(
                 "updateFramesOrder",
                 payload
+            );
+
+            //update the "next" stage of the previous stage
+            state.diffToPreviousState = getObjectPropertiesDiffferences(state, stateBeforeChanges);
+            stateBeforeChanges.diffToNextState = getObjectPropertiesDiffferences(stateBeforeChanges, state);
+            
+        },
+
+        undoRedo({ commit }, isUndo: boolean) {
+            commit(
+                "applyStateUndoRedoChanges",
+                isUndo 
             );
         },
 
