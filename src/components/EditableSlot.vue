@@ -195,18 +195,19 @@ export default Vue.extend({
 
         },
 
-        onLRKeyUp(event: KeyboardEvent) {
+        onLRKeyUp(event: InputEvent) {
             //get the input field
-            const input: HTMLInputElement = this.$el.firstElementChild as HTMLInputElement;
+            const input: HTMLInputElement = event.srcElement as HTMLInputElement;
+
             if(input !== undefined){
-                const start = input.selectionStart ?? 0;
+                const start = input.selectionStart ?? 0; 
                 const end = input.selectionEnd ?? 0;
-                
-                if((start === 0 && event.key==="ArrowLeft") || (end === input.value.length && event.key==="ArrowRight")) {
+            
+                if((start === 0 && event.data==="ArrowLeft") || (end === input.value.length && event.data==="ArrowRight")) {
                     
                     store.dispatch(
                         "leftRightKey",
-                        event.key
+                        event.data
                     );
                     this.onBlur();
                 }
