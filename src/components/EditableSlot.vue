@@ -1,14 +1,12 @@
 <template>
     <div class="next-to-eachother">
-        <AutosizeInput
+        <input
             type="text"
             v-model="code"
             v-bind:placeholder="defaultText"
             v-focus="focused"
-            @blur="onBlur"
+            @blur="onBlur()"
             @focus="onFocus()"
-            @click="onFocus()"
-            @dblclick="onFocus()"
             @keyup.left.prevent.stop="onLRKeyUp($event)"
             @keyup.right.prevent.stop="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
@@ -17,6 +15,7 @@
             v-bind:id="id"
             v-bind:key="id"
             class="input"
+            v-bind:size="inputSize"
         />
         <b-popover
           v-if="erroneous"
@@ -33,15 +32,11 @@ import Vue from "vue";
 import store from "@/store/store";
 import { CaretPosition} from "@/types/types";
 import { getEditableSlotId } from "@/helpers/editor";
-import AutosizeInput from "vue-autosize-input";
+// import AutosizeInput from "vue-autosize-input"; // https://github.com/houjiazong/vue-autosize-input
 
 export default Vue.extend({
     name: "EditableSlot",
     store,
-
-    components: {
-        AutosizeInput,
-    },
 
     props: {
         defaultText: String,
@@ -87,6 +82,10 @@ export default Vue.extend({
                 this.$props.frameId,
                 this.$props.slotIndex
             );
+        },
+
+        inputSize(): number{
+            return (this.code.length > this.defaultText.length) ? this.code.length : this.defaultText.length;
         },
     },
 
@@ -140,7 +139,6 @@ export default Vue.extend({
                     focused: true,
                 }
             );
-            
         },
 
         onBlur(): void {
@@ -226,6 +224,7 @@ export default Vue.extend({
                 );
             }
         },
+
     },
 });
 </script>
