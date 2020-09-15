@@ -1,10 +1,10 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, CommentDefinition } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
-import {getEditableSlotId} from "@/helpers/editor"
-import {getObjectPropertiesDiffferences} from "@/helpers/generic"
+import {getEditableSlotId, undoMaxSteps} from "@/helpers/editor"
+import {getObjectPropertiesDiffferences} from "@/helpers/common"
 
 Vue.use(Vuex);
 
@@ -166,9 +166,9 @@ export default new Vuex.Store({
 
         preCompileErrors: [] as string[],
 
-        diffToPreviousState: [] as ObjectPropertyDiff[],
+        diffToPreviousState: [] as ObjectPropertyDiff[][],
 
-        diffToNextState: [] as ObjectPropertyDiff[],
+        diffToNextState: [] as ObjectPropertyDiff[][],
     },
 
     getters: {
@@ -843,15 +843,33 @@ export default new Vuex.Store({
             state.currentMessageType = message;
         },
 
+        saveStateChanges(state, previousState) {           
+            state.diffToPreviousState.push(getObjectPropertiesDiffferences(state, previousState));
+            //don't exceed the maximum of undo steps allowed
+            if(state.diffToPreviousState.length > undoMaxSteps) {
+                state.diffToPreviousState.splice(
+                    0,
+                    1
+                );
+            }
+            //we clear the diffToNextState content as we are now starting a new sequence of actions
+            state.diffToNextState.splice(
+                0,
+                state.diffToNextState.length
+            );
+        },
+
         applyStateUndoRedoChanges(state, isUndo: boolean){
             //performing the change if there is any change recoreded in the state
-            let changeList = [] as ObjectPropertyDiff[]
-            if(isUndo && state.diffToPreviousState.length > 0){
-                changeList = state.diffToPreviousState;
+            let changeList = [] as ObjectPropertyDiff[];
+            if(isUndo) {
+                changeList = state.diffToPreviousState.pop()??[];
             }
-            else if(!isUndo && state.diffToNextState.length > 0){
-                changeList = state.diffToNextState;
+            else {
+                changeList = state.diffToNextState.pop()??[];
             }
+
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
             if(changeList.length > 0){
                 //if the value in the changes isn't "null" --> replaced/add, otherwise, delete.
@@ -861,7 +879,17 @@ export default new Vuex.Store({
                     const property = stateParts[stateParts.length -1];
                     stateParts.pop();
                     let statePartToChange = state as {[id: string]: any};
-                    stateParts.forEach((part) => statePartToChange = statePartToChange[part])
+                    stateParts.forEach((part) => {
+                        //if a part doesn't exist, we create it with an empty object value
+                        if(statePartToChange[part] === undefined){
+                            Vue.set(
+                                statePartToChange,
+                                part,
+                                {}
+                            );
+                        }
+                        statePartToChange = statePartToChange[part];
+                    });
                     if(changeEntry.value != null){
                         Vue.set(
                             statePartToChange,
@@ -876,8 +904,16 @@ export default new Vuex.Store({
                         );
                     }
                 })
+             
+                //keep the arrays of changes in sync with undo/redo sequences
+                const stateDifferences = getObjectPropertiesDiffferences(state, stateBeforeChanges);
+                if(isUndo){
+                    state.diffToNextState.push(stateDifferences);
+                }
+                else{
+                    state.diffToPreviousState.push(stateDifferences);        
+                }
             }
-
         },
     },
 
@@ -890,10 +926,26 @@ export default new Vuex.Store({
                 payload
             );
 
-            //update the "next" stage of the previous stage
-            state.diffToPreviousState = getObjectPropertiesDiffferences(state, stateBeforeChanges);
-            stateBeforeChanges.diffToNextState = getObjectPropertiesDiffferences(stateBeforeChanges, state);
+            //save state changes
+            commit(
+                "saveStateChanges",
+                stateBeforeChanges
+            )
+        },
+
+        setFrameEditorSlot({state, commit}, payload: ErrorSlotPayload) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             
+            commit(
+                "setFrameEditorSlot",
+                payload
+            );
+
+            //save state changes
+            commit(
+                "saveStateChanges",
+                stateBeforeChanges
+            )
         },
 
         undoRedo({ commit }, isUndo: boolean) {
@@ -911,6 +963,7 @@ export default new Vuex.Store({
         },
 
         addFrameWithCommand({ commit, state, getters }, payload: FramesDefinitions) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             //Prepare the newFrame object based on the frameType
             const isJointFrame = getters.getIsJointFrame(
                 (state.frameObjects[state.currentFrame.id].jointParentId > 0) ?
@@ -956,9 +1009,15 @@ export default new Vuex.Store({
                 newFrame
             );
             
+            //save state changes
+            commit(
+                "saveStateChanges",
+                stateBeforeChanges
+            )
         },
 
         deleteCurrentFrame({commit, state}, payload: string){
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             //if delete is pressed
             //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
             //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
@@ -1030,7 +1089,13 @@ export default new Vuex.Store({
                     "deleteFrame",
                     {key:payload,frameToDeleteId: frameToDeleteId,  deleteChildren: deleteChildren}
                 );
-            }            
+            }  
+            
+            //save state changes
+            commit(
+                "saveStateChanges",
+                stateBeforeChanges
+            )
         },
 
         toggleCaret({ commit }, newCurrent) {
@@ -1178,6 +1243,7 @@ export default new Vuex.Store({
         
         //Toggle the current frame label that matches the type specified in the payload.
         toggleFrameLabel({commit, state}, commandType: string) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
             //Get the FrameLabel (index) matching the type
             const frameLabeToTogglelIndex = state.frameObjects[state.currentFrame.id].frameType.labels.findIndex((frameLabel) => frameLabel?.toggleLabelCommand?.type === commandType);
@@ -1209,6 +1275,11 @@ export default new Vuex.Store({
                 );
             }
 
+            //save state changes
+            commit(
+                "saveStateChanges",
+                stateBeforeChanges
+            )
         },        
     },
     modules: {},

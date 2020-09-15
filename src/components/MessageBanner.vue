@@ -45,7 +45,10 @@ export default Vue.extend({
                     store.commit("toggleMessageBanner");
                     break;
                 case MessageDefinedActions.undo:
-                    alert("Will Undo whan has been done.");
+                    store.commit(
+                        "applyStateUndoRedoChanges",
+                        true
+                    );
                     break;
                 default:
                     break;

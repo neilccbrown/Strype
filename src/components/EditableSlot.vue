@@ -159,8 +159,8 @@ export default Vue.extend({
                 }
             );
 
-            if(this.$data.code !== "") {
-                store.commit(
+            if(this.$data.code !== "" && this.$data.code !== store.getters.getContentForFrameSlot(this.$parent.$props.frameId, this.$props.slotIndex)) {
+                store.dispatch(
                     "setFrameEditorSlot",
                     {
                         frameId: this.$parent.$props.frameId,
