@@ -1,7 +1,7 @@
 <template>
     <div class="commands">
         <div>
-            <button @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
+            <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
             <button @click="downloadHex" v-t="'buttonLabel.downloadHex'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
         </div>
@@ -55,6 +55,7 @@ import { flashData } from "@/helpers/webUSB";
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
+import browserDetect from "vue-browser-detect-plugin";
 
 export default Vue.extend({
     name: "Commands",
@@ -69,7 +70,13 @@ export default Vue.extend({
         return {
             showProgress: false,
             progressPercent: 0,
+            uploadThroughUSB: false,
         }
+    },
+
+    beforeMount() {
+        Vue.use(browserDetect);
+        this.uploadThroughUSB = (this.$browserDetect.isChrome || this.$browserDetect.isOpera || this.$browserDetect.isEdge);
     },
 
     computed: {
@@ -229,7 +236,8 @@ export default Vue.extend({
                 alert("Please fix existing errors first.");
             }
             else {
-                downloadHex();
+                downloadHex(); 
+                store.dispatch("setMessageBanner", MessageDefinitions.downloadHex);
             }
         },
         downloadPython() {

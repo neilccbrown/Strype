@@ -152,17 +152,16 @@ const countRecursiveChildren = function(listOfFrames: Record<number, FrameObject
 
 export default new Vuex.Store({
     state: {
-        nextAvailableId: 20 as number,
 
-        currentFrame: { id: 3, caretPosition: CaretPosition.below } as CurrentFrame,
+        frameObjects: initialState,
+
+        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number,
+
+        currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
         isEditing: false,
 
-        isMessageBannerOn: false,
-
-        currentMessageType: MessageDefinitions.NoMessage,
-
-        frameObjects: initialState,
+        currentMessage: MessageDefinitions.NoMessage,
 
         preCompileErrors: [] as string[],
 
@@ -425,10 +424,10 @@ export default new Vuex.Store({
             return state.preCompileErrors.includes(id);
         },
         getIsMessageBannerOn: (state) => () => {
-            return state.isMessageBannerOn;
+            return state.currentMessage !== MessageDefinitions.NoMessage;
         },
-        getCurrentMessageType: (state) => () => {
-            return state.currentMessageType;
+        getCurrentMessage: (state) => () => {
+            return state.currentMessage;
         },
     }, 
 
@@ -834,13 +833,12 @@ export default new Vuex.Store({
             }
         },
         
-        toggleMessageBanner(state) {
-            state.isMessageBannerOn = !state.isMessageBannerOn;
-        },
-
-        setMessageBanner(state, message: MessageDefinition){
-            state.isMessageBannerOn = true;
-            state.currentMessageType = message;
+        setMessageBanner(state, messageType: MessageDefinition) {
+            Vue.set(
+                state,
+                "currentMessage",
+                messageType
+            );
         },
 
         saveStateChanges(state, previousState) {           
@@ -1079,8 +1077,10 @@ export default new Vuex.Store({
                 frameToDeleteId,
                 3
             ) >= 3){
-                state.currentMessageType = MessageDefinitions.LargeDeletionMessageDefinition;
-                state.isMessageBannerOn = true;
+                commit(
+                    "setMessageBanner",
+                    MessageDefinitions.LargeDeletionMessageDefinition
+                );
             }
 
             //Delete the frame if a frame to delete has been found
@@ -1281,6 +1281,22 @@ export default new Vuex.Store({
                 stateBeforeChanges
             )
         },        
+        
+        setMessageBanner({commit}, message: MessageDefinition){
+            switch (message) {    
+            case MessageDefinitions.NoMessage:
+                commit("setMessageBanner", MessageDefinitions.NoMessage);
+                break;
+            case MessageDefinitions.downloadHex:
+                commit("setMessageBanner", MessageDefinitions.downloadHex);
+                break;
+            case MessageDefinitions.LargeDeletionMessageDefinition:
+                commit("setMessageBanner", MessageDefinitions.LargeDeletionMessageDefinition);
+                break;
+            default:
+                break;
+            }
+        },
     },
     modules: {},
 });

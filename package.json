@@ -22,6 +22,7 @@
         "tigerpython-parser": "git+https://github.com/a-vorontsov/TigerPython-Parser.git",
         "vue": "^2.6.12",
         "vue-autosize-input": "^0.1.0",
+        "vue-browser-detect-plugin": "^0.1.13",
         "vue-i18n": "^8.17.3",
         "vue-input-autowidth": "^1.0.10",
         "vuedraggable": "^2.24.1",

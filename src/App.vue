@@ -5,8 +5,6 @@
                 <div class="top">
                     <MessageBanner 
                         v-if="showMessage"
-                        v-bind:message="getMessageObject(message.message)"
-                        v-bind:buttons="message.buttons"
                     />
                 </div>
                 <div>
@@ -33,7 +31,7 @@ import MessageBanner from "@/components/MessageBanner.vue"
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import store from "@/store/store";
-import { FormattedMessage, FrameObject, MessageDefinition } from "@/types/types";
+import { FrameObject, MessageTypes } from "@/types/types";
 
 
 //////////////////////
@@ -65,10 +63,6 @@ export default Vue.extend({
         showMessage(): boolean {
             return store.getters.getIsMessageBannerOn();
         },
-
-        message(): MessageDefinition {
-            return store.getters.getCurrentMessageType();
-        },
     },
 
     methods: {
@@ -79,11 +73,8 @@ export default Vue.extend({
             );
         },
 
-        getMessageObject(msg: string | FormattedMessage): FormattedMessage{
-            if(typeof msg === "string"){
-                return {path:msg, args:{}};
-            }
-            return msg;
+        messageTop(): boolean {
+            return store.getters.getCurrentMessage().type !== MessageTypes.imageDisplay;
         },
     },
 });
@@ -93,13 +84,13 @@ export default Vue.extend({
 html,body {
     margin: 0px;
     height: 100%;
+    background-color: #bbc6b6 !important;
 }
 #app {
     font-family: Avenir, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: #2c3e50;
-    background-color: #bbc6b6;
     box-sizing: border-box;
 
 }

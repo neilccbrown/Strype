@@ -1,37 +1,71 @@
 <template>
-    <div class="message-banner-container">
-        <span v-t="message"></span>
+    <b-modal
+        v-if="showModal"
+        v-bind:visible="showModal"
+        hide-footer
+        size="xl"
+        @close="close()"
+    >
+        <img
+            class="w-100" 
+            v-bind:src="image"
+        />
+    </b-modal>
+    <div
+        v-else 
+        class="message-banner-container"
+    >
+        <span 
+            v-if="message.message"
+            v-t="message.message"></span>
         <span class="message-banner-cross" v-on:click="close">&#x2716;</span>
+        
         <br/>
         <button 
-            v-for="button in buttons"
-            v-bind:key="'messageButton-'+ buttons.indexOf(button)"
+            v-for="(button,index) in message.buttons"
+            v-bind:key="'messageButton-'+index"
             v-on:click="onButtonClick(button.action)"
             v-t="button.label">
-            </button>
+        </button>
     </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { DefaultFormattedMessage, MessageDefinedActions } from "@/types/types";
+import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, DefaultFormattedMessage} from "@/types/types";
 
 export default Vue.extend({
     name: "MessageBanner",
     store,
 
-    props:{
-        message: {
-            type: Object,
-            default: () => DefaultFormattedMessage,
+    data() {
+        return {
+            image: "" as string,
+        };
+    },
+
+    created() {
+        this.image = require("@/assets/images/"+this.message.path);
+    },
+    //Updated is needed in case one message pops and before its gone another is shown
+    updated() {
+        this.image = require("@/assets/images/"+this.message.path);
+    },
+
+    computed: {
+        message(): MessageDefinition {
+            return store.getters.getCurrentMessage();
         },
-        buttons: Array,
+
+        showModal(): boolean{
+            return this.message.type === MessageTypes.imageDisplay
+        },
     },
 
     methods: {
         close(): void {
-            store.commit("toggleMessageBanner");
+            store.dispatch("setMessageBanner", MessageDefinitions.NoMessage);
         },
         onButtonClick(payload: VoidFunction | string){
             // If the type of the action associated with this button is a function
@@ -42,7 +76,7 @@ export default Vue.extend({
             else{
                 switch(payload){
                 case MessageDefinedActions.closeBanner:
-                    store.commit("toggleMessageBanner");
+                    store.dispatch("setMessageBanner", MessageDefinitions.NoMessage);
                     break;
                 case MessageDefinedActions.undo:
                     store.commit(
