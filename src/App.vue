@@ -84,13 +84,13 @@ export default Vue.extend({
 html,body {
     margin: 0px;
     height: 100%;
+    background-color: #bbc6b6 !important;
 }
 #app {
     font-family: Avenir, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: #2c3e50;
-    background-color: #bbc6b6;
     box-sizing: border-box;
 
 }
