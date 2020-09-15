@@ -12,7 +12,7 @@
       "ok": "OK",
       "uploadToMicrobit": "Upload to micro:bit",
       "downloadHex": "Download Hex",
-      "downloadPython": "Dowload Python"
+      "downloadPython": "Download Python"
   },
   "actions": {
     "uploadingToMicrobit": "Uploading to micro:bit ..."
