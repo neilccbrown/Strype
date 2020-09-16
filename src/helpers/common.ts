@@ -6,6 +6,10 @@ import {ObjectPropertyDiff} from "@/types/types"
 //  propertyPath --> the path of the object properties (. separated)
 //  value        --> the value of the difference (null if deletion, actual value if addition or update)
 
+const checkArrayIsEmpty = (array: []): boolean => {
+    return array.findIndex((val) => val !== undefined) == -1;
+}
+
 const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, result: ObjectPropertyDiff[], path: string) => {
     const pathSeparator = (path.length > 0) ? "." : "";
 
@@ -15,20 +19,27 @@ const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, resu
         //if property exists in obj2, check recursive difference if value is of type object
         //or check the difference of value and remove from obj2 anyway if value isn't of type object
         if(obj2[obj1property] !== undefined){
-            //call recursive checking only if BOTH entries are of type object
+            //call recursive checking only if BOTH entries are of type object or array
             if(typeof obj1value === "object" && typeof obj2[obj1property] === "object"){
-                findDiffDeep(obj1value, obj2[obj1property], result, path + pathSeparator + obj1property);
+                findDiffDeep(obj1value, obj2[obj1property], result, path + pathSeparator + obj1property + "_" + Array.isArray(obj1value));
+                if((Array.isArray(obj1value) && checkArrayIsEmpty(obj2[obj1property])) || Object.entries(obj2[obj1property]).length == 0){
+                    //if inside obj2[property] there is no extra property/entry, we delete it
+                    delete obj2[obj1property];
+                }
             }
             else {
                 if(obj2[obj1property] !== obj1value){
-                    result.push({propertyPath: (path + pathSeparator + obj1property), value: obj2[obj1property] });
+                    result.push({propertyPathWithArrayFlag: (path + pathSeparator + obj1property), value: obj2[obj1property]});
                 }
+                //note: for arrays, delete doesn't change the size of the array, but put "undefined" in the index
+                //and that is good for use because in array, indexing MUST be preserved.
                 delete obj2[obj1property];
             }
+
         }
         //else it's a deletion from obj1, put "null" value in the result
         else{
-            result.push({propertyPath: (path + pathSeparator + obj1property),value: null });
+            result.push({propertyPathWithArrayFlag: (path + pathSeparator + obj1property), value: null });
         }
     }
 } 
@@ -38,15 +49,19 @@ export const checkAddedValues = (obj: {[id: string]: any}, result: ObjectPropert
     
     for(const objProperty in obj){
         const objValue = obj[objProperty];
-        //undefined values might be the remains of previous deletions on obj2, so we don't care about them
-        if(objValue !== undefined){
-            if(typeof objValue === "object") {
-                //the value is a property, we check deeper recursively
-                checkAddedValues(objValue, result, path + pathSeparator + objProperty);
+        
+        if(typeof objValue === "object") {
+            //if we have an emty array/object we save it directly,
+            //otherwise, we check deeper recursively
+            if(Object.entries(objValue).length == 0){
+                result.push({propertyPathWithArrayFlag: path + pathSeparator + objProperty, value: objValue});
+            } 
+            else {
+                checkAddedValues(objValue, result, path + pathSeparator + objProperty + "_" + (Array.isArray(objValue)));
             }
-            else{
-                result.push({propertyPath: path + pathSeparator + objProperty, value: objValue});
-            }
+        }
+        else{
+            result.push({propertyPathWithArrayFlag: path + pathSeparator + objProperty, value: objValue});
         }
     }
 }

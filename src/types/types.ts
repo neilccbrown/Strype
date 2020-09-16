@@ -557,6 +557,8 @@ export interface WebUSBListener {
 
 //Object difference
 export interface ObjectPropertyDiff {
-    propertyPath: string;
+    //The property path is formatted as "level1_<bool>.level2_<bool>. ... .levelN" 
+    //where <bool> is a boolean flag value indicating if the corresponding level is for an array or not.
+    propertyPathWithArrayFlag: string;
     value: any;
 }

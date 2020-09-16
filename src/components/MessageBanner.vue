@@ -83,6 +83,7 @@ export default Vue.extend({
                         "applyStateUndoRedoChanges",
                         true
                     );
+                    store.dispatch("setMessageBanner", MessageDefinitions.NoMessage);
                     break;
                 default:
                     break;

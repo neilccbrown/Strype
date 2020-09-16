@@ -48,7 +48,7 @@ export default Vue.extend({
     data() {
         return {
             code: store.getters.getContentForFrameSlot(
-                this.$parent.$props.frameId,
+                this.$props.frameId,
                 this.$props.slotIndex
             ),
         };
@@ -117,80 +117,29 @@ export default Vue.extend({
 
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
-            store.commit(
-                "setEditFlag",
-                true
-            );
-
-            //First set the curretFrame to this frame
-            store.commit(
-                "setCurrentFrame",
-                {
-                    id: this.$props.frameId,
-                    caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
-                }
-            );
-            //Then store which editable has the focus
-            store.commit(
-                "setEditableFocus",
+            store.dispatch(
+                "setFocusEditableSlot",
                 {
                     frameId: this.$props.frameId,
                     slotId: this.$props.slotIndex,
-                    focused: true,
+                    caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
-            );
+            )
         },
 
         onBlur(): void {
-
-            store.commit(
-                "setEditFlag",
-                false
-            );
-
-            store.commit(
-                "setEditableFocus",
-                {
-                    frameId: this.$props.frameId,
-                    slotId: this.$props.slotIndex,
-                    focused: false,
-                }
-            );
-
-            if(this.$data.code !== "" && this.$data.code !== store.getters.getContentForFrameSlot(this.$parent.$props.frameId, this.$props.slotIndex)) {
+            this.$data.code = this.$data.code.trim();
+            //only do something if the value has actually changed
+            if(this.$data.code !== store.getters.getContentForFrameSlot(this.$props.frameId, this.$props.slotIndex)) {
                 store.dispatch(
                     "setFrameEditorSlot",
                     {
-                        frameId: this.$parent.$props.frameId,
+                        frameId: this.$props.frameId,
                         slotId: this.$props.slotIndex,
                         code: this.$data.code,
                     }   
                 );
-                //if the user entered text on previously left blank slot, remove the error
-                if(!this.$props.optionalSlot && this.errorMessage === "Input slot cannot be empty") {
-                    store.commit(
-                        "setSlotErroneous", 
-                        {
-                            frameId: this.$parent.$props.frameId, 
-                            slotIndex: this.$props.slotIndex, 
-                            error: "",
-                        }
-                    );
-                    store.commit("removePreCompileErrors",this.id);
-                }
             }
-            else if(!this.$props.optionalSlot){
-                store.commit(
-                    "setSlotErroneous", 
-                    {
-                        frameId: this.$parent.$props.frameId, 
-                        slotIndex: this.$props.slotIndex, 
-                        error: "Input slot cannot be empty",
-                    }
-                );
-                store.commit("addPreCompileErrors",this.id);
-            }
-
         },
 
         onLRKeyUp(event: KeyboardEvent) {

@@ -172,10 +172,6 @@ export default Vue.extend({
                                 "addFrameWithCommand",
                                 this.addFrameCommands[event.key.toLowerCase()].type                
                             );
-                            store.dispatch(
-                                "leftRightKey",
-                                "ArrowRight"                
-                            );
                         }
                     }
                 }

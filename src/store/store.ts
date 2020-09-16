@@ -873,17 +873,20 @@ export default new Vuex.Store({
                 //if the value in the changes isn't "null" --> replaced/add, otherwise, delete.
                 changeList.forEach((changeEntry: ObjectPropertyDiff) => {
                     //we reconstruct what in the state should be changed based on the difference path
-                    const stateParts = changeEntry.propertyPath.split(".");
+                    const stateParts = changeEntry.propertyPathWithArrayFlag.split(".");
                     const property = stateParts[stateParts.length -1];
                     stateParts.pop();
                     let statePartToChange = state as {[id: string]: any};
-                    stateParts.forEach((part) => {
+                    stateParts.forEach((partWithArrayFlag) => {
+                        //intermediate parts have a flag suffix indicating if the part is an array or not
+                        const part = partWithArrayFlag.substring(0, partWithArrayFlag.lastIndexOf("_"));
+                        const isArrayPart = partWithArrayFlag.substring(partWithArrayFlag.lastIndexOf("_") + 1) === "true";
                         //if a part doesn't exist, we create it with an empty object value
                         if(statePartToChange[part] === undefined){
                             Vue.set(
                                 statePartToChange,
                                 part,
-                                {}
+                                (isArrayPart) ? [] : {}
                             );
                         }
                         statePartToChange = statePartToChange[part];
@@ -912,6 +915,9 @@ export default new Vuex.Store({
                     state.diffToPreviousState.push(stateDifferences);        
                 }
             }
+            else{
+                alert("No more undo");
+            }
         },
     },
 
@@ -928,22 +934,102 @@ export default new Vuex.Store({
             commit(
                 "saveStateChanges",
                 stateBeforeChanges
-            )
+            );
         },
 
-        setFrameEditorSlot({state, commit}, payload: ErrorSlotPayload) {
+        setFrameEditorSlot({state, commit, getters}, payload: ErrorSlotPayload) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             
             commit(
-                "setFrameEditorSlot",
-                payload
+                "setEditFlag",
+                false
             );
+
+            commit(
+                "setEditableFocus",
+                {
+                    frameId: payload.frameId,
+                    slotId: payload.slotId,
+                    focused: false,
+                }
+            );
+
+            const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[payload.slotId].optionalSlot ?? true;
+            const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
+            if(payload.code !== "") {
+                commit(
+                    "setFrameEditorSlot",
+                    payload
+                );
+                //if the user entered text on previously left blank slot, remove the error
+                if(!optionalSlot && errorMessage === "Input slot cannot be empty") {
+                    commit(
+                        "setSlotErroneous", 
+                        {
+                            frameId: payload.frameId, 
+                            slotIndex: payload.slotId, 
+                            error: "",
+                        }
+                    );
+                    commit("removePreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
+                }
+            }
+            else if(!optionalSlot){
+                commit(
+                    "setSlotErroneous", 
+                    {
+                        frameId: payload.frameId, 
+                        slotIndex: payload.slotId,  
+                        error: "Input slot cannot be empty",
+                    }
+                );
+                commit("addPreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
+            }
+            else{
+                commit(
+                    "setFrameEditorSlot",
+                    payload
+                );
+            }
 
             //save state changes
             commit(
                 "saveStateChanges",
                 stateBeforeChanges
             )
+        },
+
+        setFocusEditableSlot({state, commit}, payload: {frameId: number; slotId: number; caretPosition: CaretPosition}){
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            
+            commit(
+                "setEditFlag",
+                true
+            );
+
+            //First set the curretFrame to this frame
+            commit(
+                "setCurrentFrame",
+                {
+                    id: payload.frameId,
+                    caretPosition: payload.caretPosition,
+                }
+            );
+            //Then store which editable has the focus
+            commit(
+                "setEditableFocus",
+                {
+                    frameId: payload.frameId,
+                    slotId: payload.slotId,
+                    focused: true,
+                }
+            );   
+
+            //save state changes
+            commit(
+                "saveStateChanges",
+                stateBeforeChanges
+            );
         },
 
         undoRedo({ commit }, isUndo: boolean) {
@@ -960,8 +1046,9 @@ export default new Vuex.Store({
             );
         },
 
-        addFrameWithCommand({ commit, state, getters }, payload: FramesDefinitions) {
+        addFrameWithCommand({ commit, state, getters, dispatch }, payload: FramesDefinitions) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+
             //Prepare the newFrame object based on the frameType
             const isJointFrame = getters.getIsJointFrame(
                 (state.frameObjects[state.currentFrame.id].jointParentId > 0) ?
@@ -1007,6 +1094,12 @@ export default new Vuex.Store({
                 newFrame
             );
             
+            //"move" the caret along
+            dispatch(
+                "leftRightKey",
+                "ArrowRight"                
+            );
+
             //save state changes
             commit(
                 "saveStateChanges",
@@ -1016,6 +1109,7 @@ export default new Vuex.Store({
 
         deleteCurrentFrame({commit, state}, payload: string){
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            
             //if delete is pressed
             //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
             //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
