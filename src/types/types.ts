@@ -70,10 +70,12 @@ export interface LineAndSlotPositions {
 // Note that the slot variable of each objects tells if the
 // Label needs an editable slot as well attached to it.
 
-export interface ErrorSlotPayload {
+export interface EditableSlotPayload {
     frameId: number;
     slotId: number;
     code: string;
+    initCode: string;
+    isFirstChange: boolean;
 }
 export interface EditableFocusPayload {
     frameId: number;
@@ -476,6 +478,8 @@ export const MessageTypes = {
     largeDeletion: "largeDeletion",
     imageDisplay: "imageDisplay",
     uploadSuccessMicrobit:"uploadSuccessMicrobit",
+    noUndo: "noUndo",
+    noRedo: "noRedo",
 }
 
 //empty message
@@ -487,7 +491,7 @@ const NoMessage: MessageDefinition = {
 };
 
 //message for large deletation (undo)
-const LargeDeletionMessageDefinition: MessageDefinition = {
+const LargeDeletion: MessageDefinition = {
     type: MessageTypes.largeDeletion,
     message: "messageBannerMessage.deleteLargeCode",
     buttons:[{label: "buttonLabel.undo", action:MessageDefinedActions.undo}],
@@ -495,7 +499,7 @@ const LargeDeletionMessageDefinition: MessageDefinition = {
 };
 
 //download hex message
-const downloadHex: MessageDefinition = {
+const DownloadHex: MessageDefinition = {
     type: MessageTypes.imageDisplay,
     message: "",
     buttons: [],
@@ -503,17 +507,16 @@ const downloadHex: MessageDefinition = {
 };
 
 //message for upload code success in microbit progress
-const UploadSuccessMicrobitMessageDefinition: MessageDefinition = {
+const UploadSuccessMicrobit: MessageDefinition = {
     type: MessageTypes.uploadSuccessMicrobit,
     message: "messageBannerMessage.uploadSuccessMicrobit",
-    //buttons:[{label:"buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
     buttons:[],
     path: imagePaths.empty,
 
 };
 
 //message for upload code failure in microbit progress
-const UploadFailureMicrobitMessageDefinition: MessageDefinition = {
+const UploadFailureMicrobit: MessageDefinition = {
     type: MessageTypes.uploadSuccessMicrobit,
     message: {
         path: "messageBannerMessage.uploadFailureMicrobit",
@@ -521,30 +524,35 @@ const UploadFailureMicrobitMessageDefinition: MessageDefinition = {
             [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
         },
     },
-    //buttons:[{label:"buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
     buttons:[],
     path: imagePaths.empty,
 };
 
-
-// THIS IS FOR TEST ONLY --> DELETE LATER
-// it's an example of a message with yes/no button, 
-// and a function action (yes) and a named action (no)
-const TestYesNoMessageDefinition: MessageDefinition = {
-    type: MessageTypes.largeDeletion,
-    message: "messageBannerMessage.yesnoTest",
-    buttons:[{label: "buttonLabel.yes", action:(() => alert("OUI !"))}, {label: "buttonLabel.no", action:MessageDefinedActions.closeBanner}],
+//messages to inform the user there is no undo/redo to perfom
+const NoUndo: MessageDefinition = {
+    type: MessageTypes.noUndo,
+    message: "messageBannerMessage.noUndo",
+    buttons:[],
     path: imagePaths.empty,
+
+};
+
+const NoRedo: MessageDefinition = {
+    type: MessageTypes.noRedo,
+    message: "messageBannerMessage.noRedo",
+    buttons:[],
+    path: imagePaths.empty,
+
 };
 
 export const MessageDefinitions = {
     NoMessage,
-    LargeDeletionMessageDefinition,
-    UploadSuccessMicrobitMessageDefinition,
-    UploadFailureMicrobitMessageDefinition,
-    //TO REMOVE LATER
-    TestYesNoMessageDefinition,
-    downloadHex,
+    LargeDeletion,
+    UploadSuccessMicrobit,
+    UploadFailureMicrobit,
+    DownloadHex,
+    NoUndo,
+    NoRedo,
 };
 
 //WebUSB listener

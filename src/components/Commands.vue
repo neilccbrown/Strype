@@ -101,6 +101,20 @@ export default Vue.extend({
 
     created() {
         window.addEventListener(
+            "keydown",
+            (event: KeyboardEvent) => {
+                if((event.ctrlKey || event.metaKey) && (event.key === "z" || event.key === "y")) {
+                    //undo-redo
+                    store.dispatch(
+                        "undoRedo",
+                        (event.key === "z")
+                    );
+                    event.preventDefault();
+                }
+            }
+        );
+        
+        window.addEventListener(
             "keyup",
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
@@ -111,16 +125,10 @@ export default Vue.extend({
                         "changeCaretPosition",
                         event.key
                     );
-                }
-                else if(event.ctrlKey && (event.key === "z" || event.key === "y")) {
-                    //undo-redo
-                    store.dispatch(
-                        "undoRedo",
-                        (event.key === "z")
-                    );
-                }             
+                }      
                 else {
                     const isEditing = store.getters.getIsEditing();
+
                     if(isEditing){
                         //find if there is a toggle frame label command triggered --> if not, do nothing special
                         const toggleFrameCmdType = 
@@ -191,20 +199,21 @@ export default Vue.extend({
                     onUploadSuccessHandler: () => {
                         store.commit(
                             "setMessageBanner",
-                            MessageDefinitions.UploadSuccessMicrobitMessageDefinition
+                            MessageDefinitions.UploadSuccessMicrobit
                         );
 
                         this.$data.showProgress = false;
 
                         //don't leave the message for ever
                         setTimeout(()=>store.commit(
-                            "toggleMessageBanner"
+                            "setMessageBanner",
+                            MessageDefinitions.NoMessage
                         ), 7000);
                     },
                     onUploadFailureHandler: (error) => {
                         this.$data.showProgress = false;
  
-                        const message = MessageDefinitions.UploadFailureMicrobitMessageDefinition;
+                        const message = MessageDefinitions.UploadFailureMicrobit;
                         const msgObj: FormattedMessage = (message.message as FormattedMessage);
                         msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
 
@@ -217,7 +226,8 @@ export default Vue.extend({
 
                         //don't leave the message for ever
                         setTimeout(()=>store.commit(
-                            "toggleMessageBanner"
+                            "setMessageBanner",
+                            MessageDefinitions.NoMessage
                         ), 7000);
                     },
                 };
@@ -233,7 +243,7 @@ export default Vue.extend({
             }
             else {
                 downloadHex(); 
-                store.dispatch("setMessageBanner", MessageDefinitions.downloadHex);
+                store.dispatch("setMessageBanner", MessageDefinitions.DownloadHex);
             }
         },
         downloadPython() {

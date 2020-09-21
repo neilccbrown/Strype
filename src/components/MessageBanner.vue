@@ -46,11 +46,12 @@ export default Vue.extend({
     },
 
     created() {
-        this.image = require("@/assets/images/"+this.message.path);
+        this.image = (this.message.path.length > 0) ? require("@/assets/images/"+this.message.path) : "";
     },
+    
     //Updated is needed in case one message pops and before its gone another is shown
     updated() {
-        this.image = require("@/assets/images/"+this.message.path);
+        this.image = (this.message.path.length > 0) ? require("@/assets/images/"+this.message.path) : "";
     },
 
     computed: {

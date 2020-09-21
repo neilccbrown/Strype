@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, CommentDefinition } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, MessageDefinedActions } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import {getEditableSlotId, undoMaxSteps} from "@/helpers/editor"
@@ -159,6 +159,8 @@ export default new Vuex.Store({
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
+        currentInitCodeValue: "",
+
         isEditing: false,
 
         currentMessage: MessageDefinitions.NoMessage,
@@ -182,6 +184,10 @@ export default new Vuex.Store({
             // return "" if it is undefined
             return retCode ?? "";
         },
+        getInitContentForFrameSlot: (state) => () => {
+            return state.currentInitCodeValue;
+        },
+
         getJointFramesForFrameId: (state) => (frameId: number, group: string) => {
             const jointFrameIds = state.frameObjects[frameId].jointFrameIds;
             const jointFrames: FrameObject[] = [];
@@ -588,13 +594,6 @@ export default new Vuex.Store({
             }
         },
 
-        setFrameEditorSlot(state, payload: ErrorSlotPayload) {
-            const contentDict = state.frameObjects[payload.frameId]?.contentDict;
-            if (contentDict !== undefined) {
-                contentDict[payload.slotId].code = payload.code;
-            }
-        },
-
         // It may be called more than once from the same place and thus requires the editing value
         setEditFlag(state, editing) {
             Vue.set(
@@ -733,10 +732,8 @@ export default new Vuex.Store({
                     else {
                         newPosition = CaretPosition.body;
                     }
-
                 }
             }
-
 
             Vue.set(
                 state.currentFrame,
@@ -782,6 +779,18 @@ export default new Vuex.Store({
                 "caretVisibility",
                 newCurrentFrame.caretPosition
             );
+        },
+
+        setCurrentInitCodeValue(state, payload: {frameId: number; slotId: number}){
+            state.currentInitCodeValue = state.frameObjects[payload.frameId].contentDict[payload.slotId].code;
+        },
+
+        setFrameEditableSlotContent(state, payload: EditableSlotPayload){
+            Vue.set(
+                state.frameObjects[payload.frameId].contentDict[payload.slotId],
+                "code",
+                payload.code
+            )
         },
 
         setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
@@ -841,8 +850,26 @@ export default new Vuex.Store({
             );
         },
 
-        saveStateChanges(state, previousState) {           
-            state.diffToPreviousState.push(getObjectPropertiesDiffferences(state, previousState));
+        saveStateChanges(state, payload: {previousState: object; mockCurrentCursorFocus?: EditableFocusPayload}) {
+            //let stateToCompareWith: object = JSON.parse(JSON.stringify(state));
+
+            let backupCurrentFrame = {} as CurrentFrame;
+            let backupCurrentFocus = false;
+            let backupCurrentFrameVisibility = CaretPosition.none;
+            if(payload.mockCurrentCursorFocus !== undefined){
+                //before saving the state, we "mock" a change of current state ID to a dummy
+                //value so that a difference is raised --> if users change the cursor, before doing undo,
+                //the cursor will correctly be at the right location. Same with focused.
+                backupCurrentFrame = state.currentFrame;
+                backupCurrentFocus = state.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused;
+                backupCurrentFrameVisibility = state.frameObjects[state.currentFrame.id].caretVisibility;
+                state.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused = false;
+                state.currentFrame = {id: 0, caretPosition: CaretPosition.none};
+                state.frameObjects[payload.mockCurrentCursorFocus.frameId].caretVisibility = CaretPosition.none;
+            }
+           
+
+            state.diffToPreviousState.push(getObjectPropertiesDiffferences(state, payload.previousState));
             //don't exceed the maximum of undo steps allowed
             if(state.diffToPreviousState.length > undoMaxSteps) {
                 state.diffToPreviousState.splice(
@@ -855,6 +882,13 @@ export default new Vuex.Store({
                 0,
                 state.diffToNextState.length
             );
+
+            if(payload.mockCurrentCursorFocus !== undefined){
+                //revert the mock changes in the state
+                state.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused = backupCurrentFocus;
+                state.currentFrame = backupCurrentFrame;
+                state.frameObjects[backupCurrentFrame.id].caretVisibility = backupCurrentFrameVisibility;
+            }
         },
 
         applyStateUndoRedoChanges(state, isUndo: boolean){
@@ -868,7 +902,6 @@ export default new Vuex.Store({
             }
 
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
-
             if(changeList.length > 0){
                 //if the value in the changes isn't "null" --> replaced/add, otherwise, delete.
                 changeList.forEach((changeEntry: ObjectPropertyDiff) => {
@@ -915,9 +948,6 @@ export default new Vuex.Store({
                     state.diffToPreviousState.push(stateDifferences);        
                 }
             }
-            else{
-                alert("No more undo");
-            }
         },
     },
 
@@ -933,13 +963,45 @@ export default new Vuex.Store({
             //save state changes
             commit(
                 "saveStateChanges",
-                stateBeforeChanges
+                {                   
+                    previousState: stateBeforeChanges,
+                }
             );
         },
 
-        setFrameEditorSlot({state, commit, getters}, payload: ErrorSlotPayload) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
-            
+        setFrameEditableSlotContent({state, commit}, payload: EditableSlotPayload) {
+            //This action is called EVERY time a unitary change is made on the editable slot.
+            //We save changes at the entire slot level: therefore, we need to remove the last
+            //previous state to replace it with the difference between the state even before and now;            
+            let stateBeforeChanges = {};
+            if(!payload.isFirstChange){
+                state.diffToPreviousState.pop();
+                state.frameObjects[payload.frameId].contentDict[payload.slotId].code = payload.initCode;  
+            }
+
+            //save the previous state
+            stateBeforeChanges = JSON.parse(JSON.stringify(state));
+
+            commit(
+                "setFrameEditableSlotContent",
+                payload
+            );
+
+            //save state changes
+            commit(
+                "saveStateChanges",
+                {
+                    previousState: stateBeforeChanges,
+                    mockCurrentCursorFocus: {
+                        frameId: payload.frameId,
+                        slotId: payload.slotId,
+                        focused: true,
+                    },
+                }
+            );
+        },
+
+        updateErrorsOnSlotValidation({state, commit, getters}, payload: EditableSlotPayload) {            
             commit(
                 "setEditFlag",
                 false
@@ -954,13 +1016,17 @@ export default new Vuex.Store({
                 }
             );
 
+            commit(
+                "setCurrentInitCodeValue",
+                {
+                    frameId: payload.frameId,
+                    slotId: payload.slotId,
+                }
+            )
+
             const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[payload.slotId].optionalSlot ?? true;
             const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
             if(payload.code !== "") {
-                commit(
-                    "setFrameEditorSlot",
-                    payload
-                );
                 //if the user entered text on previously left blank slot, remove the error
                 if(!optionalSlot && errorMessage === "Input slot cannot be empty") {
                     commit(
@@ -985,22 +1051,16 @@ export default new Vuex.Store({
                 );
                 commit("addPreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
             }
-            else{
-                commit(
-                    "setFrameEditorSlot",
-                    payload
-                );
-            }
-
-            //save state changes
-            commit(
-                "saveStateChanges",
-                stateBeforeChanges
-            )
         },
 
-        setFocusEditableSlot({state, commit}, payload: {frameId: number; slotId: number; caretPosition: CaretPosition}){
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+        setFocusEditableSlot({commit}, payload: {frameId: number; slotId: number; caretPosition: CaretPosition}){            
+            commit(
+                "setCurrentInitCodeValue",
+                {
+                    frameId: payload.frameId,
+                    slotId: payload.slotId,
+                }
+            )
             
             commit(
                 "setEditFlag",
@@ -1024,19 +1084,32 @@ export default new Vuex.Store({
                     focused: true,
                 }
             );   
-
-            //save state changes
-            commit(
-                "saveStateChanges",
-                stateBeforeChanges
-            );
         },
 
-        undoRedo({ commit }, isUndo: boolean) {
-            commit(
-                "applyStateUndoRedoChanges",
-                isUndo 
-            );
+        undoRedo({ state, commit }, isUndo: boolean) {
+            //check if the undo/redo list is empty BEFORE doing any action
+            const isEmptyList = (isUndo) ? state.diffToPreviousState.length == 0 : state.diffToNextState.length == 0;
+            
+            if(isEmptyList){
+                //no undo or redo can performed: inform the user on a temporary message
+                commit(
+                    "setMessageBanner",
+                    (isUndo) ? MessageDefinitions.NoUndo : MessageDefinitions.NoRedo
+                );
+
+                //don't leave the message for ever
+                setTimeout(()=>commit(
+                    "setMessageBanner",
+                    MessageDefinitions.NoMessage
+                ), 2000);
+            }
+            else{
+                //a undo/redo can be performed: do the action
+                commit(
+                    "applyStateUndoRedoChanges",
+                    isUndo 
+                );
+            }
         },
 
         changeCaretPosition({ commit }, key) {
@@ -1098,13 +1171,16 @@ export default new Vuex.Store({
             dispatch(
                 "leftRightKey",
                 "ArrowRight"                
+            ).then(
+                () => 
+                    //save state changes
+                    commit(
+                        "saveStateChanges",
+                        {                 
+                            previousState: stateBeforeChanges,
+                        }
+                    )
             );
-
-            //save state changes
-            commit(
-                "saveStateChanges",
-                stateBeforeChanges
-            )
         },
 
         deleteCurrentFrame({commit, state}, payload: string){
@@ -1118,6 +1194,8 @@ export default new Vuex.Store({
             //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent
             //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
             //(*) with all sub levels children
+
+            let showDeleteMessage = false;
 
             const currentFrame = state.frameObjects[state.currentFrame.id];
 
@@ -1171,10 +1249,7 @@ export default new Vuex.Store({
                 frameToDeleteId,
                 3
             ) >= 3){
-                commit(
-                    "setMessageBanner",
-                    MessageDefinitions.LargeDeletionMessageDefinition
-                );
+                showDeleteMessage = true;
             }
 
             //Delete the frame if a frame to delete has been found
@@ -1188,8 +1263,24 @@ export default new Vuex.Store({
             //save state changes
             commit(
                 "saveStateChanges",
-                stateBeforeChanges
-            )
+                {
+                    previousState: stateBeforeChanges,
+                }
+            );
+
+            //we show the message of large deletion after saving state changes as this is not to be notified.
+            if(showDeleteMessage){
+                commit(
+                    "setMessageBanner",
+                    MessageDefinitions.LargeDeletion
+                );
+
+                //don't leave the message for ever
+                setTimeout(()=>commit(
+                    "setMessageBanner",
+                    MessageDefinitions.NoMessage
+                ), 7000);
+            }
         },
 
         toggleCaret({ commit }, newCurrent) {
@@ -1372,8 +1463,10 @@ export default new Vuex.Store({
             //save state changes
             commit(
                 "saveStateChanges",
-                stateBeforeChanges
-            )
+                {
+                    previousState: stateBeforeChanges,
+                }
+            );
         },        
         
         setMessageBanner({commit}, message: MessageDefinition){
@@ -1381,12 +1474,18 @@ export default new Vuex.Store({
             case MessageDefinitions.NoMessage:
                 commit("setMessageBanner", MessageDefinitions.NoMessage);
                 break;
-            case MessageDefinitions.downloadHex:
-                commit("setMessageBanner", MessageDefinitions.downloadHex);
+            case MessageDefinitions.DownloadHex:
+                commit("setMessageBanner", MessageDefinitions.DownloadHex);
                 break;
-            case MessageDefinitions.LargeDeletionMessageDefinition:
-                commit("setMessageBanner", MessageDefinitions.LargeDeletionMessageDefinition);
+            case MessageDefinitions.LargeDeletion:
+                commit("setMessageBanner", MessageDefinitions.LargeDeletion);
                 break;
+            case MessageDefinitions.NoUndo:
+                commit("setMessageBanner", MessageDefinitions.NoUndo);
+                break;
+            case MessageDefinitions.NoRedo:
+                commit("setMessageBanner", MessageDefinitions.NoRedo);
+                break;  
             default:
                 break;
             }

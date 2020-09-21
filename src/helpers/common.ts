@@ -20,7 +20,7 @@ const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, resu
         //or check the difference of value and remove from obj2 anyway if value isn't of type object
         if(obj2[obj1property] !== undefined){
             //call recursive checking only if BOTH entries are of type object or array
-            if(typeof obj1value === "object" && typeof obj2[obj1property] === "object"){
+            if(obj1.value!== null && typeof obj1value === "object"){
                 findDiffDeep(obj1value, obj2[obj1property], result, path + pathSeparator + obj1property + "_" + Array.isArray(obj1value));
                 if((Array.isArray(obj1value) && checkArrayIsEmpty(obj2[obj1property])) || Object.entries(obj2[obj1property]).length == 0){
                     //if inside obj2[property] there is no extra property/entry, we delete it
@@ -79,6 +79,6 @@ export const getObjectPropertiesDiffferences = (obj1: {[id: string]: any}, obj2:
     //at this stage, what is left on obj2copy are the additions that we put this in the result too.
     //note that any property without value isn't an addition (it can be the remaining of the deletion done in the loop above)
     checkAddedValues(obj2copy,result, "");
-
+  
     return result;
 }

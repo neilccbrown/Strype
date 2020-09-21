@@ -5,8 +5,8 @@
             v-model="code"
             v-bind:placeholder="defaultText"
             v-focus="focused"
-            @blur="onBlur()"
             @focus="onFocus()"
+            @blur="onBlur()"
             @keyup.left.prevent.stop="onLRKeyUp($event)"
             @keyup.right.prevent.stop="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
@@ -45,20 +45,37 @@ export default Vue.extend({
         optionalSlot: Boolean,
     },
 
-    data() {
-        return {
-            code: store.getters.getContentForFrameSlot(
-                this.$props.frameId,
-                this.$props.slotIndex
-            ),
-        };
-    },
-
     beforeDestroy() {
         store.commit("removePreCompileErrors",this.id);
     },
 
     computed: {
+        initCode(): string {
+            return store.getters.getInitContentForFrameSlot();
+        },
+
+        code: {
+            get() {
+                return store.getters.getContentForFrameSlot(
+                    this.$parent.$props.frameId,
+                    this.$props.slotIndex
+                );
+            },
+            set(value){
+                store.dispatch(
+                    "setFrameEditableSlotContent",
+                    {
+                        frameId: this.frameId,
+                        slotId: this.slotIndex,
+                        code: value,
+                        initCode: this.initCode,
+                        isFirstChange: this.isFirstChange,
+                    }
+                );
+                this.isFirstChange = false;
+            },
+        },
+
         focused(): boolean {
             return store.getters.getIsEditableFocused(
                 this.$props.frameId,
@@ -89,7 +106,12 @@ export default Vue.extend({
         },
     },
 
-   
+    data() {
+        return {
+            isFirstChange: true,
+        };
+    },
+
     directives: {
         focus: {
             //This is needed to set the focus when a frame with slots has just been added (i.e. when `leftRightKey` is called after `addFrameWithCommand` in Commands.vue)
@@ -117,6 +139,7 @@ export default Vue.extend({
 
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
+            this.isFirstChange = true;
             store.dispatch(
                 "setFocusEditableSlot",
                 {
@@ -124,22 +147,18 @@ export default Vue.extend({
                     slotId: this.$props.slotIndex,
                     caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
-            )
+            );           
         },
 
         onBlur(): void {
-            this.$data.code = this.$data.code.trim();
-            //only do something if the value has actually changed
-            if(this.$data.code !== store.getters.getContentForFrameSlot(this.$props.frameId, this.$props.slotIndex)) {
-                store.dispatch(
-                    "setFrameEditorSlot",
-                    {
-                        frameId: this.$props.frameId,
-                        slotId: this.$props.slotIndex,
-                        code: this.$data.code,
-                    }   
-                );
-            }
+            store.dispatch(
+                "updateErrorsOnSlotValidation",
+                {
+                    frameId: this.$props.frameId,
+                    slotId: this.$props.slotIndex,
+                    code: this.code.trim(),
+                }   
+            );
         },
 
         onLRKeyUp(event: KeyboardEvent) {
