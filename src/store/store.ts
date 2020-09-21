@@ -851,8 +851,6 @@ export default new Vuex.Store({
         },
 
         saveStateChanges(state, payload: {previousState: object; mockCurrentCursorFocus?: EditableFocusPayload}) {
-            //let stateToCompareWith: object = JSON.parse(JSON.stringify(state));
-
             let backupCurrentFrame = {} as CurrentFrame;
             let backupCurrentFocus = false;
             let backupCurrentFrameVisibility = CaretPosition.none;
