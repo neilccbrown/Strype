@@ -14,6 +14,7 @@
                         v-bind:id="container.id"
                         v-bind:containerLabel="container.frameType.labels[0].label"
                         v-bind:caretVisibility="container.caretVisibility"
+                        v-bind:frameType="container.frameType"
                     />
                 </div>
             </div>

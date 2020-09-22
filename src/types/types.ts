@@ -193,7 +193,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
-    colour: "#FFFFF",
+    colour: "#BBC6B6",
     draggableGroup: DraggableGroupTypes.imports,
 }
 
@@ -205,7 +205,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
-    colour: "#FFFFF",
+    colour: "#BBC6B6",
     draggableGroup: DraggableGroupTypes.functionSignatures,
 
 }
@@ -218,7 +218,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
-    colour: "#FFFFF",
+    colour: "#ECECC8",
 }
 
 // Blocks
@@ -314,7 +314,7 @@ export const FuncDefDefinition: FramesDefinitions = {
         { label: "(", slot: true, defaultText: "arguments", optionalSlot: true},
         { label: "):", slot: false, defaultText: ""},
     ],
-    colour: "#0C3DED",
+    colour: "#ECECC8",
     draggableGroup: DraggableGroupTypes.functionSignatures,
 };
 
@@ -389,7 +389,7 @@ export const ImportDefinition: FramesDefinitions = {
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
         { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommandDefs.importAs, optionalSlot: false},
     ],    
-    colour: "#FFFFFF",
+    colour: "#CBD4C8",
     draggableGroup: DraggableGroupTypes.imports,
 };
 

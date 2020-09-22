@@ -1,7 +1,7 @@
 <template>
-    <div class="frame-container">
+    <div class="frame-container" v-bind:style="frameStyle">
         <div class="frame-container-header">
-            <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <button class="frame-container-btn-collapse" v-bind:style="frameStyle" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span class="frame-container-label-span" @click.self="toggleCaret($event)">{{containerLabel}}</span>
         </div>
 
@@ -40,7 +40,7 @@ import Frame from "@/components/Frame.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject, DraggableGroupTypes } from "@/types/types";
+import { CaretPosition, FrameObject, DraggableGroupTypes, DefaultFramesDefinition, FramesDefinitions } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -67,6 +67,10 @@ export default Vue.extend({
         id: Number,
         caretVisibility: String,
         containerLabel: String,
+        frameType: {
+            type: Object,
+            default: () => DefaultFramesDefinition,
+        }, //Type of the Frame  
     },
 
     computed: {
@@ -86,6 +90,14 @@ export default Vue.extend({
 
         isEditing(): boolean {
             return store.getters.getIsEditing();
+        },
+
+        frameStyle(): Record<string, string> {
+            return {
+                "background-color": `${
+                    (this.frameType as FramesDefinitions).colour
+                } !important`,
+            };
         },
     },
 
@@ -125,14 +137,12 @@ export default Vue.extend({
 .frame-container {
     margin-bottom: 5px;
     margin-left:10px;
-    border: #888 1px solid;
-    background-color: #ECECC8;
-
 }
+
 .frame-container-btn-collapse {
-    background-color: #ECECC8;
     border-color: transparent;
 }
+
 .frame-container-label-span {       
     margin-left: 5px;
     cursor:default;
