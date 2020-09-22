@@ -3,8 +3,8 @@ import Vuex from "vuex";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, MessageDefinedActions } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
-import {getEditableSlotId, undoMaxSteps} from "@/helpers/editor"
-import {getObjectPropertiesDiffferences} from "@/helpers/common"
+import {getEditableSlotId, undoMaxSteps} from "@/helpers/editor";
+import {getObjectPropertiesDiffferences} from "@/helpers/common";
 
 Vue.use(Vuex);
 
@@ -952,7 +952,7 @@ export default new Vuex.Store({
     actions: {
         updateFramesOrder({ state, commit }, payload) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
-   
+            
             commit(
                 "updateFramesOrder",
                 payload

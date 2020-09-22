@@ -1,4 +1,4 @@
-import {ObjectPropertyDiff} from "@/types/types"
+import {ObjectPropertyDiff} from "@/types/types";
 
 //Function to get the difference between two states (properties) of an object.
 //It takes the two objects as arguments and returns a list of differences. 
@@ -12,7 +12,7 @@ const checkArrayIsEmpty = (array: []): boolean => {
 
 const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, result: ObjectPropertyDiff[], path: string) => {
     const pathSeparator = (path.length > 0) ? "." : "";
-
+    
     for(const obj1property in obj1) {
         const obj1value = obj1[obj1property]
      
@@ -20,7 +20,7 @@ const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, resu
         //or check the difference of value and remove from obj2 anyway if value isn't of type object
         if(obj2[obj1property] !== undefined){
             //call recursive checking only if BOTH entries are of type object or array
-            if(obj1.value!== null && typeof obj1value === "object"){
+            if(typeof obj1value === "object"){
                 findDiffDeep(obj1value, obj2[obj1property], result, path + pathSeparator + obj1property + "_" + Array.isArray(obj1value));
                 if((Array.isArray(obj1value) && checkArrayIsEmpty(obj2[obj1property])) || Object.entries(obj2[obj1property]).length == 0){
                     //if inside obj2[property] there is no extra property/entry, we delete it
