@@ -211,7 +211,7 @@ export default Vue.extend({
 
 .input {
     border-radius: 5px;
-    border: 1px solid #B4B4B4;
+    border:transparent;
 }
 
 </style>
