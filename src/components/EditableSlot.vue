@@ -2,6 +2,7 @@
     <div class="next-to-eachother">
         <input
             type="text"
+            v-if="isLoaded"
             v-model="code"
             v-bind:placeholder="defaultText"
             v-focus="focused"
@@ -15,7 +16,6 @@
             v-bind:id="id"
             v-bind:key="id"
             class="input"
-            v-bind:size="inputSize"
             v-bind:style="inputTextStyle"
         />
         <b-popover
@@ -25,6 +25,11 @@
           triggers="hover focus"
           v-bind:content="errorMessage"
         ></b-popover>
+        <div 
+            class="editableslot-placeholder"
+            v-bind:id="placeholderId"
+            v-bind:value="code"
+        />
     </div>
 </template>
 
@@ -33,7 +38,6 @@ import Vue from "vue";
 import store from "@/store/store";
 import { CaretPosition} from "@/types/types";
 import { getEditableSlotId } from "@/helpers/editor";
-// import AutosizeInput from "vue-autosize-input"; // https://github.com/houjiazong/vue-autosize-input
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -50,7 +54,17 @@ export default Vue.extend({
         store.commit("removePreCompileErrors",this.id);
     },
 
+    mounted() {
+        //when the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
+        //because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
+        this.isLoaded = true;
+    },
+
     computed: {
+        placeholderId(): string {
+            return "editplaceholder_" + getEditableSlotId(this.frameId, this.slotIndex);
+        },
+
         initCode(): string {
             return store.getters.getInitContentForFrameSlot();
         },
@@ -58,6 +72,7 @@ export default Vue.extend({
         inputTextStyle(): Record<string, string> {
             return {
                 "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
+                "width" : this.computeFitWidthValue(),
             };
         },
 
@@ -107,15 +122,12 @@ export default Vue.extend({
                 this.$props.slotIndex
             );
         },
-
-        inputSize(): number{
-            return (this.code.length > this.defaultText.length) ? this.code.length : this.defaultText.length;
-        },
     },
 
     data() {
         return {
             isFirstChange: true,
+            isLoaded: false,
         };
     },
 
@@ -140,7 +152,6 @@ export default Vue.extend({
             },
         },
     },
-
 
     methods: {
 
@@ -199,6 +210,19 @@ export default Vue.extend({
                 );
             }
         },
+        
+        computeFitWidthValue(): string {
+            const placeholder = document.getElementById(this.placeholderId);
+            let computedWidth = "150px"; //default value if cannot be computed
+            const offset = 10;
+            if (placeholder) {
+                placeholder.textContent = (this.code.length > 0) ? this.code : this.defaultText;
+                //the width is computed from the placeholder's width from which
+                //we add extra space for the cursor.
+                computedWidth = (placeholder.offsetWidth + offset) + "px";
+            }
+            return computedWidth;
+        },
 
     },
 });
@@ -212,6 +236,12 @@ export default Vue.extend({
 .input {
     border-radius: 5px;
     border:transparent;
+}
+
+.editableslot-placeholder {
+    position: absolute;
+    display: inline-block;
+    visibility: hidden;
 }
 
 </style>
