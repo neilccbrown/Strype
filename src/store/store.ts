@@ -1,9 +1,10 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef } from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef ,EditorFrameObjects} from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
-import {getEditableSlotId} from "@/helpers/editor"
+import {getEditableSlotId} from "@/helpers/editor";
+import _ from "lodash";
 
 Vue.use(Vuex);
 
@@ -149,6 +150,49 @@ const countRecursiveChildren = function(listOfFrames: Record<number, FrameObject
     return childrenCount;
 }
 
+const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, currentFrameId: number, parentId: number,  nextAvailableId: number, framesToReturn: EditorFrameObjects): void {
+    // This method recursively clones a frame and all its children.
+    // `nextAvailableId` is used to store the id that each cloned frame will take. It is an Object in order to
+    // enable Pass-By-Reference whenever it is increased.
+    
+    // first copy the current frame
+    // You can also use Lodash's "_.cloneDeep" in case JSON.parse(JSON.stringify()) has a problem on Mac
+    const frame: FrameObject = JSON.parse(JSON.stringify(listOfFrames[currentFrameId])) as FrameObject;
+
+    frame.id = nextAvailableId;
+    nextAvailableId = nextAvailableId+1;
+
+    // Change the parent as well to the frame who called this instance of the method.
+    let parent = (frame.parentId!==0)? frame.parentId : frame.jointParentId;
+    parent = parentId;
+    
+    // Add the new frame to the list
+    framesToReturn[frame.id] = frame;
+
+    //Look at the subchildren first and then at the joint frames
+    frame.childrenIds.forEach((childId: number) => {
+        cloneFrameAndChildren(
+            listOfFrames, 
+            childId,
+            frame.id,
+            nextAvailableId,
+            framesToReturn
+        );
+    });
+
+    //Look at the subchildren first and then at the joint frames
+    frame.jointFrameIds.forEach((childId: number) => {
+        cloneFrameAndChildren(
+            listOfFrames, 
+            childId,
+            frame.id,
+            nextAvailableId,
+            framesToReturn
+        );
+    });
+    
+}
+
 export default new Vuex.Store({
     state: {
 
@@ -163,6 +207,8 @@ export default new Vuex.Store({
         currentMessage: MessageDefinitions.NoMessage,
 
         preCompileErrors: [] as string[],
+
+        copiedFrameId: -100 as number,
     },
     getters: {
         getFramesForParentId: (state) => (frameId: number) => {
@@ -422,6 +468,15 @@ export default new Vuex.Store({
         },
         getCurrentMessage: (state) => () => {
             return state.currentMessage;
+        },
+        getParentOfFrame: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].parentId;
+        },
+        getIndexInParent: (state) => (frameId: number) => {
+            return state.frameObjects[state.frameObjects[frameId].parentId].childrenIds.indexOf(frameId);
+        },
+        getCopiedFrameId: (state) => () => {
+            return state.copiedFrameId;
         },
     }, 
 
@@ -834,6 +889,27 @@ export default new Vuex.Store({
                 messageType
             );
         },
+        updateNextAvailableId(state) {
+            Vue.set( 
+                state,
+                "nextAvailableId",  
+                Math.max.apply({},Object.keys(initialState).map(Number))+1
+            );
+        },
+        copyFrameId(state, frameId: number) {
+            Vue.set( 
+                state,
+                "copiedFrameId",  
+                frameId
+            );
+        },
+        setCaretVisibility(state, payload: {frameId: number; caretVisibility: CaretPosition}) {
+            Vue.set(
+                state.frameObjects[payload.frameId],
+                "caretVisibility",
+                payload.caretVisibility
+            );
+        },
 
     },
 
@@ -1169,6 +1245,62 @@ export default new Vuex.Store({
             default:
                 break;
             }
+        },
+
+        copyFrameToPosition({commit, state}, payload: {frameId: number; newParentId: number; newIndex: number}) {
+
+            const copiedFrames: EditorFrameObjects = {};
+            cloneFrameAndChildren(state.frameObjects, payload.frameId, state.frameObjects[payload.frameId].parentId, state.nextAvailableId, copiedFrames); 
+
+            // Add the copied objects to the FrameObjects
+            Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
+                Vue.set(
+                    state.frameObjects,
+                    id,
+                    copiedFrames[id]
+                )
+            });
+            
+            const topFrame = copiedFrames[Object.keys(copiedFrames).map(Number)[0]];
+
+            // Add the top frame to the its new parents children list
+            state.frameObjects[payload.newParentId].childrenIds.splice(
+                payload.newIndex,
+                0,
+                topFrame.id
+            );
+
+            //Make the top new frame the current frame
+            commit( "setCurrentFrame", { 
+                id: topFrame.id,
+                caretPosition: (topFrame.frameType.allowChildren) ? CaretPosition.body : CaretPosition.below,
+            });
+
+            commit( "updateNextAvailableId" );
+            
+        },
+
+        pasteFrame({dispatch, state}, payload: {newParentId: number; newIndex: number}) {
+            dispatch(
+                "copyFrameToPosition",
+                {
+                    frameId: state.copiedFrameId,
+                    newParentId: payload.newParentId,
+                    newIndex: payload.newIndex,
+                }
+            );
+        },
+
+        copyFrameId({commit, state}, frameId: number) {
+            commit(
+                "copyFrameId",
+                frameId
+            );
+
+            // const x: FrameObject = JSON.parse(JSON.stringify(state.frameObjects[8])) as FrameObject;
+            // const y: FrameObject = _.cloneDeep(state.frameObjects[8]) as FrameObject;
+            // console.log(x===y);
+            // console.log("_");
         },
     },
     modules: {},
