@@ -1005,49 +1005,51 @@ export default new Vuex.Store({
                 false
             );
 
-            commit(
-                "setEditableFocus",
-                {
-                    frameId: payload.frameId,
-                    slotId: payload.slotId,
-                    focused: false,
-                }
-            );
+            if(state.frameObjects[payload.frameId]){
+                commit(
+                    "setEditableFocus",
+                    {
+                        frameId: payload.frameId,
+                        slotId: payload.slotId,
+                        focused: false,
+                    }
+                );
 
-            commit(
-                "setCurrentInitCodeValue",
-                {
-                    frameId: payload.frameId,
-                    slotId: payload.slotId,
-                }
-            )
+                commit(
+                    "setCurrentInitCodeValue",
+                    {
+                        frameId: payload.frameId,
+                        slotId: payload.slotId,
+                    }
+                )
 
-            const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[payload.slotId].optionalSlot ?? true;
-            const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
-            if(payload.code !== "") {
-                //if the user entered text on previously left blank slot, remove the error
-                if(!optionalSlot && errorMessage === "Input slot cannot be empty") {
+                const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[payload.slotId].optionalSlot ?? true;
+                const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
+                if(payload.code !== "") {
+                    //if the user entered text on previously left blank slot, remove the error
+                    if(!optionalSlot && errorMessage === "Input slot cannot be empty") {
+                        commit(
+                            "setSlotErroneous", 
+                            {
+                                frameId: payload.frameId, 
+                                slotIndex: payload.slotId, 
+                                error: "",
+                            }
+                        );
+                        commit("removePreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
+                    }
+                }
+                else if(!optionalSlot){
                     commit(
                         "setSlotErroneous", 
                         {
                             frameId: payload.frameId, 
-                            slotIndex: payload.slotId, 
-                            error: "",
+                            slotIndex: payload.slotId,  
+                            error: "Input slot cannot be empty",
                         }
                     );
-                    commit("removePreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
+                    commit("addPreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
                 }
-            }
-            else if(!optionalSlot){
-                commit(
-                    "setSlotErroneous", 
-                    {
-                        frameId: payload.frameId, 
-                        slotIndex: payload.slotId,  
-                        error: "Input slot cannot be empty",
-                    }
-                );
-                commit("addPreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
             }
         },
 
