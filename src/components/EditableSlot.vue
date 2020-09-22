@@ -16,6 +16,7 @@
             v-bind:key="id"
             class="input"
             v-bind:size="inputSize"
+            v-bind:style="inputTextStyle"
         />
         <b-popover
           v-if="erroneous"
@@ -52,6 +53,12 @@ export default Vue.extend({
     computed: {
         initCode(): string {
             return store.getters.getInitContentForFrameSlot();
+        },
+
+        inputTextStyle(): Record<string, string> {
+            return {
+                "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
+            };
         },
 
         code: {
