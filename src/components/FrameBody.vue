@@ -136,7 +136,7 @@ export default Vue.extend({
 }
 
 .frame-body-container {
-    background-color: #FFF !important;
+    background-color: #F6F2E9 !important;
     padding-top: 4px;
     margin-bottom: 4px;
     margin-right: 0px;
