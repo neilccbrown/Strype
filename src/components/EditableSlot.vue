@@ -10,6 +10,7 @@
             @blur="onBlur()"
             @keyup.left.prevent.stop="onLRKeyUp($event)"
             @keyup.right.prevent.stop="onLRKeyUp($event)"
+            @keyup.enter.prevent.stop="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
             @keyup.down.prevent.stop="onUDKeyUp($event)"
             v-bind:class="{editableSlot: focused, error: erroneous}"
@@ -186,7 +187,7 @@ export default Vue.extend({
                 const start = input.selectionStart ?? 0;
                 const end = input.selectionEnd ?? 0;
                 
-                if((start === 0 && event.key==="ArrowLeft") || (end === input.value.length && event.key==="ArrowRight")) {
+                if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
                     
                     store.dispatch(
                         "leftRightKey",
