@@ -173,6 +173,9 @@ export default new Vuex.Store({
     },
 
     getters: {
+        getFrameObjectFromId: (state) => (frameId: number) => {
+            return state.frameObjects[frameId];
+        },
         getFramesForParentId: (state) => (frameId: number) => {
             //Get the childrenIds of this frame and based on these return the children objects corresponding to them
             return state.frameObjects[frameId].childrenIds
@@ -216,9 +219,6 @@ export default new Vuex.Store({
                 return parentType.jointFrameTypes.includes(frameType.type);
             }
             return false;
-        },
-        getFrameObjects: (state) => () => {
-            return Object.values(state.frameObjects);
         },
         getCurrentFrameObject: (state) => () => {
             return state.frameObjects[state.currentFrame.id];

@@ -218,7 +218,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
-    colour: "#ECECC8",
+    colour: "#BBC6B6",
 }
 
 // Blocks

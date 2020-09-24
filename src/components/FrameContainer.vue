@@ -40,7 +40,7 @@ import Frame from "@/components/Frame.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject, DraggableGroupTypes, DefaultFramesDefinition, FramesDefinitions } from "@/types/types";
+import { CaretPosition, FrameObject, DraggableGroupTypes, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -58,7 +58,14 @@ export default Vue.extend({
     data() {
         return {
             collapseButtonLabel: "\u25BC",
-            containerStyle: {display:"block"},
+            containerStyle: {
+                display:"block",
+                backgroundColor:(this.frameType === FrameContainersDefinitions.ImportsContainerDefinition) 
+                    ? Definitions.ImportDefinition.colour
+                    : (this.frameType === FrameContainersDefinitions.FuncDefContainerDefinition)
+                        ? Definitions.FuncDefDefinition.colour
+                        : Definitions.ReturnDefinition.colour,
+            },
             isCollapsed: false,
         }
     },
@@ -107,7 +114,7 @@ export default Vue.extend({
             //update the button label
             this.$data.collapseButtonLabel = (this.$data.isCollapsed) ? "\u25B6" : "\u25BC";
             //update the div style
-            this.$data.containerStyle = (this.$data.isCollapsed) ? {display:"none"} : {display:"block"};
+            this.$data.containerStyle["display"] = (this.$data.isCollapsed) ? "none" : "block";
         },
         handleDragAndDrop(event: Event): void {
             store.dispatch(
@@ -127,7 +134,6 @@ export default Vue.extend({
             this.$data.isCollapsed = true;
             this.toggleCollapse();
         },
-
     },
 });
 
@@ -155,7 +161,6 @@ export default Vue.extend({
     margin-bottom: 15px;
     border-radius: 8px;
     border: 1px solid #B4B4B4;
-    background-color: #F6F2E9 !important;
 }
 
 

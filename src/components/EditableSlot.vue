@@ -37,7 +37,7 @@
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { CaretPosition} from "@/types/types";
+import { CaretPosition, Definitions} from "@/types/types";
 import { getEditableSlotId } from "@/helpers/editor";
 
 export default Vue.extend({
@@ -74,6 +74,9 @@ export default Vue.extend({
             return {
                 "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
+                "color" : (store.getters.getFrameObjectFromId(this.frameId).frameType === Definitions.CommentDefinition)
+                    ? "#97971E"
+                    : "#000",
             };
         },
 
@@ -236,7 +239,11 @@ export default Vue.extend({
 
 .input {
     border-radius: 5px;
-    border:transparent;
+    border: 1px solid transparent;;
+}
+
+.input:hover {
+    border: 1px solid #B4B4B4;;
 }
 
 .editableslot-placeholder {

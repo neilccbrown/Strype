@@ -45,7 +45,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import Caret from "@/components/Caret.vue";
 import store from "@/store/store";
-import { FramesDefinitions, DefaultFramesDefinition, CaretPosition } from "@/types/types";
+import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, Definitions } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -89,12 +89,13 @@ export default Vue.extend({
 
         frameStyle(): Record<string, string> {
             return this.isJointFrame === true
-                ? {}
+                ? {"color":"#000 !important"}
                 : {
                     "background-color": `${
                         (this.frameType as FramesDefinitions).colour
                     } !important`,
                     "padding-left": "2px",
+                    "color": (this.frameType === Definitions.CommentDefinition) ? "#97971E !important" : "#000 !important",
                 };
         },
 
@@ -140,7 +141,6 @@ export default Vue.extend({
 
 <style lang="scss">
 .block {
-    color: #000 !important;
     padding-right: 4px;
     padding-top: 1px;
     padding-bottom: 1px;
