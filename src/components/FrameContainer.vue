@@ -2,35 +2,15 @@
     <div class="frame-container">
         <div class="frame-container-header">
             <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span class="frame-container-label-span" @click.self="toggleCaret($event)">{{containerLabel}}</span>
+            <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
         <div v-bind:style="containerStyle" class="container-frames">
-            <div 
-                class="caretContainer"
-                @mouseover="mouseOverCaret(true)"
-                @mouseleave="mouseOverCaret(false)"
-                @click.prevent.stop="toggleCaret()"
-                @contextmenu.prevent="$refs.ctxPasteMenu.open"
-            >
-                <ContextMenu
-                    v-bind:id="id+'-paste-context-menu'" 
-                    v-bind:key="id+'-paste-context-menu'" 
-                    ref="ctxPasteMenu"
-                >
-                    <b-button 
-                        v-if="pasteAvailable"
-                        @click="paste()"
-                        variant="light"
-                    >
-                        Paste
-                    </b-button>
-                </ContextMenu>
-                <Caret 
-                    v-show="caretVisibility===caretPosition.body"
-                    v-bind:isBlured="overCaret" 
-                />
-            </div>
+            <CaretContainer
+                v-bind:frameId="this.frameId"
+                v-bind:caretVisibility="this.caretVisibility"
+                v-bind:caretAssignedPosition="caretPosition.body"
+            />
 
             <Draggable
                 v-model="frames" 
@@ -62,11 +42,10 @@
 //////////////////////
 import Vue from "vue";
 import Frame from "@/components/Frame.vue";
-import Caret from "@/components/Caret.vue";
+import CaretContainer from "@/components/CaretContainer.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DraggableGroupTypes } from "@/types/types";
-import ContextMenu from "vue-context-menu";
 
 //////////////////////
 //     Component    //
@@ -77,9 +56,8 @@ export default Vue.extend({
 
     components: {
         Frame,
-        Caret,
         Draggable,
-        ContextMenu,
+        CaretContainer,
     },
 
     data() {
@@ -116,9 +94,6 @@ export default Vue.extend({
             return store.getters.getIsEditing();
         },
 
-        pasteAvailable(): boolean {
-            return store.getters.getCopiedFrameId()!== -100;
-        },
 
         id(): string {
             return "frameContainerId_" + this.$props.frameId;
@@ -142,40 +117,8 @@ export default Vue.extend({
                 }
             );
         },
-        toggleCaret(): void {
-            this.$data.overCaret = false;
-            store.dispatch(
-                "toggleCaret",
-                {id: this.$props.frameId, caretPosition: CaretPosition.body}
-            );
-            //expand the container
-            this.$data.isCollapsed = true;
-            this.toggleCollapse();
-        },
 
-        mouseOverCaret(flag: boolean): void {
-            const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
-            let newVisibility: CaretPosition = CaretPosition.none;
-
-            if(currentFrame.id !== this.$props.frameId) {
-                newVisibility = ((flag) ? CaretPosition.body : CaretPosition.none)
-            }
-            else {
-                // The else refers to the case where we are over the actual visual caret
-                // in that case we do nothing.
-
-                return;                
-            }
-           
-            this.$data.overCaret = flag;
-            store.commit(
-                "setCaretVisibility",
-                {
-                    frameId : this.$props.frameId,
-                    caretVisibility : newVisibility,
-                }
-            );
-        },
+        
     },
 });
 
@@ -206,11 +149,6 @@ export default Vue.extend({
     border-radius: 8px;
     border: 1px solid #B4B4B4;
     background-color: #F6F2E9 !important;
-}
-
-.caretContainer {
-    padding-top: 2px;
-    padding-bottom: 2px;
 }
 
 </style>

@@ -808,7 +808,6 @@ export default new Vuex.Store({
         },
 
         setCurrentFrame(state, newCurrentFrame: CurrentFrame) {
-
             Vue.set(
                 state.frameObjects[state.currentFrame.id],
                 "caretVisibility",
@@ -1024,7 +1023,7 @@ export default new Vuex.Store({
                         const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
                         commit(
                             "setCurrentFrame",
-                            {id:newId, caretPosition: newPosition}
+                            {id: newId, caretPosition: newPosition}
                         );
                         deleteChildren = true;
                     }
@@ -1048,8 +1047,17 @@ export default new Vuex.Store({
             if(frameToDeleteId > 0){
                 commit(
                     "deleteFrame",
-                    {key:payload,frameToDeleteId: frameToDeleteId,  deleteChildren: deleteChildren}
+                    {
+                        key:payload,
+                        frameToDeleteId: frameToDeleteId,  
+                        deleteChildren: deleteChildren,
+                    }
                 );
+                
+                //If the copied frame was deleted, then reset the copiedFrameId
+                if(Object.keys(state.frameObjects).includes(state.copiedFrameId.toString())) {
+                    Vue.set(state, "copiedFrameId", -100);
+                }
             }            
         },
 
@@ -1296,11 +1304,6 @@ export default new Vuex.Store({
                 "copyFrameId",
                 frameId
             );
-
-            // const x: FrameObject = JSON.parse(JSON.stringify(state.frameObjects[8])) as FrameObject;
-            // const y: FrameObject = _.cloneDeep(state.frameObjects[8]) as FrameObject;
-            // console.log(x===y);
-            // console.log("_");
         },
     },
     modules: {},

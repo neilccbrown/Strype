@@ -6,28 +6,14 @@
             v-bind:class="{error: erroneous}"
             v-bind:id="id"
             @click.prevent.stop="toggleCaret($event)"
-            @contextmenu.prevent="$refs.ctxMenu.open"
+            @contextmenu.prevent="handleClick($event,'copy-duplicate')"
         >
-            <ContextMenu 
-                v-bind:id="id+'-copy-context-menu'" 
-                v-bind:key="id+'-context-menu'" 
-                ref="ctxMenu"
-            >
-                <b-button-group vertical  class="w-100">
-                    <b-button 
-                        @click="duplicate()" 
-                        variant="light"
-                    >
-                            Duplicate
-                    </b-button>
-                    <b-button 
-                        variant="light" 
-                        @click="copy()"
-                    >
-                        Copy
-                    </b-button>
-                </b-button-group>
-            </ContextMenu>
+            <vue-simple-context-menu
+                :elementId="id+'copyContextMenu'"
+                :options="copyDuplicateOtions"
+                :ref="'copyContextMenu'"
+                @option-clicked="optionClicked"
+            />
 
             <FrameHeader
                 v-if="frameType.labels !== null"
@@ -40,31 +26,11 @@
                 v-bind:frameId="frameId"
                 v-bind:caretVisibility="caretVisibility"
             />
-            <div 
-                class="frame-bottom-selector"
-                @click.self="toggleCaretBelow()"
-                @mouseover="mouseOverCaret(true)"
-                @mouseleave="mouseOverCaret(false)"
-                @contextmenu.prevent="$refs.ctxPasteMenu.open"
-            >
-                <ContextMenu
-                    v-bind:id="id+'-paste-context-menu'" 
-                    v-bind:key="id+'-paste-context-menu'" 
-                    ref="ctxPasteMenu"
-                >
-                    <b-button 
-                        v-if="pasteAvailable"
-                        @click="paste()"
-                        variant="light"
-                    >
-                        Paste
-                    </b-button>
-                </ContextMenu>
-                <Caret
-                    v-show="(caretVisibility === caretPosition.below || caretVisibility === caretPosition.both) && !isEditing" 
-                    v-bind:isBlured="overCaret"
-                />
-            </div>
+            <CaretContainer
+                v-bind:frameId="this.frameId"
+                v-bind:caretVisibility="this.caretVisibility"
+                v-bind:caretAssignedPosition="caretPosition.below"
+            />
             
             <JointFrames 
                 v-if="hasJointFrameObjects"
@@ -87,10 +53,10 @@
 //////////////////////
 import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
-import Caret from "@/components/Caret.vue";
+import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
 import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, FrameObject } from "@/types/types";
-import ContextMenu from "vue-context-menu";
+import VueSimpleContextMenu from "vue-simple-context-menu"
 
 //////////////////////
 //     Component    //
@@ -101,8 +67,8 @@ export default Vue.extend({
 
     components: {
         FrameHeader,
-        Caret,
-        ContextMenu,
+        VueSimpleContextMenu,
+        CaretContainer,
     },
 
     beforeCreate() {
@@ -110,12 +76,6 @@ export default Vue.extend({
         if (components !== undefined) {
             components.FrameBody = require("@/components/FrameBody.vue").default;
             components.JointFrames = require("@/components/JointFrames.vue").default;
-        }
-    },
-
-    data: function () {
-        return {
-            overCaret: false,
         }
     },
 
@@ -155,10 +115,6 @@ export default Vue.extend({
             return CaretPosition;
         },
 
-        isEditing(): boolean {
-            return store.getters.getIsEditing();
-        },
-
         erroneous(): boolean {
             return store.getters.getIsErroneousFrame(
                 this.$props.frameId
@@ -175,39 +131,50 @@ export default Vue.extend({
             );
         },
 
-        pasteAvailable(): boolean {
-            return store.getters.getCopiedFrameId()!== -100;
+        copyDuplicateOtions(): {}[] {
+            return [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}];
         },
-        
+
     },
 
     methods: {
+
+        handleClick (event: MouseEvent, action: string) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if(action === "copy-duplicate") {
+                this.$refs.copyContextMenu.showMenu(event);
+            }
+        },
+
+        // Item is passed anyway in the event, in case the menu is attached to a list
+        optionClicked (event: {item: any; option: {name: string; method: string}}) {
+            //call the appropriate method
+            this[event.option.method]();
+        },
+
         toggleCaret(event: MouseEvent): void {
             const frame: HTMLDivElement = event.srcElement as HTMLDivElement;
 
             // get the rectangle of the div with its coordinates
             const rect = frame.getBoundingClientRect();
             
+            let position: CaretPosition = CaretPosition.none;
             // if clicked above the middle, or if I click on the label show the body caret
             if((frame.className === "frame-header" || event.y <= rect.top + rect.height/2) && this.allowChildren) {
-                store.dispatch(
-                    "toggleCaret",
-                    {id:this.$props.frameId, caretPosition: CaretPosition.body}
-                );
+                position = CaretPosition.body;
             }
             //else show caret below
             else{
-                this.toggleCaretBelow();
+                position = CaretPosition.below;
             }
-        },
 
-        toggleCaretBelow(): void {
-            this.$data.overCaret = false;
             store.dispatch(
                 "toggleCaret",
-                {id:this.$props.frameId, caretPosition: CaretPosition.below}
+                {id:this.$props.frameId, caretPosition: position}
             );
         },
+
 
         duplicate(): void {
             store.dispatch(
@@ -227,47 +194,6 @@ export default Vue.extend({
             );
         },
 
-        paste(): void {
-            store.dispatch(
-                "pasteFrame",
-                {
-                    newParentId: store.getters.getParentOfFrame(this.frameId),
-                    newIndex: 0,
-                }
-            )
-        },
-
-        mouseOverCaret(flag: boolean): void {
-            const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
-            let newVisibility: CaretPosition = CaretPosition.none;
-
-            if(currentFrame.id !== this.$props.frameId) {
-                newVisibility = ((flag) ? CaretPosition.below : CaretPosition.none)
-            }
-            else {
-                if(currentFrame.caretVisibility === CaretPosition.both && flag == false) {
-                    newVisibility = CaretPosition.body;
-                }
-                else if(currentFrame.caretVisibility === CaretPosition.body && flag == true) {
-                    newVisibility = CaretPosition.both;
-                }
-                // The else refers to the case where we are over the actual visual caret
-                // in that case we do nothing.
-                else {
-                    return;
-                }
-            }
-        
-            this.$data.overCaret = flag;
-            store.commit(
-                "setCaretVisibility",
-                {
-                    frameId : this.$props.frameId,
-                    caretVisibility : newVisibility,
-                }
-            );
-        },
-
     },
 
 });
@@ -283,10 +209,7 @@ export default Vue.extend({
     border-radius: 8px;
     border: 1px solid #B4B4B4;
 }
-.frame-bottom-selector {
-    padding-top: 2px;
-    padding-bottom: 2px;
-}
+
 
 .error {
     border: 1px solid #FF0000 !important;

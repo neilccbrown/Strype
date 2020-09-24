@@ -55,6 +55,7 @@
         "sass-loader": "^8.0.2",
         "typescript": "^3.9.7",
         "vue-cli-plugin-i18n": "~1.0.1",
+        "vue-simple-context-menu": "https://github.com/bkyf/vue-simple-context-menu/tarball/emit-hide-event",
         "vue-template-compiler": "^2.6.12"
     },
     "lint-staged": {
