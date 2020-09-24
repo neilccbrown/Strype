@@ -5,6 +5,7 @@
             class="block frameDiv" 
             v-bind:class="{error: erroneous}"
             v-bind:id="id"
+            @click.prevent.stop="toggleCaret($event)"
         >
             <FrameHeader
                 v-if="frameType.labels !== null"
@@ -18,7 +19,7 @@
             />
             <div 
                 class="frame-bottom-selector"
-                @click.self="toggleCaret($event)"
+                @click.self="toggleCaretBelow()"
             >
             </div>
             <Caret v-show="(caretVisibility === caretPosition.below) && !isEditing" />
@@ -126,7 +127,27 @@ export default Vue.extend({
     },
 
     methods: {
-        toggleCaret(): void {
+        toggleCaret(event: MouseEvent): void {
+            const frame: HTMLDivElement = event.srcElement as HTMLDivElement;
+
+            // get the rectangle of the div with its coordinates
+            const rect = frame.getBoundingClientRect();
+            
+            // if clicked below the middle, show the body caret
+            if(this.allowChildren && event.y <= rect.top + rect.height/2) {
+                store.dispatch(
+                    "toggleCaret",
+                    {id:this.$props.frameId, caretPosition: CaretPosition.body}
+                );
+            }
+            //else show caret below
+            else{
+                this.toggleCaretBelow();
+            }
+            
+        },
+
+        toggleCaretBelow(): void {
             store.dispatch(
                 "toggleCaret",
                 {id:this.$props.frameId, caretPosition: CaretPosition.below}
