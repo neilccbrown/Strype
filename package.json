@@ -25,6 +25,7 @@
         "vue-browser-detect-plugin": "^0.1.13",
         "vue-i18n": "^8.17.3",
         "vue-input-autowidth": "^1.0.10",
+        "vue-simple-context-menu": "https://github.com/bkyf/vue-simple-context-menu/tarball/emit-hide-event",
         "vuedraggable": "^2.24.1",
         "vuex": "^3.5.1"
     },

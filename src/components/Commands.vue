@@ -5,7 +5,7 @@
             <button @click="downloadHex" v-t="'buttonLabel.downloadHex'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
         </div>
-        <div v-if="showProgress" class="progress progressContainer">
+        <div v-if="showProgress" class="progress cmd-progress-container">
             <div 
                 class="progress-bar progress-bar-striped bg-info" 
                 role="progressbar"
@@ -265,7 +265,7 @@ export default Vue.extend({
     background-color: #E2E7E0;
 }
 
-.progressContainer {
+.cmd-progress-container {
     margin-top: 5px;
     background-color: #E2E7E0 !important;
     border: 1px lightgrey solid;

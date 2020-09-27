@@ -5,7 +5,9 @@
       "uploadSuccessMicrobit": "Upload to micro:bit completed.",
       "uploadFailureMicrobit": "Upload to micro:bit failed with error \"{errorMsg}\"",
       "noUndo" : "There is no undo action avaialble.",
-      "noRedo": "There is no redo action available."
+      "noRedo": "There is no redo action available.",
+      "uploadEditorFileError": "Something wrong happened during editor file upload: {errorMsg}.",
+      "uploadEditorFileSuccess": "The editor file upload is successful. Your code has been loaded."
   },
   "buttonLabel":{
       "undo": "Undo",
@@ -18,5 +20,14 @@
   },
   "actions": {
     "uploadingToMicrobit": "Uploading to micro:bit ..."
+  },
+  "errorMessages": {
+    "wrongDataFormat": "the data format cannot be interpreted by WebFrames",
+    "stateDataIntegrity" : "the data doesn't have integrity to be interpreted by WebFrames",
+    "dataNotObject" : "the data doesn't describe an object",
+    "dataNotState" : "the data doesn't describe WebFrames' state"
+  },
+  "appMessages": {
+    "editorFileUpload": "Uploading your file to the editor..."
   }
 }

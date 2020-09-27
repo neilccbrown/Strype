@@ -83,3 +83,47 @@ export const getObjectPropertiesDiffferences = (obj1: {[id: string]: any}, obj2:
   
     return result;
 }
+
+export const checkObjectsStructureMatch = (obj1: {[id: string]: any}, obj2: {[id: string]: any}): boolean => {
+    return true;
+}
+
+export const saveContentToFile = (content: string, fileName: string) => {
+    // from https://blog.logrocket.com/programmatic-file-downloads-in-the-browser-9a5186298d5c/
+
+    const url = URL.createObjectURL(new Blob([content], {type: "text/plain"}));
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+
+    const clickHandler = () => {
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+            a.removeEventListener("click", clickHandler);
+        }, 150);
+    };
+    a.addEventListener("click", clickHandler, false);
+
+    a.click();
+}
+
+
+export const readFileContent = async (file: File): Promise<string>  => {
+    // from https://stackoverflow.com/questions/17068610/read-a-file-synchronously-in-javascript
+    const result = await new Promise<string>((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.onload =  (evt) => {
+            const text = evt.target?.result;
+            if(typeof text === "string"){
+                resolve(text);
+            }
+            else {
+                reject("the file content cannot be interpreted as a text file")
+            }
+        };
+        fileReader.readAsText(file, "UTF-8");
+    });
+
+    return result;    
+}

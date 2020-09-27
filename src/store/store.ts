@@ -1,10 +1,12 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, MessageDefinedActions } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import {getEditableSlotId, undoMaxSteps} from "@/helpers/editor";
-import {getObjectPropertiesDiffferences} from "@/helpers/common";
+import {getObjectPropertiesDiffferences, checkObjectsStructureMatch} from "@/helpers/common";
+import {checkStateIntegrity} from "@/helpers/state";
+import i18n from "@/i18n"
 
 Vue.use(Vuex);
 
@@ -173,6 +175,9 @@ export default new Vuex.Store({
     },
 
     getters: {
+        getStateJSONStr : (state) => (): string => {
+            return JSON.stringify(state);
+        },
         getFrameObjectFromId: (state) => (frameId: number) => {
             return state.frameObjects[frameId];
         },
@@ -1470,24 +1475,84 @@ export default new Vuex.Store({
         },        
         
         setMessageBanner({commit}, message: MessageDefinition){
-            switch (message) {    
-            case MessageDefinitions.NoMessage:
-                commit("setMessageBanner", MessageDefinitions.NoMessage);
-                break;
-            case MessageDefinitions.DownloadHex:
-                commit("setMessageBanner", MessageDefinitions.DownloadHex);
-                break;
-            case MessageDefinitions.LargeDeletion:
-                commit("setMessageBanner", MessageDefinitions.LargeDeletion);
-                break;
-            case MessageDefinitions.NoUndo:
-                commit("setMessageBanner", MessageDefinitions.NoUndo);
-                break;
-            case MessageDefinitions.NoRedo:
-                commit("setMessageBanner", MessageDefinitions.NoRedo);
-                break;  
-            default:
-                break;
+            commit("setMessageBanner", message);
+        },
+
+        setStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; errorReason?: string}){
+            let isStateJSONStrValid = (payload.errorReason === undefined);
+            let errorrDetailMessage = payload.errorReason ?? "unknow reason";
+
+            // If there is an error set because the file couldn't be retrieved
+            // we don't check anything, just get to the error display.
+            if(isStateJSONStrValid){
+
+                // We need to check the JSON string is:
+                // 1) a valid JSON description of an object --> easy, we can just try to convert
+                // 2) an object that matches the state properties (properties list and types) --> easy, we can just find if properties match
+                // 3) an object that doesn't mess up everything if it isn't a coherent state. --> not hard, but not safe.
+                // if wwe pass these 3 conditions, we can then replace the state
+            
+                try {
+                    //Check 1)
+                    const newStateObj = JSON.parse(payload.stateJSONStr);
+                    if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
+                        //no need to go further
+                        isStateJSONStrValid=false;
+                        const error = i18n.t("errorMessages.dataNotObject");
+                        //note: the following conditional test is only for TS... the message should always be found
+                        errorrDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
+                    }
+                    else{
+                        // Check 2) as 1) is validated
+                        if(!checkObjectsStructureMatch(state, newStateObj)){
+                            isStateJSONStrValid = false;
+                            const error = i18n.t("errorMessages.dataNotState");
+                            //note: the following conditional test is only for TS... the message should always be found
+                            errorrDetailMessage = (typeof error === "string") ? error : "data doesn't describe state"; 
+                        }             
+                        else{
+                            // Check 3) as 2) is validated
+                            if(!checkStateIntegrity(newStateObj)){
+                                isStateJSONStrValid = false;
+                                const error = i18n.t("errorMessages.stateDataIntegrity")
+                                //note: the following conditional test is only for TS... the message should always be found
+                                errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
+                            }
+                        }
+                    }
+                }
+                catch(err){
+                    //we cannot use the string arguemnt to retrieve a valid state --> inform the users
+                    isStateJSONStrValid = false;
+                    const error = i18n.t("errorMessages.wrongDataFormat");
+                    //note: the following conditional test is only for TS... the message should always be found
+                    errorrDetailMessage = (typeof error === "string") ? error : "wrong data format";
+                }
+            }
+            
+            // Apply the change and indicate it to the user if we detected a valid JSON string
+            // or alert the user we couldn't if we detected a faulty JSON string to represent the state
+            if(isStateJSONStrValid){
+                commit(
+                    "setMessageBanner",
+                    MessageDefinitions.UploadEditorFileSuccess
+                );
+
+                //don't leave the message for ever
+                setTimeout(()=>commit(
+                    "setMessageBanner",
+                    MessageDefinitions.NoMessage
+                ), 5000);     
+            }
+            else{
+                const message = MessageDefinitions.UploadEditorFileError;
+                const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorrDetailMessage);
+
+                commit(
+                    "setMessageBanner",
+                    message
+                );
             }
         },
     },

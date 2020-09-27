@@ -480,6 +480,8 @@ export const MessageTypes = {
     uploadSuccessMicrobit:"uploadSuccessMicrobit",
     noUndo: "noUndo",
     noRedo: "noRedo",
+    uploadEditorFileError: "uploadEditorFileError",
+    uploadEditorFileSucces: "uploadEditorFileSuccess",
 }
 
 //empty message
@@ -545,6 +547,27 @@ const NoRedo: MessageDefinition = {
 
 };
 
+const UploadEditorFileError: MessageDefinition = {
+    type: MessageTypes.uploadEditorFileError,
+    message: {
+        path: "messageBannerMessage.uploadEditorFileError",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
+        },
+    },
+    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    path: imagePaths.empty,
+
+};
+
+const UploadEditorFileSuccess: MessageDefinition = {
+    type: MessageTypes.noRedo,
+    message: "messageBannerMessage.uploadEditorFileSuccess",
+    buttons:[],
+    path: imagePaths.empty,
+
+};
+
 export const MessageDefinitions = {
     NoMessage,
     LargeDeletion,
@@ -553,6 +576,8 @@ export const MessageDefinitions = {
     DownloadHex,
     NoUndo,
     NoRedo,
+    UploadEditorFileError,
+    UploadEditorFileSuccess,
 };
 
 //WebUSB listener
@@ -569,4 +594,10 @@ export interface ObjectPropertyDiff {
     //where <bool> is a boolean flag value indicating if the corresponding level is for an array or not.
     propertyPathWithArrayFlag: string;
     value: any;
+}
+
+//Event at application level that requests the application "freeze"
+export interface AppEvent {
+    requestAttention: boolean;
+    message?: string;
 }
