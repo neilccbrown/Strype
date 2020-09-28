@@ -6,11 +6,11 @@
             v-bind:class="{error: erroneous}"
             v-bind:id="id"
             @click.prevent.stop="toggleCaret($event)"
-            @contextmenu.prevent="handleClick($event,'copy-duplicate')"
+            @contextmenu.prevent.stop="handleClick($event,'copy-duplicate')"
         >
             <vue-simple-context-menu
                 :elementId="id+'copyContextMenu'"
-                :options="copyDuplicateOtions"
+                :options="this.copyCopyDuplOtions"
                 :ref="'copyContextMenu'"
                 @option-clicked="optionClicked"
             />
@@ -56,7 +56,7 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
 import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, FrameObject } from "@/types/types";
-import VueSimpleContextMenu from "vue-simple-context-menu"
+import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu"
 
 //////////////////////
 //     Component    //
@@ -89,6 +89,12 @@ export default Vue.extend({
         isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
         caretVisibility: String,
         allowChildren: Boolean,
+    },
+
+    data: function () {
+        return {
+            copyCopyDuplOtions: [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}],
+        }
     },
 
     computed: {
@@ -131,26 +137,37 @@ export default Vue.extend({
             );
         },
 
-        copyDuplicateOtions(): {}[] {
-            return [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}];
-        },
+        // copyCopyDuplOtions(): {}[] {
+        //     // We cannot duplicate everything (e.g. an else)
+        //     return (store.getters.getIfPasteIsAllowed(this.frameId, CaretPosition.below,this.$props.frameId))?
+        //         [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}] :
+        //         [{name: "Copy", method: "copy"}];
+        // },
 
     },
 
     methods: {
 
         handleClick (event: MouseEvent, action: string) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
             if(action === "copy-duplicate") {
-                this.$refs.copyContextMenu.showMenu(event);
+                // Not all frames should be duplicated (e.g. Else)
+                this.copyCopyDuplOtions = (store.getters.getIfPasteIsAllowed(this.frameId, CaretPosition.below, this.$props.frameId))?
+                    [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}] :
+                    [{name: "Copy", method: "copy"}];
+                    
+                ((this.$refs.copyContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
             }
         },
 
         // Item is passed anyway in the event, in case the menu is attached to a list
         optionClicked (event: {item: any; option: {name: string; method: string}}) {
-            //call the appropriate method
-            this[event.option.method]();
+            // `event.option.method` holds the name of the method to be called.
+            // In case the menu gets more complex this can clear up the code. However, it is a bit unsafe - in the case you
+            // misstype a method's name.
+            const thisCompProps = Object.entries(this).find((entry) => entry[0] === event.option.method);
+            if(thisCompProps){
+                thisCompProps[1]();
+            }
         },
 
         toggleCaret(event: MouseEvent): void {

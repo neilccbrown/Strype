@@ -9,14 +9,14 @@
         v-bind:id="id"
     >
         <vue-simple-context-menu
-            :elementId="id+'_pasteContextMenu'"
-            :options="pasteOption"
-            :ref="'pasteContextMenu'"
+            v-bind:elementId="id+'_pasteContextMenu'"
+            v-bind:options="pasteOption"
+            v-bind:ref="'pasteContextMenu'"
             @option-clicked="optionClicked"
         />
         <Caret
             v-show="(caretVisibility === caretAssignedPosition || caretVisibility === caretPosition.both) && !isEditing" 
-            v-bind:isBlured="overCaret"
+            v-bind:isBlurred="overCaret"
         />
     </div>
 </template>
@@ -30,7 +30,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
-import VueSimpleContextMenu from "vue-simple-context-menu"
+import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 
 
 //////////////////////
@@ -79,16 +79,24 @@ export default Vue.extend({
     
     methods: {
         handleClick (event: MouseEvent, action: string): void {
+        
+            // We want to first check whether there is a copied frame 
             if(this.pasteAvailable) {        
-                this.$refs.pasteContextMenu.showMenu(event);
+                if(store.getters.getIfPasteIsAllowed(this.frameId, this.caretAssignedPosition)) {
+                    ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+                }
             }
-
         },
 
         // Item is passed anyway in the event, in case the menu is attached to a list
         optionClicked (event: {item: any; option: {name: string; method: string}}): void {
-            //call the appropriate method
-            this[event.option.method]();
+            // `event.option.method` holds the name of the method to be called.
+            // In case the menu gets more complex this can clear up the code. However, it is a bit unsafe - in the case you
+            // misstype a method's name.
+            const thisCompProps = Object.entries(this).find((entry) => entry[0] === event.option.method);
+            if(thisCompProps){
+                thisCompProps[1]();
+            }
         },
 
         toggleCaret(): void {
@@ -99,7 +107,7 @@ export default Vue.extend({
             );
         },
 
-        mouseOverCaret(flag: boolean): void {
+        mouseOverCaret(mouseovercaret: boolean): void {
 
             const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
             let newVisibility: string = CaretPosition.none;
@@ -109,25 +117,29 @@ export default Vue.extend({
 
             // If this isn't the current frame, then just turn on this caret
             if(currentFrame.id !== this.$props.frameId) {
-                newVisibility = ((flag) ? this.caretAssignedPosition : CaretPosition.none)
+                newVisibility = ((mouseovercaret) ? this.caretAssignedPosition : CaretPosition.none)
             }
             else {
-                // If visibility == 'both' I need to switch to the Opposite curret
-                if(currentFrame.caretVisibility === CaretPosition.both && flag == false) {
+                // If visibility == 'both', that means that in the frame that I am in both my caret AND
+                // the other caret (i.e. the opposite caret) are switched on. Hence, when the mouse moves
+                // out of my caret, I want to keep the other caret on.
+                if(currentFrame.caretVisibility === CaretPosition.both && mouseovercaret == false) {
                     newVisibility = opositeCaret;
                 }
-                // If visibility == [my oposite caret] I need to switch to 'both' so I can show as well
-                else if(currentFrame.caretVisibility === opositeCaret && flag == true) {
+                // If visibility == [my oposite caret], that means that in the frame that I am in 
+                // only the other caret (i.e. the opposite caret) is switched on. Hence, when the mouse enters
+                // my caret, I want to turn visible 'both' carets
+                else if(currentFrame.caretVisibility === opositeCaret && mouseovercaret == true) {
                     newVisibility = CaretPosition.both;
                 }
                 // The else refers to the case where we are over the actual visual caret
-                // in that case we do nothing.
+                // in that case we do not need to do anything.
                 else {
                     return;
                 }
             }
         
-            this.$data.overCaret = flag; 
+            this.$data.overCaret = mouseovercaret; 
             store.commit(
                 "setCaretVisibility",
                 {
@@ -138,15 +150,13 @@ export default Vue.extend({
         },
 
         paste(): void {
-            const index: number = (this.caretAssignedPosition === CaretPosition.body) ? 0 : store.getters.getIndexInParent(this.frameId)+1;
-            const parentId: number = (this.caretAssignedPosition === CaretPosition.body) ? this.frameId : store.getters.getParentOfFrame(this.frameId);
             store.dispatch(
                 "pasteFrame",
                 {
-                    newParentId: parentId,
-                    newIndex: index,
+                    clickedFrameId: this.$props.frameId,
+                    caretPosition: this.$props.caretAssignedPosition,
                 }
-            )
+            );
         },
     },
 });

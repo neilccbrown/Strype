@@ -1,10 +1,9 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef ,EditorFrameObjects} from "@/types/types";
+import { FrameObject, ErrorSlotPayload, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef ,EditorFrameObjects, AddFrameCommandDef} from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import {getEditableSlotId} from "@/helpers/editor";
-import _ from "lodash";
 
 Vue.use(Vuex);
 
@@ -208,7 +207,7 @@ export default new Vuex.Store({
 
         preCompileErrors: [] as string[],
 
-        copiedFrameId: -100 as number,
+        copiedFrameId: -100 as number, // We use -100 to avoid any used id.
     },
     getters: {
         getFramesForParentId: (state) => (frameId: number) => {
@@ -270,11 +269,11 @@ export default new Vuex.Store({
         getIsEditableFocused: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].focused;
         },
-        getCurrentFrameAddFrameCommands: (state) => () => {
-            const currentFrame  = state.frameObjects[state.currentFrame.id];
+        getCurrentFrameAddFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition) => {
+            const currentFrame  = state.frameObjects[frameId];
 
             //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
-            let forbiddenTypes = (state.currentFrame.caretPosition === CaretPosition.body) ? 
+            let forbiddenTypes = (caretPosition === CaretPosition.body) ? 
                 [...currentFrame.frameType.forbiddenChildrenTypes] :
                 ((currentFrame.jointParentId > 0) ? [...state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes] : [...state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes]);
          
@@ -282,7 +281,7 @@ export default new Vuex.Store({
             //we need to check if the current frame is within a "for" or a "while" loop.
             //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
             let canShowLoopBreakers = false;
-            let frameToCheckId = (state.currentFrame.caretPosition === CaretPosition.body) ? 
+            let frameToCheckId = (caretPosition === CaretPosition.body) ? 
                 currentFrame.id:
                 ((currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId].id : state.frameObjects[currentFrame.parentId].id) ;
             
@@ -303,7 +302,7 @@ export default new Vuex.Store({
             }
          
             //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
-            let jointTypes = (state.currentFrame.caretPosition === CaretPosition.below) ?
+            let jointTypes = (caretPosition === CaretPosition.below) ?
                 [...currentFrame.frameType.jointFrameTypes] : 
                 [];
 
@@ -311,7 +310,7 @@ export default new Vuex.Store({
             if(jointTypes.length > 0){
                 const rootJointFrame = (currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId] : currentFrame;
 
-                //Remove "finally" in joint frames allwed after "else" if we are in anything else than in a "try"
+                //Remove "finally" in joint frames allowed after "else" if we are in anything else than in a "try"
                 if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
                     jointTypes.splice(
                         jointTypes.indexOf(Definitions.FinallyDefinition.type),
@@ -415,6 +414,7 @@ export default new Vuex.Store({
                     );
                 }
             }
+
             return filteredCommands;
         },
         getCurrentFrameToggleFrameLabelCommands: (state) => () => {
@@ -469,14 +469,40 @@ export default new Vuex.Store({
         getCurrentMessage: (state) => () => {
             return state.currentMessage;
         },
+        // Automatically checks returns Parent OR JointParent
         getParentOfFrame: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].parentId;
+            const isJointFrame = state.frameObjects[frameId].jointParentId > 0;
+            return (isJointFrame)? 
+                state.frameObjects[frameId].jointParentId:
+                state.frameObjects[frameId].parentId;
         },
+        // Automatically checks returns index in Parent OR JointParent
         getIndexInParent: (state) => (frameId: number) => {
-            return state.frameObjects[state.frameObjects[frameId].parentId].childrenIds.indexOf(frameId);
+            const isJointFrame = state.frameObjects[frameId].jointParentId > 0;
+            return (isJointFrame)? 
+                state.frameObjects[state.frameObjects[frameId].parentId].jointFrameIds.indexOf(frameId):
+                state.frameObjects[state.frameObjects[frameId].parentId].childrenIds.indexOf(frameId);
         },
         getCopiedFrameId: (state) => () => {
             return state.copiedFrameId;
+        },
+        getIfPasteIsAllowed: (state, getters) => (clickedFrameId: number, caretPosition: CaretPosition, copiedFrameId: number) => {
+            copiedFrameId = copiedFrameId ?? state.copiedFrameId;
+            if(copiedFrameId < 1){
+                return false;
+            }
+
+            const allowedFrameTypes: [AddFrameCommandDef] = getters.getCurrentFrameAddFrameCommands(clickedFrameId, caretPosition);
+            const copiedType: string = state.frameObjects[copiedFrameId].frameType.type;
+           
+            // for..of is used instead of foreach here, as foreach does not supports return.........
+            for (const element of Object.values(allowedFrameTypes)) {
+                if (element.type.type === copiedType) {
+                    return true;
+                }
+            }
+
+            return false;
         },
     }, 
 
@@ -589,28 +615,28 @@ export default new Vuex.Store({
             }
         },
 
-        updateFramesOrder(state, data) {
-            const eventType = Object.keys(data.event)[0];
+        updateFramesOrder(state, payload: {event: any; eventParentId: number}) {
+            const eventType = Object.keys(payload.event)[0];
 
             //If we are moving a joint frame the list to be updated is it's parents jointFrameIds list.
-            const listToUpdate = (data.event[eventType].element.jointParentId > 0 ) ?
-                state.frameObjects[data.eventParentId].jointFrameIds : 
-                state.frameObjects[data.eventParentId].childrenIds;
+            const listToUpdate = (payload.event[eventType].element.jointParentId > 0 ) ?
+                state.frameObjects[payload.eventParentId].jointFrameIds : 
+                state.frameObjects[payload.eventParentId].childrenIds;
 
             if (eventType === "added") {
                 // Add the id to the parent's childrenId list
                 listToUpdate.splice(
-                    data.event[eventType].newIndex,
+                    payload.event[eventType].newIndex,
                     0,
-                    data.event[eventType].element.id
+                    payload.event[eventType].element.id
                 );
 
-                if(data.event[eventType].element.jointParentId == 0) {
+                if(payload.event[eventType].element.jointParentId == 0) {
                     // Set the new parentId to the the added frame
                     Vue.set(
-                        state.frameObjects[data.event[eventType].element.id],
+                        state.frameObjects[payload.event[eventType].element.id],
                         "parentId",
-                        data.eventParentId
+                        payload.eventParentId
                     );
                 }
                 
@@ -618,20 +644,20 @@ export default new Vuex.Store({
             else if (eventType === "moved") {
                 // Delete the frameId from the children list 
                 listToUpdate.splice(
-                    data.event[eventType].oldIndex,
+                    payload.event[eventType].oldIndex,
                     1
                 );
                 // Add it again in the new position
                 listToUpdate.splice(
-                    data.event[eventType].newIndex,
+                    payload.event[eventType].newIndex,
                     0,
-                    data.event[eventType].element.id
+                    payload.event[eventType].element.id
                 );
             }
             else if (eventType === "removed") {
                 // Remove the id from the parent's childrenId list
                 listToUpdate.splice(
-                    data.event[eventType].oldIndex,
+                    payload.event[eventType].oldIndex,
                     1
                 );
             }
@@ -913,7 +939,23 @@ export default new Vuex.Store({
     },
 
     actions: {
-        updateFramesOrder({ commit }, payload) {
+        updateFramesOrder({getters, commit }, payload: {event: any; eventParentId: number}) {
+            // payload.event[eventType].newIndex, payload.event[eventType].element.id
+            const eventType = Object.keys(payload.event)[0];
+            const position: CaretPosition = (payload.event[eventType].newIndex === 0)?
+                CaretPosition.body:
+                CaretPosition.below;
+
+            // clickedFrameId: number, caretPosition: CaretPosition, copiedFrameId: number
+            // Even in the same draggable group, some things cannot be moved (i.e. an else below an elif)
+            // That should be checked both ways as for example if you move an `else` above an elif, it may be
+            // valid, as the if accepts else there, but the elif cannot go below the else.
+            if( getters.getIfPasteIsAllowed(payload.eventParentId, position, payload.event[eventType].element.id) ||
+                getters.getIfPasteIsAllowed(payload.event[eventType].element.id, position, payload.eventParentId)
+            ) {
+                return
+            }
+
             commit(
                 "updateFramesOrder",
                 payload
@@ -1256,9 +1298,13 @@ export default new Vuex.Store({
         },
 
         copyFrameToPosition({commit, state}, payload: {frameId: number; newParentId: number; newIndex: number}) {
-
+            // If it has a JointParent, we're talking about a JointFrame
+            const isJointFrame = state.frameObjects[payload.frameId].jointParentId > 0;
+            
+            const currentParent = (isJointFrame)? state.frameObjects[payload.frameId].jointParentId : state.frameObjects[payload.frameId].parentId;
             const copiedFrames: EditorFrameObjects = {};
-            cloneFrameAndChildren(state.frameObjects, payload.frameId, state.frameObjects[payload.frameId].parentId, state.nextAvailableId, copiedFrames); 
+            cloneFrameAndChildren(state.frameObjects, payload.frameId, currentParent, state.nextAvailableId, copiedFrames); 
+
 
             // Add the copied objects to the FrameObjects
             Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
@@ -1271,8 +1317,11 @@ export default new Vuex.Store({
             
             const topFrame = copiedFrames[Object.keys(copiedFrames).map(Number)[0]];
 
+            // It will be added either as a Child or as a JointChild
+            const childrenListToBeAdded = (isJointFrame)? state.frameObjects[payload.newParentId].jointFrameIds : state.frameObjects[payload.newParentId].childrenIds;
+            
             // Add the top frame to the its new parents children list
-            state.frameObjects[payload.newParentId].childrenIds.splice(
+            childrenListToBeAdded.splice(
                 payload.newIndex,
                 0,
                 topFrame.id
@@ -1288,18 +1337,36 @@ export default new Vuex.Store({
             
         },
 
-        pasteFrame({dispatch, state}, payload: {newParentId: number; newIndex: number}) {
+        pasteFrame({dispatch, getters, state}, payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
+            // If the copiedFrame has a JointParent, we're talking about a JointFrame
+            const isCopiedJointFrame = state.frameObjects[state.copiedFrameId].jointParentId > 0;
+            const isClickedJointFrame = state.frameObjects[payload.clickedFrameId].jointParentId > 0;
+
+            // Clicked is joint ? parent of clicked is its joint parent ELSE clicked's real parent
+            const clickedParentId = (isClickedJointFrame)? state.frameObjects[payload.clickedFrameId].jointParentId: payload.clickedFrameId;
+
+            // Index is 0 if we paste in the body OR we paste a JointFrame Below JointParent
+            const index = (payload.caretPosition === CaretPosition.body || ( payload.caretPosition === CaretPosition.below && isCopiedJointFrame && !isClickedJointFrame)) ? 
+                0 : 
+                getters.getIndexInParent(clickedParentId)+1;
+
+            // It the caret is below and it is not a joint frame, parent is the clicked's parent 
+            const pasteToParentId = (payload.caretPosition === CaretPosition.below && !isCopiedJointFrame)?
+                getters.getParentOfFrame(clickedParentId):
+                payload.clickedFrameId;
+            
+
             dispatch(
                 "copyFrameToPosition",
                 {
                     frameId: state.copiedFrameId,
-                    newParentId: payload.newParentId,
-                    newIndex: payload.newIndex,
+                    newParentId: pasteToParentId,
+                    newIndex: index,
                 }
             );
         },
 
-        copyFrameId({commit, state}, frameId: number) {
+        copyFrameId({commit}, frameId: number) {
             commit(
                 "copyFrameId",
                 frameId

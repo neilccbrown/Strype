@@ -1,7 +1,7 @@
 <template>
     <div 
         class="caret"
-        v-bind:class="{blured: isBlured}"></div>
+        v-bind:class="{blured: isBlurred}"></div>
 </template>
 
 <script lang="ts">
@@ -19,7 +19,7 @@ export default Vue.extend({
     name: "Caret",
 
     props: {
-        isBlured: Boolean,
+        isBlurred: Boolean,
     },
 
 });

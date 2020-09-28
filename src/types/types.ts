@@ -248,7 +248,7 @@ export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.else,
     labels: [{ label: "else:", slot: false, defaultText: ""}],
-    draggableGroup: DraggableGroupTypes.none,
+    draggableGroup: DraggableGroupTypes.ifCompound,
     jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
 };
 
