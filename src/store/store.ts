@@ -4,9 +4,9 @@ import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDef
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import {getEditableSlotId, undoMaxSteps} from "@/helpers/editor";
-import {getObjectPropertiesDiffferences, checkObjectsStructureMatch} from "@/helpers/common";
-import {checkStateIntegrity} from "@/helpers/state";
+import {getObjectPropertiesDiffferences} from "@/helpers/common";
 import i18n from "@/i18n"
+import { checkStateDataIntegrity } from "@/helpers/storeMethods";
 
 Vue.use(Vuex);
 
@@ -855,6 +855,21 @@ export default new Vuex.Store({
             );
         },
 
+        updateState(state, newState){
+            //this method complete changes the state with a new state object
+            Object.keys(state).forEach((property) => {
+                Vue.set(
+                    state,
+                    property,
+                    newState[property]
+                );
+            } );
+
+            //undo redo isn't kept
+            state.diffToPreviousState.splice(0,state.diffToPreviousState.length);
+            state.diffToNextState.splice(0,state.diffToNextState.length);
+        },
+
         saveStateChanges(state, payload: {previousState: object; mockCurrentCursorFocus?: EditableFocusPayload}) {
             let backupCurrentFrame = {} as CurrentFrame;
             let backupCurrentFocus = false;
@@ -1488,9 +1503,7 @@ export default new Vuex.Store({
 
                 // We need to check the JSON string is:
                 // 1) a valid JSON description of an object --> easy, we can just try to convert
-                // 2) an object that matches the state properties (properties list and types) --> easy, we can just find if properties match
-                // 3) an object that doesn't mess up everything if it isn't a coherent state. --> not hard, but not safe.
-                // if wwe pass these 3 conditions, we can then replace the state
+                // 2) an object that matches the state (checksum checker)
                 
                 try {
                     //Check 1)
@@ -1504,21 +1517,12 @@ export default new Vuex.Store({
                     }
                     else{
                         // Check 2) as 1) is validated
-                        if(!checkObjectsStructureMatch(state, newStateObj)){
+                        if(!checkStateDataIntegrity(newStateObj)){
                             isStateJSONStrValid = false;
-                            const error = i18n.t("errorMessages.dataNotState");
+                            const error = i18n.t("errorMessages.stateDataIntegrity")
                             //note: the following conditional test is only for TS... the message should always be found
-                            errorrDetailMessage = (typeof error === "string") ? error : "data doesn't describe state"; 
+                            errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
                         }             
-                        else{
-                            // Check 3) as 2) is validated
-                            if(!checkStateIntegrity(newStateObj)){
-                                isStateJSONStrValid = false;
-                                const error = i18n.t("errorMessages.stateDataIntegrity")
-                                //note: the following conditional test is only for TS... the message should always be found
-                                errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
-                            }
-                        }
                     }
                 }
                 catch(err){
@@ -1533,13 +1537,9 @@ export default new Vuex.Store({
             // Apply the change and indicate it to the user if we detected a valid JSON string
             // or alert the user we couldn't if we detected a faulty JSON string to represent the state
             if(isStateJSONStrValid){
-                //before updating the state, we replace the new state's undo with the current's (redo will be erased anyway)
-                const newState = JSON.parse(payload.stateJSONStr);
-                newState.diffToPreviousState = state.diffToPreviousState;
-
                 commit(
                     "updateState",
-                    newState,
+                    JSON.parse(payload.stateJSONStr)
                 )
 
                 commit(

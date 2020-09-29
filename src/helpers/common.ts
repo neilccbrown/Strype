@@ -84,46 +84,6 @@ export const getObjectPropertiesDiffferences = (obj1: {[id: string]: any}, obj2:
     return result;
 }
 
-export const checkObjectsStructureMatch = (obj1: {[id: string]: any}, obj2: {[id: string]: any}): boolean => {
-    // This method checks if two objects exactly have the same properties names.
-    
-    // Make a copy of obj1 and obj2 as we are going to remove some elements to check the difference.
-    const obj1Copy = JSON.parse(JSON.stringify(obj1)), obj2Copy = JSON.parse(JSON.stringify(obj2));
-
-    const compareObjProperties = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, path: string): void => {
-        const pathSeparator = (path.length > 0) ? "." : "";
-    
-        for(const obj1property in obj1) {
-            const obj1value = obj1[obj1property]
-         
-            //loop all properties of obj1: if found in obj2 we delete the property in both objects
-            //and will remain what is either only defined in obj1 or only defined in obj2
-            if(obj2[obj1property] !== undefined){
-                //call recursive checking only if BOTH entries are of type object or array
-                //and don't check "null" values as object
-                if(obj1value !== null && typeof obj1value === "object"){
-                    compareObjProperties(obj1value, obj2[obj1property], path + pathSeparator + obj1property + "_" + Array.isArray(obj1value));
-                    if((Array.isArray(obj1value) && checkArrayIsEmpty(obj2[obj1property])) || Object.entries(obj2[obj1property]).length == 0){
-                        //if inside obj2[property] there is no extra property/entry, we delete it
-                        delete obj2[obj1property];
-                    }
-                    //delete in obj1 anyway since we've loop through it
-                    delete obj1[obj1property];
-                }
-                else {
-                    delete obj1[obj1property];
-                    delete obj2[obj1property];
-                }    
-            }
-        }
-    }
-
-    compareObjProperties(obj1Copy, obj2Copy, "");
-
-    //objects have the same properties if the resulting copies are both empty
-    return (Object.keys(obj1Copy).length == 0 && Object.keys(obj2Copy).length == 0);
-}
-
 export const saveContentToFile = (content: string, fileName: string) => {
     // from https://blog.logrocket.com/programmatic-file-downloads-in-the-browser-9a5186298d5c/
 

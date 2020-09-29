@@ -6,7 +6,7 @@
       "uploadFailureMicrobit": "Upload to micro:bit failed with error \"{errorMsg}\"",
       "noUndo" : "There is no undo action avaialble.",
       "noRedo": "There is no redo action available.",
-      "uploadEditorFileError": "Something wrong happened during editor file upload: {errorMsg}.",
+      "uploadEditorFileError": "Something wrong happened during editor file upload: {errorMsg}. Your code has not changed.",
       "uploadEditorFileSuccess": "The editor file upload is successful. Your code has been loaded."
   },
   "buttonLabel":{
@@ -24,10 +24,10 @@
   "errorMessages": {
     "wrongDataFormat": "the data format cannot be interpreted by WebFrames",
     "stateDataIntegrity" : "the data doesn't have integrity to be interpreted by WebFrames",
-    "dataNotObject" : "the data doesn't describe an object",
-    "dataNotState" : "the data doesn't describe WebFrames' state"
+    "dataNotObject" : "the data doesn't describe an object"
   },
   "appMessages": {
-    "editorFileUpload": "Uploading your file to the editor..."
+    "editorFileUpload": "Uploading your file to the editor...",
+    "editorConfirmChangeCode": "Current editor's content will be permanently lost.\nDo you want to continue?"
   }
 }

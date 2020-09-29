@@ -58,7 +58,10 @@ export default Vue.extend({
         },
 
         importFile(): void {
-            (this.$refs.importFileInput as HTMLInputElement).click();
+            //users should be warned about current editor's content loss
+            if (confirm(this.$i18n.t("appMessages.editorConfirmChangeCode"))) {
+                (this.$refs.importFileInput as HTMLInputElement).click();    
+            }            
         },
         
         selectedFile() {
