@@ -87,45 +87,41 @@ export const getObjectPropertiesDiffferences = (obj1: {[id: string]: any}, obj2:
 export const checkObjectsStructureMatch = (obj1: {[id: string]: any}, obj2: {[id: string]: any}): boolean => {
     // This method checks if two objects exactly have the same properties names.
     
-    // Make a copy of obj2 as we are going to remove some elements to check the difference.
-    const obj2Copy = JSON.parse(JSON.stringify(obj2));
+    // Make a copy of obj1 and obj2 as we are going to remove some elements to check the difference.
+    const obj1Copy = JSON.parse(JSON.stringify(obj1)), obj2Copy = JSON.parse(JSON.stringify(obj2));
 
-    const compareObjProperties = (obj1: {[id: string]: any}, obj2Copy: {[id: string]: any}): boolean => {
+    const compareObjProperties = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, path: string): void => {
         const pathSeparator = (path.length > 0) ? "." : "";
     
         for(const obj1property in obj1) {
             const obj1value = obj1[obj1property]
          
-            //if property exists in obj2, check recursive difference if value is of type object
-            //or check the difference of value and remove from obj2 anyway if value isn't of type object
+            //loop all properties of obj1: if found in obj2 we delete the property in both objects
+            //and will remain what is either only defined in obj1 or only defined in obj2
             if(obj2[obj1property] !== undefined){
                 //call recursive checking only if BOTH entries are of type object or array
                 //and don't check "null" values as object
                 if(obj1value !== null && typeof obj1value === "object"){
-                    findDiffDeep(obj1value, obj2[obj1property], result, path + pathSeparator + obj1property + "_" + Array.isArray(obj1value));
+                    compareObjProperties(obj1value, obj2[obj1property], path + pathSeparator + obj1property + "_" + Array.isArray(obj1value));
                     if((Array.isArray(obj1value) && checkArrayIsEmpty(obj2[obj1property])) || Object.entries(obj2[obj1property]).length == 0){
                         //if inside obj2[property] there is no extra property/entry, we delete it
                         delete obj2[obj1property];
                     }
+                    //delete in obj1 anyway since we've loop through it
+                    delete obj1[obj1property];
                 }
                 else {
-                    if(obj2[obj1property] !== obj1value){
-                        result.push({propertyPathWithArrayFlag: (path + pathSeparator + obj1property), value: obj2[obj1property]});
-                    }
-                    //note: for arrays, delete doesn't change the size of the array, but put "undefined" in the index
-                    //and that is good for use because in array, indexing MUST be preserved.
+                    delete obj1[obj1property];
                     delete obj2[obj1property];
-                }
-    
-            }
-            //else it's a deletion from obj1, put "null" value in the result
-            else{
-                result.push({propertyPathWithArrayFlag: (path + pathSeparator + obj1property), value: null });
+                }    
             }
         }
     }
 
-    return compareObjProperties(obj1, obj2Copy);
+    compareObjProperties(obj1Copy, obj2Copy, "");
+
+    //objects have the same properties if the resulting copies are both empty
+    return (Object.keys(obj1Copy).length == 0 && Object.keys(obj2Copy).length == 0);
 }
 
 export const saveContentToFile = (content: string, fileName: string) => {

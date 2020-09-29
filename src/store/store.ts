@@ -1491,7 +1491,7 @@ export default new Vuex.Store({
                 // 2) an object that matches the state properties (properties list and types) --> easy, we can just find if properties match
                 // 3) an object that doesn't mess up everything if it isn't a coherent state. --> not hard, but not safe.
                 // if wwe pass these 3 conditions, we can then replace the state
-            
+                
                 try {
                     //Check 1)
                     const newStateObj = JSON.parse(payload.stateJSONStr);
@@ -1533,6 +1533,15 @@ export default new Vuex.Store({
             // Apply the change and indicate it to the user if we detected a valid JSON string
             // or alert the user we couldn't if we detected a faulty JSON string to represent the state
             if(isStateJSONStrValid){
+                //before updating the state, we replace the new state's undo with the current's (redo will be erased anyway)
+                const newState = JSON.parse(payload.stateJSONStr);
+                newState.diffToPreviousState = state.diffToPreviousState;
+
+                commit(
+                    "updateState",
+                    newState,
+                )
+
                 commit(
                     "setMessageBanner",
                     MessageDefinitions.UploadEditorFileSuccess
