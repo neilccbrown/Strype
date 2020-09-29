@@ -50,6 +50,7 @@ export enum DraggableGroupTypes {
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
+    both = "both",
     none = "none",
 }
 
@@ -249,7 +250,7 @@ export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.else,
     labels: [{ label: "else:", slot: false, defaultText: ""}],
-    draggableGroup: DraggableGroupTypes.none,
+    draggableGroup: DraggableGroupTypes.ifCompound,
     jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
 };
 

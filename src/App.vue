@@ -11,7 +11,7 @@
                     <FrameContainer
                         v-for="container in containerFrames"
                         v-bind:key="container.frameType.type + '-id:' + container.id"
-                        v-bind:id="container.id"
+                        v-bind:frameId="container.id"
                         v-bind:containerLabel="container.frameType.labels[0].label"
                         v-bind:caretVisibility="container.caretVisibility"
                         v-bind:frameType="container.frameType"

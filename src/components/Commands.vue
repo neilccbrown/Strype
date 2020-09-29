@@ -82,7 +82,7 @@ export default Vue.extend({
     computed: {
         addFrameCommands(): Record<string, AddFrameCommandDef> {
             //We retrieve the add frame commands associated with the current frame
-            return store.getters.getCurrentFrameAddFrameCommands();
+            return store.getters.getCurrentFrameAddFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
         },
 
         toggleFrameLabelCommands(): ToggleFrameLabelCommandDef[] {
