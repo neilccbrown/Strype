@@ -2,7 +2,7 @@
     <div class="next-to-eachother">
         <input
             type="text"
-            v-if="isLoaded"
+            v-if="isComponentLoaded "
             v-model="code"
             v-bind:placeholder="defaultText"
             v-focus="focused"
@@ -58,9 +58,21 @@ export default Vue.extend({
     mounted() {
         //when the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
         //because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
-        this.isLoaded = true;
+        this.isComponentLoaded  = true;
     },
 
+    data() {
+        return {
+            //this flags indicates if the content of editable slot has been already modified during a sequence of action
+            //as we don't want to save each single change of the content, but the full content change itself.
+            isFirstChange: true, 
+            
+            //this flag is used to "delay" the computation of the input text field's width,
+            //so that the width is rightfully computed when displayed for the first time
+            isComponentLoaded : false,
+        };
+    },
+    
     computed: {
         placeholderId(): string {
             return "editplaceholder_" + getEditableSlotId(this.frameId, this.slotIndex);
@@ -126,13 +138,6 @@ export default Vue.extend({
                 this.$props.slotIndex
             );
         },
-    },
-
-    data() {
-        return {
-            isFirstChange: true,
-            isLoaded: false,
-        };
     },
 
     directives: {

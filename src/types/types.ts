@@ -569,5 +569,6 @@ export interface ObjectPropertyDiff {
     //The property path is formatted as "level1_<bool>.level2_<bool>. ... .levelN" 
     //where <bool> is a boolean flag value indicating if the corresponding level is for an array or not.
     propertyPathWithArrayFlag: string;
+    //value is set to "null" to notify a deletion.
     value: any;
 }
