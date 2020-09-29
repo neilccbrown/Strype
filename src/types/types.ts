@@ -327,7 +327,7 @@ export const WithDefinition: FramesDefinitions = {
         { label: " as ", slot: true, defaultText: "identifier", optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
-    colour: "#0C3DED",
+    colour: "#ede8f2",
 };
 
 // Statements
