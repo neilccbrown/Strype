@@ -5,7 +5,6 @@ import {ObjectPropertyDiff} from "@/types/types";
 //Each entry of the result contains :
 //  propertyPath --> the path of the object properties (. separated)
 //  value        --> the value of the difference (null if deletion, actual value if addition or update)
-
 const checkArrayIsEmpty = (array: []): boolean => {
     return array.findIndex((val) => val !== undefined) == -1;
 }
@@ -16,14 +15,21 @@ const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, resu
     for(const obj1property in obj1) {
         const obj1value = obj1[obj1property]
      
-        //if property exists in obj2, check recursive difference if value is of type object
-        //or check the difference of value and remove from obj2 anyway if value isn't of type object
+        //We first check if the property is defined in obj2
+        //--> if yes, we check if there is a difference in the value,
+        //--> if no, we notify a deletion in obj2.
+
         if(obj2[obj1property] !== undefined){
-            //call recursive checking only if BOTH entries are of type object or array
-            //and don't check "null" values as object
+            //To check the difference of value, we need to distinguish the case when the value is:
+            // - an object or an array --> then we look for sub values recursively
+            // - something else (i.e. string, boolean etc) --> we compare both values from obj1 and obj2
             if(obj1value !== null && typeof obj1value === "object"){
                 findDiffDeep(obj1value, obj2[obj1property], result, path + pathSeparator + obj1property + "_" + Array.isArray(obj1value));
-                if((Array.isArray(obj1value) && checkArrayIsEmpty(obj2[obj1property])) || Object.entries(obj2[obj1property]).length == 0){
+                //note: for arrays, delete doesn't change the size of the array, but put "undefined" in the index
+                //and that is good for use because in array, indexing MUST be preserved. For example, after this recursion, the array can
+                //be [undefined, undefined, x, y] and we want to see x still at the 3rd position and y at the 4th. 
+                //That is why we don't check the array has a 0 length to delete, but that it doesn't contain some values != undefined.
+                if((Array.isArray(obj1value) && checkArrayIsEmpty(obj2[obj1property])) || Object.entries(obj2[obj1property]).length === 0){
                     //if inside obj2[property] there is no extra property/entry, we delete it
                     delete obj2[obj1property];
                 }
@@ -32,8 +38,6 @@ const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, resu
                 if(obj2[obj1property] !== obj1value){
                     result.push({propertyPathWithArrayFlag: (path + pathSeparator + obj1property), value: obj2[obj1property]});
                 }
-                //note: for arrays, delete doesn't change the size of the array, but put "undefined" in the index
-                //and that is good for use because in array, indexing MUST be preserved.
                 delete obj2[obj1property];
             }
 
@@ -45,7 +49,9 @@ const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, resu
     }
 } 
 
-export const checkAddedValues = (obj: {[id: string]: any}, result: ObjectPropertyDiff[], path: string) => {
+//After using findDiffDeep(), the obj2 may have remaining non empty values.
+//These values are changes added in obj2 and need to be saved too.
+const checkAddedValues = (obj: {[id: string]: any}, result: ObjectPropertyDiff[], path: string) => {
     const pathSeparator = (path.length > 0) ? "." : "";
     
     for(const objProperty in obj){
@@ -67,6 +73,9 @@ export const checkAddedValues = (obj: {[id: string]: any}, result: ObjectPropert
     }
 }
 
+//Entry point for checking the difference between two objects.
+//The differnence between obj1 and obj2 is saved as an array of ObjectPropertyDiff objects.
+//Note: this is not a bidrectional difference checker: it only checks the difference in obj2 compared with obj1, not keep trace of what is in obj1.
 export const getObjectPropertiesDiffferences = (obj1: {[id: string]: any}, obj2: {[id: string]: any}): ObjectPropertyDiff[]  => {
     const result = [] as ObjectPropertyDiff[];
     

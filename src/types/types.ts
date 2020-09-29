@@ -50,6 +50,7 @@ export enum DraggableGroupTypes {
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
+    both = "both",
     none = "none",
 }
 
@@ -249,7 +250,7 @@ export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.else,
     labels: [{ label: "else:", slot: false, defaultText: ""}],
-    draggableGroup: DraggableGroupTypes.none,
+    draggableGroup: DraggableGroupTypes.ifCompound,
     jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
 };
 
@@ -326,7 +327,7 @@ export const WithDefinition: FramesDefinitions = {
         { label: " as ", slot: true, defaultText: "identifier", optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
-    colour: "#0C3DED",
+    colour: "#ede8f2",
 };
 
 // Statements
@@ -593,6 +594,7 @@ export interface ObjectPropertyDiff {
     //The property path is formatted as "level1_<bool>.level2_<bool>. ... .levelN" 
     //where <bool> is a boolean flag value indicating if the corresponding level is for an array or not.
     propertyPathWithArrayFlag: string;
+    //value is set to "null" to notify a deletion.
     value: any;
 }
 

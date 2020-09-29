@@ -2,10 +2,13 @@
     <div
         class="frame-body-container"
         v-bind:class="{error: empty}"
-        @click.self="toggleCaret()"
         v-bind:id="id"
     >
-        <Caret v-show=" caretVisibility === caretPosition.body  && !isEditing" />
+        <CaretContainer
+                v-bind:frameId="this.frameId"
+                v-bind:caretVisibility="this.caretVisibility"
+                v-bind:caretAssignedPosition="caretPosition.body"
+        />
 
         <Draggable
             v-model="frames"
@@ -43,10 +46,9 @@
 import Vue from "vue";
 import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
-import Caret from "@/components/Caret.vue";
+import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DraggableGroupTypes } from "@/types/types";
-
 
 //////////////////////
 //     Component    //
@@ -58,7 +60,7 @@ export default Vue.extend({
     components: {
         Frame,
         Draggable,
-        Caret,
+        CaretContainer,
     },
     
     props: {
@@ -118,13 +120,6 @@ export default Vue.extend({
                 }
             );
         },
-
-        toggleCaret(): void {
-            store.dispatch(
-                "toggleCaret",
-                {id:this.frameId, caretPosition: CaretPosition.body}
-            );
-        },
         
     },
 });
@@ -137,7 +132,6 @@ export default Vue.extend({
 
 .frame-body-container {
     background-color: #F6F2E9 !important;
-    padding-top: 4px;
     margin-bottom: 4px;
     margin-right: 0px;
     margin-left: 12px;

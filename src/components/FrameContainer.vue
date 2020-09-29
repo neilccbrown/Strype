@@ -2,19 +2,24 @@
     <div class="frame-container" v-bind:style="frameStyle">
         <div class="frame-container-header">
             <button class="frame-container-btn-collapse" v-bind:style="frameStyle" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span class="frame-container-label-span" @click.self="toggleCaret($event)">{{containerLabel}}</span>
+            <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
         <div v-bind:style="containerStyle" class="container-frames">
-            <Caret v-show="caretVisibility===caretPosition.body" />
+            <CaretContainer
+                v-bind:frameId="this.frameId"
+                v-bind:caretVisibility="this.caretVisibility"
+                v-bind:caretAssignedPosition="caretPosition.body"
+            />
 
             <Draggable
                 v-model="frames" 
                 v-bind:group="draggableGroup"
                 @change.self="handleDragAndDrop($event)"
-                animation="200"
-                :disabled="isEditing"
-                v-bind:key="'Draggagle-Container-'+this.id"
+                v-bind:animation="300"
+                v-bind:disabled="isEditing"
+                v-bind:key="'Draggagle-Container-'+this.frameId"
+                v-bind:id="'Draggagle-Container-'+this.frameId"
             >
                 <Frame 
                     v-for="frame in frames" 
@@ -37,7 +42,7 @@
 //////////////////////
 import Vue from "vue";
 import Frame from "@/components/Frame.vue";
-import Caret from "@/components/Caret.vue";
+import CaretContainer from "@/components/CaretContainer.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DraggableGroupTypes, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions } from "@/types/types";
@@ -51,8 +56,8 @@ export default Vue.extend({
 
     components: {
         Frame,
-        Caret,
         Draggable,
+        CaretContainer,
     },
 
     data() {
@@ -67,11 +72,12 @@ export default Vue.extend({
                         : Definitions.ReturnDefinition.colour,
             },
             isCollapsed: false,
+            overCaret: false,
         }
     },
 
     props: {
-        id: Number,
+        frameId: Number,
         caretVisibility: String,
         containerLabel: String,
         frameType: {
@@ -83,11 +89,11 @@ export default Vue.extend({
     computed: {
         frames(): FrameObject[] {
             // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-            return store.getters.getFramesForParentId(this.$props.id);
+            return store.getters.getFramesForParentId(this.$props.frameId);
         },
 
         draggableGroup(): DraggableGroupTypes {
-            return store.getters.getDraggableGroupById(this.$props.id); 
+            return store.getters.getDraggableGroupById(this.$props.frameId); 
         },
         
         // Needed in order to use the `CaretPosition` type in the v-show
@@ -106,6 +112,10 @@ export default Vue.extend({
                 } !important`,
             };
         },
+
+        id(): string {
+            return "frameContainerId_" + this.$props.frameId;
+        },
     },
 
     methods: {
@@ -116,24 +126,16 @@ export default Vue.extend({
             //update the div style
             this.$data.containerStyle["display"] = (this.$data.isCollapsed) ? "none" : "block";
         },
+        
         handleDragAndDrop(event: Event): void {
             store.dispatch(
                 "updateFramesOrder",
                 {
                     event: event,
-                    eventParentId: this.id,
+                    eventParentId: this.frameId,
                 }
             );
-        },
-        toggleCaret(): void {
-            store.dispatch(
-                "toggleCaret",
-                {id:this.$props.id, caretPosition: CaretPosition.body}
-            );
-            //expand the container
-            this.$data.isCollapsed = true;
-            this.toggleCollapse();
-        },
+        },        
     },
 });
 
@@ -162,6 +164,5 @@ export default Vue.extend({
     border-radius: 8px;
     border: 1px solid #B4B4B4;
 }
-
 
 </style>
