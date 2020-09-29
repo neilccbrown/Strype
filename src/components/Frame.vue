@@ -55,7 +55,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
-import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, FrameObject } from "@/types/types";
+import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, Definitions } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu"
 
 //////////////////////
@@ -107,12 +107,13 @@ export default Vue.extend({
 
         frameStyle(): Record<string, string> {
             return this.isJointFrame === true
-                ? {}
+                ? {"color":"#000 !important"}
                 : {
                     "background-color": `${
                         (this.frameType as FramesDefinitions).colour
                     } !important`,
                     "padding-left": "2px",
+                    "color": (this.frameType === Definitions.CommentDefinition) ? "#97971E !important" : "#000 !important",
                 };
         },
 
@@ -212,11 +213,14 @@ export default Vue.extend({
 
 <style lang="scss">
 .block {
-    color: #000 !important;
     padding-right: 4px;
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
+    border: 1px solid transparent;
+}
+
+.block:hover{
     border: 1px solid #B4B4B4;
 }
 

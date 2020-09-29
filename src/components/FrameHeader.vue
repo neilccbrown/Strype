@@ -8,7 +8,6 @@
         >
             <div class="next-to-eachother">{{ item.label }}</div>
             <EditableSlot
-                class="editable-input"
                 v-if="item.slot"
                 v-bind:default-text="item.defaultText"
                 v-bind:slotIndex="index"
@@ -56,10 +55,6 @@ export default Vue.extend({
 <style lang="scss">
 .next-to-eachother {
     display: inline-block;
-}
-
-.editable-input {
-    margin: 0px 5px 0px 5px;
 }
 
 .hidden {

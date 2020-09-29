@@ -71,10 +71,12 @@ export interface LineAndSlotPositions {
 // Note that the slot variable of each objects tells if the
 // Label needs an editable slot as well attached to it.
 
-export interface ErrorSlotPayload {
+export interface EditableSlotPayload {
     frameId: number;
     slotId: number;
     code: string;
+    initCode: string;
+    isFirstChange: boolean;
 }
 export interface EditableFocusPayload {
     frameId: number;
@@ -192,7 +194,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
-    colour: "#FFFFF",
+    colour: "#BBC6B6",
     draggableGroup: DraggableGroupTypes.imports,
 }
 
@@ -204,7 +206,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
-    colour: "#FFFFF",
+    colour: "#BBC6B6",
     draggableGroup: DraggableGroupTypes.functionSignatures,
 
 }
@@ -217,7 +219,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
-    colour: "#FFFFF",
+    colour: "#BBC6B6",
 }
 
 // Blocks
@@ -313,7 +315,7 @@ export const FuncDefDefinition: FramesDefinitions = {
         { label: "(", slot: true, defaultText: "arguments", optionalSlot: true},
         { label: "):", slot: false, defaultText: ""},
     ],
-    colour: "#0C3DED",
+    colour: "#ECECC8",
     draggableGroup: DraggableGroupTypes.functionSignatures,
 };
 
@@ -325,7 +327,7 @@ export const WithDefinition: FramesDefinitions = {
         { label: " as ", slot: true, defaultText: "identifier", optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
-    colour: "#0C3DED",
+    colour: "#ede8f2",
 };
 
 // Statements
@@ -388,7 +390,7 @@ export const ImportDefinition: FramesDefinitions = {
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
         { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommandDefs.importAs, optionalSlot: false},
     ],    
-    colour: "#FFFFFF",
+    colour: "#CBD4C8",
     draggableGroup: DraggableGroupTypes.imports,
 };
 
@@ -477,6 +479,8 @@ export const MessageTypes = {
     largeDeletion: "largeDeletion",
     imageDisplay: "imageDisplay",
     uploadSuccessMicrobit:"uploadSuccessMicrobit",
+    noUndo: "noUndo",
+    noRedo: "noRedo",
 }
 
 //empty message
@@ -488,7 +492,7 @@ const NoMessage: MessageDefinition = {
 };
 
 //message for large deletation (undo)
-const LargeDeletionMessageDefinition: MessageDefinition = {
+const LargeDeletion: MessageDefinition = {
     type: MessageTypes.largeDeletion,
     message: "messageBannerMessage.deleteLargeCode",
     buttons:[{label: "buttonLabel.undo", action:MessageDefinedActions.undo}],
@@ -496,7 +500,7 @@ const LargeDeletionMessageDefinition: MessageDefinition = {
 };
 
 //download hex message
-const downloadHex: MessageDefinition = {
+const DownloadHex: MessageDefinition = {
     type: MessageTypes.imageDisplay,
     message: "",
     buttons: [],
@@ -504,17 +508,16 @@ const downloadHex: MessageDefinition = {
 };
 
 //message for upload code success in microbit progress
-const UploadSuccessMicrobitMessageDefinition: MessageDefinition = {
+const UploadSuccessMicrobit: MessageDefinition = {
     type: MessageTypes.uploadSuccessMicrobit,
     message: "messageBannerMessage.uploadSuccessMicrobit",
-    //buttons:[{label:"buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
     buttons:[],
     path: imagePaths.empty,
 
 };
 
 //message for upload code failure in microbit progress
-const UploadFailureMicrobitMessageDefinition: MessageDefinition = {
+const UploadFailureMicrobit: MessageDefinition = {
     type: MessageTypes.uploadSuccessMicrobit,
     message: {
         path: "messageBannerMessage.uploadFailureMicrobit",
@@ -522,30 +525,35 @@ const UploadFailureMicrobitMessageDefinition: MessageDefinition = {
             [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
         },
     },
-    //buttons:[{label:"buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
     buttons:[],
     path: imagePaths.empty,
 };
 
-
-// THIS IS FOR TEST ONLY --> DELETE LATER
-// it's an example of a message with yes/no button, 
-// and a function action (yes) and a named action (no)
-const TestYesNoMessageDefinition: MessageDefinition = {
-    type: MessageTypes.largeDeletion,
-    message: "messageBannerMessage.yesnoTest",
-    buttons:[{label: "buttonLabel.yes", action:(() => alert("OUI !"))}, {label: "buttonLabel.no", action:MessageDefinedActions.closeBanner}],
+//messages to inform the user there is no undo/redo to perfom
+const NoUndo: MessageDefinition = {
+    type: MessageTypes.noUndo,
+    message: "messageBannerMessage.noUndo",
+    buttons:[],
     path: imagePaths.empty,
+
+};
+
+const NoRedo: MessageDefinition = {
+    type: MessageTypes.noRedo,
+    message: "messageBannerMessage.noRedo",
+    buttons:[],
+    path: imagePaths.empty,
+
 };
 
 export const MessageDefinitions = {
     NoMessage,
-    LargeDeletionMessageDefinition,
-    UploadSuccessMicrobitMessageDefinition,
-    UploadFailureMicrobitMessageDefinition,
-    //TO REMOVE LATER
-    TestYesNoMessageDefinition,
-    downloadHex,
+    LargeDeletion,
+    UploadSuccessMicrobit,
+    UploadFailureMicrobit,
+    DownloadHex,
+    NoUndo,
+    NoRedo,
 };
 
 //WebUSB listener
@@ -554,4 +562,13 @@ export interface WebUSBListener {
     onUploadProgressHandler: {(percent: number): void};
     onUploadSuccessHandler: VoidFunction;
     onUploadFailureHandler: {(errorMsg: string): void};
+}
+
+//Object difference
+export interface ObjectPropertyDiff {
+    //The property path is formatted as "level1_<bool>.level2_<bool>. ... .levelN" 
+    //where <bool> is a boolean flag value indicating if the corresponding level is for an array or not.
+    propertyPathWithArrayFlag: string;
+    //value is set to "null" to notify a deletion.
+    value: any;
 }

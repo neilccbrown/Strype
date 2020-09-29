@@ -44,7 +44,7 @@ const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef} = {
     },
     " ": {
         type: Definitions.EmptyDefinition,
-        description: "empty statement",
+        description: "method call",
         shortcut: " ",
         symbol: "⌴",//"␣"
     },

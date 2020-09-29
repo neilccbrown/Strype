@@ -2,20 +2,22 @@
     <div class="next-to-eachother">
         <input
             type="text"
+            v-if="isComponentLoaded "
             v-model="code"
             v-bind:placeholder="defaultText"
             v-focus="focused"
-            @blur="onBlur()"
             @focus="onFocus()"
+            @blur="onBlur()"
             @keyup.left.prevent.stop="onLRKeyUp($event)"
             @keyup.right.prevent.stop="onLRKeyUp($event)"
+            @keyup.enter.prevent.stop="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
             @keyup.down.prevent.stop="onUDKeyUp($event)"
             v-bind:class="{editableSlot: focused, error: erroneous}"
             v-bind:id="id"
             v-bind:key="id"
             class="input"
-            v-bind:size="inputSize"
+            v-bind:style="inputTextStyle"
         />
         <b-popover
           v-if="erroneous"
@@ -24,15 +26,19 @@
           triggers="hover focus"
           v-bind:content="errorMessage"
         ></b-popover>
+        <div 
+            class="editableslot-placeholder"
+            v-bind:id="placeholderId"
+            v-bind:value="code"
+        />
     </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { CaretPosition} from "@/types/types";
+import { CaretPosition, Definitions} from "@/types/types";
 import { getEditableSlotId } from "@/helpers/editor";
-// import AutosizeInput from "vue-autosize-input"; // https://github.com/houjiazong/vue-autosize-input
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -45,20 +51,69 @@ export default Vue.extend({
         optionalSlot: Boolean,
     },
 
-    data() {
-        return {
-            code: store.getters.getContentForFrameSlot(
-                this.$parent.$props.frameId,
-                this.$props.slotIndex
-            ),
-        };
-    },
-
     beforeDestroy() {
         store.commit("removePreCompileErrors",this.id);
     },
 
+    mounted() {
+        //when the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
+        //because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
+        this.isComponentLoaded  = true;
+    },
+
+    data() {
+        return {
+            //this flags indicates if the content of editable slot has been already modified during a sequence of action
+            //as we don't want to save each single change of the content, but the full content change itself.
+            isFirstChange: true, 
+            
+            //this flag is used to "delay" the computation of the input text field's width,
+            //so that the width is rightfully computed when displayed for the first time
+            isComponentLoaded : false,
+        };
+    },
+    
     computed: {
+        placeholderId(): string {
+            return "editplaceholder_" + getEditableSlotId(this.frameId, this.slotIndex);
+        },
+
+        initCode(): string {
+            return store.getters.getInitContentForFrameSlot();
+        },
+
+        inputTextStyle(): Record<string, string> {
+            return {
+                "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
+                "width" : this.computeFitWidthValue(),
+                "color" : (store.getters.getFrameObjectFromId(this.frameId).frameType === Definitions.CommentDefinition)
+                    ? "#97971E"
+                    : "#000",
+            };
+        },
+
+        code: {
+            get() {
+                return store.getters.getContentForFrameSlot(
+                    this.$parent.$props.frameId,
+                    this.$props.slotIndex
+                );
+            },
+            set(value){
+                store.dispatch(
+                    "setFrameEditableSlotContent",
+                    {
+                        frameId: this.frameId,
+                        slotId: this.slotIndex,
+                        code: value,
+                        initCode: this.initCode,
+                        isFirstChange: this.isFirstChange,
+                    }
+                );
+                this.isFirstChange = false;
+            },
+        },
+
         focused(): boolean {
             return store.getters.getIsEditableFocused(
                 this.$props.frameId,
@@ -83,13 +138,8 @@ export default Vue.extend({
                 this.$props.slotIndex
             );
         },
-
-        inputSize(): number{
-            return (this.code.length > this.defaultText.length) ? this.code.length : this.defaultText.length;
-        },
     },
 
-   
     directives: {
         focus: {
             //This is needed to set the focus when a frame with slots has just been added (i.e. when `leftRightKey` is called after `addFrameWithCommand` in Commands.vue)
@@ -112,85 +162,30 @@ export default Vue.extend({
         },
     },
 
-
     methods: {
 
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
-            store.commit(
-                "setEditFlag",
-                true
-            );
-
-            //First set the curretFrame to this frame
-            store.commit(
-                "setCurrentFrame",
-                {
-                    id: this.$props.frameId,
-                    caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
-                }
-            );
-            //Then store which editable has the focus
-            store.commit(
-                "setEditableFocus",
+            this.isFirstChange = true;
+            store.dispatch(
+                "setFocusEditableSlot",
                 {
                     frameId: this.$props.frameId,
                     slotId: this.$props.slotIndex,
-                    focused: true,
+                    caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
-            );
+            );           
         },
 
         onBlur(): void {
-
-            store.commit(
-                "setEditFlag",
-                false
-            );
-
-            store.commit(
-                "setEditableFocus",
+            store.dispatch(
+                "updateErrorsOnSlotValidation",
                 {
                     frameId: this.$props.frameId,
                     slotId: this.$props.slotIndex,
-                    focused: false,
-                }
+                    code: this.code.trim(),
+                }   
             );
-
-            if(this.$data.code !== "") {
-                store.commit(
-                    "setFrameEditorSlot",
-                    {
-                        frameId: this.$parent.$props.frameId,
-                        slotId: this.$props.slotIndex,
-                        code: this.$data.code,
-                    }   
-                );
-                //if the user entered text on previously left blank slot, remove the error
-                if(!this.$props.optionalSlot && this.errorMessage === "Input slot cannot be empty") {
-                    store.commit(
-                        "setSlotErroneous", 
-                        {
-                            frameId: this.$parent.$props.frameId, 
-                            slotIndex: this.$props.slotIndex, 
-                            error: "",
-                        }
-                    );
-                    store.commit("removePreCompileErrors",this.id);
-                }
-            }
-            else if(!this.$props.optionalSlot){
-                store.commit(
-                    "setSlotErroneous", 
-                    {
-                        frameId: this.$parent.$props.frameId, 
-                        slotIndex: this.$props.slotIndex, 
-                        error: "Input slot cannot be empty",
-                    }
-                );
-                store.commit("addPreCompileErrors",this.id);
-            }
-
         },
 
         onLRKeyUp(event: KeyboardEvent) {
@@ -200,7 +195,7 @@ export default Vue.extend({
                 const start = input.selectionStart ?? 0;
                 const end = input.selectionEnd ?? 0;
                 
-                if((start === 0 && event.key==="ArrowLeft") || (end === input.value.length && event.key==="ArrowRight")) {
+                if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
                     
                     store.dispatch(
                         "leftRightKey",
@@ -224,6 +219,19 @@ export default Vue.extend({
                 );
             }
         },
+        
+        computeFitWidthValue(): string {
+            const placeholder = document.getElementById(this.placeholderId);
+            let computedWidth = "150px"; //default value if cannot be computed
+            const offset = 10;
+            if (placeholder) {
+                placeholder.textContent = (this.code.length > 0) ? this.code : this.defaultText;
+                //the width is computed from the placeholder's width from which
+                //we add extra space for the cursor.
+                computedWidth = (placeholder.offsetWidth + offset) + "px";
+            }
+            return computedWidth;
+        },
 
     },
 });
@@ -236,7 +244,17 @@ export default Vue.extend({
 
 .input {
     border-radius: 5px;
-    border: 1px solid #B4B4B4;
+    border: 1px solid transparent;;
+}
+
+.input:hover {
+    border: 1px solid #B4B4B4;;
+}
+
+.editableslot-placeholder {
+    position: absolute;
+    display: inline-block;
+    visibility: hidden;
 }
 
 </style>

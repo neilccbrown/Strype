@@ -3,7 +3,9 @@
       "deleteLargeCode": "You just deleted a large piece of code. If you didn't mean to, you can:",
       "yesnoTest": "Simple test Yes/No Change to another language?",
       "uploadSuccessMicrobit": "Upload to micro:bit completed.",
-      "uploadFailureMicrobit": "Upload to micro:bit failed with error \"{errorMsg}\""
+      "uploadFailureMicrobit": "Upload to micro:bit failed with error \"{errorMsg}\"",
+      "noUndo" : "There is no undo action avaialble.",
+      "noRedo": "There is no redo action available."
   },
   "buttonLabel":{
       "undo": "Undo",

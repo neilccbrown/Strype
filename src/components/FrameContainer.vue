@@ -1,7 +1,7 @@
 <template>
-    <div class="frame-container">
+    <div class="frame-container" v-bind:style="frameStyle">
         <div class="frame-container-header">
-            <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <button class="frame-container-btn-collapse" v-bind:style="frameStyle" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
@@ -45,7 +45,7 @@ import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject, DraggableGroupTypes } from "@/types/types";
+import { CaretPosition, FrameObject, DraggableGroupTypes, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -63,7 +63,14 @@ export default Vue.extend({
     data() {
         return {
             collapseButtonLabel: "\u25BC",
-            containerStyle: {display:"block"},
+            containerStyle: {
+                display:"block",
+                backgroundColor:(this.frameType === FrameContainersDefinitions.ImportsContainerDefinition) 
+                    ? Definitions.ImportDefinition.colour
+                    : (this.frameType === FrameContainersDefinitions.FuncDefContainerDefinition)
+                        ? Definitions.FuncDefDefinition.colour
+                        : Definitions.ReturnDefinition.colour,
+            },
             isCollapsed: false,
             overCaret: false,
         }
@@ -73,6 +80,10 @@ export default Vue.extend({
         frameId: Number,
         caretVisibility: String,
         containerLabel: String,
+        frameType: {
+            type: Object,
+            default: () => DefaultFramesDefinition,
+        }, //Type of the Frame  
     },
 
     computed: {
@@ -94,6 +105,13 @@ export default Vue.extend({
             return store.getters.getIsEditing();
         },
 
+        frameStyle(): Record<string, string> {
+            return {
+                "background-color": `${
+                    (this.frameType as FramesDefinitions).colour
+                } !important`,
+            };
+        },
 
         id(): string {
             return "frameContainerId_" + this.$props.frameId;
@@ -106,19 +124,18 @@ export default Vue.extend({
             //update the button label
             this.$data.collapseButtonLabel = (this.$data.isCollapsed) ? "\u25B6" : "\u25BC";
             //update the div style
-            this.$data.containerStyle = (this.$data.isCollapsed) ? {display:"none"} : {display:"block"};
+            this.$data.containerStyle["display"] = (this.$data.isCollapsed) ? "none" : "block";
         },
+        
         handleDragAndDrop(event: Event): void {
-            store.commit(
+            store.dispatch(
                 "updateFramesOrder",
                 {
                     event: event,
                     eventParentId: this.frameId,
                 }
             );
-        },
-
-        
+        },        
     },
 });
 
@@ -128,14 +145,12 @@ export default Vue.extend({
 .frame-container {
     margin-bottom: 5px;
     margin-left:10px;
-    border: #888 1px solid;
-    background-color: #ECECC8;
-
 }
+
 .frame-container-btn-collapse {
-    background-color: #ECECC8;
     border-color: transparent;
 }
+
 .frame-container-label-span {       
     margin-left: 5px;
     cursor:default;
@@ -148,7 +163,6 @@ export default Vue.extend({
     margin-bottom: 15px;
     border-radius: 8px;
     border: 1px solid #B4B4B4;
-    background-color: #F6F2E9 !important;
 }
 
 </style>
