@@ -137,13 +137,6 @@ export default Vue.extend({
             );
         },
 
-        // copyCopyDuplOtions(): {}[] {
-        //     // We cannot duplicate everything (e.g. an else)
-        //     return (store.getters.getIfPasteIsAllowed(this.frameId, CaretPosition.below,this.$props.frameId))?
-        //         [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}] :
-        //         [{name: "Copy", method: "copy"}];
-        // },
-
     },
 
     methods: {

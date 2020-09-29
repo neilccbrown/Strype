@@ -1,7 +1,7 @@
 <template>
     <div 
         class="caret"
-        v-bind:class="{blured: isBlurred}"></div>
+        v-bind:class="{blurred: isBlurred}"></div>
 </template>
 
 <script lang="ts">
@@ -34,7 +34,7 @@ export default Vue.extend({
     height: 6px;
 }
 
-.blured {
+.blurred {
     background-color: #3467fe8a !important;
 }
 </style>
