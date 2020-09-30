@@ -1,4 +1,5 @@
 import {ObjectPropertyDiff} from "@/types/types";
+import hash from "object-hash";
 
 //Function to get the difference between two states (properties) of an object.
 //It takes the two objects as arguments and returns a list of differences. 
@@ -131,4 +132,9 @@ export const readFileContent = async (file: File): Promise<string>  => {
     });
 
     return result;    
+}
+
+export const getSHA1HashForObject = (obj: {[id: string]: any}): string => {
+    const res = hash(obj);
+    return res;
 }

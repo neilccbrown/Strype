@@ -1,5 +1,6 @@
 import { FrameObject, CaretPosition, EditorFrameObjects } from "@/types/types";
 import Vue from "vue";
+import { getSHA1HashForObject } from "@/helpers/common";
 
 export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frameId: number) => {
     // When removing a frame in the list, we remove all its sub levels,
@@ -187,11 +188,14 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
 }
 
 export function checkStateDataIntegrity(obj: {[id: string]: any}): boolean  {
-    //check the checksum property is present, if not, the document doesn't have integrity
-    if(obj["checksum"] !== undefined){
-        return true;
+    //check the checksum property is present and as expected, if not, the document doesn't have integrity
+    if(obj["checksum"] === undefined){
+        return false;
     }
     else{
-        return false;
+        const foundChecksum = obj["checksum"];
+        delete obj["checksum"];
+        const expectedChecksum = getSHA1HashForObject(obj);
+        return foundChecksum === expectedChecksum;        
     }
 }

@@ -59,7 +59,9 @@ export default Vue.extend({
 
         importFile(): void {
             //users should be warned about current editor's content loss
-            if (confirm(this.$i18n.t("appMessages.editorConfirmChangeCode"))) {
+            const confirmMsg = this.$i18n.t("appMessages.editorConfirmChangeCode");
+            //note: the following conditional test is only for TS... the message should always be found
+            if (confirm((typeof confirmMsg === "string") ? confirmMsg : "Current editor's content will be permanently lost.\nDo you want to continue?")) {
                 (this.$refs.importFileInput as HTMLInputElement).click();    
             }            
         },
@@ -98,7 +100,7 @@ export default Vue.extend({
 
         exportFile(): void {
             //save the JSON file of the state 
-            saveContentToFile(store.getters.getStateJSONStr(), "microbit_webframes_code.json");
+            saveContentToFile(store.getters.getStateJSONStrWithChecksum(), "microbit_webframes_code.json");
         },
     },
 });

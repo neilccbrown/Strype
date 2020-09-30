@@ -4,7 +4,7 @@ import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDef
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import {getEditableSlotId, undoMaxSteps} from "@/helpers/editor";
-import {getObjectPropertiesDiffferences} from "@/helpers/common";
+import {getObjectPropertiesDiffferences, getSHA1HashForObject} from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity } from "@/helpers/storeMethods";
 import {removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods"
@@ -36,8 +36,12 @@ export default new Vuex.Store({
     },
 
     getters: {
-        getStateJSONStr : (state) => (): string => {
-            return JSON.stringify(state);
+        getStateJSONStrWithChecksum : (state) => (): string => {
+            //we get the state's checksum and add it to the state's copy object to return
+            const stateCopy = JSON.parse(JSON.stringify(state));
+            const checksum =  getSHA1HashForObject(stateCopy)
+            stateCopy["checksum"] = checksum;
+            return JSON.stringify(stateCopy);
         },
         getFrameObjectFromId: (state) => (frameId: number) => {
             return state.frameObjects[frameId];
