@@ -1447,6 +1447,8 @@ export default new Vuex.Store({
         },
 
         copyFrameToPosition({commit, state}, payload: {frameId: number; newParentId: number; newIndex: number}) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            
             // If it has a JointParent, we're talking about a JointFrame
             const isJointFrame = state.frameObjects[payload.frameId].jointParentId > 0;
             
@@ -1484,6 +1486,13 @@ export default new Vuex.Store({
 
             commit( "updateNextAvailableId" );
             
+            //save state changes
+            commit(
+                "saveStateChanges",
+                {
+                    previousState: stateBeforeChanges,
+                }
+            );
         },
 
         pasteFrame({dispatch, getters, state}, payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
