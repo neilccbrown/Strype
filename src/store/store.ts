@@ -3,11 +3,12 @@ import Vuex from "vuex";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
-import {getEditableSlotId, undoMaxSteps} from "@/helpers/editor";
-import {getObjectPropertiesDiffferences, getSHA1HashForObject} from "@/helpers/common";
+import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
+import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity } from "@/helpers/storeMethods";
-import {removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods"
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods";
+import { AppVersion } from "@/main";
 
 Vue.use(Vuex);
 
@@ -36,11 +37,13 @@ export default new Vuex.Store({
     },
 
     getters: {
-        getStateJSONStrWithChecksum : (state) => (): string => {
-            //we get the state's checksum and add it to the state's copy object to return
+        getStateJSONStrWithCheckpoints : (state) => (): string => {
+            //we get the state's checksum and the current app version,
+            //and add them to the state's copy object to return
             const stateCopy = JSON.parse(JSON.stringify(state));
             const checksum =  getSHA1HashForObject(stateCopy)
             stateCopy["checksum"] = checksum;
+            stateCopy["version"] = AppVersion;
             return JSON.stringify(stateCopy);
         },
         getFrameObjectFromId: (state) => (frameId: number) => {
@@ -1455,6 +1458,7 @@ export default new Vuex.Store({
         setStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; errorReason?: string}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorrDetailMessage = payload.errorReason ?? "unknow reason";
+            let isVersionCorrect = false;
 
             // If there is an error set because the file couldn't be retrieved
             // we don't check anything, just get to the error display.
@@ -1463,6 +1467,7 @@ export default new Vuex.Store({
                 // We need to check the JSON string is:
                 // 1) a valid JSON description of an object --> easy, we can just try to convert
                 // 2) an object that matches the state (checksum checker)
+                // 3) if the object is valid, we just verify the version is correct (and attempt loading)
                 
                 try {
                     //Check 1)
@@ -1476,12 +1481,17 @@ export default new Vuex.Store({
                     }
                     else{
                         // Check 2) as 1) is validated
-                        if(!checkStateDataIntegrity(newStateObj)){
+                        if(!checkStateDataIntegrity(newStateObj)) {
                             isStateJSONStrValid = false;
                             const error = i18n.t("errorMessages.stateDataIntegrity")
                             //note: the following conditional test is only for TS... the message should always be found
                             errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
-                        }             
+                        } 
+                        else {
+                            // Check 3) as 2) is validated
+                            isVersionCorrect = (newStateObj["version"] == AppVersion);
+                            delete newStateObj["version"];
+                        }          
                     }
                 }
                 catch(err){
@@ -1496,6 +1506,16 @@ export default new Vuex.Store({
             // Apply the change and indicate it to the user if we detected a valid JSON string
             // or alert the user we couldn't if we detected a faulty JSON string to represent the state
             if(isStateJSONStrValid){
+                
+                if(!isVersionCorrect) {
+                    //if the version isn't correct, we ask confirmation to the user before continuing 
+                    const confirmMsg = i18n.t("appMessages.editorFileUploadWrongVersion");
+                    //note: the following conditional test is only for TS... the message should always be found   
+                    if(!confirm((typeof confirmMsg === "string") ? confirmMsg : "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?")){
+                        return;
+                    }
+                }
+
                 commit(
                     "updateState",
                     JSON.parse(payload.stateJSONStr)
@@ -1511,6 +1531,7 @@ export default new Vuex.Store({
                     "setMessageBanner",
                     MessageDefinitions.NoMessage
                 ), 5000);     
+                
             }
             else{
                 const message = MessageDefinitions.UploadEditorFileError;

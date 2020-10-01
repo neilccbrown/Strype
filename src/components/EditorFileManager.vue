@@ -100,7 +100,7 @@ export default Vue.extend({
 
         exportFile(): void {
             //save the JSON file of the state 
-            saveContentToFile(store.getters.getStateJSONStrWithChecksum(), "microbit_webframes_code.json");
+            saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), "microbit_webframes_code.json");
         },
     },
 });

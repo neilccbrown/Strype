@@ -188,14 +188,21 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
 }
 
 export function checkStateDataIntegrity(obj: {[id: string]: any}): boolean  {
-    //check the checksum property is present and as expected, if not, the document doesn't have integrity
-    if(obj["checksum"] === undefined){
+    //check the checksum and version properties are present and checksum is as expected, if not, the document doesn't have integrity
+    if(obj["checksum"] === undefined || obj["version"] === undefined){
         return false;
     }
     else{
+        //take the checkpoints out the object to check the checksum
         const foundChecksum = obj["checksum"];
         delete obj["checksum"];
+        const foundVersion = obj["version"]
+        delete obj["version"];
+        //get the checksum from the object
         const expectedChecksum = getSHA1HashForObject(obj);
+        //add the read version as it is needed later
+        obj["version"] = foundVersion;
+        //and return if the checksum was right
         return foundChecksum === expectedChecksum;        
     }
 }
