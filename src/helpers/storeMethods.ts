@@ -4,7 +4,6 @@ import Vue from "vue";
 export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frameId: number) => {
     // When removing a frame in the list, we remove all its sub levels,
     // then update its parent and then delete the frame itself
-
     const frameObject = listOfFrames[frameId];
 
     //we need a copy of the childrenIds are we are modifying them in the foreach
@@ -143,7 +142,7 @@ export const countRecursiveChildren = function(listOfFrames: Record<number, Fram
     return childrenCount;
 }
 
-export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, currentFrameId: number, parentId: number,  nextAvailableId: number, framesToReturn: EditorFrameObjects): void {
+export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, currentFrameId: number, parentId: number,  nextAvailableId: { id: number}, framesToReturn: EditorFrameObjects): void {
     // This method recursively clones a frame and all its children.
     // `nextAvailableId` is used to store the id that each cloned frame will take. It is an Object in order to
     // enable Pass-By-Reference whenever it is increased.
@@ -152,29 +151,36 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     // You can also use Lodash's "_.cloneDeep" in case JSON.parse(JSON.stringify()) has a problem on Mac
     const frame: FrameObject = JSON.parse(JSON.stringify(listOfFrames[currentFrameId])) as FrameObject;
 
-    frame.id = nextAvailableId;
-    nextAvailableId = nextAvailableId+1;
+    frame.id = nextAvailableId.id;
 
     // Change the parent as well to the frame who called this instance of the method.
-    let parent = (frame.parentId!==0)? frame.parentId : frame.jointParentId;
-    parent = parentId;
+    // let parent = (frame.parentId!==0)? frame.parentId : frame.jointParentId;
+    // parent = parentId;
+    if (frame.parentId !== 0) {
+        frame.parentId = parentId;
+    }
+    else {
+        frame.jointParentId  = parentId;
+    }
     
     // Add the new frame to the list
     framesToReturn[frame.id] = frame;
 
     //Look at the subchildren first and then at the joint frames
-    frame.childrenIds.forEach((childId: number) => {
+    frame.childrenIds.forEach((childId: number, index: number) => {
+        frame.childrenIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
             listOfFrames, 
             childId,
             frame.id,
-            nextAvailableId,
+            nextAvailableId, 
             framesToReturn
         );
     });
 
     //Look at the subchildren first and then at the joint frames
-    frame.jointFrameIds.forEach((childId: number) => {
+    frame.jointFrameIds.forEach((childId: number, index: number) => {
+        frame.jointFrameIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
             listOfFrames, 
             childId,

@@ -33,7 +33,7 @@
             />
             
             <JointFrames 
-                v-if="hasJointFrameObjects"
+                v-if="allowsJointChildren"
                 v-bind:jointParentId="frameId"
             />
         </div>
@@ -105,6 +105,10 @@ export default Vue.extend({
             ).length >0;
         },
 
+        allowsJointChildren(): boolean {
+            return store.getters.getAllowsJointChildren(this.frameId);
+        },
+
         frameStyle(): Record<string, string> {
             return this.isJointFrame === true
                 ? {"color":"#000 !important"}
@@ -145,7 +149,7 @@ export default Vue.extend({
         handleClick (event: MouseEvent, action: string) {
             if(action === "copy-duplicate") {
                 // Not all frames should be duplicated (e.g. Else)
-                this.copyCopyDuplOtions = (store.getters.getIfPasteIsAllowed(this.frameId, CaretPosition.below, this.$props.frameId))?
+                this.copyCopyDuplOtions = (store.getters.getIfPositionAllowsFrame(this.frameId, CaretPosition.below, this.$props.frameId))?
                     [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}] :
                     [{name: "Copy", method: "copy"}];
                     
@@ -200,7 +204,7 @@ export default Vue.extend({
 
         copy(): void {
             store.dispatch(
-                "copyFrameId",
+                "copyFrame",
                 this.$props.frameId
             );
         },

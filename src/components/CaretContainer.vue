@@ -70,7 +70,7 @@ export default Vue.extend({
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
         },
         pasteAvailable(): boolean {
-            return store.getters.getCopiedFrameId()!== -100;
+            return store.getters.getIsCopiedAvailable();
         },
         pasteOption(): {}[] {
             return this.pasteAvailable? [{name: "paste", method: "paste"}] : [{}];
@@ -82,7 +82,7 @@ export default Vue.extend({
         
             // We want to first check whether there is a copied frame 
             if(this.pasteAvailable) {        
-                if(store.getters.getIfPasteIsAllowed(this.frameId, this.caretAssignedPosition)) {
+                if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
                     ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
                 }
             }
