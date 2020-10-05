@@ -33,6 +33,8 @@ export default new Vuex.Store({
         copiedFrameId: -100 as number, // We use -100 to avoid any used id.
 
         copiedFrames: {} as EditorFrameObjects,
+
+        contextMenuShown: "" as string,
     },
 
     getters: {
@@ -116,8 +118,8 @@ export default new Vuex.Store({
                 ((currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId].id : state.frameObjects[currentFrame.parentId].id) ;
             
             while(frameToCheckId > 0 && !canShowLoopBreakers){
-                const frameToCheckType = state.frameObjects[frameToCheckId].frameType;
-                canShowLoopBreakers = (frameToCheckType === Definitions.ForDefinition || frameToCheckType === Definitions.WhileDefinition);
+                const frameToCheckType = state.frameObjects[frameToCheckId].frameType.type;
+                canShowLoopBreakers = (frameToCheckType === Definitions.ForDefinition.type || frameToCheckType === Definitions.WhileDefinition.type);
                 frameToCheckId = state.frameObjects[frameToCheckId].parentId;
             }
 
@@ -171,19 +173,19 @@ export default new Vuex.Store({
                     }
                   
                     //workout what types can be left for if and try joint frames structures.
-                    if(rootJointFrame.frameType === Definitions.IfDefinition){  
+                    if(rootJointFrame.frameType.type === Definitions.IfDefinition.type){  
                         //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
                         if(isCurrentFrameIntermediateJointFrame) {
                             jointTypes = jointTypes.filter((type) => type !== Definitions.ElseDefinition.type);
                         }
                     }
-                    else if (rootJointFrame.frameType === Definitions.TryDefinition){
-                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === Definitions.FinallyDefinition) !== undefined);
-                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === Definitions.ElseDefinition) !== undefined);
-                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === Definitions.ExceptDefinition) !== undefined);
+                    else if (rootJointFrame.frameType.type === Definitions.TryDefinition.type){
+                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.FinallyDefinition.type) !== undefined);
+                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ElseDefinition.type) !== undefined);
+                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ExceptDefinition.type) !== undefined);
 
                         //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
-                        if(currentFrame.frameType === Definitions.TryDefinition){
+                        if(currentFrame.frameType.type === Definitions.TryDefinition.type){
                             if(hasElse && !hasFinally){
                                 jointTypes.splice(
                                     jointTypes.indexOf(Definitions.FinallyDefinition.type),
@@ -201,14 +203,14 @@ export default new Vuex.Store({
                                 });
                             }
                         }
-                        else if( currentFrame.frameType === Definitions.ExceptDefinition){
+                        else if( currentFrame.frameType.type === Definitions.ExceptDefinition.type){
                             //if this isn't the last expect in the joint frames structure, we need to know what is following it.
                             const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
                             if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
                                 //This "except" is not the last joint frame: we check if the following joint frame is "except"
                                 //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
                                 //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
-                                if(state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType === Definitions.ExceptDefinition){
+                                if(state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType.type === Definitions.ExceptDefinition.type){
                                     uniqueJointFrameTypes.forEach((frameType) => {
                                         if(jointTypes.includes(frameType.type)){
                                             jointTypes.splice(
@@ -341,6 +343,10 @@ export default new Vuex.Store({
             }
 
             return false;
+        },
+
+        getContextMenuShown: (state) => () => {
+            return state.contextMenuShown;
         },
     }, 
 
@@ -902,6 +908,10 @@ export default new Vuex.Store({
                 }
             }
         },
+
+        setContextMenuShown(state, id: string) {
+            Vue.set(state, "contextMenuShown", id);
+        },   
     },
 
     actions: {

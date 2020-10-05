@@ -9,6 +9,7 @@
         v-bind:id="id"
     >
         <vue-simple-context-menu
+            v-show="allowContextMenu"
             v-bind:elementId="id+'_pasteContextMenu'"
             v-bind:options="pasteOption"
             v-bind:ref="'pasteContextMenu'"
@@ -31,7 +32,7 @@ import store from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
-
+import $ from "jquery";
 
 //////////////////////
 //     Component    //
@@ -75,12 +76,15 @@ export default Vue.extend({
         pasteOption(): {}[] {
             return this.pasteAvailable? [{name: "paste", method: "paste"}] : [{}];
         },
+        allowContextMenu(): boolean {
+            return store.getters.getContextMenuShown() === this.id; 
+        },
     },
     
     methods: {
         handleClick (event: MouseEvent, action: string): void {
-        
-            // We want to first check whether there is a copied frame 
+
+            store.commit("setContextMenuShown",this.id);
             if(this.pasteAvailable) {        
                 if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
                     ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);

@@ -152,6 +152,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     const frame: FrameObject = JSON.parse(JSON.stringify(listOfFrames[currentFrameId])) as FrameObject;
 
     frame.id = nextAvailableId.id;
+    frame.caretVisibility = CaretPosition.none;
 
     // Change the parent as well to the frame who called this instance of the method.
     // let parent = (frame.parentId!==0)? frame.parentId : frame.jointParentId;
