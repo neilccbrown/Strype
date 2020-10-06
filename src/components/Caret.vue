@@ -1,7 +1,7 @@
 <template>
     <div 
         class="caret"
-        v-bind:class="{blurred: isBlurred}"></div>
+        v-bind:class="{blurred: isBlurred, invisible: isInvisible}"></div>
 </template>
 
 <script lang="ts">
@@ -20,6 +20,7 @@ export default Vue.extend({
 
     props: {
         isBlurred: Boolean,
+        isInvisible: Boolean,
     },
 
 });
@@ -32,6 +33,10 @@ export default Vue.extend({
     background-color: #3467FE;
     border-radius: 6px;
     height: 6px;
+}
+
+.invisible {
+    background-color: transparent !important;
 }
 
 .blurred {

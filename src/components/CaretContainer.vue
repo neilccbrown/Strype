@@ -16,8 +16,8 @@
             @option-clicked="optionClicked"
         />
         <Caret
-            v-show="(caretVisibility === caretAssignedPosition || caretVisibility === caretPosition.both) && !isEditing" 
             v-bind:isBlurred="overCaret"
+            v-bind:isInvisible="isInvisible"
         />
     </div>
 </template>
@@ -62,6 +62,10 @@ export default Vue.extend({
 
         isEditing(): boolean {
             return store.getters.getIsEditing();
+        },
+        isInvisible(): boolean {
+            return  !((this.caretVisibility === this.caretAssignedPosition || this.caretVisibility === this.caretPosition.both) && !this.isEditing); 
+
         },
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
@@ -169,7 +173,7 @@ export default Vue.extend({
 
 <style lang="scss">
 .caret-container {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding-top: 0px;
+    padding-bottom: 0px;
 }
 </style>

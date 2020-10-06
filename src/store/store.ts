@@ -821,9 +821,28 @@ export default new Vuex.Store({
                 );
             } );
 
-            //undo redo isn't kept
+            //undo redo is cleared
             state.diffToPreviousState.splice(0,state.diffToPreviousState.length);
             state.diffToNextState.splice(0,state.diffToNextState.length);
+            
+            //copied frames are cleared
+            Vue.set(
+                state,
+                "copiedFrameId",
+                -100
+            );
+            Vue.set(
+                state,
+                "copiedFrames",
+                {}
+            )
+
+            //context menu indicator is cleared
+            Vue.set(
+                state,
+                "contextMenuShownId",
+                ""
+            )
         },
 
         saveStateChanges(state, payload: {previousState: object; mockCurrentCursorFocus?: EditableFocusPayload}) {
