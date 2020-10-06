@@ -1509,7 +1509,7 @@ export default new Vuex.Store({
             commit("setMessageBanner", message);
         },
 
-        setStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; errorReason?: string}){
+        setStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorrDetailMessage = payload.errorReason ?? "unknow reason";
             let isVersionCorrect = false;

@@ -456,6 +456,7 @@ export interface FormattedMessageArgKeyValuePlaceholder {
 
 export const FormattedMessageArgKeyValuePlaceholders: {[id: string]: FormattedMessageArgKeyValuePlaceholder} = {
     error: {key:"errorMsg", placeholderName : "{error_placeholder}"},
+    list: {key:"list", placeholderName : "{list_placeholder}"},
 }
 
 export interface FormattedMessage {
@@ -493,6 +494,7 @@ export const MessageTypes = {
     noUndo: "noUndo",
     noRedo: "noRedo",
     uploadEditorFileError: "uploadEditorFileError",
+    uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
     uploadEditorFileSucces: "uploadEditorFileSuccess",
 }
 
@@ -548,7 +550,6 @@ const NoUndo: MessageDefinition = {
     message: "messageBannerMessage.noUndo",
     buttons:[],
     path: imagePaths.empty,
-
 };
 
 const NoRedo: MessageDefinition = {
@@ -556,7 +557,6 @@ const NoRedo: MessageDefinition = {
     message: "messageBannerMessage.noRedo",
     buttons:[],
     path: imagePaths.empty,
-
 };
 
 const UploadEditorFileError: MessageDefinition = {
@@ -569,7 +569,18 @@ const UploadEditorFileError: MessageDefinition = {
     },
     buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
     path: imagePaths.empty,
+};
 
+const UploadEditorFileNotSupported: MessageDefinition = {
+    type: MessageTypes.uploadEditorFileNotSupported,
+    message: {
+        path: "messageBannerMessage.uploadEditorFileNotSupported",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.list.key]: FormattedMessageArgKeyValuePlaceholders.list.placeholderName,
+        },
+    },
+    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    path: imagePaths.empty,
 };
 
 const UploadEditorFileSuccess: MessageDefinition = {
@@ -577,7 +588,6 @@ const UploadEditorFileSuccess: MessageDefinition = {
     message: "messageBannerMessage.uploadEditorFileSuccess",
     buttons:[],
     path: imagePaths.empty,
-
 };
 
 export const MessageDefinitions = {
@@ -589,6 +599,7 @@ export const MessageDefinitions = {
     NoUndo,
     NoRedo,
     UploadEditorFileError,
+    UploadEditorFileNotSupported,
     UploadEditorFileSuccess,
 };
 

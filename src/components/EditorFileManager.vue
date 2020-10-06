@@ -29,7 +29,7 @@ import Vue from "vue";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import store from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
-import { AppEvent } from "@/types/types";
+import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
 import { fileImportSupportedFormats } from "@/helpers/editor";
 
 export default Vue.extend({
@@ -50,7 +50,7 @@ export default Vue.extend({
 
         acceptedInputFileFormat(): string {
             //The format needs to be as ".<ext1>, .<ext2>,..., .<extn>"
-            return fileImportSupportedFormats.map((extension) => "." + extension).join(",");
+            return fileImportSupportedFormats.map((extension) => "." + extension).join(", ");
         },
     },
 
@@ -81,34 +81,42 @@ export default Vue.extend({
             const files = (this.$refs.importFileInput as HTMLInputElement).files;
             if(files){
                 //before reading the file, we check the extension is supported for the import
-                //alert(files[0].type)
-                /*if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
-
-                }*/
-
-                const emitPayload: AppEvent = {requestAttention: true};
-                emitPayload.message = this.$i18n.t("appMessages.editorFileUpload").toString();
-                this.$emit("app-showprogress", emitPayload);
-                readFileContent(files[0])
-                    .then(
-                        (content) => {
-                            store.dispatch(
+                if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
+                    const emitPayload: AppEvent = {requestAttention: true};
+                    emitPayload.message = this.$i18n.t("appMessages.editorFileUpload").toString();
+                    this.$emit("app-showprogress", emitPayload);
+                    readFileContent(files[0])
+                        .then(
+                            (content) => {
+                                store.dispatch(
+                                    "setStateFromJSONStr", 
+                                    {
+                                        stateJSONStr: content,
+                                    }
+                                );
+                                emitPayload.requestAttention=false;
+                                this.$emit("app-showprogress", emitPayload);
+                            }, 
+                            (reason) => store.dispatch(
                                 "setStateFromJSONStr", 
                                 {
-                                    stateJSONStr: content,
+                                    stateJSONStr: "",
+                                    errorReason: reason,
                                 }
-                            );
-                            emitPayload.requestAttention=false;
-                            this.$emit("app-showprogress", emitPayload);
-                        }, 
-                        (reason) => store.dispatch(
-                            "setStateFromJSONStr", 
-                            {
-                                stateJSONStr: "",
-                                errorReason: reason,
-                            }
-                        )
-                    );  
+                            )
+                        );  
+                }
+                else {
+                    //alert the user this file format isn't supported (in case the file browser filter doesn't work on the browser)
+                    const message = MessageDefinitions.UploadEditorFileNotSupported;
+                    const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.list.key] = msgObj.args.list.replace(FormattedMessageArgKeyValuePlaceholders.list.placeholderName, this.acceptedInputFileFormat);
+
+                    store.commit(
+                        "setMessageBanner",
+                        message
+                    );
+                }
                 
                 //reset the input file element value to empty (so further changes can be notified)
                 (this.$refs.importFileInput as HTMLInputElement).value = "";
@@ -117,7 +125,7 @@ export default Vue.extend({
 
         exportFile(): void {
             //save the JSON file of the state 
-            saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), "microbit_webframes_code.json");
+            saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), "microbit_webframes_code.wpy");
         },
     },
 });

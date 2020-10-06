@@ -4,4 +4,4 @@ export function getEditableSlotId(frameId: number, slotIndex: number): string  {
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
 }
 
-export const fileImportSupportedFormats: string[] = ["wpy", "json"];
+export const fileImportSupportedFormats: string[] = ["wpy"];
