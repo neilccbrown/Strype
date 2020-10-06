@@ -14,7 +14,12 @@
             @contextmenu.prevent.stop="handleClick($event)"
             />
         <div>
-            <input type="file" ref="importFileInput" @change="selectedFile" class="editor-file-input"> 
+            <input 
+                type="file" 
+                :accept="acceptedInputFileFormat"
+                ref="importFileInput" 
+                @change="selectedFile" 
+                class="editor-file-input"> 
         </div>
     </div>
 </template>
@@ -25,6 +30,7 @@ import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-
 import store from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent } from "@/types/types";
+import { fileImportSupportedFormats } from "@/helpers/editor";
 
 export default Vue.extend({
     name: "EditorFileManager",
@@ -40,6 +46,11 @@ export default Vue.extend({
         },
         editorFileMenuOption(): {}[] {
             return  [{name: "import", method: "importFile"}, {name: "export", method: "exportFile"}];
+        },
+
+        acceptedInputFileFormat(): string {
+            //The format needs to be as ".<ext1>, .<ext2>,..., .<extn>"
+            return fileImportSupportedFormats.map((extension) => "." + extension).join(",");
         },
     },
 
@@ -69,6 +80,12 @@ export default Vue.extend({
         selectedFile() {
             const files = (this.$refs.importFileInput as HTMLInputElement).files;
             if(files){
+                //before reading the file, we check the extension is supported for the import
+                //alert(files[0].type)
+                /*if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
+
+                }*/
+
                 const emitPayload: AppEvent = {requestAttention: true};
                 emitPayload.message = this.$i18n.t("appMessages.editorFileUpload").toString();
                 this.$emit("app-showprogress", emitPayload);
