@@ -148,7 +148,7 @@ export default Vue.extend({
         },
 
         allowContextMenu(): boolean {
-            return store.getters.getContextMenuShown() === this.id; 
+            return store.getters.getContextMenuShownId() === this.id; 
         },
 
     },
@@ -157,7 +157,7 @@ export default Vue.extend({
 
         handleClick (event: MouseEvent, action: string) {
 
-            store.commit("setContextMenuShown",this.id);
+            store.commit("setContextMenuShownId",this.id);
 
             if(action === "copy-duplicate") {
                 // Not all frames should be duplicated (e.g. Else)

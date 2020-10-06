@@ -155,8 +155,6 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     frame.caretVisibility = CaretPosition.none;
 
     // Change the parent as well to the frame who called this instance of the method.
-    // let parent = (frame.parentId!==0)? frame.parentId : frame.jointParentId;
-    // parent = parentId;
     if (frame.parentId !== 0) {
         frame.parentId = parentId;
     }

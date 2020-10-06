@@ -30,11 +30,11 @@ export default new Vuex.Store({
 
         diffToNextState: [] as ObjectPropertyDiff[][],
         
-        copiedFrameId: -100 as number, // We use -100 to avoid any used id.
+        copiedFrameId: -100 as number, // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
 
         copiedFrames: {} as EditorFrameObjects,
 
-        contextMenuShown: "" as string,
+        contextMenuShownId: "" as string,
     },
 
     getters: {
@@ -319,10 +319,11 @@ export default new Vuex.Store({
             return state.copiedFrameId !== -100;
         },
         // copiedFrameId is an optional argument and it is used in cases where we are just checking if a 
-        // frame can be moved to a position --> we are not really checking about the actual copied Frame
+        // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
         getIfPositionAllowsFrame: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {
             
             // Where do we get the frame from --> from copiedFrames if it is a copied frame
+            // Otherwise the input frame is to be checked (e.g. for moving an else statement or duplicating an else statement -- which doesn't go anywhere).
             const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? state.copiedFrames : state.frameObjects ;    
 
             frameToBeMovedId = frameToBeMovedId ?? state.copiedFrameId;
@@ -345,8 +346,8 @@ export default new Vuex.Store({
             return false;
         },
 
-        getContextMenuShown: (state) => () => {
-            return state.contextMenuShown;
+        getContextMenuShownId: (state) => () => {
+            return state.contextMenuShownId;
         },
     }, 
 
@@ -500,10 +501,7 @@ export default new Vuex.Store({
             }
             else if (eventType === "removed") {
                 // Remove the id from the parent's childrenId list
-                // const oldParentList = (payload.event[eventType].element.jointParentId > 0 ) ?
-                //     state.frameObjects[payload.event[eventType].element.jointParentId].jointFrameIds : 
-                //     state.frameObjects[payload.event[eventType].element.parentId].childrenIds;
-
+                
                 listToUpdate.splice(
                     payload.event[eventType].oldIndex,
                     1
@@ -909,8 +907,8 @@ export default new Vuex.Store({
             }
         },
 
-        setContextMenuShown(state, id: string) {
-            Vue.set(state, "contextMenuShown", id);
+        setContextMenuShownId(state, id: string) {
+            Vue.set(state, "contextMenuShownId", id);
         },   
     },
 
@@ -926,13 +924,19 @@ export default new Vuex.Store({
                 CaretPosition.below:
                 CaretPosition.body;
 
-            // Even in the same draggable group, some JointFrames cannot be moved (i.e. an else below an elif)
+            // Even in the same draggable group, some JointFrames cannot be moved (i.e. an elif below an else)
             // That should be checked both ways as for example if you move an `else` above an elif, it may be
             // valid, as the if accepts else there, but the elif cannot go below the else.
             // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
             // succeedingFrame is the next frame (if it exists) above which we are adding
             const succeedingFrame = state.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];       
             if(eventType !== "removed") {
+                // EXAMPLE: Moving frame `A` above Frame `B`
+                // IF `A` cannot be moved on this position 
+                //                OR
+                // IF `A` is jointFrame and there IS a frame `B` where I am moving `A` at
+                //     on TRUE ==> Check if `B` CANNOT be placed below `A`
+                //     on FALSE ==> We don't care about this situation
                 if(!getters.getIfPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id) ||
                     ((isJointFrame && succeedingFrame !== undefined) ? !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below,succeedingFrame) : false)
                 ) {                
@@ -1477,12 +1481,15 @@ export default new Vuex.Store({
             }
         },
 
+        // This method can be used to copy a frame to a position.
+        // This can be a paste event or a duplicate event.
         copyFrameToPosition({commit, state}, payload: {frameId?: number; newParentId: number; newIndex: number}) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             
             const isPasteOperation: boolean = (payload.frameId === undefined);
             payload.frameId = payload.frameId ?? state.copiedFrameId;
 
+            // If it is not a paste operation, it is a duplication of the frame.
             const sourceFrameList: EditorFrameObjects = (isPasteOperation) ? state.copiedFrames : state.frameObjects;            
             const copiedFrames: EditorFrameObjects = {};
             cloneFrameAndChildren(sourceFrameList, payload.frameId, payload.newParentId, {id: state.nextAvailableId}, copiedFrames); 
@@ -1545,9 +1552,6 @@ export default new Vuex.Store({
                 payload.clickedFrameId:   
                 clickedParentId;
                 
-            // const pasteToParentId = (payload.caretPosition === CaretPosition.below && isCopiedJointFrame && !isCopiedJointFrame) ?
-            //     clickedParentId :
-            //     payload.clickedFrameId;
             // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
             dispatch(
                 "copyFrameToPosition",

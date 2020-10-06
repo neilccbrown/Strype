@@ -77,14 +77,14 @@ export default Vue.extend({
             return this.pasteAvailable? [{name: "paste", method: "paste"}] : [{}];
         },
         allowContextMenu(): boolean {
-            return store.getters.getContextMenuShown() === this.id; 
+            return store.getters.getContextMenuShownId() === this.id; 
         },
     },
     
     methods: {
         handleClick (event: MouseEvent, action: string): void {
 
-            store.commit("setContextMenuShown",this.id);
+            store.commit("setContextMenuShownId",this.id);
             if(this.pasteAvailable) {        
                 if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
                     ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
