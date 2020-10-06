@@ -6,9 +6,10 @@
             v-bind:class="{error: erroneous}"
             v-bind:id="id"
             @click.prevent.stop="toggleCaret($event)"
-            @contextmenu.prevent.stop="handleClick($event,'copy-duplicate')"
+            @contextmenu.prevent="handleClick($event,'copy-duplicate')"
         >
             <vue-simple-context-menu
+                v-show="allowContextMenu"
                 :elementId="id+'copyContextMenu'"
                 :options="this.copyCopyDuplOtions"
                 :ref="'copyContextMenu'"
@@ -25,15 +26,17 @@
                 v-if="allowChildren"
                 v-bind:frameId="frameId"
                 v-bind:caretVisibility="caretVisibility"
+                ref="frameBody"
             />
             <CaretContainer
                 v-bind:frameId="this.frameId"
                 v-bind:caretVisibility="this.caretVisibility"
                 v-bind:caretAssignedPosition="caretPosition.below"
+                @hide-context-menus="handleClick($event,'paste')"
             />
             
             <JointFrames 
-                v-if="hasJointFrameObjects"
+                v-if="allowsJointChildren"
                 v-bind:jointParentId="frameId"
             />
         </div>
@@ -56,7 +59,9 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
 import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, Definitions } from "@/types/types";
-import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu"
+import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
+import $ from "jquery";
+
 
 //////////////////////
 //     Component    //
@@ -105,6 +110,10 @@ export default Vue.extend({
             ).length >0;
         },
 
+        allowsJointChildren(): boolean {
+            return store.getters.getAllowsJointChildren(this.frameId);
+        },
+
         frameStyle(): Record<string, string> {
             return this.isJointFrame === true
                 ? {"color":"#000 !important"}
@@ -138,14 +147,21 @@ export default Vue.extend({
             );
         },
 
+        allowContextMenu(): boolean {
+            return store.getters.getContextMenuShownId() === this.id; 
+        },
+
     },
 
     methods: {
 
         handleClick (event: MouseEvent, action: string) {
+
+            store.commit("setContextMenuShownId",this.id);
+
             if(action === "copy-duplicate") {
                 // Not all frames should be duplicated (e.g. Else)
-                this.copyCopyDuplOtions = (store.getters.getIfPasteIsAllowed(this.frameId, CaretPosition.below, this.$props.frameId))?
+                this.copyCopyDuplOtions = (store.getters.getIfPositionAllowsFrame(this.frameId, CaretPosition.below, this.$props.frameId))?
                     [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}] :
                     [{name: "Copy", method: "copy"}];
                     
@@ -200,7 +216,7 @@ export default Vue.extend({
 
         copy(): void {
             store.dispatch(
-                "copyFrameId",
+                "copyFrame",
                 this.$props.frameId
             );
         },

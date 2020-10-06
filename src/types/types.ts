@@ -97,7 +97,9 @@ export interface FramesDefinitions {
     type: string;
     labels: FrameLabel[];
     allowChildren: boolean;
+    allowJointChildren: boolean;
     forbiddenChildrenTypes: string[];
+    isJointFrame: boolean;
     jointFrameTypes: string[];
     colour: string;
     draggableGroup: DraggableGroupTypes;
@@ -157,7 +159,9 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.empty,
     labels: [],
     allowChildren: false,
+    allowJointChildren: false,
     forbiddenChildrenTypes: [],
+    isJointFrame: false,
     jointFrameTypes: [],
     colour: "",
     draggableGroup: DraggableGroupTypes.none,
@@ -230,6 +234,7 @@ export const IfDefinition: FramesDefinitions = {
         { label: "if (", slot: true, defaultText: "condition" , optionalSlot: false},
         { label: ") :", slot: false, defaultText: ""},
     ],
+    allowJointChildren: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
     colour: "#E0DFE4",
     innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
@@ -243,6 +248,7 @@ export const ElifDefinition: FramesDefinitions = {
         { label: ") :", slot: false, defaultText: ""},
     ],
     draggableGroup: DraggableGroupTypes.ifCompound,
+    isJointFrame: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
 };
 
@@ -251,6 +257,7 @@ export const ElseDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.else,
     labels: [{ label: "else:", slot: false, defaultText: ""}],
     draggableGroup: DraggableGroupTypes.ifCompound,
+    isJointFrame: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
 };
 
@@ -262,6 +269,7 @@ export const ForDefinition: FramesDefinitions = {
         { label: " in ", slot: true, defaultText: "list", optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
+    allowJointChildren: true,
     jointFrameTypes:[StandardFrameTypesIdentifiers.else],
     colour: "#E4D6CE",
 };
@@ -280,6 +288,7 @@ export const TryDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.try,
     labels: [{ label: "try:", slot: false, defaultText: ""}],
+    allowJointChildren: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "#C7D9DC",
     innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
@@ -294,6 +303,7 @@ export const ExceptDefinition: FramesDefinitions = {
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "",
+    isJointFrame: true,
     draggableGroup: DraggableGroupTypes.tryCompound,
 };
 
@@ -304,6 +314,7 @@ export const FinallyDefinition: FramesDefinitions = {
         { label: "finally:", slot: false, defaultText: ""},
     ],
     colour: "",
+    isJointFrame: true,
     draggableGroup: DraggableGroupTypes.none,
 };
 

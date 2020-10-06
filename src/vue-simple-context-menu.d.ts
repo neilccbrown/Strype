@@ -7,6 +7,7 @@ declare module "vue-simple-context-menu" {
       watch: any;
       methods: any;
       showMenu: any;
+      hideContextMenu: any;
     }
     
     export const vueSimpleContextMenu: VueSimpleContextMenuConstructor;
