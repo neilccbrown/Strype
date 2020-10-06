@@ -9,6 +9,7 @@
         v-bind:id="id"
     >
         <vue-simple-context-menu
+            v-show="allowContextMenu"
             v-bind:elementId="id+'_pasteContextMenu'"
             v-bind:options="pasteOption"
             v-bind:ref="'pasteContextMenu'"
@@ -31,7 +32,7 @@ import store from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
-
+import $ from "jquery";
 
 //////////////////////
 //     Component    //
@@ -70,19 +71,22 @@ export default Vue.extend({
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
         },
         pasteAvailable(): boolean {
-            return store.getters.getCopiedFrameId()!== -100;
+            return store.getters.getIsCopiedAvailable();
         },
         pasteOption(): {}[] {
             return this.pasteAvailable? [{name: "paste", method: "paste"}] : [{}];
+        },
+        allowContextMenu(): boolean {
+            return store.getters.getContextMenuShownId() === this.id; 
         },
     },
     
     methods: {
         handleClick (event: MouseEvent, action: string): void {
-        
-            // We want to first check whether there is a copied frame 
+
+            store.commit("setContextMenuShownId",this.id);
             if(this.pasteAvailable) {        
-                if(store.getters.getIfPasteIsAllowed(this.frameId, this.caretAssignedPosition)) {
+                if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
                     ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
                 }
             }
