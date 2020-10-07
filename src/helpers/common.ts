@@ -1,4 +1,5 @@
 import {ObjectPropertyDiff} from "@/types/types";
+import hash from "object-hash";
 
 //Function to get the difference between two states (properties) of an object.
 //It takes the two objects as arguments and returns a list of differences. 
@@ -91,4 +92,49 @@ export const getObjectPropertiesDiffferences = (obj1: {[id: string]: any}, obj2:
     checkAddedValues(obj2copy,result, "");
   
     return result;
+}
+
+export const saveContentToFile = (content: string, fileName: string) => {
+    // from https://blog.logrocket.com/programmatic-file-downloads-in-the-browser-9a5186298d5c/
+
+    const url = URL.createObjectURL(new Blob([content], {type: "text/plain"}));
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+
+    const clickHandler = () => {
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+            a.removeEventListener("click", clickHandler);
+        }, 150);
+    };
+    a.addEventListener("click", clickHandler, false);
+
+    a.click();
+}
+
+
+export const readFileContent = async (file: File): Promise<string>  => {
+    // from https://stackoverflow.com/questions/17068610/read-a-file-synchronously-in-javascript
+    const result = await new Promise<string>((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.onload =  (evt) => {
+            const text = evt.target?.result;
+            if(typeof text === "string"){
+                resolve(text);
+            }
+            else {
+                reject("the file content cannot be interpreted as a text file")
+            }
+        };
+        fileReader.readAsText(file, "UTF-8");
+    });
+
+    return result;    
+}
+
+export const getSHA1HashForObject = (obj: {[id: string]: any}): string => {
+    const res = hash(obj);
+    return res;
 }

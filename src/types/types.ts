@@ -456,6 +456,7 @@ export interface FormattedMessageArgKeyValuePlaceholder {
 
 export const FormattedMessageArgKeyValuePlaceholders: {[id: string]: FormattedMessageArgKeyValuePlaceholder} = {
     error: {key:"errorMsg", placeholderName : "{error_placeholder}"},
+    list: {key:"list", placeholderName : "{list_placeholder}"},
 }
 
 export interface FormattedMessage {
@@ -492,6 +493,9 @@ export const MessageTypes = {
     uploadSuccessMicrobit:"uploadSuccessMicrobit",
     noUndo: "noUndo",
     noRedo: "noRedo",
+    uploadEditorFileError: "uploadEditorFileError",
+    uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
+    uploadEditorFileSucces: "uploadEditorFileSuccess",
 }
 
 //empty message
@@ -546,7 +550,6 @@ const NoUndo: MessageDefinition = {
     message: "messageBannerMessage.noUndo",
     buttons:[],
     path: imagePaths.empty,
-
 };
 
 const NoRedo: MessageDefinition = {
@@ -554,7 +557,37 @@ const NoRedo: MessageDefinition = {
     message: "messageBannerMessage.noRedo",
     buttons:[],
     path: imagePaths.empty,
+};
 
+const UploadEditorFileError: MessageDefinition = {
+    type: MessageTypes.uploadEditorFileError,
+    message: {
+        path: "messageBannerMessage.uploadEditorFileError",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
+        },
+    },
+    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    path: imagePaths.empty,
+};
+
+const UploadEditorFileNotSupported: MessageDefinition = {
+    type: MessageTypes.uploadEditorFileNotSupported,
+    message: {
+        path: "messageBannerMessage.uploadEditorFileNotSupported",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.list.key]: FormattedMessageArgKeyValuePlaceholders.list.placeholderName,
+        },
+    },
+    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    path: imagePaths.empty,
+};
+
+const UploadEditorFileSuccess: MessageDefinition = {
+    type: MessageTypes.noRedo,
+    message: "messageBannerMessage.uploadEditorFileSuccess",
+    buttons:[],
+    path: imagePaths.empty,
 };
 
 export const MessageDefinitions = {
@@ -565,6 +598,9 @@ export const MessageDefinitions = {
     DownloadHex,
     NoUndo,
     NoRedo,
+    UploadEditorFileError,
+    UploadEditorFileNotSupported,
+    UploadEditorFileSuccess,
 };
 
 //WebUSB listener
@@ -582,4 +618,10 @@ export interface ObjectPropertyDiff {
     propertyPathWithArrayFlag: string;
     //value is set to "null" to notify a deletion.
     value: any;
+}
+
+//Event at application level that requests the application "freeze"
+export interface AppEvent {
+    requestAttention: boolean;
+    message?: string;
 }
