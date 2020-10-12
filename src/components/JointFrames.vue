@@ -12,6 +12,7 @@
                 v-for="frame in jointFrames"
                 v-bind:key="frame.frameType.type + '-id:' + frame.id"
                 v-bind:frameId="frame.id"
+                v-bind:isDisabled="frame.isDisabled"
                 v-bind:frameType="frame.frameType"
                 v-bind:isJointFrame="true"
                 v-bind:allowChildren="frame.frameType.allowChildren"
@@ -50,6 +51,7 @@ export default Vue.extend({
     props: {
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
         jointParentId: Number, // Unique Indentifier for each Frame
+        isDisabled: Boolean,
     },
 
     computed: {

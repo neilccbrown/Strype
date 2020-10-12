@@ -6,7 +6,7 @@ import initialState from "@/store/initial-state";
 import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
-import { checkStateDataIntegrity } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 
@@ -330,7 +330,7 @@ export default new Vuex.Store({
         getIsCopiedAvailable: (state) => () => {
             return state.copiedFrameId !== -100;
         },
-        // copiedFrameId is an optional argument and it is used in cases where we are just checking if a 
+        // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
         // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
         getIfPositionAllowsFrame: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {
             
@@ -955,7 +955,27 @@ export default new Vuex.Store({
 
         setContextMenuShownId(state, id: string) {
             Vue.set(state, "contextMenuShownId", id);
-        },   
+        },  
+        
+        changeDisableFrame(state, payload: {frameId: number; isDisabling: boolean}) {
+            console.log("the children for that object are")
+            console.log("for frame id : "  + payload.frameId)
+            console.log(getAllChildrenAndJointFramesIds(state.frameObjects, payload.frameId))
+            //When we disable or enable a frame, we disable/enable all the sublevels (children and joint frames)
+            getAllChildrenAndJointFramesIds(state.frameObjects, payload.frameId).forEach((subFrameId) => 
+                Vue.set(
+                    state.frameObjects[subFrameId],
+                    "isDisabled",
+                    payload.isDisabling
+                ));
+
+            //and disable/enable the current frame
+            Vue.set(
+                state.frameObjects[payload.frameId],
+                "isDisabled",
+                payload.isDisabling
+            );
+        },
     },
 
     actions: {
@@ -1687,6 +1707,25 @@ export default new Vuex.Store({
             );
             commit( "updateNextAvailableId" );
         },
+
+        changeDisableFrame({state, commit}, payload: {frameId: number; isDisabling: boolean}) {
+            console.log("we have this id " + payload.frameId)
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            
+            commit(
+                "changeDisableFrame",
+                payload
+            );
+            
+            //save state changes
+            commit(
+                "saveStateChanges",
+                {
+                    previousState: stateBeforeChanges,
+                }
+            );
+        },
+
     },
     modules: {},
 });

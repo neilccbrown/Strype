@@ -1,7 +1,7 @@
 <template>
     <div
         class="frame-body-container"
-        v-bind:class="{error: empty}"
+        v-bind:class="{error: empty, disabled: isDisabled}"
         v-bind:id="id"
     >
         <CaretContainer
@@ -22,6 +22,7 @@
                 v-for="frame in frames"
                 v-bind:key="frame.frameType.type  + '-id:' + frame.id"
                 v-bind:frameId="frame.id"
+                v-bind:isDisabled="frame.isDisabled"
                 v-bind:frameType="frame.frameType"
                 v-bind:isJointFrame="false"
                 v-bind:caretVisibility="frame.caretVisibility"
@@ -65,6 +66,7 @@ export default Vue.extend({
     
     props: {
         frameId: Number,
+        isDisabled: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not
     },
 
@@ -131,13 +133,17 @@ export default Vue.extend({
 }
 
 .frame-body-container {
-    background-color: #F6F2E9 !important;
+    background-color: #F6F2E9;
     margin-bottom: 4px;
     margin-right: 0px;
     margin-left: 12px;
     border-color: #000 !important;
     border-radius: 8px;
 
+}
+
+.disabled {
+    background-color: #CCC;
 }
 
 .error {

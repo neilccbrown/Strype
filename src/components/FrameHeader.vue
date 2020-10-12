@@ -9,6 +9,7 @@
             <div class="next-to-eachother">{{ item.label }}</div>
             <EditableSlot
                 v-if="item.slot"
+                v-bind:isDisabled="isDisabled"
                 v-bind:default-text="item.defaultText"
                 v-bind:slotIndex="index"
                 v-bind:frameId="frameId"
@@ -42,6 +43,7 @@ export default Vue.extend({
         // than a label in the frame (e.g. `with` ... `as ... ) 
         labels: Array,
         frameId: Number,
+        isDisabled: Boolean,
     },
 
     methods: {

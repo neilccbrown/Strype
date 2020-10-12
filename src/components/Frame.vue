@@ -6,18 +6,19 @@
             v-bind:class="{error: erroneous}"
             v-bind:id="id"
             @click.prevent.stop="toggleCaret($event)"
-            @contextmenu.prevent="handleClick($event,'copy-duplicate')"
+            @contextmenu.prevent.stop="handleClick($event,'frame-context-menu')"
         >
             <vue-simple-context-menu
                 v-show="allowContextMenu"
-                :elementId="id+'copyContextMenu'"
-                :options="this.copyCopyDuplOtions"
-                :ref="'copyContextMenu'"
+                :elementId="id+'frameContextMenu'"
+                :options="this.frameContextMenuOptions"
+                :ref="'frameContextMenu'"
                 @option-clicked="optionClicked"
             />
 
             <FrameHeader
                 v-if="frameType.labels !== null"
+                v-bind:isDisabled="isDisabled"
                 v-bind:frameId="frameId"
                 v-bind:labels="frameType.labels"
                 class="frame-header"
@@ -25,6 +26,7 @@
             <FrameBody
                 v-if="allowChildren"
                 v-bind:frameId="frameId"
+                v-bind:isDisabled="isDisabled"
                 v-bind:caretVisibility="caretVisibility"
                 ref="frameBody"
             />
@@ -38,6 +40,7 @@
             <JointFrames 
                 v-if="allowsJointChildren"
                 v-bind:jointParentId="frameId"
+                v-bind:isDisabled="isDisabled"
             />
         </div>
         <b-popover
@@ -62,10 +65,12 @@ import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, Definitions 
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import $ from "jquery";
 
-
 //////////////////////
 //     Component    //
 //////////////////////
+const duplicateOptionContextMenuPos = 1;
+const enableDisableOptionsContextMenuPos = 3;
+
 export default Vue.extend({
     name: "Frame",
     store,
@@ -87,6 +92,7 @@ export default Vue.extend({
     props: {
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
         frameId: Number, // Unique Indentifier for each Frame
+        isDisabled: Boolean,
         frameType: {
             type: Object,
             default: () => DefaultFramesDefinition,
@@ -98,7 +104,11 @@ export default Vue.extend({
 
     data: function () {
         return {
-            copyCopyDuplOtions: [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}],
+            frameContextMenuOptions: [
+                {name: this.$i18n.t("contextMenu.copy"), method: "copy"},
+                {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"},
+                {name: "", method: "", type: "divider"},
+                {name: this.$i18n.t("contextMenu.disable"), method: "disable"}],
         }
     },
 
@@ -115,14 +125,26 @@ export default Vue.extend({
         },
 
         frameStyle(): Record<string, string> {
-            return this.isJointFrame === true
-                ? {"color":"#000 !important"}
+            const colorValue = (this.isDisabled === true) 
+                ? "#AAA !important"
+                : (this.frameType.type === Definitions.CommentDefinition.type)
+                    ? "#97971E !important"
+                    : "#000 !important";
+            
+            const backgroundColorValue = (this.isDisabled === true) 
+                ? "#CCC !important"
+                :  `${
+                    (this.frameType as FramesDefinitions).colour
+                } !important`;
+           
+            return (this.isJointFrame === true)
+                ? (this.isDisabled) 
+                    ?  {"color": colorValue, "background-color": backgroundColorValue} 
+                    : {"color": colorValue}
                 : {
-                    "background-color": `${
-                        (this.frameType as FramesDefinitions).colour
-                    } !important`,
+                    "background-color":  backgroundColorValue,
                     "padding-left": "2px",
-                    "color": (this.frameType === Definitions.CommentDefinition) ? "#97971E !important" : "#000 !important",
+                    "color": colorValue,
                 };
         },
 
@@ -159,13 +181,47 @@ export default Vue.extend({
 
             store.commit("setContextMenuShownId",this.id);
 
-            if(action === "copy-duplicate") {
+            if(action === "frame-context-menu") {
+                //keep information of what offset has to be observed from the "normal" menu positioning
+                let menuPosOffset = 0;
+
                 // Not all frames should be duplicated (e.g. Else)
-                this.copyCopyDuplOtions = (store.getters.getIfPositionAllowsFrame(this.frameId, CaretPosition.below, this.$props.frameId))?
-                    [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}] :
-                    [{name: "Copy", method: "copy"}];
-                    
-                ((this.$refs.copyContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+                const duplicateOptionIndex = this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate");
+                // The target id, for a duplication, should be the same as the copied frame 
+                // except if that frame has joint frames: the target is the last joint frame.
+                const targetFrameJointFrames = store.getters.getJointFramesForFrameId(this.frameId, "all");
+                const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
+                const canDuplicate = store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
+                if(canDuplicate && duplicateOptionIndex === -1){
+                    this.frameContextMenuOptions.splice(
+                        duplicateOptionContextMenuPos,
+                        0,
+                        {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"}
+                    );    
+                }
+                else if(!canDuplicate &&  duplicateOptionIndex > -1){
+                    this.frameContextMenuOptions.splice(
+                        duplicateOptionContextMenuPos,
+                        1
+                    );
+                }
+
+                if(!canDuplicate){
+                    //update the offset if we don't have the "duplicate" menu item
+                    menuPosOffset --;
+                }
+              
+                //if a frame is disabled [respectively, enabled], show the enable [resp. disable] option
+                const disableOrEnableOption = (this.isDisabled) 
+                    ?  {name: this.$i18n.t("contextMenu.enable"), method: "enable"}
+                    :  {name: this.$i18n.t("contextMenu.disable"), method: "disable"};
+                Vue.set(
+                    this.frameContextMenuOptions,
+                    enableDisableOptionsContextMenuPos + menuPosOffset,
+                    disableOrEnableOption
+                );
+
+                ((this.$refs.frameContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
             }
         },
 
@@ -219,6 +275,27 @@ export default Vue.extend({
                 "copyFrame",
                 this.$props.frameId
             );
+        },
+
+        disable(): void {
+            store.dispatch(
+                "changeDisableFrame",
+                {
+                    frameId: this.$props.frameId,
+                    isDisabling: true,
+                }
+            )
+        },
+
+        
+        enable(): void {
+            store.dispatch(
+                "changeDisableFrame",
+                {
+                    frameId: this.$props.frameId,
+                    isDisabling: false,
+                }
+            )
         },
 
     },

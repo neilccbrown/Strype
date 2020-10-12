@@ -31,5 +31,12 @@
     "editorFileUpload": "Uploading your file to the editor...",
     "editorConfirmChangeCode": "Current editor's content will be permanently lost.\nDo you want to continue?",
     "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?"
+  },
+  "contextMenu": {
+    "copy": "Copy",
+    "duplicate": "Duplicate",
+    "paste": "Paste",
+    "enable": "Enable",
+    "disable": "Disable"
   }
 }

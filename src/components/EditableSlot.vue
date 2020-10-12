@@ -3,6 +3,7 @@
         <input
             type="text"
             v-if="isComponentLoaded "
+            v-bind:disabled="isDisabled"
             v-model="code"
             v-bind:placeholder="defaultText"
             v-focus="focused"
@@ -48,6 +49,7 @@ export default Vue.extend({
         defaultText: String,
         slotIndex: Number,
         frameId: Number,
+        isDisabled: Boolean,
         optionalSlot: Boolean,
     },
 
@@ -83,12 +85,16 @@ export default Vue.extend({
         },
 
         inputTextStyle(): Record<string, string> {
+            const colorVal = (this.isDisabled === true)
+                ? "#AAA"
+                : (store.getters.getFrameObjectFromId(this.frameId).frameType === Definitions.CommentDefinition)
+                    ? "#97971E"
+                    : "#000";
+
             return {
                 "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : (store.getters.getFrameObjectFromId(this.frameId).frameType === Definitions.CommentDefinition)
-                    ? "#97971E"
-                    : "#000",
+                "color" : colorVal,
             };
         },
 
