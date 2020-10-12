@@ -19,6 +19,7 @@
             <FrameHeader
                 v-if="frameType.labels !== null"
                 v-bind:isDisabled="isDisabled"
+                v-blur="isDisabled"
                 v-bind:frameId="frameId"
                 v-bind:labels="frameType.labels"
                 class="frame-header"
@@ -34,6 +35,7 @@
                 v-bind:frameId="this.frameId"
                 v-bind:caretVisibility="this.caretVisibility"
                 v-bind:caretAssignedPosition="caretPosition.below"
+                v-bind:isFrameDisabled="this.isDisabled"
                 @hide-context-menus="handleClick($event,'paste')"
             />
             
@@ -125,26 +127,14 @@ export default Vue.extend({
         },
 
         frameStyle(): Record<string, string> {
-            const colorValue = (this.isDisabled === true) 
-                ? "#AAA !important"
-                : (this.frameType.type === Definitions.CommentDefinition.type)
-                    ? "#97971E !important"
-                    : "#000 !important";
-            
-            const backgroundColorValue = (this.isDisabled === true) 
-                ? "#CCC !important"
-                :  `${
-                    (this.frameType as FramesDefinitions).colour
-                } !important`;
-           
-            return (this.isJointFrame === true)
-                ? (this.isDisabled) 
-                    ?  {"color": colorValue, "background-color": backgroundColorValue} 
-                    : {"color": colorValue}
+            return this.isJointFrame === true
+                ? {"color":"#000 !important"}
                 : {
-                    "background-color":  backgroundColorValue,
+                    "background-color": `${
+                        (this.frameType as FramesDefinitions).colour
+                    } !important`,
                     "padding-left": "2px",
-                    "color": colorValue,
+                    "color": (this.frameType === Definitions.CommentDefinition) ? "#97971E !important" : "#000 !important",
                 };
         },
 

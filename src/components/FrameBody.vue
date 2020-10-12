@@ -1,13 +1,14 @@
 <template>
     <div
         class="frame-body-container"
-        v-bind:class="{error: empty, disabled: isDisabled}"
+        v-bind:class="{error: empty}"
         v-bind:id="id"
     >
         <CaretContainer
                 v-bind:frameId="this.frameId"
                 v-bind:caretVisibility="this.caretVisibility"
                 v-bind:caretAssignedPosition="caretPosition.body"
+                v-bind:isFrameDisabled="this.isDisabled"
         />
 
         <Draggable
@@ -142,12 +143,7 @@ export default Vue.extend({
 
 }
 
-.disabled {
-    background-color: #CCC;
-}
-
 .error {
     border: 1px solid #d66 !important;
-
 }
 </style>

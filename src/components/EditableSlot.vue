@@ -85,16 +85,12 @@ export default Vue.extend({
         },
 
         inputTextStyle(): Record<string, string> {
-            const colorVal = (this.isDisabled === true)
-                ? "#AAA"
-                : (store.getters.getFrameObjectFromId(this.frameId).frameType === Definitions.CommentDefinition)
-                    ? "#97971E"
-                    : "#000";
-
             return {
                 "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : colorVal,
+                "color" : (store.getters.getFrameObjectFromId(this.frameId).frameType === Definitions.CommentDefinition)
+                    ? "#97971E"
+                    : "#000",
             };
         },
 

@@ -231,3 +231,14 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
         return foundChecksum === expectedChecksum;        
     }
 }
+
+// Finds out what is the root frame Id of a "block" of disabled frames
+export const getDisabledBlocRootFrameId = function(listOfFrames: EditorFrameObjects, frameId: number): number {
+    const frameParentId = (listOfFrames[frameId].jointParentId > 0) ? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+    if(listOfFrames[frameParentId].isDisabled){
+        return getDisabledBlocRootFrameId(listOfFrames, frameParentId);
+    }
+    else{
+        return frameId;
+    }
+}

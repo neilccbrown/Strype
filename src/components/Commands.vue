@@ -14,7 +14,7 @@
                 aria-valuemin="0"
                 aria-valuemax="100"
                 >
-                <span v-t="'actions.uploadingToMicrobit'" class="progress-bar-text"></span>
+                <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
             </div>
         </div>
         <hr />

@@ -6,7 +6,7 @@ import initialState from "@/store/initial-state";
 import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlocRootFrameId } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 
@@ -958,11 +958,11 @@ export default new Vuex.Store({
         },  
         
         changeDisableFrame(state, payload: {frameId: number; isDisabling: boolean}) {
-            console.log("the children for that object are")
-            console.log("for frame id : "  + payload.frameId)
-            console.log(getAllChildrenAndJointFramesIds(state.frameObjects, payload.frameId))
+            //if we enable, we may need to use the root frame ID instead of the frame ID where the menu has been invocked
+            const rootFrameID = (payload.isDisabling) ? payload.frameId : getDisabledBlocRootFrameId(state.frameObjects, payload.frameId);
+
             //When we disable or enable a frame, we disable/enable all the sublevels (children and joint frames)
-            getAllChildrenAndJointFramesIds(state.frameObjects, payload.frameId).forEach((subFrameId) => 
+            getAllChildrenAndJointFramesIds(state.frameObjects, rootFrameID).forEach((subFrameId) => 
                 Vue.set(
                     state.frameObjects[subFrameId],
                     "isDisabled",
@@ -971,7 +971,7 @@ export default new Vuex.Store({
 
             //and disable/enable the current frame
             Vue.set(
-                state.frameObjects[payload.frameId],
+                state.frameObjects[rootFrameID],
                 "isDisabled",
                 payload.isDisabling
             );
@@ -1549,7 +1549,7 @@ export default new Vuex.Store({
                     if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                         //no need to go further
                         isStateJSONStrValid=false;
-                        const error = i18n.t("errorMessages.dataNotObject");
+                        const error = i18n.t("errorMessage.dataNotObject");
                         //note: the following conditional test is only for TS... the message should always be found
                         errorrDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
                     }
@@ -1557,7 +1557,7 @@ export default new Vuex.Store({
                         // Check 2) as 1) is validated
                         if(!checkStateDataIntegrity(newStateObj)) {
                             isStateJSONStrValid = false;
-                            const error = i18n.t("errorMessages.stateDataIntegrity")
+                            const error = i18n.t("errorMessage.stateDataIntegrity")
                             //note: the following conditional test is only for TS... the message should always be found
                             errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
                         } 
@@ -1571,7 +1571,7 @@ export default new Vuex.Store({
                 catch(err){
                     //we cannot use the string arguemnt to retrieve a valid state --> inform the users
                     isStateJSONStrValid = false;
-                    const error = i18n.t("errorMessages.wrongDataFormat");
+                    const error = i18n.t("errorMessage.wrongDataFormat");
                     //note: the following conditional test is only for TS... the message should always be found
                     errorrDetailMessage = (typeof error === "string") ? error : "wrong data format";
                 }
@@ -1583,7 +1583,7 @@ export default new Vuex.Store({
                 
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
-                    const confirmMsg = i18n.t("appMessages.editorFileUploadWrongVersion");
+                    const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
                     //note: the following conditional test is only for TS... the message should always be found   
                     if(!confirm((typeof confirmMsg === "string") ? confirmMsg : "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?")){
                         return;
@@ -1708,10 +1708,37 @@ export default new Vuex.Store({
             commit( "updateNextAvailableId" );
         },
 
-        changeDisableFrame({state, commit}, payload: {frameId: number; isDisabling: boolean}) {
-            console.log("we have this id " + payload.frameId)
+        changeDisableFrame({state, dispatch}, payload: {frameId: number; isDisabling: boolean}) {
+            // When we enable, we ask the user's confirmation to proceed if the frame to enable is an inner disabled frame 
+            // (because then we enable all the disabled frame that are contained within this disabled "bloc")
+            if(!payload.isDisabling && getDisabledBlocRootFrameId(state.frameObjects, payload.frameId) != payload.frameId){
+                Vue.$confirm({
+                    message: i18n.t("appMessage.enableInnerDisabledFrameConfirm"),
+                    button: {
+                        yes: i18n.t("buttonLabel.yes"),
+                        no: i18n.t("buttonLabel.no"),
+                    },
+                    callback: (confirm: boolean) => {
+                        if(confirm){
+                            dispatch(
+                                "doChangeDisableFrame",
+                                payload
+                            );
+                        }                        
+                    },
+                })
+            }
+            else {
+                dispatch(
+                    "doChangeDisableFrame",
+                    payload
+                );
+            }
+        },
+
+        doChangeDisableFrame({state, commit}, payload: {frameId: number; isDisabling: boolean}) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
-            
+
             commit(
                 "changeDisableFrame",
                 payload
@@ -1725,7 +1752,6 @@ export default new Vuex.Store({
                 }
             );
         },
-
     },
     modules: {},
 });
