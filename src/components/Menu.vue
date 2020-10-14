@@ -186,7 +186,7 @@ export default Vue.extend({
 
         exportFile(): void {
             //save the JSON file of the state 
-            saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), "microbit_webframes_code.wpy");
+            saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), store.getters.getProjectName()+".wpy");
         },
 
         toggleMenuOnOff(): void {
