@@ -57,7 +57,6 @@ import Menu from "@/components/Menu.vue"
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
 
-
 //////////////////////
 //     Component    //
 //////////////////////

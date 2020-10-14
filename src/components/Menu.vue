@@ -15,9 +15,7 @@
                 @hidden="toggleMenuOnOff()"
                 id="menu"
             >
-                <template 
-                    v-slot:title
-                >
+                <template v-slot:title >
                     <input
                         v-model="projectName" 
                         @mouseover="hover = true"
@@ -108,12 +106,7 @@ export default Vue.extend({
             return fileImportSupportedFormats.map((extension) => "." + extension).join(", ");
         },
 
-        menuOn(): boolean {
-            return store.getters.getMenuOn();
-        },
-
-        projectName: 
-        {
+        projectName: {
             get(): string {
                 return store.getters.getProjectName();
             },
@@ -190,7 +183,6 @@ export default Vue.extend({
         },
 
         toggleMenuOnOff(): void {
-            store.commit("toggleMenuOnOff");
             this.buttonLabel = (this.buttonLabel === "x")? "&#x2630;" : "x" ;
         },
 
@@ -223,7 +215,7 @@ export default Vue.extend({
         
         // Explicit blur method for "enter" key event
         blur(event: KeyboardEvent): void {
-            // We are raking the focus away from the input. We are not calling 
+            // We are taking the focus away from the input. We are not calling 
             // input.blur() as this propagates and closes the whole menu.
             $("#menu").focus();
         },
