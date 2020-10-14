@@ -38,6 +38,10 @@ export default new Vuex.Store({
         copiedFrames: {} as EditorFrameObjects,
 
         contextMenuShownId: "" as string,
+
+        menuOn: false as boolean,
+
+        projectName: "My Project" as string,
     },
 
     getters: {
@@ -360,6 +364,14 @@ export default new Vuex.Store({
 
         getContextMenuShownId: (state) => () => {
             return state.contextMenuShownId;
+        },
+
+        getMenuOn: (state) => () => {
+            return state.menuOn;
+        },
+
+        getProjectName: (state) => () => {
+            return state.projectName;
         },
     }, 
 
@@ -956,6 +968,15 @@ export default new Vuex.Store({
         setContextMenuShownId(state, id: string) {
             Vue.set(state, "contextMenuShownId", id);
         },   
+
+        toggleMenuOnOff(state) {
+            Vue.set(state, "menuOn", !state.menuOn);
+        },
+
+        setProjectName(state, newName) {
+            Vue.set(state, "projectName", newName);
+        },
+
     },
 
     actions: {

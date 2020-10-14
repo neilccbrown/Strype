@@ -24,9 +24,10 @@
                     />
                 </div>
                 <div class="row no-gutters" >
-                    <div class="col-auto">
-                        <EditorFileManager v-on:app-showprogress="applyShowAppProgress"/>
-                    </div>
+                    <Menu 
+                        id="menu-bar" 
+                        class="col-auto"
+                    />
                     <div class="col" >
                         <FrameContainer
                             v-for="container in containerFrames"
@@ -49,10 +50,10 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import EditorFileManager from "@/components/EditorFileManager.vue";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
+import Menu from "@/components/Menu.vue"
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
 
@@ -68,7 +69,7 @@ export default Vue.extend({
         MessageBanner,
         FrameContainer,
         Commands,
-        EditorFileManager,
+        Menu,
     },
 
     data() {
