@@ -25,7 +25,10 @@
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be interpreted by WebFrames",
     "stateDataIntegrity" : "the data doesn't have integrity to be interpreted by WebFrames",
-    "dataNotObject" : "the data doesn't describe an object"
+    "dataNotObject" : "the data doesn't describe an object",
+    "emptyEditableSlot": "Input slot cannot be empty",
+    "emptyFrameBody": "Body cannot be empty",
+    "errorTitle": "Error!"
   },
   "appMessage": {
     "editorFileUpload": "Uploading your file to the editor...",

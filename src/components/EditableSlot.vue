@@ -23,7 +23,7 @@
         <b-popover
           v-if="erroneous"
           v-bind:target="id"
-          title="Error!"
+          v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
           v-bind:content="errorMessage"
         ></b-popover>

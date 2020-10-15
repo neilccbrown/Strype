@@ -34,9 +34,9 @@
         <b-popover
           v-if="empty"
           v-bind:target="id"
-          title="Error!"
+          v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
-          content="Body cannot be empty"
+          v-bind:content="this.$i18n.t('errorMessage.emptyFrameBody')"
         ></b-popover>
     </div>
 </template>
@@ -96,7 +96,7 @@ export default Vue.extend({
 
         empty(): boolean {
             let empty = false;
-            if(this.frames.length < 1 && this.caretVisibility !== this.caretPosition.body) {
+            if(!this.isDisabled && this.frames.length < 1 && this.caretVisibility !== this.caretPosition.body) {
                 empty = true;
                 store.commit("addPreCompileErrors",this.id);                
             }

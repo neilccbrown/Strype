@@ -626,3 +626,13 @@ export interface AppEvent {
     requestAttention: boolean;
     message?: string;
 }
+
+//Object that holds information on changes to perform on a frame's property
+export interface ChangeFramePropInfos {
+    //indicated whether the propery should be changed
+    changeDisableProp: boolean;
+    //indicates what value the property should be changed to (one flag per type)
+    newBoolPropVal?: boolean;
+    newNumberPropVal?: number;
+    newStringPropVal?: string;
+}

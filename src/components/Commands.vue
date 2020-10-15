@@ -81,7 +81,11 @@ export default Vue.extend({
 
     computed: {
         addFrameCommands(): Record<string, AddFrameCommandDef> {
-            //We retrieve the add frame commands associated with the current frame
+            //If the frame isn't disabled, we retrieve the add frame commands associated with the current frame
+            if(store.getters.getIsCurrentFrameDisabled()) {
+                //for disabled frame we don't show any add frame command
+                return {};
+            }
             return store.getters.getCurrentFrameAddFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
         },
 
