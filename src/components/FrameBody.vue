@@ -50,7 +50,7 @@ import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject, DraggableGroupTypes } from "@/types/types";
+import { CaretPosition, DraggableGroupTypes } from "@/types/types";
 
 //////////////////////
 //     Component    //

@@ -5,7 +5,7 @@
             class="block frameDiv" 
             v-bind:class="{error: erroneous}"
             v-bind:id="id"
-            @click.prevent.stop="toggleCaret($event)"
+            @click="toggleCaret($event)"
             @contextmenu.prevent.stop="handleClick($event,'frame-context-menu')"
         >
             <vue-simple-context-menu
@@ -282,7 +282,6 @@ export default Vue.extend({
                 }
             )
         },
-
         
         enable(): void {
             store.dispatch(
