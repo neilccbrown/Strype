@@ -2,7 +2,7 @@
     <div class="next-to-eachother">
         <input
             type="text"
-            v-if="isComponentLoaded "
+            v-if="isComponentLoaded"
             v-bind:disabled="isDisabled"
             v-model="code"
             v-bind:placeholder="defaultText"

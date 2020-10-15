@@ -211,6 +211,12 @@ export default Vue.extend({
                     disableOrEnableOption
                 );
 
+                // overwrite readonly properties pageX and set correct value
+                Object.defineProperty(event, "pageX", {
+                    value: event.pageX - 60,
+                    writable: true,
+                });
+                
                 ((this.$refs.frameContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
             }
         },
@@ -316,4 +322,5 @@ export default Vue.extend({
 .error {
     border: 1px solid #FF0000 !important;
 }
+
 </style>

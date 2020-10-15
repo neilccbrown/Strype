@@ -92,9 +92,6 @@ export default new Vuex.Store({
             });
             return jointFrames;
         },
-        getIfTypeIsJoint: (state) => (frameType: FramesDefinitions) => {
-            return frameType.isJointFrame;
-        },
         getAllowsJointChildren: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.allowJointChildren;
         },
@@ -1256,7 +1253,7 @@ export default new Vuex.Store({
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
             //Prepare the newFrame object based on the frameType
-            const isJointFrame = getters.getIfTypeIsJoint(payload);
+            const isJointFrame = getters.payload.isJointFrame;
             
             let parentId = (isJointFrame) ? 0 : state.currentFrame.id;
             //if the cursor is below a frame, we actually add to the current's frame parent)
