@@ -149,7 +149,7 @@ export default Vue.extend({
 
         importFile(): void {
             //users should be warned about current editor's content loss
-            const confirmMsg = this.$i18n.t("appMessages.editorConfirmChangeCode");
+            const confirmMsg = this.$i18n.t("appMessage.editorConfirmChangeCode");
             Vue.$confirm({
                 message: confirmMsg,
                 button: {
