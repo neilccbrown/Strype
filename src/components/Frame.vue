@@ -165,6 +165,13 @@ export default Vue.extend({
                     [{name: "Copy", method: "copy"}, {name: "Duplicate", method: "duplicate"}] :
                     [{name: "Copy", method: "copy"}];
                     
+                // overwrite readonly properties pageX and set correct value
+                Object.defineProperty(event, "pageX", {
+                    value: event.pageX - 60,
+                    writable: true,
+                });
+
+
                 ((this.$refs.copyContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
             }
         },
@@ -250,4 +257,5 @@ export default Vue.extend({
 .error {
     border: 1px solid #FF0000 !important;
 }
+
 </style>
