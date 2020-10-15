@@ -43,7 +43,7 @@ const initialState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
-        caretVisibility: CaretPosition.body,
+        caretVisibility: CaretPosition.none,
     },
     1: {
         frameType: Definitions.ImportDefinition,

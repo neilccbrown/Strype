@@ -37,9 +37,11 @@ export default new Vuex.Store({
 
         copiedFrames: {} as EditorFrameObjects,
 
-        contextMenuShownId: "" as string,
-
         stateBeforeChanges : {} as  {[id: string]: any}, // Keeps a copy of the state when 2-steps operations are performed and we need to know the previous state (to clear after use!)
+
+        contextMenuShownId: "",
+
+        projectName: "My Project" as string,
     },
 
     getters: {
@@ -365,6 +367,10 @@ export default new Vuex.Store({
 
         getContextMenuShownId: (state) => () => {
             return state.contextMenuShownId;
+        },
+
+        getProjectName: (state) => () => {
+            return state.projectName;
         },
     }, 
 
@@ -1014,6 +1020,10 @@ export default new Vuex.Store({
                     });
                 }                 
             });
+        },
+
+        setProjectName(state, newName) {
+            Vue.set(state, "projectName", newName);
         },
     },
 

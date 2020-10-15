@@ -9,6 +9,10 @@ import "vue-simple-context-menu/dist/vue-simple-context-menu.css";
 import vBlur from "v-blur";
 import VueConfirmDialog from "vue-confirm-dialog";
 
+
+Vue.config.productionTip = false;
+
+ 
 //version of the application to check code's import compatibilty in the editor
 export const AppVersion = "0.5";
 

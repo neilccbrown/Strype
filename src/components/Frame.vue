@@ -229,6 +229,13 @@ export default Vue.extend({
         toggleCaret(event: MouseEvent): void {
             const frame: HTMLDivElement = event.srcElement as HTMLDivElement;
 
+            // This checks the propagated click events, and prevents the parent event to handle the event as well. 
+            // Stop and Prevent do not work in this case, as the event needs to be propagated 
+            // (for the context menu to close) but it does not need to trigger always a caret change.
+            if(frame.id !== this.id ){
+                return;
+            }
+
             // get the rectangle of the div with its coordinates
             const rect = frame.getBoundingClientRect();
             
@@ -241,7 +248,6 @@ export default Vue.extend({
             else{
                 position = CaretPosition.below;
             }
-
             store.dispatch(
                 "toggleCaret",
                 {id:this.$props.frameId, caretPosition: position}
