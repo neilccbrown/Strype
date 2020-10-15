@@ -17,17 +17,20 @@
             >
                 <template v-slot:title >
                     <input
+                        v-if="isComponentLoaded"
                         v-model="projectName" 
                         @mouseover="hover = true"
                         @mouseleave="hover = false"
                         @focus="onFocus()"
                         @blur="onBlur()"
-                        @keyup.enter.prevent.stop="blur($event)"
+                        @keyup.enter.prevent.stop="blur()"
+                        @keypress="validateInput($event)"
                         class="project-name"
-                        id="project-name"
+                        id="name-input-field"
                         v-bind:style="inputTextStyle"
                         ref="nameinput"
                     />
+                    
                     <i v-if="hover" class="fa fa-pencil-alt"></i>
                 </template>
                 <table>
@@ -54,6 +57,11 @@
                     </tr>
                 </table>
             </b-popover>
+            <div 
+                class="editableslot-placeholder"
+                id="projectNameDiv"
+                v-bind:value="projectName"
+            />
         </div>
         <div>
             <input 
@@ -90,8 +98,19 @@ export default Vue.extend({
         return {
             buttonLabel: "&#x2630;",
             hover: false,
+            //this flag is used to "delay" the computation of the input text field's width,
+            //so that the width is rightfully computed when displayed for the first time
+            isComponentLoaded : false,
         };
     },
+
+    mounted() {
+        //when the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
+        //because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
+        this.isComponentLoaded  = true;
+    },
+
+
 
     computed: {
         fileImagePath(): string {
@@ -187,15 +206,32 @@ export default Vue.extend({
         },
 
         computeFitWidthValue(): string {
-            const placeholder = document.getElementById("project-name");
-            let computedWidth = "150px"; //default value if cannot be computed
-            const offset = 10;
+            const placeholder = document.getElementById("projectNameDiv");
+            let width = 100;
+            const offset = 20;
             if (placeholder) {
+                placeholder.textContent = this.projectName 
                 //the width is computed from the placeholder's width from which
                 //we add extra space for the cursor.
-                computedWidth = (placeholder.offsetWidth + offset) + "px";
+                const calculatedWidth = (placeholder.offsetWidth + offset)
+                width = ( calculatedWidth < 250)?
+                    ((calculatedWidth < width)? width : calculatedWidth ) :
+                    250;
             }
-            return computedWidth;
+            
+            return width + "px";
+        },
+
+        validateInput(event: KeyboardEvent): boolean {
+            // For file names allow only A–Z a–z 0–9 . _ - ()
+            const fileNameRegex = /[\d\w\s\-\\_\\(\\)]+/;
+            if(event.key.match(fileNameRegex) !== null) {
+                return true;
+            }
+            else {
+                event.preventDefault();
+                return false;
+            }
         },
 
         //Apparently focus happens first before blur when moving from one slot to another.
@@ -214,7 +250,7 @@ export default Vue.extend({
         },
         
         // Explicit blur method for "enter" key event
-        blur(event: KeyboardEvent): void {
+        blur(): void {
             // We are taking the focus away from the input. We are not calling 
             // input.blur() as this propagates and closes the whole menu.
             $("#menu").focus();
@@ -269,6 +305,12 @@ td:hover {
     min-width: 45px;
     color: #6c757d;
     border-radius: 50%;
+}
+
+.editableslot-placeholder {
+    position: absolute;
+    display: inline-block;
+    visibility: hidden;
 }
 
 </style>
