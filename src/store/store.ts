@@ -1029,8 +1029,8 @@ export default new Vuex.Store({
 
     actions: {
         updateFramesOrder({getters, commit, state }, payload: {event: any; eventParentId: number}) {
-            //before the adding step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
-            if(payload.event["added"] !== undefined){
+            //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
+            if(payload.event["removed"] == undefined){
                 commit(
                     "updateStateBeforeChanges",
                     false
@@ -1069,8 +1069,8 @@ export default new Vuex.Store({
                 payload
             );
 
-            //after the removing step, we use the backup of the state for setting "isDisabled", prepare for undo/redo and clear the backup off
-            if(payload.event["removed"] !== undefined){
+            //after the removing or at the moving step, we use the backup of the state for setting "isDisabled", prepare for undo/redo and clear the backup off
+            if(payload.event["added"] === undefined){
                 // Set the right value for "isDisabled"
                 const srcFrameId = payload.event[eventType].element.id as number;
                 const destContainerId = (state.frameObjects[srcFrameId].jointParentId > 0)
