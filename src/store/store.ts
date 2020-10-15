@@ -372,6 +372,10 @@ export default new Vuex.Store({
         getProjectName: (state) => () => {
             return state.projectName;
         },
+
+        getIsUndoRedoEmpty: (state) => (checkUndo: boolean) => {
+            return (checkUndo) ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
+        },
     }, 
 
     mutations: {
@@ -1029,8 +1033,8 @@ export default new Vuex.Store({
 
     actions: {
         updateFramesOrder({getters, commit, state }, payload: {event: any; eventParentId: number}) {
-            //before the adding step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
-            if(payload.event["added"] !== undefined){
+            //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
+            if(payload.event["removed"] == undefined){
                 commit(
                     "updateStateBeforeChanges",
                     false
@@ -1069,8 +1073,8 @@ export default new Vuex.Store({
                 payload
             );
 
-            //after the removing step, we use the backup of the state for setting "isDisabled", prepare for undo/redo and clear the backup off
-            if(payload.event["removed"] !== undefined){
+            //after the removing or at the moving step, we use the backup of the state for setting "isDisabled", prepare for undo/redo and clear the backup off
+            if(payload.event["added"] === undefined){
                 // Set the right value for "isDisabled"
                 const srcFrameId = payload.event[eventType].element.id as number;
                 const destContainerId = (state.frameObjects[srcFrameId].jointParentId > 0)
@@ -1625,7 +1629,7 @@ export default new Vuex.Store({
                     if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                         //no need to go further
                         isStateJSONStrValid=false;
-                        const error = i18n.t("errorMessages.dataNotObject");
+                        const error = i18n.t("errorMessage.dataNotObject");
                         //note: the following conditional test is only for TS... the message should always be found
                         errorrDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
                     }
@@ -1633,7 +1637,7 @@ export default new Vuex.Store({
                         // Check 2) as 1) is validated
                         if(!checkStateDataIntegrity(newStateObj)) {
                             isStateJSONStrValid = false;
-                            const error = i18n.t("errorMessages.stateDataIntegrity")
+                            const error = i18n.t("errorMessage.stateDataIntegrity")
                             //note: the following conditional test is only for TS... the message should always be found
                             errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
                         } 
@@ -1647,7 +1651,7 @@ export default new Vuex.Store({
                 catch(err){
                     //we cannot use the string arguemnt to retrieve a valid state --> inform the users
                     isStateJSONStrValid = false;
-                    const error = i18n.t("errorMessages.wrongDataFormat");
+                    const error = i18n.t("errorMessage.wrongDataFormat");
                     //note: the following conditional test is only for TS... the message should always be found
                     errorrDetailMessage = (typeof error === "string") ? error : "wrong data format";
                 }
@@ -1659,7 +1663,7 @@ export default new Vuex.Store({
                 
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
-                    const confirmMsg = i18n.t("appMessages.editorFileUploadWrongVersion");
+                    const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
                     Vue.$confirm({
                         message: confirmMsg,
                         button: {

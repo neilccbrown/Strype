@@ -41,6 +41,8 @@
     "duplicate": "Duplicate",
     "paste": "Paste",
     "enable": "Enable",
-    "disable": "Disable"
+    "disable": "Disable",
+    "undo": "Undo",
+    "redo": "Redo"
   }
 }

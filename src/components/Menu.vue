@@ -54,7 +54,7 @@
                     </tr>
                 </table>
             </b-popover>
-        </div>
+        </div>  
         <div>
             <input 
                 type="file" 
@@ -64,6 +64,22 @@
                 class="editor-file-input"
             /> 
         </div>
+         <input 
+                type="image" 
+                :src="undoImagePath"
+                :disabled="isUndoDisabled"
+                @click="performUndoRedo(true)"
+                class="undoredo-img"
+                :title="this.$i18n.t('contextMenu.undo')"
+            />        
+            <input 
+                type="image" 
+                :src="redoImagePath"
+                :disabled="isRedoDisabled"
+                @click="performUndoRedo(false)"
+                class="undoredo-img"
+                :title="this.$i18n.t('contextMenu.redo')"
+            />       
     </div>
 </template>
 
@@ -94,8 +110,17 @@ export default Vue.extend({
     },
 
     computed: {
-        fileImagePath(): string {
-            return require("@/assets/images/file.png");
+        isUndoDisabled(): boolean {
+            return store.state.diffToPreviousState.length == 0;
+        },
+        isRedoDisabled(): boolean {
+            return store.getters.getIsUndoRedoEmpty(false);
+        },
+        undoImagePath(): string {
+            return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.png") : require("@/assets/images/undo.png");
+        },
+        redoImagePath(): string {
+            return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.png") : require("@/assets/images/redo.png");
         },
         editorFileMenuOption(): {}[] {
             return  [{name: "import", method: "importFile"}, {name: "export", method: "exportFile"}];
@@ -227,6 +252,13 @@ export default Vue.extend({
             // input.blur() as this propagates and closes the whole menu.
             $("#menu").focus();
         },
+
+        performUndoRedo(isUndo: boolean): void {
+            store.dispatch(
+                "undoRedo",
+                isUndo
+            );
+        },
         
     },
 });
@@ -277,6 +309,12 @@ td:hover {
     min-width: 45px;
     color: #6c757d;
     border-radius: 50%;
+}
+
+.undoredo-img {
+    width: 20px;
+    height: 20px;
+    display: block;
 }
 
 </style>
