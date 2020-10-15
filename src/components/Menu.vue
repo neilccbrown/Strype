@@ -124,11 +124,19 @@ export default Vue.extend({
 
         importFile(): void {
             //users should be warned about current editor's content loss
-            const confirmMsg = this.$i18n.t("appMessage.editorConfirmChangeCode");
-            //note: the following conditional test is only for TS... the message should always be found
-            if (confirm((typeof confirmMsg === "string") ? confirmMsg : "Current editor's content will be permanently lost.\nDo you want to continue?")) {
-                (this.$refs.importFileInput as HTMLInputElement).click();    
-            }            
+            const confirmMsg = this.$i18n.t("appMessages.editorConfirmChangeCode");
+            Vue.$confirm({
+                message: confirmMsg,
+                button: {
+                    yes: this.$i18n.t("buttonLabel.yes"),
+                    no: this.$i18n.t("buttonLabel.no"),
+                },
+                callback: (confirm: boolean) => {
+                    if(confirm){
+                        (this.$refs.importFileInput as HTMLInputElement).click();
+                    }                        
+                },
+            });    
         },
         
         selectedFile() {

@@ -1605,7 +1605,7 @@ export default new Vuex.Store({
             commit("setMessageBanner", message);
         },
 
-        setStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
+        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorrDetailMessage = payload.errorReason ?? "unknow reason";
             let isVersionCorrect = false;
@@ -1625,7 +1625,7 @@ export default new Vuex.Store({
                     if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                         //no need to go further
                         isStateJSONStrValid=false;
-                        const error = i18n.t("errorMessage.dataNotObject");
+                        const error = i18n.t("errorMessages.dataNotObject");
                         //note: the following conditional test is only for TS... the message should always be found
                         errorrDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
                     }
@@ -1633,7 +1633,7 @@ export default new Vuex.Store({
                         // Check 2) as 1) is validated
                         if(!checkStateDataIntegrity(newStateObj)) {
                             isStateJSONStrValid = false;
-                            const error = i18n.t("errorMessage.stateDataIntegrity")
+                            const error = i18n.t("errorMessages.stateDataIntegrity")
                             //note: the following conditional test is only for TS... the message should always be found
                             errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
                         } 
@@ -1647,7 +1647,7 @@ export default new Vuex.Store({
                 catch(err){
                     //we cannot use the string arguemnt to retrieve a valid state --> inform the users
                     isStateJSONStrValid = false;
-                    const error = i18n.t("errorMessage.wrongDataFormat");
+                    const error = i18n.t("errorMessages.wrongDataFormat");
                     //note: the following conditional test is only for TS... the message should always be found
                     errorrDetailMessage = (typeof error === "string") ? error : "wrong data format";
                 }
@@ -1659,29 +1659,29 @@ export default new Vuex.Store({
                 
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
-                    const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
-                    //note: the following conditional test is only for TS... the message should always be found   
-                    if(!confirm((typeof confirmMsg === "string") ? confirmMsg : "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?")){
-                        return;
-                    }
+                    const confirmMsg = i18n.t("appMessages.editorFileUploadWrongVersion");
+                    Vue.$confirm({
+                        message: confirmMsg,
+                        button: {
+                            yes: i18n.t("buttonLabel.yes"),
+                            no: i18n.t("buttonLabel.no"),
+                        },
+                        callback: (confirm: boolean) => {
+                            if(confirm){
+                                dispatch(
+                                    "doSetStateFromJSONStr",
+                                    payload
+                                );                                
+                            }                        
+                        },
+                    })
                 }
-
-                commit(
-                    "updateState",
-                    JSON.parse(payload.stateJSONStr)
-                )
-
-                commit(
-                    "setMessageBanner",
-                    MessageDefinitions.UploadEditorFileSuccess
-                );
-
-                //don't leave the message for ever
-                setTimeout(()=>commit(
-                    "setMessageBanner",
-                    MessageDefinitions.NoMessage
-                ), 5000);     
-                
+                else{
+                    dispatch(
+                        "doSetStateFromJSONStr",
+                        payload
+                    );   
+                }                
             }
             else{
                 const message = MessageDefinitions.UploadEditorFileError;
@@ -1693,6 +1693,24 @@ export default new Vuex.Store({
                     message
                 );
             }
+        },
+
+        doSetStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
+            commit(
+                "updateState",
+                JSON.parse(payload.stateJSONStr)
+            )
+
+            commit(
+                "setMessageBanner",
+                MessageDefinitions.UploadEditorFileSuccess
+            );
+
+            //don't leave the message for ever
+            setTimeout(()=>commit(
+                "setMessageBanner",
+                MessageDefinitions.NoMessage
+            ), 5000);  
         },
 
         // This method can be used to copy a frame to a position.
