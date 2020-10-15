@@ -1,6 +1,6 @@
 <template>
     <div id="app" class="container-fluid">
-        <vue-confirm-dialog></vue-confirm-dialog>
+        <vue-confirm-dialog />
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
