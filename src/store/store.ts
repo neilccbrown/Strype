@@ -1270,7 +1270,7 @@ export default new Vuex.Store({
             }
 
             const newFrame = {
-                ...EmptyFrameObject,
+                ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: payload,
                 id: state.nextAvailableId++,
                 parentId: isJointFrame ? 0 : parentId, 
