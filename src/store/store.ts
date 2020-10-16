@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
@@ -1270,14 +1270,13 @@ export default new Vuex.Store({
             }
 
             const newFrame = {
+                ...EmptyFrameObject,
                 frameType: payload,
                 id: state.nextAvailableId++,
                 parentId: isJointFrame ? 0 : parentId, 
-                childrenIds: [],
                 jointParentId: isJointFrame
                     ? (state.frameObjects[state.currentFrame.id].jointParentId > 0) ? state.frameObjects[state.currentFrame.id].jointParentId : state.currentFrame.id
                     : 0,
-                jointFrameIds: [],
                 contentDict:
                     //find each editable slot and create an empty & unfocused entry for it
                     //optional labels are not visible by default, not optional labels are visible by default
@@ -1288,7 +1287,6 @@ export default new Vuex.Store({
                         }),
                         {}
                     ),
-                error: "",
             };
 
             commit(
