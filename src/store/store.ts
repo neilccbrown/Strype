@@ -6,7 +6,7 @@ import initialState from "@/store/initial-state";
 import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlocRootFrameId, getMovingFrameDisableChangeInfos } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 
@@ -91,9 +91,6 @@ export default new Vuex.Store({
                 }
             });
             return jointFrames;
-        },
-        getIfTypeIsJoint: (state) => (frameType: FramesDefinitions) => {
-            return frameType.isJointFrame;
         },
         getAllowsJointChildren: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.allowJointChildren;
@@ -981,7 +978,7 @@ export default new Vuex.Store({
         changeDisableFrame(state, payload: {frameId: number; isDisabling: boolean; ignoreEnableFromRoot?: boolean}) {
             //if we enable, we may need to use the root frame ID instead of the frame ID where the menu has been invocked
             //because enabling a frame enables all the frames for that disabled "block" (i.e. the top disabled frame and its children/joint frames)
-            const rootFrameID = (payload.isDisabling || (payload.ignoreEnableFromRoot??false)) ? payload.frameId : getDisabledBlocRootFrameId(state.frameObjects, payload.frameId);
+            const rootFrameID = (payload.isDisabling || (payload.ignoreEnableFromRoot??false)) ? payload.frameId : getDisabledBlockRootFrameId(state.frameObjects, payload.frameId);
 
             //When we disable or enable a frame, we also disable/enable all the sublevels (children and joint frames)
             const allFrameIds = [rootFrameID];
@@ -1080,7 +1077,7 @@ export default new Vuex.Store({
                 const destContainerId = (state.frameObjects[srcFrameId].jointParentId > 0)
                     ? state.frameObjects[srcFrameId].jointParentId
                     : state.frameObjects[srcFrameId].parentId;
-                const changeDisableInfo = getMovingFrameDisableChangeInfos(state.stateBeforeChanges.frameObjects, srcFrameId, destContainerId);
+                const changeDisableInfo = checkDisabledStatusOfMovingFrame(state.stateBeforeChanges.frameObjects, srcFrameId, destContainerId);
                 if(changeDisableInfo.changeDisableProp){
                     this.commit(
                         "changeDisableFrame",
@@ -1260,7 +1257,7 @@ export default new Vuex.Store({
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
             //Prepare the newFrame object based on the frameType
-            const isJointFrame = getters.getIfTypeIsJoint(payload);
+            const isJointFrame = payload.isJointFrame;
             
             let parentId = (isJointFrame) ? 0 : state.currentFrame.id;
             //if the cursor is below a frame, we actually add to the current's frame parent)

@@ -233,17 +233,17 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
 }
 
 // Finds out what is the root frame Id of a "block" of disabled frames
-export const getDisabledBlocRootFrameId = function(listOfFrames: EditorFrameObjects, frameId: number): number {
+export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObjects, frameId: number): number {
     const frameParentId = (listOfFrames[frameId].jointParentId > 0) ? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
     if(listOfFrames[frameParentId].isDisabled){
-        return getDisabledBlocRootFrameId(listOfFrames, frameParentId);
+        return getDisabledBlockRootFrameId(listOfFrames, frameParentId);
     }
     else{
         return frameId;
     }
 }
 
-export const getMovingFrameDisableChangeInfos = 
+export const checkDisabledStatusOfMovingFrame = 
     function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
         // Change the disable property to destination parent state if the source's parent and destination's parent are different
         const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0) 

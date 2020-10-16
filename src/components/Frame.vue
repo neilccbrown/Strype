@@ -106,6 +106,7 @@ export default Vue.extend({
 
     data: function () {
         return {
+            //prepare a "default" version of the menu: it will be amended if required in handleClick()
             frameContextMenuOptions: [
                 {name: this.$i18n.t("contextMenu.copy"), method: "copy"},
                 {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"},
@@ -179,31 +180,24 @@ export default Vue.extend({
                 let menuPosOffset = 0;
 
                 // Not all frames should be duplicated (e.g. Else)
-                const duplicateOptionIndex = this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate");
                 // The target id, for a duplication, should be the same as the copied frame 
                 // except if that frame has joint frames: the target is the last joint frame.
                 const targetFrameJointFrames = store.getters.getJointFramesForFrameId(this.frameId, "all");
                 const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
                 const canDuplicate = store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
-                if(canDuplicate && duplicateOptionIndex === -1){
-                    this.frameContextMenuOptions.splice(
-                        duplicateOptionContextMenuPos,
-                        0,
-                        {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"}
-                    );    
-                }
-                else if(!canDuplicate &&  duplicateOptionIndex > -1){
-                    this.frameContextMenuOptions.splice(
-                        duplicateOptionContextMenuPos,
-                        1
-                    );
-                }
-
                 if(!canDuplicate){
-                    //update the offset if we don't have the "duplicate" menu item
+                    //We don't need the duplication option: remove it from the menu options if not present
+                    if(this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate") > -1){
+                        this.frameContextMenuOptions.splice(
+                            duplicateOptionContextMenuPos,
+                            1
+                        );
+                    }
+
+                    //update the offset
                     menuPosOffset --;
                 }
-              
+
                 //if a frame is disabled [respectively, enabled], show the enable [resp. disable] option
                 const disableOrEnableOption = (this.isDisabled) 
                     ?  {name: this.$i18n.t("contextMenu.enable"), method: "enable"}
@@ -214,6 +208,12 @@ export default Vue.extend({
                     disableOrEnableOption
                 );
 
+                // overwrite readonly properties pageX and set correct value
+                Object.defineProperty(event, "pageX", {
+                    value: event.pageX - 60,
+                    writable: true,
+                });
+                
                 ((this.$refs.frameContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
             }
         },
@@ -326,4 +326,5 @@ export default Vue.extend({
 .error {
     border: 1px solid #FF0000 !important;
 }
+
 </style>
