@@ -3,6 +3,7 @@
         <input
             type="text"
             v-if="isComponentLoaded"
+            v-bind:disabled="isDisabled"
             v-model="code"
             v-bind:placeholder="defaultText"
             v-focus="focused"
@@ -22,7 +23,7 @@
         <b-popover
           v-if="erroneous"
           v-bind:target="id"
-          title="Error!"
+          v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
           v-bind:content="errorMessage"
         ></b-popover>
@@ -48,6 +49,7 @@ export default Vue.extend({
         defaultText: String,
         slotIndex: Number,
         frameId: Number,
+        isDisabled: Boolean,
         optionalSlot: Boolean,
     },
 

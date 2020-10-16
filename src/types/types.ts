@@ -9,6 +9,7 @@ import toggleFrameLabelsDefs, {KeyModifier} from "@/constants/toggleFrameLabelCo
 export interface FrameObject {
     frameType: FramesDefinitions;
     id: number;
+    isDisabled: boolean;
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
@@ -624,4 +625,14 @@ export interface ObjectPropertyDiff {
 export interface AppEvent {
     requestAttention: boolean;
     message?: string;
+}
+
+//Object that holds information on changes to perform on a frame's property
+export interface ChangeFramePropInfos {
+    //indicated whether the propery should be changed
+    changeDisableProp: boolean;
+    //indicates what value the property should be changed to (one flag per type)
+    newBoolPropVal?: boolean;
+    newNumberPropVal?: number;
+    newStringPropVal?: string;
 }

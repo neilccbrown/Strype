@@ -18,6 +18,7 @@
         <Caret
             v-bind:isBlurred="overCaret"
             v-bind:isInvisible="isInvisible"
+            v-blur="isFrameDisabled"
         />
     </div>
 </template>
@@ -50,6 +51,7 @@ export default Vue.extend({
         frameId: Number,
         caretVisibility: String, //Flag indicating this caret is visible or not
         caretAssignedPosition: String,
+        isFrameDisabled: Boolean,
     },
 
     data: function () {

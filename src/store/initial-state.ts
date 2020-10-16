@@ -4,6 +4,7 @@ const initialState: EditorFrameObjects = {
     0: {
         id: 0,
         frameType : RootContainerFrameDefinition,
+        isDisabled: false,
         parentId: 0,
         childrenIds: [-1, -2, -3],
         jointParentId: 0,
@@ -14,6 +15,7 @@ const initialState: EditorFrameObjects = {
     "-1": {
         id: -1,
         frameType : ImportsContainerDefinition,
+        isDisabled: false,
         parentId: 0,
         childrenIds: [1,2],
         jointParentId: 0,
@@ -24,6 +26,7 @@ const initialState: EditorFrameObjects = {
     "-2": {
         id: -2,
         frameType : FuncDefContainerDefinition,
+        isDisabled: false,
         parentId: 0,
         childrenIds: [],
         jointParentId: 0,
@@ -34,6 +37,7 @@ const initialState: EditorFrameObjects = {
     "-3": {
         id: -3,
         frameType : MainFramesContainerDefinition,
+        isDisabled: false,
         parentId: 0,
         childrenIds: [3,4,5,6,7,8],
         jointParentId: 0,
@@ -44,6 +48,7 @@ const initialState: EditorFrameObjects = {
     1: {
         frameType: Definitions.ImportDefinition,
         id: 1,
+        isDisabled: false,
         parentId: -1,
         childrenIds: [],
         jointParentId: 0,
@@ -57,6 +62,7 @@ const initialState: EditorFrameObjects = {
     2: {
         frameType: Definitions.ImportDefinition,
         id: 2,
+        isDisabled: false,
         parentId: -1,
         childrenIds: [],
         jointParentId: 0,
@@ -70,6 +76,7 @@ const initialState: EditorFrameObjects = {
     3: {
         frameType: Definitions.CommentDefinition,
         id: 3,
+        isDisabled: false,
         parentId: -3,
         childrenIds: [],
         jointParentId: 0,
@@ -81,6 +88,7 @@ const initialState: EditorFrameObjects = {
     4: {
         frameType: Definitions.EmptyDefinition,
         id: 4,
+        isDisabled: false,
         parentId: -3,
         childrenIds: [],
         jointParentId: 0,
@@ -92,6 +100,7 @@ const initialState: EditorFrameObjects = {
     5: {
         frameType: Definitions.EmptyDefinition,
         id: 5,
+        isDisabled: false,
         parentId: -3,
         childrenIds: [],
         jointParentId: 0,
@@ -103,6 +112,7 @@ const initialState: EditorFrameObjects = {
     6: {
         frameType: Definitions.CommentDefinition,
         id: 6,
+        isDisabled: false,
         parentId: -3,
         childrenIds: [],
         jointParentId: 0,
@@ -114,6 +124,7 @@ const initialState: EditorFrameObjects = {
     7: {
         frameType: Definitions.VarAssignDefinition,
         id: 7,
+        isDisabled: false,
         parentId: -3,
         childrenIds: [],
         jointParentId: 0,
@@ -127,6 +138,7 @@ const initialState: EditorFrameObjects = {
     8: {
         frameType: Definitions.WhileDefinition,
         id: 8,
+        isDisabled: false,
         parentId: -3,
         childrenIds: [9,10,11,12,13],
         jointParentId: 0,
@@ -138,6 +150,7 @@ const initialState: EditorFrameObjects = {
     9: {
         frameType: Definitions.EmptyDefinition,
         id: 9,
+        isDisabled: false,
         parentId: 8,
         childrenIds: [],
         jointParentId: 0,
@@ -149,6 +162,7 @@ const initialState: EditorFrameObjects = {
     10: {
         frameType: Definitions.VarAssignDefinition,
         id: 10,
+        isDisabled: false,
         parentId: 8,
         childrenIds: [],
         jointParentId: 0,
@@ -162,6 +176,7 @@ const initialState: EditorFrameObjects = {
     11: {
         frameType: Definitions.IfDefinition,
         id: 11,
+        isDisabled: false,
         parentId: 8,
         childrenIds: [14,15],
         jointParentId: 0,
@@ -173,6 +188,7 @@ const initialState: EditorFrameObjects = {
     14: {
         frameType: Definitions.EmptyDefinition,
         id: 14,
+        isDisabled: false,
         parentId: 11,
         childrenIds: [],
         jointParentId: 0,
@@ -184,6 +200,7 @@ const initialState: EditorFrameObjects = {
     15: {
         frameType: Definitions.EmptyDefinition,
         id: 15,
+        isDisabled: false,
         parentId: 11,
         childrenIds: [],
         jointParentId: 0,
@@ -195,6 +212,7 @@ const initialState: EditorFrameObjects = {
     12: {
         frameType: Definitions.IfDefinition,
         id: 12,
+        isDisabled: false,
         parentId: 8,
         childrenIds: [16],
         jointParentId: 0,
@@ -206,6 +224,7 @@ const initialState: EditorFrameObjects = {
     16: {
         frameType: Definitions.VarAssignDefinition,
         id: 16,
+        isDisabled: false,
         parentId: 12,
         childrenIds: [],
         jointParentId: 0,
@@ -219,6 +238,7 @@ const initialState: EditorFrameObjects = {
     13: {
         frameType: Definitions.IfDefinition,
         id: 13,
+        isDisabled: false,
         parentId: 8,
         childrenIds: [17],
         jointParentId: 0,
@@ -230,6 +250,7 @@ const initialState: EditorFrameObjects = {
     17: {
         frameType: Definitions.VarAssignDefinition,
         id: 17,
+        isDisabled: false,
         parentId: 13,
         childrenIds: [],
         jointParentId: 0,

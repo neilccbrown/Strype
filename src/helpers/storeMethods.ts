@@ -1,4 +1,4 @@
-import { FrameObject, CaretPosition, EditorFrameObjects } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos } from "@/types/types";
 import Vue from "vue";
 import { getSHA1HashForObject } from "@/helpers/common";
 
@@ -41,6 +41,7 @@ export const getParent = (listOfFrames: Record<number, FrameObject>, currentFram
     return parentId;
 };
 
+//Returns a list with all the previous frames (of the same level) and next frames (including first level children) used for navigating the caret
 export const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, currentFrameId: number, caretPosition: CaretPosition, direction: string) => {
     const currentFrame = listOfFrames[currentFrameId];
             
@@ -192,7 +193,26 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     
 }
 
-export function checkStateDataIntegrity(obj: {[id: string]: any}): boolean  {
+//Search all children/joint frames ids for a specific frame
+export const getAllChildrenAndJointFramesIds = function(listOfFrames: EditorFrameObjects, frameId: number): number[]  {
+    const childrenJointsIdsList = [] as number[];
+
+    //get the children frames ids
+    listOfFrames[frameId].childrenIds.forEach((childId: number) => {
+        childrenJointsIdsList.push(childId);
+        childrenJointsIdsList.push(...getAllChildrenAndJointFramesIds(listOfFrames, childId));
+    });
+
+    //get the joint frames ids
+    listOfFrames[frameId].jointFrameIds.forEach((jointId: number) => {
+        childrenJointsIdsList.push(jointId);
+        childrenJointsIdsList.push(...getAllChildrenAndJointFramesIds(listOfFrames, jointId));
+    });
+
+    return childrenJointsIdsList;
+}
+
+export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boolean {
     //check the checksum and version properties are present and checksum is as expected, if not, the document doesn't have integrity
     if(obj["checksum"] === undefined || obj["version"] === undefined){
         return false;
@@ -211,3 +231,32 @@ export function checkStateDataIntegrity(obj: {[id: string]: any}): boolean  {
         return foundChecksum === expectedChecksum;        
     }
 }
+
+// Finds out what is the root frame Id of a "block" of disabled frames
+export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObjects, frameId: number): number {
+    const frameParentId = (listOfFrames[frameId].jointParentId > 0) ? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+    if(listOfFrames[frameParentId].isDisabled){
+        return getDisabledBlockRootFrameId(listOfFrames, frameParentId);
+    }
+    else{
+        return frameId;
+    }
+}
+
+export const checkDisabledStatusOfMovingFrame = 
+    function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
+        // Change the disable property to destination parent state if the source's parent and destination's parent are different
+        const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0) 
+            ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
+            : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
+
+        const isDestParentDisabled = listOfFrames[destContainerFrameId].isDisabled;
+        
+        if(isSrcParentDisabled === isDestParentDisabled){
+            // Nothing to change
+            return {changeDisableProp: false, newBoolPropVal: false};
+        }
+
+        // The source need to be changed to the destination's parent 
+        return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
+    }
