@@ -64,14 +64,17 @@
                 class="editor-file-input"
             /> 
         </div>
-         <input 
+        <div class="menu-icon-div">
+            <input 
                 type="image" 
                 :src="undoImagePath"
                 :disabled="isUndoDisabled"
                 @click="performUndoRedo(true)"
                 class="undoredo-img"
                 :title="this.$i18n.t('contextMenu.undo')"
-            />        
+            />
+        </div>     
+        <div class="menu-icon-div">   
             <input 
                 type="image" 
                 :src="redoImagePath"
@@ -79,7 +82,8 @@
                 @click="performUndoRedo(false)"
                 class="undoredo-img"
                 :title="this.$i18n.t('contextMenu.redo')"
-            />       
+            />
+        </div>       
     </div>
 </template>
 
@@ -266,6 +270,12 @@ export default Vue.extend({
 
 <style lang="scss">
 
+.menu-icon-div {
+    width: 100%;
+    height: 20px;
+    margin-bottom: 10px;
+}
+
 .file-menu-img {
     outline: none;
 }
@@ -315,6 +325,7 @@ td:hover {
     width: 20px;
     height: 20px;
     display: block;
+    margin: auto;
 }
 
 </style>
