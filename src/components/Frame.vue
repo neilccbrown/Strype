@@ -3,7 +3,7 @@
         <div 
             v-bind:style="frameStyle" 
             class="block frameDiv" 
-            v-bind:class="{error: erroneous, blockStatement: isStatementFrame, blockWithBody: !isStatementFrame}"
+            v-bind:class="{error: erroneous, statementOrJoint: isStatementOrJointFrame, blockWithBody: !isStatementOrJointFrame}"
             v-bind:id="id"
             @click="toggleCaret($event)"
             @contextmenu.prevent.stop="handleClick($event,'frame-context-menu')"
@@ -163,8 +163,8 @@ export default Vue.extend({
             return store.getters.getContextMenuShownId() === this.id; 
         },
 
-        isStatementFrame(): boolean {
-            return !this.$props.frameType.allowChildren;
+        isStatementOrJointFrame(): boolean {
+            return this.$props.frameType.isJointFrame || !this.$props.frameType.allowChildren;
         },
     },
 
@@ -311,7 +311,7 @@ export default Vue.extend({
     border: 1px solid #B4B4B4;
 }
 
-.blockStatement {
+.statementOrJoint {
     border: 1px solid transparent;
 }
 
