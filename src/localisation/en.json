@@ -12,24 +12,35 @@
   },
   "buttonLabel":{
       "undo": "Undo",
-      "yes": "yes",
-      "no": "no",
+      "yes": "Yes",
+      "no": "No",
       "ok": "OK",
       "uploadToMicrobit": "Upload to micro:bit",
       "downloadHex": "Download Hex",
       "downloadPython": "Download Python"
   },
-  "actions": {
+  "action": {
     "uploadingToMicrobit": "Uploading to micro:bit ..."
   },
-  "errorMessages": {
+  "errorMessage": {
     "wrongDataFormat": "the data format cannot be interpreted by WebFrames",
     "stateDataIntegrity" : "the data doesn't have integrity to be interpreted by WebFrames",
-    "dataNotObject" : "the data doesn't describe an object"
+    "dataNotObject" : "the data doesn't describe an object",
+    "emptyEditableSlot": "Input slot cannot be empty",
+    "emptyFrameBody": "Body cannot be empty",
+    "errorTitle": "Error!"
   },
-  "appMessages": {
+  "appMessage": {
     "editorFileUpload": "Uploading your file to the editor...",
     "editorConfirmChangeCode": "Current editor's content will be permanently lost.\nDo you want to continue?",
-    "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?"
+    "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
+    "enableInnerDisabledFrameConfirm": "This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?"
+  },
+  "contextMenu": {
+    "copy": "Copy",
+    "duplicate": "Duplicate",
+    "paste": "Paste",
+    "enable": "Enable",
+    "disable": "Disable"
   }
 }

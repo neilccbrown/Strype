@@ -6,7 +6,7 @@ import initialState from "@/store/initial-state";
 import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
-import { checkStateDataIntegrity } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 
@@ -36,6 +36,8 @@ export default new Vuex.Store({
         copiedFrameId: -100 as number, // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
 
         copiedFrames: {} as EditorFrameObjects,
+
+        stateBeforeChanges : {} as  {[id: string]: any}, // Keeps a copy of the state when 2-steps operations are performed and we need to know the previous state (to clear after use!)
 
         contextMenuShownId: "",
 
@@ -98,6 +100,9 @@ export default new Vuex.Store({
         },
         getCurrentFrameObject: (state) => () => {
             return state.frameObjects[state.currentFrame.id];
+        },
+        getIsCurrentFrameDisabled: (state) => () => {
+            return state.frameObjects[state.currentFrame.id].isDisabled;
         },
         getDraggableGroupById: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.draggableGroup;
@@ -329,7 +334,7 @@ export default new Vuex.Store({
         getIsCopiedAvailable: (state) => () => {
             return state.copiedFrameId !== -100;
         },
-        // copiedFrameId is an optional argument and it is used in cases where we are just checking if a 
+        // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
         // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
         getIfPositionAllowsFrame: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {
             
@@ -367,6 +372,14 @@ export default new Vuex.Store({
     }, 
 
     mutations: {
+        updateStateBeforeChanges(state, release: boolean) {
+            //if the flag release is true, we clear the current stateBeforeChanges value
+            Vue.set(
+                state,
+                "stateBeforeChanges",
+                (release) ? {} : JSON.parse(JSON.stringify(state))
+            )
+        },
 
         addFrameObject(state, newFrame: FrameObject) {
  
@@ -499,7 +512,6 @@ export default new Vuex.Store({
                         payload.eventParentId
                     );
                 }
-                
             }
             else if (eventType === "moved") {
                 // Delete the frameId from the children list 
@@ -516,11 +528,10 @@ export default new Vuex.Store({
             }
             else if (eventType === "removed") {
                 // Remove the id from the parent's childrenId list
-                
                 listToUpdate.splice(
                     payload.event[eventType].oldIndex,
                     1
-                );
+                ); 
             }
         },
 
@@ -958,21 +969,73 @@ export default new Vuex.Store({
 
         setContextMenuShownId(state, id: string) {
             Vue.set(state, "contextMenuShownId", id);
-        },   
+        },  
+        
+        changeDisableFrame(state, payload: {frameId: number; isDisabling: boolean; ignoreEnableFromRoot?: boolean}) {
+            //if we enable, we may need to use the root frame ID instead of the frame ID where the menu has been invocked
+            //because enabling a frame enables all the frames for that disabled "block" (i.e. the top disabled frame and its children/joint frames)
+            const rootFrameID = (payload.isDisabling || (payload.ignoreEnableFromRoot??false)) ? payload.frameId : getDisabledBlockRootFrameId(state.frameObjects, payload.frameId);
+
+            //When we disable or enable a frame, we also disable/enable all the sublevels (children and joint frames)
+            const allFrameIds = [rootFrameID];
+            allFrameIds.push(...getAllChildrenAndJointFramesIds(state.frameObjects, rootFrameID));
+            allFrameIds.forEach((frameId) => {
+                Vue.set(
+                    state.frameObjects[frameId],
+                    "isDisabled",
+                    payload.isDisabling
+                );
+
+                //if disabling [resp. enabling], we also need to remove [resp. add] potential errors of empty editable slots
+                if(payload.isDisabling){
+                    Object.keys(state.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
+                        Vue.set(
+                            state.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)],
+                            "error",
+                            ""
+                        );
+
+                        const id = getEditableSlotId(frameId, Number.parseInt(slotIndex));
+                        if(state.preCompileErrors.includes(id)) {
+                            state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
+                        }
+                    });
+                } 
+                else{
+                    Object.keys(state.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
+                        const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[Number.parseInt(slotIndex)].optionalSlot ?? true
+                        if(!optionalSlot && state.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)].code.trim().length == 0){
+                            Vue.set(
+                                state.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)],
+                                "error",
+                                i18n.t("errorMessage.emptyEditableSlot")
+                            );
+    
+                            const id = getEditableSlotId(frameId, Number.parseInt(slotIndex));
+                            state.preCompileErrors.push(id)
+                        }
+                    });
+                }                 
+            });
+        },
 
         setProjectName(state, newName) {
             Vue.set(state, "projectName", newName);
         },
-
     },
 
     actions: {
         updateFramesOrder({getters, commit, state }, payload: {event: any; eventParentId: number}) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
+            if(payload.event["removed"] == undefined){
+                commit(
+                    "updateStateBeforeChanges",
+                    false
+                );
+            }
             
             const eventType = Object.keys(payload.event)[0];
             const isJointFrame = getters.getIsJointFrameById(payload.event[eventType].element.id);
-
 
             const position: CaretPosition = (isJointFrame || payload.event[eventType].newIndex !== 0)?
                 CaretPosition.below:
@@ -1003,13 +1066,35 @@ export default new Vuex.Store({
                 payload
             );
 
-            //save state changes
-            commit(
-                "saveStateChanges",
-                {                   
-                    previousState: stateBeforeChanges,
-                }
-            );
+            //after the removing or at the moving step, we use the backup of the state for setting "isDisabled", prepare for undo/redo and clear the backup off
+            if(payload.event["added"] === undefined){
+                // Set the right value for "isDisabled"
+                const srcFrameId = payload.event[eventType].element.id as number;
+                const destContainerId = (state.frameObjects[srcFrameId].jointParentId > 0)
+                    ? state.frameObjects[srcFrameId].jointParentId
+                    : state.frameObjects[srcFrameId].parentId;
+                const changeDisableInfo = checkDisabledStatusOfMovingFrame(state.stateBeforeChanges.frameObjects, srcFrameId, destContainerId);
+                if(changeDisableInfo.changeDisableProp){
+                    this.commit(
+                        "changeDisableFrame",
+                        {frameId: srcFrameId, isDisabling: changeDisableInfo.newBoolPropVal, ignoreEnableFromRoot: true}
+                    );
+                }    
+
+                //save the state changes for undo/redo
+                commit(
+                    "saveStateChanges",
+                    {                   
+                        previousState: state.stateBeforeChanges,
+                    }
+                );
+
+                //clear the statebeforeChanges flag off
+                commit(
+                    "updateStateBeforeChanges",
+                    true
+                );
+            }
         },
 
         setFrameEditableSlotContent({state, commit}, payload: EditableSlotPayload) {
@@ -1072,7 +1157,7 @@ export default new Vuex.Store({
                 const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
                 if(payload.code !== "") {
                     //if the user entered text on previously left blank slot, remove the error
-                    if(!optionalSlot && errorMessage === "Input slot cannot be empty") {
+                    if(!optionalSlot && errorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
                         commit(
                             "setSlotErroneous", 
                             {
@@ -1090,7 +1175,7 @@ export default new Vuex.Store({
                         {
                             frameId: payload.frameId, 
                             slotIndex: payload.slotId,  
-                            error: "Input slot cannot be empty",
+                            error: i18n.t("errorMessage.emptyEditableSlot"),
                         }
                     );
                     commit("addPreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
@@ -1537,7 +1622,7 @@ export default new Vuex.Store({
                     if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                         //no need to go further
                         isStateJSONStrValid=false;
-                        const error = i18n.t("errorMessages.dataNotObject");
+                        const error = i18n.t("errorMessage.dataNotObject");
                         //note: the following conditional test is only for TS... the message should always be found
                         errorrDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
                     }
@@ -1545,7 +1630,7 @@ export default new Vuex.Store({
                         // Check 2) as 1) is validated
                         if(!checkStateDataIntegrity(newStateObj)) {
                             isStateJSONStrValid = false;
-                            const error = i18n.t("errorMessages.stateDataIntegrity")
+                            const error = i18n.t("errorMessage.stateDataIntegrity")
                             //note: the following conditional test is only for TS... the message should always be found
                             errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
                         } 
@@ -1559,7 +1644,7 @@ export default new Vuex.Store({
                 catch(err){
                     //we cannot use the string arguemnt to retrieve a valid state --> inform the users
                     isStateJSONStrValid = false;
-                    const error = i18n.t("errorMessages.wrongDataFormat");
+                    const error = i18n.t("errorMessage.wrongDataFormat");
                     //note: the following conditional test is only for TS... the message should always be found
                     errorrDetailMessage = (typeof error === "string") ? error : "wrong data format";
                 }
@@ -1571,7 +1656,7 @@ export default new Vuex.Store({
                 
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
-                    const confirmMsg = i18n.t("appMessages.editorFileUploadWrongVersion");
+                    const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
                     //note: the following conditional test is only for TS... the message should always be found   
                     if(!confirm((typeof confirmMsg === "string") ? confirmMsg : "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?")){
                         return;
@@ -1650,7 +1735,14 @@ export default new Vuex.Store({
             });
 
             commit( "updateNextAvailableId" );
-            
+
+            //if we do a paste, update the pasted frames' "isDisabled" property solely based on the parent's property
+            if(isPasteOperation){
+                this.commit(
+                    "changeDisableFrame",
+                    {frameId: topFrame.id, isDisabling: state.frameObjects[payload.newParentId].isDisabled, ignoreEnableFromRoot: true}
+                );
+            }
             //save state changes
             commit(
                 "saveStateChanges",
@@ -1694,6 +1786,23 @@ export default new Vuex.Store({
                 frameId
             );
             commit( "updateNextAvailableId" );
+        },
+
+        changeDisableFrame({state, commit}, payload: {frameId: number; isDisabling: boolean}) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+
+            commit(
+                "changeDisableFrame",
+                payload
+            );
+            
+            //save state changes
+            commit(
+                "saveStateChanges",
+                {
+                    previousState: stateBeforeChanges,
+                }
+            );
         },
     },
     modules: {},

@@ -143,7 +143,7 @@ export default Vue.extend({
 
         importFile(): void {
             //users should be warned about current editor's content loss
-            const confirmMsg = this.$i18n.t("appMessages.editorConfirmChangeCode");
+            const confirmMsg = this.$i18n.t("appMessage.editorConfirmChangeCode");
             //note: the following conditional test is only for TS... the message should always be found
             if (confirm((typeof confirmMsg === "string") ? confirmMsg : "Current editor's content will be permanently lost.\nDo you want to continue?")) {
                 (this.$refs.importFileInput as HTMLInputElement).click();    
@@ -156,7 +156,7 @@ export default Vue.extend({
                 //before reading the file, we check the extension is supported for the import
                 if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
                     const emitPayload: AppEvent = {requestAttention: true};
-                    emitPayload.message = this.$i18n.t("appMessages.editorFileUpload").toString();
+                    emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
                     this.$emit("app-showprogress", emitPayload);
                     readFileContent(files[0])
                         .then(
