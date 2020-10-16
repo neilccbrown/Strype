@@ -1164,11 +1164,11 @@ export default new Vuex.Store({
             );
         },
 
-        addFrameWithCommand({ commit, state, getters, dispatch }, payload: FramesDefinitions) {
+        addFrameWithCommand({ commit, state, dispatch }, payload: FramesDefinitions) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
             //Prepare the newFrame object based on the frameType
-            const isJointFrame = getters.payload.isJointFrame;
+            const isJointFrame = payload.isJointFrame;
             
             let parentId = (isJointFrame) ? 0 : state.currentFrame.id;
             //if the cursor is below a frame, we actually add to the current's frame parent)

@@ -292,7 +292,6 @@ a {
     color: black !important;
 }
 
-
 td:hover {
     background-color: #dededebf;
 }
