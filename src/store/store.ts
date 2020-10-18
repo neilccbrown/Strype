@@ -42,6 +42,8 @@ export default new Vuex.Store({
         contextMenuShownId: "",
 
         projectName: "My Project" as string,
+
+        ignoreDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
     },
 
     getters: {
@@ -508,14 +510,12 @@ export default new Vuex.Store({
                     payload.event[eventType].element.id
                 );
 
-                if(payload.event[eventType].element.jointParentId === 0) {
-                    // Set the new parentId to the the added frame
-                    Vue.set(
-                        state.frameObjects[payload.event[eventType].element.id],
-                        "parentId",
-                        payload.eventParentId
-                    );
-                }
+                // Set the new parentId/jointParentId to the the added frame
+                Vue.set(
+                    state.frameObjects[payload.event[eventType].element.id],
+                    (payload.event[eventType].element.jointParentId === 0) ? "parentId" : "jointParentId" ,
+                    payload.eventParentId
+                );
             }
             else if (eventType === "moved") {
                 // Delete the frameId from the children list 
@@ -1026,10 +1026,24 @@ export default new Vuex.Store({
         setProjectName(state, newName) {
             Vue.set(state, "projectName", newName);
         },
+
+        setIgnoreDragAction(state, value: boolean){
+            Vue.set(state, "ignoreDragAction", value);
+        },
     },
 
     actions: {
         updateFramesOrder({getters, commit, state }, payload: {event: any; eventParentId: number}) {
+            if(state.ignoreDragAction){
+                //if the action should be ignore, just return and reset the flag
+                commit(
+                    "setIgnoreDragAction",
+                    false
+                );
+
+                return;
+            }
+
             //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
             if(payload.event["removed"] == undefined){
                 commit(
@@ -1050,17 +1064,41 @@ export default new Vuex.Store({
             // valid, as the if accepts else there, but the elif cannot go below the else.
             // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
             // succeedingFrame is the next frame (if it exists) above which we are adding
-            const succeedingFrame = state.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];       
+            const succeedingFrame = state.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];   
+            const jointFrameIds = state.frameObjects[payload.eventParentId].jointFrameIds;
             if(eventType !== "removed") {
                 // EXAMPLE: Moving frame `A` above Frame `B`
                 // IF `A` cannot be moved on this position 
                 //                OR
                 // IF `A` is jointFrame and there IS a frame `B` where I am moving `A` at
-                //     on TRUE ==> Check if `B` CANNOT be placed below `A`
+                //     on TRUE ==> Check if `B` CANNOT be placed below `A` / CANNOT be the trailing joint frame
                 //     on FALSE ==> We don't care about this situation
-                if(!getters.getIfPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id) ||
-                    ((isJointFrame && succeedingFrame !== undefined) ? !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below,succeedingFrame) : false)
-                ) {                
+                const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
+                    ? (succeedingFrame !== undefined)
+                        ? !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, succeedingFrame)
+                        : !getters.getIfPositionAllowsFrame(jointFrameIds[jointFrameIds.length - 1], CaretPosition.below, payload.event[eventType].element.id)
+                    : false;
+
+                if((!isJointFrame && !getters.getIfPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
+                    //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
+                    if(eventType === "added"){
+                        commit(
+                            "setIgnoreDragAction",
+                            true
+                        );
+                    }
+
+                    //alert the user about a forbidden move
+                    commit(
+                        "setMessageBanner",
+                        MessageDefinitions.ForbiddenFrameMove
+                    );
+    
+                    //don't leave the message for ever
+                    setTimeout(()=>commit(
+                        "setMessageBanner",
+                        MessageDefinitions.NoMessage
+                    ), 3000);         
                     return;
                 }
             }
@@ -1270,7 +1308,7 @@ export default new Vuex.Store({
             }
 
             const newFrame = {
-                ...EmptyFrameObject,
+                ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: payload,
                 id: state.nextAvailableId++,
                 parentId: isJointFrame ? 0 : parentId, 
