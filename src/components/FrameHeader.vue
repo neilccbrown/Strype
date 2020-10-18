@@ -16,7 +16,6 @@
                 v-bind:optionalSlot="item.optionalSlot"
             />
         </div>
-        <span>{{this.frameId}}</span>
     </div>
 </template>
 
