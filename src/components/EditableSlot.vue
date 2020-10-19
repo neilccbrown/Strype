@@ -212,7 +212,7 @@ export default Vue.extend({
 
             // In any case the focus is lost, and the caret is shown (below by default)
             this.onBlur();
-
+            
             //If the up arrow is pressed you need to move the caret as well.
             if( event.key === "ArrowUp" ) {
                 store.dispatch(

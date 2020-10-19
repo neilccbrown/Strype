@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div v-bind:class="{selected: isSelected}">
         <div 
             v-bind:style="frameStyle" 
             class="block frameDiv" 
@@ -164,6 +164,10 @@ export default Vue.extend({
             return store.getters.getContextMenuShownId() === this.id; 
         },
 
+        isSelected(): boolean {
+            return store.getters.getIsSelected(this.$props.frameId);
+        },
+
     },
 
     methods: {
@@ -315,6 +319,11 @@ export default Vue.extend({
 
 .error {
     border: 1px solid #FF0000 !important;
+}
+
+.selected {
+    border-left: 3px solid #000000 !important;
+    border-right: 3px solid #000000 !important;
 }
 
 </style>

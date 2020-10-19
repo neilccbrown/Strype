@@ -125,10 +125,19 @@ export default Vue.extend({
                 if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     //first we remove the focus of the current active element (to avoid editable slots to keep it)
                     (document.activeElement as HTMLElement).blur();
-                    store.dispatch(
-                        "changeCaretPosition",
-                        event.key
-                    );
+
+                    if(event.shiftKey){
+                        store.dispatch( 
+                            "selectMultipleFrames",
+                            event.key
+                        );
+                    }
+                    else {
+                        store.dispatch(
+                            "changeCaretPosition",
+                            event.key
+                        );
+                    }
                 }      
                 else {
                     const isEditing = store.getters.getIsEditing();
