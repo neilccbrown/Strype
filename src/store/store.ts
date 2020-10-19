@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
@@ -368,6 +368,10 @@ export default new Vuex.Store({
 
         getProjectName: (state) => () => {
             return state.projectName;
+        },
+
+        getIsUndoRedoEmpty: (state) => (action: string) => {
+            return (action === "undo") ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
         },
     }, 
 
@@ -1266,14 +1270,13 @@ export default new Vuex.Store({
             }
 
             const newFrame = {
+                ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: payload,
                 id: state.nextAvailableId++,
                 parentId: isJointFrame ? 0 : parentId, 
-                childrenIds: [],
                 jointParentId: isJointFrame
                     ? (state.frameObjects[state.currentFrame.id].jointParentId > 0) ? state.frameObjects[state.currentFrame.id].jointParentId : state.currentFrame.id
                     : 0,
-                jointFrameIds: [],
                 contentDict:
                     //find each editable slot and create an empty & unfocused entry for it
                     //optional labels are not visible by default, not optional labels are visible by default
@@ -1284,7 +1287,6 @@ export default new Vuex.Store({
                         }),
                         {}
                     ),
-                error: "",
             };
 
             commit(
@@ -1602,7 +1604,7 @@ export default new Vuex.Store({
             commit("setMessageBanner", message);
         },
 
-        setStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
+        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorrDetailMessage = payload.errorReason ?? "unknow reason";
             let isVersionCorrect = false;
@@ -1657,28 +1659,28 @@ export default new Vuex.Store({
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
                     const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
-                    //note: the following conditional test is only for TS... the message should always be found   
-                    if(!confirm((typeof confirmMsg === "string") ? confirmMsg : "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?")){
-                        return;
-                    }
+                    Vue.$confirm({
+                        message: confirmMsg,
+                        button: {
+                            yes: i18n.t("buttonLabel.yes"),
+                            no: i18n.t("buttonLabel.no"),
+                        },
+                        callback: (confirm: boolean) => {
+                            if(confirm){
+                                dispatch(
+                                    "doSetStateFromJSONStr",
+                                    payload
+                                );                                
+                            }                        
+                        },
+                    })
                 }
-
-                commit(
-                    "updateState",
-                    JSON.parse(payload.stateJSONStr)
-                )
-
-                commit(
-                    "setMessageBanner",
-                    MessageDefinitions.UploadEditorFileSuccess
-                );
-
-                //don't leave the message for ever
-                setTimeout(()=>commit(
-                    "setMessageBanner",
-                    MessageDefinitions.NoMessage
-                ), 5000);     
-                
+                else{
+                    dispatch(
+                        "doSetStateFromJSONStr",
+                        payload
+                    );   
+                }                
             }
             else{
                 const message = MessageDefinitions.UploadEditorFileError;
@@ -1690,6 +1692,24 @@ export default new Vuex.Store({
                     message
                 );
             }
+        },
+
+        doSetStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
+            commit(
+                "updateState",
+                JSON.parse(payload.stateJSONStr)
+            )
+
+            commit(
+                "setMessageBanner",
+                MessageDefinitions.UploadEditorFileSuccess
+            );
+
+            //don't leave the message for ever
+            setTimeout(()=>commit(
+                "setMessageBanner",
+                MessageDefinitions.NoMessage
+            ), 5000);  
         },
 
         // This method can be used to copy a frame to a position.

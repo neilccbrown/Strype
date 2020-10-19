@@ -29,8 +29,7 @@
                         id="name-input-field"
                         v-bind:style="inputTextStyle"
                         ref="nameinput"
-                    />
-                    
+                    />                    
                     <i v-if="hover" class="fa fa-pencil-alt"></i>
                 </template>
                 <table>
@@ -72,6 +71,26 @@
                 class="editor-file-input"
             /> 
         </div>
+        <div class="menu-icon-div">
+            <input 
+                type="image" 
+                :src="undoImagePath"
+                :disabled="isUndoDisabled"
+                @click="performUndoRedo(true)"
+                class="undoredo-img"
+                :title="this.$i18n.t('contextMenu.undo')"
+            />
+        </div>     
+        <div class="menu-icon-div">   
+            <input 
+                type="image" 
+                :src="redoImagePath"
+                :disabled="isRedoDisabled"
+                @click="performUndoRedo(false)"
+                class="undoredo-img"
+                :title="this.$i18n.t('contextMenu.redo')"
+            />
+        </div>       
     </div>
 </template>
 
@@ -113,8 +132,17 @@ export default Vue.extend({
 
 
     computed: {
-        fileImagePath(): string {
-            return require("@/assets/images/file.png");
+        isUndoDisabled(): boolean {
+            return store.getters.getIsUndoRedoEmpty("undo");
+        },
+        isRedoDisabled(): boolean {
+            return store.getters.getIsUndoRedoEmpty("redo");
+        },
+        undoImagePath(): string {
+            return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.png") : require("@/assets/images/undo.png");
+        },
+        redoImagePath(): string {
+            return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.png") : require("@/assets/images/redo.png");
         },
         editorFileMenuOption(): {}[] {
             return  [{name: "import", method: "importFile"}, {name: "export", method: "exportFile"}];
@@ -144,10 +172,18 @@ export default Vue.extend({
         importFile(): void {
             //users should be warned about current editor's content loss
             const confirmMsg = this.$i18n.t("appMessage.editorConfirmChangeCode");
-            //note: the following conditional test is only for TS... the message should always be found
-            if (confirm((typeof confirmMsg === "string") ? confirmMsg : "Current editor's content will be permanently lost.\nDo you want to continue?")) {
-                (this.$refs.importFileInput as HTMLInputElement).click();    
-            }            
+            Vue.$confirm({
+                message: confirmMsg,
+                button: {
+                    yes: this.$i18n.t("buttonLabel.yes"),
+                    no: this.$i18n.t("buttonLabel.no"),
+                },
+                callback: (confirm: boolean) => {
+                    if(confirm){
+                        (this.$refs.importFileInput as HTMLInputElement).click();
+                    }                        
+                },
+            });    
         },
         
         selectedFile() {
@@ -255,12 +291,25 @@ export default Vue.extend({
             // input.blur() as this propagates and closes the whole menu.
             $("#menu").focus();
         },
+
+        performUndoRedo(isUndo: boolean): void {
+            store.dispatch(
+                "undoRedo",
+                isUndo
+            );
+        },
         
     },
 });
 </script>
 
 <style lang="scss">
+
+.menu-icon-div {
+    width: 100%;
+    height: 20px;
+    margin-bottom: 10px;
+}
 
 .file-menu-img {
     outline: none;
@@ -305,6 +354,13 @@ td:hover {
     min-width: 45px;
     color: #6c757d;
     border-radius: 50%;
+}
+
+.undoredo-img {
+    width: 20px;
+    height: 20px;
+    display: block;
+    margin: auto;
 }
 
 .editableslot-placeholder {

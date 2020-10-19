@@ -29,15 +29,17 @@
                         id="menu-bar" 
                         class="col-auto"
                     />
-                    <div class="col" >
-                        <FrameContainer
-                            v-for="container in containerFrames"
-                            v-bind:key="container.frameType.type + '-id:' + container.id"
-                            v-bind:frameId="container.id"
-                            v-bind:containerLabel="container.frameType.labels[0].label"
-                            v-bind:caretVisibility="container.caretVisibility"
-                            v-bind:frameType="container.frameType"
-                        />
+                    <div class="col">
+                        <div class="editor-code-div" >
+                            <FrameContainer
+                                v-for="container in containerFrames"
+                                v-bind:key="container.frameType.type + '-id:' + container.id"
+                                v-bind:frameId="container.id"
+                                v-bind:containerLabel="container.frameType.labels[0].label"
+                                v-bind:caretVisibility="container.caretVisibility"
+                                v-bind:frameType="container.frameType"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -126,7 +128,7 @@ export default Vue.extend({
 
 html,body {
     margin: 0px;
-    height: 100%;
+    height: 100vh;
     background-color: #bbc6b6 !important;
 }
 
@@ -152,13 +154,24 @@ html,body {
     -moz-osx-font-smoothing: grayscale;
     color: #2c3e50;
     box-sizing: border-box;
+    height: 100vh;
+    max-height: 100vh;
+    overflow:hidden;
+}
 
+#editor {
+    height: 100vh;
+    max-height: 100vh;
+}
+
+.editor-code-div {
+    overflow-y: auto;
+    height: 100vh;
+    max-height: 100vh;
 }
 
 .top {
     text-align: center;
-    margin-top: 5px;
-    margin-bottom: 5px;
     margin-left:10px;
 }
 </style>
