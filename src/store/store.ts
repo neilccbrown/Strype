@@ -43,7 +43,7 @@ export default new Vuex.Store({
 
         projectName: "My Project" as string,
 
-        ignoreDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
+        ignoredDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
     },
 
     getters: {
@@ -510,7 +510,7 @@ export default new Vuex.Store({
                     payload.event[eventType].element.id
                 );
 
-                // Set the new parentId/jointParentId to the the added frame
+                // Set the new parentId/jointParentId to the added frame
                 Vue.set(
                     state.frameObjects[payload.event[eventType].element.id],
                     (payload.event[eventType].element.jointParentId === 0) ? "parentId" : "jointParentId" ,
@@ -1027,17 +1027,17 @@ export default new Vuex.Store({
             Vue.set(state, "projectName", newName);
         },
 
-        setIgnoreDragAction(state, value: boolean){
-            Vue.set(state, "ignoreDragAction", value);
+        setIgnoredDragAction(state, value: boolean){
+            Vue.set(state, "ignoredDragAction", value);
         },
     },
 
     actions: {
         updateFramesOrder({getters, commit, state }, payload: {event: any; eventParentId: number}) {
-            if(state.ignoreDragAction){
+            if(state.ignoredDragAction){
                 //if the action should be ignore, just return and reset the flag
                 commit(
-                    "setIgnoreDragAction",
+                    "setIgnoredDragAction",
                     false
                 );
 
@@ -1083,7 +1083,7 @@ export default new Vuex.Store({
                     //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
                     if(eventType === "added"){
                         commit(
-                            "setIgnoreDragAction",
+                            "setIgnoredDragAction",
                             true
                         );
                     }
