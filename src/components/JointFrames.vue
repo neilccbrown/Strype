@@ -55,12 +55,17 @@ export default Vue.extend({
     },
 
     computed: {
-
-        jointFrames(): FrameObject[] {
-            return store.getters.getJointFramesForFrameId(
-                this.$props.jointParentId,
-                "all"
-            )
+    
+        jointFrames: {
+            get(): FrameObject[]  {
+                return store.getters.getJointFramesForFrameId(
+                    this.$props.jointParentId,
+                    "all"
+                );
+            },
+            set() {
+                return;
+            },    
         },
 
         jointDraggableGroup(): DraggableGroupTypes {

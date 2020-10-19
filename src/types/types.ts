@@ -442,6 +442,20 @@ export const Definitions = {
     CommentDefinition,
 };
 
+
+export const EmptyFrameObject: FrameObject = {
+    frameType: DefaultFramesDefinition,
+    id: -101, //default non-meaningful value - this will be overriden when frames are created
+    isDisabled: false,
+    parentId: -101, //default non-meaningful value - this will be overriden when frames are created
+    childrenIds: [], //this contains the IDs of the children frames
+    jointParentId: -101, //default non-meaningful value - this will be overriden when frames are created
+    jointFrameIds: [], //this contains the IDs of the joint frames
+    caretVisibility: CaretPosition.none,
+    contentDict: { },
+    error: "",
+}
+
 /**
  *  Types for the messages banner
  **/
@@ -498,6 +512,7 @@ export const MessageTypes = {
     uploadEditorFileError: "uploadEditorFileError",
     uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
     uploadEditorFileSucces: "uploadEditorFileSuccess",
+    forbiddenFrameMove: "forbiddenFrameMove",
 }
 
 //empty message
@@ -592,6 +607,13 @@ const UploadEditorFileSuccess: MessageDefinition = {
     path: imagePaths.empty,
 };
 
+const ForbiddenFrameMove: MessageDefinition = {
+    type: MessageTypes.forbiddenFrameMove,
+    message: "messageBannerMessage.forbiddenFrameMove",
+    buttons: [],
+    path: imagePaths.empty,
+}
+
 export const MessageDefinitions = {
     NoMessage,
     LargeDeletion,
@@ -603,6 +625,7 @@ export const MessageDefinitions = {
     UploadEditorFileError,
     UploadEditorFileNotSupported,
     UploadEditorFileSuccess,
+    ForbiddenFrameMove,
 };
 
 //WebUSB listener

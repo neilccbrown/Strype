@@ -8,7 +8,8 @@
       "noRedo": "There is no redo action available.",
       "uploadEditorFileError": "Something wrong happened during editor file upload: {errorMsg}. Your code has not changed.",
       "uploadEditorFileNotSupported": "This file format is not supported. Expected file extension: {list}. Your code has not changed.",
-      "uploadEditorFileSuccess": "The editor file upload is successful. Your code has been loaded."
+      "uploadEditorFileSuccess": "The editor file upload is successful. Your code has been loaded.",
+      "forbiddenFrameMove": "The selected frame(s) cannot be moved because it results in illegal code."
   },
   "buttonLabel":{
       "undo": "Undo",
@@ -41,6 +42,8 @@
     "duplicate": "Duplicate",
     "paste": "Paste",
     "enable": "Enable",
-    "disable": "Disable"
+    "disable": "Disable",
+    "undo": "Undo",
+    "redo": "Redo"
   }
 }
