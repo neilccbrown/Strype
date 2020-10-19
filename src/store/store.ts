@@ -370,8 +370,8 @@ export default new Vuex.Store({
             return state.projectName;
         },
 
-        getIsUndoRedoEmpty: (state) => (checkUndo: boolean) => {
-            return (checkUndo) ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
+        getIsUndoRedoEmpty: (state) => (action: string) => {
+            return (action === "undo") ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
         },
     }, 
 

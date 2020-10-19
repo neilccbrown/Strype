@@ -133,10 +133,10 @@ export default Vue.extend({
 
     computed: {
         isUndoDisabled(): boolean {
-            return store.state.diffToPreviousState.length == 0;
+            return store.getters.getIsUndoRedoEmpty("undo");
         },
         isRedoDisabled(): boolean {
-            return store.getters.getIsUndoRedoEmpty(false);
+            return store.getters.getIsUndoRedoEmpty("redo");
         },
         undoImagePath(): string {
             return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.png") : require("@/assets/images/undo.png");
