@@ -94,6 +94,14 @@ export default Vue.extend({
         },
     },
 
+    created() {
+        window.addEventListener("beforeunload", function(event) {
+            // Browsers won't display a customised message, and can detect when to prompt the user,
+            // so we don't need to do anything special.
+            event.returnValue = true;
+        })
+    },
+
     methods: {
         applyShowAppProgress(event: AppEvent) {
             //if the progress bar is shown, we block the width of the application to the viewport

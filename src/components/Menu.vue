@@ -71,25 +71,27 @@
                 class="editor-file-input"
             /> 
         </div>
-        <div class="menu-icon-div">
-            <input 
-                type="image" 
-                :src="undoImagePath"
-                :disabled="isUndoDisabled"
-                @click="performUndoRedo(true)"
-                class="undoredo-img"
-                :title="this.$i18n.t('contextMenu.undo')"
-            />
-        </div>     
-        <div class="menu-icon-div">   
-            <input 
-                type="image" 
-                :src="redoImagePath"
-                :disabled="isRedoDisabled"
-                @click="performUndoRedo(false)"
-                class="undoredo-img"
-                :title="this.$i18n.t('contextMenu.redo')"
-            />
+        <div class="undoredo-div">
+            <div class="menu-icon-div">
+                <input 
+                    type="image" 
+                    :src="undoImagePath"
+                    :disabled="isUndoDisabled"
+                    @click="performUndoRedo(true)"
+                    class="undoredo-img"
+                    :title="this.$i18n.t('contextMenu.undo')"
+                />
+            </div>
+            <div class="menu-icon-div">   
+                <input 
+                    type="image" 
+                    :src="redoImagePath"
+                    :disabled="isRedoDisabled"
+                    @click="performUndoRedo(false)"
+                    class="undoredo-img"
+                    :title="this.$i18n.t('contextMenu.redo')"
+                />
+            </div>
         </div>       
     </div>
 </template>
@@ -112,7 +114,6 @@ export default Vue.extend({
     name: "Menu",
     store,
 
-
     data() {
         return {
             buttonLabel: "&#x2630;",
@@ -128,8 +129,6 @@ export default Vue.extend({
         //because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
         this.isComponentLoaded  = true;
     },
-
-
 
     computed: {
         isUndoDisabled(): boolean {
@@ -354,6 +353,10 @@ td:hover {
     min-width: 45px;
     color: #6c757d;
     border-radius: 50%;
+}
+
+.undoredo-div {
+    margin-top: 20px;
 }
 
 .undoredo-img {
