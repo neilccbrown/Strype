@@ -7,7 +7,7 @@ import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import { faViruses } from "@fortawesome/free-solid-svg-icons";
 
@@ -45,6 +45,8 @@ export default new Vuex.Store({
         projectName: "My Project" as string,
 
         ignoredDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
+
+        selectedFrames: [] as number[],
     },
 
     getters: {
@@ -374,7 +376,27 @@ export default new Vuex.Store({
         },
 
         getIsSelected: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].isSelected;
+            return state.selectedFrames.indexOf(frameId) > -1;
+        },
+
+        getSelectionPosition: (state) => (frameId: number) => {
+            const index = state.selectedFrames.indexOf(frameId);
+
+            if( index == -1) {
+                return "unselected";
+            }
+            else if( index == 0) {
+                if( index == state.selectedFrames.length-1 ){
+                    return "first-and-last";
+                }
+                return "first";
+            }
+            else  if( index == state.selectedFrames.length-1) {
+                return "last";
+            }
+            else {
+                return "middle";
+            }
         },
         
         getIsUndoRedoEmpty: (state) => (action: string) => {
@@ -1031,28 +1053,27 @@ export default new Vuex.Store({
         setProjectName(state, newName) {
             Vue.set(state, "projectName", newName);
         },
-        
-        selectDeselectFrame(state, payload: {frameId: number; select: boolean}) {
-            // Select the frame
-            Vue.set( 
-                state.frameObjects[payload.frameId],
-                "isSelected",
-                payload.select
-            );
-            // If it has joint children, select these as well
-            state.frameObjects[state.currentFrame.id].jointFrameIds.forEach( (frameId) => {
-                Vue.set( 
-                    state.frameObjects[frameId],
-                    "isSelected",
-                    payload.select
-                );
-            });
-        },
-
 
         setIgnoredDragAction(state, value: boolean){
             Vue.set(state, "ignoredDragAction", value);
         },
+
+        selectDeselectFrame(state, payload: {frameId: number; direction: string}) {
+            const indexOfFrame = state.selectedFrames.indexOf(payload.frameId)
+            // if it exists remove it
+            if(indexOfFrame > -1) {
+                state.selectedFrames.splice(indexOfFrame,1);
+            }
+            // else it may be added
+            else { 
+                state.selectedFrames.splice((payload.direction === "up") ? 0 : state.selectedFrames.length, 0, payload.frameId);
+            }
+        },
+
+        unselectAllFrames(state) {
+            state.selectedFrames.splice(0,state.selectedFrames.length);
+        },
+
     },
 
     actions: {
@@ -1279,6 +1300,8 @@ export default new Vuex.Store({
                     focused: true,
                 }
             );   
+        
+            commit("unselectAllFrames");
         },
 
         undoRedo({ state, commit }, isUndo: boolean) {
@@ -1305,6 +1328,8 @@ export default new Vuex.Store({
                     isUndo 
                 );
             }
+
+            commit("unselectAllFrames");
         },
 
         changeCaretPosition({ commit }, key) {
@@ -1312,6 +1337,8 @@ export default new Vuex.Store({
                 "changeCaretWithKeyboard",
                 key
             );
+            
+            commit("unselectAllFrames");
         },
 
         addFrameWithCommand({ commit, state, dispatch }, payload: FramesDefinitions) {
@@ -1369,6 +1396,8 @@ export default new Vuex.Store({
                         }
                     )
             );
+            
+            commit("unselectAllFrames");
         },
 
         deleteCurrentFrame({commit, state}, payload: string){
@@ -1480,6 +1509,8 @@ export default new Vuex.Store({
                 "setCurrentFrame",
                 newCurrent
             );
+            
+            commit("unselectAllFrames");
         },
 
         leftRightKey({commit, state} , key) {
@@ -1771,6 +1802,7 @@ export default new Vuex.Store({
                 "setMessageBanner",
                 MessageDefinitions.NoMessage
             ), 5000);  
+
         },
 
         // This method can be used to copy a frame to a position.
@@ -1831,6 +1863,8 @@ export default new Vuex.Store({
                     previousState: stateBeforeChanges,
                 }
             );
+        
+            commit("unselectAllFrames");
         },
 
         pasteFrame({dispatch, getters, state}, payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
@@ -1884,57 +1918,20 @@ export default new Vuex.Store({
                     previousState: stateBeforeChanges,
                 }
             );
+        
+            commit("unselectAllFrames");
         },
 
-        selectMultipleFrames({state, commit, getters}, key: string) {
+        selectMultipleFrames({state, commit}, key: string) {
+            // const result = frameForSelection(state.frameObjects, state.currentFrame, (key==="ArrowUp")? "up" : "down");
 
-            const parentId = (state.currentFrame.caretPosition === CaretPosition.body)? 
-                state.currentFrame.id : 
-                getters.getParentOfFrame(state.currentFrame.id);
-            const parent = state.frameObjects[parentId];
-
-            // If there are no joint frames in the parent, even if we are talking about a frame that can have joint frames (i.e. a single if),
-            // then the list is the same level children.
-            const sameLevelFrameIds = (getters.getIsJointFrameById(state.currentFrame.id) && parent.jointFrameIds.length > 0 )? 
-                parent.jointFrameIds : 
-                parent.childrenIds;
-
-            // If the caret is in the body position the index is 0; else position is the next of the current frame
-            const indexOfCurrentInParent = (state.currentFrame.caretPosition === CaretPosition.body)? 0: parent.childrenIds.indexOf(state.currentFrame.id); //parent.childrenIds.indexOf(state.currentFrame.id);
-
-            if(state.currentFrame.caretPosition === CaretPosition.below) {
-                if(key === "ArrowUp"){
-                    // we need to select the current frame (and its joint children)
-                    commit( "selectDeselectFrame", {frameId: state.currentFrame.id, select: true});
-
-                    // if not the first child, change the current frame to the previous
-                    if(indexOfCurrentInParent > 0) {
-                        commit( "setCurrentFrame", {id: sameLevelFrameIds[indexOfCurrentInParent-1], caretPosition: CaretPosition.below});
-                    }
-                    // Else, the current becomes the parent, nothing to select here.
-                    else {
-                        commit( "setCurrentFrame", {id: parent.id, caretPosition: CaretPosition.body});
-                    }
-                }
-                //ArrowDown
-                else { 
-                    // If we are already in the end of the parent we don't need to do anything
-                    if(indexOfCurrentInParent + 1 !== sameLevelFrameIds.length) {
-                        //Change the current frame to the next 
-                        commit( "setCurrentFrame", {id: sameLevelFrameIds[indexOfCurrentInParent+1], caretPosition: CaretPosition.below});
-                        // Select it.
-                        commit( "selectDeselectFrame", {frameId: state.currentFrame.id, select: true});
-                    }
-                }
-            }
-            // Caret = Body
-            else {
-                // If we're in the body and click up, we don't select anything
-                if(key === "ArrowDown"){
-                    //Change the current frame to the next (first in the body)
-                    commit( "setCurrentFrame", {id: sameLevelFrameIds[indexOfCurrentInParent], caretPosition: CaretPosition.below});
-                    commit( "selectDeselectFrame", {frameId: state.currentFrame.id, select: true});
-                }
+            // In the case of null we don't need to do anything
+            // console.log(result);
+            const direction = (key==="ArrowUp")? "up" : "down"
+            const result = frameForSelection(state.frameObjects, state.currentFrame, direction, state.selectedFrames);
+            if(result !== null) {
+                commit("selectDeselectFrame", {frameId: result.frameForSelection, direction: direction})
+                commit("setCurrentFrame", result.newCurrentFrame);
             }
         },
     },

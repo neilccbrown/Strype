@@ -447,6 +447,7 @@ export const EmptyFrameObject: FrameObject = {
     frameType: DefaultFramesDefinition,
     id: -101, //default non-meaningful value - this will be overriden when frames are created
     isDisabled: false,
+    isSelected: false,
     parentId: -101, //default non-meaningful value - this will be overriden when frames are created
     childrenIds: [], //this contains the IDs of the children frames
     jointParentId: -101, //default non-meaningful value - this will be overriden when frames are created

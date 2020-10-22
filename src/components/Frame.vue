@@ -1,5 +1,11 @@
 <template>
-    <div v-bind:class="{selected: isSelected}">
+    <div 
+        v-bind:class="{
+            selected: (selectedStatus !== 'unselected'),
+            selectedTop: (selectedStatus === 'first'),
+            selectedBottom: (selectedStatus === 'last'),
+            selectedTopBottom: (selectedStatus === 'first-and-last')
+        }">
         <div 
             v-bind:style="frameStyle" 
             class="block frameDiv" 
@@ -164,9 +170,11 @@ export default Vue.extend({
             return store.getters.getContextMenuShownId() === this.id; 
         },
 
-        isSelected(): boolean {
-            return store.getters.getIsSelected(this.$props.frameId);
+        selectedStatus(): boolean {
+            return store.getters.getSelectionPosition(this.$props.frameId);
         },
+
+        
 
         isStatementOrJointFrame(): boolean {
             return this.$props.frameType.isJointFrame || !this.$props.frameType.allowChildren;
@@ -334,6 +342,19 @@ export default Vue.extend({
 .selected {
     border-left: 3px solid #000000 !important;
     border-right: 3px solid #000000 !important;
+}
+
+.selectedTop {
+    border-top: 3px solid #000000 !important;
+}
+
+.selectedBottom {
+    border-bottom: 3px solid #000000 !important;
+}
+
+.selectedTopBottom{
+    border-top: 3px solid #000000 !important;
+    border-bottom: 3px solid #000000 !important;
 }
 
 </style>
