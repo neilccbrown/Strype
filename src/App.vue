@@ -1,6 +1,7 @@
 <template>
     <div id="app" class="container-fluid">
         <vue-confirm-dialog />
+        <tutorial/>
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
@@ -34,6 +35,7 @@
                             <FrameContainer
                                 v-for="container in containerFrames"
                                 v-bind:key="container.frameType.type + '-id:' + container.id"
+                                v-bind:id="getFrameContainerEltId(container.id)"
                                 v-bind:frameId="container.id"
                                 v-bind:containerLabel="container.frameType.labels[0].label"
                                 v-bind:caretVisibility="container.caretVisibility"
@@ -56,9 +58,11 @@ import Vue from "vue";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
-import Menu from "@/components/Menu.vue"
+import Menu from "@/components/Menu.vue";
+import Tutorial from "@/components/Tutorial.vue";
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
+import { getFrameContainerEltId } from "./helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -72,6 +76,7 @@ export default Vue.extend({
         FrameContainer,
         Commands,
         Menu,
+        Tutorial,
     },
 
     data() {
@@ -116,6 +121,10 @@ export default Vue.extend({
             (document.getElementsByTagName("body")[0] as HTMLBodyElement).style.height = heightVal;
             (document.getElementById("app") as HTMLDivElement).style.height = heightVal;
             (document.getElementById("app") as HTMLDivElement).style.overflow = overflowVal;
+        },
+
+        getFrameContainerEltId(frameId: number){
+            return getFrameContainerEltId(frameId);
         },
 
         toggleEdition(): void {

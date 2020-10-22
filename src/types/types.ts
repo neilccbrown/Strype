@@ -218,7 +218,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
 
 export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: ContainerTypesIdentifiers.funcDefsContainer,
+    type: ContainerTypesIdentifiers.framesMainContainer,
     labels: [
         { label: "Your code:", slot: false, defaultText: ""},
     ],
@@ -658,4 +658,18 @@ export interface ChangeFramePropInfos {
     newBoolPropVal?: boolean;
     newNumberPropVal?: number;
     newStringPropVal?: string;
+}
+
+// Tutorial
+export interface TutorialHightightedComponentDimension{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+export interface TutorialStep {
+    hightLighedComponentIds: string[];
+    explanationMessage: string;
+    messageRelativePos: "center" | "center-left"  | "center-right" | "top-left"| "top-right"| "top-center"| "bottom-left"| "bottom-right"| "bottom-center";
+    showArrows: boolean;
 }

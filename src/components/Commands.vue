@@ -18,30 +18,32 @@
             </div>
         </div>
         <hr />
-        <div class="frameCommands">
-            <AddFrameCommand
-                v-for="addFrameCommand in addFrameCommands"
-                v-bind:key="addFrameCommand.type.type"
-                v-bind:type="addFrameCommand.type.type"
-                v-bind:shortcut="addFrameCommand.shortcut"
-                v-bind:symbol="
-                    addFrameCommand.symbol !== undefined
-                        ? addFrameCommand.symbol
-                        : addFrameCommand.shortcut
-                "
-                v-bind:description="addFrameCommand.description"
-            />
-        </div>
-        <hr />
-        <div class="toggleFrameLabelCommands">
-            <ToggleFrameLabelCommand
-                v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
-                v-bind:key="toggleFrameLabelCommand.type"
-                v-bind:type="toggleFrameLabelCommand.type"
-                v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
-                v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
-                v-bind:description="toggleFrameLabelCommand.displayCommandText"
-            />
+        <div id="editorCommands">
+            <div class="frameCommands">
+                <AddFrameCommand
+                    v-for="addFrameCommand in addFrameCommands"
+                    v-bind:key="addFrameCommand.type.type"
+                    v-bind:type="addFrameCommand.type.type"
+                    v-bind:shortcut="addFrameCommand.shortcut"
+                    v-bind:symbol="
+                        addFrameCommand.symbol !== undefined
+                            ? addFrameCommand.symbol
+                            : addFrameCommand.shortcut
+                    "
+                    v-bind:description="addFrameCommand.description"
+                />
+            </div>
+            <hr />
+            <div class="toggleFrameLabelCommands">
+                <ToggleFrameLabelCommand
+                    v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
+                    v-bind:key="toggleFrameLabelCommand.type"
+                    v-bind:type="toggleFrameLabelCommand.type"
+                    v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
+                    v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
+                    v-bind:description="toggleFrameLabelCommand.displayCommandText"
+                />
+            </div>
         </div>
     </div>
 </template>

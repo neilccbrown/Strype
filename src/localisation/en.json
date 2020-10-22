@@ -18,7 +18,9 @@
       "ok": "OK",
       "uploadToMicrobit": "Upload to micro:bit",
       "downloadHex": "Download Hex",
-      "downloadPython": "Download Python"
+      "downloadPython": "Download Python",
+      "skipTutorial": "Skip Tutorial",
+      "next": "Next"
   },
   "action": {
     "uploadingToMicrobit": "Uploading to micro:bit ..."
@@ -45,5 +47,9 @@
     "disable": "Disable",
     "undo": "Undo",
     "redo": "Redo"
+  },
+  "tutorialExplanation": {
+    "commands": "Here you can find all the frames with their keyboard shortcut!",
+    "codeEditor": "This is where you write your code"
   }
 }
