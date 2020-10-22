@@ -34,6 +34,8 @@ import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import $ from "jquery";
+import { getCaretContainerEltId } from "@/helpers/editor";
+
 
 //////////////////////
 //     Component    //
@@ -67,14 +69,13 @@ export default Vue.extend({
         },
         isInvisible(): boolean {
             return  !((this.caretVisibility === this.caretAssignedPosition || this.caretVisibility === this.caretPosition.both) && !this.isEditing); 
-
         },
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
         },
         id(): string {
-            return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
+            return getCaretContainerEltId(this.caretAssignedPosition, this.frameId);
         },
         pasteAvailable(): boolean {
             return store.getters.getIsCopiedAvailable();

@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <div>
+        <div v-bind:id="buttonsContainerId">
             <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
             <button @click="downloadHex" v-t="'buttonLabel.downloadHex'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
@@ -18,7 +18,7 @@
             </div>
         </div>
         <hr />
-        <div id="editorCommands">
+        <div v-bind:id="commandsContainerId">
             <div class="frameCommands">
                 <AddFrameCommand
                     v-for="addFrameCommand in addFrameCommands"
@@ -54,6 +54,7 @@ import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
+import { getEditorCommandsContainerEltId, getEditorSpecialButtonsContainerEltId, getTutorialEltId } from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
@@ -82,6 +83,14 @@ export default Vue.extend({
     },
 
     computed: {
+        buttonsContainerId(): string {
+            return getEditorSpecialButtonsContainerEltId();
+        },
+
+        commandsContainerId(): string {
+            return getEditorCommandsContainerEltId();
+        },
+
         addFrameCommands(): Record<string, AddFrameCommandDef> {
             //If the frame isn't disabled, we retrieve the add frame commands associated with the current frame
             if(store.getters.getIsCurrentFrameDisabled()) {
@@ -109,6 +118,13 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
+                const tutorialElmt = document.getElementById(getTutorialEltId());
+                if(tutorialElmt){
+                    //if the tutorial is displayed, we don't do anything here
+                    event.preventDefault();
+                    return;
+                }
+
                 if((event.ctrlKey || event.metaKey) && (event.key === "z" || event.key === "y")) {
                     //undo-redo
                     store.dispatch(
@@ -124,6 +140,13 @@ export default Vue.extend({
             "keyup",
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
+                const tutorialElmt = document.getElementById(getTutorialEltId());
+                if(tutorialElmt){
+                    //if the tutorial is displayed, we don't do anything here
+                    event.preventDefault();
+                    return;
+                }
+                
                 if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     //first we remove the focus of the current active element (to avoid editable slots to keep it)
                     (document.activeElement as HTMLElement).blur();

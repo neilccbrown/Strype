@@ -5,7 +5,7 @@
 // - the location of the message relative to the page
 // - if arrows should be displayed from the message to the highlighted part(s)
 
-import { getEditorCodeFrameContainerEltId, getEditorCommandsContainerEltId } from "@/helpers/editor";
+import { getEditorCodeFrameContainerBodyCaretEltId, getEditorCodeFrameContainerEltId, getEditorCommandsContainerEltId, getEditorMenuEltId, getEditorSpecialButtonsContainerEltId } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { TutorialStep } from "@/types/types";
 
@@ -20,10 +20,28 @@ const commandsStep: TutorialStep = {
 const codeEditor: TutorialStep = {
     hightLighedComponentIds: [getEditorCodeFrameContainerEltId()],
     explanationMessage: i18n.t("tutorialExplanation.codeEditor") as string,
-    messageRelativePos: "center-right",
+    messageRelativePos: "top-center",
     showArrows: false,
 }
+
+const editorCaret: TutorialStep = {
+    hightLighedComponentIds: [getEditorCodeFrameContainerBodyCaretEltId()],
+    explanationMessage: i18n.t("tutorialExplanation.editorCaret") as string,
+    messageRelativePos: "center",
+    showArrows: false,
+}
+
+const editorMenus: TutorialStep = {
+    hightLighedComponentIds: [getEditorMenuEltId(), getEditorSpecialButtonsContainerEltId()],
+    explanationMessage: i18n.t("tutorialExplanation.editorMenus") as string,
+    messageRelativePos: "top-center",
+    showArrows: false,
+}
+
 //object containing all steps
 export const TutorialSteps: TutorialStep[] = [
     commandsStep,
-    codeEditor];
+    codeEditor,
+    editorCaret,
+    editorMenus,
+];

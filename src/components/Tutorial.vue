@@ -1,5 +1,5 @@
 <template>
-    <div v-if="showTutorial" class="tutorial-pane">
+    <div v-if="showTutorial" class="tutorial-pane" v-bind:id="id">
         <svg width="100%" height="100%">
             <defs>
                 <mask id="svgmask2" >
@@ -61,6 +61,7 @@ import Vue from "vue";
 import {TutorialSteps} from "@/constants/tutorialSteps"
 import { TutorialHightightedComponentDimension, TutorialStep } from "@/types/types";
 import { BCarousel } from "bootstrap-vue";
+import { getTutorialEltId } from "@/helpers/editor"
 
 //////////////////////
 //     Component    //
@@ -71,6 +72,9 @@ export default Vue.extend({
     mounted() {
         //set a listener on window resized to keep accurate values of the masks
         window.addEventListener("resize", () => this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions());
+
+        //set a listener on keyup here to listen for arrow events. This listener will be removed when existing the tutorial
+        window.addEventListener("keyup", this.onKeyPress);
         //set the first step once everything is ready
         this.showCurrentStep(0)
     },
@@ -98,7 +102,9 @@ export default Vue.extend({
                 this.showCurrentStep(value)
             }, 
         },
-
+        id(): string {
+            return getTutorialEltId();
+        },
     },
 
     methods:{
@@ -132,38 +138,35 @@ export default Vue.extend({
         
         showToast(): void {
             // Show the toast with the right message, and location based on the step.
-            // If "center" location is chosen, we use the toaster defined in the template
-            // otherwise, we use predefined toasters as explained by Bootstrap documentation
-            let toaster = "tutorialToaster"; 
             this.toasterPosStyle = {};
 
             switch(this.currentStep.messageRelativePos){
             case "top-left":
-                toaster = "b-toaster-top-left";
+                this.toasterPosStyle = {top:"5px", left:"5px"};
                 break;
             case "top-right":
-                toaster = "b-toaster-top-right";
+                this.toasterPosStyle = {top:"5px", right:"5px"};
                 break;
             case "top-center":
-                toaster = "b-toaster-top-center";
+                this.toasterPosStyle = {left:"50%", top:"5px", transform:"translate(-50%, 0%)"};
                 break;
             case "bottom-left":
-                toaster = "b-toaster-bottom-left";
+                this.toasterPosStyle = {bottom:"50px", left:"5px"};
                 break;
             case "bottom-right":
-                toaster = "b-toaster-bottom-right";
+                this.toasterPosStyle = {bottom:"50px", right:"5px"};
                 break;
             case "bottom-center":
-                toaster = "b-toaster-bottom-center";
+                this.toasterPosStyle = {left:"50%", bottom:"50px", transform:"translate(-50%, 0%)"};
                 break;
             case "center" :
-                this.toasterPosStyle = {left: "50%", transform:"translate(-50%, -50%)"};
+                this.toasterPosStyle = {left: "50%", top:"50%", transform:"translate(-50%, -50%)"};
                 break;
             case "center-left" :
-                this.toasterPosStyle = {left: "10%", transform:"translate(0%, -50%)"};
+                this.toasterPosStyle = {left: "5px", top:"50%", transform:"translate(0%, -50%)"};
                 break;
             case "center-right":
-                this.toasterPosStyle = {right: "10%", transform:"translate(0%, -50%)"};
+                this.toasterPosStyle = {right: "5px", top:"50%", transform:"translate(0%, -50%)"};
                 break;
             default:
                 break;                
@@ -172,7 +175,7 @@ export default Vue.extend({
             this.$bvToast.toast(this.currentStep.explanationMessage, {
                 id: "tutoturialToast",
                 title: "",
-                toaster: toaster,
+                toaster: "tutorialToaster",
                 solid: true,
                 appendToast: false,
                 noAutoHide: true,
@@ -190,6 +193,16 @@ export default Vue.extend({
             this.$bvToast.hide("tutoturialToast")
             this.showToast();
         },
+
+        onKeyPress(event: KeyboardEvent) {
+            if(event.key === "ArrowLeft" && this.currentStepIndex > 0){
+                (this.$refs.tutorialCarousel as BCarousel).prev();
+            }
+            else if(event.key === "ArrowRight" && this.currentStepIndex < this.steps.length -1){
+                (this.$refs.tutorialCarousel as BCarousel).next();
+            }
+            event.preventDefault();
+        },
     
         next(): void {
             if(this.currentStepIndex < this.steps.length - 1){
@@ -197,12 +210,15 @@ export default Vue.extend({
             }
             else{
                 //exit the tutorial when we are on the last slide/step
+                this.$bvToast.hide("tutoturialToast")
                 this.exit();
             }
         },
 
         exit(): void {
             this.showTutorial = false;
+            //remove the key listener
+            window.removeEventListener("keyup", this.onKeyPress);
         },
     },
 });
@@ -260,7 +276,6 @@ export default Vue.extend({
 .tutorialToaster {
     position: absolute; 
     border-radius: 50px !important;
-    top: 50%;
 }
 
 .toast {

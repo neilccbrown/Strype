@@ -50,6 +50,8 @@
   },
   "tutorialExplanation": {
     "commands": "Here you can find all the frames with their keyboard shortcut!",
-    "codeEditor": "This is where you write your code"
+    "codeEditor": "This is where you write your code",
+    "editorCaret": "The blue cursor indicates where you are editing now",
+    "editorMenus": "More options for your project"
   }
 }
