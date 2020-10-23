@@ -12,6 +12,7 @@ import { TutorialStep } from "@/types/types";
 //step definitions
 const commandsStep: TutorialStep = {
     hightLighedComponentIds: [getEditorCommandsContainerEltId()],
+    highLightedAreaExtraMargins : [{top: 5}],
     explanationMessage: i18n.t("tutorialExplanation.commands") as string,
     messageRelativePos: "center",
     showArrows: false,
@@ -19,6 +20,7 @@ const commandsStep: TutorialStep = {
 
 const codeEditor: TutorialStep = {
     hightLighedComponentIds: [getEditorCodeFrameContainerEltId()],
+    highLightedAreaExtraMargins : [{bottom: 15}],
     explanationMessage: i18n.t("tutorialExplanation.codeEditor") as string,
     messageRelativePos: "top-center",
     showArrows: false,
@@ -26,6 +28,7 @@ const codeEditor: TutorialStep = {
 
 const editorCaret: TutorialStep = {
     hightLighedComponentIds: [getEditorCodeFrameContainerBodyCaretEltId()],
+    highLightedAreaExtraMargins : [{top:5, left:5, right: 5, bottom: 5}],
     explanationMessage: i18n.t("tutorialExplanation.editorCaret") as string,
     messageRelativePos: "center",
     showArrows: false,
@@ -33,6 +36,7 @@ const editorCaret: TutorialStep = {
 
 const editorMenus: TutorialStep = {
     hightLighedComponentIds: [getEditorMenuEltId(), getEditorSpecialButtonsContainerEltId()],
+    highLightedAreaExtraMargins : [{left:0, right: 0, bottom: 0}, {left:5, right: 5, bottom: 5}],
     explanationMessage: i18n.t("tutorialExplanation.editorMenus") as string,
     messageRelativePos: "top-center",
     showArrows: false,

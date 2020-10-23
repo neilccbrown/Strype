@@ -3,6 +3,7 @@ import Vuex from "vuex";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
+import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
@@ -17,7 +18,7 @@ export default new Vuex.Store({
 
         frameObjects: initialState,
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number,
+        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, //doesn't matter it is no match during tutorial as no change can be done
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
@@ -387,7 +388,15 @@ export default new Vuex.Store({
                 state,
                 "stateBeforeChanges",
                 (release) ? {} : JSON.parse(JSON.stringify(state))
-            )
+            );
+        },
+
+        toggleTutorialState(state, toggle: boolean) {
+            Vue.set(
+                state,
+                "frameObjects",
+                (toggle) ? tutorialState: initialState
+            );
         },
 
         addFrameObject(state, newFrame: FrameObject) {

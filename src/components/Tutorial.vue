@@ -48,7 +48,7 @@
         <!-- fixed skip and next buttons -->
         <div class="tutorial-button-container">
             <button class="tutorial-button skip-tutorial-button" v-t="'buttonLabel.skipTutorial'" @click="exit" />
-            <button class="tutorial-button next-tutorial-button" v-t="'buttonLabel.next'" @click="next" />
+            <button id="tutorialNextButton" class="tutorial-button next-tutorial-button" @click="next">{{nextButtonLabel}}</button>
         </div>
     </div>
 </template>
@@ -58,24 +58,31 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import {TutorialSteps} from "@/constants/tutorialSteps"
-import { TutorialHightightedComponentDimension, TutorialStep } from "@/types/types";
+import store from "@/store/store";
+import {TutorialSteps} from "@/constants/tutorialSteps";
+import { TutorialHightightedComponentDimension, TutorialMargins, TutorialStep } from "@/types/types";
 import { BCarousel } from "bootstrap-vue";
-import { getTutorialEltId } from "@/helpers/editor"
+import { getTutorialEltId } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "Tutorial",
+    store: store,
     
     mounted() {
         //set a listener on window resized to keep accurate values of the masks
         window.addEventListener("resize", () => this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions());
 
         //set a listener on keyup here to listen for arrow events. This listener will be removed when existing the tutorial
-        window.addEventListener("keyup", this.onKeyPress);
+        window.addEventListener("keydown", this.onKeyPress);
+
+        //show the tutorial instead of normal init state
+        store.commit("toggleTutorialState", true);
+
         //set the first step once everything is ready
+        console.log("called from mounted")
         this.showCurrentStep(0)
     },
 
@@ -99,11 +106,15 @@ export default Vue.extend({
             },
             set(value: number) {
                 // When the index of the carousel changes, we update the tutorial step.
+                console.log("called from set")
                 this.showCurrentStep(value)
             }, 
         },
         id(): string {
             return getTutorialEltId();
+        },
+        nextButtonLabel(): string {
+            return (this.currentStepIndex === this.steps.length - 1) ? this.$i18n.t("buttonLabel.startCoding").toString() : this.$i18n.t("buttonLabel.next").toString();
         },
     },
 
@@ -111,8 +122,10 @@ export default Vue.extend({
         getStepHighlightedComponentsDimensions(): TutorialHightightedComponentDimension[] {
             //This method finds the coordinates and size for each component to be highlighted in the current step
             const dimensions = [] as TutorialHightightedComponentDimension[];
+
+            const margins: TutorialMargins[] = this.currentStep.highLightedAreaExtraMargins??[];
      
-            this.currentStep.hightLighedComponentIds.forEach((componentId) => {
+            this.currentStep.hightLighedComponentIds.forEach((componentId, index) => {
                 const hightledComponent = document.getElementById(componentId);
                 if(hightledComponent === null) {
                     dimensions.push({
@@ -125,10 +138,10 @@ export default Vue.extend({
                 else {
                     const boundingRect = hightledComponent.getBoundingClientRect()
                     dimensions.push({
-                        x:boundingRect.x,
-                        y:boundingRect.y,
-                        width:boundingRect.width,
-                        height:boundingRect.height,
+                        x:boundingRect.x - (margins[index]?.left??0),
+                        y:boundingRect.y - (margins[index]?.top??0),
+                        width:boundingRect.width + (margins[index]?.left??0) + (margins[index]?.right??0),
+                        height:boundingRect.height + (margins[index]?.top??0) + (margins[index]?.bottom??0),
                     });
                 }
             });
@@ -187,20 +200,28 @@ export default Vue.extend({
         },
 
         showCurrentStep(stepIndex: number){
+            //update the tutorial step
+            console.log("showing index: " + stepIndex)
             this.currentStepIndex = stepIndex;
             this.currentStep = this.steps[stepIndex];
             this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
             this.$bvToast.hide("tutoturialToast")
-            this.showToast();
+            this.showToast();            
+
+            //When the list (carousel indicator) has focus, browsers seem to get the event first
+            //and change the slide, so it results in bad behaviour. To avoid that, we always set
+            //the focus on the "next" button after a slide has changed.
+            document.getElementById("tutorialNextButton")?.focus()
         },
 
-        onKeyPress(event: KeyboardEvent) {
+        onKeyPress(event: KeyboardEvent) {            
             if(event.key === "ArrowLeft" && this.currentStepIndex > 0){
                 (this.$refs.tutorialCarousel as BCarousel).prev();
             }
             else if(event.key === "ArrowRight" && this.currentStepIndex < this.steps.length -1){
                 (this.$refs.tutorialCarousel as BCarousel).next();
             }
+
             event.preventDefault();
         },
     
@@ -217,8 +238,12 @@ export default Vue.extend({
 
         exit(): void {
             this.showTutorial = false;
+            
             //remove the key listener
-            window.removeEventListener("keyup", this.onKeyPress);
+            window.removeEventListener("keydown", this.onKeyPress);
+
+            //revert to the normal initial state
+            store.commit("toggleTutorialState", false);
         },
     },
 });
@@ -264,6 +289,9 @@ export default Vue.extend({
     bottom: 8px;
     font-size: xx-large;
 }
+.next-tutorial-button:focus {
+   outline: none;
+}
 
 .tutorial-toaster-container {
     width: 100vw;
@@ -291,5 +319,21 @@ export default Vue.extend({
 .tutorialToasterBody {
     font-size: large;
     text-align: center;
+}
+
+//the styling below overwrites the default carousel indicators
+.carousel-indicators li {
+    height: 15px !important;
+    width: 15px !important;
+    border-radius: 50% !important;
+    outline: none;
+    opacity: 0.5!important;
+    background-color: grey !important;
+    margin-right: 10px !important;
+}
+
+.carousel-indicators li.active {
+    opacity: 1 !important;
+    background-color: white !important;
 }
 </style>

@@ -16,6 +16,7 @@
             @option-clicked="optionClicked"
         />
         <Caret
+            v-bind:id="caretId"
             v-bind:isBlurred="overCaret"
             v-bind:isInvisible="isInvisible"
             v-blur="isFrameDisabled"
@@ -34,7 +35,7 @@ import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import $ from "jquery";
-import { getCaretContainerEltId } from "@/helpers/editor";
+import { getCaretEltId } from "@/helpers/editor";
 
 
 //////////////////////
@@ -75,7 +76,10 @@ export default Vue.extend({
             return CaretPosition;
         },
         id(): string {
-            return getCaretContainerEltId(this.caretAssignedPosition, this.frameId);
+            return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
+        },
+        caretId(): string {
+            return getCaretEltId(this.caretAssignedPosition, this.frameId);
         },
         pasteAvailable(): boolean {
             return store.getters.getIsCopiedAvailable();

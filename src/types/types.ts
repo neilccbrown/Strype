@@ -667,8 +667,17 @@ export interface TutorialHightightedComponentDimension{
     width: number;
     height: number;
 }
+
+export interface TutorialMargins {
+    //All margins (extra space around the highlighted component) are optional, and they are expressing pixels
+    left?: number;
+    top?: number;
+    bottom?: number;
+    right?: number;
+}
 export interface TutorialStep {
     hightLighedComponentIds: string[];
+    highLightedAreaExtraMargins?: TutorialMargins[];
     explanationMessage: string;
     messageRelativePos: "center" | "center-left"  | "center-right" | "top-left"| "top-right"| "top-center"| "bottom-left"| "bottom-right"| "bottom-center";
     showArrows: boolean;

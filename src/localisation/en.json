@@ -20,7 +20,8 @@
       "downloadHex": "Download Hex",
       "downloadPython": "Download Python",
       "skipTutorial": "Skip Tutorial",
-      "next": "Next"
+      "next": "Next",
+      "startCoding": "Start Coding !"
   },
   "action": {
     "uploadingToMicrobit": "Uploading to micro:bit ..."

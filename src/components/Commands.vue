@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <div v-bind:id="buttonsContainerId">
+        <div v-bind:id="buttonsContainerId" class="commands-container">
             <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
             <button @click="downloadHex" v-t="'buttonLabel.downloadHex'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
@@ -311,5 +311,9 @@ export default Vue.extend({
     color:#fefefe !important;
     text-align: left !important;
     font-weight: bold;
+}
+
+.commands-container{
+    display: inline-block;
 }
 </style>

@@ -15,12 +15,12 @@ export function getEditorCodeFrameContainerEltId(): string {
     return getFrameContainerEltId(store.getters.getMainCodeFrameContainerId());
 }
 
-export function getCaretContainerEltId(caretAssignedPosition: string, frameId: number): string{
-    return "caret_"+caretAssignedPosition+"_of_frame_"+frameId;
+export function getCaretEltId(caretAssignedPosition: string, frameId: number): string{
+    return "caret_"+caretAssignedPosition+"_"+frameId;
 }
 
 export function getEditorCodeFrameContainerBodyCaretEltId(): string{
-    return getCaretContainerEltId(CaretPosition.body, store.getters.getMainCodeFrameContainerId());
+    return getCaretEltId(CaretPosition.body, store.getters.getMainCodeFrameContainerId());
 }
 
 export function getEditorCommandsContainerEltId(): string {
