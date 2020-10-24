@@ -679,6 +679,7 @@ export interface TutorialStep {
     hightLighedComponentIds: string[];
     highLightedAreaExtraMargins?: TutorialMargins[];
     explanationMessage: string;
-    messageRelativePos: "center" | "center-left"  | "center-right" | "top-left"| "top-right"| "top-center"| "bottom-left"| "bottom-right"| "bottom-center";
+    messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
+    messageCustomPos?: TutorialMargins;
     showArrows: boolean;
 }

@@ -19,16 +19,13 @@
             <!-- this image is a basic semi transparent dark SVG image that covers the view port and on which the mask above is applied -->
             <image mask="url(#svgmask2)" preserveAspectRatio="none" width="100%" height="100%" y="0" x="0" xlink:href="~@/assets/images/mask_background.svg"/>
         </svg>
-        <!-- Tutorial explanations are displayed in a toast. This toaster is used ONLY for when center position is set in the step,
-             otherwise, we use a predefined toaster as explained in Bootstap documentation. -->
-        <div class="tutorial-toaster-container">
-            <b-toaster 
-                id="tutorialToaster" 
-                name="tutorialToaster" 
-                class="tutorialToaster"  
-                v-bind:style="toasterPosStyle"
-            />
-        </div>
+        <!-- Tutorial explanations are displayed in a toast.  -->
+        <b-toaster 
+            id="tutorialToaster" 
+            name="tutorialToaster" 
+            class="tutorialToaster"  
+            v-bind:style="toasterPosStyle"
+        />
         <div>
             <!-- the carousel is used to change the masks and parts of the tutorial -->
             <b-carousel
@@ -72,8 +69,12 @@ export default Vue.extend({
     store: store,
     
     mounted() {
-        //set a listener on window resized to keep accurate values of the masks
-        window.addEventListener("resize", () => this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions());
+        //set a listener on window resized to keep accurate values of the masks and the message positioning
+        window.addEventListener("resize", () => {
+            this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
+            this.$bvToast.hide();
+            this.showToast();
+        });
 
         //set a listener on keyup here to listen for arrow events. This listener will be removed when existing the tutorial
         window.addEventListener("keydown", this.onKeyPress);
@@ -82,7 +83,6 @@ export default Vue.extend({
         store.commit("toggleTutorialState", true);
 
         //set the first step once everything is ready
-        console.log("called from mounted")
         this.showCurrentStep(0)
     },
 
@@ -106,7 +106,6 @@ export default Vue.extend({
             },
             set(value: number) {
                 // When the index of the carousel changes, we update the tutorial step.
-                console.log("called from set")
                 this.showCurrentStep(value)
             }, 
         },
@@ -151,61 +150,117 @@ export default Vue.extend({
         
         showToast(): void {
             // Show the toast with the right message, and location based on the step.
+            // Note: the relative position is to the first highlighted element. Custom is not relative to something.
             this.toasterPosStyle = {};
+            let toastStyle = "";
+            const posPadding = 15; //the distance (in px) between the highlighted part and the message when left/right/top/bottom positioning are used
+            
+            //this variables are used in the custom case to work out the styling
+            const style = document.createElement("style");
+            let childToRemove = null;
 
             switch(this.currentStep.messageRelativePos){
-            case "top-left":
-                this.toasterPosStyle = {top:"5px", left:"5px"};
+            case "left":
+                //When the message is on the left, we set the right/top/bottom of the toaster  
+                //on the left (with gap)/top/bottom of the first highlighted element
+                //then we translate the toast vertically to center the message and the element vertically.
+                this.toasterPosStyle = {
+                    right: (document.documentElement.clientWidth - this.currentStepHighligthedComponentsDimensions[0].x + posPadding) + "px",
+                    top: this.currentStepHighligthedComponentsDimensions[0].y + "px",
+                    height:this.currentStepHighligthedComponentsDimensions[0].height + "px",
+                };
+                toastStyle = "toast-v-centered";
                 break;
-            case "top-right":
-                this.toasterPosStyle = {top:"5px", right:"5px"};
+            case "right":
+                //When the message is on the rigth, we set the left/top/bottom of the toaster  
+                //on the rigth (with gap)/top/bottom of the first highlighted element
+                //then we translate the toast vertically to center the message and the element vertically.
+                this.toasterPosStyle = {
+                    left: (this.currentStepHighligthedComponentsDimensions[0].x + this.currentStepHighligthedComponentsDimensions[0].width + posPadding) + "px",
+                    top: this.currentStepHighligthedComponentsDimensions[0].y + "px",
+                    height:this.currentStepHighligthedComponentsDimensions[0].height + "px",
+                };
+                toastStyle = "toast-v-centered";
                 break;
-            case "top-center":
-                this.toasterPosStyle = {left:"50%", top:"5px", transform:"translate(-50%, 0%)"};
+            case "top":
+                //When the message is on the top, we set the left/rigth/bottom of the toaster  
+                //on the left/right/top (with gap) of the first highlighted element
+                //then we translate the toast horizontally to center the message and the element horizontally.
+                this.toasterPosStyle = {
+                    bottom: (document.documentElement.clientHeight - this.currentStepHighligthedComponentsDimensions[0].y + posPadding) + "px",
+                    left: this.currentStepHighligthedComponentsDimensions[0].x + "px",
+                    width:this.currentStepHighligthedComponentsDimensions[0].width + "px",
+                };
+                toastStyle = "toast-h-centered";
                 break;
-            case "bottom-left":
-                this.toasterPosStyle = {bottom:"50px", left:"5px"};
+            case "bottom":
+                //When the message is on the bottom, we set the left/rigth/top of the toaster  
+                //on the left/right/bottom (with gap) of the first highlighted element
+                //then we translate the toast horizontally to center the message and the element horizontally.
+                this.toasterPosStyle = {
+                    top: (this.currentStepHighligthedComponentsDimensions[0].y + this.currentStepHighligthedComponentsDimensions[0].height + posPadding) + "px",
+                    left: this.currentStepHighligthedComponentsDimensions[0].x + "px",
+                    width:this.currentStepHighligthedComponentsDimensions[0].width + "px",
+                };
+                toastStyle = "toast-h-centered";
                 break;
-            case "bottom-right":
-                this.toasterPosStyle = {bottom:"50px", right:"5px"};
-                break;
-            case "bottom-center":
-                this.toasterPosStyle = {left:"50%", bottom:"50px", transform:"translate(-50%, 0%)"};
-                break;
-            case "center" :
-                this.toasterPosStyle = {left: "50%", top:"50%", transform:"translate(-50%, -50%)"};
-                break;
-            case "center-left" :
-                this.toasterPosStyle = {left: "5px", top:"50%", transform:"translate(0%, -50%)"};
-                break;
-            case "center-right":
-                this.toasterPosStyle = {right: "5px", top:"50%", transform:"translate(0%, -50%)"};
+            case "custom": 
+                //For custom positioning, the toaster takes the whole viewport: the coordinates (in px) are relative to the viewport.
+                //Note: we only use the left and top properties to position the toaster.
+                this.toasterPosStyle = {
+                    //position: "absolute",
+                    left: "0px",
+                    top: "0px",
+                    width: "100vw",
+                    height: "100vh",
+                };
+     
+                //toast styling need to be assigned by class name, as toast are dynamic; so we need to generate a CSS class dynamically
+                style.type = "text/css";
+                style.title = "tutorial-toast-custom"
+                //if the style exists already, we remove it
+                for(const childElement of document.getElementsByTagName("head")[0].children){
+                    if(childElement.tagName.toLowerCase() === "style" && childElement.getAttribute("title") === style.title){
+                        childToRemove = childElement
+                        break;
+                    }
+                }
+                if(childToRemove){
+                    document.getElementsByTagName("head")[0].removeChild(childToRemove);
+                }
+                //create or recreate the style a custom toast
+                style.innerHTML = `.toast-custom-pos { 
+                    position: absolute;
+                    left: ${(this.currentStep.messageCustomPos?.left??0) + "px"};
+                    top:  ${(this.currentStep.messageCustomPos?.top??0) + "px"};
+                }";`
+                document.getElementsByTagName("head")[0].appendChild(style);
+                toastStyle = "toast-custom-pos";
                 break;
             default:
                 break;                
             }
 
             this.$bvToast.toast(this.currentStep.explanationMessage, {
-                id: "tutoturialToast",
+                id: "tutorialToast",
                 title: "",
                 toaster: "tutorialToaster",
                 solid: true,
-                appendToast: false,
                 noAutoHide: true,
                 noCloseButton: true,
                 noFade: true,
                 headerClass: "tutorialToasterHeader",
                 bodyClass: "tutorialToasterBody",
+                toastClass: toastStyle,
             });
         },
 
         showCurrentStep(stepIndex: number){
             //update the tutorial step
-            console.log("showing index: " + stepIndex)
             this.currentStepIndex = stepIndex;
             this.currentStep = this.steps[stepIndex];
             this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
-            this.$bvToast.hide("tutoturialToast")
+            this.$bvToast.hide("tutorialToast")
             this.showToast();            
 
             //When the list (carousel indicator) has focus, browsers seem to get the event first
@@ -231,7 +286,7 @@ export default Vue.extend({
             }
             else{
                 //exit the tutorial when we are on the last slide/step
-                this.$bvToast.hide("tutoturialToast")
+                this.$bvToast.hide("tutorialToast")
                 this.exit();
             }
         },
@@ -273,6 +328,7 @@ export default Vue.extend({
     color: white;
     background-color: transparent;
     position: fixed;
+    z-index: 1200;
 } 
 
 .skip-tutorial-button {
@@ -293,22 +349,9 @@ export default Vue.extend({
    outline: none;
 }
 
-.tutorial-toaster-container {
-    width: 100vw;
-    height: 100vh;
-    position: absolute;
-    left: 0px;
-    top: 0px;
-}
-
 .tutorialToaster {
     position: absolute; 
     border-radius: 50px !important;
-}
-
-.toast {
-    //used to overwrite the toast class created by Bootstrap
-    border-radius: 20px !important;
 }
 
 .tutorialToasterHeader {
@@ -321,7 +364,24 @@ export default Vue.extend({
     text-align: center;
 }
 
+.toast-v-centered {
+    position: relative;
+    top: 50%;
+    transform: translate(0, -50%);
+}
+
+.toast-h-centered {
+    position: relative;
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
 //the styling below overwrites the default carousel indicators
+//and default styling of the toast containers
+.carousel-indicators {
+    z-index: 1200 !important;
+}
+
 .carousel-indicators li {
     height: 15px !important;
     width: 15px !important;
@@ -335,5 +395,20 @@ export default Vue.extend({
 .carousel-indicators li.active {
     opacity: 1 !important;
     background-color: white !important;
+}
+
+.toast {
+    border-radius: 20px !important;
+}
+
+.b-toast {
+    width:100%;
+    height: 100%;
+    max-width: 100% !important;
+}
+
+.b-toaster-slot {
+    width:100%;
+    height: 100%;
 }
 </style>
