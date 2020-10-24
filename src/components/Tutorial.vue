@@ -205,8 +205,9 @@ export default Vue.extend({
                 toastStyle = "toast-h-centered";
                 break;
             case "custom": 
-                //For custom positioning, the toaster takes the whole viewport: the coordinates (in px) are relative to the viewport.
+                //For custom positioning, the toaster takes the whole viewport: the coordinates (in %) are relative to the viewport.
                 //Note: we only use the left and top properties to position the toaster.
+                //      and we use percentages because it give a similar rendering even if the size of the window differs.
                 this.toasterPosStyle = {
                     //position: "absolute",
                     left: "0px",
@@ -231,8 +232,8 @@ export default Vue.extend({
                 //create or recreate the style a custom toast
                 style.innerHTML = `.toast-custom-pos { 
                     position: absolute;
-                    left: ${(this.currentStep.messageCustomPos?.left??0) + "px"};
-                    top:  ${(this.currentStep.messageCustomPos?.top??0) + "px"};
+                    left: ${(this.currentStep.messageCustomPos?.left??0) + "%"};
+                    top:  ${(this.currentStep.messageCustomPos?.top??0) + "%"};
                 }";`
                 document.getElementsByTagName("head")[0].appendChild(style);
                 toastStyle = "toast-custom-pos";

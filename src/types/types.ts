@@ -677,9 +677,9 @@ export interface TutorialMargins {
 }
 export interface TutorialStep {
     hightLighedComponentIds: string[];
-    highLightedAreaExtraMargins?: TutorialMargins[];
+    highLightedAreaExtraMargins?: TutorialMargins[]; //pixel values
     explanationMessage: string;
     messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
-    messageCustomPos?: TutorialMargins;
+    messageCustomPos?: TutorialMargins; //percentage values
     showArrows: boolean;
 }

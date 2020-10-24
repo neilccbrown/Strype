@@ -39,7 +39,7 @@ const editorMenus: TutorialStep = {
     highLightedAreaExtraMargins : [{left:0, right: 0, bottom: 0}, {left:5, right: 5, bottom: 5}],
     explanationMessage: i18n.t("tutorialExplanation.editorMenus") as string,
     messageRelativePos: "custom",
-    messageCustomPos: {left:390, top:70},
+    messageCustomPos: {left:30, top:25},
     showArrows: false,
 }
 
