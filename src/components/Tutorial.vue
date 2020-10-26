@@ -47,6 +47,30 @@
             <button class="tutorial-button skip-tutorial-button" v-t="'buttonLabel.skipTutorial'" @click="exit" />
             <button id="tutorialNextButton" class="tutorial-button next-tutorial-button" @click="next">{{nextButtonLabel}}</button>
         </div>
+        <!-- optinal arrows -->
+        <div v-if="this.currentStep.showArrows" class="tutorial-arrows-div">
+            <svg 
+                v-for="(arrowPos, index) in getStepArrows()"
+                v-bind:key="'tutorialArrow_'+index"
+                width ="100%" 
+                height="100%" 
+                class ="arrow-svg">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto" fill="#FFF">
+                        <polygon points="0 0, 10 3.5, 0 7" />
+                    </marker>
+                </defs>
+                 v-bind:d="'M' + arrowPos.fromX + ',' + arrowPos.fromY +' L'+ arrowPos.toX + ',' + arrowPos.toY"
+                <line 
+                    v-bind:x1="arrowPos.fromX" 
+                    v-bind:y1="arrowPos.fromY" 
+                    v-bind:x2="arrowPos.toX" 
+                    v-bind:y2="arrowPos.toY"
+                    stroke="#FFF"
+                    stroke-width="4" 
+                    marker-end="url(#arrowhead)" />
+            </svg>
+        </div>
     </div>
 </template>
 
@@ -57,7 +81,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import {TutorialSteps} from "@/constants/tutorialSteps";
-import { TutorialHightightedComponentDimension, TutorialMargins, TutorialStep } from "@/types/types";
+import { TutorialArrowPos, TutorialHightightedComponentDimension, TutorialMargins, TutorialStep } from "@/types/types";
 import { BCarousel } from "bootstrap-vue";
 import { getTutorialEltId } from "@/helpers/editor";
 
@@ -147,6 +171,27 @@ export default Vue.extend({
 
             return dimensions;
         },    
+        
+        getStepArrows(): TutorialArrowPos[] {
+            // We need to transform the positions from percentages to pixel values based on the viewport
+            const percentagesVals = this.currentStep.arrowsPos;
+            if(percentagesVals){
+                const viewPortWidth = document.documentElement.clientWidth;
+                const viewPortHeight = document.documentElement.clientHeight;
+                return percentagesVals.flatMap((arrowPos: TutorialArrowPos) => {
+                    const resPixVals = {} as TutorialArrowPos;
+                    resPixVals.fromX = arrowPos.fromX * viewPortWidth / 100;
+                    resPixVals.fromY = arrowPos.fromY * viewPortHeight/ 100;
+                    resPixVals.toX = arrowPos.toX * viewPortWidth/ 100;
+                    resPixVals.toY =  arrowPos.toY * viewPortHeight / 100;
+                    return resPixVals;
+                });
+            }
+            else{
+                // If nothing is defined we just return no arrow.
+                return []
+            }
+        },
         
         showToast(): void {
             // Show the toast with the right message, and location based on the step.
@@ -315,6 +360,20 @@ export default Vue.extend({
     top: 0px;
     z-index: 100;
     background-size: 100% 100%;
+}
+
+.tutorial-arrows-div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left:0px;
+    top:0px;
+}
+
+.arrow-svg {
+    position: absolute;
+    left: 0px;
+    right: 0px;
 }
 
 .tutorial-button-container {

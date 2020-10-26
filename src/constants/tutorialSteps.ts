@@ -40,7 +40,8 @@ const editorMenus: TutorialStep = {
     explanationMessage: i18n.t("tutorialExplanation.editorMenus") as string,
     messageRelativePos: "custom",
     messageCustomPos: {left:30, top:25},
-    showArrows: false,
+    showArrows: true,
+    arrowsPos: [{fromX:28, fromY:25, toX: 8, toY: 8}, {fromX: 48, fromY:25, toX: 63, toY: 7}],
 }
 
 //object containing all steps

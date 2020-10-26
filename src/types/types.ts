@@ -670,11 +670,21 @@ export interface TutorialHightightedComponentDimension{
 
 export interface TutorialMargins {
     //All margins (extra space around the highlighted component) are optional, and they are expressing pixels
+    //We use this interface for custom position of the messages too, and then they are expressing percentages
     left?: number;
     top?: number;
     bottom?: number;
     right?: number;
 }
+
+export interface TutorialArrowPos {
+    //Arrow positioning expressing percentages
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number; 
+}
+
 export interface TutorialStep {
     hightLighedComponentIds: string[];
     highLightedAreaExtraMargins?: TutorialMargins[]; //pixel values
@@ -682,4 +692,5 @@ export interface TutorialStep {
     messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
     messageCustomPos?: TutorialMargins; //percentage values
     showArrows: boolean;
+    arrowsPos?: TutorialArrowPos[];
 }
