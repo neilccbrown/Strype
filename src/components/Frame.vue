@@ -71,13 +71,10 @@ import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
 import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, Definitions } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import $ from "jquery";
 
 //////////////////////
 //     Component    //
 //////////////////////
-const duplicateOptionContextMenuPos = 1;
-const enableDisableOptionsContextMenuPos = 3;
 
 export default Vue.extend({
     name: "Frame",
@@ -170,7 +167,7 @@ export default Vue.extend({
             return store.getters.getContextMenuShownId() === this.id; 
         },
 
-        selectedStatus(): boolean {
+        selectedStatus(): string {
             return store.getters.getSelectionPosition(this.$props.frameId);
         },
 
@@ -196,16 +193,19 @@ export default Vue.extend({
                 // except if that frame has joint frames: the target is the last joint frame.
                 const targetFrameJointFrames = store.getters.getJointFramesForFrameId(this.frameId, "all");
                 const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
-                const canDuplicate = store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
+                // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
+                const canDuplicate = (this.selectedStatus !== "unselected") ?
+                    store.getters.getIfPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below) : 
+                    store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
                 if(!canDuplicate){
+                    const duplicateOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate");
                     //We don't need the duplication option: remove it from the menu options if not present
-                    if(this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate") > -1){
+                    if(duplicateOptionContextMenuPos > -1){
                         this.frameContextMenuOptions.splice(
                             duplicateOptionContextMenuPos,
                             1
                         );
                     }
-
                     //update the offset
                     menuPosOffset --;
                 }
@@ -216,7 +216,7 @@ export default Vue.extend({
                     :  {name: this.$i18n.t("contextMenu.disable"), method: "disable"};
                 Vue.set(
                     this.frameContextMenuOptions,
-                    enableDisableOptionsContextMenuPos + menuPosOffset,
+                    this.frameContextMenuOptions.findIndex((entry) => entry.method === this.$i18n.t("contextMenu.enable") || entry.method === this.$i18n.t("contextMenu.disable")  ) + menuPosOffset,
                     disableOrEnableOption
                 );
 
@@ -271,14 +271,26 @@ export default Vue.extend({
 
 
         duplicate(): void {
-            store.dispatch(
-                "copyFrameToPosition",
-                {
-                    frameId : this.$props.frameId,
-                    newParentId: store.getters.getParentOfFrame(this.frameId),
-                    newIndex: store.getters.getIndexInParent(this.frameId)+1,
-                }
-            );
+            if(this.selectedStatus !== "unselected"){
+                store.dispatch(
+                    "copyFrameToPosition",
+                    {
+                        frameId : this.$props.frameId,
+                        newParentId: store.getters.getParentOfFrame(this.frameId),
+                        newIndex: store.getters.getIndexInParent(this.frameId)+1,
+                    }
+                );
+            }
+            else {
+                store.dispatch(
+                    "copySelectedFramesToPosition",
+                    {
+                        frameId : this.$props.frameId,
+                        newParentId: store.getters.getParentOfFrame(this.frameId),
+                        newIndex: store.getters.getIndexInParent(this.frameId)+1,
+                    }
+                );
+            }
         },
 
         copy(): void {
@@ -343,6 +355,7 @@ export default Vue.extend({
     border-left: 3px solid #000000 !important;
     border-right: 3px solid #000000 !important;
 }
+
 
 .selectedTop {
     border-top: 3px solid #000000 !important;

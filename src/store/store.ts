@@ -367,6 +367,22 @@ export default new Vuex.Store({
             return false;
         },
 
+        getIfPositionAllowsSelectedFrames: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition) => {
+        
+            const allowedFrameTypes: [AddFrameCommandDef] = getters.getCurrentFrameAddFrameCommands(targetFrameId, targetCaretPosition);
+
+            // for..of is used instead of foreach here, as foreach does not supports return.........
+            for (const id of state.selectedFrames) {
+                // If one of the selected frames is not found in the allowed list, then return false
+                if(!Object.values(allowedFrameTypes).find((allowed) => allowed.type.type === state.frameObjects[id].frameType.type)){
+                    return false;
+                }
+            }
+
+            return true;
+        },
+
+
         getContextMenuShownId: (state) => () => {
             return state.contextMenuShownId;
         },
@@ -1698,7 +1714,7 @@ export default new Vuex.Store({
 
         setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
-            let errorrDetailMessage = payload.errorReason ?? "unknow reason";
+            let errorDetailMessage = payload.errorReason ?? "unknown reason";
             let isVersionCorrect = false;
 
             // If there is an error set because the file couldn't be retrieved
@@ -1718,7 +1734,7 @@ export default new Vuex.Store({
                         isStateJSONStrValid=false;
                         const error = i18n.t("errorMessage.dataNotObject");
                         //note: the following conditional test is only for TS... the message should always be found
-                        errorrDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
+                        errorDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
                     }
                     else{
                         // Check 2) as 1) is validated
@@ -1726,7 +1742,7 @@ export default new Vuex.Store({
                             isStateJSONStrValid = false;
                             const error = i18n.t("errorMessage.stateDataIntegrity")
                             //note: the following conditional test is only for TS... the message should always be found
-                            errorrDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
+                            errorDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
                         } 
                         else {
                             // Check 3) as 2) is validated
@@ -1740,7 +1756,7 @@ export default new Vuex.Store({
                     isStateJSONStrValid = false;
                     const error = i18n.t("errorMessage.wrongDataFormat");
                     //note: the following conditional test is only for TS... the message should always be found
-                    errorrDetailMessage = (typeof error === "string") ? error : "wrong data format";
+                    errorDetailMessage = (typeof error === "string") ? error : "wrong data format";
                 }
             }
             
@@ -1777,7 +1793,7 @@ export default new Vuex.Store({
             else{
                 const message = MessageDefinitions.UploadEditorFileError;
                 const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorrDetailMessage);
+                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
 
                 commit(
                     "setMessageBanner",
