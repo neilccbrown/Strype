@@ -35,8 +35,8 @@ const editorCaret: TutorialStep = {
 }
 
 const editorMenus: TutorialStep = {
-    hightLighedComponentIds: [getEditorMenuEltId(), getEditorSpecialButtonsContainerEltId(), "testTargetBottomLeft", "testTargetBottomRight"],
-    highLightedAreaExtraMargins : [{left:0, right: 0, bottom: 0}, {left:5, right: 5, bottom: 5},{left:0, right: 0, bottom: 0},{left:0, right: 0, bottom: 0}],
+    hightLighedComponentIds: [getEditorMenuEltId(), getEditorSpecialButtonsContainerEltId()],
+    highLightedAreaExtraMargins : [{left:0, right: 0, bottom: 0}, {left:5, right: 5, bottom: 5}],
     explanationMessage: i18n.t("tutorialExplanation.editorMenus") as string,
     messageRelativePos: "custom",
     messageCustomPos: {left:30, top:25},

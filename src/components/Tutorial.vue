@@ -63,7 +63,7 @@
                         refX="0" 
                         v-bind:refY="arrowHeadHeight / 2" 
                         orient="auto" 
-                        fill="#F00"
+                        fill="#FFF"
                     >
                         <polygon v-bind:points="'0 0, ' + arrowHeadWidth + ' ' + (arrowHeadHeight/2) +', 0 ' + arrowHeadHeight" />
                     </marker>
@@ -73,13 +73,11 @@
                     v-bind:y1="arrowPos.fromY" 
                     v-bind:x2="arrowPos.toX" 
                     v-bind:y2="arrowPos.toY"
-                    stroke="#F00"
+                    stroke="#FFF"
                     v-bind:stroke-width="arrowTailWidth" 
                     marker-end="url(#arrowhead)" />
             </svg>
         </div>
-        <div id="testTargetBottomLeft" style="position: absolute; left: 20px; top: 400px; background-color: green; width: 50px; height: 30px" />
-        <div id="testTargetBottomRight" style="position: absolute; left: 800px; top: 600px; background-color: blue; width: 100px; height: 150px" />
     </div>
 </template>
 
