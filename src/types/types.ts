@@ -692,5 +692,4 @@ export interface TutorialStep {
     messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
     messageCustomPos?: TutorialMargins; //percentage values
     showArrows: boolean;
-    arrowsPos?: TutorialArrowPos[];
 }

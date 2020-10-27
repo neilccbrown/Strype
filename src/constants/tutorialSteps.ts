@@ -35,13 +35,12 @@ const editorCaret: TutorialStep = {
 }
 
 const editorMenus: TutorialStep = {
-    hightLighedComponentIds: [getEditorMenuEltId(), getEditorSpecialButtonsContainerEltId()],
-    highLightedAreaExtraMargins : [{left:0, right: 0, bottom: 0}, {left:5, right: 5, bottom: 5}],
+    hightLighedComponentIds: [getEditorMenuEltId(), getEditorSpecialButtonsContainerEltId(), "testTargetBottomLeft", "testTargetBottomRight"],
+    highLightedAreaExtraMargins : [{left:0, right: 0, bottom: 0}, {left:5, right: 5, bottom: 5},{left:0, right: 0, bottom: 0},{left:0, right: 0, bottom: 0}],
     explanationMessage: i18n.t("tutorialExplanation.editorMenus") as string,
     messageRelativePos: "custom",
     messageCustomPos: {left:30, top:25},
     showArrows: true,
-    arrowsPos: [{fromX:28, fromY:25, toX: 8, toY: 8}, {fromX: 48, fromY:25, toX: 63, toY: 7}],
 }
 
 //object containing all steps
