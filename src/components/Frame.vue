@@ -195,7 +195,7 @@ export default Vue.extend({
                 const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
                 // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
                 const canDuplicate = (this.selectedStatus !== "unselected") ?
-                    store.getters.getIfPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below) : 
+                    store.getters.getIfPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
                     store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
                 if(!canDuplicate){
                     const duplicateOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate");
@@ -271,7 +271,7 @@ export default Vue.extend({
 
 
         duplicate(): void {
-            if(this.selectedStatus !== "unselected"){
+            if(this.selectedStatus === "unselected"){
                 store.dispatch(
                     "copyFrameToPosition",
                     {
@@ -285,19 +285,24 @@ export default Vue.extend({
                 store.dispatch(
                     "copySelectedFramesToPosition",
                     {
-                        frameId : this.$props.frameId,
                         newParentId: store.getters.getParentOfFrame(this.frameId),
-                        newIndex: store.getters.getIndexInParent(this.frameId)+1,
                     }
                 );
             }
         },
 
         copy(): void {
-            store.dispatch(
-                "copyFrame",
-                this.$props.frameId
-            );
+            if(this.selectedStatus === "unselected"){
+                store.dispatch(
+                    "copyFrame",
+                    this.$props.frameId
+                );
+            }
+            else{
+                store.dispatch(
+                    "copySelection"
+                );
+            }
         },
 
         disable(): void {

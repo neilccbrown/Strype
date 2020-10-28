@@ -91,9 +91,16 @@ export default Vue.extend({
         handleClick (event: MouseEvent, action: string): void {
 
             store.commit("setContextMenuShownId",this.id);
-            if(this.pasteAvailable) {        
-                if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
-                    ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+            if(this.pasteAvailable) {  
+                if(store.getters.isCopiedASelection()){
+                    if(store.getters.getIfPositionAllowsSelectedFrames(this.frameId, this.caretAssignedPosition, true)) {
+                        ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+                    }  
+                }
+                else {
+                    if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
+                        ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+                    }
                 }
             }
         },
@@ -160,13 +167,24 @@ export default Vue.extend({
         },
 
         paste(): void {
-            store.dispatch(
-                "pasteFrame",
-                {
-                    clickedFrameId: this.$props.frameId,
-                    caretPosition: this.$props.caretAssignedPosition,
-                }
-            );
+            if(store.getters.isCopiedASelection()){
+                store.dispatch(
+                    "pasteSelection",
+                    {
+                        clickedFrameId: this.$props.frameId,
+                        caretPosition: this.$props.caretAssignedPosition,
+                    }
+                );
+            }
+            else {
+                store.dispatch(
+                    "pasteFrame",
+                    {
+                        clickedFrameId: this.$props.frameId,
+                        caretPosition: this.$props.caretAssignedPosition,
+                    }
+                );
+            }
         },
     },
 });

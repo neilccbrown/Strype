@@ -36,6 +36,8 @@ export default new Vuex.Store({
         
         copiedFrameId: -100 as number, // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
 
+        copiedSelectionFrameIds: []  as number[], //This variable holds the ids of the root copied frames.
+
         copiedFrames: {} as EditorFrameObjects,
 
         stateBeforeChanges : {} as  {[id: string]: any}, // Keeps a copy of the state when 2-steps operations are performed and we need to know the previous state (to clear after use!)
@@ -337,7 +339,7 @@ export default new Vuex.Store({
                 state.frameObjects[state.frameObjects[frameId].parentId].childrenIds.indexOf(frameId);
         },
         getIsCopiedAvailable: (state) => () => {
-            return state.copiedFrameId !== -100;
+            return (state.copiedFrameId !== -100) || (state.copiedSelectionFrameIds.length > 0);
         },
         // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
         // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
@@ -367,21 +369,23 @@ export default new Vuex.Store({
             return false;
         },
 
-        getIfPositionAllowsSelectedFrames: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition) => {
+        getIfPositionAllowsSelectedFrames: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition, areFramesCopied: boolean) => {
         
             const allowedFrameTypes: [AddFrameCommandDef] = getters.getCurrentFrameAddFrameCommands(targetFrameId, targetCaretPosition);
 
+            const selectedFramesIds = (areFramesCopied)?state.copiedSelectionFrameIds:state.selectedFrames;
+            const sourceList = (areFramesCopied)?state.copiedFrames:state.frameObjects;
+            
             // for..of is used instead of foreach here, as foreach does not supports return.........
-            for (const id of state.selectedFrames) {
+            for (const id of selectedFramesIds) {
                 // If one of the selected frames is not found in the allowed list, then return false
-                if(!Object.values(allowedFrameTypes).find((allowed) => allowed.type.type === state.frameObjects[id].frameType.type)){
+                if(!Object.values(allowedFrameTypes).find((allowed) => allowed.type.type === sourceList[id].frameType.type)){
                     return false;
                 }
             }
 
             return true;
         },
-
 
         getContextMenuShownId: (state) => () => {
             return state.contextMenuShownId;
@@ -417,6 +421,10 @@ export default new Vuex.Store({
         
         getIsUndoRedoEmpty: (state) => (action: string) => {
             return (action === "undo") ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
+        },
+
+        isCopiedASelection: (state) => () => {
+            return state.copiedSelectionFrameIds.length > 0;
         },
     }, 
 
@@ -847,16 +855,12 @@ export default new Vuex.Store({
                 Math.max.apply({},(Object.keys(state.frameObjects).concat(Object.keys(state.copiedFrames))).map(Number))+1
             );
         },
+        
         copyFrame(state, frameId: number) {
             Vue.set( 
                 state,
                 "copiedFrameId",  
                 state.nextAvailableId
-            );
-            Vue.set(
-                state,
-                "copiedFrames",
-                {}
             );
             // If it has a JointParent, we're talking about a JointFrame
             const isJointFrame = state.frameObjects[frameId].frameType.isJointFrame;
@@ -864,6 +868,38 @@ export default new Vuex.Store({
             const parent = (isJointFrame)? state.frameObjects[frameId].jointParentId : state.frameObjects[frameId].parentId;
             cloneFrameAndChildren(state.frameObjects, frameId, parent, {id: state.nextAvailableId}, state.copiedFrames); 
         },
+
+        copySelection(state) {
+
+            // If it has a JointParent, we're talking about a JointFrame
+            const isJointFrame = state.frameObjects[state.selectedFrames[0]].frameType.isJointFrame;
+            
+            const parent = (isJointFrame)? state.frameObjects[state.selectedFrames[0]].jointParentId : state.frameObjects[state.selectedFrames[0]].parentId;
+
+            // We generate the list of frames from the selectedFrames ids
+            const sourceFrameList: EditorFrameObjects = {};
+            state.selectedFrames.forEach((id) => sourceFrameList[id] = state.frameObjects[id])
+            
+            // All the top level cloned frames need to be stored in order to then added to their new parent's list
+            const topLevelCopiedFrames: number[] = [];
+            let nextAvailableId = state.nextAvailableId;
+
+            Object.values(sourceFrameList).forEach( (frame) => {
+                //For each top level frame (i.e. each one on the selected list) we record its new id
+                topLevelCopiedFrames.push(nextAvailableId)
+                cloneFrameAndChildren(state.frameObjects, frame.id, parent, {id: nextAvailableId}, state.copiedFrames); 
+                // Find the largest id form the copied and increase it by 1
+                nextAvailableId = Math.max.apply({},(Object.keys(state.copiedFrames).concat(Object.keys(state.copiedFrames))).map(Number)) + 1;
+            });
+
+            Vue.set( 
+                state,
+                "copiedSelectionFrameIds",  
+                topLevelCopiedFrames
+            );
+
+        },
+
         setCaretVisibility(state, payload: {frameId: number; caretVisibility: CaretPosition}) {
             Vue.set(
                 state.frameObjects[payload.frameId],
@@ -1088,6 +1124,26 @@ export default new Vuex.Store({
 
         unselectAllFrames(state) {
             state.selectedFrames.splice(0,state.selectedFrames.length);
+        },
+
+        flushCopiedFrames(state){
+            Vue.set(
+                state,
+                "copiedFrames",
+                {}
+            );
+
+            Vue.set(
+                state,
+                "copiedFrameId",
+                -100
+            );
+
+            Vue.set(
+                state,
+                "copiedSelectionFrameIds",
+                []
+            );
         },
 
     },
@@ -1883,6 +1939,96 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
+        // This method can be used to copy the selected frames to a position.
+        // This can be a paste event or a duplicate event.
+        copySelectedFramesToPosition({commit, state, getters}, payload: {newParentId: number; newIndex?: number}) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            // -100 is chosen so that TS won't complain for non-initialised variable
+            let newIndex = payload.newIndex??-100;
+            const areWeDuplicating = newIndex === -100;
+
+            // If newIndex does not exist, we are talking about a duplication
+            if(areWeDuplicating){
+                // In that case, the duplicated selection goes below the last selected item
+                newIndex = getters.getIndexInParent(state.selectedFrames[state.selectedFrames.length-1])+1;
+            }
+
+            // We generate the list of frames from the selectedFrames ids
+            const sourceFrameList: EditorFrameObjects = (areWeDuplicating)?state.frameObjects:state.copiedFrames;
+            const sourceFrameIds: number[] = (areWeDuplicating)?state.selectedFrames:state.copiedSelectionFrameIds;
+
+            const copiedFrames: EditorFrameObjects = {};
+
+            // All the top level cloned frames need to be stored in order to then added to their new parent's list
+            const topLevelCopiedFrames: number[] = [];
+            let nextAvailableId = state.nextAvailableId;
+
+            Object.values(sourceFrameIds).forEach( (frame) => {
+                //For each top level frame (i.e. each one on the selected list) we record its new id
+                topLevelCopiedFrames.push(nextAvailableId)
+                cloneFrameAndChildren(sourceFrameList, frame, payload.newParentId, {id: nextAvailableId}, copiedFrames); 
+                // Find the largest id form the copied and increase it by 1
+                nextAvailableId = Math.max.apply({},(Object.keys(copiedFrames).concat(Object.keys(copiedFrames))).map(Number)) + 1;
+            });
+
+            
+            // Add the copied objects to the FrameObjects
+            Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
+                Vue.set(
+                    state.frameObjects,
+                    id,
+                    copiedFrames[id]
+                )
+            });
+            commit( "updateNextAvailableId" );
+            
+
+            // It will be added either as a Child or as a JointChild
+            const areSelectedJointFrames = sourceFrameList[sourceFrameIds[0]].frameType.isJointFrame;
+            const childrenListToBeAdded = (areSelectedJointFrames)? state.frameObjects[payload.newParentId].jointFrameIds : state.frameObjects[payload.newParentId].childrenIds;
+
+            // Add each one of the copied frames in their new parent's list
+            topLevelCopiedFrames.forEach( (id) => {
+                childrenListToBeAdded.splice(
+                    newIndex++,
+                    0,
+                    id
+                );
+            });
+            
+
+            //Make the top new frame the current frame
+            commit( "setCurrentFrame", { 
+                id: topLevelCopiedFrames[topLevelCopiedFrames.length-1],
+                caretPosition: CaretPosition.below,
+            });
+
+            commit( "updateNextAvailableId" );
+
+            //if we do a paste, update the pasted frames' "isDisabled" property solely based on the parent's property
+            if(payload.newIndex === undefined){
+                this.commit(
+                    "changeDisableFrame",
+                    {
+                        frameId: topLevelCopiedFrames[topLevelCopiedFrames.length-1], 
+                        isDisabling: state.frameObjects[payload.newParentId].isDisabled, 
+                        ignoreEnableFromRoot: true,
+                    }
+                );
+            }
+
+
+            //save state changes
+            commit(
+                "saveStateChanges",
+                {
+                    previousState: stateBeforeChanges,
+                }
+            );
+        
+            commit("unselectAllFrames");
+        },
+
         pasteFrame({dispatch, getters, state}, payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const isCopiedJointFrame = state.copiedFrames[state.copiedFrameId].frameType.isJointFrame;
@@ -1911,11 +2057,46 @@ export default new Vuex.Store({
             );
         },
 
+        pasteSelection({dispatch, getters, state}, payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
+            // If the copiedFrame has a JointParent, we're talking about a JointFrame
+            const areCopiedJointFrames = state.copiedFrames[state.copiedSelectionFrameIds[0]].frameType.isJointFrame;
+            const isClickedJointFrame = state.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
+
+            // Clicked is joint ? parent of clicked is its joint parent ELSE clicked is the real parent
+            const clickedParentId = (isClickedJointFrame)? state.frameObjects[payload.clickedFrameId].jointParentId: state.frameObjects[payload.clickedFrameId].parentId;
+
+            // Index is 0 if we paste in the body OR we paste a JointFrame Below JointParent
+            const index = (payload.caretPosition === CaretPosition.body || ( payload.caretPosition === CaretPosition.below && areCopiedJointFrames && !isClickedJointFrame)) ? 
+                0 : 
+                getters.getIndexInParent(payload.clickedFrameId)+1;
+
+            // If the caret is below and it is not a joint frame, parent is the clicked's parent 
+            const pasteToParentId = (payload.caretPosition === CaretPosition.body || (areCopiedJointFrames && !isClickedJointFrame) ) ?
+                payload.clickedFrameId:   
+                clickedParentId;
+                
+            // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
+            dispatch(
+                "copySelectedFramesToPosition",
+                {
+                    newParentId: pasteToParentId,
+                    newIndex: index,
+                }
+            );
+        },
+
         copyFrame({commit}, frameId: number) {
+            commit("flushCopiedFrames");
             commit(
                 "copyFrame",
                 frameId
             );
+            commit( "updateNextAvailableId" );
+        },
+
+        copySelection({commit}) {
+            commit("flushCopiedFrames");
+            commit("copySelection");
             commit( "updateNextAvailableId" );
         },
 
@@ -1939,10 +2120,7 @@ export default new Vuex.Store({
         },
 
         selectMultipleFrames({state, commit}, key: string) {
-            // const result = frameForSelection(state.frameObjects, state.currentFrame, (key==="ArrowUp")? "up" : "down");
-
-            // In the case of null we don't need to do anything
-            // console.log(result);
+            
             const direction = (key==="ArrowUp")? "up" : "down"
             const result = frameForSelection(state.frameObjects, state.currentFrame, direction, state.selectedFrames);
             if(result !== null) {
