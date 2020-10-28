@@ -101,20 +101,22 @@ export default Vue.extend({
     
     mounted() {
         //set a listener on window resized to keep accurate values of the masks and the message positioning
-        window.addEventListener("resize", () => {
-            this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
-            this.$bvToast.hide();
-            this.showToast();
-        });
+        if(this.showTutorial){
+            window.addEventListener("resize", () => {
+                this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
+                this.$bvToast.hide();
+                this.showToast();
+            });
 
-        //set a listener on keyup here to listen for arrow events. This listener will be removed when existing the tutorial
-        window.addEventListener("keydown", this.onKeyPress);
+            //set a listener on keyup here to listen for arrow events. This listener will be removed when existing the tutorial
+            window.addEventListener("keydown", this.onKeyPress);
 
-        //show the tutorial instead of normal init state
-        store.commit("toggleTutorialState", true);
+            //show the tutorial instead of normal init state
+            store.commit("toggleTutorialState", true);
 
-        //set the first step once everything is ready
-        this.showCurrentStep(0)
+            //set the first step once everything is ready
+            this.showCurrentStep(0);
+        }
     },
 
     data() {
