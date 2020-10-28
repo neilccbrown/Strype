@@ -21,7 +21,7 @@
       "downloadPython": "Download Python",
       "skipTutorial": "Skip Tutorial",
       "next": "Next",
-      "startCoding": "Start Coding !"
+      "startCoding": "Start Coding!"
   },
   "action": {
     "uploadingToMicrobit": "Uploading to micro:bit ..."

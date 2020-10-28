@@ -321,7 +321,7 @@ export default Vue.extend({
                 //2) we keep a distance between the the arrow and the source (2a)/target (2b): details to read below
 
                 const toastBoundingRect = document.getElementById("tutorialToast")?.getBoundingClientRect();
-                const marginAroundElements =  2; //the margin to keep around the source and target, in px
+                const marginAroundTarget =  5, marginAroundSource = 0; //the margin to keep around the source and target, in px
 
                 if(toastBoundingRect){
                     //apply the steps aforementioned to each hightlighted areas
@@ -338,56 +338,56 @@ export default Vue.extend({
                             if(isTargetAbove){
                                 //source corner: top left, target corner: bottom right
                                 //step 2a) add margin on the source corner to get the tail's start coordinates
-                                fromX = toastBoundingRect.x - marginAroundElements;
-                                fromY = toastBoundingRect.y - marginAroundElements;
+                                fromX = toastBoundingRect.x - marginAroundSource;
+                                fromY = toastBoundingRect.y - marginAroundSource;
                                 //step 2b) remove margin on the target corner + the box for the arrow head to get the tail's end coordinates
                                 cosAngle = (toastBoundingRect.x - highLightedAreaDim.x - highLightedAreaDim.width ) 
                                     / Math.sqrt(Math.pow(highLightedAreaDim.x + highLightedAreaDim.width - toastBoundingRect.x, 2) + Math.pow(highLightedAreaDim.y + highLightedAreaDim.height - toastBoundingRect.y, 2))
                                 sinAngle = (toastBoundingRect.y - highLightedAreaDim.y - highLightedAreaDim.height ) 
                                     / Math.sqrt(Math.pow(highLightedAreaDim.x + highLightedAreaDim.width - toastBoundingRect.x, 2) + Math.pow(highLightedAreaDim.y + highLightedAreaDim.height - toastBoundingRect.y, 2))
-                                toX =  highLightedAreaDim.x + highLightedAreaDim.width + marginAroundElements + this.arrowHeadWidth * this.arrowTailWidth * cosAngle;
-                                toY =  highLightedAreaDim.y + highLightedAreaDim.height + marginAroundElements + this.arrowHeadWidth * this.arrowTailWidth * sinAngle;
+                                toX =  highLightedAreaDim.x + highLightedAreaDim.width + marginAroundTarget + this.arrowHeadWidth * this.arrowTailWidth * cosAngle;
+                                toY =  highLightedAreaDim.y + highLightedAreaDim.height + marginAroundTarget + this.arrowHeadWidth * this.arrowTailWidth * sinAngle;
                             }
                             else{
                                 //source corner: bottom left, target corner: top right
                                 //step 2a) add margin on the source corner to get the tail's start coordinates
-                                fromX = toastBoundingRect.x - marginAroundElements;
-                                fromY = toastBoundingRect.y + toastBoundingRect.height + marginAroundElements;
+                                fromX = toastBoundingRect.x - marginAroundSource;
+                                fromY = toastBoundingRect.y + toastBoundingRect.height + marginAroundSource;
                                 //step 2b) remove margin on the target corner + the box for the arrow head to get the tail's end coordinates
                                 cosAngle = (toastBoundingRect.x - highLightedAreaDim.x - highLightedAreaDim.width) 
                                     / Math.sqrt(Math.pow(highLightedAreaDim.x + highLightedAreaDim.width - toastBoundingRect.x,2) + Math.pow(highLightedAreaDim.y - toastBoundingRect.y - toastBoundingRect.height, 2))
                                 sinAngle = (highLightedAreaDim.y - toastBoundingRect.y - toastBoundingRect.height) 
                                     / Math.sqrt(Math.pow(highLightedAreaDim.x + highLightedAreaDim.width - toastBoundingRect.x, 2) + Math.pow(highLightedAreaDim.y - toastBoundingRect.y - toastBoundingRect.height, 2))
-                                toX =  highLightedAreaDim.x + highLightedAreaDim.width + marginAroundElements + this.arrowHeadWidth * this.arrowTailWidth * cosAngle;
-                                toY =  highLightedAreaDim.y - marginAroundElements - this.arrowHeadWidth * this.arrowTailWidth * sinAngle;
+                                toX =  highLightedAreaDim.x + highLightedAreaDim.width + marginAroundTarget + this.arrowHeadWidth * this.arrowTailWidth * cosAngle;
+                                toY =  highLightedAreaDim.y - marginAroundTarget - this.arrowHeadWidth * this.arrowTailWidth * sinAngle;
                             }
                         }
                         else{
                             if(isTargetAbove){
                                 //source corner: top right, target corner: bottom left
                                 //step 2a) add margin on the source corner to get the tail's start coordinates
-                                fromX = toastBoundingRect.x + toastBoundingRect.width + marginAroundElements;
-                                fromY = toastBoundingRect.y - marginAroundElements;
+                                fromX = toastBoundingRect.x + toastBoundingRect.width + marginAroundSource;
+                                fromY = toastBoundingRect.y - marginAroundSource;
                                 //step 2b) remove margin on the target corner + the box for the arrow head to get the tail's end coordinates
                                 cosAngle = (highLightedAreaDim.x - toastBoundingRect.x - toastBoundingRect.width) 
                                     / Math.sqrt(Math.pow(highLightedAreaDim.x - toastBoundingRect.x - toastBoundingRect.width, 2) + Math.pow(highLightedAreaDim.y + highLightedAreaDim.height- toastBoundingRect.y, 2))
                                 sinAngle = (toastBoundingRect.y - highLightedAreaDim.y - highLightedAreaDim.height) 
                                     / Math.sqrt(Math.pow(highLightedAreaDim.x - toastBoundingRect.x - toastBoundingRect.width, 2) + Math.pow(highLightedAreaDim.y + highLightedAreaDim.height- toastBoundingRect.y, 2))
-                                toX =  highLightedAreaDim.x - marginAroundElements - this.arrowHeadWidth * this.arrowTailWidth * cosAngle;
-                                toY =  highLightedAreaDim.y + highLightedAreaDim.height + marginAroundElements + this.arrowHeadWidth * this.arrowTailWidth * sinAngle;
+                                toX =  highLightedAreaDim.x - marginAroundTarget - this.arrowHeadWidth * this.arrowTailWidth * cosAngle;
+                                toY =  highLightedAreaDim.y + highLightedAreaDim.height + marginAroundTarget + this.arrowHeadWidth * this.arrowTailWidth * sinAngle;
                             }
                             else{
                                 //source corner: bottom right, target corner: top left
                                 //step 2a) add margin on the source corner to get the tail's start coordinates
+                                fromX = toastBoundingRect.x + toastBoundingRect.width + marginAroundSource;
+                                fromY = toastBoundingRect.y + toastBoundingRect.height + marginAroundSource;
+                                //step 2b) remove margin on the target corner + the box for the arrow head to get the tail's end coordinates
                                 cosAngle = (highLightedAreaDim.x - toastBoundingRect.x - toastBoundingRect.width) 
                                     / Math.sqrt(Math.pow(highLightedAreaDim.x - toastBoundingRect.x - toastBoundingRect.width, 2) + Math.pow(highLightedAreaDim.y - toastBoundingRect.y - toastBoundingRect.height, 2))
                                 sinAngle = (highLightedAreaDim.y - toastBoundingRect.y - toastBoundingRect.height) 
                                     / Math.sqrt(Math.pow(highLightedAreaDim.x - toastBoundingRect.x - toastBoundingRect.width, 2) + Math.pow(highLightedAreaDim.y - toastBoundingRect.y - toastBoundingRect.height, 2))
-                                fromX = toastBoundingRect.x + toastBoundingRect.width + marginAroundElements;
-                                fromY = toastBoundingRect.y + toastBoundingRect.height + marginAroundElements;
-                                //step 2b) remove margin on the target corner + the box for the arrow head to get the tail's end coordinates
-                                toX =  highLightedAreaDim.x - marginAroundElements - this.arrowHeadWidth * this.arrowTailWidth * cosAngle;
-                                toY =  highLightedAreaDim.y - marginAroundElements - this.arrowHeadWidth * this.arrowTailWidth * sinAngle;
+                                toX =  highLightedAreaDim.x - marginAroundTarget - this.arrowHeadWidth * this.arrowTailWidth * cosAngle;
+                                toY =  highLightedAreaDim.y - marginAroundTarget - this.arrowHeadWidth * this.arrowTailWidth * sinAngle;
                             }
                         }
 
@@ -469,8 +469,6 @@ export default Vue.extend({
 }
 
 .tutorial-button {
-    color: white;
-    background-color: transparent;
     position: fixed;
     z-index: 1200;
 } 
@@ -480,14 +478,20 @@ export default Vue.extend({
     border-radius: 5px; 
     left: 15px;
     bottom: 15px;
-    font-size: large;
+    font-size: x-large;
+    color: white;
+    background-color: transparent;
 }
 
 .next-tutorial-button {
-    border: none; 
+    border: solid 1px white; 
+    border-radius: 5px; 
     right: 15px;
     bottom: 8px;
-    font-size: xx-large;
+    font-size: x-large;
+    color: black;
+    background-color: white;
+    
 }
 .next-tutorial-button:focus {
    outline: none;
@@ -504,7 +508,7 @@ export default Vue.extend({
 }
 
 .tutorialToasterBody {
-    font-size: large;
+    font-size: x-large;
     text-align: center;
 }
 
