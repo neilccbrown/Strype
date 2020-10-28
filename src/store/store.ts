@@ -848,6 +848,7 @@ export default new Vuex.Store({
                 messageType
             );
         },
+
         updateNextAvailableId(state) {
             Vue.set( 
                 state,
@@ -2006,15 +2007,16 @@ export default new Vuex.Store({
             commit( "updateNextAvailableId" );
 
             //if we do a paste, update the pasted frames' "isDisabled" property solely based on the parent's property
-            if(payload.newIndex === undefined){
-                this.commit(
-                    "changeDisableFrame",
-                    {
-                        frameId: topLevelCopiedFrames[topLevelCopiedFrames.length-1], 
-                        isDisabling: state.frameObjects[payload.newParentId].isDisabled, 
-                        ignoreEnableFromRoot: true,
-                    }
-                );
+            if(!areWeDuplicating){
+                topLevelCopiedFrames.forEach( (id) =>
+                    this.commit(
+                        "changeDisableFrame",
+                        {
+                            frameId: id, 
+                            isDisabling: state.frameObjects[payload.newParentId].isDisabled, 
+                            ignoreEnableFromRoot: true,
+                        }
+                    ))
             }
 
 
@@ -2107,6 +2109,29 @@ export default new Vuex.Store({
                 "changeDisableFrame",
                 payload
             );
+            
+            //save state changes
+            commit(
+                "saveStateChanges",
+                {
+                    previousState: stateBeforeChanges,
+                }
+            );
+        
+            commit("unselectAllFrames");
+        },
+
+        changeDisableSelection({state, commit}, isDisabling: boolean) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+
+            state.selectedFrames.forEach( (id) =>
+                commit(
+                    "changeDisableFrame",
+                    {
+                        frameId: id,
+                        isDisabling: isDisabling,
+                    }
+                ));
             
             //save state changes
             commit(

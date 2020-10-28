@@ -214,9 +214,10 @@ export default Vue.extend({
                 const disableOrEnableOption = (this.isDisabled) 
                     ?  {name: this.$i18n.t("contextMenu.enable"), method: "enable"}
                     :  {name: this.$i18n.t("contextMenu.disable"), method: "disable"};
+                const enableDisableIndex = this.frameContextMenuOptions.findIndex((entry) => entry.name === this.$i18n.t("contextMenu.enable") || entry.name === this.$i18n.t("contextMenu.disable")  );
                 Vue.set(
                     this.frameContextMenuOptions,
-                    this.frameContextMenuOptions.findIndex((entry) => entry.method === this.$i18n.t("contextMenu.enable") || entry.method === this.$i18n.t("contextMenu.disable")  ) + menuPosOffset,
+                    enableDisableIndex + menuPosOffset,
                     disableOrEnableOption
                 );
 
@@ -306,23 +307,39 @@ export default Vue.extend({
         },
 
         disable(): void {
-            store.dispatch(
-                "changeDisableFrame",
-                {
-                    frameId: this.$props.frameId,
-                    isDisabling: true,
-                }
-            )
+            if(this.selectedStatus === "unselected"){
+                store.dispatch(
+                    "changeDisableFrame",
+                    {
+                        frameId: this.$props.frameId,
+                        isDisabling: true,
+                    }
+                )
+            }
+            else {
+                store.dispatch(
+                    "changeDisableSelection",
+                    true
+                )
+            }
         },
         
         enable(): void {
-            store.dispatch(
-                "changeDisableFrame",
-                {
-                    frameId: this.$props.frameId,
-                    isDisabling: false,
-                }
-            )
+            if(this.selectedStatus === "unselected"){
+                store.dispatch(
+                    "changeDisableFrame",
+                    {
+                        frameId: this.$props.frameId,
+                        isDisabling: false,
+                    }
+                )
+            }
+            else {
+                store.dispatch(
+                    "changeDisableSelection",
+                    false
+                )
+            }
         },
 
     },
