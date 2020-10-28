@@ -1,8 +1,9 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
+import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
@@ -17,7 +18,7 @@ export default new Vuex.Store({
 
         frameObjects: initialState,
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number,
+        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, //doesn't matter it is no match during tutorial as no change can be done
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
@@ -42,6 +43,8 @@ export default new Vuex.Store({
         contextMenuShownId: "",
 
         projectName: "My Project" as string,
+
+        ignoredDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
     },
 
     getters: {
@@ -103,6 +106,9 @@ export default new Vuex.Store({
         },
         getIsCurrentFrameDisabled: (state) => () => {
             return state.frameObjects[state.currentFrame.id].isDisabled;
+        },
+        getMainCodeFrameContainerId: (state) => () => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === MainFramesContainerDefinition.type)[0].id;
         },
         getDraggableGroupById: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.draggableGroup;
@@ -369,6 +375,10 @@ export default new Vuex.Store({
         getProjectName: (state) => () => {
             return state.projectName;
         },
+
+        getIsUndoRedoEmpty: (state) => (action: string) => {
+            return (action === "undo") ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
+        },
     }, 
 
     mutations: {
@@ -378,7 +388,15 @@ export default new Vuex.Store({
                 state,
                 "stateBeforeChanges",
                 (release) ? {} : JSON.parse(JSON.stringify(state))
-            )
+            );
+        },
+
+        toggleTutorialState(state, toggle: boolean) {
+            Vue.set(
+                state,
+                "frameObjects",
+                (toggle) ? tutorialState: initialState
+            );
         },
 
         addFrameObject(state, newFrame: FrameObject) {
@@ -504,14 +522,12 @@ export default new Vuex.Store({
                     payload.event[eventType].element.id
                 );
 
-                if(payload.event[eventType].element.jointParentId === 0) {
-                    // Set the new parentId to the the added frame
-                    Vue.set(
-                        state.frameObjects[payload.event[eventType].element.id],
-                        "parentId",
-                        payload.eventParentId
-                    );
-                }
+                // Set the new parentId/jointParentId to the added frame
+                Vue.set(
+                    state.frameObjects[payload.event[eventType].element.id],
+                    (payload.event[eventType].element.jointParentId === 0) ? "parentId" : "jointParentId" ,
+                    payload.eventParentId
+                );
             }
             else if (eventType === "moved") {
                 // Delete the frameId from the children list 
@@ -1022,10 +1038,24 @@ export default new Vuex.Store({
         setProjectName(state, newName) {
             Vue.set(state, "projectName", newName);
         },
+
+        setIgnoredDragAction(state, value: boolean){
+            Vue.set(state, "ignoredDragAction", value);
+        },
     },
 
     actions: {
         updateFramesOrder({getters, commit, state }, payload: {event: any; eventParentId: number}) {
+            if(state.ignoredDragAction){
+                //if the action should be ignore, just return and reset the flag
+                commit(
+                    "setIgnoredDragAction",
+                    false
+                );
+
+                return;
+            }
+
             //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
             if(payload.event["removed"] == undefined){
                 commit(
@@ -1046,17 +1076,41 @@ export default new Vuex.Store({
             // valid, as the if accepts else there, but the elif cannot go below the else.
             // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
             // succeedingFrame is the next frame (if it exists) above which we are adding
-            const succeedingFrame = state.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];       
+            const succeedingFrame = state.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];   
+            const jointFrameIds = state.frameObjects[payload.eventParentId].jointFrameIds;
             if(eventType !== "removed") {
                 // EXAMPLE: Moving frame `A` above Frame `B`
                 // IF `A` cannot be moved on this position 
                 //                OR
                 // IF `A` is jointFrame and there IS a frame `B` where I am moving `A` at
-                //     on TRUE ==> Check if `B` CANNOT be placed below `A`
+                //     on TRUE ==> Check if `B` CANNOT be placed below `A` / CANNOT be the trailing joint frame
                 //     on FALSE ==> We don't care about this situation
-                if(!getters.getIfPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id) ||
-                    ((isJointFrame && succeedingFrame !== undefined) ? !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below,succeedingFrame) : false)
-                ) {                
+                const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
+                    ? (succeedingFrame !== undefined)
+                        ? !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, succeedingFrame)
+                        : !getters.getIfPositionAllowsFrame(jointFrameIds[jointFrameIds.length - 1], CaretPosition.below, payload.event[eventType].element.id)
+                    : false;
+
+                if((!isJointFrame && !getters.getIfPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
+                    //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
+                    if(eventType === "added"){
+                        commit(
+                            "setIgnoredDragAction",
+                            true
+                        );
+                    }
+
+                    //alert the user about a forbidden move
+                    commit(
+                        "setMessageBanner",
+                        MessageDefinitions.ForbiddenFrameMove
+                    );
+    
+                    //don't leave the message for ever
+                    setTimeout(()=>commit(
+                        "setMessageBanner",
+                        MessageDefinitions.NoMessage
+                    ), 3000);         
                     return;
                 }
             }
@@ -1266,14 +1320,13 @@ export default new Vuex.Store({
             }
 
             const newFrame = {
+                ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: payload,
                 id: state.nextAvailableId++,
                 parentId: isJointFrame ? 0 : parentId, 
-                childrenIds: [],
                 jointParentId: isJointFrame
                     ? (state.frameObjects[state.currentFrame.id].jointParentId > 0) ? state.frameObjects[state.currentFrame.id].jointParentId : state.currentFrame.id
                     : 0,
-                jointFrameIds: [],
                 contentDict:
                     //find each editable slot and create an empty & unfocused entry for it
                     //optional labels are not visible by default, not optional labels are visible by default
@@ -1284,7 +1337,6 @@ export default new Vuex.Store({
                         }),
                         {}
                     ),
-                error: "",
             };
 
             commit(
@@ -1602,7 +1654,7 @@ export default new Vuex.Store({
             commit("setMessageBanner", message);
         },
 
-        setStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
+        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorrDetailMessage = payload.errorReason ?? "unknow reason";
             let isVersionCorrect = false;
@@ -1657,28 +1709,28 @@ export default new Vuex.Store({
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
                     const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
-                    //note: the following conditional test is only for TS... the message should always be found   
-                    if(!confirm((typeof confirmMsg === "string") ? confirmMsg : "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?")){
-                        return;
-                    }
+                    Vue.$confirm({
+                        message: confirmMsg,
+                        button: {
+                            yes: i18n.t("buttonLabel.yes"),
+                            no: i18n.t("buttonLabel.no"),
+                        },
+                        callback: (confirm: boolean) => {
+                            if(confirm){
+                                dispatch(
+                                    "doSetStateFromJSONStr",
+                                    payload
+                                );                                
+                            }                        
+                        },
+                    })
                 }
-
-                commit(
-                    "updateState",
-                    JSON.parse(payload.stateJSONStr)
-                )
-
-                commit(
-                    "setMessageBanner",
-                    MessageDefinitions.UploadEditorFileSuccess
-                );
-
-                //don't leave the message for ever
-                setTimeout(()=>commit(
-                    "setMessageBanner",
-                    MessageDefinitions.NoMessage
-                ), 5000);     
-                
+                else{
+                    dispatch(
+                        "doSetStateFromJSONStr",
+                        payload
+                    );   
+                }                
             }
             else{
                 const message = MessageDefinitions.UploadEditorFileError;
@@ -1690,6 +1742,24 @@ export default new Vuex.Store({
                     message
                 );
             }
+        },
+
+        doSetStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
+            commit(
+                "updateState",
+                JSON.parse(payload.stateJSONStr)
+            )
+
+            commit(
+                "setMessageBanner",
+                MessageDefinitions.UploadEditorFileSuccess
+            );
+
+            //don't leave the message for ever
+            setTimeout(()=>commit(
+                "setMessageBanner",
+                MessageDefinitions.NoMessage
+            ), 5000);  
         },
 
         // This method can be used to copy a frame to a position.

@@ -218,7 +218,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
 
 export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: ContainerTypesIdentifiers.funcDefsContainer,
+    type: ContainerTypesIdentifiers.framesMainContainer,
     labels: [
         { label: "Your code:", slot: false, defaultText: ""},
     ],
@@ -441,6 +441,20 @@ export const Definitions = {
     CommentDefinition,
 };
 
+
+export const EmptyFrameObject: FrameObject = {
+    frameType: DefaultFramesDefinition,
+    id: -101, //default non-meaningful value - this will be overriden when frames are created
+    isDisabled: false,
+    parentId: -101, //default non-meaningful value - this will be overriden when frames are created
+    childrenIds: [], //this contains the IDs of the children frames
+    jointParentId: -101, //default non-meaningful value - this will be overriden when frames are created
+    jointFrameIds: [], //this contains the IDs of the joint frames
+    caretVisibility: CaretPosition.none,
+    contentDict: { },
+    error: "",
+}
+
 /**
  *  Types for the messages banner
  **/
@@ -497,6 +511,7 @@ export const MessageTypes = {
     uploadEditorFileError: "uploadEditorFileError",
     uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
     uploadEditorFileSucces: "uploadEditorFileSuccess",
+    forbiddenFrameMove: "forbiddenFrameMove",
 }
 
 //empty message
@@ -591,6 +606,13 @@ const UploadEditorFileSuccess: MessageDefinition = {
     path: imagePaths.empty,
 };
 
+const ForbiddenFrameMove: MessageDefinition = {
+    type: MessageTypes.forbiddenFrameMove,
+    message: "messageBannerMessage.forbiddenFrameMove",
+    buttons: [],
+    path: imagePaths.empty,
+}
+
 export const MessageDefinitions = {
     NoMessage,
     LargeDeletion,
@@ -602,6 +624,7 @@ export const MessageDefinitions = {
     UploadEditorFileError,
     UploadEditorFileNotSupported,
     UploadEditorFileSuccess,
+    ForbiddenFrameMove,
 };
 
 //WebUSB listener
@@ -635,4 +658,38 @@ export interface ChangeFramePropInfos {
     newBoolPropVal?: boolean;
     newNumberPropVal?: number;
     newStringPropVal?: string;
+}
+
+// Tutorial
+export interface TutorialHightightedComponentDimension{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+export interface TutorialMargins {
+    //All margins (extra space around the highlighted component) are optional, and they are expressing pixels
+    //We use this interface for custom position of the messages too, and then they are expressing percentages
+    left?: number;
+    top?: number;
+    bottom?: number;
+    right?: number;
+}
+
+export interface TutorialArrowPos {
+    //Arrow positioning expressing percentages
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number; 
+}
+
+export interface TutorialStep {
+    hightLighedComponentIds: string[];
+    highLightedAreaExtraMargins?: TutorialMargins[]; //pixel values
+    explanationMessage: string;
+    messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
+    messageCustomPos?: TutorialMargins; //percentage values
+    showArrows: boolean;
 }

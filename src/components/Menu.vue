@@ -2,7 +2,7 @@
     <div>
         <div>
             <button 
-                id="showHideMenu" 
+                v-bind:id="menuId" 
                 href="#" 
                 tabindex="0" 
                 @click="toggleMenuOnOff"
@@ -29,8 +29,7 @@
                         id="name-input-field"
                         v-bind:style="inputTextStyle"
                         ref="nameinput"
-                    />
-                    
+                    />                    
                     <i v-if="hover" class="fa fa-pencil-alt"></i>
                 </template>
                 <table>
@@ -72,6 +71,28 @@
                 class="editor-file-input"
             /> 
         </div>
+        <div class="undoredo-div">
+            <div class="menu-icon-div">
+                <input 
+                    type="image" 
+                    :src="undoImagePath"
+                    :disabled="isUndoDisabled"
+                    @click="performUndoRedo(true)"
+                    class="undoredo-img"
+                    :title="this.$i18n.t('contextMenu.undo')"
+                />
+            </div>
+            <div class="menu-icon-div">   
+                <input 
+                    type="image" 
+                    :src="redoImagePath"
+                    :disabled="isRedoDisabled"
+                    @click="performUndoRedo(false)"
+                    class="undoredo-img"
+                    :title="this.$i18n.t('contextMenu.redo')"
+                />
+            </div>
+        </div>       
     </div>
 </template>
 
@@ -83,7 +104,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { fileImportSupportedFormats } from "@/helpers/editor";
+import { fileImportSupportedFormats, getEditorMenuEltId } from "@/helpers/editor";
 import $ from "jquery";
 
 //////////////////////
@@ -92,7 +113,6 @@ import $ from "jquery";
 export default Vue.extend({
     name: "Menu",
     store,
-
 
     data() {
         return {
@@ -110,11 +130,21 @@ export default Vue.extend({
         this.isComponentLoaded  = true;
     },
 
-
-
     computed: {
-        fileImagePath(): string {
-            return require("@/assets/images/file.png");
+        menuId(): string {
+            return getEditorMenuEltId();
+        },
+        isUndoDisabled(): boolean {
+            return store.getters.getIsUndoRedoEmpty("undo");
+        },
+        isRedoDisabled(): boolean {
+            return store.getters.getIsUndoRedoEmpty("redo");
+        },
+        undoImagePath(): string {
+            return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.svg") : require("@/assets/images/undo.svg");
+        },
+        redoImagePath(): string {
+            return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.svg") : require("@/assets/images/redo.svg");
         },
         editorFileMenuOption(): {}[] {
             return  [{name: "import", method: "importFile"}, {name: "export", method: "exportFile"}];
@@ -144,10 +174,18 @@ export default Vue.extend({
         importFile(): void {
             //users should be warned about current editor's content loss
             const confirmMsg = this.$i18n.t("appMessage.editorConfirmChangeCode");
-            //note: the following conditional test is only for TS... the message should always be found
-            if (confirm((typeof confirmMsg === "string") ? confirmMsg : "Current editor's content will be permanently lost.\nDo you want to continue?")) {
-                (this.$refs.importFileInput as HTMLInputElement).click();    
-            }            
+            Vue.$confirm({
+                message: confirmMsg,
+                button: {
+                    yes: this.$i18n.t("buttonLabel.yes"),
+                    no: this.$i18n.t("buttonLabel.no"),
+                },
+                callback: (confirm: boolean) => {
+                    if(confirm){
+                        (this.$refs.importFileInput as HTMLInputElement).click();
+                    }                        
+                },
+            });    
         },
         
         selectedFile() {
@@ -255,12 +293,25 @@ export default Vue.extend({
             // input.blur() as this propagates and closes the whole menu.
             $("#menu").focus();
         },
+
+        performUndoRedo(isUndo: boolean): void {
+            store.dispatch(
+                "undoRedo",
+                isUndo
+            );
+        },
         
     },
 });
 </script>
 
 <style lang="scss">
+
+.menu-icon-div {
+    width: 100%;
+    height: 24px;
+    margin-bottom: 10px;
+}
 
 .file-menu-img {
     outline: none;
@@ -305,6 +356,17 @@ td:hover {
     min-width: 45px;
     color: #6c757d;
     border-radius: 50%;
+}
+
+.undoredo-div {
+    margin-top: 20px;
+}
+
+.undoredo-img {
+    width: 24px;
+    height: 24px;
+    display: block;
+    margin: auto;
 }
 
 .editableslot-placeholder {

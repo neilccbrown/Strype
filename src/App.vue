@@ -1,6 +1,7 @@
 <template>
     <div id="app" class="container-fluid">
         <vue-confirm-dialog />
+        <tutorial/>
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
@@ -29,15 +30,18 @@
                         id="menu-bar" 
                         class="col-auto"
                     />
-                    <div class="col" >
-                        <FrameContainer
-                            v-for="container in containerFrames"
-                            v-bind:key="container.frameType.type + '-id:' + container.id"
-                            v-bind:frameId="container.id"
-                            v-bind:containerLabel="container.frameType.labels[0].label"
-                            v-bind:caretVisibility="container.caretVisibility"
-                            v-bind:frameType="container.frameType"
-                        />
+                    <div class="col">
+                        <div class="editor-code-div" >
+                            <FrameContainer
+                                v-for="container in containerFrames"
+                                v-bind:key="container.frameType.type + '-id:' + container.id"
+                                v-bind:id="getFrameContainerEltId(container.id)"
+                                v-bind:frameId="container.id"
+                                v-bind:containerLabel="container.frameType.labels[0].label"
+                                v-bind:caretVisibility="container.caretVisibility"
+                                v-bind:frameType="container.frameType"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -54,9 +58,11 @@ import Vue from "vue";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
-import Menu from "@/components/Menu.vue"
+import Menu from "@/components/Menu.vue";
+import Tutorial from "@/components/Tutorial.vue";
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
+import { getFrameContainerEltId } from "./helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -70,6 +76,7 @@ export default Vue.extend({
         FrameContainer,
         Commands,
         Menu,
+        Tutorial,
     },
 
     data() {
@@ -92,6 +99,14 @@ export default Vue.extend({
         },
     },
 
+    created() {
+        window.addEventListener("beforeunload", function(event) {
+            // Browsers won't display a customised message, and can detect when to prompt the user,
+            // so we don't need to do anything special.
+            event.returnValue = true;
+        })
+    },
+
     methods: {
         applyShowAppProgress(event: AppEvent) {
             //if the progress bar is shown, we block the width of the application to the viewport
@@ -106,6 +121,10 @@ export default Vue.extend({
             (document.getElementsByTagName("body")[0] as HTMLBodyElement).style.height = heightVal;
             (document.getElementById("app") as HTMLDivElement).style.height = heightVal;
             (document.getElementById("app") as HTMLDivElement).style.overflow = overflowVal;
+        },
+
+        getFrameContainerEltId(frameId: number){
+            return getFrameContainerEltId(frameId);
         },
 
         toggleEdition(): void {
@@ -126,7 +145,7 @@ export default Vue.extend({
 
 html,body {
     margin: 0px;
-    height: 100%;
+    height: 100vh;
     background-color: #bbc6b6 !important;
 }
 
@@ -152,13 +171,24 @@ html,body {
     -moz-osx-font-smoothing: grayscale;
     color: #2c3e50;
     box-sizing: border-box;
+    height: 100vh;
+    max-height: 100vh;
+    overflow:hidden;
+}
 
+#editor {
+    height: 100vh;
+    max-height: 100vh;
+}
+
+.editor-code-div {
+    overflow-y: auto;
+    height: 100vh;
+    max-height: 100vh;
 }
 
 .top {
     text-align: center;
-    margin-top: 5px;
-    margin-bottom: 5px;
     margin-left:10px;
 }
 </style>
