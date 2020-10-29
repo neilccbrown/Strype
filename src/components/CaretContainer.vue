@@ -19,7 +19,7 @@
             v-bind:id="caretId"
             v-bind:isBlurred="overCaret"
             v-bind:isInvisible="isInvisible"
-            v-blur="isFrameDisabled"
+            v-blur="isCaretBlurred()"
         />
     </div>
 </template>
@@ -172,6 +172,11 @@ export default Vue.extend({
                     caretPosition: this.$props.caretAssignedPosition,
                 }
             );
+        },
+
+        isCaretBlurred(): boolean {
+            //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
+            return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !store.getters.canAddFrameBelowDisabled(this.frameId) : true);
         },
     },
 });

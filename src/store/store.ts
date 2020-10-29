@@ -104,8 +104,20 @@ export default new Vuex.Store({
         getCurrentFrameObject: (state) => () => {
             return state.frameObjects[state.currentFrame.id];
         },
-        getIsCurrentFrameDisabled: (state) => () => {
-            return state.frameObjects[state.currentFrame.id].isDisabled;
+        canAddFrameBelowDisabled: (state) => (frameId: number) => {
+            //in this method, we check if frames can be added below the specified (disabled) frame.
+            if(state.frameObjects[frameId].jointParentId > 0 ){
+                //for joint frames we check that it is the last (commands are treated in addFrameCommands)
+                const jointFrameIds = state.frameObjects[state.frameObjects[frameId].jointParentId].jointFrameIds;
+                return (jointFrameIds.indexOf(frameId) == jointFrameIds.length - 1);
+            }
+            else{
+                //for other frames, we just check the parent's property, except for joint root frames if they have children: they can't have more children
+                if(state.frameObjects[frameId].jointFrameIds.length > 0){
+                    return false;
+                }
+                return !state.frameObjects[state.frameObjects[frameId].parentId].isDisabled;
+            }
         },
         getMainCodeFrameContainerId: (state) => () => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === MainFramesContainerDefinition.type)[0].id;
@@ -164,75 +176,62 @@ export default new Vuex.Store({
             if(jointTypes.length > 0){
                 const rootJointFrame = (currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId] : currentFrame;
 
-                //Remove "finally" in joint frames allowed after "else" if we are in anything else than in a "try"
-                if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
-                    jointTypes.splice(
-                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                        1
-                    );
+                //after a joint frame (including the root frame) which is disabled, no joint frame can be added
+                if(currentFrame.isDisabled){
+                    jointTypes = [];                    
                 }
-
-                //remove joint frames that can ony be included once if they already are in the current joint frames structure
-                const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
-                uniqueJointFrameTypes.forEach((frameDef) => {
-                    if(jointTypes.includes(frameDef.type) &&
-                        rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
+                else{
+                    //Remove "finally" in joint frames allowed after "else" if we are in anything else than in a "try"
+                    if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
                         jointTypes.splice(
-                            jointTypes.indexOf(frameDef.type),
+                            jointTypes.indexOf(Definitions.FinallyDefinition.type),
                             1
                         );
                     }
-                });
-                
-                //ensure the intermediate following joint frames orders are respected: if > elseif > else and try > except > else > finally
-                if(rootJointFrame.jointFrameIds.length > 0) {
-                    const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
-                        || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
-                  
-                    //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
-                    if(isCurrentFrameIntermediateJointFrame ) {
-                        forbiddenTypes = Object.values(AllFrameTypesIdentifier);
-                    }
-                  
-                    //workout what types can be left for if and try joint frames structures.
-                    if(rootJointFrame.frameType.type === Definitions.IfDefinition.type){  
-                        //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
-                        if(isCurrentFrameIntermediateJointFrame) {
-                            jointTypes = jointTypes.filter((type) => type !== Definitions.ElseDefinition.type);
-                        }
-                    }
-                    else if (rootJointFrame.frameType.type === Definitions.TryDefinition.type){
-                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.FinallyDefinition.type) !== undefined);
-                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ElseDefinition.type) !== undefined);
-                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ExceptDefinition.type) !== undefined);
 
-                        //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
-                        if(currentFrame.frameType.type === Definitions.TryDefinition.type){
-                            if(hasElse && !hasFinally){
-                                jointTypes.splice(
-                                    jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                                    1
-                                );
-                            }
-                            if(hasExcept){
-                                uniqueJointFrameTypes.forEach((frameType) => {
-                                    if(jointTypes.includes(frameType.type)){
-                                        jointTypes.splice(
-                                            jointTypes.indexOf(frameType.type),
-                                            1
-                                        );
-                                    }
-                                });
+                    //remove joint frames that can ony be included once if they already are in the current joint frames structure
+                    const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
+                    uniqueJointFrameTypes.forEach((frameDef) => {
+                        if(jointTypes.includes(frameDef.type) &&
+                            rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
+                            jointTypes.splice(
+                                jointTypes.indexOf(frameDef.type),
+                                1
+                            );
+                        }
+                    });
+                    
+                    //ensure the intermediate following joint frames orders are respected: if > elseif > else and try > except > else > finally
+                    if(rootJointFrame.jointFrameIds.length > 0) {
+                        const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
+                            || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
+                    
+                        //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
+                        if(isCurrentFrameIntermediateJointFrame ) {
+                            forbiddenTypes = Object.values(AllFrameTypesIdentifier);
+                        }
+                    
+                        //workout what types can be left for if and try joint frames structures.
+                        if(rootJointFrame.frameType.type === Definitions.IfDefinition.type){  
+                            //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
+                            if(isCurrentFrameIntermediateJointFrame) {
+                                jointTypes = jointTypes.filter((type) => type !== Definitions.ElseDefinition.type);
                             }
                         }
-                        else if( currentFrame.frameType.type === Definitions.ExceptDefinition.type){
-                            //if this isn't the last expect in the joint frames structure, we need to know what is following it.
-                            const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
-                            if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
-                                //This "except" is not the last joint frame: we check if the following joint frame is "except"
-                                //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
-                                //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
-                                if(state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType.type === Definitions.ExceptDefinition.type){
+                        else if (rootJointFrame.frameType.type === Definitions.TryDefinition.type){
+                            const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.FinallyDefinition.type) !== undefined);
+                            const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ElseDefinition.type) !== undefined);
+                            const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ExceptDefinition.type) !== undefined);
+
+                            //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
+                            if(currentFrame.frameType.type === Definitions.TryDefinition.type){
+                                if(hasElse && !hasFinally){
+                                    jointTypes.splice(
+                                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
+                                        1
+                                    );
+                                }
+                                if(hasExcept){
                                     uniqueJointFrameTypes.forEach((frameType) => {
                                         if(jointTypes.includes(frameType.type)){
                                             jointTypes.splice(
@@ -240,15 +239,34 @@ export default new Vuex.Store({
                                                 1
                                             );
                                         }
-                                    }); 
+                                    });
                                 }
-                                //And if this "except" frame is followed by an "else" but no "finally" is present, we remove "finally"
-                                //to avoid "... except > finally > else"
-                                else if(hasElse && !hasFinally){
-                                    jointTypes.splice(
-                                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                                        1
-                                    );                                   
+                            }
+                            else if( currentFrame.frameType.type === Definitions.ExceptDefinition.type){
+                                //if this isn't the last expect in the joint frames structure, we need to know what is following it.
+                                const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
+                                if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
+                                    //This "except" is not the last joint frame: we check if the following joint frame is "except"
+                                    //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
+                                    //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
+                                    if(state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType.type === Definitions.ExceptDefinition.type){
+                                        uniqueJointFrameTypes.forEach((frameType) => {
+                                            if(jointTypes.includes(frameType.type)){
+                                                jointTypes.splice(
+                                                    jointTypes.indexOf(frameType.type),
+                                                    1
+                                                );
+                                            }
+                                        }); 
+                                    }
+                                    //And if this "except" frame is followed by an "else" but no "finally" is present, we remove "finally"
+                                    //to avoid "... except > finally > else"
+                                    else if(hasElse && !hasFinally){
+                                        jointTypes.splice(
+                                            jointTypes.indexOf(Definitions.FinallyDefinition.type),
+                                            1
+                                        );                                   
+                                    }
                                 }
                             }
                         }
