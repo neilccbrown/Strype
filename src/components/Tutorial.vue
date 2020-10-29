@@ -102,11 +102,7 @@ export default Vue.extend({
     mounted() {
         //set a listener on window resized to keep accurate values of the masks and the message positioning
         if(this.showTutorial){
-            window.addEventListener("resize", () => {
-                this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
-                this.$bvToast.hide();
-                this.showToast();
-            });
+            window.addEventListener("resize", this.redrawStep);
 
             //set a listener on keyup here to listen for arrow events. This listener will be removed when existing the tutorial
             window.addEventListener("keydown", this.onKeyPress);
@@ -297,9 +293,7 @@ export default Vue.extend({
             //update the tutorial step
             this.currentStepIndex = stepIndex;
             this.currentStep = this.steps[stepIndex];
-            this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
-            this.$bvToast.hide("tutorialToast")
-            this.showToast();
+            this.redrawStep();
 
             //event on the toast show to get the accurate position/dimension of the current toast
             this.$root.$on("bv::toast:shown", () => {
@@ -310,6 +304,12 @@ export default Vue.extend({
             //and change the slide, so it results in bad behaviour. To avoid that, we always set
             //the focus on the "next" button after a slide has changed.
             document.getElementById("tutorialNextButton")?.focus()
+        },
+
+        redrawStep(){
+            this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
+            this.$bvToast.hide("tutorialToast");
+            this.showToast();
         },
 
         setStepArrows(){
@@ -425,6 +425,9 @@ export default Vue.extend({
 
         exit(): void {
             this.showTutorial = false;
+            
+            //remove the resize listen
+            window.removeEventListener("resize", this.redrawStep);
             
             //remove the key listener
             window.removeEventListener("keydown", this.onKeyPress);

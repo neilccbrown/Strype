@@ -4,6 +4,9 @@ import { TPyParser, ErrorInfo } from "tigerpython-parser";
 
 const INDENT = "    ";
 
+const DISABLEDFRAMES_FLAG =  "\"\"\"";
+let isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
+let disabledBlockIndent = "";
 
 export default class Parser {
 
@@ -68,6 +71,16 @@ export default class Parser {
         //if the current frame is a container, we don't parse it as such
         //but parse directly its children (frames that it contains)
         for (const frame of codeUnits) {
+            //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
+            let disabledFrameBlockFlag = "";
+            if(frame.isDisabled ? !isDisabledFramesTriggered : isDisabledFramesTriggered) {
+                isDisabledFramesTriggered = !isDisabledFramesTriggered;
+                if(frame.isDisabled) {
+                    disabledBlockIndent = indent;
+                }
+                disabledFrameBlockFlag = disabledBlockIndent + DISABLEDFRAMES_FLAG +"\n";
+            }
+
             lineCode = frame.frameType.allowChildren ?
                 (Object.values(FrameContainersDefinitions).includes(frame.frameType)) ? 
                     this.parseFrames(store.getters.getFramesForParentId(frame.id)) :
@@ -75,7 +88,7 @@ export default class Parser {
                 : 
                 this.parseStatement(frame,indent);
 
-            output += lineCode;
+            output += disabledFrameBlockFlag + lineCode;
         }
 
         return output;
