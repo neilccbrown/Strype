@@ -24,7 +24,7 @@ export default class Parser {
                     store.getters.getFramesForParentId(block.id),
                     indent + INDENT
                 ) :
-                this.parseStatement({} as FrameObject,indent)) // empty bodies are added as empty lines in the code
+                "") // empty bodies are added as empty lines in the code
             + 
             this.parseFrames(
                 store.getters.getJointFramesForFrameId(block.id, "all"), 
@@ -55,9 +55,10 @@ export default class Parser {
             }
             currSlotIndex++;
         });
+        
         output += "\n";
     
-        this.framePositionMap[this.line] = {frameId: statement.id , slotStarts: positions};
+        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions};
         
         this.line += 1;
 
@@ -99,9 +100,17 @@ export default class Parser {
 
         console.time();
         output += this.parseFrames(store.getters.getFramesForParentId(0));
+        // We could have disabled frame(s) just at the end of the code. 
+        // Since no further frame would be used in the parse to close the ongoing comment block we need to check
+        // if there are disabled frames being rendered when reaching the end of the editor's code.
+        let disabledFrameBlockFlag = "";
+        if(isDisabledFramesTriggered) {
+            isDisabledFramesTriggered = !isDisabledFramesTriggered;
+            disabledFrameBlockFlag = disabledBlockIndent + DISABLEDFRAMES_FLAG ;
+        }
         console.timeEnd();
 
-        return output;
+        return output + disabledFrameBlockFlag;
     }
 
     public getErrors(inputCode = ""): ErrorInfo[] {
