@@ -325,11 +325,15 @@ export default new Vuex.Store({
             return state.currentMessage;
         },
         // Automatically checks returns Parent OR JointParent
-        getParentOfFrame: (state) => (frameId: number) => {
+        getParentOrJointParentOfFrame: (state) => (frameId: number) => {
             const isJointFrame = state.frameObjects[frameId].frameType.isJointFrame;
             return (isJointFrame)? 
                 state.frameObjects[frameId].jointParentId:
                 state.frameObjects[frameId].parentId;
+        },
+        // It returns the parent in which the joint parent sits
+        getGrandParentOfJointFrame: (state) => (frameId: number) => {
+            return state.frameObjects[state.frameObjects[frameId].jointParentId].parentId;
         },
         // Automatically checks returns index in Parent OR JointParent
         getIndexInParent: (state) => (frameId: number) => {

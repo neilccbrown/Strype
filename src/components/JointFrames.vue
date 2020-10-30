@@ -15,6 +15,7 @@
                 v-bind:isDisabled="frame.isDisabled || isDisabled"
                 v-bind:frameType="frame.frameType"
                 v-bind:isJointFrame="true"
+                v-bind:isParentSelected="isParentSelected"
                 v-bind:allowChildren="frame.frameType.allowChildren"
                 v-bind:caretVisibility="frame.caretVisibility"
                 v-bind:class="{frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
@@ -52,6 +53,7 @@ export default Vue.extend({
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
         jointParentId: Number, // Unique Indentifier for each Frame
         isDisabled: Boolean,
+        isParentSelected: Boolean,
     },
 
     computed: {

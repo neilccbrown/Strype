@@ -49,6 +49,7 @@
                 v-if="allowsJointChildren"
                 v-bind:jointParentId="frameId"
                 v-bind:isDisabled="isDisabled"
+                v-bind:isParentSelected="isPartOfSelection"
             />
         </div>
         <b-popover
@@ -105,6 +106,7 @@ export default Vue.extend({
         isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
         caretVisibility: String,
         allowChildren: Boolean,
+        isParentSelected: Boolean,
     },
 
     data: function () {
@@ -138,7 +140,7 @@ export default Vue.extend({
                         (this.frameType as FramesDefinitions).colour
                     } !important`,
                     "padding-left": "2px",
-                    "color": (this.frameType === Definitions.CommentDefinition) ? "#97971E !important" : "#000 !important",
+                    "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
         },
 
@@ -171,10 +173,13 @@ export default Vue.extend({
             return store.getters.getSelectionPosition(this.$props.frameId);
         },
 
-        
-
         isStatementOrJointFrame(): boolean {
             return this.$props.frameType.isJointFrame || !this.$props.frameType.allowChildren;
+        },
+
+        // Joint frames can also be "selected" if their parent is selected
+        isPartOfSelection(): boolean {
+            return (this.selectedStatus !== "unselected") || (this.$props.isParentSelected);
         },
     },
 
@@ -194,7 +199,7 @@ export default Vue.extend({
                 const targetFrameJointFrames = store.getters.getJointFramesForFrameId(this.frameId, "all");
                 const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
                 // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
-                const canDuplicate = (this.selectedStatus !== "unselected") ?
+                const canDuplicate = (this.isPartOfSelection) ?
                     store.getters.getIfPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
                     store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
                 if(!canDuplicate){
@@ -272,73 +277,74 @@ export default Vue.extend({
 
 
         duplicate(): void {
-            if(this.selectedStatus === "unselected"){
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "copySelectedFramesToPosition",
+                    {
+                        newParentId: (this.isJointFrame)? store.getters.getGrandParentOfJointFrame(this.frameId): store.getters.getParentOrJointParentOfFrame(this.frameId),
+                    }
+                );
+                
+            }
+            else {
                 store.dispatch(
                     "copyFrameToPosition",
                     {
                         frameId : this.$props.frameId,
-                        newParentId: store.getters.getParentOfFrame(this.frameId),
+                        newParentId: store.getters.getParentOrJointParentOfFrame(this.frameId),
                         newIndex: store.getters.getIndexInParent(this.frameId)+1,
-                    }
-                );
-            }
-            else {
-                store.dispatch(
-                    "copySelectedFramesToPosition",
-                    {
-                        newParentId: store.getters.getParentOfFrame(this.frameId),
                     }
                 );
             }
         },
 
         copy(): void {
-            if(this.selectedStatus === "unselected"){
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "copySelection"
+                ); 
+            }
+            else{
                 store.dispatch(
                     "copyFrame",
                     this.$props.frameId
                 );
             }
-            else{
-                store.dispatch(
-                    "copySelection"
-                );
-            }
         },
 
         disable(): void {
-            if(this.selectedStatus === "unselected"){
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "changeDisableSelection",
+                    true
+                );
+            }
+            else {
                 store.dispatch(
                     "changeDisableFrame",
                     {
                         frameId: this.$props.frameId,
                         isDisabling: true,
                     }
-                )
-            }
-            else {
-                store.dispatch(
-                    "changeDisableSelection",
-                    true
-                )
+                );
             }
         },
         
         enable(): void {
-            if(this.selectedStatus === "unselected"){
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "changeDisableSelection",
+                    false
+                );
+            }
+            else {
                 store.dispatch(
                     "changeDisableFrame",
                     {
                         frameId: this.$props.frameId,
                         isDisabling: false,
                     }
-                )
-            }
-            else {
-                store.dispatch(
-                    "changeDisableSelection",
-                    false
-                )
+                );
             }
         },
 
