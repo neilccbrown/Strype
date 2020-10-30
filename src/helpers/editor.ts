@@ -39,4 +39,16 @@ export function getEditorSpecialButtonsContainerEltId() {
     return "editorSpecialButtonsContainer"
 }
 
+export function getMenuLeftPaneContainerId(){
+    return "menu-bar";
+}
+
+export function getEditorMiddlePaneContainerId() {
+    return "editorCodeDiv";
+}
+
+export function getCommandsRightPaneContainerId() {
+    return "commandsContainerDiv";
+}
+
 export const fileImportSupportedFormats: string[] = ["wpy"];

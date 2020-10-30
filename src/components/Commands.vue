@@ -54,11 +54,12 @@ import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
-import { getEditorCommandsContainerEltId, getEditorSpecialButtonsContainerEltId, getTutorialEltId } from "@/helpers/editor"
+import { getEditorCommandsContainerEltId, getEditorSpecialButtonsContainerEltId, getTutorialEltId, getEditorMiddlePaneContainerId, getMenuLeftPaneContainerId, getCommandsRightPaneContainerId} from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
+import $ from "jquery";
 
 export default Vue.extend({
     name: "Commands",
@@ -219,7 +220,27 @@ export default Vue.extend({
         );
     },
 
+    mounted() {
+        //scroll events on the left pane (menu) and right pane (commands) are forwarded to the editor
+        document.getElementById(getMenuLeftPaneContainerId())?.addEventListener(
+            "wheel",
+            this.handleAppScroll,
+            false
+        );
+
+        document.getElementById(getCommandsRightPaneContainerId())?.addEventListener(
+            "wheel",
+            this.handleAppScroll,
+            false
+        );
+    },
+
     methods: {
+        handleAppScroll(event: MouseWheelEvent) {
+            const currentScroll = $("#"+getEditorMiddlePaneContainerId()).scrollTop();
+            $("#"+getEditorMiddlePaneContainerId()).scrollTop((currentScroll??0) + (event as MouseWheelEvent).deltaY/2);
+        },
+
         flash() {
             if (navigator.usb) {
                 const webUSBListener: WebUSBListener = {
