@@ -204,6 +204,7 @@ export default Vue.extend({
                                 "deleteCurrentFrame",
                                 event.key
                             );
+                            event.stopImmediatePropagation();
                         }
                         //add the frame in the editor if allowed
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
