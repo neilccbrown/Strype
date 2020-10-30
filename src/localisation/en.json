@@ -32,6 +32,7 @@
     "dataNotObject" : "the data doesn't describe an object",
     "emptyEditableSlot": "Input slot cannot be empty",
     "emptyFrameBody": "Body cannot be empty",
+    "noEnableFrameFrameBody": "Body needs to have at least one enabled frame",
     "errorTitle": "Error!"
   },
   "appMessage": {

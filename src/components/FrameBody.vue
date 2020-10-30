@@ -36,7 +36,7 @@
           v-bind:target="id"
           v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
-          v-bind:content="this.$i18n.t('errorMessage.emptyFrameBody')"
+          v-bind:content="(this.hasDisabledFrames) ? this.$i18n.t('errorMessage.noEnableFrameFrameBody') : this.$i18n.t('errorMessage.emptyFrameBody')"
         ></b-popover>
     </div>
 </template>
@@ -50,7 +50,7 @@ import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
-import { CaretPosition, DraggableGroupTypes } from "@/types/types";
+import { CaretPosition, DraggableGroupTypes, FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -73,13 +73,17 @@ export default Vue.extend({
 
     computed: {
         frames: {
-            get(): string {
+            get(): FrameObject[] {
                 // gets the frames objects which are nested in here (i.e. have this frameID as parent)
                 return store.getters.getFramesForParentId(this.$props.frameId);
             },
             set() {
                 return;
             },    
+        },
+
+        hasDisabledFrames(): boolean {
+            return (this.frames).filter((frame) => frame.isDisabled).length > 0;
         },
 
         draggableGroup(): DraggableGroupTypes {
@@ -101,7 +105,8 @@ export default Vue.extend({
 
         empty(): boolean {
             let empty = false;
-            if(!this.isDisabled && this.frames.length < 1 && this.caretVisibility !== this.caretPosition.body) {
+            //check if there are at least 1 frame, NOT disabled
+            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled).length < 1 && this.caretVisibility !== this.caretPosition.body) {
                 empty = true;
                 store.commit("addPreCompileErrors",this.id);                
             }
