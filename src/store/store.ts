@@ -18,7 +18,7 @@ export default new Vuex.Store({
 
         frameObjects: initialState,
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, //doesn't matter it is no match during tutorial as no change can be done
+        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
