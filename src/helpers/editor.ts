@@ -3,40 +3,40 @@ import { CaretPosition } from "@/types/types";
 
 export const undoMaxSteps = 10;
 
-export function getEditableSlotId(frameId: number, slotIndex: number): string  {
+export function getEditableSlotUIID(frameId: number, slotIndex: number): string  {
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
 }
 
-export function getFrameContainerEltId(frameIndex: number): string {
+export function getFrameContainerUIID(frameIndex: number): string {
     return "FrameContainer_" + frameIndex;
 }
 
-export function getEditorCodeFrameContainerEltId(): string {
-    return getFrameContainerEltId(store.getters.getMainCodeFrameContainerId());
+export function getCodeEditorUIID(): string {
+    return getFrameContainerUIID(store.getters.getMainCodeFrameContainerId());
 }
 
-export function getCaretEltId(caretAssignedPosition: string, frameId: number): string{
+export function getCaretUIID(caretAssignedPosition: string, frameId: number): string{
     return "caret_"+caretAssignedPosition+"_"+frameId;
 }
 
-export function getEditorCodeFrameContainerBodyCaretEltId(): string{
-    return getCaretEltId(CaretPosition.body, store.getters.getMainCodeFrameContainerId());
+export function getTutorialCaretUIID(): string{
+    return getCaretUIID(CaretPosition.body, store.getters.getMainCodeFrameContainerId());
 }
 
-export function getEditorCommandsContainerEltId(): string {
+export function getCommandsContainerUIID(): string {
     return "editorCommands";
 }
 
-export function getTutorialEltId(){
+export function getTutorialUIID(){
     return "tutorialComponent";
 }
 
-export function getEditorMenuEltId(){
+export function getEditorMenuUIID(){
     return "showHideMenu";
 } 
 
-export function getEditorSpecialButtonsContainerEltId() {
-    return "editorSpecialButtonsContainer"
+export function getEditorButtonsContainerUIID() {
+    return "editorButtonsContainer"
 }
 
 export const fileImportSupportedFormats: string[] = ["wpy"];

@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <div v-bind:id="buttonsContainerId" class="commands-container">
+        <div v-bind:id="buttonsContainerUIID" class="commands-container">
             <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
             <button @click="downloadHex" v-t="'buttonLabel.downloadHex'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
@@ -18,7 +18,7 @@
             </div>
         </div>
         <hr />
-        <div v-bind:id="commandsContainerId">
+        <div v-bind:id="commandsContainerUUID">
             <div class="frameCommands">
                 <AddFrameCommand
                     v-for="addFrameCommand in addFrameCommands"
@@ -54,7 +54,7 @@ import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
-import { getEditorCommandsContainerEltId, getEditorSpecialButtonsContainerEltId, getTutorialEltId } from "@/helpers/editor"
+import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID } from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
@@ -83,12 +83,12 @@ export default Vue.extend({
     },
 
     computed: {
-        buttonsContainerId(): string {
-            return getEditorSpecialButtonsContainerEltId();
+        buttonsContainerUIID(): string {
+            return getEditorButtonsContainerUIID();
         },
 
-        commandsContainerId(): string {
-            return getEditorCommandsContainerEltId();
+        commandsContainerUUID(): string {
+            return getCommandsContainerUIID();
         },
 
         addFrameCommands(): Record<string, AddFrameCommandDef> {
@@ -118,8 +118,8 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                const tutorialElmt = document.getElementById(getTutorialEltId());
-                if(tutorialElmt){
+                const tutorial = document.getElementById(getTutorialUIID());
+                if(tutorial){
                     //if the tutorial is displayed, we don't do anything here
                     event.preventDefault();
                     return;
@@ -140,8 +140,8 @@ export default Vue.extend({
             "keyup",
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
-                const tutorialElmt = document.getElementById(getTutorialEltId());
-                if(tutorialElmt){
+                const tutorial = document.getElementById(getTutorialUIID());
+                if(tutorial){
                     //if the tutorial is displayed, we don't do anything here
                     event.preventDefault();
                     return;

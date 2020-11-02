@@ -4,7 +4,7 @@ import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDef
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import tutorialState from "@/store/tutorial-state"
-import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
+import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
@@ -1011,9 +1011,9 @@ export default new Vuex.Store({
                             ""
                         );
 
-                        const id = getEditableSlotId(frameId, Number.parseInt(slotIndex));
-                        if(state.preCompileErrors.includes(id)) {
-                            state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
+                        const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
+                        if(state.preCompileErrors.includes(uiid)) {
+                            state.preCompileErrors.splice(state.preCompileErrors.indexOf(uiid),1);
                         }
                     });
                 } 
@@ -1027,8 +1027,8 @@ export default new Vuex.Store({
                                 i18n.t("errorMessage.emptyEditableSlot")
                             );
     
-                            const id = getEditableSlotId(frameId, Number.parseInt(slotIndex));
-                            state.preCompileErrors.push(id)
+                            const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
+                            state.preCompileErrors.push(uiid)
                         }
                     });
                 }                 
@@ -1220,7 +1220,7 @@ export default new Vuex.Store({
                                 error: "",
                             }
                         );
-                        commit("removePreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
+                        commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
                     }
                 }
                 else if(!optionalSlot){
@@ -1232,7 +1232,7 @@ export default new Vuex.Store({
                             error: i18n.t("errorMessage.emptyEditableSlot"),
                         }
                     );
-                    commit("addPreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
+                    commit("addPreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
                 }
             }
         },
@@ -1623,13 +1623,13 @@ export default new Vuex.Store({
             );
 
             //update the precompiled errors based on the visibility of the label (if the label isn't shown, no error should be raised)
-            const slotId = getEditableSlotId(state.currentFrame.id, frameLabeToTogglelIndex);
+            const slotUIID = getEditableSlotUIID(state.currentFrame.id, frameLabeToTogglelIndex);
             if(changeShowLabelTo){
                 //we show the label: add the slot in precompiled error if the slot is empty
                 if(state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].code.trim().length == 0){
                     commit(
                         "addPreCompileErrors",
-                        slotId
+                        slotUIID
                     );
                 }
             }
@@ -1637,7 +1637,7 @@ export default new Vuex.Store({
                 //we hide the label: remove the slot in precompiled error
                 commit(
                     "removePreCompileErrors",
-                    slotId
+                    slotUIID
                 );
             }
 

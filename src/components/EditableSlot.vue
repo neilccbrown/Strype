@@ -15,21 +15,21 @@
             @keyup.up.prevent.stop="onUDKeyUp($event)"
             @keyup.down.prevent.stop="onUDKeyUp($event)"
             v-bind:class="{editableSlot: focused, error: erroneous}"
-            v-bind:id="id"
-            v-bind:key="id"
+            v-bind:id="UIID"
+            v-bind:key="UIID"
             class="input"
             v-bind:style="inputTextStyle"
         />
         <b-popover
           v-if="erroneous"
-          v-bind:target="id"
+          v-bind:target="UIID"
           v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
           v-bind:content="errorMessage"
         ></b-popover>
         <div 
             class="editableslot-placeholder"
-            v-bind:id="placeholderId"
+            v-bind:id="placeholderUIID"
             v-bind:value="code"
         />
     </div>
@@ -39,7 +39,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import { CaretPosition, Definitions} from "@/types/types";
-import { getEditableSlotId } from "@/helpers/editor";
+import { getEditableSlotUIID } from "@/helpers/editor";
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -54,7 +54,7 @@ export default Vue.extend({
     },
 
     beforeDestroy() {
-        store.commit("removePreCompileErrors",this.id);
+        store.commit("removePreCompileErrors",this.UIID);
     },
 
     mounted() {
@@ -76,8 +76,8 @@ export default Vue.extend({
     },
     
     computed: {
-        placeholderId(): string {
-            return "editplaceholder_" + getEditableSlotId(this.frameId, this.slotIndex);
+        placeholderUIID(): string {
+            return "editplaceholder_" + getEditableSlotUIID(this.frameId, this.slotIndex);
         },
 
         initCode(): string {
@@ -130,8 +130,8 @@ export default Vue.extend({
             );
         },
 
-        id(): string {
-            return getEditableSlotId(this.$props.frameId, this.$props.slotIndex);
+        UIID(): string {
+            return getEditableSlotUIID(this.$props.frameId, this.$props.slotIndex);
         },
 
         errorMessage(): string{
@@ -223,7 +223,7 @@ export default Vue.extend({
         },
         
         computeFitWidthValue(): string {
-            const placeholder = document.getElementById(this.placeholderId);
+            const placeholder = document.getElementById(this.placeholderUIID);
             let computedWidth = "150px"; //default value if cannot be computed
             const offset = 10;
             if (placeholder) {
