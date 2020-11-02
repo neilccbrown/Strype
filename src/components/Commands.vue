@@ -136,6 +136,11 @@ export default Vue.extend({
                     );
                     event.preventDefault();
                 }
+
+                //prevent default scrolling.
+                if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
+                    event.preventDefault();
+                }
             }
         );
         
