@@ -20,6 +20,7 @@
                 v-bind:disabled="isEditing"
                 v-bind:key="'Draggagle-Container-'+this.frameId"
                 v-bind:id="'Draggagle-Container-'+this.frameId"
+                @choose.passive ="handleMultiDrag($event)"
             >
                 <Frame 
                     v-for="frame in frames" 
@@ -89,7 +90,7 @@ export default Vue.extend({
 
     computed: {
         frames: {
-            get(): string {
+            get(): FrameObject[] {
                 // gets the frames objects which are nested in here (i.e. have this frameID as parent)
                 return store.getters.getFramesForParentId(this.$props.frameId);
             },
@@ -141,7 +142,17 @@ export default Vue.extend({
                     eventParentId: this.frameId,
                 }
             );
-        },        
+        }, 
+        
+        handleMultiDrag(event: Event): void {
+            const chosenFrame = this.frames[event.oldIndex];
+            // If the frame is part of a selection
+            if(store.getters.getIsSelected(chosenFrame.id)) {
+                console.log("FrameContainer");
+                store.dispatch("prepareForMultiDrag",chosenFrame.id);
+            }
+        },  
+
     },
 });
 

@@ -430,6 +430,14 @@ export default new Vuex.Store({
         isCopiedASelection: (state) => () => {
             return state.copiedSelectionFrameIds.length > 0;
         },
+
+        isFrameVisible: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].isVisible;
+        },
+
+        getMultiDragStyling: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].multiDragStyling;
+        },
     }, 
 
     mutations: {
@@ -453,7 +461,7 @@ export default new Vuex.Store({
             // Adding a joint frame
             if (state.currentFrame.caretPosition === CaretPosition.below) {
                 //calculate index in parent list
-                const childToCheck = (state.frameObjects[state.currentFrame.id].jointParentId > 0 && newFrame.jointParentId == 0) ?
+                const childToCheck = (state.frameObjects[state.currentFrame.id].jointParentId > 0 && newFrame.jointParentId === 0) ?
                     state.frameObjects[state.currentFrame.id].jointParentId :
                     state.currentFrame.id;
                 indexToAdd = listToUpdate.indexOf(childToCheck) + 1;
@@ -2156,6 +2164,27 @@ export default new Vuex.Store({
                 commit("selectDeselectFrame", {frameId: result.frameForSelection, direction: direction})
                 commit("setCurrentFrame", result.newCurrentFrame);
             }
+        },
+
+        prepareForMultiDrag({state, getters}, draggedFrameId: number) {
+            const position = getters.getSelectionPosition(draggedFrameId);
+           
+            const otherFrames = state.selectedFrames.filter( (id) => id!==draggedFrameId);
+
+            otherFrames.forEach( (frameId) => {
+                Vue.set(
+                    state.frameObjects[frameId],
+                    "isVisible",
+                    false
+                );
+            });
+
+            Vue.set(
+                state.frameObjects[draggedFrameId],
+                "multiDragStyling",
+                position
+            );
+        
         },
     },
     modules: {},

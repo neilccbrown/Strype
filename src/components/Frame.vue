@@ -1,11 +1,14 @@
 <template>
     <div 
+        v-show="isVisible"
         v-bind:class="{
             selected: (selectedStatus !== 'unselected'),
             selectedTop: (selectedStatus === 'first'),
             selectedBottom: (selectedStatus === 'last'),
-            selectedTopBottom: (selectedStatus === 'first-and-last')
-        }">
+            selectedTopBottom: (selectedStatus === 'first-and-last'),
+            draggedWithOtherFramesBelow: (multiDragStyling === 'middle')
+            }"
+    >
         <div 
             v-bind:style="frameStyle" 
             class="block frameDiv" 
@@ -180,6 +183,14 @@ export default Vue.extend({
         // Joint frames can also be "selected" if their parent is selected
         isPartOfSelection(): boolean {
             return (this.selectedStatus !== "unselected") || (this.$props.isParentSelected);
+        },
+
+        isVisible(): boolean {
+            return store.getters.isFrameVisible(this.$props.frameId);
+        },
+
+        multiDragStyling(): string {
+            return store.getters.getMultiDragStyling(this.$props.frameId);
         },
     },
 
@@ -385,6 +396,7 @@ export default Vue.extend({
 }
 
 
+
 .selectedTop {
     border-top: 3px solid #000000 !important;
 }
@@ -396,6 +408,20 @@ export default Vue.extend({
 .selectedTopBottom{
     border-top: 3px solid #000000 !important;
     border-bottom: 3px solid #000000 !important;
+}
+
+.draggedWithOtherFramesAbove {
+  box-shadow:
+    0 0 0 10px hsl(0, 0%, 80%),
+    0 0 0 15px hsl(0, 0%, 90%);
+}
+
+.draggedWithOtherFramesBelow{
+  box-shadow:
+    -2px -2px 0px 2px #fff,
+    -6px -6px 0px 0px #000,
+    -8px -8px 0px 2px #fff,
+    -12px -12px 0px 0px #000;
 }
 
 </style>

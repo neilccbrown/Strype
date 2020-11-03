@@ -107,4 +107,9 @@ export default Vue.extend({
 .joint-frame-child {
     visibility: visible;
 }
+
+// .selected {
+//     border-left: 3px solid red !important;
+//     border-right: 3px solid red !important;
+// }
 </style>

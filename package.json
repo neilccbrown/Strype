@@ -39,7 +39,7 @@
         "vue-i18n": "^8.17.3",
         "vue-input-autowidth": "^1.0.10",
         "vue-simple-context-menu": "https://github.com/bkyf/vue-simple-context-menu/tarball/emit-hide-event",
-        "vuedraggable": "^2.24.3",
+        "vuedraggable": "git://github.com/divinespear/Vue.Draggable.git#multi-drag",
         "vuex": "^3.5.1"
     },
     "devDependencies": {

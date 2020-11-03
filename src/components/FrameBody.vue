@@ -5,10 +5,10 @@
         v-bind:id="id"
     >
         <CaretContainer
-                v-bind:frameId="this.frameId"
-                v-bind:caretVisibility="this.caretVisibility"
-                v-bind:caretAssignedPosition="caretPosition.body"
-                v-bind:isFrameDisabled="this.isDisabled"
+            v-bind:frameId="this.frameId"
+            v-bind:caretVisibility="this.caretVisibility"
+            v-bind:caretAssignedPosition="caretPosition.body"
+            v-bind:isFrameDisabled="this.isDisabled"
         />
 
         <Draggable
@@ -18,6 +18,7 @@
             animation= "200"
             :disabled="isEditing"
             v-bind:key="'Draggagle-Body-'+this.frameId"
+            @choose.passive="handleMultiDrag($event)"
         >
             <Frame
                 v-for="frame in frames"
@@ -50,7 +51,7 @@ import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
-import { CaretPosition, DraggableGroupTypes } from "@/types/types";
+import { CaretPosition, DraggableGroupTypes, FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -73,7 +74,7 @@ export default Vue.extend({
 
     computed: {
         frames: {
-            get(): string {
+            get(): FrameObject[] {
                 // gets the frames objects which are nested in here (i.e. have this frameID as parent)
                 return store.getters.getFramesForParentId(this.$props.frameId);
             },
@@ -119,7 +120,6 @@ export default Vue.extend({
 
     methods: {
         handleDragAndDrop(event: Event): void {
-            
             store.dispatch(
                 "updateFramesOrder",
                 {
@@ -129,6 +129,13 @@ export default Vue.extend({
             );
         },
         
+        handleMultiDrag(event: Event): void {
+            const chosenFrame = this.frames[event.oldIndex];
+            // If the frame is part of a selection
+            if(store.getters.getIsSelected(chosenFrame.id)) {
+                store.dispatch("prepareForMultiDrag",chosenFrame.id);
+            }
+        },   
     },
 });
 </script>
@@ -151,4 +158,5 @@ export default Vue.extend({
 .error {
     border: 1px solid #d66 !important;
 }
+
 </style>
