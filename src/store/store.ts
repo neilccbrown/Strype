@@ -10,6 +10,7 @@ import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
+import Parser from "@/parser/parser";
 
 Vue.use(Vuex);
 
@@ -459,7 +460,7 @@ export default new Vuex.Store({
             //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent
             //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
             //(*) with all sub levels children
-            
+
             if(payload.key=== "Delete"){
                 //delete the frame and all children
                 removeFrameInFrameList(
@@ -769,6 +770,13 @@ export default new Vuex.Store({
                 "code",
                 payload.code
             )
+
+            //clear the potential error
+            Vue.set(
+                state.frameObjects[payload.frameId].contentDict[payload.slotId],
+                "error",
+                ""
+            )
         },
 
         setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
@@ -935,6 +943,11 @@ export default new Vuex.Store({
                 state.currentFrame = backupCurrentFrame;
                 state.frameObjects[backupCurrentFrame.id].caretVisibility = backupCurrentFrameVisibility;
             }
+
+            //when we do a state change that needs to be save, we recompile the code
+            const parser = new Parser();
+            const out = parser.parse();
+            parser.getErrorsFormatted(out);
         },
 
         applyStateUndoRedoChanges(state, isUndo: boolean){
@@ -1321,7 +1334,7 @@ export default new Vuex.Store({
             );
         },
 
-        addFrameWithCommand({ commit, state, getters, dispatch }, payload: FramesDefinitions) {
+        addFrameWithCommand({ commit, state, dispatch }, payload: FramesDefinitions) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
             //Prepare the newFrame object based on the frameType
@@ -1413,7 +1426,6 @@ export default new Vuex.Store({
                 if(indexOfCurrentFrame + 1 < listOfSiblings.length){
                     frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
                 } 
-
             }
             else {
                 if (currentFrame.id > 0) {
@@ -1831,6 +1843,7 @@ export default new Vuex.Store({
                     {frameId: topFrame.id, isDisabling: state.frameObjects[payload.newParentId].isDisabled, ignoreEnableFromRoot: true}
                 );
             }
+
             //save state changes
             commit(
                 "saveStateChanges",

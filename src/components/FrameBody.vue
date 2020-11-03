@@ -36,7 +36,8 @@
           v-bind:target="uiid"
           v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
-          v-bind:content="(this.hasDisabledFrames) ? this.$i18n.t('errorMessage.noEnableFrameFrameBody') : this.$i18n.t('errorMessage.emptyFrameBody')"
+          placement="left"
+          v-bind:content="(this.hasDisabledOrCommentFrames) ? this.$i18n.t('errorMessage.noValidChildFrameBody') : this.$i18n.t('errorMessage.emptyFrameBody')"
         ></b-popover>
     </div>
 </template>
@@ -50,7 +51,7 @@ import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
-import { CaretPosition, DraggableGroupTypes, FrameObject } from "@/types/types";
+import { CaretPosition, CommentDefinition, DraggableGroupTypes, FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -82,8 +83,8 @@ export default Vue.extend({
             },    
         },
 
-        hasDisabledFrames(): boolean {
-            return (this.frames).filter((frame) => frame.isDisabled).length > 0;
+        hasDisabledOrCommentFrames(): boolean {
+            return (this.frames).filter((frame) => frame.isDisabled || frame.frameType.type === CommentDefinition.type).length > 0;
         },
 
         draggableGroup(): DraggableGroupTypes {
@@ -106,7 +107,7 @@ export default Vue.extend({
         empty(): boolean {
             let empty = false;
             //check if there are at least 1 frame, NOT disabled
-            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled).length < 1 && this.caretVisibility !== this.caretPosition.body) {
+            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== CommentDefinition.type).length < 1 && this.caretVisibility !== this.caretPosition.body) {
                 empty = true;
                 store.commit("addPreCompileErrors",this.uiid);                
             }
