@@ -35,7 +35,7 @@
                             <FrameContainer
                                 v-for="container in containerFrames"
                                 v-bind:key="container.frameType.type + '-id:' + container.id"
-                                v-bind:id="getFrameContainerEltId(container.id)"
+                                v-bind:id="getFrameContainerUIID(container.id)"
                                 v-bind:frameId="container.id"
                                 v-bind:containerLabel="container.frameType.labels[0].label"
                                 v-bind:caretVisibility="container.caretVisibility"
@@ -62,7 +62,7 @@ import Menu from "@/components/Menu.vue";
 import Tutorial from "@/components/Tutorial.vue";
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerEltId } from "./helpers/editor";
+import { getFrameContainerUIID } from "./helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -123,8 +123,8 @@ export default Vue.extend({
             (document.getElementById("app") as HTMLDivElement).style.overflow = overflowVal;
         },
 
-        getFrameContainerEltId(frameId: number){
-            return getFrameContainerEltId(frameId);
+        getFrameContainerUIID(frameId: number){
+            return getFrameContainerUIID(frameId);
         },
 
         toggleEdition(): void {
