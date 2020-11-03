@@ -50,6 +50,7 @@
           v-bind:target="uiid"
           v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
+          placement="left"
           v-bind:content="errorMessage"
         ></b-popover>
     </div>
