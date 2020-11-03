@@ -2,7 +2,7 @@
     <div>
         <div>
             <button 
-                id="showHideMenu" 
+                v-bind:id="menuUIID" 
                 href="#" 
                 tabindex="0" 
                 @click="toggleMenuOnOff"
@@ -104,7 +104,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { fileImportSupportedFormats } from "@/helpers/editor";
+import { fileImportSupportedFormats, getEditorMenuUIID } from "@/helpers/editor";
 import $ from "jquery";
 
 //////////////////////
@@ -131,6 +131,9 @@ export default Vue.extend({
     },
 
     computed: {
+        menuUIID(): string {
+            return getEditorMenuUIID();
+        },
         isUndoDisabled(): boolean {
             return store.getters.getIsUndoRedoEmpty("undo");
         },

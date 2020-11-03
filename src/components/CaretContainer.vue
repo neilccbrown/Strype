@@ -5,17 +5,18 @@
         @mouseover.prevent.stop="mouseOverCaret(true)"
         @mouseleave.prevent.stop="mouseOverCaret(false)"
         @contextmenu.prevent.stop="handleClick($event, 'paste')"
-        v-bind:key="id"
-        v-bind:id="id"
+        v-bind:key="uiid"
+        v-bind:id="uiid"
     >
         <vue-simple-context-menu
             v-show="allowContextMenu"
-            v-bind:elementId="id+'_pasteContextMenu'"
+            v-bind:elementId="uiid+'_pasteContextMenu'"
             v-bind:options="pasteOption"
             v-bind:ref="'pasteContextMenu'"
             @option-clicked="optionClicked"
         />
         <Caret
+            v-bind:id="caretUIID"
             v-bind:isBlurred="overCaret"
             v-bind:isInvisible="isInvisible"
             v-blur="isFrameDisabled"
@@ -34,6 +35,8 @@ import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import $ from "jquery";
+import { getCaretUIID } from "@/helpers/editor";
+
 
 //////////////////////
 //     Component    //
@@ -67,14 +70,16 @@ export default Vue.extend({
         },
         isInvisible(): boolean {
             return  !((this.caretVisibility === this.caretAssignedPosition || this.caretVisibility === this.caretPosition.both) && !this.isEditing); 
-
         },
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
         },
-        id(): string {
+        uiid(): string {
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
+        },
+        caretUIID(): string {
+            return getCaretUIID(this.caretAssignedPosition, this.frameId);
         },
         pasteAvailable(): boolean {
             return store.getters.getIsCopiedAvailable();
@@ -83,14 +88,14 @@ export default Vue.extend({
             return this.pasteAvailable? [{name: "paste", method: "paste"}] : [{}];
         },
         allowContextMenu(): boolean {
-            return store.getters.getContextMenuShownId() === this.id; 
+            return store.getters.getContextMenuShownId() === this.uiid; 
         },
     },
     
     methods: {
         handleClick (event: MouseEvent, action: string): void {
 
-            store.commit("setContextMenuShownId",this.id);
+            store.commit("setContextMenuShownId",this.uiid);
             if(this.pasteAvailable) {        
                 if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
                     ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);

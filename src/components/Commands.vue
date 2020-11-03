@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <div>
+        <div v-bind:id="buttonsContainerUIID" class="commands-container">
             <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
             <button @click="downloadHex" v-t="'buttonLabel.downloadHex'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
@@ -18,30 +18,32 @@
             </div>
         </div>
         <hr />
-        <div class="frameCommands">
-            <AddFrameCommand
-                v-for="addFrameCommand in addFrameCommands"
-                v-bind:key="addFrameCommand.type.type"
-                v-bind:type="addFrameCommand.type.type"
-                v-bind:shortcut="addFrameCommand.shortcut"
-                v-bind:symbol="
-                    addFrameCommand.symbol !== undefined
-                        ? addFrameCommand.symbol
-                        : addFrameCommand.shortcut
-                "
-                v-bind:description="addFrameCommand.description"
-            />
-        </div>
-        <hr />
-        <div class="toggleFrameLabelCommands">
-            <ToggleFrameLabelCommand
-                v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
-                v-bind:key="toggleFrameLabelCommand.type"
-                v-bind:type="toggleFrameLabelCommand.type"
-                v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
-                v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
-                v-bind:description="toggleFrameLabelCommand.displayCommandText"
-            />
+        <div v-bind:id="commandsContainerUUID">
+            <div class="frameCommands">
+                <AddFrameCommand
+                    v-for="addFrameCommand in addFrameCommands"
+                    v-bind:key="addFrameCommand.type.type"
+                    v-bind:type="addFrameCommand.type.type"
+                    v-bind:shortcut="addFrameCommand.shortcut"
+                    v-bind:symbol="
+                        addFrameCommand.symbol !== undefined
+                            ? addFrameCommand.symbol
+                            : addFrameCommand.shortcut
+                    "
+                    v-bind:description="addFrameCommand.description"
+                />
+            </div>
+            <hr />
+            <div class="toggleFrameLabelCommands">
+                <ToggleFrameLabelCommand
+                    v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
+                    v-bind:key="toggleFrameLabelCommand.type"
+                    v-bind:type="toggleFrameLabelCommand.type"
+                    v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
+                    v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
+                    v-bind:description="toggleFrameLabelCommand.displayCommandText"
+                />
+            </div>
         </div>
     </div>
 </template>
@@ -52,6 +54,7 @@ import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
+import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID } from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
@@ -80,6 +83,14 @@ export default Vue.extend({
     },
 
     computed: {
+        buttonsContainerUIID(): string {
+            return getEditorButtonsContainerUIID();
+        },
+
+        commandsContainerUUID(): string {
+            return getCommandsContainerUIID();
+        },
+
         addFrameCommands(): Record<string, AddFrameCommandDef> {
             //If the frame isn't disabled, we retrieve the add frame commands associated with the current frame
             if(store.getters.getIsCurrentFrameDisabled()) {
@@ -107,6 +118,13 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
+                const tutorial = document.getElementById(getTutorialUIID());
+                if(tutorial){
+                    //if the tutorial is displayed, we don't do anything here
+                    event.preventDefault();
+                    return;
+                }
+
                 if((event.ctrlKey || event.metaKey) && (event.key === "z" || event.key === "y")) {
                     //undo-redo
                     store.dispatch(
@@ -122,6 +140,13 @@ export default Vue.extend({
             "keyup",
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
+                const tutorial = document.getElementById(getTutorialUIID());
+                if(tutorial){
+                    //if the tutorial is displayed, we don't do anything here
+                    event.preventDefault();
+                    return;
+                }
+                
                 if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     //first we remove the focus of the current active element (to avoid editable slots to keep it)
                     (document.activeElement as HTMLElement).blur();
@@ -286,5 +311,9 @@ export default Vue.extend({
     color:#fefefe !important;
     text-align: left !important;
     font-weight: bold;
+}
+
+.commands-container{
+    display: inline-block;
 }
 </style>

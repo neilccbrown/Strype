@@ -2,7 +2,7 @@
     <div
         class="frame-body-container"
         v-bind:class="{error: empty}"
-        v-bind:id="id"
+        v-bind:id="uiid"
     >
         <CaretContainer
                 v-bind:frameId="this.frameId"
@@ -33,7 +33,7 @@
         </Draggable>
         <b-popover
           v-if="empty"
-          v-bind:target="id"
+          v-bind:target="uiid"
           v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
           v-bind:content="this.$i18n.t('errorMessage.emptyFrameBody')"
@@ -95,7 +95,7 @@ export default Vue.extend({
             return store.getters.getIsEditing();
         },
 
-        id(): string {
+        uiid(): string {
             return "frameBodyId_" + this.$props.frameId;
         },
 
@@ -103,10 +103,10 @@ export default Vue.extend({
             let empty = false;
             if(!this.isDisabled && this.frames.length < 1 && this.caretVisibility !== this.caretPosition.body) {
                 empty = true;
-                store.commit("addPreCompileErrors",this.id);                
+                store.commit("addPreCompileErrors",this.uiid);                
             }
             else {
-                store.commit("removePreCompileErrors",this.id);
+                store.commit("removePreCompileErrors",this.uiid);
             }
             return empty;
         },
@@ -114,7 +114,7 @@ export default Vue.extend({
     },
 
     beforeDestroy() {
-        store.commit("removePreCompileErrors",this.id);
+        store.commit("removePreCompileErrors",this.uiid);
     },
 
     methods: {
