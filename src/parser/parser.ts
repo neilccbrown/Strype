@@ -126,6 +126,7 @@ export default class Parser {
     public getErrorsFormatted(inputCode = ""): string {
         const errors = this.getErrors(inputCode);
         let errorString = "";
+        store.commit("clearAllErrors");
         
         if (errors.length > 0) {
             errorString = `${errors.map((e: any) => {
@@ -133,7 +134,6 @@ export default class Parser {
             })}`;
 
             // For each error, show red border around its input in the UI
-            store.commit("clearAllErrors");
             errors.forEach((error: ErrorInfo) => {
                 if( this.framePositionMap[error.line] !== undefined && (error.offset < this.framePositionMap[error.line].slotStarts[0] || error.offset >= inputCode.split(/\n/)[error.line].length)) {
                     store.commit("setFrameErroneous", {

@@ -661,7 +661,7 @@ export interface ChangeFramePropInfos {
 }
 
 // Tutorial
-export interface TutorialHightightedComponentDimension{
+export interface TutorialHightightedElementDimension{
     x: number;
     y: number;
     width: number;
@@ -669,7 +669,7 @@ export interface TutorialHightightedComponentDimension{
 }
 
 export interface TutorialMargins {
-    //All margins (extra space around the highlighted component) are optional, and they are expressing pixels
+    //All margins (extra space around the highlighted element) are optional, and they are expressing pixels
     //We use this interface for custom position of the messages too, and then they are expressing percentages
     left?: number;
     top?: number;
@@ -686,7 +686,7 @@ export interface TutorialArrowPos {
 }
 
 export interface TutorialStep {
-    hightLighedComponentIds: string[];
+    hightLighedElementsUIIDs: string[];
     highLightedAreaExtraMargins?: TutorialMargins[]; //pixel values
     explanationMessage: string;
     messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";

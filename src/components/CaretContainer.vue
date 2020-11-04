@@ -5,21 +5,21 @@
         @mouseover.prevent.stop="mouseOverCaret(true)"
         @mouseleave.prevent.stop="mouseOverCaret(false)"
         @contextmenu.prevent.stop="handleClick($event, 'paste')"
-        v-bind:key="id"
-        v-bind:id="id"
+        v-bind:key="uiid"
+        v-bind:id="uiid"
     >
         <vue-simple-context-menu
             v-show="allowContextMenu"
-            v-bind:elementId="id+'_pasteContextMenu'"
+            v-bind:elementId="uiid+'_pasteContextMenu'"
             v-bind:options="pasteOption"
             v-bind:ref="'pasteContextMenu'"
             @option-clicked="optionClicked"
         />
         <Caret
-            v-bind:id="caretId"
+            v-bind:id="caretUIID"
             v-bind:isBlurred="overCaret"
             v-bind:isInvisible="isInvisible"
-            v-blur="isCaretBlurred()"
+            v-blur="isCaretBlurred"
         />
     </div>
 </template>
@@ -35,7 +35,7 @@ import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import $ from "jquery";
-import { getCaretEltId, getEditorMiddlePaneContainerId } from "@/helpers/editor";
+import { getCaretUIID, getEditorMiddlePaneContainerId } from "@/helpers/editor";
 
 
 //////////////////////
@@ -75,11 +75,11 @@ export default Vue.extend({
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
         },
-        id(): string {
+        uiid(): string {
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
         },
-        caretId(): string {
-            return getCaretEltId(this.caretAssignedPosition, this.frameId);
+        caretUIID(): string {
+            return getCaretUIID(this.caretAssignedPosition, this.frameId);
         },
         pasteAvailable(): boolean {
             return store.getters.getIsCopiedAvailable();
@@ -88,7 +88,11 @@ export default Vue.extend({
             return this.pasteAvailable? [{name: "paste", method: "paste"}] : [{}];
         },
         allowContextMenu(): boolean {
-            return store.getters.getContextMenuShownId() === this.id; 
+            return store.getters.getContextMenuShownId() === this.uiid; 
+        },
+        isCaretBlurred(): boolean {
+            //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
+            return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !store.getters.canAddFrameBelowDisabled(this.frameId) : true);
         },
     },
 
@@ -109,7 +113,7 @@ export default Vue.extend({
     methods: {
         handleClick (event: MouseEvent, action: string): void {
 
-            store.commit("setContextMenuShownId",this.id);
+            store.commit("setContextMenuShownId",this.uiid);
             if(this.pasteAvailable) {        
                 if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
                     ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
@@ -186,11 +190,6 @@ export default Vue.extend({
                     caretPosition: this.$props.caretAssignedPosition,
                 }
             );
-        },
-
-        isCaretBlurred(): boolean {
-            //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
-            return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !store.getters.canAddFrameBelowDisabled(this.frameId) : true);
         },
     },
 });

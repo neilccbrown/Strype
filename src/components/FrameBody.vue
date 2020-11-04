@@ -2,7 +2,7 @@
     <div
         class="frame-body-container"
         v-bind:class="{error: empty}"
-        v-bind:id="id"
+        v-bind:id="uiid"
     >
         <CaretContainer
                 v-bind:frameId="this.frameId"
@@ -33,10 +33,11 @@
         </Draggable>
         <b-popover
           v-if="empty"
-          v-bind:target="id"
+          v-bind:target="uiid"
           v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
-          v-bind:content="(this.hasDisabledFrames) ? this.$i18n.t('errorMessage.noEnableFrameFrameBody') : this.$i18n.t('errorMessage.emptyFrameBody')"
+          placement="left"
+          v-bind:content="errorMessage"
         ></b-popover>
     </div>
 </template>
@@ -50,7 +51,7 @@ import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
-import { CaretPosition, DraggableGroupTypes, FrameObject } from "@/types/types";
+import { CaretPosition, CommentDefinition, DraggableGroupTypes, FrameObject } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -82,8 +83,8 @@ export default Vue.extend({
             },    
         },
 
-        hasDisabledFrames(): boolean {
-            return (this.frames).filter((frame) => frame.isDisabled).length > 0;
+        hasDisabledOrCommentFrames(): boolean {
+            return (this.frames).filter((frame) => frame.isDisabled || frame.frameType.type === CommentDefinition.type).length > 0;
         },
 
         draggableGroup(): DraggableGroupTypes {
@@ -99,27 +100,33 @@ export default Vue.extend({
             return store.getters.getIsEditing();
         },
 
-        id(): string {
+        uiid(): string {
             return "frameBodyId_" + this.$props.frameId;
         },
 
         empty(): boolean {
             let empty = false;
             //check if there are at least 1 frame, NOT disabled
-            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled).length < 1 && this.caretVisibility !== this.caretPosition.body) {
+            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== CommentDefinition.type).length < 1 && this.caretVisibility !== this.caretPosition.body) {
                 empty = true;
-                store.commit("addPreCompileErrors",this.id);                
+                store.commit("addPreCompileErrors",this.uiid);                
             }
             else {
-                store.commit("removePreCompileErrors",this.id);
+                store.commit("removePreCompileErrors",this.uiid);
             }
             return empty;
+        },
+
+        errorMessage(): string {
+            return (this.hasDisabledOrCommentFrames) 
+                ? this.$i18n.t("errorMessage.noValidChildFrameBody") as string 
+                : this.$i18n.t("errorMessage.emptyFrameBody") as string;
         },
 
     },
 
     beforeDestroy() {
-        store.commit("removePreCompileErrors",this.id);
+        store.commit("removePreCompileErrors",this.uiid);
     },
 
     methods: {

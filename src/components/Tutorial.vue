@@ -1,5 +1,5 @@
 <template>
-    <div v-if="showTutorial" class="tutorial-pane" v-bind:id="id">
+    <div v-if="showTutorial" class="tutorial-pane" v-bind:id="UIID">
         <svg width="100%" height="100%">
             <defs>
                 <mask id="svgmask2" >
@@ -7,7 +7,7 @@
                     <rect fill="#FFFFFF" x="0" y="0" width="100%" height="100%"></rect>
                     <!-- this part of the mask is dynamic and the parts that are "hidden", which means for us, see through -->
                     <rect 
-                        v-for="(dimensions, index) in currentStepHighligthedComponentsDimensions" 
+                        v-for="(dimensions, index) in currentStepHighligthedElementsDimensions" 
                         v-bind:key="'stepmask_'+ index" 
                         fill="#000000" 
                         v-bind:x="dimensions.x" 
@@ -88,9 +88,9 @@
 import Vue from "vue";
 import store from "@/store/store";
 import {TutorialSteps} from "@/constants/tutorialSteps";
-import { TutorialArrowPos, TutorialHightightedComponentDimension, TutorialMargins, TutorialStep } from "@/types/types";
+import { TutorialArrowPos, TutorialHightightedElementDimension, TutorialMargins, TutorialStep } from "@/types/types";
 import { BCarousel } from "bootstrap-vue";
-import { getTutorialEltId } from "@/helpers/editor";
+import { getTutorialUIID } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -120,7 +120,7 @@ export default Vue.extend({
             showTutorial: true,
             currentStep: {} as TutorialStep,
             currentStepIndex: 0,
-            currentStepHighligthedComponentsDimensions: [] as TutorialHightightedComponentDimension[],
+            currentStepHighligthedElementsDimensions: [] as TutorialHightightedElementDimension[],
             toasterPosStyle: {},
             stepArrowsPos: [] as TutorialArrowPos[],
             arrowTailWidth: 4,
@@ -142,8 +142,8 @@ export default Vue.extend({
                 this.showCurrentStep(value)
             }, 
         },
-        id(): string {
-            return getTutorialEltId();
+        UIID(): string {
+            return getTutorialUIID();
         },
         nextButtonLabel(): string {
             return (this.currentStepIndex === this.steps.length - 1) ? this.$i18n.t("buttonLabel.startCoding").toString() : this.$i18n.t("buttonLabel.next").toString();
@@ -151,15 +151,15 @@ export default Vue.extend({
     },
 
     methods:{
-        getStepHighlightedComponentsDimensions(): TutorialHightightedComponentDimension[] {
-            //This method finds the coordinates and size for each component to be highlighted in the current step
-            const dimensions = [] as TutorialHightightedComponentDimension[];
+        getStepHighlightedElementsDimensions(): TutorialHightightedElementDimension[] {
+            //This method finds the coordinates and size for each element to be highlighted in the current step
+            const dimensions = [] as TutorialHightightedElementDimension[];
 
             const margins: TutorialMargins[] = this.currentStep.highLightedAreaExtraMargins??[];
      
-            this.currentStep.hightLighedComponentIds.forEach((componentId, index) => {
-                const hightledComponent = document.getElementById(componentId);
-                if(hightledComponent === null) {
+            this.currentStep.hightLighedElementsUIIDs.forEach((elementUIID, index) => {
+                const hightledElement = document.getElementById(elementUIID);
+                if(hightledElement === null) {
                     dimensions.push({
                         x:0,
                         y:0,
@@ -168,7 +168,7 @@ export default Vue.extend({
                     });
                 }
                 else {
-                    const boundingRect = hightledComponent.getBoundingClientRect()
+                    const boundingRect = hightledElement.getBoundingClientRect()
                     dimensions.push({
                         x:boundingRect.x - (margins[index]?.left??0),
                         y:boundingRect.y - (margins[index]?.top??0),
@@ -198,9 +198,9 @@ export default Vue.extend({
                 //on the left (with gap)/top/bottom of the first highlighted element
                 //then we translate the toast vertically to center the message and the element vertically.
                 this.toasterPosStyle = {
-                    right: (document.documentElement.clientWidth - this.currentStepHighligthedComponentsDimensions[0].x + posPadding) + "px",
-                    top: this.currentStepHighligthedComponentsDimensions[0].y + "px",
-                    height:this.currentStepHighligthedComponentsDimensions[0].height + "px",
+                    right: (document.documentElement.clientWidth - this.currentStepHighligthedElementsDimensions[0].x + posPadding) + "px",
+                    top: this.currentStepHighligthedElementsDimensions[0].y + "px",
+                    height:this.currentStepHighligthedElementsDimensions[0].height + "px",
                 };
                 toastStyle = "toast-v-centered";
                 break;
@@ -209,9 +209,9 @@ export default Vue.extend({
                 //on the rigth (with gap)/top/bottom of the first highlighted element
                 //then we translate the toast vertically to center the message and the element vertically.
                 this.toasterPosStyle = {
-                    left: (this.currentStepHighligthedComponentsDimensions[0].x + this.currentStepHighligthedComponentsDimensions[0].width + posPadding) + "px",
-                    top: this.currentStepHighligthedComponentsDimensions[0].y + "px",
-                    height:this.currentStepHighligthedComponentsDimensions[0].height + "px",
+                    left: (this.currentStepHighligthedElementsDimensions[0].x + this.currentStepHighligthedElementsDimensions[0].width + posPadding) + "px",
+                    top: this.currentStepHighligthedElementsDimensions[0].y + "px",
+                    height:this.currentStepHighligthedElementsDimensions[0].height + "px",
                 };
                 toastStyle = "toast-v-centered";
                 break;
@@ -220,9 +220,9 @@ export default Vue.extend({
                 //on the left/right/top (with gap) of the first highlighted element
                 //then we translate the toast horizontally to center the message and the element horizontally.
                 this.toasterPosStyle = {
-                    bottom: (document.documentElement.clientHeight - this.currentStepHighligthedComponentsDimensions[0].y + posPadding) + "px",
-                    left: this.currentStepHighligthedComponentsDimensions[0].x + "px",
-                    width:this.currentStepHighligthedComponentsDimensions[0].width + "px",
+                    bottom: (document.documentElement.clientHeight - this.currentStepHighligthedElementsDimensions[0].y + posPadding) + "px",
+                    left: this.currentStepHighligthedElementsDimensions[0].x + "px",
+                    width:this.currentStepHighligthedElementsDimensions[0].width + "px",
                 };
                 toastStyle = "toast-h-centered";
                 break;
@@ -231,9 +231,9 @@ export default Vue.extend({
                 //on the left/right/bottom (with gap) of the first highlighted element
                 //then we translate the toast horizontally to center the message and the element horizontally.
                 this.toasterPosStyle = {
-                    top: (this.currentStepHighligthedComponentsDimensions[0].y + this.currentStepHighligthedComponentsDimensions[0].height + posPadding) + "px",
-                    left: this.currentStepHighligthedComponentsDimensions[0].x + "px",
-                    width:this.currentStepHighligthedComponentsDimensions[0].width + "px",
+                    top: (this.currentStepHighligthedElementsDimensions[0].y + this.currentStepHighligthedElementsDimensions[0].height + posPadding) + "px",
+                    left: this.currentStepHighligthedElementsDimensions[0].x + "px",
+                    width:this.currentStepHighligthedElementsDimensions[0].width + "px",
                 };
                 toastStyle = "toast-h-centered";
                 break;
@@ -307,7 +307,7 @@ export default Vue.extend({
         },
 
         redrawStep(){
-            this.currentStepHighligthedComponentsDimensions = this.getStepHighlightedComponentsDimensions();
+            this.currentStepHighligthedElementsDimensions = this.getStepHighlightedElementsDimensions();
             this.$bvToast.hide("tutorialToast");
             this.showToast();
         },
@@ -327,7 +327,7 @@ export default Vue.extend({
 
                 if(toastBoundingRect){
                     //apply the steps aforementioned to each hightlighted areas
-                    this.currentStepHighligthedComponentsDimensions.forEach((highLightedAreaDim) => {
+                    this.currentStepHighligthedElementsDimensions.forEach((highLightedAreaDim) => {
                         //step 1), we find the corner based on the relative positions of the source and target
                         const isTargetOnLeft = ((highLightedAreaDim.x + highLightedAreaDim.width) < (toastBoundingRect.x + toastBoundingRect.width/2));
                         const isTargetAbove = ((highLightedAreaDim.y + highLightedAreaDim.height) < (toastBoundingRect.y + toastBoundingRect.height/2));
