@@ -56,7 +56,7 @@ import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID } from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
+import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
 
@@ -92,11 +92,13 @@ export default Vue.extend({
         },
 
         addFrameCommands(): Record<string, AddFrameCommandDef> {
-            //If the frame isn't disabled, we retrieve the add frame commands associated with the current frame
-            if(store.getters.getIsCurrentFrameDisabled()) {
-                //for disabled frame we don't show any add frame command
+            //We retrieve the add frame commands associated with the current frame 
+            //if the frame is enabled, we always check, if it is disabled we return no frame when caret is body, and check when caret is below
+            const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
+            if(currentFrame.isDisabled && ((currentFrame.caretVisibility === CaretPosition.body) ? true : !store.getters.canAddFrameBelowDisabled(currentFrame.id))){
                 return {};
             }
+            
             return store.getters.getCurrentFrameAddFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
         },
 

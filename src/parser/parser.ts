@@ -4,6 +4,9 @@ import { TPyParser, ErrorInfo } from "tigerpython-parser";
 
 const INDENT = "    ";
 
+const DISABLEDFRAMES_FLAG =  "\"\"\"";
+let isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
+let disabledBlockIndent = "";
 
 export default class Parser {
 
@@ -21,7 +24,7 @@ export default class Parser {
                     store.getters.getFramesForParentId(block.id),
                     indent + INDENT
                 ) :
-                this.parseStatement({} as FrameObject,indent)) // empty bodies are added as empty lines in the code
+                "") // empty bodies are added as empty lines in the code
             + 
             this.parseFrames(
                 store.getters.getJointFramesForFrameId(block.id, "all"), 
@@ -52,9 +55,10 @@ export default class Parser {
             }
             currSlotIndex++;
         });
+        
         output += "\n";
     
-        this.framePositionMap[this.line] = {frameId: statement.id , slotStarts: positions};
+        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions};
         
         this.line += 1;
 
@@ -68,6 +72,16 @@ export default class Parser {
         //if the current frame is a container, we don't parse it as such
         //but parse directly its children (frames that it contains)
         for (const frame of codeUnits) {
+            //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
+            let disabledFrameBlockFlag = "";
+            if(frame.isDisabled ? !isDisabledFramesTriggered : isDisabledFramesTriggered) {
+                isDisabledFramesTriggered = !isDisabledFramesTriggered;
+                if(frame.isDisabled) {
+                    disabledBlockIndent = indent;
+                }
+                disabledFrameBlockFlag = disabledBlockIndent + DISABLEDFRAMES_FLAG +"\n";
+            }
+
             lineCode = frame.frameType.allowChildren ?
                 (Object.values(FrameContainersDefinitions).includes(frame.frameType)) ? 
                     this.parseFrames(store.getters.getFramesForParentId(frame.id)) :
@@ -75,7 +89,7 @@ export default class Parser {
                 : 
                 this.parseStatement(frame,indent);
 
-            output += lineCode;
+            output += disabledFrameBlockFlag + lineCode;
         }
 
         return output;
@@ -86,9 +100,17 @@ export default class Parser {
 
         console.time();
         output += this.parseFrames(store.getters.getFramesForParentId(0));
+        // We could have disabled frame(s) just at the end of the code. 
+        // Since no further frame would be used in the parse to close the ongoing comment block we need to check
+        // if there are disabled frames being rendered when reaching the end of the editor's code.
+        let disabledFrameBlockFlag = "";
+        if(isDisabledFramesTriggered) {
+            isDisabledFramesTriggered = !isDisabledFramesTriggered;
+            disabledFrameBlockFlag = disabledBlockIndent + DISABLEDFRAMES_FLAG ;
+        }
         console.timeEnd();
 
-        return output;
+        return output + disabledFrameBlockFlag;
     }
 
     public getErrors(inputCode = ""): ErrorInfo[] {
@@ -104,6 +126,7 @@ export default class Parser {
     public getErrorsFormatted(inputCode = ""): string {
         const errors = this.getErrors(inputCode);
         let errorString = "";
+        store.commit("clearAllErrors");
         
         if (errors.length > 0) {
             errorString = `${errors.map((e: any) => {
@@ -111,7 +134,6 @@ export default class Parser {
             })}`;
 
             // For each error, show red border around its input in the UI
-            store.commit("clearAllErrors");
             errors.forEach((error: ErrorInfo) => {
                 if( this.framePositionMap[error.line] !== undefined && (error.offset < this.framePositionMap[error.line].slotStarts[0] || error.offset >= inputCode.split(/\n/)[error.line].length)) {
                     store.commit("setFrameErroneous", {

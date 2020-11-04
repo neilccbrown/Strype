@@ -19,7 +19,7 @@
             v-bind:id="caretUIID"
             v-bind:isBlurred="overCaret"
             v-bind:isInvisible="isInvisible"
-            v-blur="isFrameDisabled"
+            v-blur="isCaretBlurred"
         />
     </div>
 </template>
@@ -89,6 +89,10 @@ export default Vue.extend({
         },
         allowContextMenu(): boolean {
             return store.getters.getContextMenuShownId() === this.uiid; 
+        },
+        isCaretBlurred(): boolean {
+            //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
+            return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !store.getters.canAddFrameBelowDisabled(this.frameId) : true);
         },
     },
     
