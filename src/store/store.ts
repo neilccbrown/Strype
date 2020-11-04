@@ -943,11 +943,6 @@ export default new Vuex.Store({
                 state.currentFrame = backupCurrentFrame;
                 state.frameObjects[backupCurrentFrame.id].caretVisibility = backupCurrentFrameVisibility;
             }
-
-            //when we do a state change that needs to be save, we recompile the code
-            const parser = new Parser();
-            const out = parser.parse();
-            parser.getErrorsFormatted(out);
         },
 
         applyStateUndoRedoChanges(state, isUndo: boolean){

@@ -37,7 +37,7 @@
           v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
           placement="left"
-          v-bind:content="(this.hasDisabledOrCommentFrames) ? this.$i18n.t('errorMessage.noValidChildFrameBody') : this.$i18n.t('errorMessage.emptyFrameBody')"
+          v-bind:content="errorMessage"
         ></b-popover>
     </div>
 </template>
@@ -115,6 +115,12 @@ export default Vue.extend({
                 store.commit("removePreCompileErrors",this.uiid);
             }
             return empty;
+        },
+
+        errorMessage(): string {
+            return (this.hasDisabledOrCommentFrames) 
+                ? this.$i18n.t("errorMessage.noValidChildFrameBody") as string 
+                : this.$i18n.t("errorMessage.emptyFrameBody") as string;
         },
 
     },
