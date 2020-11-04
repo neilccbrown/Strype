@@ -27,11 +27,11 @@
                 </div>
                 <div class="row no-gutters" >
                     <Menu 
-                        v-bind:id="menuId" 
+                        v-bind:id="menuUIID" 
                         class="col-auto"
                     />
                     <div class="col">
-                        <div v-bind:id="editorId" class="editor-code-div" >
+                        <div v-bind:id="editorUIID" class="editor-code-div" >
                             <FrameContainer
                                 v-for="container in containerFrames"
                                 v-bind:key="container.frameType.type + '-id:' + container.id"
@@ -62,7 +62,7 @@ import Menu from "@/components/Menu.vue";
 import Tutorial from "@/components/Tutorial.vue";
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneContainerId, getEditorMiddlePaneContainerId, getCommandsRightPaneContainerId } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId } from "./helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -98,12 +98,12 @@ export default Vue.extend({
             return store.getters.getIsMessageBannerOn();
         },
 
-        menuId(): string {
-            return getMenuLeftPaneContainerId();
+        menuUIID(): string {
+            return getMenuLeftPaneUIID();
         },
 
-        editorId(): string {
-            return getEditorMiddlePaneContainerId();
+        editorUIID(): string {
+            return getEditorMiddleUIID();
         },
 
         commandsContainerId(): string {

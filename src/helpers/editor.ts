@@ -39,11 +39,11 @@ export function getEditorButtonsContainerUIID() {
     return "editorButtonsContainer"
 }
 
-export function getMenuLeftPaneContainerId(){
+export function getMenuLeftPaneUIID(){
     return "menu-bar";
 }
 
-export function getEditorMiddlePaneContainerId() {
+export function getEditorMiddleUIID() {
     return "editorCodeDiv";
 }
 
