@@ -35,7 +35,7 @@ import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import $ from "jquery";
-import { getCaretUIID } from "@/helpers/editor";
+import { getCaretUIID, getEditorMiddleUIID } from "@/helpers/editor";
 
 
 //////////////////////
@@ -94,6 +94,20 @@ export default Vue.extend({
             //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
             return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !store.getters.canAddFrameBelowDisabled(this.frameId) : true);
         },
+    },
+
+    updated() {
+        // Ensure the caret (during navigation) is visible in the page viewport
+        if(!this.overCaret && this.$props.caretVisibility !== CaretPosition.none && this.$props.caretVisibility === this.caretAssignedPosition) {
+            const caretContainerEltRect = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId)?.getBoundingClientRect();
+            //is caret outside the viewport?
+            if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
+                //scroll the UI up/down depending on the direction we're going
+                const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
+                const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
+                $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + scrollStep);
+            }
+        }        
     },
     
     methods: {

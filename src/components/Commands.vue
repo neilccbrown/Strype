@@ -54,11 +54,12 @@ import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
-import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID } from "@/helpers/editor"
+import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId} from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
+import $ from "jquery";
 
 export default Vue.extend({
     name: "Commands",
@@ -135,6 +136,11 @@ export default Vue.extend({
                     );
                     event.preventDefault();
                 }
+
+                //prevent default scrolling.
+                if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
+                    event.preventDefault();
+                }
             }
         );
         
@@ -204,6 +210,7 @@ export default Vue.extend({
                                 "deleteCurrentFrame",
                                 event.key
                             );
+                            event.stopImmediatePropagation();
                         }
                         //add the frame in the editor if allowed
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
@@ -218,7 +225,27 @@ export default Vue.extend({
         );
     },
 
+    mounted() {
+        //scroll events on the left pane (menu) and right pane (commands) are forwarded to the editor
+        document.getElementById(getMenuLeftPaneUIID())?.addEventListener(
+            "wheel",
+            this.handleAppScroll,
+            false
+        );
+
+        document.getElementById(getCommandsRightPaneContainerId())?.addEventListener(
+            "wheel",
+            this.handleAppScroll,
+            false
+        );
+    },
+
     methods: {
+        handleAppScroll(event: MouseWheelEvent) {
+            const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
+            $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as MouseWheelEvent).deltaY/2);
+        },
+
         flash() {
             if (navigator.usb) {
                 const webUSBListener: WebUSBListener = {

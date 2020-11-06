@@ -39,4 +39,16 @@ export function getEditorButtonsContainerUIID() {
     return "editorButtonsContainer"
 }
 
+export function getMenuLeftPaneUIID(){
+    return "menu-bar";
+}
+
+export function getEditorMiddleUIID() {
+    return "editorCodeDiv";
+}
+
+export function getCommandsRightPaneContainerId() {
+    return "commandsContainerDiv";
+}
+
 export const fileImportSupportedFormats: string[] = ["wpy"];
