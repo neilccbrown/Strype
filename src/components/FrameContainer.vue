@@ -16,11 +16,12 @@
                 v-model="frames" 
                 v-bind:group="draggableGroup"
                 @change.self="handleDragAndDrop($event)"
+                @unchoose="showSelectedFrames()"
                 v-bind:animation="300"
                 v-bind:disabled="isEditing"
                 v-bind:key="'Draggagle-Container-'+this.frameId"
                 v-bind:id="'Draggagle-Container-'+this.frameId"
-                @choose.passive ="handleMultiDrag($event)"
+                @start ="handleMultiDrag($event)"
             >
                 <Frame 
                     v-for="frame in frames" 
@@ -135,23 +136,47 @@ export default Vue.extend({
         },
         
         handleDragAndDrop(event: Event): void {
-            store.dispatch(
-                "updateFramesOrder",
-                {
-                    event: event,
-                    eventParentId: this.frameId,
-                }
-            );
-        }, 
+            const eventType = Object.keys(event)[0];
+            const chosenFrame = event[eventType].element;
+            // If the frame is part of a selection
+            if(store.getters.getIsSelected(chosenFrame.id)) {
+                //If the move can happen
+                // if((store.getters.getIfPositionAllowsSelectedFrames(this.$props.frameId,(event[eventType].newIndex === 0)? CaretPosition.body: CaretPosition.below,false))) {
+                store.dispatch(
+                    "moveSelectedFramesToPosition",
+                    {
+                        event: event,
+                        parentId: this.$props.frameId,
+                    }
+                );
+                // }
+            }
+            else{
+                store.dispatch(
+                    "updateFramesOrder",
+                    {
+                        event: event,
+                        eventParentId: this.$props.frameId,
+                    }
+                );
+            }
+        },
         
         handleMultiDrag(event: Event): void {
             const chosenFrame = this.frames[event.oldIndex];
             // If the frame is part of a selection
             if(store.getters.getIsSelected(chosenFrame.id)) {
-                console.log("FrameContainer");
+                // Make it appear as the whole selection is being dragged
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
             }
-        },  
+        },   
+
+        // Some times, when draging and droping in the original position of where the
+        // selected frames were taken, the `change` event is not fired; hence you need to
+        // catch the `unchoose` event
+        showSelectedFrames(): void {
+            store.commit("makeSelectedFramesVisible");
+        },
 
     },
 });

@@ -38,8 +38,8 @@
         "vue-confirm-dialog": "^1.0.2",
         "vue-i18n": "^8.17.3",
         "vue-input-autowidth": "^1.0.10",
-        "vue-simple-context-menu": "https://github.com/bkyf/vue-simple-context-menu/tarball/emit-hide-event",
-        "vuedraggable": "git://github.com/divinespear/Vue.Draggable.git#multi-drag",
+        "vue-simple-context-menu": "^3.3.0",
+        "vuedraggable": "^2.24.3",
         "vuex": "^3.5.1"
     },
     "devDependencies": {

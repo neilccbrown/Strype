@@ -559,7 +559,6 @@ export default new Vuex.Store({
 
         updateFramesOrder(state, payload: {event: any; eventParentId: number}) {
             const eventType = Object.keys(payload.event)[0];
-
             //If we are moving a joint frame the list to be updated is it's parents jointFrameIds list.
             const listToUpdate = (payload.event[eventType].element.jointParentId > 0 ) ?
                 state.frameObjects[payload.eventParentId].jointFrameIds : 
@@ -1159,6 +1158,15 @@ export default new Vuex.Store({
             );
         },
 
+        makeSelectedFramesVisible(state){
+            state.selectedFrames.forEach( (id) =>
+                Vue.set(
+                    state.frameObjects[id],
+                    "isVisible",
+                    "true"
+                ));
+        },
+
     },
 
     actions: {
@@ -1173,18 +1181,20 @@ export default new Vuex.Store({
                 return;
             }
 
+            const eventType = Object.keys(payload.event)[0];
+
             //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
-            if(payload.event["removed"] == undefined){
+            if(eventType !== "removed"){
                 commit(
                     "updateStateBeforeChanges",
                     false
                 );
             }
             
-            const eventType = Object.keys(payload.event)[0];
+            
             const isJointFrame = getters.getIsJointFrameById(payload.event[eventType].element.id);
 
-            const position: CaretPosition = (isJointFrame || payload.event[eventType].newIndex !== 0)?
+            const position: CaretPosition = (isJointFrame)?
                 CaretPosition.below:
                 CaretPosition.body;
 
@@ -1205,7 +1215,7 @@ export default new Vuex.Store({
                 const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
                     ? (succeedingFrame !== undefined)
                         ? !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, succeedingFrame)
-                        : !getters.getIfPositionAllowsFrame(jointFrameIds[jointFrameIds.length - 1], CaretPosition.below, payload.event[eventType].element.id)
+                        : !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, jointFrameIds[jointFrameIds.length - 1])
                     : false;
 
                 if((!isJointFrame && !getters.getIfPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
@@ -1238,7 +1248,7 @@ export default new Vuex.Store({
             );
 
             //after the removing or at the moving step, we use the backup of the state for setting "isDisabled", prepare for undo/redo and clear the backup off
-            if(payload.event["added"] === undefined){
+            if(eventType !== "added"){
                 // Set the right value for "isDisabled"
                 const srcFrameId = payload.event[eventType].element.id as number;
                 const destContainerId = (state.frameObjects[srcFrameId].jointParentId > 0)
@@ -2186,6 +2196,161 @@ export default new Vuex.Store({
             );
         
         },
+
+        // This method can be used to move the selected frames to a position through Drag & Drop
+        moveSelectedFramesToPosition({commit, state, getters}, payload: {event: any; parentId: number}) {
+            
+            if(state.ignoredDragAction){
+                //if the action should be ignore, just return and reset the flag
+                commit(
+                    "setIgnoredDragAction",
+                    false
+                );
+
+                return;
+            }
+
+            //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
+            if(payload.event["removed"] == undefined){
+                commit(
+                    "updateStateBeforeChanges",
+                    false
+                );
+            }
+
+            const eventType = Object.keys(payload.event)[0];
+            const isJointFrame = getters.getIsJointFrameById(state.selectedFrames[0]);
+
+            const position: CaretPosition = (isJointFrame)?
+                CaretPosition.below:
+                CaretPosition.body;
+
+            // Even in the same draggable group, some JointFrames cannot be moved (i.e. an elif below an else)
+            // That should be checked both ways as for example if you move an `else` above an elif, it may be
+            // valid, as the if accepts else there, but the elif cannot go below the else.
+            // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
+            // succeedingFrame is the next frame (if it exists) above which we are adding
+            
+            const indexOfFirstSelected = (isJointFrame)?
+                state.frameObjects[payload.parentId].jointFrameIds.indexOf(state.selectedFrames[0]):
+                state.frameObjects[payload.parentId].childrenIds.indexOf(state.selectedFrames[0]);
+
+            const indexOfLastSelected = (isJointFrame)?
+                state.frameObjects[payload.parentId].jointFrameIds.indexOf(state.selectedFrames[state.selectedFrames.length-1]):
+                state.frameObjects[payload.parentId].childrenIds.indexOf(state.selectedFrames[state.selectedFrames.length-1]);
+
+            // If we are moving it to the same parent, we need to check whether
+            // we are moving it to the same place (between first and last index of the selected ones); 
+            // If that's the case we don't do anything as it may cause a problem (e.g. if selected indexes are 0...3
+            // it may move it to 1 instead of 0.
+            const parentIdOfSelected = getters.getParentOrJointParentOfFrame(state.frameObjects[state.selectedFrames[0]].id)
+            let newIndex = payload.event[eventType].newIndex;
+
+            if(eventType === "moved" && payload.parentId === parentIdOfSelected) {
+                if(newIndex >= indexOfFirstSelected && newIndex <= indexOfLastSelected) {
+                    commit("makeSelectedFramesVisible");
+                    return;
+                }
+            }
+
+            const succeedingFrame = state.frameObjects[payload.parentId].jointFrameIds[payload.event[eventType].newIndex + (eventType === "moved")];   
+            const jointFrameIds = state.frameObjects[payload.parentId].jointFrameIds;
+            if(eventType !== "removed") {
+                // EXAMPLE: Moving frame `A` above Frame `B`
+                // IF `A` cannot be moved on this position 
+                //                OR
+                // IF `A` is jointFrame and there IS a frame `B` where I am moving `A` at
+                //     on TRUE ==> Check if `B` CANNOT be placed below `A` / CANNOT be the trailing joint frame
+                //     on FALSE ==> We don't care about this situation
+                const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
+                    ? (succeedingFrame !== undefined)
+                        ? !getters.getIfPositionAllowsSelectedFrames(payload.event[eventType].element.id, CaretPosition.below, false)
+                        : !getters.getIfPositionAllowsSelectedFrames(jointFrameIds[jointFrameIds.length - 1], CaretPosition.below, false)
+                    : false;
+
+                if((!isJointFrame && !getters.getIfPositionAllowsSelectedFrames(payload.parentId, position, false)) || jointFrameCase) {       
+                    //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
+                    if(eventType === "added"){
+                        commit(
+                            "setIgnoredDragAction",
+                            true
+                        );
+                    }
+
+                    //alert the user about a forbidden move
+                    commit(
+                        "setMessageBanner",
+                        MessageDefinitions.ForbiddenFrameMove
+                    );
+    
+                    //don't leave the message for ever
+                    setTimeout(()=>commit(
+                        "setMessageBanner",
+                        MessageDefinitions.NoMessage
+                    ), 3000);         
+                    commit("makeSelectedFramesVisible");
+                    return;
+                }
+            }
+
+
+            // The top level cloned frames need to be stored in order to then be added to their new parent's list
+            const sourceFrameIds: number[] = state.selectedFrames;
+
+
+            // For EVERY frame that we are removing, the oldIndex stays the same, i.e. the index
+            // of the first selected frame. This is because we move the frames one by one
+            // (from the first the last) and each time we remove one, the next goes up in the
+            // oldParent, hence retaining the index of the previous first selected frame
+            // const isJointFrame = state.frameObjects[state.selectedFrames[0]].frameType.isJointFrame;
+            // const oldIndex = (isJointFrame)?
+            //     state.frameObjects[payload.parentId].jointFrameIds.indexOf(state.selectedFrames[0]):
+            //     state.frameObjects[payload.parentId].childrenIds.indexOf(state.selectedFrames[0]);
+
+            
+
+            Object.values(sourceFrameIds).forEach( (id) => {
+                // For each frame in the list, we are calling the `updateFramesOrder`
+                // and for each frame we are creating a `fake` event, as the event really
+                // occurs for only the dragged frame.
+                commit(
+                    "updateFramesOrder",
+                    {
+                        event: {
+                            [eventType]: { // the [] are needed for JS to understand that we're talking about the variable and not the string 'eventType'
+                                element: state.frameObjects[id],
+                                newIndex: newIndex++,
+                                oldIndex: indexOfFirstSelected,
+                                eventType : eventType,
+                            },
+                        },
+                        eventParentId: payload.parentId,
+                    }
+                )
+            });
+
+            // In the end, unselect all frames
+            if(eventType !== "added") {
+                commit("makeSelectedFramesVisible");
+                commit("unselectAllFrames");
+                //save state changes
+                //save the state changes for undo/redo
+                commit(
+                    "saveStateChanges",
+                    {                   
+                        previousState: state.stateBeforeChanges,
+                    }
+                );
+
+                //clear the stateBeforeChanges flag off
+                commit(
+                    "updateStateBeforeChanges",
+                    true
+                );
+            }
+        
+        },
+
     },
     modules: {},
 });
