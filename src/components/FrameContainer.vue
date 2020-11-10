@@ -135,7 +135,7 @@ export default Vue.extend({
             this.$data.containerStyle["display"] = (this.$data.isCollapsed) ? "none" : "block";
         },
         
-        handleDragAndDrop(event: Event): void {
+        handleDragAndDrop(event: any): void {
             const eventType = Object.keys(event)[0];
             const chosenFrame = event[eventType].element;
             // If the frame is part of a selection
@@ -160,7 +160,7 @@ export default Vue.extend({
             }
         },
         
-        handleMultiDrag(event: Event): void {
+        handleMultiDrag(event: any): void {
             const chosenFrame = this.frames[event.oldIndex];
             // If the frame is part of a selection
             if(store.getters.getIsSelected(chosenFrame.id)) {

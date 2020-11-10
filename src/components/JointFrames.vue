@@ -82,7 +82,7 @@ export default Vue.extend({
 
     methods: {
 
-        handleDragAndDrop(event: Event): void {
+        handleDragAndDrop(event: any): void {
             const eventType = Object.keys(event)[0];
             const chosenFrame = event[eventType].element;
 
@@ -114,7 +114,7 @@ export default Vue.extend({
             }
         },
         
-        handleMultiDrag(event: Event): void {
+        handleMultiDrag(event: any): void {
             const chosenFrame = this.jointFrames[event.oldIndex];
             // If the frame is part of a selection
             if(store.getters.getIsSelected(chosenFrame.id)) {

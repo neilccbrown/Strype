@@ -13,6 +13,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { },
         caretVisibility: CaretPosition.none,
+        multiDragStyling: "",
     },
     "-1": {
         id: -1,
@@ -26,6 +27,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.none,
+        multiDragStyling: "",
     },
     "-2": {
         id: -2,
@@ -39,6 +41,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { },
         caretVisibility: CaretPosition.none,
+        multiDragStyling: "",
     },
     "-3": {
         id: -3,
@@ -52,6 +55,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.body,
+        multiDragStyling: "",
     },
     1: {
         frameType: Definitions.ImportDefinition,
