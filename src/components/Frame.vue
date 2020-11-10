@@ -13,13 +13,13 @@
             v-bind:style="frameStyle" 
             class="block frameDiv" 
             v-bind:class="{error: erroneous, statementOrJoint: isStatementOrJointFrame, blockWithBody: !isStatementOrJointFrame}"
-            v-bind:id="id"
+            v-bind:id="uiid"
             @click="toggleCaret($event)"
             @contextmenu.prevent.stop="handleClick($event,'frame-context-menu')"
         >
             <vue-simple-context-menu
                 v-show="allowContextMenu"
-                :elementId="id+'frameContextMenu'"
+                :elementId="uiid+'frameContextMenu'"
                 :options="this.frameContextMenuOptions"
                 :ref="'frameContextMenu'"
                 @option-clicked="optionClicked"
@@ -57,9 +57,10 @@
         </div>
         <b-popover
           v-if="erroneous"
-          v-bind:target="id"
+          v-bind:target="uiid"
           v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
+          placement="left"
           v-bind:content="errorMessage"
         ></b-popover>
     </div>
@@ -158,7 +159,7 @@ export default Vue.extend({
             );
         },
 
-        id(): string {
+        uiid(): string {
             return "frame_id_"+this.$props.frameId;
         },
 
@@ -169,7 +170,7 @@ export default Vue.extend({
         },
 
         allowContextMenu(): boolean {
-            return store.getters.getContextMenuShownId() === this.id; 
+            return store.getters.getContextMenuShownId() === this.uiid; 
         },
 
         selectedStatus(): string {
@@ -198,7 +199,7 @@ export default Vue.extend({
 
         handleClick (event: MouseEvent, action: string) {
 
-            store.commit("setContextMenuShownId",this.id);
+            store.commit("setContextMenuShownId",this.uiid);
 
             if(action === "frame-context-menu") {
                 //keep information of what offset has to be observed from the "normal" menu positioning
@@ -264,7 +265,7 @@ export default Vue.extend({
             // This checks the propagated click events, and prevents the parent event to handle the event as well. 
             // Stop and Prevent do not work in this case, as the event needs to be propagated 
             // (for the context menu to close) but it does not need to trigger always a caret change.
-            if(frame.id !== this.id ){
+            if(frame.id !== this.uiid ){
                 return;
             }
 

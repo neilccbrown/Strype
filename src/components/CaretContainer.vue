@@ -5,20 +5,21 @@
         @mouseover.prevent.stop="mouseOverCaret(true)"
         @mouseleave.prevent.stop="mouseOverCaret(false)"
         @contextmenu.prevent.stop="handleClick($event, 'paste')"
-        v-bind:key="id"
-        v-bind:id="id"
+        v-bind:key="uiid"
+        v-bind:id="uiid"
     >
         <vue-simple-context-menu
             v-show="allowContextMenu"
-            v-bind:elementId="id+'_pasteContextMenu'"
+            v-bind:elementId="uiid+'_pasteContextMenu'"
             v-bind:options="pasteOption"
             v-bind:ref="'pasteContextMenu'"
             @option-clicked="optionClicked"
         />
         <Caret
+            v-bind:id="caretUIID"
             v-bind:isBlurred="overCaret"
             v-bind:isInvisible="isInvisible"
-            v-blur="isFrameDisabled"
+            v-blur="isCaretBlurred"
         />
     </div>
 </template>
@@ -34,6 +35,8 @@ import Caret from"@/components/Caret.vue";
 import { CaretPosition, FrameObject } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import $ from "jquery";
+import { getCaretUIID, getEditorMiddleUIID } from "@/helpers/editor";
+
 
 //////////////////////
 //     Component    //
@@ -67,14 +70,16 @@ export default Vue.extend({
         },
         isInvisible(): boolean {
             return  !((this.caretVisibility === this.caretAssignedPosition || this.caretVisibility === this.caretPosition.both) && !this.isEditing); 
-
         },
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
         },
-        id(): string {
+        uiid(): string {
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
+        },
+        caretUIID(): string {
+            return getCaretUIID(this.caretAssignedPosition, this.frameId);
         },
         pasteAvailable(): boolean {
             return store.getters.getIsCopiedAvailable();
@@ -83,14 +88,32 @@ export default Vue.extend({
             return this.pasteAvailable? [{name: this.$i18n.t("contextMenu.paste"), method: "paste"}] : [{}];
         },
         allowContextMenu(): boolean {
-            return store.getters.getContextMenuShownId() === this.id; 
+            return store.getters.getContextMenuShownId() === this.uiid; 
         },
+        isCaretBlurred(): boolean {
+            //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
+            return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !store.getters.canAddFrameBelowDisabled(this.frameId) : true);
+        },
+    },
+
+    updated() {
+        // Ensure the caret (during navigation) is visible in the page viewport
+        if(!this.overCaret && this.$props.caretVisibility !== CaretPosition.none && this.$props.caretVisibility === this.caretAssignedPosition) {
+            const caretContainerEltRect = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId)?.getBoundingClientRect();
+            //is caret outside the viewport?
+            if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
+                //scroll the UI up/down depending on the direction we're going
+                const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
+                const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
+                $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + scrollStep);
+            }
+        }        
     },
     
     methods: {
-        handleClick (event: MouseEvent, action: string): void {
+        handleClick (event: MouseEvent): void {
 
-            store.commit("setContextMenuShownId",this.id);
+            store.commit("setContextMenuShownId",this.uiid);
             if(this.pasteAvailable) {  
                 if(store.getters.isCopiedASelection()){
                     if(store.getters.getIfPositionAllowsSelectedFrames(this.frameId, this.caretAssignedPosition, true)) {

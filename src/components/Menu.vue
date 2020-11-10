@@ -2,7 +2,7 @@
     <div>
         <div>
             <button 
-                id="showHideMenu" 
+                v-bind:id="menuUIID" 
                 href="#" 
                 tabindex="0" 
                 @click="toggleMenuOnOff"
@@ -71,25 +71,27 @@
                 class="editor-file-input"
             /> 
         </div>
-        <div class="menu-icon-div">
-            <input 
-                type="image" 
-                :src="undoImagePath"
-                :disabled="isUndoDisabled"
-                @click="performUndoRedo(true)"
-                class="undoredo-img"
-                :title="this.$i18n.t('contextMenu.undo')"
-            />
-        </div>     
-        <div class="menu-icon-div">   
-            <input 
-                type="image" 
-                :src="redoImagePath"
-                :disabled="isRedoDisabled"
-                @click="performUndoRedo(false)"
-                class="undoredo-img"
-                :title="this.$i18n.t('contextMenu.redo')"
-            />
+        <div class="undoredo-div">
+            <div class="menu-icon-div">
+                <input 
+                    type="image" 
+                    :src="undoImagePath"
+                    :disabled="isUndoDisabled"
+                    @click="performUndoRedo(true)"
+                    class="undoredo-img"
+                    :title="this.$i18n.t('contextMenu.undo')"
+                />
+            </div>
+            <div class="menu-icon-div">   
+                <input 
+                    type="image" 
+                    :src="redoImagePath"
+                    :disabled="isRedoDisabled"
+                    @click="performUndoRedo(false)"
+                    class="undoredo-img"
+                    :title="this.$i18n.t('contextMenu.redo')"
+                />
+            </div>
         </div>       
     </div>
 </template>
@@ -102,7 +104,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { fileImportSupportedFormats } from "@/helpers/editor";
+import { fileImportSupportedFormats, getEditorMenuUIID } from "@/helpers/editor";
 import $ from "jquery";
 
 //////////////////////
@@ -111,7 +113,6 @@ import $ from "jquery";
 export default Vue.extend({
     name: "Menu",
     store,
-
 
     data() {
         return {
@@ -129,9 +130,10 @@ export default Vue.extend({
         this.isComponentLoaded  = true;
     },
 
-
-
     computed: {
+        menuUIID(): string {
+            return getEditorMenuUIID();
+        },
         isUndoDisabled(): boolean {
             return store.getters.getIsUndoRedoEmpty("undo");
         },
@@ -139,10 +141,10 @@ export default Vue.extend({
             return store.getters.getIsUndoRedoEmpty("redo");
         },
         undoImagePath(): string {
-            return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.png") : require("@/assets/images/undo.png");
+            return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.svg") : require("@/assets/images/undo.svg");
         },
         redoImagePath(): string {
-            return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.png") : require("@/assets/images/redo.png");
+            return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.svg") : require("@/assets/images/redo.svg");
         },
         editorFileMenuOption(): {}[] {
             return  [{name: "import", method: "importFile"}, {name: "export", method: "exportFile"}];
@@ -307,7 +309,7 @@ export default Vue.extend({
 
 .menu-icon-div {
     width: 100%;
-    height: 20px;
+    height: 24px;
     margin-bottom: 10px;
 }
 
@@ -355,9 +357,13 @@ td:hover {
     border-radius: 50%;
 }
 
+.undoredo-div {
+    margin-top: 20px;
+}
+
 .undoredo-img {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     display: block;
     margin: auto;
 }

@@ -222,7 +222,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
 
 export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: ContainerTypesIdentifiers.funcDefsContainer,
+    type: ContainerTypesIdentifiers.framesMainContainer,
     labels: [
         { label: "Your code:", slot: false, defaultText: ""},
     ],
@@ -665,4 +665,38 @@ export interface ChangeFramePropInfos {
     newBoolPropVal?: boolean;
     newNumberPropVal?: number;
     newStringPropVal?: string;
+}
+
+// Tutorial
+export interface TutorialHightightedElementDimension{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+export interface TutorialMargins {
+    //All margins (extra space around the highlighted element) are optional, and they are expressing pixels
+    //We use this interface for custom position of the messages too, and then they are expressing percentages
+    left?: number;
+    top?: number;
+    bottom?: number;
+    right?: number;
+}
+
+export interface TutorialArrowPos {
+    //Arrow positioning expressing percentages
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number; 
+}
+
+export interface TutorialStep {
+    hightLighedElementsUIIDs: string[];
+    highLightedAreaExtraMargins?: TutorialMargins[]; //pixel values
+    explanationMessage: string;
+    messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
+    messageCustomPos?: TutorialMargins; //percentage values
+    showArrows: boolean;
 }

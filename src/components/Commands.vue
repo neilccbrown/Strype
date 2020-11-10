@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <div>
+        <div v-bind:id="buttonsContainerUIID" class="commands-container">
             <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
             <button @click="downloadHex" v-t="'buttonLabel.downloadHex'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
@@ -18,30 +18,32 @@
             </div>
         </div>
         <hr />
-        <div class="frameCommands">
-            <AddFrameCommand
-                v-for="addFrameCommand in addFrameCommands"
-                v-bind:key="addFrameCommand.type.type"
-                v-bind:type="addFrameCommand.type.type"
-                v-bind:shortcut="addFrameCommand.shortcut"
-                v-bind:symbol="
-                    addFrameCommand.symbol !== undefined
-                        ? addFrameCommand.symbol
-                        : addFrameCommand.shortcut
-                "
-                v-bind:description="addFrameCommand.description"
-            />
-        </div>
-        <hr />
-        <div class="toggleFrameLabelCommands">
-            <ToggleFrameLabelCommand
-                v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
-                v-bind:key="toggleFrameLabelCommand.type"
-                v-bind:type="toggleFrameLabelCommand.type"
-                v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
-                v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
-                v-bind:description="toggleFrameLabelCommand.displayCommandText"
-            />
+        <div v-bind:id="commandsContainerUUID">
+            <div class="frameCommands">
+                <AddFrameCommand
+                    v-for="addFrameCommand in addFrameCommands"
+                    v-bind:key="addFrameCommand.type.type"
+                    v-bind:type="addFrameCommand.type.type"
+                    v-bind:shortcut="addFrameCommand.shortcut"
+                    v-bind:symbol="
+                        addFrameCommand.symbol !== undefined
+                            ? addFrameCommand.symbol
+                            : addFrameCommand.shortcut
+                    "
+                    v-bind:description="addFrameCommand.description"
+                />
+            </div>
+            <hr />
+            <div class="toggleFrameLabelCommands">
+                <ToggleFrameLabelCommand
+                    v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
+                    v-bind:key="toggleFrameLabelCommand.type"
+                    v-bind:type="toggleFrameLabelCommand.type"
+                    v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
+                    v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
+                    v-bind:description="toggleFrameLabelCommand.displayCommandText"
+                />
+            </div>
         </div>
     </div>
 </template>
@@ -52,10 +54,12 @@ import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
+import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId} from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
+import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition} from "@/types/types";
 import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
+import $ from "jquery";
 
 export default Vue.extend({
     name: "Commands",
@@ -80,12 +84,22 @@ export default Vue.extend({
     },
 
     computed: {
+        buttonsContainerUIID(): string {
+            return getEditorButtonsContainerUIID();
+        },
+
+        commandsContainerUUID(): string {
+            return getCommandsContainerUIID();
+        },
+
         addFrameCommands(): Record<string, AddFrameCommandDef> {
-            //If the frame isn't disabled, we retrieve the add frame commands associated with the current frame
-            if(store.getters.getIsCurrentFrameDisabled()) {
-                //for disabled frame we don't show any add frame command
+            //We retrieve the add frame commands associated with the current frame 
+            //if the frame is enabled, we always check, if it is disabled we return no frame when caret is body, and check when caret is below
+            const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
+            if(currentFrame.isDisabled && ((currentFrame.caretVisibility === CaretPosition.body) ? true : !store.getters.canAddFrameBelowDisabled(currentFrame.id))){
                 return {};
             }
+            
             return store.getters.getCurrentFrameAddFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
         },
 
@@ -107,12 +121,24 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
+                const tutorial = document.getElementById(getTutorialUIID());
+                if(tutorial){
+                    //if the tutorial is displayed, we don't do anything here
+                    event.preventDefault();
+                    return;
+                }
+
                 if((event.ctrlKey || event.metaKey) && (event.key === "z" || event.key === "y")) {
                     //undo-redo
                     store.dispatch(
                         "undoRedo",
                         (event.key === "z")
                     );
+                    event.preventDefault();
+                }
+
+                //prevent default scrolling.
+                if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     event.preventDefault();
                 }
             }
@@ -122,7 +148,15 @@ export default Vue.extend({
             "keyup",
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
+                const tutorial = document.getElementById(getTutorialUIID());
+                if(tutorial){
+                    //if the tutorial is displayed, we don't do anything here
+                    event.preventDefault();
+                    return;
+                }
+
                 const isEditing = store.getters.getIsEditing();
+
                 if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     //first we remove the focus of the current active element (to avoid editable slots to keep it)
                     (document.activeElement as HTMLElement).blur();
@@ -195,6 +229,7 @@ export default Vue.extend({
                                 "deleteCurrentFrame",
                                 event.key
                             );
+                            event.stopImmediatePropagation();
                         }
                         //add the frame in the editor if allowed
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
@@ -209,7 +244,27 @@ export default Vue.extend({
         );
     },
 
+    mounted() {
+        //scroll events on the left pane (menu) and right pane (commands) are forwarded to the editor
+        document.getElementById(getMenuLeftPaneUIID())?.addEventListener(
+            "wheel",
+            this.handleAppScroll,
+            false
+        );
+
+        document.getElementById(getCommandsRightPaneContainerId())?.addEventListener(
+            "wheel",
+            this.handleAppScroll,
+            false
+        );
+    },
+
     methods: {
+        handleAppScroll(event: MouseWheelEvent) {
+            const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
+            $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as MouseWheelEvent).deltaY/2);
+        },
+
         flash() {
             if (navigator.usb) {
                 const webUSBListener: WebUSBListener = {
@@ -304,5 +359,9 @@ export default Vue.extend({
     color:#fefefe !important;
     text-align: left !important;
     font-weight: bold;
+}
+
+.commands-container{
+    display: inline-block;
 }
 </style>

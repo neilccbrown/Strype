@@ -18,7 +18,10 @@
       "ok": "OK",
       "uploadToMicrobit": "Upload to micro:bit",
       "downloadHex": "Download Hex",
-      "downloadPython": "Download Python"
+      "downloadPython": "Download Python",
+      "skipTutorial": "Skip Tutorial",
+      "next": "Next",
+      "startCoding": "Start Coding!"
   },
   "action": {
     "uploadingToMicrobit": "Uploading to micro:bit ..."
@@ -29,6 +32,7 @@
     "dataNotObject" : "the data doesn't describe an object",
     "emptyEditableSlot": "Input slot cannot be empty",
     "emptyFrameBody": "Body cannot be empty",
+    "noValidChildFrameBody": "Body needs to have at least one enabled / non-comment frame ",
     "errorTitle": "Error!"
   },
   "appMessage": {
@@ -45,5 +49,11 @@
     "disable": "Disable",
     "undo": "Undo",
     "redo": "Redo"
+  },
+  "tutorialExplanation": {
+    "commands": "Here you can find all the frames with their keyboard shortcut!",
+    "codeEditor": "This is where you write your code",
+    "editorCaret": "The blue cursor indicates where you are editing now",
+    "editorMenus": "More options for your project"
   }
 }

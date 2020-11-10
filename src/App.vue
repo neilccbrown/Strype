@@ -1,6 +1,7 @@
 <template>
     <div id="app" class="container-fluid">
         <vue-confirm-dialog />
+        <tutorial/>
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
@@ -26,14 +27,15 @@
                 </div>
                 <div class="row no-gutters" >
                     <Menu 
-                        id="menu-bar" 
+                        v-bind:id="menuUIID" 
                         class="col-auto"
                     />
                     <div class="col">
-                        <div class="editor-code-div" >
+                        <div v-bind:id="editorUIID" class="editor-code-div" >
                             <FrameContainer
                                 v-for="container in containerFrames"
                                 v-bind:key="container.frameType.type + '-id:' + container.id"
+                                v-bind:id="getFrameContainerUIID(container.id)"
                                 v-bind:frameId="container.id"
                                 v-bind:containerLabel="container.frameType.labels[0].label"
                                 v-bind:caretVisibility="container.caretVisibility"
@@ -43,7 +45,7 @@
                     </div>
                 </div>
             </div>
-            <Commands class="col-4" />
+            <Commands v-bind:id="commandsContainerId" class="col-4" />
         </div>
     </div>
 </template>
@@ -56,9 +58,11 @@ import Vue from "vue";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
-import Menu from "@/components/Menu.vue"
+import Menu from "@/components/Menu.vue";
+import Tutorial from "@/components/Tutorial.vue";
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId } from "./helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -72,6 +76,7 @@ export default Vue.extend({
         FrameContainer,
         Commands,
         Menu,
+        Tutorial,
     },
 
     data() {
@@ -92,6 +97,26 @@ export default Vue.extend({
         showMessage(): boolean {
             return store.getters.getIsMessageBannerOn();
         },
+
+        menuUIID(): string {
+            return getMenuLeftPaneUIID();
+        },
+
+        editorUIID(): string {
+            return getEditorMiddleUIID();
+        },
+
+        commandsContainerId(): string {
+            return getCommandsRightPaneContainerId();
+        },
+    },
+
+    created() {
+        window.addEventListener("beforeunload", function(event) {
+            // Browsers won't display a customised message, and can detect when to prompt the user,
+            // so we don't need to do anything special.
+            event.returnValue = true;
+        })
     },
 
     methods: {
@@ -108,6 +133,10 @@ export default Vue.extend({
             (document.getElementsByTagName("body")[0] as HTMLBodyElement).style.height = heightVal;
             (document.getElementById("app") as HTMLDivElement).style.height = heightVal;
             (document.getElementById("app") as HTMLDivElement).style.overflow = overflowVal;
+        },
+
+        getFrameContainerUIID(frameId: number){
+            return getFrameContainerUIID(frameId);
         },
 
         toggleEdition(): void {

@@ -1,15 +1,15 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
-import { getEditableSlotId, undoMaxSteps } from "@/helpers/editor";
+import tutorialState from "@/store/tutorial-state"
+import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
-import { faViruses } from "@fortawesome/free-solid-svg-icons";
 
 Vue.use(Vuex);
 
@@ -18,7 +18,7 @@ export default new Vuex.Store({
 
         frameObjects: initialState,
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number,
+        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
@@ -108,8 +108,23 @@ export default new Vuex.Store({
         getCurrentFrameObject: (state) => () => {
             return state.frameObjects[state.currentFrame.id];
         },
-        getIsCurrentFrameDisabled: (state) => () => {
-            return state.frameObjects[state.currentFrame.id].isDisabled;
+        canAddFrameBelowDisabled: (state) => (frameId: number) => {
+            //in this method, we check if frames can be added below the specified (disabled) frame.
+            if(state.frameObjects[frameId].jointParentId > 0 ){
+                //for joint frames we check that it is the last (commands are treated in addFrameCommands)
+                const jointFrameIds = state.frameObjects[state.frameObjects[frameId].jointParentId].jointFrameIds;
+                return (jointFrameIds.indexOf(frameId) == jointFrameIds.length - 1);
+            }
+            else{
+                //for other frames, we just check the parent's property, except for joint root frames if they have children: they can't have more children
+                if(state.frameObjects[frameId].jointFrameIds.length > 0){
+                    return false;
+                }
+                return !state.frameObjects[state.frameObjects[frameId].parentId].isDisabled;
+            }
+        },
+        getMainCodeFrameContainerId: (state) => () => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === MainFramesContainerDefinition.type)[0].id;
         },
         getDraggableGroupById: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.draggableGroup;
@@ -165,75 +180,62 @@ export default new Vuex.Store({
             if(jointTypes.length > 0){
                 const rootJointFrame = (currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId] : currentFrame;
 
-                //Remove "finally" in joint frames allowed after "else" if we are in anything else than in a "try"
-                if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
-                    jointTypes.splice(
-                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                        1
-                    );
+                //after a joint frame (including the root frame) which is disabled, no joint frame can be added
+                if(currentFrame.isDisabled){
+                    jointTypes = [];                    
                 }
-
-                //remove joint frames that can ony be included once if they already are in the current joint frames structure
-                const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
-                uniqueJointFrameTypes.forEach((frameDef) => {
-                    if(jointTypes.includes(frameDef.type) &&
-                        rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
+                else{
+                    //Remove "finally" in joint frames allowed after "else" if we are in anything else than in a "try"
+                    if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
                         jointTypes.splice(
-                            jointTypes.indexOf(frameDef.type),
+                            jointTypes.indexOf(Definitions.FinallyDefinition.type),
                             1
                         );
                     }
-                });
-                
-                //ensure the intermediate following joint frames orders are respected: if > elseif > else and try > except > else > finally
-                if(rootJointFrame.jointFrameIds.length > 0) {
-                    const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
-                        || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
-                  
-                    //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
-                    if(isCurrentFrameIntermediateJointFrame ) {
-                        forbiddenTypes = Object.values(AllFrameTypesIdentifier);
-                    }
-                  
-                    //workout what types can be left for if and try joint frames structures.
-                    if(rootJointFrame.frameType.type === Definitions.IfDefinition.type){  
-                        //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
-                        if(isCurrentFrameIntermediateJointFrame) {
-                            jointTypes = jointTypes.filter((type) => type !== Definitions.ElseDefinition.type);
-                        }
-                    }
-                    else if (rootJointFrame.frameType.type === Definitions.TryDefinition.type){
-                        const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.FinallyDefinition.type) !== undefined);
-                        const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ElseDefinition.type) !== undefined);
-                        const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ExceptDefinition.type) !== undefined);
 
-                        //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
-                        if(currentFrame.frameType.type === Definitions.TryDefinition.type){
-                            if(hasElse && !hasFinally){
-                                jointTypes.splice(
-                                    jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                                    1
-                                );
-                            }
-                            if(hasExcept){
-                                uniqueJointFrameTypes.forEach((frameType) => {
-                                    if(jointTypes.includes(frameType.type)){
-                                        jointTypes.splice(
-                                            jointTypes.indexOf(frameType.type),
-                                            1
-                                        );
-                                    }
-                                });
+                    //remove joint frames that can ony be included once if they already are in the current joint frames structure
+                    const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
+                    uniqueJointFrameTypes.forEach((frameDef) => {
+                        if(jointTypes.includes(frameDef.type) &&
+                            rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
+                            jointTypes.splice(
+                                jointTypes.indexOf(frameDef.type),
+                                1
+                            );
+                        }
+                    });
+                    
+                    //ensure the intermediate following joint frames orders are respected: if > elseif > else and try > except > else > finally
+                    if(rootJointFrame.jointFrameIds.length > 0) {
+                        const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
+                            || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
+                    
+                        //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
+                        if(isCurrentFrameIntermediateJointFrame ) {
+                            forbiddenTypes = Object.values(AllFrameTypesIdentifier);
+                        }
+                    
+                        //workout what types can be left for if and try joint frames structures.
+                        if(rootJointFrame.frameType.type === Definitions.IfDefinition.type){  
+                            //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
+                            if(isCurrentFrameIntermediateJointFrame) {
+                                jointTypes = jointTypes.filter((type) => type !== Definitions.ElseDefinition.type);
                             }
                         }
-                        else if( currentFrame.frameType.type === Definitions.ExceptDefinition.type){
-                            //if this isn't the last expect in the joint frames structure, we need to know what is following it.
-                            const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
-                            if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
-                                //This "except" is not the last joint frame: we check if the following joint frame is "except"
-                                //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
-                                //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
-                                if(state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType.type === Definitions.ExceptDefinition.type){
+                        else if (rootJointFrame.frameType.type === Definitions.TryDefinition.type){
+                            const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.FinallyDefinition.type) !== undefined);
+                            const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ElseDefinition.type) !== undefined);
+                            const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ExceptDefinition.type) !== undefined);
+
+                            //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
+                            if(currentFrame.frameType.type === Definitions.TryDefinition.type){
+                                if(hasElse && !hasFinally){
+                                    jointTypes.splice(
+                                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
+                                        1
+                                    );
+                                }
+                                if(hasExcept){
                                     uniqueJointFrameTypes.forEach((frameType) => {
                                         if(jointTypes.includes(frameType.type)){
                                             jointTypes.splice(
@@ -241,15 +243,34 @@ export default new Vuex.Store({
                                                 1
                                             );
                                         }
-                                    }); 
+                                    });
                                 }
-                                //And if this "except" frame is followed by an "else" but no "finally" is present, we remove "finally"
-                                //to avoid "... except > finally > else"
-                                else if(hasElse && !hasFinally){
-                                    jointTypes.splice(
-                                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                                        1
-                                    );                                   
+                            }
+                            else if( currentFrame.frameType.type === Definitions.ExceptDefinition.type){
+                                //if this isn't the last expect in the joint frames structure, we need to know what is following it.
+                                const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
+                                if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
+                                    //This "except" is not the last joint frame: we check if the following joint frame is "except"
+                                    //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
+                                    //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
+                                    if(state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType.type === Definitions.ExceptDefinition.type){
+                                        uniqueJointFrameTypes.forEach((frameType) => {
+                                            if(jointTypes.includes(frameType.type)){
+                                                jointTypes.splice(
+                                                    jointTypes.indexOf(frameType.type),
+                                                    1
+                                                );
+                                            }
+                                        }); 
+                                    }
+                                    //And if this "except" frame is followed by an "else" but no "finally" is present, we remove "finally"
+                                    //to avoid "... except > finally > else"
+                                    else if(hasElse && !hasFinally){
+                                        jointTypes.splice(
+                                            jointTypes.indexOf(Definitions.FinallyDefinition.type),
+                                            1
+                                        );                                   
+                                    }
                                 }
                             }
                         }
@@ -451,7 +472,15 @@ export default new Vuex.Store({
                 state,
                 "stateBeforeChanges",
                 (release) ? {} : JSON.parse(JSON.stringify(state))
-            )
+            );
+        },
+
+        toggleTutorialState(state, toggle: boolean) {
+            Vue.set(
+                state,
+                "frameObjects",
+                (toggle) ? tutorialState: initialState
+            );
         },
 
         addFrameObject(state, newFrame: FrameObject) {
@@ -496,7 +525,7 @@ export default new Vuex.Store({
             //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent
             //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
             //(*) with all sub levels children
-            
+
             if(payload.key=== "Delete"){
                 //delete the frame and all children
                 removeFrameInFrameList(
@@ -805,6 +834,13 @@ export default new Vuex.Store({
                 "code",
                 payload.code
             )
+
+            //clear the potential error
+            Vue.set(
+                state.frameObjects[payload.frameId].contentDict[payload.slotId],
+                "error",
+                ""
+            )
         },
 
         setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
@@ -1094,9 +1130,9 @@ export default new Vuex.Store({
                             ""
                         );
 
-                        const id = getEditableSlotId(frameId, Number.parseInt(slotIndex));
-                        if(state.preCompileErrors.includes(id)) {
-                            state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
+                        const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
+                        if(state.preCompileErrors.includes(uiid)) {
+                            state.preCompileErrors.splice(state.preCompileErrors.indexOf(uiid),1);
                         }
                     });
                 } 
@@ -1110,8 +1146,8 @@ export default new Vuex.Store({
                                 i18n.t("errorMessage.emptyEditableSlot")
                             );
     
-                            const id = getEditableSlotId(frameId, Number.parseInt(slotIndex));
-                            state.preCompileErrors.push(id)
+                            const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
+                            state.preCompileErrors.push(uiid)
                         }
                     });
                 }                 
@@ -1351,7 +1387,7 @@ export default new Vuex.Store({
                                 error: "",
                             }
                         );
-                        commit("removePreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
+                        commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
                     }
                 }
                 else if(!optionalSlot){
@@ -1363,7 +1399,7 @@ export default new Vuex.Store({
                             error: i18n.t("errorMessage.emptyEditableSlot"),
                         }
                     );
-                    commit("addPreCompileErrors", getEditableSlotId(payload.frameId, payload.slotId));
+                    commit("addPreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
                 }
             }
         },
@@ -1534,7 +1570,6 @@ export default new Vuex.Store({
                 if(indexOfCurrentFrame + 1 < listOfSiblings.length){
                     frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
                 } 
-
             }
             else {
                 if (currentFrame.id > 0) {
@@ -1764,13 +1799,13 @@ export default new Vuex.Store({
             );
 
             //update the precompiled errors based on the visibility of the label (if the label isn't shown, no error should be raised)
-            const slotId = getEditableSlotId(state.currentFrame.id, frameLabeToTogglelIndex);
+            const slotUIID = getEditableSlotUIID(state.currentFrame.id, frameLabeToTogglelIndex);
             if(changeShowLabelTo){
                 //we show the label: add the slot in precompiled error if the slot is empty
                 if(state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].code.trim().length == 0){
                     commit(
                         "addPreCompileErrors",
-                        slotId
+                        slotUIID
                     );
                 }
             }
@@ -1778,7 +1813,7 @@ export default new Vuex.Store({
                 //we hide the label: remove the slot in precompiled error
                 commit(
                     "removePreCompileErrors",
-                    slotId
+                    slotUIID
                 );
             }
 
@@ -1955,6 +1990,7 @@ export default new Vuex.Store({
                     {frameId: topFrame.id, isDisabling: state.frameObjects[payload.newParentId].isDisabled, ignoreEnableFromRoot: true}
                 );
             }
+
             //save state changes
             commit(
                 "saveStateChanges",
