@@ -94,11 +94,7 @@ export default Vue.extend({
                 // taking into account that its index will change. E.G. we have frames A,B,C,D and we
                 // are moving A,B under D. D's index is 3 (becuase A & B have not been removed),
                 // but it should be given as 2, because A & B are to be removed.
-                // const frameToGoUnder =  //(eventType === "moved")? store.state.selectedFrames[0]
-                // console.log(event[eventType].newIndex);
-                //If the move can happen
-                // In case of "added" in another parent we need to substract 1 to the index (not sure why)
-                // if(eventType === "removed" || (store.getters.getIfPositionAllowsSelectedFrames(this.jointFrames[event[eventType].newIndex - ((eventType !== "moved")&1)].id,CaretPosition.below,false))) {
+
                 store.dispatch(
                     "moveSelectedFramesToPosition",
                     {
@@ -106,16 +102,6 @@ export default Vue.extend({
                         parentId: this.$props.jointParentId,
                     }
                 );
-                // }
-                // else {
-                //     //Something is not right (e.g.) try to add to a restricted position. Do not allow further actions
-                //     store.commit(
-                //         "setIgnoredDragAction",
-                //         (eventType === "added")
-                //     );
-                //     // If it was put back on the place it was taken from, show the selected again.
-                //     store.commit("makeSelectedFramesVisible");
-                // }
             }
             else{
                 store.dispatch(

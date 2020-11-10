@@ -122,6 +122,7 @@ export default Vue.extend({
             "keyup",
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
+                const isEditing = store.getters.getIsEditing();
                 if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     //first we remove the focus of the current active element (to avoid editable slots to keep it)
                     (document.activeElement as HTMLElement).blur();
@@ -139,9 +140,17 @@ export default Vue.extend({
                         );
                     }
                 }      
+                else if(event.key == "Escape"){
+                    if(store.getters.areAnyFramesSelected()){
+                        store.commit("unselectAllFrames");
+                        store.commit("makeSelectedFramesVisible");
+                    }
+                    if(isEditing){
+                        (document.activeElement as HTMLElement).blur();
+                        store.commit("setEditFlag",false);
+                    }
+                }
                 else {
-                    const isEditing = store.getters.getIsEditing();
-
                     if(isEditing){
                         //find if there is a toggle frame label command triggered --> if not, do nothing special
                         const toggleFrameCmdType = 

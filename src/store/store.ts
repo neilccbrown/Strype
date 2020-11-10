@@ -422,6 +422,10 @@ export default new Vuex.Store({
                 return "middle";
             }
         },
+
+        areAnyFramesSelected: (state) => () => {
+            return state.selectedFrames.length>0;
+        },
         
         getIsUndoRedoEmpty: (state) => (action: string) => {
             return (action === "undo") ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
@@ -580,12 +584,12 @@ export default new Vuex.Store({
                 );
             }
             else if (eventType === "moved") {
-                // Delete the frameId from the children list 
+                // Delete the frameId from the old position
                 listToUpdate.splice(
                     payload.event[eventType].oldIndex,
                     1
                 );
-                // Add it again in the new position
+                // Add it in the new position
                 listToUpdate.splice(
                     payload.event[eventType].newIndex,
                     0,
@@ -2231,7 +2235,7 @@ export default new Vuex.Store({
             // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
             // succeedingFrame is the next frame (if it exists) above which we are adding
             
-            const indexOfFirstSelected = (isJointFrame)?
+            let indexOfFirstSelected = (isJointFrame)?
                 state.frameObjects[payload.parentId].jointFrameIds.indexOf(state.selectedFrames[0]):
                 state.frameObjects[payload.parentId].childrenIds.indexOf(state.selectedFrames[0]);
 
@@ -2297,17 +2301,12 @@ export default new Vuex.Store({
             // The top level cloned frames need to be stored in order to then be added to their new parent's list
             const sourceFrameIds: number[] = state.selectedFrames;
 
-
-            // For EVERY frame that we are removing, the oldIndex stays the same, i.e. the index
-            // of the first selected frame. This is because we move the frames one by one
-            // (from the first the last) and each time we remove one, the next goes up in the
-            // oldParent, hence retaining the index of the previous first selected frame
-            // const isJointFrame = state.frameObjects[state.selectedFrames[0]].frameType.isJointFrame;
-            // const oldIndex = (isJointFrame)?
-            //     state.frameObjects[payload.parentId].jointFrameIds.indexOf(state.selectedFrames[0]):
-            //     state.frameObjects[payload.parentId].childrenIds.indexOf(state.selectedFrames[0]);
-
-            
+            // In the case of moving in the same parent in some spaces below,
+            // because at the same time we are removing and adding the newIndex
+            // gets distorted (e.g. take from 0 and add move it to 5, if you remove first,
+            // then the index 5 becomes index 4), hence if we are moving down, we do not increase the index.
+            const indexIncrement = (eventType === "moved" && newIndex>indexOfLastSelected)? 0: 1;    
+            const firstSelctedIncrement = (eventType === "removed" || (eventType === "moved" && newIndex>indexOfLastSelected))? 0: 1;    
 
             Object.values(sourceFrameIds).forEach( (id) => {
                 // For each frame in the list, we are calling the `updateFramesOrder`
@@ -2319,14 +2318,17 @@ export default new Vuex.Store({
                         event: {
                             [eventType]: { // the [] are needed for JS to understand that we're talking about the variable and not the string 'eventType'
                                 element: state.frameObjects[id],
-                                newIndex: newIndex++,
+                                newIndex: newIndex,
                                 oldIndex: indexOfFirstSelected,
                                 eventType : eventType,
                             },
                         },
                         eventParentId: payload.parentId,
                     }
-                )
+                );
+                
+                newIndex += indexIncrement;
+                indexOfFirstSelected += firstSelctedIncrement;
             });
 
             // In the end, unselect all frames

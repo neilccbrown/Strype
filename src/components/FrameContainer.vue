@@ -141,7 +141,6 @@ export default Vue.extend({
             // If the frame is part of a selection
             if(store.getters.getIsSelected(chosenFrame.id)) {
                 //If the move can happen
-                // if((store.getters.getIfPositionAllowsSelectedFrames(this.$props.frameId,(event[eventType].newIndex === 0)? CaretPosition.body: CaretPosition.below,false))) {
                 store.dispatch(
                     "moveSelectedFramesToPosition",
                     {
@@ -149,7 +148,6 @@ export default Vue.extend({
                         parentId: this.$props.frameId,
                     }
                 );
-                // }
             }
             else{
                 store.dispatch(
