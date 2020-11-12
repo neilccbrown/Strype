@@ -3,17 +3,17 @@
         <div
             class="next-to-eachother"
             v-for="(item, index) in labels"
-            v-bind:key="item.label + frameId"
-            v-bind:class="{hidden: isLabelHidden(index)}"
+            :key="item.label + frameId"
+            :class="{hidden: isLabelHidden(index)}"
         >
             <div class="next-to-eachother">{{ item.label }}</div>
             <EditableSlot
                 v-if="item.slot"
-                v-bind:isDisabled="isDisabled"
-                v-bind:default-text="item.defaultText"
-                v-bind:slotIndex="index"
-                v-bind:frameId="frameId"
-                v-bind:optionalSlot="item.optionalSlot"
+                :isDisabled="isDisabled"
+                :default-text="item.defaultText"
+                :slotIndex="index"
+                :frameId="frameId"
+                :optionalSlot="item.optionalSlot"
             />
         </div>
     </div>

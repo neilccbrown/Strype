@@ -1,37 +1,37 @@
 <template>
-    <div class="frame-container" v-bind:style="frameStyle">
+    <div class="frame-container" :style="frameStyle">
         <div class="frame-container-header">
-            <button class="frame-container-btn-collapse" v-bind:style="frameStyle" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <button class="frame-container-btn-collapse" :style="frameStyle" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
-        <div v-bind:style="containerStyle" class="container-frames">
+        <div :style="containerStyle" class="container-frames">
             <CaretContainer
-                v-bind:frameId="this.frameId"
-                v-bind:caretVisibility="this.caretVisibility"
-                v-bind:caretAssignedPosition="caretPosition.body"
+                :frameId="this.frameId"
+                :caretVisibility="this.caretVisibility"
+                :caretAssignedPosition="caretPosition.body"
             />
 
             <Draggable
                 v-model="frames" 
-                v-bind:group="draggableGroup"
+                :group="draggableGroup"
                 @change.self="handleDragAndDrop($event)"
                 @unchoose="showSelectedFrames()"
-                v-bind:animation="300"
-                v-bind:disabled="isEditing"
-                v-bind:key="'Draggagle-Container-'+this.frameId"
-                v-bind:id="'Draggagle-Container-'+this.frameId"
+                :animation="300"
+                :disabled="isEditing"
+                :key="'Draggagle-Container-'+this.frameId"
+                :id="'Draggagle-Container-'+this.frameId"
                 @start ="handleMultiDrag($event)"
             >
                 <Frame 
                     v-for="frame in frames" 
-                    v-bind:key="frame.frameType.type + '-id:' + frame.id"
-                    v-bind:frameId="frame.id"
-                    v-bind:isDisabled="frame.isDisabled"
-                    v-bind:frameType="frame.frameType"
-                    v-bind:isJointFrame="false"
-                    v-bind:allowChildren="frame.frameType.allowChildren"
-                    v-bind:caretVisibility="frame.caretVisibility"
+                    :key="frame.frameType.type + '-id:' + frame.id"
+                    :frameId="frame.id"
+                    :isDisabled="frame.isDisabled"
+                    :frameType="frame.frameType"
+                    :isJointFrame="false"
+                    :allowChildren="frame.frameType.allowChildren"
+                    :caretVisibility="frame.caretVisibility"
                     class="frame" 
                 />
             </Draggable>
@@ -139,7 +139,7 @@ export default Vue.extend({
             const eventType = Object.keys(event)[0];
             const chosenFrame = event[eventType].element;
             // If the frame is part of a selection
-            if(store.getters.getIsSelected(chosenFrame.id)) {
+            if(store.getters.isFrameSelected(chosenFrame.id)) {
                 //If the move can happen
                 store.dispatch(
                     "moveSelectedFramesToPosition",
@@ -163,7 +163,7 @@ export default Vue.extend({
         handleMultiDrag(event: any): void {
             const chosenFrame = this.frames[event.oldIndex];
             // If the frame is part of a selection
-            if(store.getters.getIsSelected(chosenFrame.id)) {
+            if(store.getters.isFrameSelected(chosenFrame.id)) {
                 // Make it appear as the whole selection is being dragged
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
             }

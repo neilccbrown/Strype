@@ -13,7 +13,7 @@ const tutorialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     "-1": {
         id: -1,
@@ -27,7 +27,7 @@ const tutorialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     "-2": {
         id: -2,
@@ -41,7 +41,7 @@ const tutorialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     "-3": {
         id: -3,
@@ -55,7 +55,7 @@ const tutorialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.body,
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     1: {
         frameType: Definitions.CommentDefinition,
@@ -69,7 +69,7 @@ const tutorialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "Tutorial example:", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
         error: "",
     },
     2: {
@@ -86,7 +86,7 @@ const tutorialState: EditorFrameObjects = {
             0: {code :  "nameList", focused: false, error :"", shownLabel: true},
             1: {code :  "[\"Joe\", \"Sam\", \"Ash\"]", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
         error: "",
     },
     3: {
@@ -103,7 +103,7 @@ const tutorialState: EditorFrameObjects = {
             0: {code :  "name", focused: false, error :"", shownLabel: true},
             1: {code :  "nameList", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
         error: "",
     },
     4: {
@@ -118,7 +118,7 @@ const tutorialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "print(\"Hello \" + name)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
         error: "",
     },
 };

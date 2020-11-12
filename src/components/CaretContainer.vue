@@ -5,20 +5,20 @@
         @mouseover.prevent.stop="mouseOverCaret(true)"
         @mouseleave.prevent.stop="mouseOverCaret(false)"
         @contextmenu.prevent.stop="handleClick($event, 'paste')"
-        v-bind:key="uiid"
-        v-bind:id="uiid"
+        :key="uiid"
+        :id="uiid"
     >
         <vue-simple-context-menu
             v-show="allowContextMenu"
-            v-bind:elementId="uiid+'_pasteContextMenu'"
-            v-bind:options="pasteOption"
-            v-bind:ref="'pasteContextMenu'"
+            :elementId="uiid+'_pasteContextMenu'"
+            :options="pasteOption"
+            :ref="'pasteContextMenu'"
             @option-clicked="optionClicked"
         />
         <Caret
-            v-bind:id="caretUIID"
-            v-bind:isBlurred="overCaret"
-            v-bind:isInvisible="isInvisible"
+            :id="caretUIID"
+            :isBlurred="overCaret"
+            :isInvisible="isInvisible"
             v-blur="isCaretBlurred"
         />
     </div>
@@ -115,7 +115,7 @@ export default Vue.extend({
 
             store.commit("setContextMenuShownId",this.uiid);
             if(this.pasteAvailable) {  
-                if(store.getters.isCopiedASelection()){
+                if(store.getters.isSelectionCopied()){
                     if(store.getters.getIfPositionAllowsSelectedFrames(this.frameId, this.caretAssignedPosition, true)) {
                         ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
                     }  
@@ -190,7 +190,7 @@ export default Vue.extend({
         },
 
         paste(): void {
-            if(store.getters.isCopiedASelection()){
+            if(store.getters.isSelectionCopied()){
                 store.dispatch(
                     "pasteSelection",
                     {

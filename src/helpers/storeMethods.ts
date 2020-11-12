@@ -42,8 +42,8 @@ export const getParent = (listOfFrames: Record<number, FrameObject>, currentFram
     return parentId;
 };
 
-// Automatically checks returns Parent OR JointParent
-const getParentOrJointParent = (listOfFrames: Record<number, FrameObject>, frameId: number)  => {
+// Checks if it is a joint Frame or not and returns JointParent OR Parent respectively
+export const getParentOrJointParent = (listOfFrames: Record<number, FrameObject>, frameId: number)  => {
     const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
     return (isJointFrame)? 
         listOfFrames[frameId].jointParentId:
@@ -295,8 +295,8 @@ export const frameForSelection = (listOfFrames: Record<number, FrameObject>, cur
 
     // If there are no joint frames in the parent, even if we are talking about a frame that can have joint frames (i.e. a single if),
     // then the list is the same level children.
-    // The weird occasion is the last jointFrame where we need to get the children of its parent's parent...
-    // Even weirder is the occasion that the last jointFrame is already selected, hence we need to de-select it, hence return it.
+    // The complex occasion is the last jointFrame where we need to get the children of its parent's parent...
+    // Even more complex is the occasion that the last jointFrame is already selected, hence we need to de-select it, hence return it.
     let actualCurrentFrameId = currentFrame.id;
     let sameLevelFrameIds = parent.childrenIds;
     if (isCurrentJoint && parent.jointFrameIds.length > 0) {
@@ -319,7 +319,7 @@ export const frameForSelection = (listOfFrames: Record<number, FrameObject>, cur
     // Being below and going up it's just the index of the actualCurrentFrameId
     // Being below and going down we need to get the next
     // ((indexDelta+1)&&1) returns +1 only if we are going down (indexDelta==1)
-    const indexOfCurrentInParent = (currentFrame.caretPosition === CaretPosition.body)? 0: sameLevelFrameIds.indexOf(actualCurrentFrameId)+((indexDelta+1)&&1);
+    const indexOfCurrentInParent = (currentFrame.caretPosition === CaretPosition.body)? 0: sameLevelFrameIds.indexOf(actualCurrentFrameId)+Math.max(indexDelta, 0);
 
     // frameToBeSelected is the frame that will be selected AND can be different than the current frame (e.g. caret==below and direction down). 
     // We select a frame other than the current frame if we are moving down and we are not on position 0;

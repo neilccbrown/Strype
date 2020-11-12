@@ -13,7 +13,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     "-1": {
         id: -1,
@@ -27,7 +27,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     "-2": {
         id: -2,
@@ -41,7 +41,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     "-3": {
         id: -3,
@@ -55,7 +55,7 @@ const initialState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {},
         caretVisibility: CaretPosition.body,
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     1: {
         frameType: Definitions.ImportDefinition,
@@ -72,7 +72,7 @@ const initialState: EditorFrameObjects = {
             2: {code : "", focused: false, error :"", shownLabel: false} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     2: {
         frameType: Definitions.ImportDefinition,
@@ -89,7 +89,7 @@ const initialState: EditorFrameObjects = {
             2: {code : "", focused: false, error :"", shownLabel: false} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     3: {
         frameType: Definitions.CommentDefinition,
@@ -104,7 +104,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "At start:", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     4: {
         frameType: Definitions.EmptyDefinition,
@@ -119,7 +119,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "music.play(music.NYAN)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     5: {
         frameType: Definitions.EmptyDefinition,
@@ -134,7 +134,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "display.scroll(\"I love Stride micro:bit !\")", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     6: {
         frameType: Definitions.CommentDefinition,
@@ -149,7 +149,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "Maintain this behaviour while on:", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     7: {
         frameType: Definitions.VarAssignDefinition,
@@ -166,7 +166,7 @@ const initialState: EditorFrameObjects = {
             1: {code :  "Image.HEART", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     8: {
         frameType: Definitions.WhileDefinition,
@@ -181,7 +181,7 @@ const initialState: EditorFrameObjects = {
         contentDict: {0: {code :  "True", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     9: {
         frameType: Definitions.EmptyDefinition,
@@ -196,7 +196,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "display.show(currImg)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     10: {
         frameType: Definitions.VarAssignDefinition,
@@ -213,7 +213,7 @@ const initialState: EditorFrameObjects = {
             1: {code :  "accelerometer.current_gesture()", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     11: {
         frameType: Definitions.IfDefinition,
@@ -228,7 +228,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "gesture == \"shake\"", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     14: {
         frameType: Definitions.EmptyDefinition,
@@ -243,7 +243,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "display.show(Image.SAD)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     15: {
         frameType: Definitions.EmptyDefinition,
@@ -258,7 +258,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "sleep(2000)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     12: {
         frameType: Definitions.IfDefinition,
@@ -273,7 +273,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "button_a.is_pressed()", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     16: {
         frameType: Definitions.VarAssignDefinition,
@@ -290,7 +290,7 @@ const initialState: EditorFrameObjects = {
             1: {code :  "Image.CHESSBOARD", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     13: {
         frameType: Definitions.IfDefinition,
@@ -305,7 +305,7 @@ const initialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "button_b.is_pressed()", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
     17: {
         frameType: Definitions.VarAssignDefinition,
@@ -322,7 +322,7 @@ const initialState: EditorFrameObjects = {
             1: {code :  "Image.COW", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         error: "",
-        multiDragStyling: "",
+        multiDragPosition: "",
     },
 
 

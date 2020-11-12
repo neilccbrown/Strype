@@ -1,7 +1,7 @@
 <template>
     <div 
         class="caret"
-        v-bind:class="{blurred: isBlurred, invisible: isInvisible}">
+        :class="{blurred: isBlurred, invisible: isInvisible}">
     </div>
 </template>
 

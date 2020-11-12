@@ -2,7 +2,7 @@
     <div>
         <div>
             <button 
-                v-bind:id="menuUIID" 
+                :id="menuUIID" 
                 href="#" 
                 tabindex="0" 
                 @click="toggleMenuOnOff"
@@ -27,7 +27,7 @@
                         @keypress="validateInput($event)"
                         class="project-name"
                         id="name-input-field"
-                        v-bind:style="inputTextStyle"
+                        :style="inputTextStyle"
                         ref="nameinput"
                     />                    
                     <i v-if="hover" class="fa fa-pencil-alt"></i>
@@ -59,7 +59,7 @@
             <div 
                 class="editableslot-placeholder"
                 id="projectNameDiv"
-                v-bind:value="projectName"
+                :value="projectName"
             />
         </div>
         <div>

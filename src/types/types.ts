@@ -19,7 +19,7 @@ export interface FrameObject {
     caretVisibility: CaretPosition;
     contentDict: { [index: number]: {code: string ; focused: boolean ; error: string; shownLabel: boolean}}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
     error?: string;
-    multiDragStyling: string;
+    multiDragPosition: string;
 
 }
 
@@ -459,7 +459,7 @@ export const EmptyFrameObject: FrameObject = {
     caretVisibility: CaretPosition.none,
     contentDict: { },
     error: "",
-    multiDragStyling: "",
+    multiDragPosition: "",
 }
 
 /**

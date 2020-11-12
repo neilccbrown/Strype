@@ -2,24 +2,24 @@
     <div class="joint-frame-container">
         <Draggable 
             v-model="jointFrames"
-            v-bind:group="jointDraggableGroup"
+            :group="jointDraggableGroup"
             @change.self="handleDragAndDrop($event)"
             animation="200"
             :disabled="isEditing"
-            v-bind:key="'Draggagle-Joint-'+this.jointParentId"
+            :key="'Draggagle-Joint-'+this.jointParentId"
             @start="handleMultiDrag($event)"
         >
             <Frame
                 v-for="frame in jointFrames"
-                v-bind:key="frame.frameType.type + '-id:' + frame.id"
-                v-bind:frameId="frame.id"
-                v-bind:isDisabled="frame.isDisabled || isDisabled"
-                v-bind:frameType="frame.frameType"
-                v-bind:isJointFrame="true"
-                v-bind:isParentSelected="isParentSelected"
-                v-bind:allowChildren="frame.frameType.allowChildren"
-                v-bind:caretVisibility="frame.caretVisibility"
-                v-bind:class="{frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
+                :key="frame.frameType.type + '-id:' + frame.id"
+                :frameId="frame.id"
+                :isDisabled="frame.isDisabled || isDisabled"
+                :frameType="frame.frameType"
+                :isJointFrame="true"
+                :isParentSelected="isParentSelected"
+                :allowChildren="frame.frameType.allowChildren"
+                :caretVisibility="frame.caretVisibility"
+                :class="{frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
                 class="joint-frame-child"
             />
         </Draggable>
@@ -87,13 +87,7 @@ export default Vue.extend({
             const chosenFrame = event[eventType].element;
 
             // If the frame is part of a selection
-            if(store.getters.getIsSelected(chosenFrame.id)) {
-
-                // The frame that we'll go under needs to be given as an input to `getIfPositionAllowsSelectedFrames`
-                // However, if we are moving to the same parent, we need to find the frame we are going under
-                // taking into account that its index will change. E.G. we have frames A,B,C,D and we
-                // are moving A,B under D. D's index is 3 (becuase A & B have not been removed),
-                // but it should be given as 2, because A & B are to be removed.
+            if(store.getters.isFrameSelected(chosenFrame.id)) {
 
                 store.dispatch(
                     "moveSelectedFramesToPosition",
@@ -117,7 +111,7 @@ export default Vue.extend({
         handleMultiDrag(event: any): void {
             const chosenFrame = this.jointFrames[event.oldIndex];
             // If the frame is part of a selection
-            if(store.getters.getIsSelected(chosenFrame.id)) {
+            if(store.getters.isFrameSelected(chosenFrame.id)) {
                 // Make it appear as the whole selection is being dragged
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
             }
@@ -140,8 +134,4 @@ export default Vue.extend({
     visibility: visible;
 }
 
-// .selected {
-//     border-left: 3px solid red !important;
-//     border-right: 3px solid red !important;
-// }
 </style>

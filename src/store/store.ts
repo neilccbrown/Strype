@@ -8,7 +8,7 @@ import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection } from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 
 Vue.use(Vuex);
@@ -345,17 +345,6 @@ export default new Vuex.Store({
         getCurrentMessage: (state) => () => {
             return state.currentMessage;
         },
-        // Automatically checks returns Parent OR JointParent
-        getParentOrJointParentOfFrame: (state) => (frameId: number) => {
-            const isJointFrame = state.frameObjects[frameId].frameType.isJointFrame;
-            return (isJointFrame)? 
-                state.frameObjects[frameId].jointParentId:
-                state.frameObjects[frameId].parentId;
-        },
-        // It returns the parent in which the joint parent sits
-        getGrandParentOfJointFrame: (state) => (frameId: number) => {
-            return state.frameObjects[state.frameObjects[frameId].jointParentId].parentId;
-        },
         // Automatically checks returns index in Parent OR JointParent
         getIndexInParent: (state) => (frameId: number) => {
             const isJointFrame = state.frameObjects[frameId].frameType.isJointFrame;
@@ -420,11 +409,11 @@ export default new Vuex.Store({
             return state.projectName;
         },
 
-        getIsSelected: (state) => (frameId: number) => {
+        isFrameSelected: (state) => (frameId: number) => {
             return state.selectedFrames.indexOf(frameId) > -1;
         },
 
-        getSelectionPosition: (state) => (frameId: number) => {
+        getFrameSelectionPosition: (state) => (frameId: number) => {
             const index = state.selectedFrames.indexOf(frameId);
 
             if( index == -1) {
@@ -452,7 +441,7 @@ export default new Vuex.Store({
             return (action === "undo") ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
         },
 
-        isCopiedASelection: (state) => () => {
+        isSelectionCopied: (state) => () => {
             return state.copiedSelectionFrameIds.length > 0;
         },
 
@@ -460,8 +449,8 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].isVisible;
         },
 
-        getMultiDragStyling: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].multiDragStyling;
+        getMultiDragPosition: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].multiDragPosition;
         },
     }, 
 
@@ -2217,7 +2206,7 @@ export default new Vuex.Store({
         },
 
         prepareForMultiDrag({state, getters}, draggedFrameId: number) {
-            const position = getters.getSelectionPosition(draggedFrameId);
+            const position = getters.getFrameSelectionPosition(draggedFrameId);
            
             const otherFrames = state.selectedFrames.filter( (id) => id!==draggedFrameId);
 
@@ -2231,7 +2220,7 @@ export default new Vuex.Store({
 
             Vue.set(
                 state.frameObjects[draggedFrameId],
-                "multiDragStyling",
+                "multiDragPosition",
                 position
             );
         
@@ -2240,6 +2229,16 @@ export default new Vuex.Store({
         // This method can be used to move the selected frames to a position through Drag & Drop
         moveSelectedFramesToPosition({commit, state, getters}, payload: {event: any; parentId: number}) {
             
+            // First remove the visual aspect
+            state.selectedFrames.forEach( (id) => {
+                Vue.set(
+                    state.frameObjects[id],
+                    "multiDragPosition",
+                    ""
+                );
+            });
+            
+
             if(state.ignoredDragAction){
                 //if the action should be ignore, just return and reset the flag
                 commit(
@@ -2283,7 +2282,7 @@ export default new Vuex.Store({
             // we are moving it to the same place (between first and last index of the selected ones); 
             // If that's the case we don't do anything as it may cause a problem (e.g. if selected indexes are 0...3
             // it may move it to 1 instead of 0.
-            const parentIdOfSelected = getters.getParentOrJointParentOfFrame(state.frameObjects[state.selectedFrames[0]].id)
+            const parentIdOfSelected = getParentOrJointParent(state.frameObjects,state.frameObjects[state.selectedFrames[0]].id)
             let newIndex = payload.event[eventType].newIndex;
 
             if(eventType === "moved" && payload.parentId === parentIdOfSelected) {

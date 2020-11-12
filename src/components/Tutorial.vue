@@ -1,5 +1,5 @@
 <template>
-    <div v-if="showTutorial" class="tutorial-pane" v-bind:id="UIID">
+    <div v-if="showTutorial" class="tutorial-pane" :id="UIID">
         <svg width="100%" height="100%">
             <defs>
                 <mask id="svgmask2" >
@@ -8,12 +8,12 @@
                     <!-- this part of the mask is dynamic and the parts that are "hidden", which means for us, see through -->
                     <rect 
                         v-for="(dimensions, index) in currentStepHighligthedElementsDimensions" 
-                        v-bind:key="'stepmask_'+ index" 
+                        :key="'stepmask_'+ index" 
                         fill="#000000" 
-                        v-bind:x="dimensions.x" 
-                        v-bind:y="dimensions.y" 
-                        v-bind:width="dimensions.width" 
-                        v-bind:height="dimensions.height"></rect>  
+                        :x="dimensions.x" 
+                        :y="dimensions.y" 
+                        :width="dimensions.width" 
+                        :height="dimensions.height"></rect>  
                 </mask>
             </defs>
             <!-- this image is a basic semi transparent dark SVG image that covers the view port and on which the mask above is applied -->
@@ -24,7 +24,7 @@
             id="tutorialToaster" 
             name="tutorialToaster" 
             class="tutorialToaster"  
-            v-bind:style="toasterPosStyle"
+            :style="toasterPosStyle"
         />
         <div>
             <!-- the carousel is used to change the masks and parts of the tutorial -->
@@ -38,7 +38,7 @@
                 <!-- the "slides" are generated based on the tutorial steps to show -->  
                 <b-carousel-slide 
                     v-for="(step, index) in steps" 
-                    v-bind:key="'tutorialStepCarouselSlide_' + index"
+                    :key="'tutorialStepCarouselSlide_' + index"
                 ></b-carousel-slide>
             </b-carousel>
         </div>
@@ -51,30 +51,30 @@
         <div v-if="this.currentStep.showArrows" class="tutorial-arrows-div">
             <svg 
                 v-for="(arrowPos, index) in stepArrowsPos"
-                v-bind:key="'tutorialArrow_'+index"
+                :key="'tutorialArrow_'+index"
                 width ="100%" 
                 height="100%" 
                 class ="arrow-svg">
                 <defs>
                     <marker 
                         id="arrowhead" 
-                        v-bind:markerWidth="arrowHeadWidth" 
-                        v-bind:markerHeight="arrowHeadHeight" 
+                        :markerWidth="arrowHeadWidth" 
+                        :markerHeight="arrowHeadHeight" 
                         refX="0" 
-                        v-bind:refY="arrowHeadHeight / 2" 
+                        :refY="arrowHeadHeight / 2" 
                         orient="auto" 
                         fill="#FFF"
                     >
-                        <polygon v-bind:points="'0 0, ' + arrowHeadWidth + ' ' + (arrowHeadHeight/2) +', 0 ' + arrowHeadHeight" />
+                        <polygon :points="'0 0, ' + arrowHeadWidth + ' ' + (arrowHeadHeight/2) +', 0 ' + arrowHeadHeight" />
                     </marker>
                 </defs>
                 <line 
-                    v-bind:x1="arrowPos.fromX" 
-                    v-bind:y1="arrowPos.fromY" 
-                    v-bind:x2="arrowPos.toX" 
-                    v-bind:y2="arrowPos.toY"
+                    :x1="arrowPos.fromX" 
+                    :y1="arrowPos.fromY" 
+                    :x2="arrowPos.toX" 
+                    :y2="arrowPos.toY"
                     stroke="#FFF"
-                    v-bind:stroke-width="arrowTailWidth" 
+                    :stroke-width="arrowTailWidth" 
                     marker-end="url(#arrowhead)" />
             </svg>
         </div>
