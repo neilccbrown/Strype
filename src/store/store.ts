@@ -5,7 +5,7 @@ import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
-import { getObjectPropertiesDiffferences, getSHA1HashForObject } from "@/helpers/common";
+import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent } from "@/helpers/storeMethods";
@@ -1005,7 +1005,7 @@ export default new Vuex.Store({
             }
            
 
-            state.diffToPreviousState.push(getObjectPropertiesDiffferences(state, payload.previousState));
+            state.diffToPreviousState.push(getObjectPropertiesDifferences(state, payload.previousState));
             //don't exceed the maximum of undo steps allowed
             if(state.diffToPreviousState.length > undoMaxSteps) {
                 state.diffToPreviousState.splice(
@@ -1028,7 +1028,7 @@ export default new Vuex.Store({
         },
 
         applyStateUndoRedoChanges(state, isUndo: boolean){
-            //performing the change if there is any change recoreded in the state
+            //performing the change if there is any change recorded in the state
             let changeList = [] as ObjectPropertyDiff[];
             if(isUndo) {
                 changeList = state.diffToPreviousState.pop()??[];
@@ -1081,7 +1081,7 @@ export default new Vuex.Store({
                 }
              
                 //keep the arrays of changes in sync with undo/redo sequences
-                const stateDifferences = getObjectPropertiesDiffferences(state, stateBeforeChanges);
+                const stateDifferences = getObjectPropertiesDifferences(state, stateBeforeChanges);
                 if(isUndo){
                     state.diffToNextState.push(stateDifferences);
                 }
@@ -2205,10 +2205,14 @@ export default new Vuex.Store({
             }
         },
 
-        prepareForMultiDrag({state, getters}, draggedFrameId: number) {
+        prepareForMultiDrag({state, getters, commit}, draggedFrameId: number) {
             const position = getters.getFrameSelectionPosition(draggedFrameId);
            
             const otherFrames = state.selectedFrames.filter( (id) => id!==draggedFrameId);
+            commit(
+                "updateStateBeforeChanges",
+                false
+            );
 
             otherFrames.forEach( (frameId) => {
                 Vue.set(
@@ -2249,15 +2253,13 @@ export default new Vuex.Store({
                 return;
             }
 
-            //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
-            if(payload.event["removed"] == undefined){
-                commit(
-                    "updateStateBeforeChanges",
-                    false
-                );
-            }
-
             const eventType = Object.keys(payload.event)[0];
+
+            //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
+            // if(eventType !== "removed"){
+                
+            // }
+
             const isJointFrame = getters.getIsJointFrameById(state.selectedFrames[0]);
 
             const position: CaretPosition = (isJointFrame)?
