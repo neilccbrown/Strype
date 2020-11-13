@@ -1039,6 +1039,9 @@ export default new Vuex.Store({
 
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             if(changeList.length > 0){
+                //this flag stores the arrays that need to be "cleaned" (i.e., removing the null elements)
+                const arraysToClean = [] as {[id: string]: any}[];
+
                 //if the value in the changes isn't "null" --> replaced/add, otherwise, delete.
                 changeList.forEach((changeEntry: ObjectPropertyDiff) => {
                     //we reconstruct what in the state should be changed based on the difference path
@@ -1046,10 +1049,12 @@ export default new Vuex.Store({
                     const property = stateParts[stateParts.length -1];
                     stateParts.pop();
                     let statePartToChange = state as {[id: string]: any};
+                    let lastPartIsArray;
                     stateParts.forEach((partWithArrayFlag) => {
                         //intermediate parts have a flag suffix indicating if the part is an array or not
                         const part = partWithArrayFlag.substring(0, partWithArrayFlag.lastIndexOf("_"));
                         const isArrayPart = partWithArrayFlag.substring(partWithArrayFlag.lastIndexOf("_") + 1) === "true";
+                        lastPartIsArray = isArrayPart;
                         //if a part doesn't exist, we create it with an empty object value
                         if(statePartToChange[part] === undefined){
                             Vue.set(
@@ -1060,20 +1065,42 @@ export default new Vuex.Store({
                         }
                         statePartToChange = statePartToChange[part];
                     });
-                    if(changeEntry.value != null){
+
+                    // Now we update the property value :
+                    // - For arrays, we replace the element at the index n no matter if it's null or not
+                    //   because deletion would offset the indexing during the loop, so we will clean the array later.
+                    // - For objects, we check if the element is null: if so, it's fine to remove it directly
+                    if(lastPartIsArray || !lastPartIsArray && changeEntry.value != null){
                         Vue.set(
                             statePartToChange,
                             property,
                             changeEntry.value
                         );
+
+                        //if we "delete" something in an array, flag this array for clearning
+                        if(lastPartIsArray && changeEntry.value===null && arraysToClean.indexOf(statePartToChange) === -1){
+                            arraysToClean.push(statePartToChange);
+                        }
                     }
                     else{
                         Vue.delete(
                             statePartToChange,
                             property
-                        );
+                        );                 
                     }
-                })
+                });
+
+                //clean arrays that need cleaning
+                arraysToClean.forEach((arrayToClean) => {
+                    for(let arrayIndex = arrayToClean.length; arrayIndex >=0; arrayIndex--){
+                        if(arrayToClean[arrayIndex] === null){
+                            Vue.delete(
+                                arrayToClean,
+                                arrayIndex
+                            );
+                        }
+                    }
+                });
 
                 //If the copied frame doesn't exist after changes, we revert to the default -100 value.
                 if(state.frameObjects[state.copiedFrameId] === undefined){
@@ -1192,7 +1219,7 @@ export default new Vuex.Store({
                 Vue.set(
                     state.frameObjects[id],
                     "isVisible",
-                    "true"
+                    true
                 ));
         },
 
