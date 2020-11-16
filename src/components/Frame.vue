@@ -1,58 +1,74 @@
 <template>
     <div>
         <div 
-            v-bind:style="frameStyle" 
-            class="block frameDiv" 
-            v-bind:class="{error: erroneous, statementOrJoint: isStatementOrJointFrame, blockWithBody: !isStatementOrJointFrame}"
-            v-bind:id="uiid"
-            @click="toggleCaret($event)"
-            @contextmenu.prevent.stop="handleClick($event,'frame-context-menu')"
+            v-if="multiDragPosition === 'middle' || multiDragPosition === 'last'"
+            class="draggedWithOtherFramesAbove"
         >
-            <vue-simple-context-menu
-                v-show="allowContextMenu"
-                :elementId="uiid+'frameContextMenu'"
-                :options="this.frameContextMenuOptions"
-                :ref="'frameContextMenu'"
-                @option-clicked="optionClicked"
-            />
-
-            <FrameHeader
-                v-if="frameType.labels !== null"
-                v-bind:isDisabled="isDisabled"
-                v-blur="isDisabled"
-                v-bind:frameId="frameId"
-                v-bind:labels="frameType.labels"
-                class="frame-header"
-            />
-            <FrameBody
-                v-if="allowChildren"
-                v-bind:frameId="frameId"
-                v-bind:isDisabled="isDisabled"
-                v-bind:caretVisibility="caretVisibility"
-                ref="frameBody"
-            />
-            <CaretContainer
-                v-bind:frameId="this.frameId"
-                v-bind:caretVisibility="this.caretVisibility"
-                v-bind:caretAssignedPosition="caretPosition.below"
-                v-bind:isFrameDisabled="this.isDisabled"
-                @hide-context-menus="handleClick($event,'paste')"
-            />
-            
-            <JointFrames 
-                v-if="allowsJointChildren"
-                v-bind:jointParentId="frameId"
-                v-bind:isDisabled="isDisabled"
-            />
         </div>
-        <b-popover
-          v-if="erroneous"
-          v-bind:target="uiid"
-          v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
-          triggers="hover focus"
-          placement="left"
-          v-bind:content="errorMessage"
-        ></b-popover>
+        <div 
+            v-show="isVisible"
+            :class="frameSelectedCssClass"
+        >
+            <div 
+                :style="frameStyle" 
+                class="block frameDiv" 
+                :class="{error: erroneous, statementOrJoint: isStatementOrJointFrame, blockWithBody: !isStatementOrJointFrame}"
+                :id="uiid"
+                @click="toggleCaret($event)"
+                @contextmenu.prevent.stop="handleClick($event,'frame-context-menu')"
+            >
+                <vue-simple-context-menu
+                    v-show="allowContextMenu"
+                    :elementId="uiid+'frameContextMenu'"
+                    :options="this.frameContextMenuOptions"
+                    :ref="'frameContextMenu'"
+                    @option-clicked="optionClicked"
+                />
+
+                <FrameHeader
+                    v-if="frameType.labels !== null"
+                    :isDisabled="isDisabled"
+                    v-blur="isDisabled"
+                    :frameId="frameId"
+                    :labels="frameType.labels"
+                    class="frame-header"
+                />
+                <FrameBody
+                    v-if="allowChildren"
+                    :frameId="frameId"
+                    :isDisabled="isDisabled"
+                    :caretVisibility="caretVisibility"
+                    ref="frameBody"
+                />
+                <CaretContainer
+                    :frameId="this.frameId"
+                    :caretVisibility="this.caretVisibility"
+                    :caretAssignedPosition="caretPosition.below"
+                    :isFrameDisabled="this.isDisabled"
+                    @hide-context-menus="handleClick($event,'paste')"
+                />
+                
+                <JointFrames 
+                    v-if="allowsJointChildren"
+                    :jointParentId="frameId"
+                    :isDisabled="isDisabled"
+                    :isParentSelected="isPartOfSelection"
+                />
+            </div>
+            <b-popover
+            v-if="erroneous"
+            :target="uiid"
+            :title="this.$i18n.t('errorMessage.errorTitle')"
+            triggers="hover focus"
+            placement="left"
+            :content="errorMessage"
+            ></b-popover>
+        </div>
+        <div 
+            v-if="multiDragPosition === 'middle' || multiDragPosition === 'first'"
+            class="draggedWithOtherFramesBelow"
+        >
+        </div>
     </div>
 </template>
 
@@ -66,13 +82,11 @@ import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
 import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, Definitions } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import $ from "jquery";
+import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
 
 //////////////////////
 //     Component    //
 //////////////////////
-const duplicateOptionContextMenuPos = 1;
-const enableDisableOptionsContextMenuPos = 3;
 
 export default Vue.extend({
     name: "Frame",
@@ -103,6 +117,7 @@ export default Vue.extend({
         isJointFrame: Boolean, //Flag indicating this frame is a joint frame or not
         caretVisibility: String,
         allowChildren: Boolean,
+        isParentSelected: Boolean,
     },
 
     data: function () {
@@ -136,8 +151,17 @@ export default Vue.extend({
                         (this.frameType as FramesDefinitions).colour
                     } !important`,
                     "padding-left": "2px",
-                    "color": (this.frameType === Definitions.CommentDefinition) ? "#97971E !important" : "#000 !important",
+                    "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
+        },
+
+        frameSelectedCssClass(): string {
+            let frameClass = "";
+            frameClass += (this.selectedPosition !== "unselected")? "selected " : ""; 
+            frameClass += (this.selectedPosition === "first")? "selectedTop " : ""; 
+            frameClass += (this.selectedPosition === "last")? "selectedBottom " : ""; 
+            frameClass += (this.selectedPosition === "first-and-last")? "selectedTopBottom " : "";  
+            return frameClass;
         },
 
         // Needed in order to use the `CaretPosition` type in the v-show
@@ -165,8 +189,25 @@ export default Vue.extend({
             return store.getters.getContextMenuShownId() === this.uiid; 
         },
 
+        selectedPosition(): string {
+            return store.getters.getFrameSelectionPosition(this.$props.frameId);
+        },
+
         isStatementOrJointFrame(): boolean {
             return this.$props.frameType.isJointFrame || !this.$props.frameType.allowChildren;
+        },
+
+        // Joint frames can also be "selected" if their parent is selected
+        isPartOfSelection(): boolean {
+            return (this.selectedPosition !== "unselected") || (this.$props.isParentSelected);
+        },
+
+        isVisible(): boolean {
+            return store.getters.isFrameVisible(this.$props.frameId);
+        },
+
+        multiDragPosition(): string {
+            return store.getters.getMultiDragPosition(this.$props.frameId);
         },
     },
 
@@ -185,16 +226,19 @@ export default Vue.extend({
                 // except if that frame has joint frames: the target is the last joint frame.
                 const targetFrameJointFrames = store.getters.getJointFramesForFrameId(this.frameId, "all");
                 const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
-                const canDuplicate = store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
+                // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
+                const canDuplicate = (this.isPartOfSelection) ?
+                    store.getters.getIfPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
+                    store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
                 if(!canDuplicate){
+                    const duplicateOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate");
                     //We don't need the duplication option: remove it from the menu options if not present
-                    if(this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate") > -1){
+                    if(duplicateOptionContextMenuPos > -1){
                         this.frameContextMenuOptions.splice(
                             duplicateOptionContextMenuPos,
                             1
                         );
                     }
-
                     //update the offset
                     menuPosOffset --;
                 }
@@ -203,9 +247,10 @@ export default Vue.extend({
                 const disableOrEnableOption = (this.isDisabled) 
                     ?  {name: this.$i18n.t("contextMenu.enable"), method: "enable"}
                     :  {name: this.$i18n.t("contextMenu.disable"), method: "disable"};
+                const enableDisableIndex = this.frameContextMenuOptions.findIndex((entry) => entry.name === this.$i18n.t("contextMenu.enable") || entry.name === this.$i18n.t("contextMenu.disable")  );
                 Vue.set(
                     this.frameContextMenuOptions,
-                    enableDisableOptionsContextMenuPos + menuPosOffset,
+                    enableDisableIndex + menuPosOffset,
                     disableOrEnableOption
                 );
 
@@ -260,41 +305,75 @@ export default Vue.extend({
 
 
         duplicate(): void {
-            store.dispatch(
-                "copyFrameToPosition",
-                {
-                    frameId : this.$props.frameId,
-                    newParentId: store.getters.getParentOfFrame(this.frameId),
-                    newIndex: store.getters.getIndexInParent(this.frameId)+1,
-                }
-            );
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "copySelectedFramesToPosition",
+                    {
+                        newParentId: (this.isJointFrame)? getParent(store.state.frameObjects, store.state.frameObjects[this.frameId]): getParentOrJointParent(store.state.frameObjects, this.frameId),
+                    }
+                );
+                
+            }
+            else {
+                store.dispatch(
+                    "copyFrameToPosition",
+                    {
+                        frameId : this.$props.frameId,
+                        newParentId: getParentOrJointParent(store.state.frameObjects, this.frameId),
+                        newIndex: store.getters.getIndexInParent(this.frameId)+1,
+                    }
+                );
+            }
         },
 
         copy(): void {
-            store.dispatch(
-                "copyFrame",
-                this.$props.frameId
-            );
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "copySelection"
+                ); 
+            }
+            else{
+                store.dispatch(
+                    "copyFrame",
+                    this.$props.frameId
+                );
+            }
         },
 
         disable(): void {
-            store.dispatch(
-                "changeDisableFrame",
-                {
-                    frameId: this.$props.frameId,
-                    isDisabling: true,
-                }
-            )
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "changeDisableSelection",
+                    true
+                );
+            }
+            else {
+                store.dispatch(
+                    "changeDisableFrame",
+                    {
+                        frameId: this.$props.frameId,
+                        isDisabling: true,
+                    }
+                );
+            }
         },
         
         enable(): void {
-            store.dispatch(
-                "changeDisableFrame",
-                {
-                    frameId: this.$props.frameId,
-                    isDisabling: false,
-                }
-            )
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "changeDisableSelection",
+                    false
+                );
+            }
+            else {
+                store.dispatch(
+                    "changeDisableFrame",
+                    {
+                        frameId: this.$props.frameId,
+                        isDisabling: false,
+                    }
+                );
+            }
         },
 
     },
@@ -326,6 +405,53 @@ export default Vue.extend({
 
 .error {
     border: 1px solid #FF0000 !important;
+}
+
+.selected {
+    border-left: 3px solid #000000 !important;
+    border-right: 3px solid #000000 !important;
+}
+
+
+
+.selectedTop {
+    border-top: 3px solid #000000 !important;
+}
+
+.selectedBottom {
+    border-bottom: 3px solid #000000 !important;
+}
+
+.selectedTopBottom{
+    border-top: 3px solid #000000 !important;
+    border-bottom: 3px solid #000000 !important;
+}
+
+.draggedWithOtherFramesAbove {
+//   box-shadow:
+//     0 0 0 10px hsl(0, 0%, 80%),
+//     0 0 0 15px hsl(0, 0%, 90%);
+    border-top: 3px solid #000000 !important;
+    border-left: 3px solid #000000 !important;
+    border-right: 3px solid #000000 !important;
+    border-bottom: 3px solid #000000 !important;
+    border-radius: 5px 5px 0px 0px;
+    padding-bottom: 5px;
+
+}
+
+.draggedWithOtherFramesBelow{
+//   box-shadow:
+//     -2px -2px 0px 2px #fff,
+//     -6px -6px 0px 0px #000,
+//     -8px -8px 0px 2px #fff,
+//     -12px -12px 0px 0px #000;
+    border-top: 3px solid #000000 !important;
+    border-bottom: 3px solid #000000 !important;
+    border-radius: 0px 0px 5px 5px;
+    border-left: 3px solid #000000 !important;
+    border-right: 3px solid #000000 !important;
+    padding-top: 5px;
 }
 
 </style>

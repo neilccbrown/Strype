@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <div v-bind:id="buttonsContainerUIID" class="commands-container">
+        <div :id="buttonsContainerUIID" class="commands-container">
             <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
             <button @click="downloadHex" v-t="'buttonLabel.downloadHex'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
@@ -18,30 +18,30 @@
             </div>
         </div>
         <hr />
-        <div v-bind:id="commandsContainerUUID">
+        <div :id="commandsContainerUUID">
             <div class="frameCommands">
                 <AddFrameCommand
                     v-for="addFrameCommand in addFrameCommands"
-                    v-bind:key="addFrameCommand.type.type"
-                    v-bind:type="addFrameCommand.type.type"
-                    v-bind:shortcut="addFrameCommand.shortcut"
-                    v-bind:symbol="
+                    :key="addFrameCommand.type.type"
+                    :type="addFrameCommand.type.type"
+                    :shortcut="addFrameCommand.shortcut"
+                    :symbol="
                         addFrameCommand.symbol !== undefined
                             ? addFrameCommand.symbol
                             : addFrameCommand.shortcut
                     "
-                    v-bind:description="addFrameCommand.description"
+                    :description="addFrameCommand.description"
                 />
             </div>
             <hr />
             <div class="toggleFrameLabelCommands">
                 <ToggleFrameLabelCommand
                     v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
-                    v-bind:key="toggleFrameLabelCommand.type"
-                    v-bind:type="toggleFrameLabelCommand.type"
-                    v-bind:modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
-                    v-bind:keyShortcut="toggleFrameLabelCommand.keyShortcut"
-                    v-bind:description="toggleFrameLabelCommand.displayCommandText"
+                    :key="toggleFrameLabelCommand.type"
+                    :type="toggleFrameLabelCommand.type"
+                    :modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
+                    :keyShortcut="toggleFrameLabelCommand.keyShortcut"
+                    :description="toggleFrameLabelCommand.displayCommandText"
                 />
             </div>
         </div>
@@ -154,18 +154,37 @@ export default Vue.extend({
                     event.preventDefault();
                     return;
                 }
-                
+
+                const isEditing = store.getters.getIsEditing();
+
                 if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     //first we remove the focus of the current active element (to avoid editable slots to keep it)
                     (document.activeElement as HTMLElement).blur();
-                    store.dispatch(
-                        "changeCaretPosition",
-                        event.key
-                    );
-                }      
-                else {
-                    const isEditing = store.getters.getIsEditing();
 
+                    if(event.shiftKey){
+                        store.dispatch( 
+                            "selectMultipleFrames",
+                            event.key
+                        );
+                    }
+                    else {
+                        store.dispatch(
+                            "changeCaretPosition",
+                            event.key
+                        );
+                    }
+                }      
+                else if(event.key == "Escape"){
+                    if(store.getters.areAnyFramesSelected()){
+                        store.commit("unselectAllFrames");
+                        store.commit("makeSelectedFramesVisible");
+                    }
+                    if(isEditing){
+                        (document.activeElement as HTMLElement).blur();
+                        store.commit("setEditFlag",false);
+                    }
+                }
+                else {
                     if(isEditing){
                         //find if there is a toggle frame label command triggered --> if not, do nothing special
                         const toggleFrameCmdType = 

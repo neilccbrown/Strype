@@ -3,7 +3,7 @@
         <div 
             class="next-to-eachother"
             v-for="(modifierKey, index) in modifierKeyShortcuts" 
-            v-bind:key="type + index"
+            :key="type + index"
         >
             <button class="framelabel-cmd-modifbtn">{{ modifierKey }}</button>
             <span class="framelabel-cmd-separatorspan">{{ "+"}}</span>

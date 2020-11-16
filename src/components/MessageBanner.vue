@@ -1,14 +1,14 @@
 <template>
     <b-modal
         v-if="showModal"
-        v-bind:visible="showModal"
+        :visible="showModal"
         hide-footer
         size="xl"
         @close="close()"
     >
         <img
             class="w-100" 
-            v-bind:src="image"
+            :src="image"
         />
     </b-modal>
     <div
@@ -23,7 +23,7 @@
         <br/>
         <button 
             v-for="(button,index) in message.buttons"
-            v-bind:key="'messageButton-'+index"
+            :key="'messageButton-'+index"
             v-on:click="onButtonClick(button.action)"
             v-t="button.label">
         </button>

@@ -3,9 +3,9 @@
         <input
             type="text"
             v-if="isComponentLoaded"
-            v-bind:disabled="isDisabled"
+            :disabled="isDisabled"
             v-model="code"
-            v-bind:placeholder="defaultText"
+            :placeholder="defaultText"
             v-focus="focused"
             @focus="onFocus()"
             @blur="onBlur()"
@@ -14,23 +14,23 @@
             @keyup.enter.prevent.stop="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
             @keyup.down.prevent.stop="onUDKeyUp($event)"
-            v-bind:class="{editableSlot: focused, error: erroneous}"
-            v-bind:id="UIID"
-            v-bind:key="UIID"
+            :class="{editableSlot: focused, error: erroneous}"
+            :id="UIID"
+            :key="UIID"
             class="input"
-            v-bind:style="inputTextStyle"
+            :style="inputTextStyle"
         />
         <b-popover
           v-if="erroneous"
-          v-bind:target="UIID"
-          v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
+          :target="UIID"
+          :title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
-          v-bind:content="errorMessage"
+          :content="errorMessage"
         ></b-popover>
         <div 
             class="editableslot-placeholder"
-            v-bind:id="placeholderUIID"
-            v-bind:value="code"
+            :id="placeholderUIID"
+            :value="code"
         />
     </div>
 </template>
@@ -88,7 +88,7 @@ export default Vue.extend({
             return {
                 "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : (store.getters.getFrameObjectFromId(this.frameId).frameType === Definitions.CommentDefinition)
+                "color" : (store.getters.getFrameObjectFromId(this.frameId).frameType.type === Definitions.CommentDefinition.type)
                     ? "#97971E"
                     : "#000",
             };
@@ -212,7 +212,7 @@ export default Vue.extend({
 
             // In any case the focus is lost, and the caret is shown (below by default)
             this.onBlur();
-
+            
             //If the up arrow is pressed you need to move the caret as well.
             if( event.key === "ArrowUp" ) {
                 store.dispatch(

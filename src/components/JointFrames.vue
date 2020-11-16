@@ -2,22 +2,24 @@
     <div class="joint-frame-container">
         <Draggable 
             v-model="jointFrames"
-            v-bind:group="jointDraggableGroup"
+            :group="jointDraggableGroup"
             @change.self="handleDragAndDrop($event)"
             animation="200"
             :disabled="isEditing"
-            v-bind:key="'Draggagle-Joint-'+this.jointParentId"
+            :key="'Draggagle-Joint-'+this.jointParentId"
+            @start="handleMultiDrag($event)"
         >
             <Frame
                 v-for="frame in jointFrames"
-                v-bind:key="frame.frameType.type + '-id:' + frame.id"
-                v-bind:frameId="frame.id"
-                v-bind:isDisabled="frame.isDisabled || isDisabled"
-                v-bind:frameType="frame.frameType"
-                v-bind:isJointFrame="true"
-                v-bind:allowChildren="frame.frameType.allowChildren"
-                v-bind:caretVisibility="frame.caretVisibility"
-                v-bind:class="{frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
+                :key="frame.frameType.type + '-id:' + frame.id"
+                :frameId="frame.id"
+                :isDisabled="frame.isDisabled || isDisabled"
+                :frameType="frame.frameType"
+                :isJointFrame="true"
+                :isParentSelected="isParentSelected"
+                :allowChildren="frame.frameType.allowChildren"
+                :caretVisibility="frame.caretVisibility"
+                :class="{frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
                 class="joint-frame-child"
             />
         </Draggable>
@@ -33,7 +35,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import Draggable from "vuedraggable";
-import { FrameObject, DraggableGroupTypes } from "@/types/types";
+import { FrameObject, DraggableGroupTypes , CaretPosition} from "@/types/types";
 
 
 //////////////////////
@@ -52,6 +54,7 @@ export default Vue.extend({
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
         jointParentId: Number, // Unique Indentifier for each Frame
         isDisabled: Boolean,
+        isParentSelected: Boolean,
     },
 
     computed: {
@@ -79,15 +82,40 @@ export default Vue.extend({
 
     methods: {
 
-        handleDragAndDrop(event: Event): void {
-            store.dispatch(
-                "updateFramesOrder", 
-                {
-                    event: event,
-                    eventParentId: this.$props.jointParentId,
-                }
-            );
+        handleDragAndDrop(event: any): void {
+            const eventType = Object.keys(event)[0];
+            const chosenFrame = event[eventType].element;
+
+            // If the frame is part of a selection
+            if(store.getters.isFrameSelected(chosenFrame.id)) {
+
+                store.dispatch(
+                    "moveSelectedFramesToPosition",
+                    {
+                        event: event,
+                        parentId: this.$props.jointParentId,
+                    }
+                );
+            }
+            else{
+                store.dispatch(
+                    "updateFramesOrder",
+                    {
+                        event: event,
+                        eventParentId: this.$props.jointParentId,
+                    }
+                );
+            }
         },
+        
+        handleMultiDrag(event: any): void {
+            const chosenFrame = this.jointFrames[event.oldIndex];
+            // If the frame is part of a selection
+            if(store.getters.isFrameSelected(chosenFrame.id)) {
+                // Make it appear as the whole selection is being dragged
+                store.dispatch("prepareForMultiDrag",chosenFrame.id);
+            }
+        },   
 
     },
 
@@ -105,4 +133,5 @@ export default Vue.extend({
 .joint-frame-child {
     visibility: visible;
 }
+
 </style>

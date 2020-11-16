@@ -1,4 +1,4 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame } from "@/types/types";
 import Vue from "vue";
 import { getSHA1HashForObject } from "@/helpers/common";
 
@@ -33,12 +33,30 @@ export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>
     );
 };
 
+// Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
 export const getParent = (listOfFrames: Record<number, FrameObject>, currentFrame: FrameObject) => {
     let parentId = 0;
     if(currentFrame.id !== 0){
         parentId = (currentFrame.jointParentId > 0) ? listOfFrames[currentFrame.jointParentId].parentId : currentFrame.parentId;
     }
     return parentId;
+};
+
+// Checks if it is a joint Frame or not and returns JointParent OR Parent respectively
+export const getParentOrJointParent = (listOfFrames: Record<number, FrameObject>, frameId: number)  => {
+    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
+    return (isJointFrame)? 
+        listOfFrames[frameId].jointParentId:
+        listOfFrames[frameId].parentId;
+};
+
+const isLastInParent = (listOfFrames: Record<number, FrameObject>, frameId: number) => {
+    const frame = listOfFrames[frameId];
+    const parent = listOfFrames[getParentOrJointParent(listOfFrames,frameId)];
+
+    const siblingList = (frame.jointParentId>0)? parent.jointFrameIds : parent.childrenIds;
+
+    return (siblingList.indexOf(frameId) === siblingList.length-1);
 };
 
 //Returns a list with all the previous frames (of the same level) and next frames (including first level children) used for navigating the caret
@@ -243,20 +261,114 @@ export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObj
     }
 }
 
-export const checkDisabledStatusOfMovingFrame = 
-    function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
-        // Change the disable property to destination parent state if the source's parent and destination's parent are different
-        const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0) 
-            ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
-            : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
+export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
+    // Change the disable property to destination parent state if the source's parent and destination's parent are different
+    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0) 
+        ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
+        : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
 
-        const isDestParentDisabled = listOfFrames[destContainerFrameId].isDisabled;
-        
-        if(isSrcParentDisabled === isDestParentDisabled){
-            // Nothing to change
-            return {changeDisableProp: false, newBoolPropVal: false};
+    const isDestParentDisabled = listOfFrames[destContainerFrameId].isDisabled;
+    
+    if(isSrcParentDisabled === isDestParentDisabled){
+        // Nothing to change
+        return {changeDisableProp: false, newBoolPropVal: false};
+    }
+
+    // The source need to be changed to the destination's parent 
+    return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
+}
+
+export const frameForSelection = (listOfFrames: Record<number, FrameObject>, currentFrame: CurrentFrame, direction: string, selectedFrames: number[]) => {
+    
+    // we first check the cases that are 100% sure there is nothing to do about them
+    // i.e.  we are in the body and we are either moving up or there are no children.
+    if( currentFrame.caretPosition === CaretPosition.body && (direction === "up" || listOfFrames[currentFrame.id].childrenIds.length === 0) ){
+        return null;
+    }
+
+    const parentId = (currentFrame.caretPosition === CaretPosition.body)? 
+        currentFrame.id : 
+        getParentOrJointParent(listOfFrames, currentFrame.id);
+
+    const parent = listOfFrames[parentId];
+    const isCurrentJoint = listOfFrames[currentFrame.id].jointParentId > 0;
+
+    // If there are no joint frames in the parent, even if we are talking about a frame that can have joint frames (i.e. a single if),
+    // then the list is the same level children.
+    // The complex occasion is the last jointFrame where we need to get the children of its parent's parent...
+    // Even more complex is the occasion that the last jointFrame is already selected, hence we need to de-select it, hence return it.
+    let actualCurrentFrameId = currentFrame.id;
+    let sameLevelFrameIds = parent.childrenIds;
+    if (isCurrentJoint && parent.jointFrameIds.length > 0) {
+        if(isLastInParent(listOfFrames, currentFrame.id) && !selectedFrames.includes(currentFrame.id)) {
+            sameLevelFrameIds = listOfFrames[parent.parentId].childrenIds;
+            actualCurrentFrameId = parent.id;
+        }
+        else {
+            sameLevelFrameIds = parent.jointFrameIds;
+        }
+    }
+    // In the case that we are below a parent of joint frames the list is the joint children
+    else if(currentFrame.caretPosition === CaretPosition.below && direction !== "up" && listOfFrames[currentFrame.id].jointFrameIds.length >0) {
+        sameLevelFrameIds = listOfFrames[currentFrame.id].jointFrameIds;
+    }
+
+    const indexDelta = (direction === "up")? -1 : 1;
+
+    // If the caret is in the body position the index is 0; 
+    // Being below and going up it's just the index of the actualCurrentFrameId
+    // Being below and going down we need to get the next
+    // ((indexDelta+1)&&1) returns +1 only if we are going down (indexDelta==1)
+    const indexOfCurrentInParent = (currentFrame.caretPosition === CaretPosition.body)? 0: sameLevelFrameIds.indexOf(actualCurrentFrameId)+Math.max(indexDelta, 0);
+
+    // frameToBeSelected is the frame that will be selected AND can be different than the current frame (e.g. caret==below and direction down). 
+    // We select a frame other than the current frame if we are moving down and we are not on position 0;
+    // Only for caret==body or when going UP, we select this frame.
+    const frameToBeSelected = sameLevelFrameIds[indexOfCurrentInParent];
+
+
+    // If we are about to select non Joint frame and in the current selection there are Joint frames then we prevent it
+    const hasJointChildren = selectedFrames.find((id) => listOfFrames[id].jointParentId > 0) ?? 0;
+    if( hasJointChildren > 0 && listOfFrames[frameToBeSelected].jointParentId === 0) {
+        return null;
+    }
+
+    // Create the list of children + joints with which the caret will work with
+    const allSameLevelFramesAndJointIds = childrenListWithJointFrames(
+        listOfFrames, 
+        frameToBeSelected,
+        currentFrame.caretPosition, 
+        direction
+    );
+
+    // If what we're trying to access doesn't exist return null
+    if( frameToBeSelected !== undefined ) {
+        let indexOfSelectedInWiderList = allSameLevelFramesAndJointIds.indexOf(frameToBeSelected);
+
+        const numberOfJointChildrenOfSelected = listOfFrames[frameToBeSelected].jointFrameIds.length;
+
+        if( numberOfJointChildrenOfSelected > 0 && direction === "down") {
+            // indexDelta gives us the + or - for the direction of how many jointChildren we need to skip.
+            indexOfSelectedInWiderList += (indexDelta * numberOfJointChildrenOfSelected);
+        }
+        else if (direction === "up") {
+            indexOfSelectedInWiderList += indexDelta;
         }
 
-        // The source need to be changed to the destination's parent 
-        return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
+        const indexOfNewCaret = 
+            ((indexOfSelectedInWiderList === allSameLevelFramesAndJointIds.length-1)? 
+                allSameLevelFramesAndJointIds.length-1 : 
+                indexOfSelectedInWiderList );
+
+        const newCurrentFrame = (indexOfNewCaret === -1)? 
+            {id: parent.id , caretPosition: CaretPosition.body} :
+            {id: allSameLevelFramesAndJointIds[indexOfNewCaret], caretPosition: CaretPosition.below};
+        
+        return {frameForSelection: frameToBeSelected, newCurrentFrame: newCurrentFrame};
+
     }
+    else {
+        return null;
+    }
+    
+};

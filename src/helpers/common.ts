@@ -77,7 +77,7 @@ const checkAddedValues = (obj: {[id: string]: any}, result: ObjectPropertyDiff[]
 //Entry point for checking the difference between two objects.
 //The differnence between obj1 and obj2 is saved as an array of ObjectPropertyDiff objects.
 //Note: this is not a bidrectional difference checker: it only checks the difference in obj2 compared with obj1, not keep trace of what is in obj1.
-export const getObjectPropertiesDiffferences = (obj1: {[id: string]: any}, obj2: {[id: string]: any}): ObjectPropertyDiff[]  => {
+export const getObjectPropertiesDifferences = (obj1: {[id: string]: any}, obj2: {[id: string]: any}): ObjectPropertyDiff[]  => {
     const result = [] as ObjectPropertyDiff[];
     
     //To find the differences, we'll remove objects from obj2 ---> so we use a copy

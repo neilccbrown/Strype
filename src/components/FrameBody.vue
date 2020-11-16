@@ -1,43 +1,45 @@
 <template>
     <div
         class="frame-body-container"
-        v-bind:class="{error: empty}"
-        v-bind:id="uiid"
+        :class="{error: empty}"
+        :id="uiid"
     >
         <CaretContainer
-                v-bind:frameId="this.frameId"
-                v-bind:caretVisibility="this.caretVisibility"
-                v-bind:caretAssignedPosition="caretPosition.body"
-                v-bind:isFrameDisabled="this.isDisabled"
+            :frameId="this.frameId"
+            :caretVisibility="this.caretVisibility"
+            :caretAssignedPosition="caretPosition.body"
+            :isFrameDisabled="this.isDisabled"
         />
 
         <Draggable
             v-model="frames"
             group="code"
             @change.self="handleDragAndDrop($event)"
+            @unchoose="showSelectedFrames()"
             animation= "200"
             :disabled="isEditing"
-            v-bind:key="'Draggagle-Body-'+this.frameId"
+            :key="'Draggagle-Body-'+this.frameId"
+            @start="handleMultiDrag($event)"
         >
             <Frame
                 v-for="frame in frames"
-                v-bind:key="frame.frameType.type  + '-id:' + frame.id"
-                v-bind:frameId="frame.id"
-                v-bind:isDisabled="frame.isDisabled"
-                v-bind:frameType="frame.frameType"
-                v-bind:isJointFrame="false"
-                v-bind:caretVisibility="frame.caretVisibility"
-                v-bind:allowChildren="frame.frameType.allowChildren"
+                :key="frame.frameType.type  + '-id:' + frame.id"
+                :frameId="frame.id"
+                :isDisabled="frame.isDisabled"
+                :frameType="frame.frameType"
+                :isJointFrame="false"
+                :caretVisibility="frame.caretVisibility"
+                :allowChildren="frame.frameType.allowChildren"
                 class="frame content-children"
             />
         </Draggable>
         <b-popover
           v-if="empty"
-          v-bind:target="uiid"
-          v-bind:title="this.$i18n.t('errorMessage.errorTitle')"
+          :target="uiid"
+          :title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
           placement="left"
-          v-bind:content="errorMessage"
+          :content="errorMessage"
         ></b-popover>
     </div>
 </template>
@@ -130,17 +132,47 @@ export default Vue.extend({
     },
 
     methods: {
-        handleDragAndDrop(event: Event): void {
-            
-            store.dispatch(
-                "updateFramesOrder",
-                {
-                    event: event,
-                    eventParentId: this.$props.frameId,
-                }
-            );
+        handleDragAndDrop(event: any): void {
+            const eventType = Object.keys(event)[0];
+            const chosenFrame = event[eventType].element;
+
+            // If the frame is part of a selection
+            if(store.getters.isFrameSelected(chosenFrame.id)) {
+                //If the move can happen
+                store.dispatch(
+                    "moveSelectedFramesToPosition",
+                    {
+                        event: event,
+                        parentId: this.$props.frameId,
+                    }
+                );
+            }
+            else{
+                store.dispatch(
+                    "updateFramesOrder",
+                    {
+                        event: event,
+                        eventParentId: this.$props.frameId,
+                    }
+                );
+            }
         },
         
+        handleMultiDrag(event: any): void {
+            const chosenFrame = this.frames[event.oldIndex];
+            // If the frame is part of a selection
+            if(store.getters.isFrameSelected(chosenFrame.id)) {
+                // Make it appear as the whole selection is being dragged
+                store.dispatch("prepareForMultiDrag",chosenFrame.id);
+            }
+        },   
+
+        // Some times, when draging and droping in the original position of where the
+        // selected frames were taken, the `change` event is not fired; hence you need to
+        // catch the `unchoose` event
+        showSelectedFrames(): void {
+            store.commit("makeSelectedFramesVisible");
+        },
     },
 });
 </script>
@@ -163,4 +195,5 @@ export default Vue.extend({
 .error {
     border: 1px solid #d66 !important;
 }
+
 </style>

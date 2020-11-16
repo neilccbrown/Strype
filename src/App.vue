@@ -27,25 +27,25 @@
                 </div>
                 <div class="row no-gutters" >
                     <Menu 
-                        v-bind:id="menuUIID" 
+                        :id="menuUIID" 
                         class="col-auto"
                     />
                     <div class="col">
-                        <div v-bind:id="editorUIID" class="editor-code-div" >
+                        <div :id="editorUIID" class="editor-code-div" >
                             <FrameContainer
                                 v-for="container in containerFrames"
-                                v-bind:key="container.frameType.type + '-id:' + container.id"
-                                v-bind:id="getFrameContainerUIID(container.id)"
-                                v-bind:frameId="container.id"
-                                v-bind:containerLabel="container.frameType.labels[0].label"
-                                v-bind:caretVisibility="container.caretVisibility"
-                                v-bind:frameType="container.frameType"
+                                :key="container.frameType.type + '-id:' + container.id"
+                                :id="getFrameContainerUIID(container.id)"
+                                :frameId="container.id"
+                                :containerLabel="container.frameType.labels[0].label"
+                                :caretVisibility="container.caretVisibility"
+                                :frameType="container.frameType"
                             />
                         </div>
                     </div>
                 </div>
             </div>
-            <Commands v-bind:id="commandsContainerId" class="col-4" />
+            <Commands :id="commandsContainerId" class="col-4" />
         </div>
     </div>
 </template>
