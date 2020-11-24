@@ -700,3 +700,33 @@ export interface TutorialStep {
     messageCustomPos?: TutorialMargins; //percentage values
     showArrows: boolean;
 }
+
+//Autocompletion
+export interface LanguageDef {
+    modules: ModuleDef[];
+}
+
+export interface ModuleDef {
+    name: string;
+    needNS: boolean;
+    alias?: string;
+    methods?: MethodDef[];
+    classes?: ClassDef[];
+    attrs?: AttrDef[];
+}
+
+export interface MethodDef {
+    name: string;
+    return: string;
+}
+
+export interface ClassDef {
+    name: string;
+    methods?: MethodDef[];
+    attrs?: AttrDef[];
+}
+
+export interface AttrDef{
+    name: string;
+    type: string;
+}

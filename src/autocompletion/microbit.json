@@ -1,0 +1,47 @@
+{
+    "modules": [
+        {
+            "name":"_core_",
+            "needNS" : false,
+            "methods":[
+                {
+                    "name":"abs(_value_)",
+                    "return": "number"
+                }
+            ]
+        },
+        {
+            "name": "microbit",
+            "needNS" : false,
+            "classes": [
+                {
+                    "name": "Button",
+                    "methods":  [
+                        {
+                            "name":"is_pressed()",
+                            "return": "bool"
+                        },
+                        {
+                            "name":"was_pressed()",
+                            "return": "bool"
+                        },
+                        {
+                            "name":"get_presses()",
+                            "return": "number"
+                        }
+                    ]
+                }
+            ],
+            "attrs" : [
+                {
+                    "name": "button_a",
+                    "type": "microbit.Button"
+                },
+                {
+                    "name": "button_b",
+                    "type": "microbit.Button"
+                }
+            ]
+        }            
+    ]
+}
