@@ -213,8 +213,8 @@ export function updateACReferential(adding: boolean, importStr: string) {
 
 // Load the AC with initial state, to be called when the application launches.
 export function loadAC(){
-    //updateACReferential(true, "from _core_ import *");
-    updateACReferential(true, "from microbit import button_a");
+    updateACReferential(true, "from _core_ import *");
+    //updateACReferential(true, "from microbit import button_a as but1, button_b as but2");
     console.log("ac referential :")
     console.log(acReferential);
     console.log("alias paths :")
