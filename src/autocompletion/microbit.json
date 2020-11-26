@@ -27,7 +27,7 @@
                         {
                             "name":"is_pressed",
                             "kind": "method",
-                            "objType": "bool",
+                            "type": "bool",
                             "argsNum": 0
                         },
                         {
@@ -67,66 +67,66 @@
                         {
                             "name":"get_pixel",
                             "kind": "method",
-                            "objType": "int",
+                            "type": "int",
                             "argsNum": 2,
                             "argsName": ["_x_", "_y_"]
                         },
                         {
                             "name":"set_pixel",
                             "kind": "method",
-                            "objType": "void",
+                            "type": "void",
                             "argsNum": 3,
                             "argsName": ["_x_", "_y_","_value_"]
                         },
                         {
                             "name":"clear",
                             "kind": "method",
-                            "objType": "void",
+                            "type": "void",
                             "argsNum": 0
                         },
                         {
                             "name":"show",
                             "kind": "method",
-                            "objType": "void",
+                            "type": "void",
                             "argsNum": 5,
                             "argsName": ["_image_", "_delay_", "_wait_", "_loop_", "_clear_"]
                         },
                         {
                             "name":"show",
                             "kind": "method",
-                            "objType": "void",
+                            "type": "void",
                             "argsNum": 5,
                             "argsName": ["_iterable_", "_delay_", "_wait_", "_loop_", "_clear_"]
                         },
                         {
                             "name":"scroll",
                             "kind": "method",
-                            "objType": "void",
+                            "type": "void",
                             "argsNum": 2,
                             "argsName": ["_message_", "_delay_"]
                         },
                         {
                             "name":"on",
                             "kind": "method",
-                            "objType": "void",
+                            "type": "void",
                             "argsNum": 0
                         },
                         {
                             "name":"off",
                             "kind": "method",
-                            "objType": "void",
+                            "type": "void",
                             "argsNum": 0
                         },
                         {
                             "name":"is_on",
                             "kind": "method",
-                            "objType": "bool",
+                            "type": "bool",
                             "argsNum": 0
                         },
                         {
                             "name":"read_light_level",
                             "kind": "method",
-                            "objType": "int",
+                            "type": "int",
                             "argsNum": 0
                         }                                 
                     ]
@@ -244,7 +244,7 @@
                         {
                             "name":"write_digital",
                             "kind": "method",
-                            "objType": "void",
+                            "type": "void",
                             "argsNum": 1,
                             "argsName": ["_value_"]                        
                         }
@@ -267,22 +267,7 @@
                     "name": "PinDigital",
                     "kind": "class",
                     "hide": true,
-                    "super": ["microbit.PinDigitalR", "microbit.PinDigitalW"],
-                    "elements":  [
-                        {
-                            "name":"write_digital",
-                            "kind": "method",
-                            "objType": "void",
-                            "argsNum": 1,
-                            "argsName": ["_value_"]                        
-                        },
-                        {
-                            "name":"read_digital",
-                            "kind": "method",
-                            "type": "int",
-                            "argsNum": 0
-                        }
-                    ]
+                    "super": ["microbit.PinDigitalR", "microbit.PinDigitalW"]
                 },
                 {
                     "name": "PinAnalogW",
@@ -337,7 +322,6 @@
                     "name": "PinTouch",
                     "kind": "class",
                     "hide": true,
-                    "super": ["microbit.PinAnalog"],
                     "elements":  [
                         {
                             "name":"is_touched",

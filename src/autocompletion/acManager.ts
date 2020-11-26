@@ -220,15 +220,82 @@ export function updateACReferential(adding: boolean, importStr: string) {
     }
 }
 
+
+//TEST PART FOR CHECKING AUTOCOMPLETION CONTENT ON VARS IS COHERENT WITH LIBRARIES
+function getACSuggestionsForElement(fullNameElt: string): ElementDef[]{
+    const res = [] as ElementDef[];
+    const obj = retrieveElementInDefs(ModulesDefScope.languageDefs, fullNameElt)
+    if(obj){
+        if(obj.kind === "variable"){
+            //get the type of that object
+            const objType = obj.type;
+            if(objType){
+                console.log("The class type for that object is: "+ objType);
+                //retrieve the element defining the object type (+ super types)
+                const toLooType = [objType];
+                while(toLooType.length > 0){
+                    const objTypeElt = retrieveElementInDefs(ModulesDefScope.languageDefs, toLooType.pop()??"");
+                    objTypeElt?.elements?.forEach((elt) => res.push(elt));
+                    objTypeElt?.super?.forEach((superType) => toLooType.push(superType));
+                }                
+            }
+            else{
+                console.log("The TYPE (class type) isn't properly set for that object !")
+            }
+        }
+        else{
+            console.log("The suggestions are not looked upon a VARIABLE !")
+        }
+    }
+    else{
+        console.log("Cannot find object in language def !!");
+    }
+    return res;
+}
+
 // Load the AC with initial state (built in elements), to be called when the application launches.
 export function loadAC(){
     //the buildin elements are defined at the top level of the language description, and cannot be a module
     (langDescription.elements as ElementDef[]).filter((elt) => elt.kind !== "module").forEach((elt) => acReferential.push(elt));
-    //updateACReferential(true, "from microbit import pin0");
+    updateACReferential(true, "from microbit import pin0, pin12");
     console.log("ac referential :")
     console.log(acReferential);
     console.log("alias paths :")
     console.log(aliasesPath);
     console.log("language desc :")
     console.log(langDescription)
+
+
+    //few tests to check libraries implementation
+    const objToTest = [
+        /*"microbit.button_a",
+        "microbit.button_b",
+        "microbit.pin0",
+        "microbit.pin1",
+        "microbit.pin2",
+        "microbit.pin3",
+        "microbit.pin4",
+        "microbit.pin5",
+        "microbit.pin6",
+        "microbit.pin7",
+        "microbit.pin8",
+        "microbit.pin9",
+        "microbit.pin10",
+        "microbit.pin11",
+        "microbit.pin12",
+        "microbit.pin13",
+        "microbit.pin14",
+        "microbit.pin15",
+        "microbit.pin16",
+        "microbit.pin19",
+        "microbit.pin20",
+        "microbit.pin_logo",
+        "microbit.pin_speaker",*/
+        "microbit.display",
+    ]
+
+    objToTest.forEach((objName) => {
+        console.log("\nTEST FOR ==> " + objName);
+        console.log(getACSuggestionsForElement(objName));
+    })
 }
