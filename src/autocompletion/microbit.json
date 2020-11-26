@@ -1,369 +1,127 @@
-{
-    "elements": [
-        {
-            "name":"abs",
-            "kind": "method",
-            "type": "int",
-            "argsNum": 1,
-            "argsName": ["_number_"]
-        },
-        {
-            "name":"len",
-            "kind": "method",
-            "type": "int",
-            "argsNum": 1,
-            "argsName": ["_obj_"]
-        },
-        {
-            "name": "microbit",
-            "needNS" : false,
-            "kind": "module",
-            "elements": [
-                {
-                    "name": "Button",
-                    "kind": "class",
-                    "hide": true,
-                    "elements":  [
-                        {
-                            "name":"is_pressed",
-                            "kind": "method",
-                            "type": "bool",
-                            "argsNum": 0
-                        },
-                        {
-                            "name":"was_pressed",
-                            "kind": "method",
-                            "type": "bool",
-                            "argsNum": 0
-                        },
-                        {
-                            "name":"get_presses",
-                            "kind": "method",
-                            "type": "int",
-                            "argsNum": 0
-                        }
-                    ]
-                },
-                {
-                    "name": "button_a",
-                    "kind": "variable",
-                    "type": "microbit.Button"
-                },
-                {
-                    "name": "button_b",
-                    "kind": "variable",
-                    "type": "microbit.Button"
-                },
-                {
-                    "name": "display",
-                    "kind": "variable",
-                    "type": "microbit.Display"
-                },
-                {
-                    "name": "Display",
-                    "kind": "class",
-                    "hide": true,
-                    "elements":  [
-                        {
-                            "name":"get_pixel",
-                            "kind": "method",
-                            "type": "int",
-                            "argsNum": 2,
-                            "argsName": ["_x_", "_y_"]
-                        },
-                        {
-                            "name":"set_pixel",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 3,
-                            "argsName": ["_x_", "_y_","_value_"]
-                        },
-                        {
-                            "name":"clear",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 0
-                        },
-                        {
-                            "name":"show",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 5,
-                            "argsName": ["_image_", "_delay_", "_wait_", "_loop_", "_clear_"]
-                        },
-                        {
-                            "name":"show",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 5,
-                            "argsName": ["_iterable_", "_delay_", "_wait_", "_loop_", "_clear_"]
-                        },
-                        {
-                            "name":"scroll",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 2,
-                            "argsName": ["_message_", "_delay_"]
-                        },
-                        {
-                            "name":"on",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 0
-                        },
-                        {
-                            "name":"off",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 0
-                        },
-                        {
-                            "name":"is_on",
-                            "kind": "method",
-                            "type": "bool",
-                            "argsNum": 0
-                        },
-                        {
-                            "name":"read_light_level",
-                            "kind": "method",
-                            "type": "int",
-                            "argsNum": 0
-                        }                                 
-                    ]
-                },
-                {
-                    "name": "pin0",
-                    "kind": "variable",
-                    "type": "microbit.PinFull"
-                },
-                {
-                    "name": "pin1",
-                    "kind": "variable",
-                    "type": "microbit.PinFull"
-                },
-                {
-                    "name": "pin2",
-                    "kind": "variable",
-                    "type": "microbit.PinFull"
-                },
-                {
-                    "name": "pin3",
-                    "kind": "variable",
-                    "type": "microbit.PinAnalog"
-                },
-                {
-                    "name": "pin4",
-                    "kind": "variable",
-                    "type": "microbit.PinAnalog"
-                },
-                {
-                    "name": "pin5",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin6",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin7",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin8",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin9",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin10",
-                    "kind": "variable",
-                    "type": "microbit.PinAnalog"
-                },
-                {
-                    "name": "pin11",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin12",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin13",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin14",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin15",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin16",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin19",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin20",
-                    "kind": "variable",
-                    "type": "microbit.PinDigital"
-                },
-                {
-                    "name": "pin_logo",
-                    "kind": "variable",
-                    "type": "microbit.PinTouch"
-                },
-                {
-                    "name": "pin_speaker",
-                    "kind": "variable",
-                    "type": "microbit.PinSpeaker"
-                },
-                {
-                    "name": "PinDigitalW",
-                    "kind": "class",
-                    "hide": true,
-                    "elements":  [
-                        {
-                            "name":"write_digital",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 1,
-                            "argsName": ["_value_"]                        
-                        }
-                    ]
-                },
-                {
-                    "name": "PinDigitalR",
-                    "kind": "class",
-                    "hide": true,
-                    "elements":  [
-                        {
-                            "name":"read_digital",
-                            "kind": "method",
-                            "type": "int",
-                            "argsNum": 0
-                        }
-                    ]
-                },
-                {
-                    "name": "PinDigital",
-                    "kind": "class",
-                    "hide": true,
-                    "super": ["microbit.PinDigitalR", "microbit.PinDigitalW"]
-                },
-                {
-                    "name": "PinAnalogW",
-                    "kind": "class",
-                    "hide": true,
-                    "super": ["microbit.PinDigitalW"],
-                    "elements":  [
-                        {
-                            "name":"write_analog",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 1,
-                            "argsName": ["_value_"]
-                        },
-                        {
-                            "name":"set_analog_period",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 1,
-                            "argsName": ["_value_"]
-                        },
-                        {
-                            "name":"set_analog_period_microseconds",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 1,
-                            "argsName": ["_value_"]
-                        }
-                    ]
-                },
-                {
-                    "name": "PinAnalogR",
-                    "kind": "class",
-                    "hide": true,
-                    "super": ["microbit.PinDigitalR"],
-                    "elements":  [
-                        {
-                            "name":"read_analog",
-                            "kind": "method",
-                            "type": "int",
-                            "argsNum": 0
-                        }
-                    ]
-                },
-                {
-                    "name": "PinAnalog",
-                    "kind": "class",
-                    "hide": true,
-                    "super": ["microbit.PinAnalogR", "microbit.PinAnalogW"]
-                },
-                {
-                    "name": "PinTouch",
-                    "kind": "class",
-                    "hide": true,
-                    "elements":  [
-                        {
-                            "name":"is_touched",
-                            "kind": "method",
-                            "type": "bool",
-                            "argsNum": 0
-                        }
-                    ]
-                },
-                {
-                    "name": "PinFull",
-                    "kind": "class",
-                    "hide": true,
-                    "super": ["microbit.PinAnalog", "microbit.PinTouch"]
-                },
-                {
-                    "name": "PinSpeaker",
-                    "kind": "class",
-                    "hide": true,
-                    "super": ["microbit.PinAnalogW"],
-                    "elements": [
-                        {
-                            "name":"disable",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 0
-                        },
-                        {
-                            "name":"enable",
-                            "kind": "method",
-                            "type": "void",
-                            "argsNum": 0
-                        },
-                        {
-                            "name":"get_analog_period_microseconds",
-                            "kind": "method",
-                            "type": "int",
-                            "argsNum": 0
-                        }
-                    ]
-                }
-            ]
-        }            
-    ]
-}
+{"elements":[
+    {"name":"abs","kind":"method","type":"int","argsNum":1,"argsName":["_number_"]},
+    {"name":"len","kind":"method","type":"int","argsNum":1,"argsName":["_obj_"]},
+    {"name":"microbit","needNS":false,"kind":"module","elements":[
+        {"name":"Button","kind":"class","hide":true,"elements":[
+            {"name":"is_pressed","kind":"method","type":"bool","argsNum":0},
+            {"name":"was_pressed","kind":"method","type":"bool","argsNum":0},
+            {"name":"get_presses","kind":"method","type":"int","argsNum":0}]},
+        {"name":"button_a","kind":"variable","type":"microbit.Button"},
+        {"name":"button_b","kind":"variable","type":"microbit.Button"},
+        {"name":"display","kind":"variable","type":"microbit.Display"},
+        {"name":"Display","kind":"class","hide":true,"elements":[
+            {"name":"get_pixel","kind":"method","type":"int","argsNum":2,"argsName":["_x_","_y_"]},
+            {"name":"set_pixel","kind":"method","type":"void","argsNum":3,"argsName":["_x_","_y_","_value_"]},
+            {"name":"clear","kind":"method","type":"void","argsNum":0},
+            {"name":"show","kind":"method","type":"void","argsNum":5,"argsName":["_image_","_delay_","_wait_","_loop_","_clear_"]},
+            {"name":"show","kind":"method","type":"void","argsNum":5,"argsName":["_iterable_","_delay_","_wait_","_loop_","_clear_"]},
+            {"name":"scroll","kind":"method","type":"void","argsNum":2,"argsName":["_message_","_delay_"]},
+            {"name":"on","kind":"method","type":"void","argsNum":0},
+            {"name":"off","kind":"method","type":"void","argsNum":0},
+            {"name":"is_on","kind":"method","type":"bool","argsNum":0},
+            {"name":"read_light_level","kind":"method","type":"int","argsNum":0}]},
+        {"name":"pin0","kind":"variable","type":"microbit.PinFull"},
+        {"name":"pin1","kind":"variable","type":"microbit.PinFull"},
+        {"name":"pin2","kind":"variable","type":"microbit.PinFull"},
+        {"name":"pin3","kind":"variable","type":"microbit.PinAnalog"},
+        {"name":"pin4","kind":"variable","type":"microbit.PinAnalog"},
+        {"name":"pin5","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin6","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin7","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin8","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin9","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin10","kind":"variable","type":"microbit.PinAnalog"},
+        {"name":"pin11","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin12","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin13","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin14","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin15","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin16","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin19","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin20","kind":"variable","type":"microbit.PinDigital"},
+        {"name":"pin_logo","kind":"variable","type":"microbit.PinTouch"},
+        {"name":"pin_speaker","kind":"variable","type":"microbit.PinSpeaker"},
+        {"name":"PinDigitalW","kind":"class","hide":true,"elements":[
+            {"name":"write_digital","kind":"method","type":"void","argsNum":1,"argsName":["_value_"]}]},
+        {"name":"PinDigitalR","kind":"class","hide":true,"elements":[{
+            "name":"read_digital","kind":"method","type":"int","argsNum":0}]},
+        {"name":"PinDigital","kind":"class","hide":true,"super":["microbit.PinDigitalR","microbit.PinDigitalW"]},
+        {"name":"PinAnalogW","kind":"class","hide":true,"super":["microbit.PinDigitalW"],"elements":[
+            {"name":"write_analog","kind":"method","type":"void","argsNum":1,"argsName":["_value_"]},
+            {"name":"set_analog_period","kind":"method","type":"void","argsNum":1,"argsName":["_value_"]},
+            {"name":"set_analog_period_microseconds","kind":"method","type":"void","argsNum":1,"argsName":["_value_"]}]},
+        {"name":"PinAnalogR","kind":"class","hide":true,"super":["microbit.PinDigitalR"],"elements":[
+            {"name":"read_analog","kind":"method","type":"int","argsNum":0}]},
+        {"name":"PinAnalog","kind":"class","hide":true,"super":["microbit.PinAnalogR","microbit.PinAnalogW"]},
+        {"name":"PinTouch","kind":"class","hide":true,"elements":[
+            {"name":"is_touched","kind":"method","type":"bool","argsNum":0}]},
+        {"name":"PinFull","kind":"class","hide":true,"super":["microbit.PinAnalog","microbit.PinTouch"]},
+        {"name":"PinSpeaker","kind":"class","hide":true,"super":["microbit.PinAnalogW"],"elements":[
+            {"name":"disable","kind":"method","type":"void","argsNum":0},
+            {"name":"enable","kind":"method","type":"void","argsNum":0},
+            {"name":"get_analog_period_microseconds","kind":"method","type":"int","argsNum":0}]},
+        {"name":"Image","kind":"class","elements":[
+            {"name":"ALL_CLOCKS","kind":"variable","type":"str"},
+            {"name":"ANGRY","kind":"variable","type":"str"},
+            {"name":"ARROW_E","kind":"variable","type":"str"},
+            {"name":"ARROW_N","kind":"variable","type":"str"},
+            {"name":"ARROW_NE","kind":"variable","type":"str"},
+            {"name":"ARROW_NW","kind":"variable","type":"str"},
+            {"name":"ARROW_S","kind":"variable","type":"str"},
+            {"name":"ARROW_SE","kind":"variable","type":"str"},
+            {"name":"ARROW_SW","kind":"variable","type":"str"},
+            {"name":"ARROW_W","kind":"variable","type":"str"},
+            {"name":"ASLEEP","kind":"variable","type":"str"},
+            {"name":"BUTTERFLY","kind":"variable","type":"str"},
+            {"name":"CHESSBOARD","kind":"variable","type":"str"},
+            {"name":"CLOCK1","kind":"variable","type":"str"},
+            {"name":"CLOCK10","kind":"variable","type":"str"},
+            {"name":"CLOCK11","kind":"variable","type":"str"},
+            {"name":"CLOCK12","kind":"variable","type":"str"},
+            {"name":"CLOCK2","kind":"variable","type":"str"},
+            {"name":"CLOCK3","kind":"variable","type":"str"},
+            {"name":"CLOCK4","kind":"variable","type":"str"},
+            {"name":"CLOCK5","kind":"variable","type":"str"},
+            {"name":"CLOCK6","kind":"variable","type":"str"},
+            {"name":"CLOCK7","kind":"variable","type":"str"},
+            {"name":"CLOCK8","kind":"variable","type":"str"},
+            {"name":"CLOCK9","kind":"variable","type":"str"},
+            {"name":"CONFUSED","kind":"variable","type":"str"},
+            {"name":"COW","kind":"variable","type":"str"},
+            {"name":"DIAMOND","kind":"variable","type":"str"},
+            {"name":"DIAMOND_SMALL","kind":"variable","type":"str"},
+            {"name":"DUCK","kind":"variable","type":"str"},
+            {"name":"FABULOUS","kind":"variable","type":"str"},
+            {"name":"GHOST","kind":"variable","type":"str"},
+            {"name":"GIRAFFE","kind":"variable","type":"str"},
+            {"name":"HAPPY","kind":"variable","type":"str"},
+            {"name":"HEART","kind":"variable","type":"str"},
+            {"name":"HEART_SMALL","kind":"variable","type":"str"},
+            {"name":"HOUSE","kind":"variable","type":"str"},
+            {"name":"MEH","kind":"variable","type":"str"},
+            {"name":"MUSIC_CROTCHET","kind":"variable","type":"str"},
+            {"name":"MUSIC_QUAVER","kind":"variable","type":"str"},
+            {"name":"MUSIC_QUAVERS","kind":"variable","type":"str"},
+            {"name":"NO","kind":"variable","type":"str"},
+            {"name":"PACMAN","kind":"variable","type":"str"},
+            {"name":"PITCHFORK","kind":"variable","type":"str"},
+            {"name":"RABBIT","kind":"variable","type":"str"},
+            {"name":"ROLLERSKATE","kind":"variable","type":"str"},
+            {"name":"SAD","kind":"variable","type":"str"},
+            {"name":"SILLY","kind":"variable","type":"str"},
+            {"name":"SKULL","kind":"variable","type":"str"},
+            {"name":"SMILE","kind":"variable","type":"str"},
+            {"name":"SNAKE","kind":"variable","type":"str"},
+            {"name":"SQUARE","kind":"variable","type":"str"},
+            {"name":"SQUARE_SMALL","kind":"variable","type":"str"},
+            {"name":"STICKFIGURE","kind":"variable","type":"str"},
+            {"name":"SURPRISED","kind":"variable","type":"str"},
+            {"name":"SWORD","kind":"variable","type":"str"},
+            {"name":"TARGET","kind":"variable","type":"str"},
+            {"name":"TORTOISE","kind":"variable","type":"str"},
+            {"name":"TRIANGLE","kind":"variable","type":"str"},
+            {"name":"TRIANGLE_LEFT","kind":"variable","type":"str"},
+            {"name":"TSHIRT","kind":"variable","type":"str"},
+            {"name":"UMBRELLA","kind":"variable","type":"str"},
+            {"name":"XMAS","kind":"variable","type":"str"},
+            {"name":"YES","kind":"variable","type":"str"}]}]}]}
