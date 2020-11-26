@@ -703,30 +703,27 @@ export interface TutorialStep {
 
 //Autocompletion
 export interface LanguageDef {
-    modules: ModuleDef[];
+    modules: ElementDef[];
 }
 
-export interface ModuleDef {
+export interface AliasesPath {
+    //return a hash of alias name / path in modules definitions
+    [alias: string]: string;
+     //light = module_moduleA.module_moduleB.moduleC.methodA
+}
+export interface ElementDef {
     name: string;
-    needNS: boolean;
-    alias?: string;
-    methods?: MethodDef[];
-    classes?: ClassDef[];
-    attrs?: AttrDef[];
+    kind: "module" | "class" | "method" | "variable";
+    elements?: ElementDef[];
+    argsNber?: number;
+    argsName?: string[];
+    type?: string; //return type for methods, type of obj for variables
+    needNS?: boolean;
+    hide?: boolean; //if this flag is true for a class, the class name cannot appear in AC, but its methods/variables can.
 }
 
-export interface MethodDef {
-    name: string;
-    return: string;
-}
-
-export interface ClassDef {
-    name: string;
-    methods?: MethodDef[];
-    attrs?: AttrDef[];
-}
-
-export interface AttrDef{
-    name: string;
-    type: string;
+export enum ModulesDefScope {
+    languageDefs = "all",
+    acReferentialDefs = "acref",
+    customDefs = "custom"
 }
