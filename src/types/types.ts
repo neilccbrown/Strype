@@ -715,11 +715,12 @@ export interface ElementDef {
     name: string;
     kind: "module" | "class" | "method" | "variable";
     elements?: ElementDef[];
-    argsNber?: number;
+    argsNum?: number;
     argsName?: string[];
     type?: string; //return type for methods, type of obj for variables
     needNS?: boolean; // this flag indicates if a module name needs to be used within the code (ex for "import microbit", users need to write "microbit.xxxx" in code)
     hide?: boolean; //if this flag is true for a class, the class name cannot appear in AC, but its methods/variables can.
+    super?: string[]; //for classes, the super classes' paths of that class.
 }
 
 export enum ModulesDefScope {

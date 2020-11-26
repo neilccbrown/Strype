@@ -13,13 +13,13 @@ import { AliasesPath, ElementDef, ModulesDefScope } from "@/types/types";
 export const acReferential = [] as ElementDef[];
 export const aliasesPath = {} as AliasesPath;
 
-// Gets a module (can be full named module) from one of the definitions (language or referential)
+// Gets an element (a class/module/method/variable defined by it's path name) from one of the definitions (language or referential or custom)
 // undefined is returned if no module is found.
-function retrieveModuleInDefs(scope: ModulesDefScope, moduleName: string, customScope?: ElementDef[]): ElementDef|undefined {
+function retrieveElementInDefs(scope: ModulesDefScope, moduleName: string, customScope?: ElementDef[]): ElementDef|undefined {
     let tempModuleName = moduleName;
     let parentModuleName = "", subModuleName = ""; 
     let tempModuleDefs = (scope === ModulesDefScope.languageDefs) 
-        ? langDescription.modules as ElementDef[] 
+        ? langDescription.elements as ElementDef[] 
         : (scope === ModulesDefScope.acReferentialDefs)
             ? acReferential
             : customScope??[];
@@ -54,7 +54,7 @@ function removeModuleFromReferential(moduleName: string){
     //otherwise, we look for its parent first, then delete the module if the parent isn't undefined
     const parentModule = (moduleName.indexOf("0") === -1) 
         ? acReferential 
-        : retrieveModuleInDefs(ModulesDefScope.acReferentialDefs, moduleName.substr(moduleName.lastIndexOf(".")))?.elements?.filter((elt) => elt.kind === "module");
+        : retrieveElementInDefs(ModulesDefScope.acReferentialDefs, moduleName.substr(moduleName.lastIndexOf(".")))?.elements?.filter((elt) => elt.kind === "module");
 
     if(parentModule){
         const moduleIndex = parentModule.findIndex((module) => module.name === moduleName);
@@ -69,46 +69,55 @@ function removeModuleFromReferential(moduleName: string){
 // If the dependancies are in the same module as the current import, we need to add the dependancies to "currToAdd"
 // otherwise, we add them to the referential.
 function addDependencyModuleParts(eltToAdd: ElementDef, currToAdd: ElementDef, moduleName: string){
-    let dependencyName = "";
-    if(eltToAdd.type === "method" || eltToAdd.kind === "variable"){
-        dependencyName = eltToAdd.type??"";  
+    let dependencyNames = [] as string[];
+    if(eltToAdd.kind === "method" || eltToAdd.kind === "variable"){
+        dependencyNames = [eltToAdd.type??""];  
+    }
+    else if(eltToAdd.kind === "class"){
+        dependencyNames = eltToAdd.super??[];
     }
     
-    //check if the dependency is valid, and if is NOT a native/built-in/core dependency
-    //(because for native depencencies we don't need to anything: they are included by default)
-    if(dependencyName.length > 0 && dependencyName.indexOf(".") > 0){
-        const checkInCurrentToAdd = (dependencyName.substr(0, dependencyName.lastIndexOf(".") + 1).startsWith(moduleName + "."));
-        let target = checkInCurrentToAdd ? currToAdd.elements??[] : acReferential;
-        //check if the dependency exists already in the target --> if not, add it from the language description
-        const searchDependencyName = (checkInCurrentToAdd) ? dependencyName.substr(dependencyName.indexOf(moduleName + ".") + moduleName.length + 1) : dependencyName;
-        let parentLevelsDepName = dependencyName.substr(0, dependencyName.indexOf("."));
-        if(!retrieveModuleInDefs(ModulesDefScope.customDefs, searchDependencyName, target)){
-            //When adding the dependency we need to make sure all levels of the path are created too
-            const levels = searchDependencyName.split(".");
-            let levelIndex = 0;
-            levels.forEach((level) => {
-                let targetLevelIndex = target.findIndex((elt) => elt.name === level);
-                if(targetLevelIndex === -1){
-                    //the level isn't found. Add it from language description (using a copy not to delete anything unwanted from the language description)
-                    //but making sure that we only add the specific level to the target
-                    //(because we only add what we need)
-                    const levelElt = JSON.parse(JSON.stringify(retrieveModuleInDefs(ModulesDefScope.languageDefs, (checkInCurrentToAdd) ? (parentLevelsDepName+"."+level) : parentLevelsDepName)));
-                    //We should always get here -- testing levelElt to keep TS happy
-                    if(levelElt){
-                        if(levelIndex < levels.length - 1){
-                            levelElt.elements = [];
+    dependencyNames.forEach((dependencyName) => {
+        //check if the dependency is valid, and if is NOT a native/built-in/core dependency
+        //(because for native depencencies we don't need to anything: they are included by default)
+        if(dependencyName.length > 0 && dependencyName.indexOf(".") > 0){
+            const checkInCurrentToAdd = (dependencyName.substr(0, dependencyName.lastIndexOf(".") + 1).startsWith(moduleName + "."));
+            let target = checkInCurrentToAdd ? currToAdd.elements??[] : acReferential;
+            //check if the dependency exists already in the target --> if not, add it from the language description
+            const searchDependencyName = (checkInCurrentToAdd) ? dependencyName.substr(dependencyName.indexOf(moduleName + ".") + moduleName.length + 1) : dependencyName;
+            let parentLevelsDepName = dependencyName.substr(0, dependencyName.indexOf("."));
+            if(!retrieveElementInDefs(ModulesDefScope.customDefs, searchDependencyName, target)){
+                //When adding the dependency we need to make sure all levels of the path are created too
+                const levels = searchDependencyName.split(".");
+                let levelIndex = 0;
+                levels.forEach((level) => {
+                    let targetLevelIndex = target.findIndex((elt) => elt.name === level);
+                    if(targetLevelIndex === -1){
+                        //the level isn't found. Add it from language description (using a copy not to delete anything unwanted from the language description)
+                        //but making sure that we only add the specific level to the target
+                        //(because we only add what we need)
+                        const levelElt = JSON.parse(JSON.stringify(retrieveElementInDefs(ModulesDefScope.languageDefs, (checkInCurrentToAdd) ? (parentLevelsDepName+"."+level) : parentLevelsDepName))) as ElementDef;
+                        //We should always get here -- testing levelElt to keep TS happy
+                        if(levelElt){
+                            if(levelIndex < levels.length - 1){
+                                levelElt.elements = [];
+                            }
+                            //add the level in the target
+                            target.push(levelElt);
+                            targetLevelIndex  = target.length - 1;
+                            //add potential super classes of the super classes recursively
+                            if(levelElt.kind==="class"){
+                                addDependencyModuleParts(levelElt, currToAdd, moduleName);
+                            }
                         }
-                        //add the level in the target
-                        target.push(levelElt);
-                        targetLevelIndex  = target.length - 1;
                     }
-                }
-                target = target[targetLevelIndex].elements??[];
-                parentLevelsDepName += (((parentLevelsDepName.length > 0) ? "." :"") + level);
-                levelIndex++;
-            })
+                    target = target[targetLevelIndex].elements??[];
+                    parentLevelsDepName += (((parentLevelsDepName.length > 0) ? "." :"") + level);
+                    levelIndex++;
+                })
+            }
         }
-    }
+    });
 }
 
 // Gets the elements of a module (filtered) based on the import statement
@@ -184,7 +193,7 @@ export function updateACReferential(adding: boolean, importStr: string) {
 
     //if are adding/updating the referencial for that module, get the right content in the referential
     if(adding){
-        const allModule = retrieveModuleInDefs(ModulesDefScope.languageDefs, moduleName);
+        const allModule = retrieveElementInDefs(ModulesDefScope.languageDefs, moduleName);
         if(allModule){
             let toAdd = {} as ElementDef;
             //if we are NOT importing the complete module, then we refine the scope of the referential
@@ -211,10 +220,11 @@ export function updateACReferential(adding: boolean, importStr: string) {
     }
 }
 
-// Load the AC with initial state, to be called when the application launches.
+// Load the AC with initial state (built in elements), to be called when the application launches.
 export function loadAC(){
-    updateACReferential(true, "from _core_ import *");
-    //updateACReferential(true, "from microbit import button_a as but1, button_b as but2");
+    //the buildin elements are defined at the top level of the language description, and cannot be a module
+    (langDescription.elements as ElementDef[]).filter((elt) => elt.kind !== "module").forEach((elt) => acReferential.push(elt));
+    //updateACReferential(true, "from microbit import pin0");
     console.log("ac referential :")
     console.log(acReferential);
     console.log("alias paths :")
