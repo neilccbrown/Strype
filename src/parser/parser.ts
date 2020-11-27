@@ -37,6 +37,7 @@ export default class Parser {
     private parseStatement(statement: FrameObject, indent = ""): string {
         let output = indent;
         const positions: number[] = [];
+        const lengths: number[] = [];
         let currSlotIndex = 0;
             
         statement.frameType.labels.forEach( (label) => {
@@ -46,11 +47,11 @@ export default class Parser {
                 //if there is an editable slot
                 if(label.slot){
                     // Record its vertical position
-                    positions.push(output.length);
-                    
+                    const currentPosition = output.length;
+                    positions.push(currentPosition);
                     // add its code to the output
-                    console.log("print: " + statement.contentDict[currSlotIndex].code)
                     output += statement.contentDict[currSlotIndex].code + " ";
+                    lengths.push(output.length-currentPosition+1);
                 }
             }
             currSlotIndex++;
@@ -58,7 +59,7 @@ export default class Parser {
         
         output += "\n";
     
-        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions};
+        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions, slotLength: lengths};
         
         this.line += 1;
 
@@ -151,26 +152,29 @@ export default class Parser {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
             })}`;
 
+            
             // For each error, show red border around its input in the UI
             errors.forEach((error: ErrorInfo) => {
-                if( this.framePositionMap[error.line] !== undefined && (error.offset < this.framePositionMap[error.line].slotStarts[0] || error.offset >= inputCode.split(/\n/)[error.line].length)) {
-                    store.commit("setFrameErroneous", {
-                        frameId: this.framePositionMap[error.line].frameId,
-                        error: error.msg,
-                    });
-                }
-                else {
-                    store.commit("setSlotErroneous", {
-                        frameId: this.framePositionMap[error.line].frameId,
-                        // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
-                        slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
-                            (element, index, array) => {
-                                return element<=error.offset && 
-                                        ((index<array.length-1)? (array[index+1] > error.offset) : true)
-                            }
-                        ), 
-                        error: error.msg,
-                    });
+                if( this.framePositionMap[error.line] !== undefined) {
+                    if(this.isErrorIfInSlotBounds(error.line,error.offset)) {
+                        store.commit("setSlotErroneous", {
+                            frameId: this.framePositionMap[error.line].frameId,
+                            // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
+                            slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
+                                (element, index, array) => {
+                                    return element<=error.offset && 
+                                            ((index<array.length-1)? (array[index+1] > error.offset) : true)
+                                }
+                            ), 
+                            error: error.msg,
+                        });
+                    }
+                    else {
+                        store.commit("setFrameErroneous", {
+                            frameId: this.framePositionMap[error.line].frameId,
+                            error: error.msg,
+                        });
+                    }
                 }
             });
 
@@ -178,6 +182,20 @@ export default class Parser {
         
 
         return errorString;
+    }
+
+    private isErrorIfInSlotBounds(errorLine: number, errorOffset: number) {
+
+        for (let index = 0; index < this.framePositionMap[errorLine].slotLength.length; index++) {
+            const slot = this.framePositionMap[errorLine];
+            // if the error's offset is within the bounds of any slot, return true
+            if(errorOffset >= slot.slotStarts[index] && errorOffset <= (slot.slotStarts[index] + slot.slotLength[index]-1)) {
+                return true;
+            }
+        }
+        // If the offset was inside none of the slots, then return false
+        return false;
+        
     }
 
 }

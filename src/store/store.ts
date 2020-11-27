@@ -833,18 +833,24 @@ export default new Vuex.Store({
         },
 
         setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
+            const existingError =  state.frameObjects[payload.frameId].contentDict[payload.slotIndex].error;
+            // Sometimes we need to extend the error, if more than one errors are on the same slot
+            const newError = (existingError === "" || payload.error === "" ) ? payload.error: (existingError +"\n" + payload.error);
             Vue.set(
                 state.frameObjects[payload.frameId].contentDict[payload.slotIndex],
                 "error",
-                payload.error
+                newError
             );
         },
 
         setFrameErroneous(state, payload: {frameId: number; error: string}){
+            const existingError =  state.frameObjects[payload.frameId].error;
+            // Sometimes we need to extend the error, if more than one errors are on the same frame
+            const newError = (existingError === "" || payload.error === "" ) ? payload.error: (existingError +"\n" + payload.error);
             Vue.set(
                 state.frameObjects[payload.frameId],
                 "error",
-                payload.error
+                newError
             );
         },
 

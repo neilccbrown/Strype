@@ -69,7 +69,7 @@ export interface EditorFrameObjects {
 }
 
 export interface LineAndSlotPositions {
-    [line: number]: {frameId: number ; slotStarts: number[]};
+    [line: number]: {frameId: number ; slotStarts: number[] ; slotLength: number[]};
 }
 
 // This is an array with all the frame Definitions objects.
