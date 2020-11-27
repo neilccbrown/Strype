@@ -9,14 +9,14 @@
                     "name":"abs",
                     "kind": "method",
                     "type": "int",
-                    "argsNber": 1,
+                    "argsNum": 1,
                     "argsName": ["_number_"]
                 },
                 {
                     "name":"len",
                     "kind": "method",
                     "type": "int",
-                    "argsNber": 1,
+                    "argsNum": 1,
                     "argsName": ["_obj_"]
                 }
             ]
@@ -35,19 +35,19 @@
                             "name":"is_pressed",
                             "kind": "method",
                             "objType": "bool",
-                            "argsNber": 0
+                            "argsNum": 0
                         },
                         {
                             "name":"was_pressed",
                             "kind": "method",
                             "type": "bool",
-                            "argsNber": 0
+                            "argsNum": 0
                         },
                         {
                             "name":"get_presses",
                             "kind": "method",
                             "type": "int",
-                            "argsNber": 0
+                            "argsNum": 0
                         }
                     ]
                 },

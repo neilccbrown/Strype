@@ -715,7 +715,7 @@ export interface ElementDef {
     name: string;
     kind: "module" | "class" | "method" | "variable";
     elements?: ElementDef[];
-    argsNber?: number;
+    argsNum?: number;
     argsName?: string[];
     type?: string; //return type for methods, type of obj for variables
     needNS?: boolean; // this flag indicates if a module name needs to be used within the code (ex for "import microbit", users need to write "microbit.xxxx" in code)

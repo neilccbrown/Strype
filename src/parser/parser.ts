@@ -1,6 +1,6 @@
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
 import store from "@/store/store";
-import { TPyParser, ErrorInfo } from "tigerpython-parser";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
+import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
 
@@ -120,6 +120,24 @@ export default class Parser {
         if (!inputCode) {
             code = this.parse();
         }
+
+        const parsedCode = TPyParser.parse(code);
+        console.log(parsedCode);
+
+        // we need to built a simple AST of the code
+        // to get all lexes and check if they exist.
+        // Or we can simply run from L-to-R and 
+        // get strings unless they are separated by 
+        // () + - * / " " == ><= !=  or space 
+        parsedCode["body"].forEach( (line) => {
+            if(line.kind === "Assign") {
+                //cases
+                // Attribute -> Image.CAT
+                // Constant -> "cat" or 1
+                // Call -> x()
+            }
+        });
+
         return TPyParser.findAllErrors(code);
     }
 
