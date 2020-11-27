@@ -8,7 +8,7 @@ import "bootstrap-vue/dist/bootstrap-vue.css";
 import "vue-simple-context-menu/dist/vue-simple-context-menu.css";
 import vBlur from "v-blur";
 import VueConfirmDialog from "vue-confirm-dialog";
-import {loadAC} from "@/autocompletion/acManager";
+import {testAC} from "@/autocompletion/acManager";
 
 Vue.config.productionTip = false;
 
@@ -33,4 +33,4 @@ new Vue({
 }).$mount("#app");
 
 //launch autocompletion
-loadAC();
+testAC();
