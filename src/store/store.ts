@@ -325,7 +325,6 @@ export default new Vuex.Store({
         },
         
         getErrorForSlot: (state) => (frameId: number, slotIndex: number) => {
-            console.log(state.frameObjects[frameId].contentDict[slotIndex].error);
             return state.frameObjects[frameId].contentDict[slotIndex].error;
         },
 

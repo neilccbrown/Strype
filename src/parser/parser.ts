@@ -116,7 +116,7 @@ export default class Parser {
 
     public getErrors(inputCode = ""): ErrorInfo[] {
         TPyParser.setLanguage("en");
-        TPyParser.warningAsErrors = true;
+        TPyParser.warningAsErrors = false;
         let code: string = inputCode;
         if (!inputCode) {
             code = this.parse();
