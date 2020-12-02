@@ -1,6 +1,7 @@
 import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame } from "@/types/types";
 import Vue from "vue";
 import { getSHA1HashForObject } from "@/helpers/common";
+import { functions } from "lodash";
 
 export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frameId: number) => {
     // When removing a frame in the list, we remove all its sub levels,
@@ -31,6 +32,16 @@ export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>
         listOfFrames,
         frameId
     );
+};
+
+// Clean map from deleted frames
+export const cleanMapFromDeleted = (listOfFrames: Record<number, FrameObject>, frameMap: number[]) => {
+    frameMap.splice(
+        0,
+        frameMap.length,
+        ...frameMap.filter( (id) => Object.keys(listOfFrames).includes(id+""))
+    );
+
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
@@ -185,7 +196,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     // Add the new frame to the list
     framesToReturn[frame.id] = frame;
 
-    //Look at the subchildren first and then at the joint frames
+    //Look at the subChildren first and then at the joint frames
     frame.childrenIds.forEach((childId: number, index: number) => {
         frame.childrenIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
@@ -197,7 +208,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
         );
     });
 
-    //Look at the subchildren first and then at the joint frames
+    //Look at the subChildren first and then at the joint frames
     frame.jointFrameIds.forEach((childId: number, index: number) => {
         frame.jointFrameIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
@@ -263,7 +274,7 @@ export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObj
 
 export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
     // Change the disable property to destination parent state if the source's parent and destination's parent are different
-    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0) 
+    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0)
         ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
         : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
 
@@ -372,3 +383,34 @@ export const frameForSelection = (listOfFrames: Record<number, FrameObject>, cur
     }
     
 };
+
+export const indexToAddInMap = function(listOfFrames: Record<number, FrameObject>, frameMap: number[], indexToAdd: number, isAddingJointFrame: boolean, parentToAdd: number, listToUpdate: number[], subjectFrames: number[]): number {
+    // Add the frame's ID t1o the frameMap
+    let previousFrame: number;
+    let allChildren= [] as number[];
+    if(indexToAdd == 0) {
+        previousFrame=
+        (isAddingJointFrame) ?
+            ((listOfFrames[parentToAdd].childrenIds.length > 0)? //if the parent has children
+                (listOfFrames[parentToAdd].childrenIds[listOfFrames[parentToAdd].childrenIds.length-1 ]) : //either after the last parent's child
+                (parentToAdd) // or straight below the parent
+            ) : 
+            ((parentToAdd>0)?
+                parentToAdd :
+                -1
+            )
+    }
+    else {
+        // get the previous' all children
+        allChildren = getAllChildrenAndJointFramesIds(listOfFrames,listToUpdate[indexToAdd - 1]) ?? [];
+        // Remove the frames we are talking about from the list, in the case we are moving below our self - under our parent
+        allChildren = allChildren.filter( (id) => !subjectFrames.includes(id));
+        // if the previous has no children, get the previous
+        previousFrame = allChildren.pop() ?? listToUpdate[indexToAdd - 1];
+    }
+    
+    return (previousFrame >= 0) ? 
+        frameMap.indexOf(previousFrame) + 1 : // Get the next index of the previous 
+        0; // We are moving to the start of the parent
+
+}

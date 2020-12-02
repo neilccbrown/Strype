@@ -1,6 +1,7 @@
 import store from "@/store/store";
 import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
+import { Store } from "vuex";
 
 const INDENT = "    ";
 
@@ -12,6 +13,55 @@ export default class Parser {
 
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
     private line = 0;
+
+    private parseSlot(slot: string, position: number) {
+        // This method parses semantically, by checking that every
+        // token presented is known to the program (declared, keyword, or imported)
+
+        // The list of all things that cannot be a name 
+        const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
+            "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
+            "==","=","!=",">=","<=","<",">","(",")","[","]","{","}",
+        ];
+        // list of keywords that are not user or library defined.
+        const keywords = ["in","and","or","await","is","True","False",
+            "lambda", "as", "from","del","not","with",
+        ];
+
+        let slotsCopy: string = slot;
+        // first replace all the operators with a white space, so names can be separated
+        operators.forEach( (operator) => slotsCopy=slotsCopy.replaceAll(operator," "))
+
+        // Now tokenise the names based on white spaces
+        let tokens: string[] = slotsCopy.split(/\s+/);
+
+        // Now remove all the keywords.
+        tokens = tokens.filter((token: string)=> !keywords.includes(token));
+
+
+        // tokens.forEach( (token: string) => {
+        //     if(token.includes(".")) {
+        //        token.split(".").forEach( (name) => {
+
+        //        });
+        //     }
+        // });
+
+        
+
+        // we need to built a simple AST of the code
+        // to get all lexes and check if they exist.
+        // Or we can simply run from L-to-R and 
+        // get strings unless they are separated by 
+        // () + - * / " " == ><= !=  or space 
+
+        // if () are present, we need to know whether the symbol before is a method
+
+        // if [] are present, we need to know whether the symbol before is an array
+
+        // if {} are present, we need to know whether the symbol before is a dict
+
+    }
 
     private parseBlock(block: FrameObject, indent: string): string {
         let output = "";
@@ -52,6 +102,13 @@ export default class Parser {
                     // add its code to the output
                     output += statement.contentDict[currSlotIndex].code + " ";
                     lengths.push(output.length-currentPosition+1);
+
+                    // Check it for semantic correctness
+                    
+                    // TO DO
+                    // WE NEED TO AVOID giving left land assignments and method lines to `parseSlot`
+                    // WE NEED TO AVOID GIVING comment slots
+                    this.parseSlot(statement.contentDict[currSlotIndex].code,currentPosition);
                 }
             }
             currSlotIndex++;
@@ -59,7 +116,7 @@ export default class Parser {
         
         output += "\n";
     
-        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions, slotLength: lengths};
+        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions, slotLengths: lengths};
         
         this.line += 1;
 
@@ -122,22 +179,8 @@ export default class Parser {
             code = this.parse();
         }
 
-        const parsedCode = TPyParser.parse(code);
-        console.log(parsedCode);
-
-        // we need to built a simple AST of the code
-        // to get all lexes and check if they exist.
-        // Or we can simply run from L-to-R and 
-        // get strings unless they are separated by 
-        // () + - * / " " == ><= !=  or space 
-        parsedCode["body"].forEach( (line) => {
-            if(line.kind === "Assign") {
-                //cases
-                // Attribute -> Image.CAT
-                // Constant -> "cat" or 1
-                // Call -> x()
-            }
-        });
+        // const parsedCode = TPyParser.parse(code);
+        // console.log(parsedCode);
 
         return TPyParser.findAllErrors(code);
     }
@@ -186,10 +229,10 @@ export default class Parser {
 
     private isErrorIfInSlotBounds(errorLine: number, errorOffset: number) {
 
-        for (let index = 0; index < this.framePositionMap[errorLine].slotLength.length; index++) {
+        for (let index = 0; index < this.framePositionMap[errorLine].slotLengths.length; index++) {
             const slot = this.framePositionMap[errorLine];
             // if the error's offset is within the bounds of any slot, return true
-            if(errorOffset >= slot.slotStarts[index] && errorOffset <= (slot.slotStarts[index] + slot.slotLength[index]-1)) {
+            if(errorOffset >= slot.slotStarts[index] && errorOffset <= (slot.slotStarts[index] + slot.slotLengths[index]-1)) {
                 return true;
             }
         }
