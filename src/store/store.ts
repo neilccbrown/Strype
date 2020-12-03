@@ -9,8 +9,9 @@ import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, cleanMapFromDeleted } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, indexToAddInMap} from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
+import { initial } from "lodash";
 
 Vue.use(Vuex);
 
@@ -20,13 +21,13 @@ export default new Vuex.Store({
 
         frameObjects: initialTestState,
 
-        frameMap : [1,2,3,4,5,6,7] as number[],//[] as number[], // flat map of all the frames in a sequence
+        frameMap : [-1,-2,-3,1,2,3,4,5,6,7] as number[],//[] as number[], // flat map of all the frames in a sequence
 
-        nextAvailableId: 1,//Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
+        nextAvailableId: Math.max.apply({},Object.keys(initialTestState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
-        currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's inital content being edited.
+        currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's initial content being edited.
 
         isEditing: false,
 
@@ -509,11 +510,7 @@ export default new Vuex.Store({
                 newFrame
             );
         
-            state.frameMap.splice(
-                indexToAddInMap(state.frameObjects,state.frameMap,indexToAdd,isAddingJointFrame,parentToAdd,listToUpdate,[]),
-                0,
-                newFrame.id
-            );
+            generateFrameMap(state.frameObjects,state.frameMap);
         },
 
         deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
@@ -636,21 +633,7 @@ export default new Vuex.Store({
 
             // Update the frameMap
             if(eventType !== "removed"){
-                // get all the added frames children
-                const allChildren = getAllChildrenAndJointFramesIds(state.frameObjects,payload.event[eventType].element.id);
-                //remove the frame and its children from the frameMap
-                state.frameMap.splice(
-                    state.frameMap.indexOf(payload.event[eventType].element.id),
-                    allChildren.length+1
-                );
-                // Add the parent frame on the top of it's children list
-                allChildren.unshift(payload.event[eventType].element.id);
-                // Add the frame and its children to the proper position in the map
-                state.frameMap.splice(
-                    indexToAddInMap(state.frameObjects,state.frameMap,payload.event[eventType].newIndex,(payload.event[eventType].element.jointParentId > 0 ),payload.eventParentId,listToUpdate, allChildren),
-                    0,
-                    ...allChildren
-                );
+                generateFrameMap(state.frameObjects,state.frameMap);
             }
 
         },
@@ -2046,18 +2029,7 @@ export default new Vuex.Store({
                 );
             }
 
-            // get all the added frames children
-            const allChildren = getAllChildrenAndJointFramesIds(state.frameObjects,topFrame.id);
-
-            // Add the parent frame on the top of it's children list
-            allChildren.unshift(topFrame.id);
-            // Add the frame and its children to the proper position in the map
-            state.frameMap.splice(
-                indexToAddInMap(state.frameObjects,state.frameMap,payload.newIndex,isJointFrame,payload.newParentId,childrenListToBeAdded, allChildren),
-                0,
-                ...allChildren
-            );
-
+            generateFrameMap(state.frameObjects,state.frameMap);
 
             //save state changes
             commit(
@@ -2149,24 +2121,7 @@ export default new Vuex.Store({
                     ))
             }
 
-
-            // Update the frameMap
-            const allCopiedFrames = [] as number[];
-
-            // get all the added frames children
-            topLevelCopiedFrames.forEach( (id) => {
-                // Add all the top level frame and its children to the list
-                allCopiedFrames.push(id)
-                allCopiedFrames.push(...getAllChildrenAndJointFramesIds(state.frameObjects,id));
-                
-            });
-            // Add the frame and its children to the proper position in the map
-            state.frameMap.splice(
-                indexToAddInMap(state.frameObjects,state.frameMap,newIndex,areSelectedJointFrames,payload.newParentId,childrenListToBeAdded,allCopiedFrames),
-                0,
-                ...allCopiedFrames
-            );
-            
+            generateFrameMap(state.frameObjects,state.frameMap);
 
             //save state changes
             commit(
@@ -2302,7 +2257,7 @@ export default new Vuex.Store({
             }
         },
 
-        shiftClickSelection({state, commit}, clickedFrame) {
+        shiftClickSelection({state, commit}, clickedFrameId) {
             // Remove current selection
             commit("unselectAllFrames");
 
@@ -2311,6 +2266,25 @@ export default new Vuex.Store({
             // what if the current caret is on another level than the clicked caret?
             //        |--> probably do nothing
             // Else, just toggle the caret
+            // Check if the next of the current is in the same level (parent) with the clicked
+            // If so, that allows for selection.
+
+            // if( clickedFrameId 
+            // const direction = (
+            
+            // // if the current frame is a frame container (id<0) then we just take it's fist child
+            // const firstFrameId = (state.currentFrame.id > 0)? 
+            //     (state.currentFrame.caretPosition === CaretPosition.body)?
+            //         state.frameMap[state.frameMap.indexOf(state.currentFrame.id) + 1] : // if we are in the body, just the next frame
+            //         state.frameMap[state.frameMap.indexOf(state.currentFrame.id) + getAllChildrenAndJointFramesIds(state.frameObjects,state.currentFrame.id).length]:  // below, the next is after all the children
+            //     state.frameObjects[state.currentFrame.id].childrenIds[0]; // if we are in a frame container, get the first child
+
+            // const firstFrame = state.frameObjects[firstFrameId];
+            // const clickedFrame = state.frameObjects[clickedFrameId];
+
+            // if(firstFrame.parentId === clickedFrame.parentId || firstFrame.jointParentId === clickedFrame.jointParentId) {
+            // if they have the same parent, that means the selection can occur
+            //} 
         },
 
         prepareForMultiDrag({state, getters, commit}, draggedFrameId: number) {

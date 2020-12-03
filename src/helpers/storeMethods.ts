@@ -384,33 +384,11 @@ export const frameForSelection = (listOfFrames: Record<number, FrameObject>, cur
     
 };
 
-export const indexToAddInMap = function(listOfFrames: Record<number, FrameObject>, frameMap: number[], indexToAdd: number, isAddingJointFrame: boolean, parentToAdd: number, listToUpdate: number[], subjectFrames: number[]): number {
-    // Add the frame's ID t1o the frameMap
-    let previousFrame: number;
-    let allChildren= [] as number[];
-    if(indexToAdd == 0) {
-        previousFrame=
-        (isAddingJointFrame) ?
-            ((listOfFrames[parentToAdd].childrenIds.length > 0)? //if the parent has children
-                (listOfFrames[parentToAdd].childrenIds[listOfFrames[parentToAdd].childrenIds.length-1 ]) : //either after the last parent's child
-                (parentToAdd) // or straight below the parent
-            ) : 
-            ((parentToAdd>0)?
-                parentToAdd :
-                -1
-            )
-    }
-    else {
-        // get the previous' all children
-        allChildren = getAllChildrenAndJointFramesIds(listOfFrames,listToUpdate[indexToAdd - 1]) ?? [];
-        // Remove the frames we are talking about from the list, in the case we are moving below our self - under our parent
-        allChildren = allChildren.filter( (id) => !subjectFrames.includes(id));
-        // if the previous has no children, get the previous
-        previousFrame = allChildren.pop() ?? listToUpdate[indexToAdd - 1];
-    }
-    
-    return (previousFrame >= 0) ? 
-        frameMap.indexOf(previousFrame) + 1 : // Get the next index of the previous 
-        0; // We are moving to the start of the parent
 
-}
+export const generateFrameMap = function(listOfFrames: Record<number, FrameObject>, frameMap: number[]): void {
+    frameMap.splice(
+        0,
+        frameMap.length,
+        ...[-1,...getAllChildrenAndJointFramesIds(listOfFrames,-1),-2,...getAllChildrenAndJointFramesIds(listOfFrames,-2),-3,...getAllChildrenAndJointFramesIds(listOfFrames,-3)]
+    );
+};
