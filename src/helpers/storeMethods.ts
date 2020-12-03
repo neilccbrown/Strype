@@ -185,7 +185,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     // Add the new frame to the list
     framesToReturn[frame.id] = frame;
 
-    //Look at the subchildren first and then at the joint frames
+    //Look at the subChildren first and then at the joint frames
     frame.childrenIds.forEach((childId: number, index: number) => {
         frame.childrenIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
@@ -197,7 +197,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
         );
     });
 
-    //Look at the subchildren first and then at the joint frames
+    //Look at the subChildren first and then at the joint frames
     frame.jointFrameIds.forEach((childId: number, index: number) => {
         frame.jointFrameIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
@@ -263,7 +263,7 @@ export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObj
 
 export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
     // Change the disable property to destination parent state if the source's parent and destination's parent are different
-    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0) 
+    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0)
         ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
         : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
 
@@ -371,4 +371,13 @@ export const frameForSelection = (listOfFrames: Record<number, FrameObject>, cur
         return null;
     }
     
+};
+
+
+export const generateFrameMap = function(listOfFrames: Record<number, FrameObject>, frameMap: number[]): void {
+    frameMap.splice(
+        0,
+        frameMap.length,
+        ...[-1,...getAllChildrenAndJointFramesIds(listOfFrames,-1),-2,...getAllChildrenAndJointFramesIds(listOfFrames,-2),-3,...getAllChildrenAndJointFramesIds(listOfFrames,-3)]
+    );
 };

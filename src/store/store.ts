@@ -3,26 +3,31 @@ import Vuex from "vuex";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
+import initialTestState from "@/store/initial-test-state";
 import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent } from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
+import { initial } from "lodash";
 
 Vue.use(Vuex);
 
 export default new Vuex.Store({
     state: {
+        debugging: true,
 
-        frameObjects: initialState,
+        frameObjects: initialTestState,
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
+        frameMap : [-1,-2,-3,1,2,3,4,5,6,7] as number[],//[] as number[], // flat map of all the frames in a sequence
+
+        nextAvailableId: Math.max.apply({},Object.keys(initialTestState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
-        currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's inital content being edited.
+        currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's initial content being edited.
 
         isEditing: false,
 
@@ -49,6 +54,7 @@ export default new Vuex.Store({
         ignoredDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
 
         selectedFrames: [] as number[],
+
     },
 
     getters: {
@@ -468,7 +474,7 @@ export default new Vuex.Store({
             Vue.set(
                 state,
                 "frameObjects",
-                (toggle) ? tutorialState: initialState
+                (toggle) ? tutorialState: ((state.debugging)? initialTestState : initialState)
             );
         },
 
@@ -503,6 +509,8 @@ export default new Vuex.Store({
                 newFrame.id,
                 newFrame
             );
+        
+            generateFrameMap(state.frameObjects,state.frameMap);
         },
 
         deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
@@ -577,6 +585,7 @@ export default new Vuex.Store({
                     );
                 }
             }
+            generateFrameMap(state.frameObjects,state.frameMap);
         },
 
         updateFramesOrder(state, payload: {event: any; eventParentId: number}) {
@@ -621,6 +630,12 @@ export default new Vuex.Store({
                     1
                 ); 
             }
+
+            // Update the frameMap
+            if(eventType !== "removed"){
+                generateFrameMap(state.frameObjects,state.frameMap);
+            }
+
         },
 
         // It may be called more than once from the same place and thus requires the editing value
@@ -913,7 +928,8 @@ export default new Vuex.Store({
             const isJointFrame = state.frameObjects[frameId].frameType.isJointFrame;
             
             const parent = (isJointFrame)? state.frameObjects[frameId].jointParentId : state.frameObjects[frameId].parentId;
-            cloneFrameAndChildren(state.frameObjects, frameId, parent, {id: state.nextAvailableId}, state.copiedFrames); 
+
+            cloneFrameAndChildren(state.frameObjects, frameId, parent, {id: state.nextAvailableId}, state.copiedFrames);             
         },
 
         copySelection(state) {
@@ -1332,7 +1348,7 @@ export default new Vuex.Store({
                     }
                 );
 
-                //clear the statebeforeChanges flag off
+                //clear the stateBeforeChanges flag off
                 commit(
                     "updateStateBeforeChanges",
                     true
@@ -2013,6 +2029,8 @@ export default new Vuex.Store({
                 );
             }
 
+            generateFrameMap(state.frameObjects,state.frameMap);
+
             //save state changes
             commit(
                 "saveStateChanges",
@@ -2103,6 +2121,7 @@ export default new Vuex.Store({
                     ))
             }
 
+            generateFrameMap(state.frameObjects,state.frameMap);
 
             //save state changes
             commit(
@@ -2236,6 +2255,11 @@ export default new Vuex.Store({
                 commit("selectDeselectFrame", {frameId: result.frameForSelection, direction: direction})
                 commit("setCurrentFrame", result.newCurrentFrame);
             }
+        },
+
+        shiftClickSelection({state, commit}, clickedFrameId) {
+            // Remove current selection
+            commit("unselectAllFrames");
         },
 
         prepareForMultiDrag({state, getters, commit}, draggedFrameId: number) {

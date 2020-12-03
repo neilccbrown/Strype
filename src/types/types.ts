@@ -69,7 +69,7 @@ export interface EditorFrameObjects {
 }
 
 export interface LineAndSlotPositions {
-    [line: number]: {frameId: number ; slotStarts: number[] ; slotLength: number[]};
+    [line: number]: {frameId: number ; slotStarts: number[]; slotLengths: number[]};
 }
 
 // This is an array with all the frame Definitions objects.
@@ -699,4 +699,29 @@ export interface TutorialStep {
     messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
     messageCustomPos?: TutorialMargins; //percentage values
     showArrows: boolean;
+}
+
+//Autocompletion
+export interface LanguageDef {
+    builtin: ElementDef[];
+    libraries: ElementDef[];
+    userDefinitions: ElementDef[];
+}
+
+export interface AliasesPath {
+    //return a hash of alias name / path in modules definitions
+    [alias: string]: string;
+     //light = module_moduleA.module_moduleB.moduleC.methodA
+}
+export interface ElementDef {
+    name: string;
+    kind: "module" | "class" | "method" | "variable" | "constructor" | "keyword";
+    elements?: ElementDef[];
+    argsNum?: number;
+    argsName?: string[];
+    argsOptional?: boolean[];
+    type?: string; //return type for methods, type of obj for variables
+    needNS?: boolean; // this flag indicates if a module name needs to be used within the code (ex for "import microbit", users need to write "microbit.xxxx" in code)
+    hide?: boolean; //if this flag is true for a class, the class name cannot appear in AC, but its methods/variables can.
+    super?: string[]; //for classes, the super classes' paths of that class.
 }
