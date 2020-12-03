@@ -8,7 +8,7 @@ import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, cleanMapFromDeleted } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import { initial } from "lodash";
@@ -585,7 +585,7 @@ export default new Vuex.Store({
                     );
                 }
             }
-            cleanMapFromDeleted(state.frameObjects,state.frameMap);
+            generateFrameMap(state.frameObjects,state.frameMap);
         },
 
         updateFramesOrder(state, payload: {event: any; eventParentId: number}) {
@@ -2260,31 +2260,6 @@ export default new Vuex.Store({
         shiftClickSelection({state, commit}, clickedFrameId) {
             // Remove current selection
             commit("unselectAllFrames");
-
-            // Check
-            // make a selection from the current caret to the clicked frame
-            // what if the current caret is on another level than the clicked caret?
-            //        |--> probably do nothing
-            // Else, just toggle the caret
-            // Check if the next of the current is in the same level (parent) with the clicked
-            // If so, that allows for selection.
-
-            // if( clickedFrameId 
-            // const direction = (
-            
-            // // if the current frame is a frame container (id<0) then we just take it's fist child
-            // const firstFrameId = (state.currentFrame.id > 0)? 
-            //     (state.currentFrame.caretPosition === CaretPosition.body)?
-            //         state.frameMap[state.frameMap.indexOf(state.currentFrame.id) + 1] : // if we are in the body, just the next frame
-            //         state.frameMap[state.frameMap.indexOf(state.currentFrame.id) + getAllChildrenAndJointFramesIds(state.frameObjects,state.currentFrame.id).length]:  // below, the next is after all the children
-            //     state.frameObjects[state.currentFrame.id].childrenIds[0]; // if we are in a frame container, get the first child
-
-            // const firstFrame = state.frameObjects[firstFrameId];
-            // const clickedFrame = state.frameObjects[clickedFrameId];
-
-            // if(firstFrame.parentId === clickedFrame.parentId || firstFrame.jointParentId === clickedFrame.jointParentId) {
-            // if they have the same parent, that means the selection can occur
-            //} 
         },
 
         prepareForMultiDrag({state, getters, commit}, draggedFrameId: number) {

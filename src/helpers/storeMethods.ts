@@ -1,7 +1,6 @@
 import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame } from "@/types/types";
 import Vue from "vue";
 import { getSHA1HashForObject } from "@/helpers/common";
-import { functions } from "lodash";
 
 export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frameId: number) => {
     // When removing a frame in the list, we remove all its sub levels,
@@ -32,16 +31,6 @@ export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>
         listOfFrames,
         frameId
     );
-};
-
-// Clean map from deleted frames
-export const cleanMapFromDeleted = (listOfFrames: Record<number, FrameObject>, frameMap: number[]) => {
-    frameMap.splice(
-        0,
-        frameMap.length,
-        ...frameMap.filter( (id) => Object.keys(listOfFrames).includes(id+""))
-    );
-
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
