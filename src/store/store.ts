@@ -1258,6 +1258,8 @@ export default new Vuex.Store({
                 return;
             }
 
+            commit("unselectAllFrames");
+
             const eventType = Object.keys(payload.event)[0];
 
             //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
