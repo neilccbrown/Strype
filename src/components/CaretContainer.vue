@@ -152,7 +152,7 @@ export default Vue.extend({
             this.$data.overCaret = false;
             store.dispatch(
                 "shiftClickSelection",
-                {id:this.$props.frameId, caretPosition: this.caretAssignedPosition}
+                {clickedFrameId:this.$props.frameId, clickedCaretPosition: this.caretAssignedPosition}
             );
         },
 
