@@ -2265,6 +2265,7 @@ export default new Vuex.Store({
             // is the targetFrame bellow or above the origin frame
             const direction = (state.frameMap.indexOf(payload.clickedFrameId) > state.frameMap.indexOf(state.currentFrame.id))? "down" : "up" ;
 
+            // The frame the selection will start from
             const originFrameId =  
                 (state.currentFrame.caretPosition === CaretPosition.body)?
                     // Body
@@ -2281,6 +2282,7 @@ export default new Vuex.Store({
                 return;
             }
 
+            // The frame the selection will potentially end to (or as close to it as possible)
             const targetFrameId =  
                 (payload.clickedCaretPosition === CaretPosition.body)?
                     // Body
@@ -2293,8 +2295,7 @@ export default new Vuex.Store({
                         state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)+1]: // below and going up, end at the next after the last child
                         state.frameMap[state.frameMap.indexOf(payload.clickedFrameId)]; // below and going down, end at the clicked frame
 
-            // Select From To
-            // See if you will play with siblings instead of all this mess
+            // All the selected frames MUST be siblings (same parent) of the frame the selection starts from.
             const siblingsOfOrigin = getAllSiblings(state.frameObjects, originFrameId);
 
             siblingsOfOrigin.slice(originFrameId,(direction === "up")?0:siblingsOfOrigin.length-1);
