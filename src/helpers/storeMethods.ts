@@ -1,7 +1,6 @@
 import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame } from "@/types/types";
 import Vue from "vue";
 import { getSHA1HashForObject } from "@/helpers/common";
-import { isObjectLike } from "lodash";
 
 export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId: number) => {
     // When removing a frame in the list, we remove all its sub levels,
