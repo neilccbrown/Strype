@@ -302,38 +302,64 @@ export function searchLanguageElements(token: string, contextElementPath: string
     const results = [] as ElementDef[];
 
     //position the root where to apply the search
-    const rootElements: ElementDef[] = (contextElementPath.length > 0) ? retrieveElementInDefs(SearchLangDefScope.currentSearchDefs, contextElementPath)?.elements??[] : store.getters.getCurrentLangSearchReferential();
-    if(rootElements){
-        rootElements
-            .filter((elt) => {
-                //First check if the element is a "pseudo" elements added when namespace isn't required:
-                //if that's so, we check the properties of the target element instead
-                let eltToCheck = elt;
-                if(elt.target??0 > 0){
-                    eltToCheck = retrieveElementInDefs(SearchLangDefScope.custom, elt.target??"", rootElements)??({} as ElementDef);
-                }
-                let acceptElt = !(eltToCheck.kind === "class" && eltToCheck.hide) && (token.length === 0 || elt.name.toLowerCase().indexOf(token.toLowerCase()) > -1);
-                
-                switch(store.getters.getCurrentLangSearchType()){
-                case SearchLangDefScope.importModule:
-                    acceptElt = acceptElt && eltToCheck.kind === "module";
-                    break;
-                case SearchLangDefScope.importModulePart:
-                    acceptElt = acceptElt && eltToCheck.kind !== "module";
-                    break;
-                case SearchLangDefScope.inCode:
-                    //a module which whose name space isn't required is not retrieved by the search
-                    if(eltToCheck.kind==="module" && !eltToCheck.needNS){
-                        acceptElt = false;
-                    }
-                    break;
-                }
-                return acceptElt;
-            })
-            .forEach((elt) => {
-                results.push(elt);
-            });
+    let rootElements: ElementDef[] = store.getters.getCurrentLangSearchReferential();
+    if(contextElementPath.length > 0){
+        const contextElt = retrieveElementInDefs(SearchLangDefScope.currentSearchDefs, contextElementPath);
+        if(contextElt === undefined){
+            rootElements = [];
+        }
+        else{
+            let actualContextElt = {} as ElementDef;
+            switch(contextElt.kind){
+            case "module":
+                rootElements = contextElt.elements??[];
+                break;
+            case "variable":
+            case "method":
+                actualContextElt = retrieveElementInDefs(SearchLangDefScope.currentSearchDefs, contextElt.type??"")??({} as ElementDef);
+                rootElements = actualContextElt.elements??[];
+                break;
+            case "class":
+                actualContextElt = retrieveElementInDefs(SearchLangDefScope.currentSearchDefs, contextElementPath)??({} as ElementDef);
+                rootElements = actualContextElt.elements??[];
+                break;
+            case "constructor":
+                break;
+            default:
+                break;
+            }
+        }
     }
+
+    rootElements
+        .filter((elt) => {
+            //First check if the element is a "pseudo" elements added when namespace isn't required:
+            //if that's so, we check the properties of the target element instead
+            let eltToCheck = elt;
+            if(elt.target??0 > 0){
+                eltToCheck = retrieveElementInDefs(SearchLangDefScope.custom, elt.target??"", rootElements)??({} as ElementDef);
+            }
+            let acceptElt = !(eltToCheck.kind === "class" && eltToCheck.hide) && (token.length === 0 || elt.name.toLowerCase().indexOf(token.toLowerCase()) > -1);
+            
+            switch(store.getters.getCurrentLangSearchType()){
+            case SearchLangDefScope.importModule:
+                acceptElt = acceptElt && eltToCheck.kind === "module";
+                break;
+            case SearchLangDefScope.importModulePart:
+                acceptElt = acceptElt && eltToCheck.kind !== "module";
+                break;
+            case SearchLangDefScope.inCode:
+                //a module which whose name space isn't required is not retrieved by the search
+                if(eltToCheck.kind==="module" && !eltToCheck.needNS){
+                    acceptElt = false;
+                }
+                break;
+            }
+            return acceptElt;
+        })
+        .forEach((elt) => {
+            results.push(elt);
+        });
 
     //sort the candidates with this rule: first those starting with with the token (and sort alphbetically) and others, alphabetically
     results.sort((el1, el2) => {
