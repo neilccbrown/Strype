@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, LibraryPath, ElementDef, SearchLangDefScope } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import tutorialState from "@/store/tutorial-state"
@@ -10,6 +10,8 @@ import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent } from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
+import { makeLangSearchReferential, retrieveElementInDefs } from "@/autocompletion/acManager"
+
 
 Vue.use(Vuex);
 
@@ -49,6 +51,18 @@ export default new Vuex.Store({
         ignoredDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
 
         selectedFrames: [] as number[],
+
+        importedLibraryPaths : [] as LibraryPath[],
+
+        userDefinedElements: [] as ElementDef[],
+
+        currentLangSearchType : SearchLangDefScope.none,
+
+        currentLangSearchRootPath: "",
+
+        // The referential is used in different context, and changed whenever a change of context is done
+        // The referential is what a search of language elements is made upo
+        currentLangSearchReferential: [] as ElementDef[],        
     },
 
     getters: {
@@ -451,6 +465,22 @@ export default new Vuex.Store({
 
         getMultiDragPosition: (state) => (frameId: number) => {
             return state.frameObjects[frameId].multiDragPosition;
+        },
+
+        getImportedLibraryPaths: (state) => () => {
+            return state.importedLibraryPaths;
+        },
+
+        getUserDefinedElements: (state) => () => {
+            return state.userDefinedElements;
+        }, 
+
+        getCurrentLangSearchType: (state) => () => {
+            return state.currentLangSearchType;
+        },
+
+        getCurrentLangSearchReferential : (state) => () => {
+            return state.currentLangSearchReferential;
         },
     }, 
 
@@ -1223,6 +1253,65 @@ export default new Vuex.Store({
                 ));
         },
 
+        addImportedLibrary(state, path: LibraryPath){
+            if(state.importedLibraryPaths.indexOf(path) === -1){
+                state.importedLibraryPaths.splice(
+                    0,
+                    0,
+                    path
+                );
+            }
+        },
+
+        clearImportedLibraries(state){
+            state.importedLibraryPaths.splice(
+                0,
+                state.importedLibraryPaths.length
+            );
+        },
+
+        addUserDefinedElement(state, payload: {existingPath: string; element: ElementDef}){
+            const def = retrieveElementInDefs(SearchLangDefScope.userDefs, payload.existingPath);
+            if(def){
+                const elements = def.elements;
+                if(!elements) {
+                    def.elements = [] as ElementDef[];
+                }
+
+                def.elements?.splice(
+                    0,
+                    0,
+                    payload.element
+                );
+            }
+        },
+
+        removeUserDefinedElement(state,  payload: {existingPath: string; element: ElementDef}){
+            const defElements = retrieveElementInDefs(SearchLangDefScope.userDefs, payload.existingPath)?.elements;
+            if(defElements){
+                defElements.splice(
+                    defElements.indexOf(payload.element),
+                    1
+                );
+            }
+        },
+
+        setCurrentLangSearchReferential(state, payload: {scope: SearchLangDefScope; rootPath: string}){
+            //the  referential is updated only if the scope/root for search changes
+            if(state.currentLangSearchType !== payload.scope || state.currentLangSearchRootPath !== payload.rootPath){
+                Vue.set(
+                    state,
+                    "currentLangSearchType",
+                    payload.scope
+                );
+
+                Vue.set(
+                    state,
+                    "currentLangSearchReferential",
+                    makeLangSearchReferential(payload)
+                )
+            }
+        },
     },
 
     actions: {
@@ -2418,6 +2507,7 @@ export default new Vuex.Store({
         },
 
     },
+    
     modules: {},
 });
 

@@ -705,13 +705,6 @@ export interface TutorialStep {
 export interface LanguageDef {
     builtin: ElementDef[];
     libraries: ElementDef[];
-    userDefinitions: ElementDef[];
-}
-
-export interface AliasesPath {
-    //return a hash of alias name / path in modules definitions
-    [alias: string]: string;
-     //light = module_moduleA.module_moduleB.moduleC.methodA
 }
 export interface ElementDef {
     name: string;
@@ -724,4 +717,25 @@ export interface ElementDef {
     needNS?: boolean; // this flag indicates if a module name needs to be used within the code (ex for "import microbit", users need to write "microbit.xxxx" in code)
     hide?: boolean; //if this flag is true for a class, the class name cannot appear in AC, but its methods/variables can.
     super?: string[]; //for classes, the super classes' paths of that class.
+    target?: string; //for objects that are referered without namespace: gets the full path
+}
+
+export interface LibraryPath {
+    name: string;
+    aliasFor: string;
+}
+
+export enum SearchLangDefScope {
+    none = "none",
+    
+    //the definitions to look upon
+    userDefs = "userDefs",
+    libraryDefs = "libraryDefs",
+    currentSearchDefs = "currSearchDefs",
+    custom = "custom",
+
+    //the functional location to look for
+    importModule = "importMod",
+    importModulePart = "importModPart",
+    inCode = "code",
 }

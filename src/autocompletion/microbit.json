@@ -1,13 +1,17 @@
 {"builtin":[
     {"name":"abs","kind":"method","type":"int","argsNum":1,"argsName":["_number_"]},
     {"name":"len","kind":"method","type":"int","argsNum":1,"argsName":["_obj_"]}],
-"userDefinitions": [],
 "libraries":[
     {"name":"audio","kind":"module","elements":[
         {"name":"play","kind":"method","type":"void","argsNum":4,"argsName":["_source","_wait_","_pin_","_return_pin_"],"argsOptional":[false,true,true,true]},
         {"name":"AudioFrame","kind":"class","elements":[
             {"name":"AudioFrame","kind":"constructor","argsNum":0}]}]},
+    {"name":"machine","kind":"module","elements":[
+            {"name":"meth1","kind":"method","type":"void","argsNum":4,"argsName":["_source","_wait_","_pin_","_return_pin_"],"argsOptional":[false,true,true,true]},
+            {"name":"Class1","kind":"class","elements":[
+                {"name":"Class1","kind":"constructor","argsNum":0}]}]},
     {"name":"microbit","kind":"module","elements":[
+        {"name":"microbitFakeMod","kind":"module"},
         {"name":"panic","kind":"method","type":"void","argsNum":1,"argsName":["_number_"]},
         {"name":"reset","kind":"method","type":"void","argsNum":0},
         {"name":"sleep","kind":"method","type":"void","argsNum":1,"argsName":["_milliseconds_"]},
