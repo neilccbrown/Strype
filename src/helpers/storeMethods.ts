@@ -398,3 +398,10 @@ export const getAllSiblings= function (listOfFrames: EditorFrameObjects, frameId
 
     return (isJointFrame)? listOfFrames[parentId].jointFrameIds : listOfFrames[parentId].childrenIds;    
 };
+
+export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameObjects, frameId: number): number[] {
+    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+
+    return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
+};

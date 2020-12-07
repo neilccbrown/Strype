@@ -1208,6 +1208,13 @@ export default new Vuex.Store({
             // else it may be added
             else { 
                 state.selectedFrames.splice((payload.direction === "up") ? 0 : state.selectedFrames.length, 0, payload.frameId);
+                // // If we selected all the joint children, and now we are selecting the jointParent, it means that only the parent should remain.
+                // if(state.frameObjects[payload.frameId].jointFrameIds.length > 0 && state.frameObjects[payload.frameId].jointFrameIds.every( (id) => state.selectedFrames.includes(id))) {
+                //     state.selectedFrames.splice(
+                //         state.selectedFrames.indexOf(state.frameObjects[payload.frameId].jointFrameIds[0]),
+                //         state.frameObjects[payload.frameId].jointFrameIds.length
+                //     );
+                // }
             }
         },
 
@@ -2263,7 +2270,19 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
 
             // is the targetFrame bellow or above the origin frame
-            const direction = (state.frameMap.indexOf(payload.clickedFrameId) > state.frameMap.indexOf(state.currentFrame.id))? "down" : "up" ;
+            let direction: string;
+            if(state.frameMap.indexOf(payload.clickedFrameId) === state.frameMap.indexOf(state.currentFrame.id)) {
+                // if we clicked on current caret, then no need to select anything
+                if(payload.clickedCaretPosition === state.currentFrame.caretPosition) {
+                    return;
+                }
+                //if clicked on the same frame, but on another caret, then if the clicked is body we certainly are going up. Else, down
+                direction = (payload.clickedCaretPosition === CaretPosition.body)? "up" : "down";
+            }
+            else {
+                direction = (state.frameMap.indexOf(payload.clickedFrameId) > state.frameMap.indexOf(state.currentFrame.id))? "down" : "up" ;
+            }
+
 
             // The frame the selection will start from
             const originFrameId =  
@@ -2275,7 +2294,7 @@ export default new Vuex.Store({
                     :
                     // Below
                     (direction === "up")?
-                        state.frameMap[state.frameMap.indexOf(state.currentFrame.id)]: // below and going up, start form the previous
+                        state.frameMap[state.frameMap.indexOf(state.frameObjects[state.currentFrame.id].jointParentId||state.currentFrame.id)]: // below a jointframe and going up => origin is the parent, otherwise the frame itself
                         state.frameMap[state.frameMap.indexOf([...state.frameObjects[state.currentFrame.id].childrenIds].pop()??state.currentFrame.id)+1]; // below and going down, start from the next after the last child
 
             if(originFrameId === -100) {
@@ -2288,7 +2307,7 @@ export default new Vuex.Store({
                     // Body
                     (direction === "up")?
                         state.frameMap[state.frameMap.indexOf(payload.clickedFrameId)+1] : // body and going up, end at the next
-                        getLastSibling(state.frameObjects, originFrameId) // body and going down, end at the last sibling of origin
+                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)]//getLastSibling(state.frameObjects, originFrameId) // body and going down, end at the last sibling of origin
                     :
                     // Below
                     (direction === "up")?
@@ -2297,8 +2316,6 @@ export default new Vuex.Store({
 
             // All the selected frames MUST be siblings (same parent) of the frame the selection starts from.
             const siblingsOfOrigin = getAllSiblings(state.frameObjects, originFrameId);
-
-            siblingsOfOrigin.slice(originFrameId,(direction === "up")?0:siblingsOfOrigin.length-1);
 
             const indexFrom = siblingsOfOrigin.indexOf(originFrameId);
             const indexTo = (direction === "up")? 0 : siblingsOfOrigin.length-1;
