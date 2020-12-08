@@ -9,7 +9,7 @@ import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getLastSibling, getAllSiblings} from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getAllSiblings, checkIfLastJointChild} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 
 Vue.use(Vuex);
@@ -2312,7 +2312,7 @@ export default new Vuex.Store({
                     // Below
                     (direction === "up")?
                         state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)+1]: // below and going up, end at the next after the last child
-                        state.frameMap[state.frameMap.indexOf(payload.clickedFrameId)]; // below and going down, end at the clicked frame
+                        state.frameMap[state.frameMap.indexOf((checkIfLastJointChild(state.frameObjects, payload.clickedFrameId))? state.frameObjects[payload.clickedFrameId].jointParentId : payload.clickedFrameId)]; // going below the last jointframe => target is the parent, otherwise the frame itself 
 
             // All the selected frames MUST be siblings (same parent) of the frame the selection starts from.
             const siblingsOfOrigin = getAllSiblings(state.frameObjects, originFrameId);

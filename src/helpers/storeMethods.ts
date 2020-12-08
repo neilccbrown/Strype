@@ -1,6 +1,7 @@
 import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame } from "@/types/types";
 import Vue from "vue";
 import { getSHA1HashForObject } from "@/helpers/common";
+import { functions } from "lodash";
 
 export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId: number) => {
     // When removing a frame in the list, we remove all its sub levels,
@@ -404,4 +405,9 @@ export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameOb
     const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
 
     return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
+};
+
+export const checkIfLastJointChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
+    const parent: FrameObject = listOfFrames[listOfFrames[frameId].jointParentId];
+    return [...parent.jointFrameIds].pop() === frameId;
 };
