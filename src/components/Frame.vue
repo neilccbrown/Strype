@@ -428,9 +428,6 @@ export default Vue.extend({
 }
 
 .draggedWithOtherFramesAbove {
-//   box-shadow:
-//     0 0 0 10px hsl(0, 0%, 80%),
-//     0 0 0 15px hsl(0, 0%, 90%);
     border-top: 3px solid #000000 !important;
     border-left: 3px solid #000000 !important;
     border-right: 3px solid #000000 !important;
@@ -441,11 +438,6 @@ export default Vue.extend({
 }
 
 .draggedWithOtherFramesBelow{
-//   box-shadow:
-//     -2px -2px 0px 2px #fff,
-//     -6px -6px 0px 0px #000,
-//     -8px -8px 0px 2px #fff,
-//     -12px -12px 0px 0px #000;
     border-top: 3px solid #000000 !important;
     border-bottom: 3px solid #000000 !important;
     border-radius: 0px 0px 5px 5px;
