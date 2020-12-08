@@ -1208,13 +1208,6 @@ export default new Vuex.Store({
             // else it may be added
             else { 
                 state.selectedFrames.splice((payload.direction === "up") ? 0 : state.selectedFrames.length, 0, payload.frameId);
-                // // If we selected all the joint children, and now we are selecting the jointParent, it means that only the parent should remain.
-                // if(state.frameObjects[payload.frameId].jointFrameIds.length > 0 && state.frameObjects[payload.frameId].jointFrameIds.every( (id) => state.selectedFrames.includes(id))) {
-                //     state.selectedFrames.splice(
-                //         state.selectedFrames.indexOf(state.frameObjects[payload.frameId].jointFrameIds[0]),
-                //         state.frameObjects[payload.frameId].jointFrameIds.length
-                //     );
-                // }
             }
         },
 
@@ -2307,7 +2300,7 @@ export default new Vuex.Store({
                     // Body
                     (direction === "up")?
                         state.frameMap[state.frameMap.indexOf(payload.clickedFrameId)+1] : // body and going up, end at the next
-                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)]//getLastSibling(state.frameObjects, originFrameId) // body and going down, end at the last sibling of origin
+                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)]// body and going down, end at the last sibling of origin
                     :
                     // Below
                     (direction === "up")?
