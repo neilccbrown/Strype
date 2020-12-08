@@ -36,12 +36,13 @@ export function retrieveElementInDefs(scope: SearchLangDefScope, path: string, c
     }
 
     const pathLevels = path.split(".");
+    const rootDefs = [...tempModuleDefs];
 
     //before searching, we check that the first level of the path isn't a "shorcut" for a pseudo element added when module name space isn't required.
     //if we find one, we change the given path as argument to the complete actual path
     const firstLevelShortcutElement = tempModuleDefs.find((elt) => elt.name === pathLevels[0] && (elt.target??"").length > 0);
     if(firstLevelShortcutElement){
-        path = firstLevelShortcutElement.target??"" + pathLevels.slice(1,pathLevels.length);
+        path = (firstLevelShortcutElement.target??"") + ((pathLevels.length > 1) ? ("." + pathLevels.slice(1,pathLevels.length).join(".")) : "");
     }
     
     let tempPath = path;
@@ -59,8 +60,16 @@ export function retrieveElementInDefs(scope: SearchLangDefScope, path: string, c
                 return foundCurrentPathElt;
             }
             else{
-                tempPath = tempPath.substr(tempPath.indexOf(".") + 1);
-                tempModuleDefs = foundCurrentPathElt.elements ?? [];
+                //if the currentPath points at a variable or a method, we need to change the path
+                //to point at the type
+                if(foundCurrentPathElt.kind === "variable" || foundCurrentPathElt.kind === "method"){
+                    tempPath = (foundCurrentPathElt.type + "." + subPath)??"";
+                    tempModuleDefs = rootDefs;
+                }
+                else{
+                    tempPath = tempPath.substr(tempPath.indexOf(".") + 1);
+                    tempModuleDefs = foundCurrentPathElt.elements ?? [];    
+                }
             }
         }
         else{
@@ -318,12 +327,12 @@ export function searchLanguageElements(token: string, contextElementPath: string
             case "method":
                 actualContextElt = retrieveElementInDefs(SearchLangDefScope.currentSearchDefs, contextElt.type??"")??({} as ElementDef);
                 rootElements = actualContextElt.elements??[];
+                //instances of a class cannot have variables elements: we remove them
+                rootElements = rootElements.filter((elt) => elt.kind !== "variable");
                 break;
             case "class":
                 actualContextElt = retrieveElementInDefs(SearchLangDefScope.currentSearchDefs, contextElementPath)??({} as ElementDef);
                 rootElements = actualContextElt.elements??[];
-                break;
-            case "constructor":
                 break;
             default:
                 break;
@@ -392,6 +401,12 @@ export function searchLanguageElements(token: string, contextElementPath: string
         //for importing a module part, if the token is empty, we insert the star token before the results
         if(results.length > 0 && token.length === 0){
             results.splice(0, 0, {name: "*", kind: "keyword"});
+        }
+        break;
+    case SearchLangDefScope.inCode:
+        //for in-code autocompletion, if the element exactly match the suggestion then we change it to "."
+        if(results.length > 0 && results[0].name === token){
+            results[0] = {name: ".", kind: "keyword"};
         }
         break;
     default:

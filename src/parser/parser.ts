@@ -163,3 +163,74 @@ export default class Parser {
     }
 
 }
+
+const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
+    "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
+    "==","=","!=",">=","<=","<",">"];
+
+const operatorsWithBrackets = [...operators,"(",")","[","]","{","}"];
+
+
+export function getStatementACContext(code: string): {token: string; contextPath: string} {
+    //check that we are in a literal: here returns nothing
+    //in a non terminated string literal
+    //writing a number)
+    if((code.match(/"/g) || []).length % 2 == 1 || !isNaN(parseFloat(code.substr(Math.max(code.lastIndexOf(" "), 0))))){
+        console.log("found a string literal or a number, nothing to do for AC")
+        return {token: "", contextPath: ""};
+    }
+
+    //We search for a smaller unit to work with, meaning we look at:
+    //- any opened and non closed parenthesis
+    //- the presence of an operator
+    //- the presence of an argument separator
+    let closedParenthesisCount = 0;
+    let codeIndex = code.length;
+    while(codeIndex > 0) {
+        codeIndex--;
+        const codeChar = code.charAt(codeIndex);
+        if((codeChar === "," || operators.includes(codeChar)) && closedParenthesisCount === 0){
+            codeIndex++;
+            break;
+        }
+        else if(codeChar === "("){
+            if(closedParenthesisCount > 0){
+                closedParenthesisCount--;
+            }
+            else{
+                codeIndex++;
+                break;
+            }
+        }
+        else if (codeChar === ")"){
+            closedParenthesisCount++;
+        }
+    }
+
+    const subCode = code.substr(codeIndex);
+    const token = (subCode.indexOf(".") > -1) ? subCode.substr(subCode.lastIndexOf(".") + 1) : subCode;
+    let contextPath = (subCode.indexOf(".") > -1) ? subCode.substr(0, subCode.lastIndexOf(".")) : "";
+
+    //remove the parenthesis and inner codes for path
+    closedParenthesisCount = 0;
+    let keepCode = true;
+    for(codeIndex = contextPath.length-1;  codeIndex >= 0; codeIndex--){
+        if(contextPath.charAt(codeIndex) != "(" && contextPath.charAt(codeIndex) != ")"){
+            if(!keepCode){
+                contextPath = contextPath.substr(0, codeIndex).concat(contextPath.substr(codeIndex + 1));
+            }
+            else{
+                continue;
+            }
+        }
+        else{
+            closedParenthesisCount+=(contextPath.charAt(codeIndex) === ")") ? 1 : -1;
+            if(!keepCode && !(closedParenthesisCount === 0 && contextPath.charAt(codeIndex) === "(")){
+                contextPath = contextPath.substr(0, codeIndex).concat(contextPath.substr(codeIndex + 1));
+            }
+            keepCode = (closedParenthesisCount === 0);
+        }
+    }
+
+    return  {token: token , contextPath: contextPath};
+}

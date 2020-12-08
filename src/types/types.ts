@@ -708,11 +708,11 @@ export interface LanguageDef {
 }
 export interface ElementDef {
     name: string;
-    kind: "module" | "class" | "method" | "variable" | "constructor" | "keyword";
+    kind: "module" | "class" | "method" | "variable" | "keyword";
     elements?: ElementDef[];
-    argsNum?: number;
-    argsName?: string[];
-    argsOptional?: boolean[];
+    argsNum?: number | number[];
+    argsName?: string[] | string[][];
+    argsOptional?: boolean[] | boolean[][];
     type?: string; //return type for methods, type of obj for variables
     needNS?: boolean; // this flag indicates if a module name needs to be used within the code (ex for "import microbit", users need to write "microbit.xxxx" in code)
     hide?: boolean; //if this flag is true for a class, the class name cannot appear in AC, but its methods/variables can.

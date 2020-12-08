@@ -2,6 +2,7 @@
     <div class="next-to-eachother">
         <input
             type="text"
+            autocomplete="off"
             v-if="isComponentLoaded"
             :disabled="isDisabled"
             v-model="code"
@@ -41,6 +42,7 @@ import store from "@/store/store";
 import { CaretPosition, Definitions, FrameObject, SearchLangDefScope} from "@/types/types";
 import { getEditableSlotUIID } from "@/helpers/editor";
 import { searchLanguageElements } from "@/autocompletion/acManager";
+import Parser, {getStatementACContext} from "@/parser/parser";
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -120,9 +122,17 @@ export default Vue.extend({
                 const textArea = document.getElementById("acTextArea") as HTMLTextAreaElement;
                 if(inputField && textArea){
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
-                    const contextPath = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(0, textBeforeCaret.lastIndexOf(".")) : "";
-                    const token = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(textBeforeCaret.lastIndexOf(".") + 1) : textBeforeCaret;
+                    let contextPath = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(0, textBeforeCaret.lastIndexOf(".")) : "";
+                    let token = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(textBeforeCaret.lastIndexOf(".") + 1) : textBeforeCaret;
                
+                    //workout the correct context if we are in a code editable slot
+                    const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
+                    if(frame.frameType.type !== Definitions.ImportDefinition.type){
+                        const newContext = getStatementACContext(textBeforeCaret);
+                        contextPath = newContext.contextPath;
+                        token = newContext.token;
+                    } 
+
                     let acCandidates = "";
                     //console.log("token = " + token)
                     //console.log("context path = " + contextPath)
