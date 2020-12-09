@@ -367,7 +367,7 @@ export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame
     }
 
     // Create the list of children + joints with which the caret will work with
-    const allSameLevelFramesAndJointIds = //getAllSiblings(listOfFrames,frameToBeSelected)
+    const allSameLevelFramesAndJointIds = 
     childrenListWithJointFrames(
         listOfFrames, 
         frameToBeSelected,
