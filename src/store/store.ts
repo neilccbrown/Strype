@@ -9,7 +9,7 @@ import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getAllSiblings, checkIfLastJointChild} from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getAllSiblings, getNextSibling, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 
 Vue.use(Vuex);
@@ -2251,11 +2251,67 @@ export default new Vuex.Store({
         selectMultipleFrames({state, commit}, key: string) {
             
             const direction = (key==="ArrowUp")? "up" : "down"
-            const result = frameForSelection(state.frameObjects, state.currentFrame, direction, state.selectedFrames);
-            if(result !== null) {
-                commit("selectDeselectFrame", {frameId: result.frameForSelection, direction: direction})
-                commit("setCurrentFrame", result.newCurrentFrame);
+
+            // The frame the selection will start from
+            const frameToSelectId =  
+                (state.currentFrame.caretPosition === CaretPosition.body)?
+                    // Body
+                    (direction === "up")?
+                        -100 : // in the body and going up is not possible
+                        [...state.frameObjects[state.currentFrame.id].childrenIds].shift()??-100 // body and going down, first child if it exists
+                    :
+                    // Below
+                    (direction === "up")?
+                        // up
+                        (checkIfLastJointChild(state.frameObjects, state.currentFrame.id))? 
+                            (state.selectedFrames.includes(state.currentFrame.id))?          // we need to check whether this joint is selected
+                                -100                                                         // if it is selected we should not do anything
+                                :      
+                                state.frameObjects[state.currentFrame.id].jointParentId     // Otherwise select its parent
+                            : 
+                            state.currentFrame.id // below and going up, is the last jointframe => target is the parent, otherwise the frame itself 
+                        :
+                        // down
+                        // Are we below a frame which has joint children -> ie above a Joint
+                        [...state.frameObjects[state.currentFrame.id].jointFrameIds].shift()     // If yes, give me the first joint child
+                        ??                                                                       // else
+                        (getNextSibling(state.frameObjects,                                      // below and going down, get next sibling.
+                            (checkIfLastJointChild(state.frameObjects, state.currentFrame.id))?  // If we are below the last joint child
+                                (state.selectedFrames.includes(state.currentFrame.id))?          // we need to check whether this joint is selected
+                                    -100                                                         // if it is selected we should not do anything
+                                    :                                                            // otherwise
+                                    state.frameObjects[state.currentFrame.id].jointParentId      // we need to select below our parent
+                                :
+                                state.currentFrame.id)                                           // if not below a joint child, select the current
+                        );
+
+            if(frameToSelectId === -100) {
+                return;
             }
+
+            const newCurrentCaret = 
+                (direction === "up")?
+                    // up
+                    (checkIfFirstChild(state.frameObjects,frameToSelectId))? CaretPosition.body : CaretPosition.below
+                    :
+                    // down
+                    CaretPosition.below;
+
+            const newCurrentId = 
+                (direction === "up")?
+                    //up
+                    (newCurrentCaret === CaretPosition.below)? // direction=up and caret=down => there is another frame before me
+                        getPreviousIdForCaretBelow(state.frameObjects,state.frameMap, frameToSelectId)// the previous frame is the new current
+                        :
+                        state.frameObjects[frameToSelectId].parentId // otherwise it is the parent
+                    :
+                    // down
+                    [...state.frameObjects[frameToSelectId].jointFrameIds].pop()??frameToSelectId//state.frameMap[state.frameMap.indexOf(frameToSelectId)+1]??frameToSelectId // The next frame after me of me if it there no next
+
+          
+            commit("selectDeselectFrame", {frameId: frameToSelectId, direction: direction}) 
+            commit("setCurrentFrame", {id: newCurrentId, caretPosition: newCurrentCaret});
+
         },
 
         shiftClickSelection({state, commit}, payload: {clickedFrameId: number; clickedCaretPosition: CaretPosition}) {
