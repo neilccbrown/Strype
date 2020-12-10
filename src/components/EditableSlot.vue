@@ -125,18 +125,23 @@ export default Vue.extend({
                     let contextPath = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(0, textBeforeCaret.lastIndexOf(".")) : "";
                     let token = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(textBeforeCaret.lastIndexOf(".") + 1) : textBeforeCaret;
                
+                    let acCandidates = ""; 
+                    let showAC = true;
+                    
                     //workout the correct context if we are in a code editable slot
                     const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
                     if(frame.frameType.type !== Definitions.ImportDefinition.type){
-                        const newContext = getStatementACContext(textBeforeCaret);
+                        const newContext = getStatementACContext(textBeforeCaret, this.frameId);
                         contextPath = newContext.contextPath;
                         token = newContext.token;
+                        showAC = newContext.showAC;
                     } 
-
-                    let acCandidates = "";
+                    
                     //console.log("token = " + token)
                     //console.log("context path = " + contextPath)
-                    searchLanguageElements(token, contextPath).forEach((acElement) => acCandidates += (acElement.name + " (kind: " + acElement.kind+")\n"));
+                    if(showAC){
+                        searchLanguageElements(token, contextPath).forEach((acElement) => acCandidates += (acElement.name + " (kind: " + acElement.kind+")\n"));
+                    }
                     textArea.textContent = acCandidates;    
                 }
             },

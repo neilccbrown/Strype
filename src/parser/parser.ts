@@ -1,14 +1,15 @@
 import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
 import store from "@/store/store";
 import { TPyParser, ErrorInfo } from "tigerpython-parser";
+import {PythonShell} from "python-shell";
 
 const INDENT = "    ";
 
 const DISABLEDFRAMES_FLAG =  "\"\"\"";
 let isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
 let disabledBlockIndent = "";
-
 export default class Parser {
+    private stopAtFrameId = -100; //default aalue to indicate there is no stop
 
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
     private line = 0;
@@ -72,6 +73,9 @@ export default class Parser {
         //if the current frame is a container, we don't parse it as such
         //but parse directly its children (frames that it contains)
         for (const frame of codeUnits) {
+            if(frame.id === this.stopAtFrameId){
+                break;
+            }
             //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
             let disabledFrameBlockFlag = "";
             if(frame.isDisabled ? !isDisabledFramesTriggered : isDisabledFramesTriggered) {
@@ -95,8 +99,11 @@ export default class Parser {
         return output;
     }
 
-    public parse(): string {
+    public parse(stopAtFrameId?: number): string {
         let output = "";
+        if(stopAtFrameId){
+            this.stopAtFrameId = stopAtFrameId;
+        }
 
         console.time();
         output += this.parseFrames(store.getters.getFramesForParentId(0));
@@ -109,6 +116,8 @@ export default class Parser {
             disabledFrameBlockFlag = disabledBlockIndent + DISABLEDFRAMES_FLAG ;
         }
         console.timeEnd();
+
+        console.log(TPyParser.parse(output))
 
         return output + disabledFrameBlockFlag;
     }
@@ -171,47 +180,104 @@ const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
 const operatorsWithBrackets = [...operators,"(",")","[","]","{","}"];
 
 
-export function getStatementACContext(code: string): {token: string; contextPath: string} {
+export function getStatementACContext(code: string, frameId: number): {token: string; contextPath: string; showAC: boolean} {
     //check that we are in a literal: here returns nothing
     //in a non terminated string literal
     //writing a number)
     if((code.match(/"/g) || []).length % 2 == 1 || !isNaN(parseFloat(code.substr(Math.max(code.lastIndexOf(" "), 0))))){
         console.log("found a string literal or a number, nothing to do for AC")
-        return {token: "", contextPath: ""};
+        return {token: "", contextPath: "", showAC: false};
     }
 
     //We search for a smaller unit to work with, meaning we look at:
     //- any opened and non closed parenthesis
     //- the presence of an operator
     //- the presence of an argument separator
-    let closedParenthesisCount = 0;
+    let closedParenthesisCount = 0, closedSqBracketCount = 0, closedCurBracketCount = 0;
     let codeIndex = code.length;
-    while(codeIndex > 0) {
+    let breakShortCodeSearch = false;
+    while(codeIndex > 0 && !breakShortCodeSearch) {
         codeIndex--;
         const codeChar = code.charAt(codeIndex);
         if((codeChar === "," || operators.includes(codeChar)) && closedParenthesisCount === 0){
             codeIndex++;
             break;
         }
-        else if(codeChar === "("){
-            if(closedParenthesisCount > 0){
-                closedParenthesisCount--;
-            }
-            else{
-                codeIndex++;
+        else{
+            switch(codeChar){
+            case "(":
+                if(closedParenthesisCount > 0){
+                    closedParenthesisCount--;
+                }
+                else{
+                    codeIndex++;
+                    breakShortCodeSearch = true;
+                }
+                break;
+            case ")":
+                closedParenthesisCount++;
+                break;
+            case "[":
+                if(closedSqBracketCount > 0){
+                    closedSqBracketCount--;
+                }
+                else{
+                    codeIndex++;
+                    breakShortCodeSearch = true;
+                }
+                break;
+            case "]":
+                closedSqBracketCount++;
+                break;
+            case "{":
+                if(closedCurBracketCount > 0){
+                    closedCurBracketCount--;
+                }
+                else{
+                    codeIndex++;
+                    breakShortCodeSearch = true;
+                }
+                break;
+            case "}":
+                closedCurBracketCount++;
                 break;
             }
         }
-        else if (codeChar === ")"){
-            closedParenthesisCount++;
-        }
     }
 
-    const subCode = code.substr(codeIndex);
+    const subCode = code.substr(codeIndex).replaceAll(" ","");
     const token = (subCode.indexOf(".") > -1) ? subCode.substr(subCode.lastIndexOf(".") + 1) : subCode;
     let contextPath = (subCode.indexOf(".") > -1) ? subCode.substr(0, subCode.lastIndexOf(".")) : "";
 
-    //remove the parenthesis and inner codes for path
+    //Get the rigth context path based on what the python shell returns to us.
+    //if errors are detected by tigerPython (i.e. errors in the Python code) we stop the autocompletion
+    if(contextPath.length > 0){
+        const parser = new Parser();
+        const out = parser.parse(frameId);
+        const errors = parser.getErrorsFormatted(out);
+        if (errors) {
+            alert(`Error:${errors}`);
+            return {token: "" , contextPath: "", showAC: false};
+        }
+        else{
+            PythonShell.runString("x=1+1;print(x)", undefined, function (err, results) {
+                console.log("getting results from Python")
+                if(results){
+                    results.forEach((res) => console.log(res))
+                }
+            });
+            /*const pyshell =  PythonShell.run("test.py", undefined, function (err, results) {
+                console.log("getting results from Python")
+                if(results){
+                    results.forEach((res) => console.log(res))
+                }
+            });*/
+        }
+        contextPath="fdsfsdfsd";
+    }
+    /*
+
+    //remove the nested parts of the statement that we don't need for AC
     closedParenthesisCount = 0;
     let keepCode = true;
     for(codeIndex = contextPath.length-1;  codeIndex >= 0; codeIndex--){
@@ -231,6 +297,7 @@ export function getStatementACContext(code: string): {token: string; contextPath
             keepCode = (closedParenthesisCount === 0);
         }
     }
+    */
 
-    return  {token: token , contextPath: contextPath};
+    return  {token: token , contextPath: contextPath, showAC: true};
 }
