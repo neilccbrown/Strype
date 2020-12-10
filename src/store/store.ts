@@ -2369,10 +2369,10 @@ export default new Vuex.Store({
             const indexFrom = siblingsOfOrigin.indexOf(originFrameId);
             const indexTo = (direction === "up")? 0 : siblingsOfOrigin.length-1;
             const indexIncr = (direction === "up")? -1 : 1;
-            let nextSibling = siblingsOfOrigin[indexFrom];
-            let lastSelected = nextSibling;
+
+            let lastSelected = undefined;//siblingsOfOrigin[indexFrom];
             for(let i=indexFrom; ;i+=indexIncr) {
-                nextSibling = siblingsOfOrigin[i];
+                const nextSibling = siblingsOfOrigin[i];
                 // We need to check whether the target frame is in another level from the origin frame
                 // if they are at diff levels, we must not include the sibling of the origin who is the parent of the target.
                 if(!getAllChildrenAndJointFramesIds(state.frameObjects,state.frameObjects[nextSibling].id).includes(targetFrameId)) {
@@ -2391,27 +2391,33 @@ export default new Vuex.Store({
             }
 
             const newCurrentId = 
-                (lastSelected != targetFrameId) ? // Have we landed in another frame that the one the user selected?
-                    // landed on a different -> the were on different levels
-                    (direction === "up")?
-                        // up
-                        getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
-                        :
-                        // down
-                        lastSelected
+                (!lastSelected)? 
+                    targetFrameId //if nothing was selected, then move the caret to the clicked frame
                     :
-                    // Landed on the selected
-                    (direction === "up")?
-                        // up
-                        checkIfFirstChild(state.frameObjects,lastSelected) ?
-                            // fist in parent
-                            getParentOrJointParent(state.frameObjects,lastSelected) // the parent is the current frame as we have clicked no his body
-                            :
-                            // not the first in parent, get the previous frame
+                    (lastSelected != targetFrameId) ? // Have we landed in another frame that the one the user selected?
+                        // landed on a different -> the were on different levels
+                        (direction === "up")?
+                            // up
                             getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
+                            :
+                            // down
+                            lastSelected
                         :
-                        // down
-                        lastSelected
+                        // Landed on the selected
+                        (direction === "up")?
+                            // up
+                            checkIfFirstChild(state.frameObjects,lastSelected) ?
+                                // fist in parent
+                                getParentOrJointParent(state.frameObjects,lastSelected) // the parent is the current frame as we have clicked no his body
+                                :
+                                // not the first in parent, get the previous frame
+                                getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
+                            :
+                            // down
+                            lastSelected
+
+            // The caret calculation needs a frame to work with
+            lastSelected = lastSelected?? targetFrameId;
 
             const newCurrentCaret = 
                 (direction === "up")?
