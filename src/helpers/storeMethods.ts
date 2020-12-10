@@ -433,19 +433,13 @@ export const checkIfFirstChild = function (listOfFrames: EditorFrameObjects, fra
 // the correct previous e.g. if(1): "2" elif(3): "4"  and we are after "4" and going up, we should end up below "3" and not "4"!
 export const getPreviousIdForCaretBelow = function (listOfFrames: EditorFrameObjects, frameMap: number[], currentFrame: number): number {
 
-    // if the previous has a joint parent return this joint parent
-    const jointParentId =  listOfFrames[frameMap[frameMap.indexOf(currentFrame)-1]].jointParentId
-    if(jointParentId > 0) {
-        return jointParentId;
-    }
+    // selecting means selecting a same level frame 
+    const siblings = getAllSiblings(listOfFrames,currentFrame);
 
-    // if the previous has a parent different than the current's, return this  parent
-    const parentId = listOfFrames[frameMap[frameMap.indexOf(currentFrame)-1]].parentId;
+    // if there is a previous sibling then get it, otherwise get the parent
+    const previous = siblings[siblings.indexOf(currentFrame)-1]??listOfFrames[currentFrame].parentId;
 
-    if(parentId > 0 && parentId !== listOfFrames[currentFrame].parentId) {
-        return parentId;
-    }
-
-    // In any other case just return the previous frame in the order
-    return frameMap[frameMap.indexOf(currentFrame)-1] 
+    // in case the sibling has joint children, going up means going under it's last child
+    return [...listOfFrames[previous].jointFrameIds].pop()??previous;
+    
 };
