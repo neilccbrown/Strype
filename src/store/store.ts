@@ -2370,7 +2370,7 @@ export default new Vuex.Store({
             const indexTo = (direction === "up")? 0 : siblingsOfOrigin.length-1;
             const indexIncr = (direction === "up")? -1 : 1;
 
-            let lastSelected = undefined;//siblingsOfOrigin[indexFrom];
+            let lastSelected = undefined;
             for(let i=indexFrom; ;i+=indexIncr) {
                 const nextSibling = siblingsOfOrigin[i];
                 // We need to check whether the target frame is in another level from the origin frame
