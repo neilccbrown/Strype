@@ -8,12 +8,30 @@
     <!-- Import for the fontawesome icons -->
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/all.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/v4-shims.css">
+    <script 
+      src="https://cdn.jsdelivr.net/npm/brython@3.8.10/brython.min.js">
+    </script>
+    <script 
+      src="https://cdn.jsdelivr.net/npm/brython@3.8.10/brython_stdlib.js">
+    </script>
     <title><%= htmlWebpackPlugin.options.title %></title>
   </head>
-  <body>
+  <body onload="brython()">
     <noscript>
       <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
     </noscript>
+    <span id="userCode" style="width:500px" onchange="alert('test')">[1,2]</span>
+    <span id="userDefined" style="width:500px"></span>
+    <script type="text/python3">
+from browser import document, window
+
+def evalUserCode(ev):
+  document['userDefined'].text = type(eval(document['userCode'].text))
+      
+document['userCode'].bind("click",evalUserCode)
+evalUserCode('')
+
+    </script>
     <div id="app"></div>
     <!-- built files will be auto injected -->
   </body>

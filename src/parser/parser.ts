@@ -1,10 +1,8 @@
 import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
 import store from "@/store/store";
 import { TPyParser, ErrorInfo } from "tigerpython-parser";
-import {PythonShell} from "python-shell";
 
 const INDENT = "    ";
-
 const DISABLEDFRAMES_FLAG =  "\"\"\"";
 let isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
 let disabledBlockIndent = "";
@@ -249,34 +247,14 @@ export function getStatementACContext(code: string, frameId: number): {token: st
     const token = (subCode.indexOf(".") > -1) ? subCode.substr(subCode.lastIndexOf(".") + 1) : subCode;
     let contextPath = (subCode.indexOf(".") > -1) ? subCode.substr(0, subCode.lastIndexOf(".")) : "";
 
-    //Get the rigth context path based on what the python shell returns to us.
-    //if errors are detected by tigerPython (i.e. errors in the Python code) we stop the autocompletion
-    if(contextPath.length > 0){
-        const parser = new Parser();
-        const out = parser.parse(frameId);
-        const errors = parser.getErrorsFormatted(out);
-        if (errors) {
-            alert(`Error:${errors}`);
-            return {token: "" , contextPath: "", showAC: false};
-        }
-        else{
-            PythonShell.runString("x=1+1;print(x)", undefined, function (err, results) {
-                console.log("getting results from Python")
-                if(results){
-                    results.forEach((res) => console.log(res))
-                }
-            });
-            /*const pyshell =  PythonShell.run("test.py", undefined, function (err, results) {
-                console.log("getting results from Python")
-                if(results){
-                    results.forEach((res) => console.log(res))
-                }
-            });*/
-        }
-        contextPath="fdsfsdfsd";
+    //evaluate the Python user code 
+    const userPythonCodeHTMLElt = document.getElementById("userCode");
+    if(userPythonCodeHTMLElt){
+        (userPythonCodeHTMLElt as HTMLSpanElement).textContent = "(1,2)";
+        userPythonCodeHTMLElt.click();
     }
+    contextPath = "ffsdfds";
     /*
-
     //remove the nested parts of the statement that we don't need for AC
     closedParenthesisCount = 0;
     let keepCode = true;
