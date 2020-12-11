@@ -20,6 +20,7 @@
             :disabled="isEditing"
             :key="'Draggagle-Body-'+this.frameId"
             @start="handleMultiDrag($event)"
+            @end="miltiDragEnd($event)"
         >
             <Frame
                 v-for="frame in frames"
@@ -166,6 +167,11 @@ export default Vue.extend({
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
             }
         },   
+
+        miltiDragEnd(event: any): void {
+            store.commit("removeMultiDragStyling");
+        },   
+
 
         // Some times, when draging and droping in the original position of where the
         // selected frames were taken, the `change` event is not fired; hence you need to

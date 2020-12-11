@@ -1244,6 +1244,15 @@ export default new Vuex.Store({
                 ));
         },
 
+        removeMultiDragStyling(state) {
+            state.selectedFrames.forEach( (id) => {
+                Vue.set(
+                    state.frameObjects[id],
+                    "multiDragPosition",
+                    ""
+                );
+            });
+        },
     },
 
     actions: {
@@ -2460,13 +2469,7 @@ export default new Vuex.Store({
         moveSelectedFramesToPosition({commit, state, getters}, payload: {event: any; parentId: number}) {
             
             // First remove the visual aspect
-            state.selectedFrames.forEach( (id) => {
-                Vue.set(
-                    state.frameObjects[id],
-                    "multiDragPosition",
-                    ""
-                );
-            });
+            commit("removeMultiDragStyling");
             
 
             if(state.ignoredDragAction){

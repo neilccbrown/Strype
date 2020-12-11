@@ -8,6 +8,7 @@
             :disabled="isEditing"
             :key="'Draggagle-Joint-'+this.jointParentId"
             @start="handleMultiDrag($event)"
+            @end="miltiDragEnd($event)"
         >
             <Frame
                 v-for="frame in jointFrames"
@@ -35,7 +36,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import Draggable from "vuedraggable";
-import { FrameObject, DraggableGroupTypes , CaretPosition} from "@/types/types";
+import { FrameObject, DraggableGroupTypes } from "@/types/types";
 
 
 //////////////////////
@@ -115,6 +116,10 @@ export default Vue.extend({
                 // Make it appear as the whole selection is being dragged
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
             }
+        },   
+
+        miltiDragEnd(event: any): void {
+            store.commit("removeMultiDragStyling");
         },   
 
     },
