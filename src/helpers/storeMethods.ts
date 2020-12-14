@@ -2,7 +2,7 @@ import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, C
 import Vue from "vue";
 import { getSHA1HashForObject } from "@/helpers/common";
 
-export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>, frameId: number) => {
+export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId: number) => {
     // When removing a frame in the list, we remove all its sub levels,
     // then update its parent and then delete the frame itself
     const frameObject = listOfFrames[frameId];
@@ -34,7 +34,7 @@ export const removeFrameInFrameList = (listOfFrames: Record<number, FrameObject>
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
-export const getParent = (listOfFrames: Record<number, FrameObject>, currentFrame: FrameObject) => {
+export const getParent = (listOfFrames: EditorFrameObjects, currentFrame: FrameObject) => {
     let parentId = 0;
     if(currentFrame.id !== 0){
         parentId = (currentFrame.jointParentId > 0) ? listOfFrames[currentFrame.jointParentId].parentId : currentFrame.parentId;
@@ -43,14 +43,14 @@ export const getParent = (listOfFrames: Record<number, FrameObject>, currentFram
 };
 
 // Checks if it is a joint Frame or not and returns JointParent OR Parent respectively
-export const getParentOrJointParent = (listOfFrames: Record<number, FrameObject>, frameId: number)  => {
+export const getParentOrJointParent = (listOfFrames: EditorFrameObjects, frameId: number)  => {
     const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
     return (isJointFrame)? 
         listOfFrames[frameId].jointParentId:
         listOfFrames[frameId].parentId;
 };
 
-const isLastInParent = (listOfFrames: Record<number, FrameObject>, frameId: number) => {
+const isLastInParent = (listOfFrames: EditorFrameObjects, frameId: number) => {
     const frame = listOfFrames[frameId];
     const parent = listOfFrames[getParentOrJointParent(listOfFrames,frameId)];
 
@@ -60,7 +60,7 @@ const isLastInParent = (listOfFrames: Record<number, FrameObject>, frameId: numb
 };
 
 //Returns a list with all the previous frames (of the same level) and next frames (including first level children) used for navigating the caret
-export const childrenListWithJointFrames = (listOfFrames: Record<number, FrameObject>, currentFrameId: number, caretPosition: CaretPosition, direction: string) => {
+export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, currentFrameId: number, caretPosition: CaretPosition, direction: string) => {
     const currentFrame = listOfFrames[currentFrameId];
             
     // Create the list of children + joints with which the caret will work with
@@ -125,7 +125,7 @@ export const childrenListWithJointFrames = (listOfFrames: Record<number, FrameOb
     return childrenAndJointFramesIds;
 };
 
-export const countRecursiveChildren = function(listOfFrames: Record<number, FrameObject>, frameId: number, countLimit?: number): number {
+export const countRecursiveChildren = function(listOfFrames: EditorFrameObjects, frameId: number, countLimit?: number): number {
     // This method counts all recursive children (i.e. children, grand children, ...) of a frame.
     // The countLimit is a threshold to reach where we can stop recursion. Therefore the number of children returned IS NOT guaranted
     // to be less than the limit: it just means we don't look at any more siblings/sub children if we reached this limit.
@@ -185,7 +185,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     // Add the new frame to the list
     framesToReturn[frame.id] = frame;
 
-    //Look at the subchildren first and then at the joint frames
+    //Look at the subChildren first and then at the joint frames
     frame.childrenIds.forEach((childId: number, index: number) => {
         frame.childrenIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
@@ -197,7 +197,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
         );
     });
 
-    //Look at the subchildren first and then at the joint frames
+    //Look at the subChildren first and then at the joint frames
     frame.jointFrameIds.forEach((childId: number, index: number) => {
         frame.jointFrameIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
@@ -263,7 +263,7 @@ export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObj
 
 export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
     // Change the disable property to destination parent state if the source's parent and destination's parent are different
-    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0) 
+    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0)
         ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
         : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
 
@@ -278,7 +278,40 @@ export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFra
     return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
 }
 
-export const frameForSelection = (listOfFrames: Record<number, FrameObject>, currentFrame: CurrentFrame, direction: string, selectedFrames: number[]) => {
+export const getLastSibling= function (listOfFrames: EditorFrameObjects, frameId: number): number {
+    
+    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+    const parentsChildren = (isJointFrame)? listOfFrames[parentId].jointFrameIds : listOfFrames[parentId].childrenIds;
+
+    return parentsChildren[parentsChildren.length-1];
+    
+};
+
+export const getAllSiblings= function (listOfFrames: EditorFrameObjects, frameId: number): number[] {
+    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+
+    return (isJointFrame)? listOfFrames[parentId].jointFrameIds : listOfFrames[parentId].childrenIds;    
+};
+
+export const getNextSibling= function (listOfFrames: EditorFrameObjects, frameId: number): number {
+    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+
+    const list = (isJointFrame)? listOfFrames[parentId].jointFrameIds : listOfFrames[parentId].childrenIds;    
+
+    return list[list.indexOf(frameId)+1]??-100;
+};
+
+export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameObjects, frameId: number): number[] {
+    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+
+    return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
+};
+
+export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[], frameMap: number[]) => {
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.
@@ -334,7 +367,8 @@ export const frameForSelection = (listOfFrames: Record<number, FrameObject>, cur
     }
 
     // Create the list of children + joints with which the caret will work with
-    const allSameLevelFramesAndJointIds = childrenListWithJointFrames(
+    const allSameLevelFramesAndJointIds = 
+    childrenListWithJointFrames(
         listOfFrames, 
         frameToBeSelected,
         currentFrame.caretPosition, 
@@ -370,5 +404,42 @@ export const frameForSelection = (listOfFrames: Record<number, FrameObject>, cur
     else {
         return null;
     }
+    
+};
+
+
+export const generateFrameMap = function(listOfFrames: EditorFrameObjects, frameMap: number[]): void {
+    frameMap.splice(
+        0,
+        frameMap.length,
+        ...[-1,...getAllChildrenAndJointFramesIds(listOfFrames,-1),-2,...getAllChildrenAndJointFramesIds(listOfFrames,-2),-3,...getAllChildrenAndJointFramesIds(listOfFrames,-3)]
+    );
+};
+
+
+
+export const checkIfLastJointChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
+    const parent: FrameObject = listOfFrames[listOfFrames[frameId].jointParentId];
+    return [...parent.jointFrameIds].pop() === frameId;
+};
+
+
+export const checkIfFirstChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
+    const parent: FrameObject = listOfFrames[listOfFrames[frameId].parentId||listOfFrames[frameId].jointParentId];
+    return ([...parent.childrenIds].shift()??[...parent.jointFrameIds].shift()) === frameId;
+};
+
+// This method checks if there is a compound (parent+child) frame above the selected frame and returns the 
+// the correct previous e.g. if(1): "2" elif(3): "4"  and we are after "4" and going up, we should end up below "3" and not "4"!
+export const getPreviousIdForCaretBelow = function (listOfFrames: EditorFrameObjects, frameMap: number[], currentFrame: number): number {
+
+    // selecting means selecting a same level frame 
+    const siblings = getAllSiblings(listOfFrames,currentFrame);
+
+    // if there is a previous sibling then get it, otherwise get the parent
+    const previous = siblings[siblings.indexOf(currentFrame)-1]??listOfFrames[currentFrame].parentId;
+
+    // in case the sibling has joint children, going up means going under it's last child
+    return [...listOfFrames[previous].jointFrameIds].pop()??previous;
     
 };

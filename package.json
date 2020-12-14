@@ -10,10 +10,7 @@
         "lint": "vue-cli-service lint"
     },
     "dependencies": {
-        "@fortawesome/fontawesome-free": "^5.15.1",
-        "@fortawesome/fontawesome-svg-core": "^1.2.32",
         "@fortawesome/free-solid-svg-icons": "^5.15.1",
-        "@fortawesome/vue-fontawesome": "^2.0.0",
         "@microbit/microbit-fs": "^0.8.1",
         "@types/jquery": "^3.5.1",
         "@types/lodash": "^4.14.161",
@@ -64,7 +61,6 @@
         "sass-loader": "^8.0.2",
         "typescript": "^3.9.7",
         "vue-cli-plugin-i18n": "~1.0.1",
-        "vue-simple-context-menu": "https://github.com/bkyf/vue-simple-context-menu/tarball/emit-hide-event",
         "vue-template-compiler": "^2.6.12"
     },
     "lint-staged": {

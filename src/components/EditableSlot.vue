@@ -27,7 +27,9 @@
           :title="this.$i18n.t('errorMessage.errorTitle')"
           triggers="hover focus"
           :content="errorMessage"
-        ></b-popover>
+          class="popover"
+        >
+        </b-popover>
         <div 
             class="editableslot-placeholder"
             :id="placeholderUIID"
@@ -320,6 +322,12 @@ export default Vue.extend({
     position: absolute;
     display: inline-block;
     visibility: hidden;
+}
+
+.popover {
+    //Nedded for understanding the formated errors that split multiple
+    // errors with \n
+    white-space: pre-line !important;
 }
 
 </style>

@@ -57,6 +57,7 @@ const initialState: EditorFrameObjects = {
         caretVisibility: CaretPosition.body,
         multiDragPosition: "",
     },
+
     1: {
         frameType: Definitions.ImportDefinition,
         id: 1,
@@ -329,3 +330,5 @@ const initialState: EditorFrameObjects = {
 };
 
 export default initialState;
+
+

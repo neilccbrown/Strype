@@ -1,6 +1,7 @@
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
 import store from "@/store/store";
-import { TPyParser, ErrorInfo } from "tigerpython-parser";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
+import { ErrorInfo, TPyParser } from "tigerpython-parser";
+import { Store } from "vuex";
 
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\"";
@@ -11,6 +12,55 @@ export default class Parser {
 
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
     private line = 0;
+
+    private parseSlot(slot: string, position: number) {
+        // This method parses semantically, by checking that every
+        // token presented is known to the program (declared, keyword, or imported)
+
+        // The list of all things that cannot be a name 
+        const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
+            "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
+            "==","=","!=",">=","<=","<",">","(",")","[","]","{","}",
+        ];
+        // list of keywords that are not user or library defined.
+        const keywords = ["in","and","or","await","is","True","False",
+            "lambda", "as", "from","del","not","with",
+        ];
+
+        let slotsCopy: string = slot;
+        // first replace all the operators with a white space, so names can be separated
+        operators.forEach( (operator) => slotsCopy=slotsCopy.replaceAll(operator," "))
+
+        // Now tokenise the names based on white spaces
+        let tokens: string[] = slotsCopy.split(/\s+/);
+
+        // Now remove all the keywords.
+        tokens = tokens.filter((token: string)=> !keywords.includes(token));
+
+
+        // tokens.forEach( (token: string) => {
+        //     if(token.includes(".")) {
+        //        token.split(".").forEach( (name) => {
+
+        //        });
+        //     }
+        // });
+
+        
+
+        // we need to built a simple AST of the code
+        // to get all lexes and check if they exist.
+        // Or we can simply run from L-to-R and 
+        // get strings unless they are separated by 
+        // () + - * / " " == ><= !=  or space 
+
+        // if () are present, we need to know whether the symbol before is a method
+
+        // if [] are present, we need to know whether the symbol before is an array
+
+        // if {} are present, we need to know whether the symbol before is a dict
+
+    }
 
     private parseBlock(block: FrameObject, indent: string): string {
         let output = "";
@@ -36,6 +86,7 @@ export default class Parser {
     private parseStatement(statement: FrameObject, indent = ""): string {
         let output = indent;
         const positions: number[] = [];
+        const lengths: number[] = [];
         let currSlotIndex = 0;
             
         statement.frameType.labels.forEach( (label) => {
@@ -45,11 +96,18 @@ export default class Parser {
                 //if there is an editable slot
                 if(label.slot){
                     // Record its vertical position
-                    positions.push(output.length);
-                    
+                    const currentPosition = output.length;
+                    positions.push(currentPosition);
                     // add its code to the output
-                    console.log("print: " + statement.contentDict[currSlotIndex].code)
                     output += statement.contentDict[currSlotIndex].code + " ";
+                    lengths.push(output.length-currentPosition+1);
+
+                    // Check it for semantic correctness
+                    
+                    // TO DO
+                    // WE NEED TO AVOID giving left land assignments and method lines to `parseSlot`
+                    // WE NEED TO AVOID GIVING comment slots
+                    this.parseSlot(statement.contentDict[currSlotIndex].code,currentPosition);
                 }
             }
             currSlotIndex++;
@@ -57,7 +115,7 @@ export default class Parser {
         
         output += "\n";
     
-        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions};
+        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions, slotLengths: lengths};
         
         this.line += 1;
 
@@ -127,6 +185,10 @@ export default class Parser {
         if (!inputCode) {
             code = this.parse();
         }
+
+        // const parsedCode = TPyParser.parse(code);
+        // console.log(parsedCode);
+
         return TPyParser.findAllErrors(code);
     }
 
@@ -140,26 +202,29 @@ export default class Parser {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
             })}`;
 
+            
             // For each error, show red border around its input in the UI
             errors.forEach((error: ErrorInfo) => {
-                if( this.framePositionMap[error.line] !== undefined && (error.offset < this.framePositionMap[error.line].slotStarts[0] || error.offset >= inputCode.split(/\n/)[error.line].length)) {
-                    store.commit("setFrameErroneous", {
-                        frameId: this.framePositionMap[error.line].frameId,
-                        error: error.msg,
-                    });
-                }
-                else {
-                    store.commit("setSlotErroneous", {
-                        frameId: this.framePositionMap[error.line].frameId,
-                        // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
-                        slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
-                            (element, index, array) => {
-                                return element<=error.offset && 
-                                        ((index<array.length-1)? (array[index+1] > error.offset) : true)
-                            }
-                        ), 
-                        error: error.msg,
-                    });
+                if( this.framePositionMap[error.line] !== undefined) {
+                    if(this.isErrorIfInSlotBounds(error.line,error.offset)) {
+                        store.commit("setSlotErroneous", {
+                            frameId: this.framePositionMap[error.line].frameId,
+                            // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
+                            slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
+                                (element, index, array) => {
+                                    return element<=error.offset && 
+                                            ((index<array.length-1)? (array[index+1] > error.offset) : true)
+                                }
+                            ), 
+                            error: error.msg,
+                        });
+                    }
+                    else {
+                        store.commit("setFrameErroneous", {
+                            frameId: this.framePositionMap[error.line].frameId,
+                            error: error.msg,
+                        });
+                    }
                 }
             });
 
@@ -168,6 +233,21 @@ export default class Parser {
 
         return errorString;
     }
+
+    private isErrorIfInSlotBounds(errorLine: number, errorOffset: number) {
+
+        for (let index = 0; index < this.framePositionMap[errorLine].slotLengths.length; index++) {
+            const slot = this.framePositionMap[errorLine];
+            // if the error's offset is within the bounds of any slot, return true
+            if(errorOffset >= slot.slotStarts[index] && errorOffset <= (slot.slotStarts[index] + slot.slotLengths[index]-1)) {
+                return true;
+            }
+        }
+        // If the offset was inside none of the slots, then return false
+        return false;
+    
+    }
+
 
 }
 
@@ -277,5 +357,7 @@ export function getStatementACContext(code: string, frameId: number): {token: st
     }
     */
 
-    return  {token: token , contextPath: contextPath, showAC: true};
+    return {token: token , contextPath: contextPath, showAC: true};
 }
+
+   

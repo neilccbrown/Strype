@@ -22,6 +22,7 @@
                 :key="'Draggagle-Container-'+this.frameId"
                 :id="'Draggagle-Container-'+this.frameId"
                 @start ="handleMultiDrag($event)"
+                @end="miltiDragEnd($event)"
             >
                 <Frame 
                     v-for="frame in frames" 
@@ -167,6 +168,10 @@ export default Vue.extend({
                 // Make it appear as the whole selection is being dragged
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
             }
+        },   
+
+        miltiDragEnd(event: any): void {
+            store.commit("removeMultiDragStyling");
         },   
 
         // Some times, when draging and droping in the original position of where the

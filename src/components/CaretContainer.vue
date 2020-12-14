@@ -1,7 +1,8 @@
 <template>
     <div 
         class="caret-container"
-        @click.prevent.stop="toggleCaret()"
+        @click.exact.prevent.stop="toggleCaret()"
+        @click.shift.exact.prevent.stop="frameSelection()"
         @mouseover.prevent.stop="mouseOverCaret(true)"
         @mouseleave.prevent.stop="mouseOverCaret(false)"
         @contextmenu.prevent.stop="handleClick($event, 'paste')"
@@ -144,6 +145,14 @@ export default Vue.extend({
             store.dispatch(
                 "toggleCaret",
                 {id:this.$props.frameId, caretPosition: this.caretAssignedPosition}
+            );
+        },
+
+        frameSelection(): void {
+            this.$data.overCaret = false;
+            store.dispatch(
+                "shiftClickSelection",
+                {clickedFrameId:this.$props.frameId, clickedCaretPosition: this.caretAssignedPosition}
             );
         },
 

@@ -23,13 +23,13 @@
     <span id="userCode" style="width:500px" onchange="alert('test')">[1,2]</span>
     <span id="userDefined" style="width:500px"></span>
     <script type="text/python3">
-from browser import document, window
+    from browser import document, window
 
-def evalUserCode(ev):
-  document['userDefined'].text = type(eval(document['userCode'].text))
-      
-document['userCode'].bind("click",evalUserCode)
-evalUserCode('')
+    def evalUserCode(ev):
+      document['userDefined'].text = type(eval(document['userCode'].text))
+          
+    document['userCode'].bind("click",evalUserCode)
+    evalUserCode('')
 
     </script>
     <div id="app"></div>

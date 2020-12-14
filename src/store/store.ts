@@ -3,12 +3,13 @@ import Vuex from "vuex";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, LibraryPath, ElementDef, SearchLangDefScope } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
+import initialTestState from "@/store/initial-test-state";
 import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent } from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getAllSiblings, getNextSibling, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import { makeLangSearchReferential, retrieveElementInDefs } from "@/autocompletion/acManager"
 
@@ -17,14 +18,17 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
     state: {
+        debugging: true,
 
-        frameObjects: initialState,
+        frameObjects: initialTestState, //initialState,
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
+        frameMap : [-1,-2,-3,1,2,3,4,5,6,7] as number[],//[] as number[], // flat map of all the frames in a sequence
+
+        nextAvailableId: Math.max.apply({},Object.keys(initialTestState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
-        currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's inital content being edited.
+        currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's initial content being edited.
 
         isEditing: false,
 
@@ -498,7 +502,7 @@ export default new Vuex.Store({
             Vue.set(
                 state,
                 "frameObjects",
-                (toggle) ? tutorialState: initialState
+                (toggle) ? tutorialState: ((state.debugging)? initialTestState : initialState)
             );
         },
 
@@ -533,6 +537,8 @@ export default new Vuex.Store({
                 newFrame.id,
                 newFrame
             );
+        
+            generateFrameMap(state.frameObjects,state.frameMap);
         },
 
         deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
@@ -607,6 +613,7 @@ export default new Vuex.Store({
                     );
                 }
             }
+            generateFrameMap(state.frameObjects,state.frameMap);
         },
 
         updateFramesOrder(state, payload: {event: any; eventParentId: number}) {
@@ -651,6 +658,12 @@ export default new Vuex.Store({
                     1
                 ); 
             }
+
+            // Update the frameMap
+            if(eventType !== "removed"){
+                generateFrameMap(state.frameObjects,state.frameMap);
+            }
+
         },
 
         // It may be called more than once from the same place and thus requires the editing value
@@ -863,18 +876,24 @@ export default new Vuex.Store({
         },
 
         setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
+            const existingError =  state.frameObjects[payload.frameId].contentDict[payload.slotIndex].error;
+            // Sometimes we need to extend the error, if more than one errors are on the same slot
+            const newError = (existingError === "" || payload.error === "" ) ? payload.error: (existingError +"\n" + payload.error);
             Vue.set(
                 state.frameObjects[payload.frameId].contentDict[payload.slotIndex],
                 "error",
-                payload.error
+                newError
             );
         },
 
         setFrameErroneous(state, payload: {frameId: number; error: string}){
+            const existingError =  state.frameObjects[payload.frameId].error;
+            // Sometimes we need to extend the error, if more than one errors are on the same frame
+            const newError = (existingError === "" || payload.error === "" ) ? payload.error: (existingError +"\n" + payload.error);
             Vue.set(
                 state.frameObjects[payload.frameId],
                 "error",
-                payload.error
+                newError
             );
         },
 
@@ -937,7 +956,8 @@ export default new Vuex.Store({
             const isJointFrame = state.frameObjects[frameId].frameType.isJointFrame;
             
             const parent = (isJointFrame)? state.frameObjects[frameId].jointParentId : state.frameObjects[frameId].parentId;
-            cloneFrameAndChildren(state.frameObjects, frameId, parent, {id: state.nextAvailableId}, state.copiedFrames); 
+
+            cloneFrameAndChildren(state.frameObjects, frameId, parent, {id: state.nextAvailableId}, state.copiedFrames);             
         },
 
         copySelection(state) {
@@ -1312,6 +1332,16 @@ export default new Vuex.Store({
                 )
             }
         },
+        
+        removeMultiDragStyling(state) {
+            state.selectedFrames.forEach( (id) => {
+                Vue.set(
+                    state.frameObjects[id],
+                    "multiDragPosition",
+                    ""
+                );
+            });
+        },
     },
 
     actions: {
@@ -1325,6 +1355,8 @@ export default new Vuex.Store({
 
                 return;
             }
+
+            commit("unselectAllFrames");
 
             const eventType = Object.keys(payload.event)[0];
 
@@ -1415,7 +1447,7 @@ export default new Vuex.Store({
                     }
                 );
 
-                //clear the statebeforeChanges flag off
+                //clear the stateBeforeChanges flag off
                 commit(
                     "updateStateBeforeChanges",
                     true
@@ -2096,6 +2128,8 @@ export default new Vuex.Store({
                 );
             }
 
+            generateFrameMap(state.frameObjects,state.frameMap);
+
             //save state changes
             commit(
                 "saveStateChanges",
@@ -2186,6 +2220,7 @@ export default new Vuex.Store({
                     ))
             }
 
+            generateFrameMap(state.frameObjects,state.frameMap);
 
             //save state changes
             commit(
@@ -2314,11 +2349,184 @@ export default new Vuex.Store({
         selectMultipleFrames({state, commit}, key: string) {
             
             const direction = (key==="ArrowUp")? "up" : "down"
-            const result = frameForSelection(state.frameObjects, state.currentFrame, direction, state.selectedFrames);
-            if(result !== null) {
-                commit("selectDeselectFrame", {frameId: result.frameForSelection, direction: direction})
-                commit("setCurrentFrame", result.newCurrentFrame);
+
+            // The frame the selection will start from
+            const frameToSelectId =  
+                (state.currentFrame.caretPosition === CaretPosition.body)?
+                    // Body
+                    (direction === "up")?
+                        -100 : // in the body and going up is not possible
+                        [...state.frameObjects[state.currentFrame.id].childrenIds].shift()??-100 // body and going down, first child if it exists
+                    :
+                    // Below
+                    (direction === "up")?
+                        // up
+                        (checkIfLastJointChild(state.frameObjects, state.currentFrame.id))? 
+                            (state.selectedFrames.includes(state.currentFrame.id))?          // we need to check whether this joint is selected
+                                -100                                                         // if it is selected we should not do anything
+                                :      
+                                state.frameObjects[state.currentFrame.id].jointParentId     // Otherwise select its parent
+                            : 
+                            state.currentFrame.id // below and going up, is the last jointframe => target is the parent, otherwise the frame itself 
+                        :
+                        // down
+                        // Are we below a frame which has joint children -> ie above a Joint
+                        [...state.frameObjects[state.currentFrame.id].jointFrameIds].shift()     // If yes, give me the first joint child
+                        ??                                                                       // else
+                        (getNextSibling(state.frameObjects,                                      // below and going down, get next sibling.
+                            (checkIfLastJointChild(state.frameObjects, state.currentFrame.id))?  // If we are below the last joint child
+                                (state.selectedFrames.includes(state.currentFrame.id))?          // we need to check whether this joint is selected
+                                    -100                                                         // if it is selected we should not do anything
+                                    :                                                            // otherwise
+                                    state.frameObjects[state.currentFrame.id].jointParentId      // we need to select below our parent
+                                :
+                                state.currentFrame.id)                                           // if not below a joint child, select the current
+                        );
+
+            if(frameToSelectId === -100) {
+                return;
             }
+
+            const newCurrentCaret = 
+                (direction === "up")?
+                    // up
+                    (checkIfFirstChild(state.frameObjects,frameToSelectId))? CaretPosition.body : CaretPosition.below
+                    :
+                    // down
+                    CaretPosition.below;
+
+            const newCurrentId = 
+                (direction === "up")?
+                    //up
+                    (newCurrentCaret === CaretPosition.below)? // direction=up and caret=down => there is another frame before me
+                        getPreviousIdForCaretBelow(state.frameObjects,state.frameMap, frameToSelectId)// the previous frame is the new current
+                        :
+                        state.frameObjects[frameToSelectId].parentId // otherwise it is the parent
+                    :
+                    // down
+                    [...state.frameObjects[frameToSelectId].jointFrameIds].pop()??frameToSelectId//The next frame after me of me if it there no next
+
+          
+            commit("selectDeselectFrame", {frameId: frameToSelectId, direction: direction}) 
+            commit("setCurrentFrame", {id: newCurrentId, caretPosition: newCurrentCaret});
+
+        },
+
+        shiftClickSelection({state, commit}, payload: {clickedFrameId: number; clickedCaretPosition: CaretPosition}) {
+            // Remove current selection
+            commit("unselectAllFrames");
+
+            // is the targetFrame bellow or above the origin frame
+            let direction: string;
+            if(state.frameMap.indexOf(payload.clickedFrameId) === state.frameMap.indexOf(state.currentFrame.id)) {
+                // if we clicked on current caret, then no need to select anything
+                if(payload.clickedCaretPosition === state.currentFrame.caretPosition) {
+                    return;
+                }
+                //if clicked on the same frame, but on another caret, then if the clicked is body we certainly are going up. Else, down
+                direction = (payload.clickedCaretPosition === CaretPosition.body)? "up" : "down";
+            }
+            else {
+                direction = (state.frameMap.indexOf(payload.clickedFrameId) > state.frameMap.indexOf(state.currentFrame.id))? "down" : "up" ;
+            }
+
+
+            // The frame the selection will start from
+            const originFrameId =  
+                (state.currentFrame.caretPosition === CaretPosition.body)?
+                    // Body
+                    (direction === "up")?
+                        -100 : // in the body and going up is not possible
+                        state.frameMap[state.frameMap.indexOf(state.currentFrame.id)+1] // body and going down, start from the next frame
+                    :
+                    // Below
+                    (direction === "up")?
+                        state.frameMap[state.frameMap.indexOf(state.frameObjects[state.currentFrame.id].jointParentId||state.currentFrame.id)]: // below a jointframe and going up => origin is the parent, otherwise the frame itself
+                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[state.currentFrame.id].childrenIds].pop()??state.currentFrame.id)+1]; // below and going down, start from the next after the last child
+
+            if(originFrameId === -100) {
+                return;
+            }
+
+            // The frame the selection will potentially end to (or as close to it as possible)
+            const targetFrameId =  
+                (payload.clickedCaretPosition === CaretPosition.body)?
+                    // Body
+                    (direction === "up")?
+                        state.frameMap[state.frameMap.indexOf(payload.clickedFrameId)+1] : // body and going up, end at the next
+                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)]// body and going down, end at the last sibling of origin
+                    :
+                    // Below
+                    (direction === "up")?
+                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)+1]: // below and going up, end at the next after the last child
+                        state.frameMap[state.frameMap.indexOf((checkIfLastJointChild(state.frameObjects, payload.clickedFrameId))? state.frameObjects[payload.clickedFrameId].jointParentId : payload.clickedFrameId)]; // going below the last jointframe => target is the parent, otherwise the frame itself 
+
+            // All the selected frames MUST be siblings (same parent) of the frame the selection starts from.
+            const siblingsOfOrigin = getAllSiblings(state.frameObjects, originFrameId);
+
+            const indexFrom = siblingsOfOrigin.indexOf(originFrameId);
+            const indexTo = (direction === "up")? 0 : siblingsOfOrigin.length-1;
+            const indexIncr = (direction === "up")? -1 : 1;
+
+            let lastSelected = undefined;
+            for(let i=indexFrom; ;i+=indexIncr) {
+                const nextSibling = siblingsOfOrigin[i];
+                // We need to check whether the target frame is in another level from the origin frame
+                // if they are at diff levels, we must not include the sibling of the origin who is the parent of the target.
+                if(!getAllChildrenAndJointFramesIds(state.frameObjects,state.frameObjects[nextSibling].id).includes(targetFrameId)) {
+                    commit("selectDeselectFrame", {frameId: nextSibling, direction: direction}) 
+                    lastSelected = nextSibling;
+
+                    // if we reach the target frame or the end of the list we stop
+                    if( nextSibling === targetFrameId || i === indexTo) {
+                        break;
+                    }
+                    continue;
+                }
+                else {
+                    break;
+                }
+            }
+
+            const newCurrentId = 
+                (!lastSelected)? 
+                    targetFrameId //if nothing was selected, then move the caret to the clicked frame
+                    :
+                    (lastSelected != targetFrameId) ? // Have we landed in another frame that the one the user selected?
+                        // landed on a different -> the were on different levels
+                        (direction === "up")?
+                            // up
+                            getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
+                            :
+                            // down
+                            lastSelected
+                        :
+                        // Landed on the selected
+                        (direction === "up")?
+                            // up
+                            checkIfFirstChild(state.frameObjects,lastSelected) ?
+                                // fist in parent
+                                getParentOrJointParent(state.frameObjects,lastSelected) // the parent is the current frame as we have clicked no his body
+                                :
+                                // not the first in parent, get the previous frame
+                                getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
+                            :
+                            // down
+                            lastSelected
+
+            // The caret calculation needs a frame to work with
+            lastSelected = lastSelected?? targetFrameId;
+
+            const newCurrentCaret = 
+                (direction === "up")?
+                    // up
+                    (newCurrentId === state.frameObjects[lastSelected].parentId??state.frameObjects[lastSelected].jointParentId)? CaretPosition.body : CaretPosition.below
+                    :
+                    // down
+                    CaretPosition.below;
+                    
+            commit("setCurrentFrame", {id: newCurrentId, caretPosition: newCurrentCaret});
+
         },
 
         prepareForMultiDrag({state, getters, commit}, draggedFrameId: number) {
@@ -2350,13 +2558,7 @@ export default new Vuex.Store({
         moveSelectedFramesToPosition({commit, state, getters}, payload: {event: any; parentId: number}) {
             
             // First remove the visual aspect
-            state.selectedFrames.forEach( (id) => {
-                Vue.set(
-                    state.frameObjects[id],
-                    "multiDragPosition",
-                    ""
-                );
-            });
+            commit("removeMultiDragStyling");
             
 
             if(state.ignoredDragAction){
