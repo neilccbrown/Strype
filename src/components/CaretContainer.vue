@@ -97,6 +97,19 @@ export default Vue.extend({
         },
     },
 
+    mounted() {
+        window.addEventListener(
+            "keydown",
+            (event: KeyboardEvent) => {
+                if((event.ctrlKey || event.metaKey) && (event.key === "v")) {
+                    this.paste();
+                    event.preventDefault();
+                    return;
+                }
+            }
+        );
+    },
+
     updated() {
         // Ensure the caret (during navigation) is visible in the page viewport
         if(!this.overCaret && this.$props.caretVisibility !== CaretPosition.none && this.$props.caretVisibility === this.caretAssignedPosition) {
@@ -113,19 +126,9 @@ export default Vue.extend({
     
     methods: {
         handleClick (event: MouseEvent): void {
-
             store.commit("setContextMenuShownId",this.uiid);
-            if(this.pasteAvailable) {  
-                if(store.getters.isSelectionCopied()){
-                    if(store.getters.getIfPositionAllowsSelectedFrames(this.frameId, this.caretAssignedPosition, true)) {
-                        ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
-                    }  
-                }
-                else {
-                    if(store.getters.getIfPositionAllowsFrame(this.frameId, this.caretAssignedPosition)) {
-                        ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
-                    }
-                }
+            if(this.pasteAvailable && store.getters.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {  
+                ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
             }
         },
 
@@ -199,23 +202,26 @@ export default Vue.extend({
         },
 
         paste(): void {
-            if(store.getters.isSelectionCopied()){
-                store.dispatch(
-                    "pasteSelection",
-                    {
-                        clickedFrameId: this.$props.frameId,
-                        caretPosition: this.$props.caretAssignedPosition,
-                    }
-                );
-            }
-            else {
-                store.dispatch(
-                    "pasteFrame",
-                    {
-                        clickedFrameId: this.$props.frameId,
-                        caretPosition: this.$props.caretAssignedPosition,
-                    }
-                );
+            // We check again that the paste can be performed as there is no verification using keyboard shortcut, contrary to displaying the menu
+            if(store.getters.getCurrentFrameObject().id === this.$props.frameId && store.getters.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)){
+                if(store.getters.isSelectionCopied()){
+                    store.dispatch(
+                        "pasteSelection",
+                        {
+                            clickedFrameId: this.$props.frameId,
+                            caretPosition: this.$props.caretAssignedPosition,
+                        }
+                    );
+                }
+                else {
+                    store.dispatch(
+                        "pasteFrame",
+                        {
+                            clickedFrameId: this.$props.frameId,
+                            caretPosition: this.$props.caretAssignedPosition,
+                        }
+                    );
+                }
             }
         },
     },

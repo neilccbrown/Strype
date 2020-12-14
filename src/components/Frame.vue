@@ -211,6 +211,21 @@ export default Vue.extend({
         },
     },
 
+    mounted() {
+        window.addEventListener(
+            "keydown",
+            (event: KeyboardEvent) => {
+                //the shortcut for copy is only effective when some frames are selecteds, and that we are on the first of those frames
+                if((store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c")) {
+                    this.copy();
+                    event.preventDefault();
+                    return;
+                }
+            }
+        );
+    
+    },
+
     methods: {
 
         handleClick (event: MouseEvent, action: string) {
