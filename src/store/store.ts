@@ -360,6 +360,20 @@ export default new Vuex.Store({
         getIsCopiedAvailable: (state) => () => {
             return (state.copiedFrameId !== -100) || (state.copiedSelectionFrameIds.length > 0);
         },
+        isPasteAllowedAtFrame: (state, getters) => (frameId: number, caretPos: CaretPosition) => {
+            if(getters.isSelectionCopied()){
+                if(getters.getIfPositionAllowsSelectedFrames(frameId, caretPos, true)) {
+                    return true;
+                }  
+            }
+            else {
+                if(getters.getIfPositionAllowsFrame(frameId, caretPos)) {
+                    return true;
+                }
+            }
+
+            return false;
+        },
         // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
         // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
         getIfPositionAllowsFrame: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {

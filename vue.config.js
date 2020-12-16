@@ -1,4 +1,7 @@
 module.exports = {
+    configureWebpack: {
+        devtool: "source-map",
+    },
     publicPath: "/webframes-test/",
     pluginOptions: {
         i18n: {

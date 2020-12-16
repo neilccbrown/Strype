@@ -211,6 +211,22 @@ export default Vue.extend({
         },
     },
 
+    mounted() {
+        window.addEventListener(
+            "keydown",
+            (event: KeyboardEvent) => {
+                // Copying by shortcut is only available for a frame selection.
+                // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
+                if((store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c")) {
+                    this.copy();
+                    event.preventDefault();
+                    return;
+                }
+            }
+        );
+    
+    },
+
     methods: {
 
         handleClick (event: MouseEvent, action: string) {

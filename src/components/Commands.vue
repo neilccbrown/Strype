@@ -216,7 +216,7 @@ export default Vue.extend({
                         }
                     }
                     //cases when there is no editing:
-                    else{
+                    else if(!(event.ctrlKey || event.metaKey)){
                         if (( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
                             store.dispatch(
                                 "leftRightKey",
