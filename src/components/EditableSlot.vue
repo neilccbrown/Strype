@@ -46,6 +46,7 @@ import { getEditableSlotUIID } from "@/helpers/editor";
 import { searchLanguageElements } from "@/autocompletion/acManager";
 import Parser, {getStatementACContext} from "@/parser/parser";
 
+
 export default Vue.extend({
     name: "EditableSlot",
     store,
@@ -139,8 +140,6 @@ export default Vue.extend({
                         showAC = newContext.showAC;
                     } 
                     
-                    //console.log("token = " + token)
-                    //console.log("context path = " + contextPath)
                     if(showAC){
                         searchLanguageElements(token, contextPath).forEach((acElement) => acCandidates += (acElement.name + " (kind: " + acElement.kind+")\n"));
                     }
@@ -242,6 +241,7 @@ export default Vue.extend({
                     rootPath: rootPath,
                 }
             );
+
         },
 
         onBlur(): void {

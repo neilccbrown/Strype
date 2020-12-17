@@ -33,4 +33,4 @@ new Vue({
 }).$mount("#app");
 
 //launch autocompletion
-testAC();
+// testAC();
