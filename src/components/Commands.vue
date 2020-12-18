@@ -224,9 +224,9 @@ export default Vue.extend({
                             );
                         }
                         else if(event.key == "Delete" || event.key == "Backspace"){
-                        //delete a frame
+                            //delete a frame or a frame selection
                             store.dispatch(
-                                "deleteCurrentFrame",
+                                "deleteFrames",
                                 event.key
                             );
                             event.stopImmediatePropagation();
