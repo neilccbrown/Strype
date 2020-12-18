@@ -1597,86 +1597,115 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        deleteCurrentFrame({commit, state}, payload: string){
+        deleteFrames({commit, state}, payload: string){
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             
-            //if delete is pressed
-            //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
-            //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
-            //if backspace is pressed
-            //  case current frame is Container --> do nothing, a container cannot be deleted
-            //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent
-            //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
-            //(*) with all sub levels children
-
             let showDeleteMessage = false;
 
-            const currentFrame = state.frameObjects[state.currentFrame.id];
+            //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
+            let framesIdToDelete = [state.currentFrame.id];
 
-            // Create the list of children + joints with which the caret will work with
-            const parentId = getParent(state.frameObjects,currentFrame);
-
-            const listOfSiblings = 
-            childrenListWithJointFrames(
-                state.frameObjects, 
-                currentFrame.id, 
-                state.currentFrame.caretPosition,
-                "down"
-            );
-
-            const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
-            let frameToDeleteId = 0;
-            let deleteChildren = false;
-
-            if(payload === "Delete"){
-                if(indexOfCurrentFrame + 1 < listOfSiblings.length){
-                    frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
-                } 
-            }
-            else {
-                if (currentFrame.id > 0) {
-                    if(state.currentFrame.caretPosition === CaretPosition.body ){
-                        //just move the cursor one level up
-                        commit(
-                            "changeCaretWithKeyboard",
-                            "ArrowUp"
-                        );
-                    }
-                    else{
-                        //move the cursor up to the previous sibling bottom if available, otherwise body of parent
-                        const newId = (indexOfCurrentFrame - 1 >= 0) ? listOfSiblings[indexOfCurrentFrame - 1] : parentId;
-                        const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
-                        commit(
-                            "setCurrentFrame",
-                            {id: newId, caretPosition: newPosition}
-                        );
-                        deleteChildren = true;
-                    }
-                    frameToDeleteId = currentFrame.id;
+            //If a selection is deleted, we don't distinguish between "del" and "backspace": 
+            //We move the caret at the last element of the selection, and perform "backspace" for each element of the selection
+            if(state.selectedFrames.length > 0){
+                if(state.selectedFrames[state.selectedFrames.length-1] !== state.currentFrame.id){
+                    commit("setCurrentFrame", {id: state.selectedFrames[state.selectedFrames.length-1], caretPosition: CaretPosition.below});
                 }
+                payload = "Backspace";
+                framesIdToDelete = state.selectedFrames.reverse();
+                //this flag to show the delete message is set on a per frame deletion basis,
+                //but here we could have 3+ single frames delete, so we need to also check to selection length.
+                showDeleteMessage = state.selectedFrames.length > 3;
             }
+            
+            framesIdToDelete.forEach((currentFrameId) => {
+                //if delete is pressed
+                //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
+                //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
+                //if backspace is pressed
+                //  case current frame is Container --> do nothing, a container cannot be deleted
+                //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent
+                //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
+                //(*) with all sub levels children
 
-            //before actually deleting the frame(s), we check if the user should be notified of a large deletion
-            if(countRecursiveChildren(
-                state.frameObjects,
-                frameToDeleteId,
-                3
-            ) >= 3){
-                showDeleteMessage = true;
-            }
 
-            //Delete the frame if a frame to delete has been found
-            if(frameToDeleteId > 0){
-                commit(
-                    "deleteFrame",
-                    {
-                        key:payload,
-                        frameToDeleteId: frameToDeleteId,  
-                        deleteChildren: deleteChildren,
-                    }
+                const currentFrame = state.frameObjects[currentFrameId];
+
+                // Create the list of children + joints with which the caret will work with
+                const parentId = getParent(state.frameObjects,currentFrame);
+
+                const listOfSiblings = 
+                childrenListWithJointFrames(
+                    state.frameObjects, 
+                    currentFrame.id, 
+                    state.currentFrame.caretPosition,
+                    "down"
                 );
-            }  
 
+                const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
+                let frameToDeleteId = 0;
+                let deleteChildren = false;
+
+                if(payload === "Delete"){
+                    if(indexOfCurrentFrame + 1 < listOfSiblings.length){
+                        frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
+                    } 
+                }
+                else {
+                    if (currentFrame.id > 0) {
+                        if(state.currentFrame.caretPosition === CaretPosition.body ){
+                            //just move the cursor one level up
+                            commit(
+                                "changeCaretWithKeyboard",
+                                "ArrowUp"
+                            );
+                        }
+                        else{
+                            //move the cursor up to the previous sibling bottom if available, otherwise body of parent
+                            let newId = parentId;
+                            if(indexOfCurrentFrame - 1 >= 0){
+                                newId = listOfSiblings[indexOfCurrentFrame - 1];
+                                //make sure that this sibling isn't a joint frame root, otherwise, we need to get its last joint frame instead of the root
+                                if(state.frameObjects[newId].jointFrameIds.length > 0 && !state.frameObjects[newId].jointFrameIds.includes(currentFrameId)){
+                                    newId = [...state.frameObjects[newId].jointFrameIds].pop() as number;
+                                }
+                            }
+                            const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
+                            commit(
+                                "setCurrentFrame",
+                                {id: newId, caretPosition: newPosition}
+                            );
+                            deleteChildren = true;
+                        }
+                        frameToDeleteId = currentFrame.id;
+                    }
+                }
+
+                //Delete the frame if a frame to delete has been found
+                if(frameToDeleteId > 0){
+                    //before actually deleting the frame(s), we check if the user should be notified of a large deletion
+                    if(countRecursiveChildren(
+                        state.frameObjects,
+                        frameToDeleteId,
+                        3
+                    ) >= 3){
+                        showDeleteMessage = true;
+                    }
+
+                    commit(
+                        "deleteFrame",
+                        {
+                            key:payload,
+                            frameToDeleteId: frameToDeleteId,  
+                            deleteChildren: deleteChildren,
+                        }
+                    );
+                }  
+            });
+
+            //clear the selection of frames
+            commit("unselectAllFrames");
+                       
             //save state changes
             commit(
                 "saveStateChanges",
@@ -2324,7 +2353,7 @@ export default new Vuex.Store({
                 (direction === "up")?
                     //up
                     (newCurrentCaret === CaretPosition.below)? // direction=up and caret=down => there is another frame before me
-                        getPreviousIdForCaretBelow(state.frameObjects,state.frameMap, frameToSelectId)// the previous frame is the new current
+                        getPreviousIdForCaretBelow(state.frameObjects, frameToSelectId)// the previous frame is the new current
                         :
                         state.frameObjects[frameToSelectId].parentId // otherwise it is the parent
                     :
@@ -2421,7 +2450,7 @@ export default new Vuex.Store({
                         // landed on a different -> the were on different levels
                         (direction === "up")?
                             // up
-                            getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
+                            getPreviousIdForCaretBelow(state.frameObjects, lastSelected) // get the proper previous
                             :
                             // down
                             lastSelected
@@ -2434,7 +2463,7 @@ export default new Vuex.Store({
                                 getParentOrJointParent(state.frameObjects,lastSelected) // the parent is the current frame as we have clicked no his body
                                 :
                                 // not the first in parent, get the previous frame
-                                getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
+                                getPreviousIdForCaretBelow(state.frameObjects, lastSelected) // get the proper previous
                             :
                             // down
                             lastSelected
