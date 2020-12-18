@@ -16,9 +16,9 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
     state: {
-        debugging: true,
+        debugging: false,
 
-        frameObjects: initialTestState, //initialState,
+        frameObjects: /*initialTestState,*/ initialState,
 
         frameMap : [-1,-2,-3,1,2,3,4,5,6,7] as number[],//[] as number[], // flat map of all the frames in a sequence
 
