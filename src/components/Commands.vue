@@ -123,6 +123,9 @@ export default Vue.extend({
             (event: KeyboardEvent) => {
                 const tutorial = document.getElementById(getTutorialUIID());
                 if(tutorial !== null || store.getters.isAppMenuOpened()){
+                    if(store.getters.isAppMenuOpened() && store.getters.getIsEditing()){
+                        return;
+                    }
                     //if the tutorial or the application menu are displayed, we don't do anything here
                     event.preventDefault();
                     return;
