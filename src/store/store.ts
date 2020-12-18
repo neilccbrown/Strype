@@ -1667,7 +1667,7 @@ export default new Vuex.Store({
                                 newId = listOfSiblings[indexOfCurrentFrame - 1];
                                 //make sure that this sibling isn't a joint frame root, otherwise, we need to get its last joint frame instead of the root
                                 if(state.frameObjects[newId].jointFrameIds.length > 0 && !state.frameObjects[newId].jointFrameIds.includes(currentFrameId)){
-                                    newId = state.frameObjects[newId].jointFrameIds[state.frameObjects[newId].jointFrameIds.length -1];
+                                    newId = [...state.frameObjects[newId].jointFrameIds].pop() as number;
                                 }
                             }
                             const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
@@ -2353,7 +2353,7 @@ export default new Vuex.Store({
                 (direction === "up")?
                     //up
                     (newCurrentCaret === CaretPosition.below)? // direction=up and caret=down => there is another frame before me
-                        getPreviousIdForCaretBelow(state.frameObjects,state.frameMap, frameToSelectId)// the previous frame is the new current
+                        getPreviousIdForCaretBelow(state.frameObjects, frameToSelectId)// the previous frame is the new current
                         :
                         state.frameObjects[frameToSelectId].parentId // otherwise it is the parent
                     :
@@ -2450,7 +2450,7 @@ export default new Vuex.Store({
                         // landed on a different -> the were on different levels
                         (direction === "up")?
                             // up
-                            getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
+                            getPreviousIdForCaretBelow(state.frameObjects, lastSelected) // get the proper previous
                             :
                             // down
                             lastSelected
@@ -2463,7 +2463,7 @@ export default new Vuex.Store({
                                 getParentOrJointParent(state.frameObjects,lastSelected) // the parent is the current frame as we have clicked no his body
                                 :
                                 // not the first in parent, get the previous frame
-                                getPreviousIdForCaretBelow(state.frameObjects,state.frameMap,lastSelected) // get the proper previous
+                                getPreviousIdForCaretBelow(state.frameObjects, lastSelected) // get the proper previous
                             :
                             // down
                             lastSelected

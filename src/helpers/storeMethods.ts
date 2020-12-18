@@ -431,7 +431,7 @@ export const checkIfFirstChild = function (listOfFrames: EditorFrameObjects, fra
 
 // This method checks if there is a compound (parent+child) frame above the selected frame and returns the 
 // the correct previous e.g. if(1): "2" elif(3): "4"  and we are after "4" and going up, we should end up below "3" and not "4"!
-export const getPreviousIdForCaretBelow = function (listOfFrames: EditorFrameObjects, frameMap: number[], currentFrame: number): number {
+export const getPreviousIdForCaretBelow = function (listOfFrames: EditorFrameObjects, currentFrame: number): number {
 
     // selecting means selecting a same level frame 
     const siblings = getAllSiblings(listOfFrames,currentFrame);
