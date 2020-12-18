@@ -1,21 +1,13 @@
 <template>
     <div>
-        <div>
-            <button 
-                :id="menuUIID" 
-                href="#" 
-                tabindex="0" 
-                @click="toggleMenuOnOff"
-            >
-                <div v-html="buttonLabel"></div>
-            </button>
-            <b-popover 
-                target="showHideMenu" 
-                triggers="click blur"
-                @hidden="toggleMenuOnOff()"
-                id="menu"
-            >
-                <template v-slot:title >
+        <Slide 
+            :isOpen="showMenu"
+            :burgerIcon="false"
+            @closeMenu="toggleMenuOnOff"
+            width="200"
+        >
+            <div style="width: 100%;">
+                <div class="project-name-div">
                     <input
                         v-if="isComponentLoaded"
                         v-model="projectName" 
@@ -27,40 +19,44 @@
                         @keypress="validateInput($event)"
                         class="project-name"
                         id="name-input-field"
+                        autocomplete="off"
                         :style="inputTextStyle"
-                        ref="nameinput"
                     />                    
-                    <i v-if="hover" class="fa fa-pencil-alt"></i>
-                </template>
-                <table>
-                    <tr>
-                        <td >
-                            <a href="#" @click="importFile()">
-                                Import from file
-                            </a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <a href="#" @click="exportFile()">
-                                Export to file
-                            </a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <a href="#">
-                                Preferences
-                            </a>
-                        </td>
-                    </tr>
-                </table>
-            </b-popover>
-            <div 
+                    <i 
+                        style="margin-left: 2px;" 
+                        class="fa fa-pencil-alt"
+                        :class="{penHidden: !hover}"></i>  
+                </div>
+            </div> 
+            <hr/>
+            <a class="project-impexp-div" href="#" @click="importFile()" v-t="'appMenu.importFile'" />
+            <a class="project-impexp-div" href="#" @click="exportFile()" v-t="'appMenu.exportFile'"/>
+            <hr/>
+            <span v-t="'appMenu.prefs'"/>
+            <div class="appMenu-prefs-div">
+                <div>
+                    <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
+                    <select name="lang" id="appLangSelect" v-model="appLang">
+                        <option value="en">English</option>
+                        <option value="ja">日本语</option>
+                    </select>
+                </div> 
+            </div>   
+        </Slide>
+        <div 
                 class="editableslot-placeholder"
                 id="projectNameDiv"
                 :value="projectName"
-            />
+        />
+        <div>
+            <button 
+                :id="menuUIID" 
+                href="#" 
+                tabindex="0" 
+                @click="toggleMenuOnOff"
+            >
+            &#x2630;
+            </button>    
         </div>
         <div>
             <input 
@@ -106,17 +102,23 @@ import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
 import { fileImportSupportedFormats, getEditorMenuUIID } from "@/helpers/editor";
 import $ from "jquery";
+import { Slide } from "vue-burger-menu"
 
 //////////////////////
 //     Component    //
 //////////////////////
+const maxProjetNameWidth = 150; //this value (in pixels) is used as a max-width value when computing the input text width dynamically
+
 export default Vue.extend({
     name: "Menu",
     store,
+    components: {
+        Slide,
+    },
 
     data() {
         return {
-            buttonLabel: "&#x2630;",
+            showMenu: false,
             hover: false,
             //this flag is used to "delay" the computation of the input text field's width,
             //so that the width is rightfully computed when displayed for the first time
@@ -160,6 +162,9 @@ export default Vue.extend({
                 return store.getters.getProjectName();
             },
             set(value: string) {
+                if(value.trim().length === 0){
+                    value = (this.$i18n.t("appMenu.defaultProjName") as string);
+                }
                 store.commit("setProjectName",value);
             },
         },
@@ -167,10 +172,18 @@ export default Vue.extend({
         inputTextStyle(): Record<string, string> {
             return {"width" : this.computeFitWidthValue()};
         },
+        
+        appLang: {
+            get(): string {
+                return store.getters.getAppLang();
+            },
+            set(lang: string) {
+                store.commit("setAppLang",lang);
+            }, 
+        },
     },
 
     methods: {
-
         importFile(): void {
             //users should be warned about current editor's content loss
             const confirmMsg = this.$i18n.t("appMessage.editorConfirmChangeCode");
@@ -239,22 +252,28 @@ export default Vue.extend({
             saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), store.getters.getProjectName()+".wpy");
         },
 
-        toggleMenuOnOff(): void {
-            this.buttonLabel = (this.buttonLabel === "x")? "&#x2630;" : "x" ;
+        toggleMenuOnOff(e: Event): void {
+            const isMenuOpening = (e !== undefined);
+            if(isMenuOpening) {
+                //cf online issues about vue-burger-menu https://github.com/mbj36/vue-burger-menu/issues/33
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            this.$data.showMenu = isMenuOpening;
+            store.commit("setIsAppMenuOpened", isMenuOpening);
         },
 
         computeFitWidthValue(): string {
             const placeholder = document.getElementById("projectNameDiv");
-            let width = 100;
-            const offset = 20;
+            let width = 5;
+            const offset = 2;
             if (placeholder) {
                 placeholder.textContent = this.projectName 
                 //the width is computed from the placeholder's width from which
                 //we add extra space for the cursor.
-                const calculatedWidth = (placeholder.offsetWidth + offset)
-                width = ( calculatedWidth < 250)?
-                    ((calculatedWidth < width)? width : calculatedWidth ) :
-                    250;
+                const calculatedWidth = (placeholder.offsetWidth + offset);
+                //checks that we don't go over the max width (note: no min as we don't leave an empty input possible)
+                width = (calculatedWidth > maxProjetNameWidth) ? maxProjetNameWidth : calculatedWidth;
             }
             
             return width + "px";
@@ -289,9 +308,8 @@ export default Vue.extend({
         
         // Explicit blur method for "enter" key event
         blur(): void {
-            // We are taking the focus away from the input. We are not calling 
-            // input.blur() as this propagates and closes the whole menu.
-            $("#menu").focus();
+            // We are taking the focus away from the input.
+            $("#name-input-field").blur();
         },
 
         performUndoRedo(isUndo: boolean): void {
@@ -322,39 +340,37 @@ export default Vue.extend({
 } 
 
 .project-name {
-    border: 0; 
+    border: 0;
+    padding: 0; 
     background: transparent;
     text-align:center;
 }
 
-table {
-    width: 100%
+.project-name-div {
+    margin: 0 auto;
+    display: inline;
 }
 
-td {
-    padding-bottom: 10px;
-    width: 100%;
+.project-name-div input {
+    outline: none;
+    color: #274D19;
 }
 
-a {
-    width: 100%;
-    display: inline-block;
-    text-decoration: none !important;
-    color: black !important;
+.penHidden {
+    visibility: hidden;
 }
 
-td:hover {
-    background-color: #dededebf;
+.project-impexp-div {
+    margin-left: 5%;
 }
 
-#showHideMenu{
-    border: none;
-    outline:none;
-    background-color: transparent;
-    font-size: 200%;
-    min-width: 45px;
-    color: #6c757d;
-    border-radius: 50%;
+.bm-item-list > hr {
+    margin: 0;
+}
+
+.appMenu-prefs-div {
+    margin-left: 5%;
+    color: black;
 }
 
 .undoredo-div {
@@ -368,11 +384,33 @@ td:hover {
     margin: auto;
 }
 
-.editableslot-placeholder {
-    position: absolute;
-    display: inline-block;
-    visibility: hidden;
+//the following classes are overriding the default CSS for vue-burger-menu
+.bm-cross {
+    background: #6c757d;
 }
 
+.bm-menu {
+    background-color: #e2e7e0;
+    padding-top: 25px;
+    border-right: black 1px solid;
+}
+
+ .bm-item-list {
+      color: #6d6c6a;
+      margin-left: 0%;
+      font-size: inherit;
+}
+
+.bm-item-list > * {
+      display: flex;
+      text-decoration: none;
+      padding: 0.4em;
+}
+
+.bm-item-list > * > span {
+      margin-left: 0px;
+      font-weight: 700;
+      color: white;
+}
 </style>
 

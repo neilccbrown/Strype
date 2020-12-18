@@ -122,8 +122,8 @@ export default Vue.extend({
             "keydown",
             (event: KeyboardEvent) => {
                 const tutorial = document.getElementById(getTutorialUIID());
-                if(tutorial){
-                    //if the tutorial is displayed, we don't do anything here
+                if(tutorial !== null || store.getters.isAppMenuOpened()){
+                    //if the tutorial or the application menu are displayed, we don't do anything here
                     event.preventDefault();
                     return;
                 }
@@ -149,8 +149,8 @@ export default Vue.extend({
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
                 const tutorial = document.getElementById(getTutorialUIID());
-                if(tutorial){
-                    //if the tutorial is displayed, we don't do anything here
+                if(tutorial !== null || store.getters.isAppMenuOpened()){
+                    //if the tutorial or the application menu are displayed, we don't do anything here
                     event.preventDefault();
                     return;
                 }

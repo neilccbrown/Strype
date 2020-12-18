@@ -54,6 +54,9 @@ export default new Vuex.Store({
 
         selectedFrames: [] as number[],
 
+        appLang: "en",
+
+        isAppMenuOpened: false,
     },
 
     getters: {
@@ -65,6 +68,12 @@ export default new Vuex.Store({
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
             return JSON.stringify(stateCopy);
+        },
+        getAppLang: (state) => () => {
+            return state.appLang;
+        },
+        isAppMenuOpened: (state) => () => {
+            return state.isAppMenuOpened;
         },
         getFrameObjectFromId: (state) => (frameId: number) => {
             return state.frameObjects[frameId];
@@ -474,6 +483,25 @@ export default new Vuex.Store({
     }, 
 
     mutations: {
+        setAppLang(state, lang: string) {
+            //set the language in the store first
+            Vue.set(
+                state,
+                "appLang",
+                lang
+            );
+            //then change the UI via i18n
+            i18n.locale = lang;
+        },
+
+        setIsAppMenuOpened(state, isOpened: boolean) {
+            Vue.set(
+                state,
+                "isAppMenuOpened",
+                isOpened
+            );
+        },
+
         updateStateBeforeChanges(state, release: boolean) {
             //if the flag release is true, we clear the current stateBeforeChanges value
             Vue.set(

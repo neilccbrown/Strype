@@ -50,6 +50,13 @@
     "undo": "Undo",
     "redo": "Redo"
   },
+  "appMenu": {
+    "defaultProjName": "My project",
+    "importFile": "Import from file",
+    "exportFile": "Export to file",
+    "prefs": "Preferences",
+    "lang": "Language: "
+  },
   "tutorialExplanation": {
     "commands": "Here you can find all the frames with their keyboard shortcut!",
     "codeEditor": "This is where you write your code",
