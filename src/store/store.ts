@@ -18,9 +18,9 @@ export default new Vuex.Store({
     state: {
         debugging: false,
 
-        frameObjects: /*initialTestState,*/ initialState,
+        frameObjects: /*initialTestState,//*/ initialState,
 
-        frameMap : [-1,-2,-3,1,2,3,4,5,6,7] as number[],//[] as number[], // flat map of all the frames in a sequence
+        frameMap : /*[-1,-2,-3,1,2,3,4,5,6,7] as number[],//*/[-1,1,2,-2,-3,3,4,5,6,7] as number[], // flat map of all the frames in a sequence
 
         nextAvailableId: Math.max.apply({},Object.keys(initialTestState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
 
