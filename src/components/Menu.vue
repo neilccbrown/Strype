@@ -386,31 +386,31 @@ export default Vue.extend({
 
 //the following classes are overriding the default CSS for vue-burger-menu
 .bm-cross {
-    background: #6c757d;
+    background: #6c757d !important;
 }
 
 .bm-menu {
-    background-color: #e2e7e0;
-    padding-top: 25px;
-    border-right: black 1px solid;
+    background-color: #e2e7e0 !important;
+    padding-top: 25px !important;
+    border-right: black 1px solid !important;
 }
 
  .bm-item-list {
-      color: #6d6c6a;
-      margin-left: 0%;
-      font-size: inherit;
+      color: #6d6c6a !important;
+      margin-left: 0% !important;
+      font-size: inherit !important;
 }
 
 .bm-item-list > * {
-      display: flex;
-      text-decoration: none;
-      padding: 0.4em;
+      display: flex !important;
+      text-decoration: none !important;
+      padding: 0.4em !important;
 }
 
 .bm-item-list > * > span {
-      margin-left: 0px;
-      font-weight: 700;
-      color: white;
+      margin-left: 0px !important;
+      font-weight: 700 !important;
+      color: white !important;
 }
 </style>
 
