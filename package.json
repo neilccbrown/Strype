@@ -32,6 +32,7 @@
         "vue": "^2.6.12",
         "vue-autosize-input": "^0.1.0",
         "vue-browser-detect-plugin": "^0.1.13",
+        "vue-burger-menu": "^2.0.5",
         "vue-confirm-dialog": "^1.0.2",
         "vue-i18n": "^8.17.3",
         "vue-input-autowidth": "^1.0.10",

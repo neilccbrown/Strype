@@ -20,7 +20,7 @@
             :disabled="isEditing"
             :key="'Draggagle-Body-'+this.frameId"
             @start="handleMultiDrag($event)"
-            @end="miltiDragEnd($event)"
+            @end="multiDragEnd($event)"
         >
             <Frame
                 v-for="frame in frames"
@@ -168,7 +168,7 @@ export default Vue.extend({
             }
         },   
 
-        miltiDragEnd(event: any): void {
+        multiDragEnd(event: any): void {
             store.commit("removeMultiDragStyling");
         },   
 

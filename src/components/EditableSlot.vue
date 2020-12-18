@@ -2,6 +2,7 @@
     <div class="next-to-eachother">
         <input
             type="text"
+            autocomplete="off"
             v-if="isComponentLoaded"
             :disabled="isDisabled"
             v-model="code"
@@ -259,6 +260,7 @@ export default Vue.extend({
     position: absolute;
     display: inline-block;
     visibility: hidden;
+    white-space: nowrap;
 }
 
 .popover {
