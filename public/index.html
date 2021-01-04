@@ -8,13 +8,71 @@
     <!-- Import for the fontawesome icons -->
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/all.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/v4-shims.css">
+    <script 
+      src="https://cdn.jsdelivr.net/npm/brython@3.8.10/brython.min.js">
+    </script>
+    <script 
+      src="https://cdn.jsdelivr.net/npm/brython@3.8.10/brython_stdlib.js">
+    </script>
     <title><%= htmlWebpackPlugin.options.title %></title>
   </head>
   <body>
     <noscript>
       <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
     </noscript>
+    <div onclick="brython()" id="brythonContainer"></div>  
+      <script type="text/python3">
+        from browser import document, window
+        import time
+        exec(document['userCode'].text)
+        specific = dir()
+        package = dir('__package__')
+        document['userDefined'].text = dir(a)
+      </script>
+    </div>
     <div id="app"></div>
     <!-- built files will be auto injected -->
   </body>
 </html>
+
+
+<!-- 
+
+from browser import document, window
+
+  def evalUserCode(ev):
+    if(document['option'].text == "eval"):
+      document['userDefined'].text = eval(document['userCode'].text)
+    else:
+      #document['userDefined'].text = 
+      exec(document['userCode'].text)
+
+    #document['userDefined'].text =  type(eval(document['userCode'].text))
+        
+  document['userCode'].bind("click",evalUserCode)
+  evalUserCode('')
+
+  def a(x):
+      if(x > 5):
+          return true
+      else:
+          return false
+  
+  print(a("d"))
+  print(a("6"))
+  
+  from datetime import datetime
+
+    def evalUserCode(ev):
+        print("##########")
+        print(document['userCode'].text)
+        exec(document['userCode'].text + "\ndocument['userDefined'].text = dir()")
+        #document['userDefined'].text = dir(exec(document['userCode'].text))       
+        #document['userDefined'].text = dir()
+        print(dir())
+    #document['userCode'].bind("click",evalUserCode(''))
+    #document['userCode'].bind("click",dir())
+
+    exec(document['userCode'].text)
+    document['userDefined'].text = dir()
+ -->

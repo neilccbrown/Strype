@@ -45,6 +45,10 @@
                 />
             </div>
         </div>
+        <text id="userCode"></text>
+        <br>
+        <hr/>
+        <span id="userDefined" ></span>
     </div>
 </template>
 

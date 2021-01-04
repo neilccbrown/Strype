@@ -41,8 +41,11 @@
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { CaretPosition, Definitions} from "@/types/types";
+import { CaretPosition, Definitions, FrameObject, SearchLangDefScope} from "@/types/types";
 import { getEditableSlotUIID } from "@/helpers/editor";
+import { searchLanguageElements } from "@/autocompletion/acManager";
+import Parser, {getStatementACContext} from "@/parser/parser";
+
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -98,13 +101,13 @@ export default Vue.extend({
         },
 
         code: {
-            get() {
+            get(){
                 return store.getters.getContentForFrameSlot(
                     this.$parent.$props.frameId,
                     this.$props.slotIndex
                 );
             },
-            set(value){
+            set(value: string){
                 store.dispatch(
                     "setFrameEditableSlotContent",
                     {
@@ -116,6 +119,32 @@ export default Vue.extend({
                     }
                 );
                 this.isFirstChange = false;
+
+                //get the autocompletion candidates
+                const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+                const textArea = document.getElementById("acTextArea") as HTMLTextAreaElement;
+                if(inputField && textArea){
+                    const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
+                    let contextPath = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(0, textBeforeCaret.lastIndexOf(".")) : "";
+                    let token = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(textBeforeCaret.lastIndexOf(".") + 1) : textBeforeCaret;
+               
+                    let acCandidates = ""; 
+                    let showAC = true;
+                    
+                    //workout the correct context if we are in a code editable slot
+                    const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
+                    if(frame.frameType.type !== Definitions.ImportDefinition.type){
+                        const newContext = getStatementACContext(textBeforeCaret, this.frameId);
+                        contextPath = newContext.contextPath;
+                        token = newContext.token;
+                        showAC = newContext.showAC;
+                    } 
+                    
+                    if(showAC){
+                        searchLanguageElements(token, contextPath).forEach((acElement) => acCandidates += (acElement.name + " (kind: " + acElement.kind+")\n"));
+                    }
+                    textArea.textContent = acCandidates;    
+                }
             },
         },
 
@@ -179,7 +208,40 @@ export default Vue.extend({
                     slotId: this.$props.slotIndex,
                     caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
-            );           
+            );      
+            
+            //set the language definition referential right depending on where is this editableslot
+            let scope = SearchLangDefScope.inCode;
+            let rootPath = "";
+            const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
+            if(frame.frameType.type === Definitions.ImportDefinition.type){
+                scope = (this.slotIndex > 1) 
+                    ? SearchLangDefScope.none
+                    : (this.slotIndex === 1 && frame.contentDict[0].shownLabel)
+                        ? SearchLangDefScope.importModulePart
+                        : SearchLangDefScope.importModule; 
+            }
+            else if(frame.frameType.type === Definitions.CommentDefinition.type) {
+                scope = SearchLangDefScope.none;
+            }
+            
+            if(scope === SearchLangDefScope.importModulePart){
+                rootPath = frame.contentDict[0].code;
+            }
+            
+            const textArea = document.getElementById("acTextArea") as HTMLTextAreaElement;
+            if(textArea){
+                textArea.textContent = "";
+            }
+            
+            store.commit(
+                "setCurrentLangSearchReferential",
+                {
+                    scope: scope,
+                    rootPath: rootPath,
+                }
+            );
+
         },
 
         onBlur(): void {

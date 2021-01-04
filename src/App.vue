@@ -32,6 +32,7 @@
                     />
                     <div class="col">
                         <div :id="editorUIID" class="editor-code-div" >
+                            <textarea id="acTextArea" style="width:500px"/>
                             <FrameContainer
                                 v-for="container in containerFrames"
                                 :key="container.frameType.type + '-id:' + container.id"
@@ -108,6 +109,10 @@ export default Vue.extend({
 
         commandsContainerId(): string {
             return getCommandsRightPaneContainerId();
+        },
+
+        pyCode(): string {
+            return "[1,2]";
         },
     },
 
