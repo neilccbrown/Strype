@@ -42,6 +42,7 @@
     "enableInnerDisabledFrameConfirm": "This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?"
   },
   "contextMenu": {
+    "cut": "Cut",
     "copy": "Copy",
     "duplicate": "Duplicate",
     "paste": "Paste",
