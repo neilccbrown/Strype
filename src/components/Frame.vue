@@ -124,6 +124,7 @@ export default Vue.extend({
         return {
             //prepare a "default" version of the menu: it will be amended if required in handleClick()
             frameContextMenuOptions: [
+                {name: this.$i18n.t("contextMenu.cut"), method: "cut"},
                 {name: this.$i18n.t("contextMenu.copy"), method: "copy"},
                 {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"},
                 {name: "", method: "", type: "divider"},
@@ -215,10 +216,16 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                // Copying by shortcut is only available for a frame selection.
+                // Cutting/copying by shortcut is only available for a frame selection*.
                 // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
-                if((store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c")) {
-                    this.copy();
+                // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
+                if(this.isPartOfSelection && (store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c" || event.key === "x")) {
+                    if(event.key === "c"){
+                        this.copy();
+                    }
+                    else{
+                        this.cut();
+                    }
                     event.preventDefault();
                     return;
                 }
@@ -340,6 +347,26 @@ export default Vue.extend({
                     }
                 );
             }
+        },
+
+        cut(): void {
+            //cut prepares a copy, then we delete the selection / frame copied
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "copySelection"
+                ); 
+                //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
+                store.dispatch("deleteFrames", "Delete");
+            }
+            else{
+                store.dispatch(
+                    "copyFrame",
+                    this.$props.frameId
+                );
+                //when deleting the specific frame, we place the caret below and simulate "backspace"
+                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
+                store.dispatch("deleteFrames", "Backspace");
+            }                    
         },
 
         copy(): void {
