@@ -437,6 +437,10 @@ export default new Vuex.Store({
             return state.projectName;
         },
 
+        getSelectedFrameIds: (state) => () => {
+            return state.selectedFrames;
+        },
+
         isFrameSelected: (state) => (frameId: number) => {
             return state.selectedFrames.indexOf(frameId) > -1;
         },
@@ -676,7 +680,6 @@ export default new Vuex.Store({
             if(eventType !== "removed"){
                 generateFrameMap(state.frameObjects,state.frameMap);
             }
-
         },
 
         // It may be called more than once from the same place and thus requires the editing value

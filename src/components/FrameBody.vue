@@ -13,7 +13,7 @@
 
         <Draggable
             v-model="frames"
-            group="code"
+            :group="draggableGroup"
             @change.self="handleDragAndDrop($event)"
             @unchoose="showSelectedFrames()"
             animation= "200"
@@ -21,6 +21,7 @@
             :key="'Draggagle-Body-'+this.frameId"
             @start="handleMultiDrag($event)"
             @end="multiDragEnd($event)"
+            :hasCommentsToMove="this.hasCommentsToMove"
         >
             <Frame
                 v-for="frame in frames"
@@ -75,6 +76,12 @@ export default Vue.extend({
         caretVisibility: String, //Flag indicating this caret is visible or not
     },
 
+    data() {
+        return{ 
+            hasCommentsToMove: false,
+        }
+    },
+
     computed: {
         frames: {
             get(): FrameObject[] {
@@ -90,8 +97,14 @@ export default Vue.extend({
             return (this.frames).filter((frame) => frame.isDisabled || frame.frameType.type === CommentDefinition.type).length > 0;
         },
 
-        draggableGroup(): DraggableGroupTypes {
-            return store.getters.getDraggableGroupById(this.$props.frameId); 
+        draggableGroup(): Record<string, any> {
+            return {
+                name: DraggableGroupTypes.code,
+                put: function(to: any, from: any){
+                    //Frames can be added if they are of the same group and/or only comments are being moved
+                    return from.options.hasCommentsToMove || to.options.group.name === from.options.group.name;
+                },
+            };      
         },
 
         // Needed in order to use the `CaretPosition` type in the v-show
@@ -161,10 +174,21 @@ export default Vue.extend({
         
         handleMultiDrag(event: any): void {
             const chosenFrame = this.frames[event.oldIndex];
+
             // If the frame is part of a selection
             if(store.getters.isFrameSelected(chosenFrame.id)) {
+                //update the property indicating if dragging the frames in another container is allowed: 
+                //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
+                this.$data.hasCommentsToMove = (store.getters.getSelectedFrameIds() as number[])
+                    .find((frameId) => store.getters.getFrameObjectFromId(frameId).frameType.type !== CommentDefinition.type) === undefined
+                
                 // Make it appear as the whole selection is being dragged
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
+            }
+            else{
+                //update the property indicating if dragging the frame in another container is allowed: 
+                //we check that the moving frame is a comment
+                this.$data.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
             }
         },   
 
