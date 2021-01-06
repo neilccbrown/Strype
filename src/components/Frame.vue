@@ -80,7 +80,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
-import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, Definitions } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
 
@@ -148,9 +148,7 @@ export default Vue.extend({
             return this.isJointFrame === true
                 ? {"color":"#000 !important"}
                 : {
-                    "background-color": `${
-                        (this.frameType as FramesDefinitions).colour
-                    } !important`,
+                    "background-color": `${this.getFrameBgColor()} !important`,
                     "padding-left": "2px",
                     "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
@@ -235,6 +233,16 @@ export default Vue.extend({
     },
 
     methods: {
+        getFrameBgColor(): string {
+            // In most cases, the background colour is the one defined in the frame types.
+            // The exception is for comments, which will take the same colour as their container.
+            if(this.frameType.type !== CommentDefinition.type){
+                return this.frameType.colour;
+            }
+            else{
+                return "transparent";
+            }
+        },
 
         handleClick (event: MouseEvent, action: string) {
 
