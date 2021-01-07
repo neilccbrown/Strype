@@ -1,7 +1,7 @@
 <template>
     <div class="frame-container" :style="frameStyle">
         <div class="frame-container-header">
-            <button class="frame-container-btn-collapse" :style="frameStyle" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
@@ -213,6 +213,12 @@ export default Vue.extend({
 
 .frame-container-btn-collapse {
     border-color: transparent;
+    background-color: transparent;
+    outline:none;
+}
+
+.frame-container-btn-collapse:focus {
+    outline: none;
 }
 
 .frame-container-label-span {       

@@ -32,12 +32,15 @@
                     :frameId="frameId"
                     :labels="frameType.labels"
                     class="frame-header"
+                    :frameAllowChildren="allowChildren"
+                    @toggle-show-framecontent="toggleShowFrameContent()"
                 />
                 <FrameBody
                     v-if="allowChildren"
                     :frameId="frameId"
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
+                    :showContent="this.showFrameContent"
                     ref="frameBody"
                 />
                 <CaretContainer
@@ -129,6 +132,7 @@ export default Vue.extend({
                 {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"},
                 {name: "", method: "", type: "divider"},
                 {name: this.$i18n.t("contextMenu.disable"), method: "disable"}],
+            showFrameContent: true,
         }
     },
 
@@ -242,6 +246,10 @@ export default Vue.extend({
             else{
                 return "transparent";
             }
+        },
+
+        toggleShowFrameContent() {
+            this.$data.showFrameContent = !this.$data.showFrameContent;
         },
 
         handleClick (event: MouseEvent, action: string) {
@@ -462,8 +470,6 @@ export default Vue.extend({
     border-left: 3px solid #000000 !important;
     border-right: 3px solid #000000 !important;
 }
-
-
 
 .selectedTop {
     border-top: 3px solid #000000 !important;

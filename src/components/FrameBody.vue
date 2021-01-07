@@ -11,38 +11,40 @@
             :isFrameDisabled="this.isDisabled"
         />
 
-        <Draggable
-            v-model="frames"
-            :group="draggableGroup"
-            @change.self="handleDragAndDrop($event)"
-            @unchoose="showSelectedFrames()"
-            animation= "200"
-            :disabled="isEditing"
-            :key="'Draggagle-Body-'+this.frameId"
-            @start="handleMultiDrag($event)"
-            @end="multiDragEnd($event)"
-            :hasCommentsToMove="this.hasCommentsToMove"
-        >
-            <Frame
-                v-for="frame in frames"
-                :key="frame.frameType.type  + '-id:' + frame.id"
-                :frameId="frame.id"
-                :isDisabled="frame.isDisabled"
-                :frameType="frame.frameType"
-                :isJointFrame="false"
-                :caretVisibility="frame.caretVisibility"
-                :allowChildren="frame.frameType.allowChildren"
-                class="frame content-children"
-            />
-        </Draggable>
-        <b-popover
-          v-if="empty"
-          :target="uiid"
-          :title="this.$i18n.t('errorMessage.errorTitle')"
-          triggers="hover focus"
-          placement="left"
-          :content="errorMessage"
-        ></b-popover>
+        <div v-show="showContent">
+            <Draggable
+                v-model="frames"
+                :group="draggableGroup"
+                @change.self="handleDragAndDrop($event)"
+                @unchoose="showSelectedFrames()"
+                animation= "200"
+                :disabled="isEditing"
+                :key="'Draggagle-Body-'+this.frameId"
+                @start="handleMultiDrag($event)"
+                @end="multiDragEnd($event)"
+                :hasCommentsToMove="this.hasCommentsToMove"
+            >
+                <Frame
+                    v-for="frame in frames"
+                    :key="frame.frameType.type  + '-id:' + frame.id"
+                    :frameId="frame.id"
+                    :isDisabled="frame.isDisabled"
+                    :frameType="frame.frameType"
+                    :isJointFrame="false"
+                    :caretVisibility="frame.caretVisibility"
+                    :allowChildren="frame.frameType.allowChildren"
+                    class="frame content-children"
+                />
+            </Draggable>
+            <b-popover
+            v-if="empty"
+            :target="uiid"
+            :title="this.$i18n.t('errorMessage.errorTitle')"
+            triggers="hover focus"
+            placement="left"
+            :content="errorMessage"
+            ></b-popover>
+        </div>
     </div>
 </template>
 
@@ -74,6 +76,7 @@ export default Vue.extend({
         frameId: Number,
         isDisabled: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not
+        showContent: Boolean, //flag indicating if the body's content should be hidden (UI wise)
     },
 
     data() {

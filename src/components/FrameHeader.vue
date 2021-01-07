@@ -1,5 +1,8 @@
 <template>
     <div>
+        <div class="next-to-eachother" v-if="this.frameAllowChildren">
+            <button class="frame-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+        </div>
         <div
             class="next-to-eachother"
             v-for="(item, index) in labels"
@@ -44,11 +47,26 @@ export default Vue.extend({
         labels: Array,
         frameId: Number,
         isDisabled: Boolean,
+        frameAllowChildren: Boolean,
+    },
+
+    data() {
+        return {
+            collapseButtonLabel: "\u25BC",
+        }
     },
 
     methods: {
         isLabelHidden(slotIndex: number): boolean { 
             return !store.getters.getIsCurrentFrameLabelShown(this.$props.frameId, slotIndex);
+        },
+
+        toggleCollapse(): void {
+            this.$data.isCollapsed = !this.$data.isCollapsed;
+            //update the button label
+            this.$data.collapseButtonLabel = (this.$data.isCollapsed) ? "\u25B6" : "\u25BC";
+            //update the visibilty of the frame's content
+            this.$emit("toggle-show-framecontent");
         },
     },
 });
@@ -61,5 +79,16 @@ export default Vue.extend({
 
 .hidden {
     display: none;
+}
+
+.frame-btn-collapse {
+    border-color: transparent;
+    background-color: transparent;
+    font-size: small;
+    color:rgba(0,0,0,0.25);
+}
+
+.frame-btn-collapse:focus {
+    outline: none;
 }
 </style>
