@@ -12,6 +12,7 @@ export interface FrameObject {
     isDisabled: boolean;
     isSelected: boolean;
     isVisible: boolean;
+    isContentVisible?: boolean; //this optional flag is used when a block frame is collapsed. If not set, "true" is assumed
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise

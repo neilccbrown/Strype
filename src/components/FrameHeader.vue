@@ -53,6 +53,7 @@ export default Vue.extend({
     data() {
         return {
             collapseButtonLabel: "\u25BC",
+            isCollapsed: false,
         }
     },
 
@@ -73,6 +74,10 @@ export default Vue.extend({
             this.$data.collapseButtonLabel = (this.$data.isCollapsed) ? "\u25B6" : "\u25BC";
             //update the visibilty of the frame's content
             this.$emit("toggle-show-framecontent");
+            store.dispatch(
+                "toggleFrameContentVibility",
+                {frameId: this.frameId, collapse: this.$data.isCollapsed}
+            );
         },
     },
 });
