@@ -4,14 +4,15 @@
         :class="{error: empty}"
         :id="uiid"
     >
-        <CaretContainer
+        <div v-show="showContent">
+            <CaretContainer
             :frameId="this.frameId"
             :caretVisibility="this.caretVisibility"
             :caretAssignedPosition="caretPosition.body"
             :isFrameDisabled="this.isDisabled"
-        />
+            />
 
-        <div v-show="showContent">
+        
             <Draggable
                 v-model="frames"
                 :group="draggableGroup"
@@ -44,6 +45,9 @@
             placement="left"
             :content="errorMessage"
             ></b-popover>
+        </div>
+        <div v-show="!showContent">
+            <span class="omitted-content-span">...</span>
         </div>
     </div>
 </template>
@@ -227,6 +231,13 @@ export default Vue.extend({
 
 .error {
     border: 1px solid #d66 !important;
+}
+
+.omitted-content-span {
+    margin-left: 10px;
+    font-size: x-large;
+    bottom: 5px;
+    position: relative;
 }
 
 </style>
