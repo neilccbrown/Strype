@@ -2699,7 +2699,7 @@ export default new Vuex.Store({
         
         },
 
-        toggleFrameContentVibility({commit, state}, payload: {frameId: number; collapse: boolean}) {
+        toggleFrameContentVisibility({commit, state}, payload: {frameId: number; collapse: boolean}) {
             //set the flag on the collapsed/expanded frame
             commit("setFrameContentVisibility", payload);
 

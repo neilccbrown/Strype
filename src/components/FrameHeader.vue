@@ -68,7 +68,7 @@ export default Vue.extend({
         toggleCollapse(): void {
             //update the visibilty of the frame's content
             store.dispatch(
-                "toggleFrameContentVibility",
+                "toggleFrameContentVisibility",
                 {frameId: this.frameId, collapse: this.$props.showFrameContent}
             );
         },
