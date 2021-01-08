@@ -33,14 +33,14 @@
                     :labels="frameType.labels"
                     class="frame-header"
                     :frameAllowChildren="allowChildren"
-                    @toggle-show-framecontent="toggleShowFrameContent()"
+                    :showFrameContent="showFrameContent"
                 />
                 <FrameBody
                     v-if="allowChildren"
                     :frameId="frameId"
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
-                    :showContent="this.showFrameContent"
+                    :showFrameContent="showFrameContent"
                     ref="frameBody"
                 />
                 <CaretContainer
@@ -132,7 +132,6 @@ export default Vue.extend({
                 {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"},
                 {name: "", method: "", type: "divider"},
                 {name: this.$i18n.t("contextMenu.disable"), method: "disable"}],
-            showFrameContent: true,
         }
     },
 
@@ -212,6 +211,10 @@ export default Vue.extend({
         multiDragPosition(): string {
             return store.getters.getMultiDragPosition(this.$props.frameId);
         },
+
+        showFrameContent(): boolean {
+            return store.getters.getFrameContentVisibility(this.$props.frameId);
+        },
     },
 
     mounted() {
@@ -246,10 +249,6 @@ export default Vue.extend({
             else{
                 return "transparent";
             }
-        },
-
-        toggleShowFrameContent() {
-            this.$data.showFrameContent = !this.$data.showFrameContent;
         },
 
         handleClick (event: MouseEvent, action: string) {

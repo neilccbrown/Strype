@@ -4,15 +4,13 @@
         :class="{error: empty}"
         :id="uiid"
     >
-        <div v-show="showContent">
+        <div v-if="showFrameContent">
             <CaretContainer
             :frameId="this.frameId"
             :caretVisibility="this.caretVisibility"
             :caretAssignedPosition="caretPosition.body"
             :isFrameDisabled="this.isDisabled"
-            />
-
-        
+            />        
             <Draggable
                 v-model="frames"
                 :group="draggableGroup"
@@ -46,7 +44,7 @@
             :content="errorMessage"
             ></b-popover>
         </div>
-        <div v-show="!showContent">
+        <div v-else>
             <span class="omitted-content-span">...</span>
         </div>
     </div>
@@ -80,7 +78,7 @@ export default Vue.extend({
         frameId: Number,
         isDisabled: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not
-        showContent: Boolean, //flag indicating if the body's content should be hidden (UI wise)
+        showFrameContent: Boolean, //flag indicating if the body's content should be hidden (UI wise)
     },
 
     data() {

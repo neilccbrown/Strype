@@ -484,6 +484,10 @@ export default new Vuex.Store({
         getMultiDragPosition: (state) => (frameId: number) => {
             return state.frameObjects[frameId].multiDragPosition;
         },
+
+        getFrameContentVisibility: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].isContentVisible??true;
+        },
     }, 
 
     mutations: {

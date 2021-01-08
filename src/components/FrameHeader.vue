@@ -48,18 +48,15 @@ export default Vue.extend({
         frameId: Number,
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
-    },
-
-    data() {
-        return {
-            collapseButtonLabel: "\u25BC",
-            isCollapsed: false,
-        }
+        showFrameContent: Boolean,
     },
 
     computed: {
         showCollapseButton(): boolean{
             return this.$props.frameAllowChildren && (store.getters.getFramesForParentId(this.$props.frameId).length > 0);
+        },
+        collapseButtonLabel(): string {
+            return (this.$props.showFrameContent) ? "\u25BC" : "\u25B6";
         },
     },
 
@@ -69,14 +66,10 @@ export default Vue.extend({
         },
 
         toggleCollapse(): void {
-            this.$data.isCollapsed = !this.$data.isCollapsed;
-            //update the button label
-            this.$data.collapseButtonLabel = (this.$data.isCollapsed) ? "\u25B6" : "\u25BC";
             //update the visibilty of the frame's content
-            this.$emit("toggle-show-framecontent");
             store.dispatch(
                 "toggleFrameContentVibility",
-                {frameId: this.frameId, collapse: this.$data.isCollapsed}
+                {frameId: this.frameId, collapse: this.$props.showFrameContent}
             );
         },
     },
