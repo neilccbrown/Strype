@@ -32,12 +32,15 @@
                     :frameId="frameId"
                     :labels="frameType.labels"
                     class="frame-header"
+                    :frameAllowChildren="allowChildren"
+                    :showFrameContent="showFrameContent"
                 />
                 <FrameBody
                     v-if="allowChildren"
                     :frameId="frameId"
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
+                    :showFrameContent="showFrameContent"
                     ref="frameBody"
                 />
                 <CaretContainer
@@ -207,6 +210,10 @@ export default Vue.extend({
 
         multiDragPosition(): string {
             return store.getters.getMultiDragPosition(this.$props.frameId);
+        },
+
+        showFrameContent(): boolean {
+            return store.getters.getFrameContentVisibility(this.$props.frameId);
         },
     },
 
@@ -462,8 +469,6 @@ export default Vue.extend({
     border-left: 3px solid #000000 !important;
     border-right: 3px solid #000000 !important;
 }
-
-
 
 .selectedTop {
     border-top: 3px solid #000000 !important;
