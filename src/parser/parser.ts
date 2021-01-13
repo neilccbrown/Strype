@@ -1,5 +1,6 @@
 import store from "@/store/store";
 import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
+import { functions, invokeMap } from "lodash";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import { Store } from "vuex";
 
@@ -37,29 +38,6 @@ export default class Parser {
 
         // Now remove all the keywords.
         tokens = tokens.filter((token: string)=> !keywords.includes(token));
-
-
-        // tokens.forEach( (token: string) => {
-        //     if(token.includes(".")) {
-        //        token.split(".").forEach( (name) => {
-
-        //        });
-        //     }
-        // });
-
-        
-
-        // we need to built a simple AST of the code
-        // to get all lexes and check if they exist.
-        // Or we can simply run from L-to-R and 
-        // get strings unless they are separated by 
-        // () + - * / " " == ><= !=  or space 
-
-        // if () are present, we need to know whether the symbol before is a method
-
-        // if [] are present, we need to know whether the symbol before is an array
-
-        // if {} are present, we need to know whether the symbol before is a dict
 
     }
 
@@ -197,7 +175,6 @@ export default class Parser {
         }
 
         const parsedCode = TPyParser.parse(code);
-        console.log(parsedCode);
 
         return TPyParser.findAllErrors(code);
     }
@@ -270,10 +247,10 @@ export default class Parser {
 
         let filteredCode = "";
     
-        // We need to count the num of indentations to remove indentationed lines who's parent has an error
+        // We need to count the num of indentations to remove indented lines who's parent has an error
         let previousIndents = 0;
 
-        // A flag that tells whether an error has open in a line; Used to avoid checking indentationed
+        // A flag that tells whether an error has open in a line; Used to avoid checking indented
         // -to the erroneous- lines of code
         let errorOpen = false;
         
@@ -309,59 +286,73 @@ export default class Parser {
 
         });
         
-        let output = "";
-        const indentationMap = [] as number[];
-
+        let output = "";                     // the code that will go to Brython
+        let prevIndentation = 0;             // holds the indentation of the previous line
+        const openedTryMap = [] as string[]; // For each try opened, we store the white spaces in front of it.
+  
         // Now add try/except statements around each statement and block
         // This cannot be done on the previous stage (error removal) as 
         // There may be some blocks with potentially unhandled errors by 
         // try/except, like `for:` or `import 3 from x`
-        filteredCode.split(/\r?\n/g).forEach( (line,index) => {
-            
+        filteredCode.split(/\r?\n/g).forEach( (line) => {
+
             // get all the spaces at the beginning of a line
             const spaces = line.match(/^([\s]*[?!\s]){1}/g)??[""];
             // now count the number or indentations at the beginning of the line
-            const indentationsInLine = (spaces[0]?.match(regExp) || []).length;
+            const indentationsInLine = (spaces[0]?.match(regExp) || []).length; 
 
-            // I need to check that the line is not a joint statement/block (like `else`)
-            // also that try or except is not already included
+            // Whenever the indentation count in the line is reduced, we are exiting a block statement
+            // At that incidence (and since it is not a compound AND there has been an opened try earlier)
+            // we need to close the trys with excepts
+            if( indentationsInLine < prevIndentation && !this.isCompoundStatement(line,spaces) && openedTryMap.length>0) {
 
-            const prevIndentation = ([...indentationMap].pop()||0) ;
-            // If the current indentation is greater than the prev, we are going in a child 
-            if(indentationsInLine > prevIndentation) {
-                // We have changed level and we want to add the indentation to the map
-                indentationMap.push(indentationsInLine);
+                // How many indentations we went left?
+                const indentsDiff = prevIndentation - indentationsInLine;
+
+                // For every indentation close the try and remove it from the map
+                for (let i = 0; i < indentsDiff; i++) {
+                    const tryIndent = openedTryMap.pop();
+
+                    // This case is only for exiting a function, where there is an indent diff
+                    // but there is no try opened!
+                    if(tryIndent === undefined) { 
+                        break;
+                    }
+                    output += tryIndent + "except:\n" + tryIndent + INDENT + "pass" + "\n";
+                }
             }
-            // if we are exiting the parent and we don't have a compount (e.g. elif) nor a new block (starting with `:` )
-            else if( indentationsInLine < prevIndentation && !this.isCompoundStatement(line,spaces) && !line.endsWith(":")) {
-                // here we are going up a level (to the parent) and we remove the previous indentation
-                indentationMap.pop();
-                // here we want to close the opened try statement as well
-                output += spaces +"except:\n" + spaces + INDENT + "pass" + "\n";
-            }
-            
-            // if the line is not empty AND not a compound statement
+
+            // if the line is not empty
             if(line) {
+                // Compound statements do not get an indentation, every other statement in the block does
+                const conditionalIndent = (!this.isCompoundStatement(line,spaces)) ? INDENT : "";
+                // If we add a try, we need to know how far in we are already from previous trys
+                const tryIndentation = INDENT.repeat(openedTryMap.length);
 
-                // for lvl 0 we want the try/ block except to be not indented at all
-                const conditionalIndent = ((indentationsInLine > 0)? INDENT : "");
+                // Add the try only if it's not a compound or func def
+                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces)) {
+                    output += (spaces + tryIndentation + "try:\n");
+                    console.log(spaces + tryIndentation);
+                    openedTryMap.push(spaces + tryIndentation);
+                }
+                
+                // Add the line -- we add indent only if we're not in function declaration line
+                output += 
+                    ((!this.isFunctionDef(line,spaces)) ? 
+                        (tryIndentation + conditionalIndent)
+                        :
+                        "") 
+                    + line + "\n"; // `line` includes `spaces` at its beginning
 
-                // Add the try only if it's not a compound
-                output += (!this.isCompoundStatement(line,spaces)) ?
-                    (spaces + conditionalIndent + "try:\n")
-                    :
-                    "" ;
-
-                // add the line
-                output += spaces + INDENT + line + "\n";
-
-                // add the except if the line is not a compound AND not the starting of a block
-                output += (!this.isCompoundStatement(line,spaces) && !line.endsWith(":"))?
-                    spaces  + conditionalIndent + "except:\n" + spaces + INDENT + conditionalIndent + "pass" + "\n"
-                    :
-                    "" ;
+                // Add the except if the line is not a compound AND not a func def AND not the starting of a block
+                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !line.endsWith(":")){
+                    output += spaces + tryIndentation + "except:\n" + spaces + tryIndentation + INDENT + "pass" + "\n"
+                    openedTryMap.pop();
+                }
+            
             }
-
+            // Before going to the new line, we need to store the indentation of this lines
+            prevIndentation = indentationsInLine;
         });
 
         return output;
@@ -378,134 +369,9 @@ export default class Parser {
                line.startsWith(spaces+"else") ||  // it's an else statement OR
                line.startsWith(spaces+"finally") // it's a finally statement
     }
+
+    private isFunctionDef(line: string, spaces: string[]): boolean {
+        // it's not a function definition  if
+        return line.startsWith(spaces+"def")  // it starts with a def
+    }
 }
-
-const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
-    "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
-    "==","=","!=",">=","<=","<",">"];
-
-const operatorsWithBrackets = [...operators,"(",")","[","]","{","}"];
-
-// Check every time you're in a slot and see how to show the AC
-export function getStatementACContext(slotCode: string, frameId: number): {token: string; contextPath: string; showAC: boolean} {
-    //check that we are in a literal: here returns nothing
-    //in a non terminated string literal
-    //writing a number)
-
-    // TODO, does it work for every case?
-    if((slotCode.match(/"/g) || []).length % 2 == 1 || !isNaN(parseFloat(slotCode.substr(Math.max(slotCode.lastIndexOf(" "), 0))))){
-        console.log("found a string literal or a number, nothing to do for AC")
-        return {token: "", contextPath: "", showAC: false};
-    }
-
-    //We search for a smaller unit to work with, meaning we look at:
-    //- any opened and non closed parenthesis
-    //- the presence of an operator
-    //- the presence of an argument separator
-    let closedParenthesisCount = 0, closedSqBracketCount = 0, closedCurBracketCount = 0;
-    let codeIndex = slotCode.length;
-    let breakShortCodeSearch = false;
-    while(codeIndex > 0 && !breakShortCodeSearch) {
-        codeIndex--;
-        const codeChar = slotCode.charAt(codeIndex);
-        if((codeChar === "," || operators.includes(codeChar)) && closedParenthesisCount === 0){
-            codeIndex++;
-            break;
-        }
-        else{
-            switch(codeChar){
-            case "(":
-                if(closedParenthesisCount > 0){
-                    closedParenthesisCount--;
-                }
-                else{
-                    codeIndex++;
-                    breakShortCodeSearch = true;
-                }
-                break;
-            case ")":
-                closedParenthesisCount++;
-                break;
-            case "[":
-                if(closedSqBracketCount > 0){
-                    closedSqBracketCount--;
-                }
-                else{
-                    codeIndex++;
-                    breakShortCodeSearch = true;
-                }
-                break;
-            case "]":
-                closedSqBracketCount++;
-                break;
-            case "{":
-                if(closedCurBracketCount > 0){
-                    closedCurBracketCount--;
-                }
-                else{
-                    codeIndex++;
-                    breakShortCodeSearch = true;
-                }
-                break;
-            case "}":
-                closedCurBracketCount++;
-                break;
-            }
-        }
-    }
-
-    // the code we're interested in
-    const subCode = slotCode.substr(codeIndex).replaceAll(" ","");
-    
-    // Image.a  -->  context = Image  AND  token = a
-    const token = (subCode.indexOf(".") > -1) ? subCode.substr(subCode.lastIndexOf(".") + 1) : subCode;
-    const contextPath = (subCode.indexOf(".") > -1) ? subCode.substr(0, subCode.lastIndexOf(".")) : "";
-
-    const parser = new Parser();
-    const userCode = parser.getCodeWithoutErrors(frameId);
-
-    // TODO check the Context if it is valid AND see what you can get from it.
-
-    //evaluate the Python user code 
-    const userPythonCodeHTMLElt = document.getElementById("userCode");
-    if(userPythonCodeHTMLElt){        
-        (userPythonCodeHTMLElt as HTMLSpanElement).textContent = userCode;
-        const brythonContainer = document.getElementById("brythonContainer");
-        // run the code by "clicking" the brythonContainer
-        brythonContainer?.click();
-    }
-
-
-    /*
-    //remove the nested parts of the statement that we don't need for AC
-    closedParenthesisCount = 0;
-    let keepCode = true;
-    for(codeIndex = contextPath.length-1;  codeIndex >= 0; codeIndex--){
-        if(contextPath.charAt(codeIndex) != "(" && contextPath.charAt(codeIndex) != ")"){
-            if(!keepCode){
-                contextPath = contextPath.substr(0, codeIndex).concat(contextPath.substr(codeIndex + 1));
-            }
-            else{
-                continue;
-            }
-        
-    }
-        else{
-            closedParenthesisCount+=(contextPath.charAt(codeIndex) === ")") ? 1 : -1;
-            if(!keepCode && !(closedParenthesisCount === 0 && contextPath.charAt(codeIndex) === "(")){
-                contextPath = contextPath.substr(0, codeIndex).concat(contextPath.substr(codeIndex + 1));
-            }
-            keepCode = (closedParenthesisCount === 0);
-        }
-    }
-    */
-
-    return {token: token , contextPath: contextPath, showAC: true};
-}
-
-export function getCodeForAnalysis(endFrameId: number): string {
-    
-    return "d"
-}
-
-   

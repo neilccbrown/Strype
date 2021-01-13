@@ -15,6 +15,11 @@
             @keyup.enter.prevent.stop="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
             @keyup.down.prevent.stop="onUDKeyUp($event)"
+            @keydown.prevent.stop.esc
+            @keyup.esc="onEscKeyUp($event)"
+            @keydown.prevent.stop.enter
+            @keyup.enter="onEnterKeyUp($event)"
+            @keyup="logCursorPosition()"
             :class="{editableSlot: focused, error: erroneous}"
             :id="UIID"
             :key="UIID"
@@ -35,21 +40,34 @@
             :id="placeholderUIID"
             :value="code"
         />
+        <AutoCompletion
+            v-if="focused && showAC" 
+            :slotId="UIID"
+            ref="AC"
+            :token="token"
+            :contextAC="contextAC"
+            :cursorPosition="cursorPosition"
+            @acItemClicked="acItemClicked"
+        />
     </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { CaretPosition, Definitions, FrameObject, SearchLangDefScope} from "@/types/types";
+import AutoCompletion from "@/components/AutoCompletion.vue";
+import { CaretPosition, Definitions, FrameObject, CursorPosition} from "@/types/types";
 import { getEditableSlotUIID } from "@/helpers/editor";
-import { searchLanguageElements } from "@/autocompletion/acManager";
-import Parser, {getStatementACContext} from "@/parser/parser";
-
+import { getCandidatesForAC, getFuncSignature } from "@/autocompletion/acManager";
+import getCaretCoordinates from "textarea-caret";
 
 export default Vue.extend({
     name: "EditableSlot",
     store,
+
+    components: {
+        AutoCompletion,
+    },
 
     props: {
         defaultText: String,
@@ -58,6 +76,7 @@ export default Vue.extend({
         isDisabled: Boolean,
         optionalSlot: Boolean,
     },
+
 
     beforeDestroy() {
         store.commit("removePreCompileErrors",this.UIID);
@@ -78,6 +97,13 @@ export default Vue.extend({
             //this flag is used to "delay" the computation of the input text field's width,
             //so that the width is rightfully computed when displayed for the first time
             isComponentLoaded : false,
+
+            // used to filter the AC
+            token: "",
+            contextAC: "",
+            cursorPosition: {} as CursorPosition,
+            showAC: false,
+              
         };
     },
     
@@ -122,28 +148,26 @@ export default Vue.extend({
 
                 //get the autocompletion candidates
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-                const textArea = document.getElementById("acTextArea") as HTMLTextAreaElement;
-                if(inputField && textArea){
+                if(inputField){
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
-                    let contextPath = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(0, textBeforeCaret.lastIndexOf(".")) : "";
-                    let token = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(textBeforeCaret.lastIndexOf(".") + 1) : textBeforeCaret;
+                    let contextAC = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(0, textBeforeCaret.lastIndexOf(".")) : "";
+                    let tokenAC = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(textBeforeCaret.lastIndexOf(".") + 1) : textBeforeCaret;
                
-                    let acCandidates = ""; 
-                    let showAC = true;
+                    this.showAC = true;
                     
                     //workout the correct context if we are in a code editable slot
                     const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
                     if(frame.frameType.type !== Definitions.ImportDefinition.type){
-                        const newContext = getStatementACContext(textBeforeCaret, this.frameId);
-                        contextPath = newContext.contextPath;
-                        token = newContext.token;
-                        showAC = newContext.showAC;
+                        const newContext = getCandidatesForAC(textBeforeCaret, this.frameId, this.UIID);
+                        contextAC = newContext.contextAC;
+                        tokenAC = newContext.tokenAC;
+                        this.showAC = newContext.showAC;
                     } 
                     
-                    if(showAC){
-                        searchLanguageElements(token, contextPath).forEach((acElement) => acCandidates += (acElement.name + " (kind: " + acElement.kind+")\n"));
+                    if(this.showAC){
+                        this.token = tokenAC.toLowerCase();
+                        this.contextAC = contextAC.toLowerCase();
                     }
-                    textArea.textContent = acCandidates;    
                 }
             },
         },
@@ -209,39 +233,6 @@ export default Vue.extend({
                     caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
             );      
-            
-            //set the language definition referential right depending on where is this editableslot
-            let scope = SearchLangDefScope.inCode;
-            let rootPath = "";
-            const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
-            if(frame.frameType.type === Definitions.ImportDefinition.type){
-                scope = (this.slotIndex > 1) 
-                    ? SearchLangDefScope.none
-                    : (this.slotIndex === 1 && frame.contentDict[0].shownLabel)
-                        ? SearchLangDefScope.importModulePart
-                        : SearchLangDefScope.importModule; 
-            }
-            else if(frame.frameType.type === Definitions.CommentDefinition.type) {
-                scope = SearchLangDefScope.none;
-            }
-            
-            if(scope === SearchLangDefScope.importModulePart){
-                rootPath = frame.contentDict[0].code;
-            }
-            
-            const textArea = document.getElementById("acTextArea") as HTMLTextAreaElement;
-            if(textArea){
-                textArea.textContent = "";
-            }
-            
-            store.commit(
-                "setCurrentLangSearchReferential",
-                {
-                    scope: scope,
-                    rootPath: rootPath,
-                }
-            );
-
         },
 
         onBlur(): void {
@@ -274,17 +265,59 @@ export default Vue.extend({
         },
 
         onUDKeyUp(event: KeyboardEvent) {
-
-            // In any case the focus is lost, and the caret is shown (below by default)
-            this.onBlur();
-            
-            //If the up arrow is pressed you need to move the caret as well.
-            if( event.key === "ArrowUp" ) {
-                store.dispatch(
-                    "changeCaretPosition",
-                    event.key
-                );
+            // If the AutoCompletion is on we just browse through it's contents
+            if(this.showAC) {
+                (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
             }
+            // Else we move the caret
+            else {  
+                // In any case the focus is lost, and the caret is shown (below by default)
+                this.onBlur();
+                
+                //If the up arrow is pressed you need to move the caret as well.
+                if( event.key === "ArrowUp" ) {
+                    store.dispatch(
+                        "changeCaretPosition",
+                        event.key
+                    );
+                }
+            }
+        },
+        
+        onEscKeyUp(event: KeyboardEvent) {
+            // If the AC is load we want to close it with an ESC and stay focused on the editableSlot
+            if(this.showAC) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.showAC = false;
+            }
+            // If AC is not loaded, we want to take the focus from the slot
+        },
+
+        onEnterKeyUp(event: KeyboardEvent){
+            // If the AC is load we want to select the suggestion and stay focused on the editableSlot
+            if(this.showAC) {
+                event.preventDefault();
+                event.stopPropagation();
+                // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
+                this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + (document.querySelector(".selectedAcItem") as HTMLLIElement).textContent?.trim();
+                this.showAC = false;
+            }
+            // If AC is not loaded, we want to take the focus from the slot
+        },
+
+        acItemClicked(item: string) {
+            // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
+            const selectedItem = (document.querySelector(".selectedAcItem") as HTMLLIElement).textContent?.trim()
+            this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
+            this.showAC = false;
+            getFuncSignature(selectedItem??"",this.frameId);
+        },
+
+        // store the cursor position to give it as input to AutoCompletionPopUp
+        logCursorPosition() {
+            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+            this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
         },
         
         computeFitWidthValue(): string {

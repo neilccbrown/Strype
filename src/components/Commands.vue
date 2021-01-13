@@ -48,7 +48,7 @@
         <text id="userCode"></text>
         <br>
         <hr/>
-        <span id="userDefined" ></span>
+        <span id="candidatesAC" ></span>
     </div>
 </template>
 
