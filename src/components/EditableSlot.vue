@@ -305,7 +305,7 @@ export default Vue.extend({
             }
             // If AC is not loaded, we want to take the focus from the slot
         },
-
+        
         acItemClicked(item: string) {
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
             const selectedItem = (document.querySelector(".selectedAcItem") as HTMLLIElement).textContent?.trim()

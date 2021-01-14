@@ -47,8 +47,6 @@
         </div>
         <text id="userCode"></text>
         <br>
-        <hr/>
-        <span id="candidatesAC" ></span>
     </div>
 </template>
 

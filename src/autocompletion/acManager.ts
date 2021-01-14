@@ -1,5 +1,4 @@
 import Parser from "@/parser/parser";
-import { functions } from "lodash";
 
 const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
@@ -8,6 +7,7 @@ const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
 const operatorsWithBrackets = [...operators,"(",")","[","]","{","}"];
 const operatorsWithBracketsAndSpace = [...operatorsWithBrackets," "];
 
+const INDENT = "    ";
 
 function runPythonCode(code: string): void {
 //evaluate the Python user code 
@@ -122,17 +122,17 @@ export function getCandidatesForAC(slotCode: string, frameId: number, slotId: st
     // append the line that gets all the possible names of the namespace and the context
     // The builtins will be used only if we don't have a context
     userCode += "\ntry:"
-    userCode += "\n    namesForAutocompletion="+((contextAC)?"":" dir(__builtins__) +")+" dir("+contextAC+")";
+    userCode += "\n"+INDENT+"namesForAutocompletion="+((contextAC)?"":" dir(__builtins__) +")+" dir("+contextAC+")";
     userCode += "\nexcept:\n    pass"
     // Define the slot id we are talking about
     userCode += "\ntry:"
-    userCode += "\n    slotId='popupAC"+slotId+"Span'"
+    userCode += "\n"+INDENT+"slotId='popupAC"+slotId+"ResutlsSpan'"
     // append the line that removes useless names and adds the results to the DOM
-    userCode += "\n    document[slotId].text = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]";
+    userCode += "\n"+INDENT+"document[slotId].text = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]";
     // Fake a click to the hidden span to trigger the AC window to show
-    userCode += "\n    event = window.MouseEvent.new('click')"
-    userCode += "\n    document[slotId].dispatchEvent(event)"
-    userCode += "\nexcept:\n    pass"
+    userCode += "\n"+INDENT+"event = window.MouseEvent.new('click')"
+    userCode += "\n"+INDENT+"document[slotId].dispatchEvent(event)"
+    userCode += "\nexcept:\n"+INDENT+"pass"
 
 
     console.log(userCode);
@@ -146,14 +146,21 @@ export function getFuncSignature(funcName: string, frameId: number): void {
     const parser = new Parser();
     let inspectionCode = parser.getCodeWithoutErrors(frameId);
     // console.log("%%%%%%%%%%%%%\n"+inspectionCode);
-    inspectionCode +=  "\ntry:";
-    //"\n    isProblematicType = type("+funcName+") in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset)"
-    inspectionCode += "\n    print(type("+funcName+"))";
-    inspectionCode += "\n    print(help("+funcName+"))";
-    inspectionCode += "\nexcept:\n    pass";// Exception as e:\n    print(e)";
+    inspectionCode += "\ntry:";
+    inspectionCode += "\n"+INDENT+"typeOfInput = type("+funcName+")";
+    // built-in types most likely refer to variable or values defined by the user
+    inspectionCode += "\n"+INDENT+"isBuiltInType = typeOfInput in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset)"
+    inspectionCode += "\n"+INDENT+"if not isBuiltInType:";
+
+    inspectionCode += "\n"+INDENT.repeat(2)+"documentation = help("+funcName+")";
+
+    inspectionCode += "\n"+INDENT.repeat(2)+"if documentation != None :";
+    inspectionCode += "\n"+INDENT.repeat(3)+"print(documentation)";
+    inspectionCode += "\nexcept:\n"+INDENT+"pass";// Exception as e:\n"+INDENT+"print(e)";
     console.log("________________");
     console.log(inspectionCode);
     console.log("________________");
+    
 
 
     runPythonCode(inspectionCode);

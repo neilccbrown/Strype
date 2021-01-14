@@ -18,8 +18,8 @@
             </ul>
         </div>
         <span 
-            :id="spanID"
-            :key="spanID"
+            :id="resutlsSpanID"
+            :key="resutlsSpanID"
             class="hidden"
             @click="showSuggestionsAC"
         > 
@@ -64,8 +64,8 @@ export default Vue.extend({
             return "popupAC" + this.slotId;
         },
 
-        spanID(): string {
-            return "popupAC" + this.slotId + "Span";
+        resutlsSpanID(): string {
+            return "popupAC" + this.slotId + "ResutlsSpan";
         },
 
         popupPosition(): Record<string, string> {
@@ -81,7 +81,7 @@ export default Vue.extend({
     methods: {  
         // On a fake Click -triggered by Brython's code- the suggestions popup
         showSuggestionsAC(): void {
-            const allResults = (document.getElementById(this.spanID) as HTMLSpanElement).textContent?.replaceAll("'","\"");
+            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement).textContent?.replaceAll("'","\"");
             const parsedResults: string[]= JSON.parse(allResults??"");
             this.results = parsedResults.filter( (result) => result.toLowerCase().startsWith(this.token))
         },
