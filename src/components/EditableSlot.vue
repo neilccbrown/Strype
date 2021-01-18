@@ -41,7 +41,7 @@
             :value="code"
         />
         <AutoCompletion
-            v-if="focused && showAC" 
+            v-if="true || (focused && showAC)" 
             :slotId="UIID"
             ref="AC"
             :token="token"

@@ -1,5 +1,6 @@
 <template>
     <li
+        v-show="this.item"
         :id="item"
         class="popUpItems"
         :class="selectedItem"
@@ -7,7 +8,6 @@
         @mouseout="hoverOut()"
         @mousedown.prevent.stop
         @mouseup.prevent.stop="$emit('acItemClicked',item)"
-        
     >
         {{item}}
     </li>
@@ -25,6 +25,7 @@ export default Vue.extend({
     props: {
         item: String,
         selected: Boolean,
+        isSelectable: Boolean,
     },
 
     data() {
@@ -47,7 +48,7 @@ export default Vue.extend({
 
     methods: {
         hoverOver(): void {
-            this.$data.hoveredOver = true
+            this.$data.hoveredOver = true && this.isSelectable
         },
 
         hoverOut(): void {

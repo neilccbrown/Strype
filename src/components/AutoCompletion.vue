@@ -2,32 +2,36 @@
     <div 
         v-show="results.length>0"
     >
-        <div
-            :style="popupPosition"
-            class="popup"
-        >
-            <ul>
-                <PopUpItem
-                    v-for="(item,index) in results"
-                    :id="UIID+index"
-                    :item="item"
-                    :key="UIID+index"
-                    :selected="index==selected"
-                    v-on="$listeners"
-                />
-            </ul>
-        </div>
-        <div
-            :style="popupDocumentationPosition"
-            class="popup"
-        >
-            <ul>
-                <PopUpItem
-                    :id="UIID+'documentation'"
-                    :item="this.documentation[this.selected]"
-                    :key="UIID+'documentation'"
-                />
-            </ul>
+        <div>
+            <div
+                :style="popupPosition"
+                class="popup"
+            >
+                <ul>
+                    <PopUpItem
+                        v-for="(item,index) in results"
+                        :id="UIID+index"
+                        :item="item"
+                        :key="UIID+index"
+                        :selected="index==selected"
+                        v-on="$listeners"
+                        :isSelectable="true"
+                    />
+                </ul>
+            </div>
+            <div
+                :style="popupDocumentationPosition"
+                class="popup"
+            >
+                <ul>
+                    <PopUpItem
+                        :id="UIID+'documentation'"
+                        :item="this.documentation[this.selected]"
+                        :key="UIID+'documentation'"
+                        :isSelectable="false"
+                    />
+                </ul>
+            </div>
         </div>
         <span 
             :id="resutlsSpanID"
@@ -95,17 +99,15 @@ export default Vue.extend({
 
         popupPosition(): Record<string, string> {
             return {
-                "position": "absolute",
-                "top": this.cursorPosition.top,
-                "left": this.cursorPosition.left,
+                "float" : "left",
+                "left": (this.cursorPosition.left+25)+"px",
             }; 
         },
 
         popupDocumentationPosition(): Record<string, string> {
             return {
-                "position": "absolute",
-                "top": "0",
-                "left": "0",
+                "float" : "right",
+                "right": -(this.cursorPosition.left+25)+"px",
             }; 
         },
 
@@ -147,6 +149,8 @@ export default Vue.extend({
 .popup{
     background-color: #fff;
     border:1px solid #d0d0d0;
+    position : "relative";
+    display : "inline-block";
 }
 
 ul {
