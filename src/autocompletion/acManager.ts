@@ -22,13 +22,15 @@ function runPythonCode(code: string): void {
     }
 }
 
+// Brython does not have the documentation for the built-in method 'breakpoint'; hence, we need to hardcode it
+const breakpointDocumentation = "Help on built-in function breakpoint in module builtins:\nbreakpoint(...)\nbreakpoint(*args, **kws)\n\nCall sys.breakpointhook(*args, **kws).  sys.breakpointhook() must accept\nwhatever arguments are passed.\n\nBy default, this drops you into the pdb debugger."
+
 // Check every time you're in a slot and see how to show the AC
-export function getCandidatesForAC(slotCode: string, frameId: number, slotId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
+export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
     //check that we are in a literal: here returns nothing
     //in a non terminated string literal
     //writing a number)
 
-    // TODO, does it work for every case?
     if((slotCode.match(/"/g) || []).length % 2 == 1 || !isNaN(parseFloat(slotCode.substr(Math.max(slotCode.lastIndexOf(" "), 0))))){
         console.log("found a string literal or a number, nothing to do for AC")
         return {tokenAC: "", contextAC: "", showAC: false};
@@ -117,52 +119,56 @@ export function getCandidatesForAC(slotCode: string, frameId: number, slotId: st
     */
 
     const parser = new Parser();
-    let userCode = parser.getCodeWithoutErrors(frameId);
-    
+    const userCode = parser.getCodeWithoutErrors(frameId);
+    let inspectionCode = "";
+
+    /*
+    *       STEP 1 : Run the code and get the AC results
+    */
     // append the line that gets all the possible names of the namespace and the context
     // The builtins will be used only if we don't have a context
-    userCode += "\ntry:"
-    userCode += "\n"+INDENT+"namesForAutocompletion="+((contextAC)?"":" dir(__builtins__) +")+" dir("+contextAC+")";
-    userCode += "\nexcept:\n    pass"
+    inspectionCode += "\ntry:"
+    inspectionCode += "\n"+INDENT+"namesForAutocompletion="+((contextAC)?"":" dir(__builtins__) +")+" dir("+contextAC+")";
+    inspectionCode += "\nexcept:\n"+INDENT+"pass"
     // Define the slot id we are talking about
-    userCode += "\ntry:"
-    userCode += "\n"+INDENT+"slotId='popupAC"+slotId+"ResutlsSpan'"
-    // append the line that removes useless names and adds the results to the DOM
-    userCode += "\n"+INDENT+"document[slotId].text = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]";
+    inspectionCode += "\ntry:"
+    // append the line that removes useless names and saves them to the results
+    inspectionCode += "\n"+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]";
+    inspectionCode += "\n"+INDENT+"document['"+acSpanId+"'].text = results"
     // Fake a click to the hidden span to trigger the AC window to show
-    userCode += "\n"+INDENT+"event = window.MouseEvent.new('click')"
-    userCode += "\n"+INDENT+"document[slotId].dispatchEvent(event)"
-    userCode += "\nexcept:\n"+INDENT+"pass"
+    inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')"
+    inspectionCode += "\n"+INDENT+"document['"+acSpanId+"'].dispatchEvent(event)"
+    inspectionCode += "\nexcept:\n"+INDENT+"pass"    
 
+    /*
+    *       STEP 2 : Get the documentation for each one of the results
+    */
 
-    console.log(userCode);
+    inspectionCode += "\ntry:";
+    inspectionCode += "\n"+INDENT+"documentation=[]";
+    inspectionCode += "\n"+INDENT+"for result in results:";
+    inspectionCode += "\n"+INDENT+INDENT+"typeOfResult = type(exec(result))";
+    // built-in types most likely refer to variable or values defined by the user
+    inspectionCode += "\n"+INDENT+INDENT+"isBuiltInType = typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset, type);"
+    inspectionCode += "\n"+INDENT+INDENT+"if isBuiltInType:";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Type of: '+typeOfResult.__name__);"
+    inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Function '+result+' with arguments: '+exec(result+'.__code__.co_varnames'));"
+    inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Built-in value')"
+    inspectionCode += "\n"+INDENT+INDENT+"elif result != 'breakpoint':"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(help(exec(result)).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
+    inspectionCode += "\n"+INDENT+INDENT+"else:"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(\"\"\""+breakpointDocumentation+"\"\"\");"
+    inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
+    inspectionCode += "\n"+INDENT+"event2 = window.MouseEvent.new('click')"
+    inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].dispatchEvent(event2)"
+    inspectionCode += "\nexcept:\n"+INDENT+"pass";// Exception as e:\n"+INDENT+"print(e)";
 
-    runPythonCode(userCode);
+    // console.log(inspectionCode);
+    // We need to put the user code before, so that the inspection can work on the code's results
+    runPythonCode(userCode + inspectionCode);
 
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
 
-export function getFuncSignature(funcName: string, frameId: number): void {
-    const parser = new Parser();
-    let inspectionCode = parser.getCodeWithoutErrors(frameId);
-    // console.log("%%%%%%%%%%%%%\n"+inspectionCode);
-    inspectionCode += "\ntry:";
-    inspectionCode += "\n"+INDENT+"typeOfInput = type("+funcName+")";
-    // built-in types most likely refer to variable or values defined by the user
-    inspectionCode += "\n"+INDENT+"isBuiltInType = typeOfInput in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset)"
-    inspectionCode += "\n"+INDENT+"if not isBuiltInType:";
-
-    inspectionCode += "\n"+INDENT.repeat(2)+"documentation = help("+funcName+")";
-
-    inspectionCode += "\n"+INDENT.repeat(2)+"if documentation != None :";
-    inspectionCode += "\n"+INDENT.repeat(3)+"print(documentation)";
-    inspectionCode += "\nexcept:\n"+INDENT+"pass";// Exception as e:\n"+INDENT+"print(e)";
-    console.log("________________");
-    console.log(inspectionCode);
-    console.log("________________");
-    
-
-
-    runPythonCode(inspectionCode);
-
-}

@@ -57,8 +57,8 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { CaretPosition, Definitions, FrameObject, CursorPosition} from "@/types/types";
-import { getEditableSlotUIID } from "@/helpers/editor";
-import { getCandidatesForAC, getFuncSignature } from "@/autocompletion/acManager";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
+import { getCandidatesForAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
 export default Vue.extend({
@@ -158,7 +158,7 @@ export default Vue.extend({
                     //workout the correct context if we are in a code editable slot
                     const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
                     if(frame.frameType.type !== Definitions.ImportDefinition.type){
-                        const newContext = getCandidatesForAC(textBeforeCaret, this.frameId, this.UIID);
+                        const newContext = getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
                         contextAC = newContext.contextAC;
                         tokenAC = newContext.tokenAC;
                         this.showAC = newContext.showAC;
@@ -311,7 +311,6 @@ export default Vue.extend({
             const selectedItem = (document.querySelector(".selectedAcItem") as HTMLLIElement).textContent?.trim()
             this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
             this.showAC = false;
-            getFuncSignature(selectedItem??"",this.frameId);
         },
 
         // store the cursor position to give it as input to AutoCompletionPopUp

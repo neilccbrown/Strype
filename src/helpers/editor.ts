@@ -27,28 +27,36 @@ export function getCommandsContainerUIID(): string {
     return "editorCommands";
 }
 
-export function getTutorialUIID(){
+export function getTutorialUIID(): string {
     return "tutorialComponent";
 }
 
-export function getEditorMenuUIID(){
+export function getEditorMenuUIID(): string {
     return "showHideMenu";
 } 
 
-export function getEditorButtonsContainerUIID() {
+export function getEditorButtonsContainerUIID(): string {
     return "editorButtonsContainer"
 }
 
-export function getMenuLeftPaneUIID(){
+export function getMenuLeftPaneUIID(): string {
     return "menu-bar";
 }
 
-export function getEditorMiddleUIID() {
+export function getEditorMiddleUIID(): string {
     return "editorCodeDiv";
 }
 
-export function getCommandsRightPaneContainerId() {
+export function getCommandsRightPaneContainerId(): string {
     return "commandsContainerDiv";
+}
+
+export function getAcSpanId(slotId: string): string {
+    return slotId + "_ResultsSpan";
+}
+
+export function getDocumentationSpanId(slotId: string): string {
+    return slotId + "_DocumentationSpan";
 }
 
 export const fileImportSupportedFormats: string[] = ["wpy"];

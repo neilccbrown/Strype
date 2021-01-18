@@ -11,9 +11,21 @@
                     v-for="(item,index) in results"
                     :id="UIID+index"
                     :item="item"
-                    :key="item"
+                    :key="UIID+index"
                     :selected="index==selected"
                     v-on="$listeners"
+                />
+            </ul>
+        </div>
+        <div
+            :style="popupDocumentationPosition"
+            class="popup"
+        >
+            <ul>
+                <PopUpItem
+                    :id="UIID+'documentation'"
+                    :item="this.documentation[this.selected]"
+                    :key="UIID+'documentation'"
                 />
             </ul>
         </div>
@@ -24,6 +36,13 @@
             @click="showSuggestionsAC"
         > 
         </span>
+        <span 
+            :id="documentationSpanID"
+            :key="documentationSpanID"
+            class="hidden"
+            @click="showDocumentationAC"
+        > 
+        </span>
     </div>
 </template>
 
@@ -31,7 +50,8 @@
 //////////////////////
 import Vue from "vue";
 import PopUpItem from "@/components/PopUpItem.vue";
-import { DefaultCursorPosition } from "@/types/types"
+import { DefaultCursorPosition } from "@/types/types";
+import { getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
 
 //////////////////////
 export default Vue.extend({
@@ -55,6 +75,7 @@ export default Vue.extend({
     data() {
         return {
             results: [] as string[],
+            documentation: [] as string[],
             selected: 0,
         }
     },
@@ -65,7 +86,11 @@ export default Vue.extend({
         },
 
         resutlsSpanID(): string {
-            return "popupAC" + this.slotId + "ResutlsSpan";
+            return getAcSpanId(this.slotId);
+        },
+
+        documentationSpanID(): string {
+            return getDocumentationSpanId(this.slotId);
         },
 
         popupPosition(): Record<string, string> {
@@ -73,6 +98,14 @@ export default Vue.extend({
                 "position": "absolute",
                 "top": this.cursorPosition.top,
                 "left": this.cursorPosition.left,
+            }; 
+        },
+
+        popupDocumentationPosition(): Record<string, string> {
+            return {
+                "position": "absolute",
+                "top": "0",
+                "left": "0",
             }; 
         },
 
@@ -85,6 +118,11 @@ export default Vue.extend({
             const parsedResults: string[]= JSON.parse(allResults??"");
             this.results = parsedResults.filter( (result) => result.toLowerCase().startsWith(this.token))
         },
+
+        showDocumentationAC(): void {
+            const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement).textContent?.replaceAll("'","\"")??"";
+            this.documentation = JSON.parse(allDocumentations??"");
+        },  
 
         changeSelection(delta: number): void {
             const newSelection = this.selected + delta;

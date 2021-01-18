@@ -332,7 +332,6 @@ export default class Parser {
                 // Add the try only if it's not a compound or func def
                 if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces)) {
                     output += (spaces + tryIndentation + "try:\n");
-                    console.log(spaces + tryIndentation);
                     openedTryMap.push(spaces + tryIndentation);
                 }
                 
