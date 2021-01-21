@@ -12,13 +12,12 @@
             @blur="onBlur()"
             @keyup.left.prevent.stop="onLRKeyUp($event)"
             @keyup.right.prevent.stop="onLRKeyUp($event)"
-            @keyup.enter.prevent.stop="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
             @keyup.down.prevent.stop="onUDKeyUp($event)"
             @keydown.prevent.stop.esc
             @keyup.esc="onEscKeyUp($event)"
             @keydown.prevent.stop.enter
-            @keyup.enter="onEnterKeyUp($event)"
+            @keyup.enter.prevent.stop="onEnterKeyUp($event)"
             @keyup="logCursorPosition()"
             :class="{editableSlot: focused, error: erroneous}"
             :id="UIID"
@@ -41,7 +40,7 @@
             :value="code"
         />
         <AutoCompletion
-            v-if="true || (focused && showAC)" 
+            v-if="focused && showAC" 
             :slotId="UIID"
             ref="AC"
             :token="token"
@@ -236,6 +235,7 @@ export default Vue.extend({
         },
 
         onBlur(): void {
+            this.showAC = false;
             store.dispatch(
                 "updateErrorsOnSlotValidation",
                 {
@@ -304,11 +304,14 @@ export default Vue.extend({
                 this.showAC = false;
             }
             // If AC is not loaded, we want to take the focus from the slot
+            else {
+                this.onLRKeyUp(event);
+            }
         },
         
-        acItemClicked(item: string) {
+        acItemClicked() {
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-            const selectedItem = (document.querySelector(".selectedAcItem") as HTMLLIElement).textContent?.trim()
+            const selectedItem = (document.querySelector(".hoveredAcItem") as HTMLLIElement).textContent?.trim()
             this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
             this.showAC = false;
         },

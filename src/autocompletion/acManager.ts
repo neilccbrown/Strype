@@ -180,11 +180,9 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
     inspectionCode += "\n"+INDENT+"event2 = window.MouseEvent.new('click')"
     inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].dispatchEvent(event2)"
-    inspectionCode += "\nexcept:\n"+INDENT+"pass";// Exception as e:\n"+INDENT+"print(e)";
+    inspectionCode += "\nexcept:\n"+INDENT+"pass";
 
-    // console.log(inspectionCode);
     // We need to put the user code before, so that the inspection can work on the code's results
-
     runPythonCode(userCode + inspectionCode);
 
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};

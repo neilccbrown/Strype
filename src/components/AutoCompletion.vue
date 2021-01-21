@@ -23,7 +23,7 @@
                 :style="popupDocumentationPosition"
                 class="popup"
             >
-                <ul>
+                <ul class="limitWidthUl">
                     <PopUpItem
                         :id="UIID+'documentation'"
                         :item="this.documentation[this.selected]"
@@ -151,6 +151,10 @@ export default Vue.extend({
     border:1px solid #d0d0d0;
     position : "relative";
     display : "inline-block";
+}
+
+.limitWidthUl{
+    max-width: 300px;
 }
 
 ul {
