@@ -20,10 +20,13 @@
     <noscript>
       <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
     </noscript>
+    <!-- scripts for autocompletion's file launched at app start-->
+    <script type="text/python3"
+      src="<%= BASE_URL %>/microbit.py">
+    </script>
     <div onclick="brython()" id="brythonContainer"></div>  
-      <script type="text/python3">
-        from browser import document, window
-        exec(document['userCode'].text)
+      <script type="text/python3">from browser import document, window
+exec(document['userCode'].text)
       </script>
     </div>
     <div id="app"></div>
