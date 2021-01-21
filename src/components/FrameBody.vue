@@ -4,44 +4,49 @@
         :class="{error: empty}"
         :id="uiid"
     >
-        <CaretContainer
+        <div v-if="showFrameContent">
+            <CaretContainer
             :frameId="this.frameId"
             :caretVisibility="this.caretVisibility"
             :caretAssignedPosition="caretPosition.body"
             :isFrameDisabled="this.isDisabled"
-        />
-
-        <Draggable
-            v-model="frames"
-            group="code"
-            @change.self="handleDragAndDrop($event)"
-            @unchoose="showSelectedFrames()"
-            animation= "200"
-            :disabled="isEditing"
-            :key="'Draggagle-Body-'+this.frameId"
-            @start="handleMultiDrag($event)"
-            @end="multiDragEnd($event)"
-        >
-            <Frame
-                v-for="frame in frames"
-                :key="frame.frameType.type  + '-id:' + frame.id"
-                :frameId="frame.id"
-                :isDisabled="frame.isDisabled"
-                :frameType="frame.frameType"
-                :isJointFrame="false"
-                :caretVisibility="frame.caretVisibility"
-                :allowChildren="frame.frameType.allowChildren"
-                class="frame content-children"
-            />
-        </Draggable>
-        <b-popover
-          v-if="empty"
-          :target="uiid"
-          :title="this.$i18n.t('errorMessage.errorTitle')"
-          triggers="hover focus"
-          placement="left"
-          :content="errorMessage"
-        ></b-popover>
+            />        
+            <Draggable
+                v-model="frames"
+                :group="draggableGroup"
+                @change.self="handleDragAndDrop($event)"
+                @unchoose="showSelectedFrames()"
+                animation= "200"
+                :disabled="isEditing"
+                :key="'Draggagle-Body-'+this.frameId"
+                @start="handleMultiDrag($event)"
+                @end="multiDragEnd($event)"
+                :hasCommentsToMove="this.hasCommentsToMove"
+            >
+                <Frame
+                    v-for="frame in frames"
+                    :key="frame.frameType.type  + '-id:' + frame.id"
+                    :frameId="frame.id"
+                    :isDisabled="frame.isDisabled"
+                    :frameType="frame.frameType"
+                    :isJointFrame="false"
+                    :caretVisibility="frame.caretVisibility"
+                    :allowChildren="frame.frameType.allowChildren"
+                    class="frame content-children"
+                />
+            </Draggable>
+            <b-popover
+            v-if="empty"
+            :target="uiid"
+            :title="this.$i18n.t('errorMessage.errorTitle')"
+            triggers="hover focus"
+            placement="left"
+            :content="errorMessage"
+            ></b-popover>
+        </div>
+        <div v-else>
+            <span class="omitted-content-span">...</span>
+        </div>
     </div>
 </template>
 
@@ -73,6 +78,13 @@ export default Vue.extend({
         frameId: Number,
         isDisabled: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not
+        showFrameContent: Boolean, //flag indicating if the body's content should be hidden (UI wise)
+    },
+
+    data() {
+        return{ 
+            hasCommentsToMove: false,
+        }
     },
 
     computed: {
@@ -90,8 +102,14 @@ export default Vue.extend({
             return (this.frames).filter((frame) => frame.isDisabled || frame.frameType.type === CommentDefinition.type).length > 0;
         },
 
-        draggableGroup(): DraggableGroupTypes {
-            return store.getters.getDraggableGroupById(this.$props.frameId); 
+        draggableGroup(): Record<string, any> {
+            return {
+                name: DraggableGroupTypes.code,
+                put: function(to: any, from: any){
+                    //Frames can be added if they are of the same group and/or only comments are being moved
+                    return from.options.hasCommentsToMove || to.options.group.name === from.options.group.name;
+                },
+            };      
         },
 
         // Needed in order to use the `CaretPosition` type in the v-show
@@ -161,10 +179,21 @@ export default Vue.extend({
         
         handleMultiDrag(event: any): void {
             const chosenFrame = this.frames[event.oldIndex];
+
             // If the frame is part of a selection
             if(store.getters.isFrameSelected(chosenFrame.id)) {
+                //update the property indicating if dragging the frames in another container is allowed: 
+                //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
+                this.$data.hasCommentsToMove = (store.getters.getSelectedFrameIds() as number[])
+                    .find((frameId) => store.getters.getFrameObjectFromId(frameId).frameType.type !== CommentDefinition.type) === undefined
+                
                 // Make it appear as the whole selection is being dragged
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
+            }
+            else{
+                //update the property indicating if dragging the frame in another container is allowed: 
+                //we check that the moving frame is a comment
+                this.$data.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
             }
         },   
 
@@ -200,6 +229,13 @@ export default Vue.extend({
 
 .error {
     border: 1px solid #d66 !important;
+}
+
+.omitted-content-span {
+    margin-left: 10px;
+    font-size: x-large;
+    bottom: 5px;
+    position: relative;
 }
 
 </style>

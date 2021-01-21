@@ -32,12 +32,15 @@
                     :frameId="frameId"
                     :labels="frameType.labels"
                     class="frame-header"
+                    :frameAllowChildren="allowChildren"
+                    :showFrameContent="showFrameContent"
                 />
                 <FrameBody
                     v-if="allowChildren"
                     :frameId="frameId"
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
+                    :showFrameContent="showFrameContent"
                     ref="frameBody"
                 />
                 <CaretContainer
@@ -80,7 +83,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
-import { FramesDefinitions, DefaultFramesDefinition, CaretPosition, Definitions } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
 
@@ -124,6 +127,7 @@ export default Vue.extend({
         return {
             //prepare a "default" version of the menu: it will be amended if required in handleClick()
             frameContextMenuOptions: [
+                {name: this.$i18n.t("contextMenu.cut"), method: "cut"},
                 {name: this.$i18n.t("contextMenu.copy"), method: "copy"},
                 {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"},
                 {name: "", method: "", type: "divider"},
@@ -147,9 +151,7 @@ export default Vue.extend({
             return this.isJointFrame === true
                 ? {"color":"#000 !important"}
                 : {
-                    "background-color": `${
-                        (this.frameType as FramesDefinitions).colour
-                    } !important`,
+                    "background-color": `${this.getFrameBgColor()} !important`,
                     "padding-left": "2px",
                     "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
@@ -209,16 +211,26 @@ export default Vue.extend({
         multiDragPosition(): string {
             return store.getters.getMultiDragPosition(this.$props.frameId);
         },
+
+        showFrameContent(): boolean {
+            return store.getters.getFrameContentVisibility(this.$props.frameId);
+        },
     },
 
     mounted() {
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                // Copying by shortcut is only available for a frame selection.
+                // Cutting/copying by shortcut is only available for a frame selection*.
                 // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
-                if((store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c")) {
-                    this.copy();
+                // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
+                if(this.isPartOfSelection && (store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c" || event.key === "x")) {
+                    if(event.key === "c"){
+                        this.copy();
+                    }
+                    else{
+                        this.cut();
+                    }
                     event.preventDefault();
                     return;
                 }
@@ -228,6 +240,16 @@ export default Vue.extend({
     },
 
     methods: {
+        getFrameBgColor(): string {
+            // In most cases, the background colour is the one defined in the frame types.
+            // The exception is for comments, which will take the same colour as their container.
+            if(this.frameType.type !== CommentDefinition.type){
+                return this.frameType.colour;
+            }
+            else{
+                return "transparent";
+            }
+        },
 
         handleClick (event: MouseEvent, action: string) {
 
@@ -342,6 +364,26 @@ export default Vue.extend({
             }
         },
 
+        cut(): void {
+            //cut prepares a copy, then we delete the selection / frame copied
+            if(this.isPartOfSelection){
+                store.dispatch(
+                    "copySelection"
+                ); 
+                //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
+                store.dispatch("deleteFrames", "Delete");
+            }
+            else{
+                store.dispatch(
+                    "copyFrame",
+                    this.$props.frameId
+                );
+                //when deleting the specific frame, we place the caret below and simulate "backspace"
+                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
+                store.dispatch("deleteFrames", "Backspace");
+            }                    
+        },
+
         copy(): void {
             if(this.isPartOfSelection){
                 store.dispatch(
@@ -427,8 +469,6 @@ export default Vue.extend({
     border-left: 3px solid #000000 !important;
     border-right: 3px solid #000000 !important;
 }
-
-
 
 .selectedTop {
     border-top: 3px solid #000000 !important;

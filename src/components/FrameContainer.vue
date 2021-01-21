@@ -1,7 +1,7 @@
 <template>
     <div class="frame-container" :style="frameStyle">
         <div class="frame-container-header">
-            <button class="frame-container-btn-collapse" :style="frameStyle" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
@@ -23,6 +23,7 @@
                 :id="'Draggagle-Container-'+this.frameId"
                 @start ="handleMultiDrag($event)"
                 @end="multiDragEnd($event)"
+                :hasCommentsToMove="this.hasCommentsToMove"
             >
                 <Frame 
                     v-for="frame in frames" 
@@ -49,7 +50,7 @@ import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import store from "@/store/store";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject, DraggableGroupTypes, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions } from "@/types/types";
+import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions, CommentDefinition } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -77,6 +78,7 @@ export default Vue.extend({
             },
             isCollapsed: false,
             overCaret: false,
+            hasCommentsToMove: false,
         }
     },
 
@@ -101,8 +103,14 @@ export default Vue.extend({
             },    
         },
 
-        draggableGroup(): DraggableGroupTypes {
-            return store.getters.getDraggableGroupById(this.$props.frameId); 
+        draggableGroup(): Record<string, any> {
+            return {
+                name: store.getters.getDraggableGroupById(this.$props.frameId),
+                put: function(to: any, from: any){
+                    //Frames can be added if they are of the same group and/or only comments are being move
+                    return from.options.hasCommentsToMove || to.options.group.name === from.options.group.name;
+                },
+            };         
         },
         
         // Needed in order to use the `CaretPosition` type in the v-show
@@ -163,10 +171,21 @@ export default Vue.extend({
         
         handleMultiDrag(event: any): void {
             const chosenFrame = this.frames[event.oldIndex];
+
             // If the frame is part of a selection
             if(store.getters.isFrameSelected(chosenFrame.id)) {
+                //update the property indicating if dragging the frames in another container is allowed: 
+                //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
+                this.$data.hasCommentsToMove = (store.getters.getSelectedFrameIds() as number[])
+                    .find((frameId) => store.getters.getFrameObjectFromId(frameId).frameType.type !== CommentDefinition.type) === undefined
+                
                 // Make it appear as the whole selection is being dragged
                 store.dispatch("prepareForMultiDrag",chosenFrame.id);
+            }
+            else{
+                //update the property indicating if dragging the frame in another container is allowed: 
+                //we check that the moving frame is a comment
+                this.$data.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
             }
         },   
 
@@ -194,6 +213,12 @@ export default Vue.extend({
 
 .frame-container-btn-collapse {
     border-color: transparent;
+    background-color: transparent;
+    outline:none;
+}
+
+.frame-container-btn-collapse:focus {
+    outline: none;
 }
 
 .frame-container-label-span {       

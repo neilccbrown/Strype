@@ -148,6 +148,11 @@ export default Vue.extend({
                 if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     event.preventDefault();
                 }
+
+                //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")
+                if(!store.getters.getIsEditing() && event.key.match(/[a-z A-Z]/)){
+                    event.preventDefault();
+                }
             }
         );
         
