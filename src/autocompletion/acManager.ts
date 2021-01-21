@@ -1,7 +1,4 @@
 import Parser from "@/parser/parser";
-// import $ from "jquery";
-import axios from "axios";
-import cheerio from "cheerio";
 
 const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
@@ -23,20 +20,6 @@ function runPythonCode(code: string): void {
         // run the code by "clicking" the brythonContainer
         brythonContainer?.click();
     }
-}
-
-
-async function loadWePage() {
-
-    const url = "https://www.reddit.com/r/programming.json";
-
-    const response = await axios.get(url);
-
-    const $ = cheerio.load(response.data);
-
-    const genre = $("h1").text();
-
-    console.log(genre);
 }
 
 // Brython does not have the documentation for the built-in method 'breakpoint'; hence, we need to hardcode it

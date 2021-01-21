@@ -322,8 +322,8 @@ export default class Parser {
                 }
             }
 
-            // if the line is not empty and comprised only from white spaces
-            if(line && !(/\s/.test(line))) {
+            // if the line is not empty and not comprised only from white spaces
+            if(line && (/\S/.test(line))) {
                 // Compound statements do not get an indentation, every other statement in the block does
                 const conditionalIndent = (!this.isCompoundStatement(line,spaces)) ? INDENT : "";
                 // If we add a try, we need to know how far in we are already from previous trys
