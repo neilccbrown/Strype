@@ -59,4 +59,4 @@ export function getDocumentationSpanId(slotId: string): string {
     return slotId + "_DocumentationSpan";
 }
 
-export const fileImportSupportedFormats: string[] = ["wpy"];
+export const fileImportSupportedFormats: string[] = ["spy"];
