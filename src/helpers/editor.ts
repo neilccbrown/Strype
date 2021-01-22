@@ -7,6 +7,10 @@ export function getEditableSlotUIID(frameId: number, slotIndex: number): string 
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
 }
 
+export function getEditableSlotHiddenSpanUIID(frameId: number, slotIndex: number): string  {
+    return getEditableSlotUIID(frameId,slotIndex)+"_hiddenSpan";
+}
+
 export function getFrameContainerUIID(frameIndex: number): string {
     return "FrameContainer_" + frameIndex;
 }

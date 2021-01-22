@@ -110,9 +110,6 @@ export default Vue.extend({
             return getCommandsRightPaneContainerId();
         },
 
-        pyCode(): string {
-            return "[1,2]";
-        },
     },
 
     created() {

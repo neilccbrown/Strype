@@ -48,6 +48,11 @@
             :cursorPosition="cursorPosition"
             @acItemClicked="acItemClicked"
         />
+        <span 
+            :id="hiddenSpanId"
+            @click="noACtoShow"
+        >
+        </span>
     </div>
 </template>
 
@@ -56,7 +61,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { CaretPosition, Definitions, FrameObject, CursorPosition} from "@/types/types";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getEditableSlotHiddenSpanUIID } from "@/helpers/editor";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
@@ -145,9 +150,12 @@ export default Vue.extend({
                 );
                 this.isFirstChange = false;
 
-                //get the autocompletion candidates
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-                if(inputField){
+                const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
+
+                // if the imput field exists and it is not a comment
+                if(inputField && frame.frameType.type !== Definitions.CommentDefinition.type){
+                    //get the autocompletion candidates
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
                     let contextAC = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(0, textBeforeCaret.lastIndexOf(".")) : "";
                     let tokenAC = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(textBeforeCaret.lastIndexOf(".") + 1) : textBeforeCaret;
@@ -155,12 +163,11 @@ export default Vue.extend({
                     this.showAC = true;
                     
                     //workout the correct context if we are in a code editable slot
-                    const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
                     if(frame.frameType.type !== Definitions.ImportDefinition.type){
-                        const newContext = getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
-                        contextAC = newContext.contextAC;
-                        tokenAC = newContext.tokenAC;
-                        this.showAC = newContext.showAC;
+                        const resultsAC = getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), this.hiddenSpanId);
+                        contextAC = resultsAC.contextAC;
+                        tokenAC = resultsAC.tokenAC;
+                        this.showAC = resultsAC.showAC;
                     } 
                     
                     if(this.showAC){
@@ -187,6 +194,10 @@ export default Vue.extend({
 
         UIID(): string {
             return getEditableSlotUIID(this.$props.frameId, this.$props.slotIndex);
+        },
+
+        hiddenSpanId(): string {
+            return getEditableSlotHiddenSpanUIID(this.$props.frameId, this.$props.slotIndex);
         },
 
         errorMessage(): string{
@@ -285,17 +296,18 @@ export default Vue.extend({
         },
         
         onEscKeyUp(event: KeyboardEvent) {
-            // If the AC is load we want to close it with an ESC and stay focused on the editableSlot
+            // If the AC is loaded we want to close it with an ESC and stay focused on the editableSlot
             if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.showAC = false;
             }
             // If AC is not loaded, we want to take the focus from the slot
+            // when we reach at here, the "esc" key event is just propagated and acts as normal
         },
 
         onEnterKeyUp(event: KeyboardEvent){
-            // If the AC is load we want to select the suggestion and stay focused on the editableSlot
+            // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
             if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -313,6 +325,13 @@ export default Vue.extend({
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
             const selectedItem = (document.querySelector(".hoveredAcItem") as HTMLLIElement).textContent?.trim()
             this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
+            this.showAC = false;
+        },
+
+        noACtoShow() {
+            // we turn the `showAC` off so that the system knows that there is nothing to show.
+            // It has to be done this way as the Brython code runs slower than JS code,
+            // And thus the acManager cannot know if there will be results from the AC
             this.showAC = false;
         },
 

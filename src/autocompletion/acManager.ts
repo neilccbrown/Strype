@@ -26,7 +26,7 @@ function runPythonCode(code: string): void {
 const breakpointDocumentation = "Help on built-in function breakpoint in module builtins:\nbreakpoint(...)\nbreakpoint(*args, **kws)\n\nCall sys.breakpointhook(*args, **kws).  sys.breakpointhook() must accept\nwhatever arguments are passed.\n\nBy default, this drops you into the pdb debugger."
 
 // Check every time you're in a slot and see how to show the AC
-export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
+export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string, hiddenSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
     //check that we are in a literal: here returns nothing
     //in a non terminated string literal
     //writing a number)
@@ -133,12 +133,17 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     // Define the slot id we are talking about
     inspectionCode += "\ntry:"
     // append the line that removes useless names and saves them to the results
-    inspectionCode += "\n"+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]";
-    inspectionCode += "\n"+INDENT+"document['"+acSpanId+"'].text = results"
+    inspectionCode += "\n"+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]"
+    // If there are no results, we notify the hidden span that there is no AC available
+    inspectionCode += "\n"+INDENT+"if(len(results)>0):"
+    inspectionCode += "\n"+INDENT+INDENT+"event = window.MouseEvent.new('click')"
+    inspectionCode += "\n"+INDENT+INDENT+"document['"+hiddenSpanId+"'].dispatchEvent(event)"
+    inspectionCode += "\n"+INDENT+"else:"
+    inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text = results"
     // Fake a click to the hidden span to trigger the AC window to show
-    inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')"
-    inspectionCode += "\n"+INDENT+"document['"+acSpanId+"'].dispatchEvent(event)"
-    inspectionCode += "\nexcept:\n"+INDENT+"pass"    
+    inspectionCode += "\n"+INDENT+INDENT+"event1 = window.MouseEvent.new('click')"
+    inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].dispatchEvent(event1)"
+    inspectionCode += "\nexcept:\n"+INDENT+"pass" 
 
     /*
     *       STEP 2 : Get the documentation for each one of the results

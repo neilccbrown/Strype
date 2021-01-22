@@ -129,6 +129,7 @@ export default Vue.extend({
         changeSelection(delta: number): void {
             const newSelection = this.selected + delta;
             // The following frames the newSelectionIndex to the results array (it's like a modulo that works for negative numbers as well)
+            // It frames ANY number (negative or positive) to the bounds of [0 ... Results.length()]
             this.selected = (((newSelection)%this.results.length)+this.results.length)%this.results.length;
 
             // now scroll to the selected view

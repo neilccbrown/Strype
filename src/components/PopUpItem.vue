@@ -42,7 +42,7 @@ export default Vue.extend({
                 this.selected? 
                     "selectedAcItem"
                     :
-                    "unselectedAcItem" 
+                    "" 
         },
     },
 
@@ -59,20 +59,14 @@ export default Vue.extend({
 });
 </script>
 
-
 <style lang="scss">
 .selectedAcItem {
     background-color: #5a7bfc;
     color: white;
 }
 
-.unselectedAcItem {
-
-}
-
 .hoveredAcItem {
      background-color: #9aaefd;
 }
-
 </style>
 

@@ -46,9 +46,6 @@
             </div>
         </div>
         <text id="userCode"></text>
-        <br>
-        <text id="document"></text>
-        <br>
     </div>
 </template>
 
