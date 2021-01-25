@@ -375,7 +375,8 @@ export default class Parser {
         return line.startsWith(spaces+"elif ") ||  // it's an elif statement OR
                line.startsWith(spaces+"else:") ||  // it's an else statement OR
                line.startsWith(spaces+"finally:") // it's a finally statement
-               
+        
+        // We do not have to check try and except here as they are checked by getCodeWithoutErrors       
     }
 
     private isTryOrExcept(line: string, spaces: string[]): boolean {
