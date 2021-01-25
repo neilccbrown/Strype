@@ -53,6 +53,7 @@
                 :id="menuUIID" 
                 href="#" 
                 tabindex="0" 
+                class="show-menu-btn"
                 @click="toggleMenuOnOff"
             >
             &#x2630;
@@ -338,6 +339,16 @@ export default Vue.extend({
 .editor-file-input {
     display: none;
 } 
+
+.show-menu-btn{
+    border: none;
+    outline:none;
+    background-color: transparent;
+    font-size: 200%;
+    min-width: 45px;
+    color: #6c757d;
+    border-radius: 50%;
+}
 
 .project-name {
     border: 0;
