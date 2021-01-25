@@ -1,10 +1,3 @@
-class __OSInfo:
-    sysname=""
-    nodename=""
-    release=""
-    version=""
-    machine=""
-
 def listdir():
     return ["",""]
 def remove(_filename_):
@@ -12,4 +5,6 @@ def remove(_filename_):
 def size(_filename_):
     return 0
 def uname():
-    return __OSInfo()
+    import collections
+    __OSInf = collections.namedtuple("type",("sysname","nodename","release","version","machine"))
+    return __OSInf("","","","","")
