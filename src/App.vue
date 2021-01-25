@@ -109,6 +109,7 @@ export default Vue.extend({
         commandsContainerId(): string {
             return getCommandsRightPaneContainerId();
         },
+
     },
 
     created() {

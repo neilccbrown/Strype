@@ -725,4 +725,22 @@ export interface ElementDef {
     needNS?: boolean; // this flag indicates if a module name needs to be used within the code (ex for "import microbit", users need to write "microbit.xxxx" in code)
     hide?: boolean; //if this flag is true for a class, the class name cannot appear in AC, but its methods/variables can.
     super?: string[]; //for classes, the super classes' paths of that class.
+    target?: string; //for objects that are referred without namespace: gets the full path
 }
+
+export interface LibraryPath {
+    name: string;
+    aliasFor: string;
+}
+
+export interface CursorPosition {
+    top: number;
+    left: number;
+    height: number;
+}
+
+export const DefaultCursorPosition: CursorPosition = {
+    top: 0,
+    left: 0,
+    height: 0,
+};

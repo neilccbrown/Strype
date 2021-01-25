@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, LibraryPath, ElementDef } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import initialTestState from "@/store/initial-test-state";
@@ -16,11 +16,11 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
     state: {
-        debugging: false,
+        debugging: true,
 
-        frameObjects: /*initialTestState,//*/ initialState,
+        frameObjects: initialTestState,//*/ initialState,
 
-        frameMap : /*[-1,-2,-3,1,2,3,4,5,6,7] as number[],//*/[-1,1,2,-2,-3,3,4,5,6,7,8,9,10,11,14,15,12,16,13,17] as number[], // flat map of all the frames in a sequence
+        frameMap : [-1,-2,-3,1,2,3,4,5,6,7] as number[],//[-1,1,2,-2,-3,3,4,5,6,7,8,9,10,11,14,15,12,16,13,17] as number[], // flat map of all the frames in a sequence
 
         nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
 
@@ -57,6 +57,7 @@ export default new Vuex.Store({
         appLang: "en",
 
         isAppMenuOpened: false,
+    
     },
 
     getters: {
@@ -2714,6 +2715,7 @@ export default new Vuex.Store({
             }
         },
     },
+    
     modules: {},
 });
 

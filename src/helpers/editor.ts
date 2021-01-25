@@ -7,6 +7,10 @@ export function getEditableSlotUIID(frameId: number, slotIndex: number): string 
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
 }
 
+export function getEditableSlotHiddenSpanUIID(frameId: number, slotIndex: number): string  {
+    return getEditableSlotUIID(frameId,slotIndex)+"_hiddenSpan";
+}
+
 export function getFrameContainerUIID(frameIndex: number): string {
     return "FrameContainer_" + frameIndex;
 }
@@ -27,28 +31,36 @@ export function getCommandsContainerUIID(): string {
     return "editorCommands";
 }
 
-export function getTutorialUIID(){
+export function getTutorialUIID(): string {
     return "tutorialComponent";
 }
 
-export function getEditorMenuUIID(){
+export function getEditorMenuUIID(): string {
     return "showHideMenu";
 } 
 
-export function getEditorButtonsContainerUIID() {
+export function getEditorButtonsContainerUIID(): string {
     return "editorButtonsContainer"
 }
 
-export function getMenuLeftPaneUIID(){
+export function getMenuLeftPaneUIID(): string {
     return "menu-bar";
 }
 
-export function getEditorMiddleUIID() {
+export function getEditorMiddleUIID(): string {
     return "editorCodeDiv";
 }
 
-export function getCommandsRightPaneContainerId() {
+export function getCommandsRightPaneContainerId(): string {
     return "commandsContainerDiv";
 }
 
-export const fileImportSupportedFormats: string[] = ["wpy"];
+export function getAcSpanId(slotId: string): string {
+    return slotId + "_ResultsSpan";
+}
+
+export function getDocumentationSpanId(slotId: string): string {
+    return slotId + "_DocumentationSpan";
+}
+
+export const fileImportSupportedFormats: string[] = ["spy"];

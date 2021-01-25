@@ -1,18 +1,19 @@
 import store from "@/store/store";
 import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
+import { functions, invokeMap } from "lodash";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import { Store } from "vuex";
 
 const INDENT = "    ";
-
 const DISABLEDFRAMES_FLAG =  "\"\"\"";
-let isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
-let disabledBlockIndent = "";
 
 export default class Parser {
-
+    private stopAtFrameId = -100; // default value to indicate there is no stop
+    private exitFlag = false; // becomes true when the stopAtFrameId is reached.
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
     private line = 0;
+    private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
+    private disabledBlockIndent = "";
 
     private parseSlot(slot: string, position: number) {
         // This method parses semantically, by checking that every
@@ -38,57 +39,42 @@ export default class Parser {
         // Now remove all the keywords.
         tokens = tokens.filter((token: string)=> !keywords.includes(token));
 
-
-        // tokens.forEach( (token: string) => {
-        //     if(token.includes(".")) {
-        //        token.split(".").forEach( (name) => {
-
-        //        });
-        //     }
-        // });
-
-        
-
-        // we need to built a simple AST of the code
-        // to get all lexes and check if they exist.
-        // Or we can simply run from L-to-R and 
-        // get strings unless they are separated by 
-        // () + - * / " " == ><= !=  or space 
-
-        // if () are present, we need to know whether the symbol before is a method
-
-        // if [] are present, we need to know whether the symbol before is an array
-
-        // if {} are present, we need to know whether the symbol before is a dict
-
     }
 
-    private parseBlock(block: FrameObject, indent: string): string {
+    private parseBlock(block: FrameObject, indentation: string): string {
         let output = "";
         const children = store.getters.getFramesForParentId(block.id);
 
+        if(this.checkIfFrameHasError(block)) {
+            return "";
+        }
+
         output += 
-            this.parseStatement(block,indent) + 
+            this.parseStatement(block, indentation) + 
             ((block.frameType.allowChildren && children.length > 0)?
                 this.parseFrames(
                     store.getters.getFramesForParentId(block.id),
-                    indent + INDENT
+                    indentation + INDENT
                 ) :
                 "") // empty bodies are added as empty lines in the code
             + 
             this.parseFrames(
                 store.getters.getJointFramesForFrameId(block.id, "all"), 
-                indent
+                indentation
             );
         
         return output;
     }
     
-    private parseStatement(statement: FrameObject, indent = ""): string {
-        let output = indent;
+    private parseStatement(statement: FrameObject, indentation = ""): string {
+        let output = indentation;
         const positions: number[] = [];
         const lengths: number[] = [];
         let currSlotIndex = 0;
+
+        if(this.checkIfFrameHasError(statement)) {
+            return "";
+        }
             
         statement.frameType.labels.forEach( (label) => {
             if(!label.slot || statement.contentDict[currSlotIndex].shownLabel) {
@@ -103,11 +89,6 @@ export default class Parser {
                     output += statement.contentDict[currSlotIndex].code + " ";
                     lengths.push(output.length-currentPosition+1);
 
-                    // Check it for semantic correctness
-                    
-                    // TO DO
-                    // WE NEED TO AVOID giving left land assignments and method lines to `parseSlot`
-                    // WE NEED TO AVOID GIVING comment slots
                     this.parseSlot(statement.contentDict[currSlotIndex].code,currentPosition);
                 }
             }
@@ -123,29 +104,38 @@ export default class Parser {
         return output;
     }
 
-    private parseFrames(codeUnits: FrameObject[], indent = ""): string {
+    private parseFrames(codeUnits: FrameObject[], indentation = ""): string {
         let output = "";
         let lineCode = "";
 
         //if the current frame is a container, we don't parse it as such
         //but parse directly its children (frames that it contains)
         for (const frame of codeUnits) {
+            if(frame.id === this.stopAtFrameId || this.exitFlag){
+                this.exitFlag = true; // this is used in case we are inside a recursion
+                break;
+            }
             //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
             let disabledFrameBlockFlag = "";
-            if(frame.isDisabled ? !isDisabledFramesTriggered : isDisabledFramesTriggered) {
-                isDisabledFramesTriggered = !isDisabledFramesTriggered;
+            if(frame.isDisabled ? !this.isDisabledFramesTriggered : this.isDisabledFramesTriggered) {
+                this.isDisabledFramesTriggered = !this.isDisabledFramesTriggered;
                 if(frame.isDisabled) {
-                    disabledBlockIndent = indent;
+                    this.disabledBlockIndent = indentation;
                 }
-                disabledFrameBlockFlag = disabledBlockIndent + DISABLEDFRAMES_FLAG +"\n";
+                disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG +"\n";
             }
 
             lineCode = frame.frameType.allowChildren ?
+                // frame with children
                 (Object.values(FrameContainersDefinitions).includes(frame.frameType)) ? 
-                    this.parseFrames(store.getters.getFramesForParentId(frame.id)) :
-                    this.parseBlock(frame, indent) 
+                    // for containers call parseFrames again on their frames
+                    this.parseFrames(store.getters.getFramesForParentId(frame.id), "") 
+                    :
+                    // for simple block frames (i.e. if) call parseBlock
+                    this.parseBlock(frame, indentation) 
                 : 
-                this.parseStatement(frame,indent);
+                // single line frame
+                this.parseStatement(frame,indentation);
 
             output += disabledFrameBlockFlag + lineCode;
         }
@@ -153,20 +143,25 @@ export default class Parser {
         return output;
     }
 
-    public parse(): string {
+    public parse(stopAtFrameId?: number): string {
         let output = "";
+        if(stopAtFrameId){
+            this.stopAtFrameId = stopAtFrameId;
+        }
 
-        console.time();
+        //console.time();
         output += this.parseFrames(store.getters.getFramesForParentId(0));
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
         let disabledFrameBlockFlag = "";
-        if(isDisabledFramesTriggered) {
-            isDisabledFramesTriggered = !isDisabledFramesTriggered;
-            disabledFrameBlockFlag = disabledBlockIndent + DISABLEDFRAMES_FLAG ;
+        if(this.isDisabledFramesTriggered) {
+            this.isDisabledFramesTriggered = !this.isDisabledFramesTriggered;
+            disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG ;
         }
-        console.timeEnd();
+        //console.timeEnd();
+
+        //console.log(TPyParser.parse(output))
 
         return output + disabledFrameBlockFlag;
     }
@@ -179,8 +174,7 @@ export default class Parser {
             code = this.parse();
         }
 
-        // const parsedCode = TPyParser.parse(code);
-        // console.log(parsedCode);
+        const parsedCode = TPyParser.parse(code);
 
         return TPyParser.findAllErrors(code);
     }
@@ -238,7 +232,167 @@ export default class Parser {
         }
         // If the offset was inside none of the slots, then return false
         return false;
-        
+    
     }
 
+    public getCodeWithoutErrors(endFrameId: number): string {
+        const code = this.parse(endFrameId);
+
+        const errors = this.getErrors(code);
+
+        const lines = code.split(/\r?\n/g);
+
+        // regularExpression to check the number of indentations 
+        const regExp = new RegExp(INDENT, "g");
+
+        let filteredCode = "";
+    
+        // We need to count the num of indentations to remove indented lines who's parent has an error
+        let previousIndents = 0;
+
+        // A flag that tells whether an error has open in a line; Used to avoid checking indented
+        // -to the erroneous- lines of code
+        let errorOpen = false;
+        
+        // remove errors line by line
+        lines.forEach( (line,index) => {
+
+            // get all the spaces at the beginning of a line
+            // ^ = start , [\s]* = all space characters , [?!\s] = until you don't see a space
+            const spaces = line.match(/^([\s]*[?!\s]){1}/g)??[""];
+            // now count the number or indentations at the beginning of the line
+            const indentationsInLine = (spaces.shift()?.match(regExp) || []).length;
+
+            // If there was an error detected and we are inside it then go to the next iteration.
+            if(errorOpen && indentationsInLine > previousIndents) {
+                return;
+            }
+
+            // if the line has an error
+            if(errors.find( (error) => error.line === index)) {
+                // open the error flag
+                errorOpen = true;
+                // do not include the line
+            }
+            else {
+                // no error found
+                errorOpen = false;
+                // include the line
+                filteredCode += "\n"+line;
+            }
+
+            // store the indentations of this line as we go below (sibling code) or in it (child code)
+            previousIndents = indentationsInLine;
+
+        });
+        
+        let output = "";                     // the code that will go to Brython
+        let prevIndentation = 0;             // holds the indentation of the previous line
+        const openedTryMap = [] as string[]; // For each try opened, we store the white spaces in front of it.
+        const exceptIsOpened = false;          // When the except is open no need to add try catch in it.
+        let tryFromTheUser = false;          // When the except is open no need to add try catch in it.
+
+        // Now add try/except statements around each statement and block
+        // This cannot be done on the previous stage (error removal) as 
+        // There may be some blocks with potentially unhandled errors by 
+        // try/except, like `for:` or `import 3 from x`
+        filteredCode.split(/\r?\n/g).forEach( (line) => {
+
+            // get all the spaces at the beginning of a line
+            const spaces = line.match(/^([\s]*[?!\s]){1}/g)??[""];
+            // now count the number or indentations at the beginning of the line
+            const indentationsInLine = (spaces[0]?.match(regExp) || []).length; 
+
+            // Whenever the indentation count in the line is reduced, we are exiting a block statement
+            // At that incidence (and since it is not a compound AND there has been an opened try earlier)
+            // we need to close the trys with excepts
+            if( indentationsInLine < prevIndentation && !this.isCompoundStatement(line,spaces) && openedTryMap.length>0 && !this.isExcept(line,spaces)) {
+
+                // How many indentations we went left?
+                const indentsDiff = prevIndentation - indentationsInLine;
+
+                // For every indentation close the try and remove it from the map
+                for (let i = 0; i < indentsDiff; i++) {
+                    const tryIndent = openedTryMap.pop();
+
+                    // This case is only for exiting a function, where there is an indent diff
+                    // but there is no try opened!
+                    if(tryIndent === undefined) { 
+                        break;
+                    }
+                    output += tryIndent + "except:\n" + tryIndent + INDENT + "pass" + "\n";
+                }
+            }
+
+            // if the line is not empty and not comprised only from white spaces
+            if(line && (/\S/.test(line))) {
+                // Compound statements do not get an indentation, every other statement in the block does
+                const conditionalIndent = (!this.isCompoundStatement(line,spaces) && !this.isTryOrExcept(line,spaces) && !tryFromTheUser ) ? INDENT : "";
+                // If we add a try, we need to know how far in we are already from previous trys
+                const tryIndentation = INDENT.repeat(openedTryMap.length);
+                
+                if ( this.isTry(line,spaces) ) {
+                    tryFromTheUser = true
+                }
+
+                // Add the try only if it's not a compound nor func def nor an except nor a try
+                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !this.isTryOrExcept(line,spaces) && !tryFromTheUser) {
+                    output += (spaces + tryIndentation + "try:\n");
+                    openedTryMap.push(spaces + tryIndentation);
+                }
+                
+                // Add the line -- we add indent only if we're not in function declaration line
+                output += 
+                    ((!this.isFunctionDef(line,spaces)) ? 
+                        (tryIndentation + conditionalIndent)
+                        :
+                        "") 
+                    + line + "\n"; // `line` includes `spaces` at its beginning
+
+                // Add the except if the line is not a compound AND not a func def AND not the starting of a block nor an except
+                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !line.endsWith(":") && !this.isTryOrExcept(line,spaces) && !tryFromTheUser){
+                    output += spaces + tryIndentation + "except:\n" + spaces + tryIndentation + INDENT + "pass" + "\n"
+                    openedTryMap.pop();
+                }
+                
+                if( tryFromTheUser && !this.isTry(line,spaces) ) {
+                    tryFromTheUser = false
+                }
+            }
+            // Before going to the new line, we need to store the indentation of this lines
+            prevIndentation = indentationsInLine;
+        });
+
+        return output;
+    }
+
+    private checkIfFrameHasError(frame: FrameObject): boolean {
+        return (frame.error!=="" || Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
+    }
+
+    private isCompoundStatement(line: string, spaces: string[]): boolean {
+        // it's a compound statement if
+        return line.startsWith(spaces+"elif ") ||  // it's an elif statement OR
+               line.startsWith(spaces+"else:") ||  // it's an else statement OR
+               line.startsWith(spaces+"finally:") // it's a finally statement
+        
+        // We do not have to check try and except here as they are checked by getCodeWithoutErrors       
+    }
+
+    private isTryOrExcept(line: string, spaces: string[]): boolean {
+        return this.isTry(line,spaces) || this.isExcept(line,spaces)
+    }
+
+    private isTry(line: string, spaces: string[]): boolean {
+        return line.startsWith(spaces+"try:")  // it's a try statement
+    }
+
+    private isExcept(line: string, spaces: string[]): boolean {
+        return line.startsWith(spaces+"except ") || line.startsWith(spaces+"except:") // it's an except statement
+    }
+
+    private isFunctionDef(line: string, spaces: string[]): boolean {
+        // it's not a function definition  if
+        return line.startsWith(spaces+"def ")  // it starts with a def
+    }
 }

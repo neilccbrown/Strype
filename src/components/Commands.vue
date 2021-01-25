@@ -45,6 +45,7 @@
                 />
             </div>
         </div>
+        <text id="userCode"></text>
     </div>
 </template>
 
