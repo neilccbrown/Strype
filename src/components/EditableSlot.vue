@@ -19,7 +19,7 @@
             @keydown.prevent.stop.enter
             @keyup.enter.prevent.stop="onEnterKeyUp($event)"
             @keyup="logCursorPosition()"
-            :class="{editableSlot: focused, error: erroneous}"
+            :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
             :id="UIID"
             :key="UIID"
             class="input"
@@ -74,6 +74,7 @@ export default Vue.extend({
         frameId: Number,
         isDisabled: Boolean,
         optionalSlot: Boolean,
+        isHidden: Boolean,
     },
 
 
