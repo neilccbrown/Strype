@@ -48,11 +48,6 @@
             :cursorPosition="cursorPosition"
             @acItemClicked="acItemClicked"
         />
-        <span 
-            :id="hiddenSpanId"
-            @click="noACtoShow"
-        >
-        </span>
     </div>
 </template>
 
@@ -164,11 +159,11 @@ export default Vue.extend({
                     
                     //workout the correct context if we are in a code editable slot
                     if(frame.frameType.type !== Definitions.ImportDefinition.type){
-                        const resultsAC = getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), this.hiddenSpanId);
+                        const resultsAC = getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
                         contextAC = resultsAC.contextAC;
                         tokenAC = resultsAC.tokenAC;
                         this.showAC = resultsAC.showAC;
-                    } 
+                    }
                     
                     if(this.showAC){
                         this.token = tokenAC.toLowerCase();
@@ -194,10 +189,6 @@ export default Vue.extend({
 
         UIID(): string {
             return getEditableSlotUIID(this.$props.frameId, this.$props.slotIndex);
-        },
-
-        hiddenSpanId(): string {
-            return getEditableSlotHiddenSpanUIID(this.$props.frameId, this.$props.slotIndex);
         },
 
         errorMessage(): string{
@@ -325,13 +316,6 @@ export default Vue.extend({
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
             const selectedItem = (document.querySelector(".hoveredAcItem") as HTMLLIElement).textContent?.trim()
             this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
-            this.showAC = false;
-        },
-
-        noACtoShow() {
-            // we turn the `showAC` off so that the system knows that there is nothing to show.
-            // It has to be done this way as the Brython code runs slower than JS code,
-            // And thus the acManager cannot know if there will be results from the AC
             this.showAC = false;
         },
 

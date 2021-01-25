@@ -733,21 +733,6 @@ export interface LibraryPath {
     aliasFor: string;
 }
 
-export enum SearchLangDefScope {
-    none = "none",
-    
-    //the definitions to look upon
-    userDefs = "userDefs",
-    libraryDefs = "libraryDefs",
-    currentSearchDefs = "currSearchDefs",
-    custom = "custom",
-
-    //the functional location to look for
-    importModule = "importMod",
-    importModulePart = "importModPart",
-    inCode = "code",
-}
-
 export interface CursorPosition {
     top: number;
     left: number;

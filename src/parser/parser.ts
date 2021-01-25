@@ -289,7 +289,9 @@ export default class Parser {
         let output = "";                     // the code that will go to Brython
         let prevIndentation = 0;             // holds the indentation of the previous line
         const openedTryMap = [] as string[]; // For each try opened, we store the white spaces in front of it.
-  
+        const exceptIsOpened = false;          // When the except is open no need to add try catch in it.
+        let tryFromTheUser = false;          // When the except is open no need to add try catch in it.
+
         // Now add try/except statements around each statement and block
         // This cannot be done on the previous stage (error removal) as 
         // There may be some blocks with potentially unhandled errors by 
@@ -304,7 +306,7 @@ export default class Parser {
             // Whenever the indentation count in the line is reduced, we are exiting a block statement
             // At that incidence (and since it is not a compound AND there has been an opened try earlier)
             // we need to close the trys with excepts
-            if( indentationsInLine < prevIndentation && !this.isCompoundStatement(line,spaces) && openedTryMap.length>0) {
+            if( indentationsInLine < prevIndentation && !this.isCompoundStatement(line,spaces) && openedTryMap.length>0 && !this.isExcept(line,spaces)) {
 
                 // How many indentations we went left?
                 const indentsDiff = prevIndentation - indentationsInLine;
@@ -325,12 +327,16 @@ export default class Parser {
             // if the line is not empty and not comprised only from white spaces
             if(line && (/\S/.test(line))) {
                 // Compound statements do not get an indentation, every other statement in the block does
-                const conditionalIndent = (!this.isCompoundStatement(line,spaces)) ? INDENT : "";
+                const conditionalIndent = (!this.isCompoundStatement(line,spaces) && !this.isTryOrExcept(line,spaces) && !tryFromTheUser ) ? INDENT : "";
                 // If we add a try, we need to know how far in we are already from previous trys
                 const tryIndentation = INDENT.repeat(openedTryMap.length);
+                
+                if ( this.isTry(line,spaces) ) {
+                    tryFromTheUser = true
+                }
 
-                // Add the try only if it's not a compound or func def
-                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces)) {
+                // Add the try only if it's not a compound nor func def nor an except nor a try
+                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !this.isTryOrExcept(line,spaces) && !tryFromTheUser) {
                     output += (spaces + tryIndentation + "try:\n");
                     openedTryMap.push(spaces + tryIndentation);
                 }
@@ -343,12 +349,15 @@ export default class Parser {
                         "") 
                     + line + "\n"; // `line` includes `spaces` at its beginning
 
-                // Add the except if the line is not a compound AND not a func def AND not the starting of a block
-                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !line.endsWith(":")){
+                // Add the except if the line is not a compound AND not a func def AND not the starting of a block nor an except
+                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !line.endsWith(":") && !this.isTryOrExcept(line,spaces) && !tryFromTheUser){
                     output += spaces + tryIndentation + "except:\n" + spaces + tryIndentation + INDENT + "pass" + "\n"
                     openedTryMap.pop();
                 }
-            
+                
+                if( tryFromTheUser && !this.isTry(line,spaces) ) {
+                    tryFromTheUser = false
+                }
             }
             // Before going to the new line, we need to store the indentation of this lines
             prevIndentation = indentationsInLine;
@@ -362,15 +371,27 @@ export default class Parser {
     }
 
     private isCompoundStatement(line: string, spaces: string[]): boolean {
-        // it's not a compound statement if
-        return line.startsWith(spaces+"try")  ||  // it's a try statement OR
-               line.startsWith(spaces+"elif") ||  // it's an elif statement OR
-               line.startsWith(spaces+"else") ||  // it's an else statement OR
-               line.startsWith(spaces+"finally") // it's a finally statement
+        // it's a compound statement if
+        return line.startsWith(spaces+"elif ") ||  // it's an elif statement OR
+               line.startsWith(spaces+"else:") ||  // it's an else statement OR
+               line.startsWith(spaces+"finally:") // it's a finally statement
+               
+    }
+
+    private isTryOrExcept(line: string, spaces: string[]): boolean {
+        return this.isTry(line,spaces) || this.isExcept(line,spaces)
+    }
+
+    private isTry(line: string, spaces: string[]): boolean {
+        return line.startsWith(spaces+"try:")  // it's a try statement
+    }
+
+    private isExcept(line: string, spaces: string[]): boolean {
+        return line.startsWith(spaces+"except ") || line.startsWith(spaces+"except:") // it's an except statement
     }
 
     private isFunctionDef(line: string, spaces: string[]): boolean {
         // it's not a function definition  if
-        return line.startsWith(spaces+"def")  // it starts with a def
+        return line.startsWith(spaces+"def ")  // it starts with a def
     }
 }
