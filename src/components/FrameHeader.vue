@@ -7,9 +7,9 @@
             class="next-to-eachother"
             v-for="(item, index) in labels"
             :key="item.label + frameId"
-            :class="{hidden: isLabelHidden(index)}"
         >
-            <div class="next-to-eachother">{{ item.label }}</div>
+            <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
+            <div class="next-to-eachother" :class="{hidden: isLabelHidden(index)}">{{ item.label }}</div>
             <EditableSlot
                 v-if="item.slot"
                 :isDisabled="isDisabled"
@@ -17,6 +17,7 @@
                 :slotIndex="index"
                 :frameId="frameId"
                 :optionalSlot="item.optionalSlot"
+                :isHidden="isLabelHidden(index)"
             />
         </div>
     </div>

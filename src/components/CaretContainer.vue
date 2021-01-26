@@ -101,7 +101,7 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                if((event.ctrlKey || event.metaKey) && (event.key === "v")) {
+                if(!this.isEditing && (event.ctrlKey || event.metaKey) && (event.key === "v")) {
                     this.paste();
                     event.preventDefault();
                     return;

@@ -892,13 +892,16 @@ export default new Vuex.Store({
 
         setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
             const existingError =  state.frameObjects[payload.frameId].contentDict[payload.slotIndex].error;
-            // Sometimes we need to extend the error, if more than one errors are on the same slot
-            const newError = (existingError === "" || payload.error === "" ) ? payload.error: (existingError +"\n" + payload.error);
-            Vue.set(
-                state.frameObjects[payload.frameId].contentDict[payload.slotIndex],
-                "error",
-                newError
-            );
+            const existingErrorBits = existingError.split("\n");
+            // Sometimes we need to extend the error, if more than one different errors are on the same slot
+            if(!existingErrorBits.includes(payload.error)){
+                const newError = (existingError === "" || payload.error === "") ? payload.error: (existingError +"\n" + payload.error);
+                Vue.set(
+                    state.frameObjects[payload.frameId].contentDict[payload.slotIndex],
+                    "error",
+                    newError
+                );
+            }           
         },
 
         setFrameErroneous(state, payload: {frameId: number; error: string}){
@@ -1106,6 +1109,24 @@ export default new Vuex.Store({
             if(changeList.length > 0){
                 //this flag stores the arrays that need to be "cleaned" (i.e., removing the null elements)
                 const arraysToClean = [] as {[id: string]: any}[];
+
+                //precompiled errors on editor slots are not saved for undo/redo
+                //so if there is a change on an editable slot value in the change list, we clear the errors for that slot
+                //so that the errors are still correct once undo/redo is applied
+                //note : we do it in a separate foreach to be sure we dont clear errors if they were supposed to be marked
+                const checkErrorChangeEntry: ObjectPropertyDiff|undefined = changeList.find((changeEntry: ObjectPropertyDiff) => (changeEntry.propertyPathWithArrayFlag.match(/\.contentDict_false\.\d*_false\.code$/)?.length??0) > 0);
+                if(checkErrorChangeEntry){
+                    const changePath = checkErrorChangeEntry.propertyPathWithArrayFlag;
+                    //frameObjects_false.2_false.contentDict_false.0_false.code
+                    let indexOfId = "frameObjects_false.".length;
+                    const frameId = changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId);
+                    indexOfId = changePath.indexOf(".contentDict_false.") + ".contentDict_false.".length; 
+                    const slotId = changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId);
+                    if(state.preCompileErrors.includes(getEditableSlotUIID(parseInt(frameId), parseInt(slotId)))) {
+                        state.preCompileErrors.splice(state.preCompileErrors.indexOf(getEditableSlotUIID(parseInt(frameId), parseInt(slotId))),1);
+                        state.frameObjects[parseInt(frameId)].contentDict[parseInt(slotId)].error="";
+                    }
+                }
 
                 //if the value in the changes isn't "null" --> replaced/add, otherwise, delete.
                 changeList.forEach((changeEntry: ObjectPropertyDiff) => {
