@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, LibraryPath, ElementDef } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition } from "@/types/types";
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import initialTestState from "@/store/initial-test-state";
@@ -8,7 +8,7 @@ import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n"
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getAllSiblings, getNextSibling, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 
@@ -165,24 +165,28 @@ export default new Vuex.Store({
             //as there is no static rule for showing the "break" or "continue" statements,
             //we need to check if the current frame is within a "for" or a "while" loop.
             //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
-            let canShowLoopBreakers = false;
-            let frameToCheckId = (caretPosition === CaretPosition.body) ? 
-                currentFrame.id:
-                ((currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId].id : state.frameObjects[currentFrame.parentId].id) ;
-            
-            while(frameToCheckId > 0 && !canShowLoopBreakers){
-                const frameToCheckType = state.frameObjects[frameToCheckId].frameType.type;
-                canShowLoopBreakers = (frameToCheckType === Definitions.ForDefinition.type || frameToCheckType === Definitions.WhileDefinition.type);
-                frameToCheckId = state.frameObjects[frameToCheckId].parentId;
-            }
-
+            const canShowLoopBreakers = isContainedInFrame(state. frameObjects, frameId,caretPosition, [ForDefinition.type, WhileDefinition.type]);
             if(!canShowLoopBreakers){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
                 forbiddenTypes.splice(
                     0,
                     0,
-                    ...[Definitions.BreakDefinition.type, Definitions.ContinueDefinition.type]
+                    ...[BreakDefinition.type, ContinueDefinition.type]
+                );
+            }
+
+            //"return" statements can't be added when in the main container frame
+            //We don't forbid them to be in the main container, but we don't provide a way to add them directly.
+            //They can be added when in the function definition container though.
+            const canShowReturnStatement = isContainedInFrame(state. frameObjects, frameId,caretPosition, [FuncDefContainerDefinition.type]);
+            if(!canShowReturnStatement){
+                //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
+                //so if we cannot show "break" and "continue" : we add them from the list of forbidden
+                forbiddenTypes.splice(
+                    0,
+                    0,
+                    ...[ReturnDefinition.type]
                 );
             }
          
