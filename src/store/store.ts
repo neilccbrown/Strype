@@ -300,16 +300,54 @@ export default new Vuex.Store({
             
             //remove the commands that are forbidden and not defined as joint frames
             const filteredCommands = { ...addFrameCommandsDefs.AddFrameCommandsDefs};
-            for (const frameType in addFrameCommandsDefs.AddFrameCommandsDefs) {
-                if(forbiddenTypes.includes(addFrameCommandsDefs.AddFrameCommandsDefs[frameType].type.type) 
-                    && !jointTypes.includes(addFrameCommandsDefs.AddFrameCommandsDefs[frameType].type.type)){
-                    Vue.delete(
-                        filteredCommands,
-                        frameType
-                    );
+            for (const frameShortcut in addFrameCommandsDefs.AddFrameCommandsDefs) {
+                //we might have more than 1 frame assigned to a shortcut, when there is a CLEAR CONTEXT DISTINCTION
+                const hasMultipleFrames = ("splice" in (addFrameCommandsDefs.AddFrameCommandsDefs[frameShortcut]));
+                let multiFrameIndexToKeep = -1; //for multiple frames, if that value stay at -1 it means ALL frame types are discareded; otherwise the one to keep
+                const frameDefsToCheckArray: AddFrameCommandDef[] = (hasMultipleFrames)
+                    ? [...(addFrameCommandsDefs.AddFrameCommandsDefs[frameShortcut] as AddFrameCommandDef[])]
+                    : [(addFrameCommandsDefs.AddFrameCommandsDefs[frameShortcut] as AddFrameCommandDef)];
+                
+                let frameArrayIndex = 0;
+                frameDefsToCheckArray.forEach((frameDefToCheck: AddFrameCommandDef) => {
+                    if(forbiddenTypes.includes(frameDefToCheck.type.type) 
+                        && !jointTypes.includes(frameDefToCheck.type.type)){
+                        if(!hasMultipleFrames){
+                            //1 shortcut to 1 frame --> we remove the frame from the filteredCommand
+                            //multiple frame case is dealt with once we finished this loop
+                            Vue.delete(
+                                filteredCommands,
+                                frameShortcut
+                            );
+                        }
+                    }
+                    else if(hasMultipleFrames){
+                        //in the case of multiple frames, we keep the information on which frame is the one we need
+                        multiFrameIndexToKeep = frameArrayIndex;
+                    }
+                    frameArrayIndex++;
+                });
+
+                //before leaving the loop for that shortcut, if there is a candidate from the multiple frames, we only keep that one in the result
+                //otherwise we remove that shortcut completely
+                if(hasMultipleFrames){
+                    if(multiFrameIndexToKeep > -1){
+                        Vue.set(
+                            filteredCommands,
+                            frameShortcut,
+                            (addFrameCommandsDefs.AddFrameCommandsDefs[frameShortcut] as AddFrameCommandDef[])[multiFrameIndexToKeep]
+                        );
+                    }
+                    else{
+                        Vue.delete(
+                            filteredCommands,
+                            frameShortcut
+                        );
+                    }
+                    
                 }
             }
-
+                
             return filteredCommands;
         },
         getCurrentFrameToggleFrameLabelCommands: (state) => () => {

@@ -94,6 +94,7 @@ export interface AddFrameCommandDef {
     description: string;
     shortcut: string;
     symbol?: string;
+    index?: number; //the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
 // This is an array with all the frame Definitions objects.

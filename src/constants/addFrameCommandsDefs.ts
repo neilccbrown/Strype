@@ -1,12 +1,21 @@
 import { AddFrameCommandDef, Definitions } from "@/types/types";
 
-//Commands for Frame insertion
-const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef} = {
-    "i": {
-        type: Definitions.IfDefinition,
-        description: "if",
-        shortcut: "i",
-    },
+//Commands for Frame insertion, one command can match more than 1 frame ONLY when there is a TOTAL distinct context between the two
+const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef|AddFrameCommandDef[]} = {
+    "i": [
+        {
+            type: Definitions.IfDefinition,
+            description: "if",
+            shortcut: "i",
+            index: 0,
+        },
+        {
+            type: Definitions.ImportDefinition,
+            description: "import",
+            shortcut: "i",
+            index:1,
+        },
+    ],
     "l": {
         type: Definitions.ElifDefinition,
         description: "elif",
@@ -17,11 +26,18 @@ const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef} = {
         description: "else",
         shortcut: "e",
     },
-    "f": {
-        type: Definitions.ForDefinition,
-        description: "for",
-        shortcut: "f",
-    },
+    "f": [
+        {
+            type: Definitions.ForDefinition,
+            description: "for",
+            shortcut: "f",
+        },
+        {
+            type: Definitions.FuncDefDefinition,
+            description: "function definition",
+            shortcut: "f",
+        },
+    ],
     "w": {
         type: Definitions.WhileDefinition,
         description: "while",
@@ -53,11 +69,6 @@ const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef} = {
         description: "return",
         shortcut: "r",
     },
-    "d": {
-        type: Definitions.FuncDefDefinition,
-        description: "function definition",
-        shortcut: "d",
-    },
     "c": {
         type: Definitions.CommentDefinition,
         description: "comment",
@@ -82,11 +93,6 @@ const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef} = {
         type: Definitions.FinallyDefinition,
         description: "finally",
         shortcut: "n",
-    },
-    "m": {
-        type: Definitions.ImportDefinition,
-        description: "import",
-        shortcut: "m",
     },
     "h": {
         type: Definitions.WithDefinition,
