@@ -444,7 +444,8 @@ export const getPreviousIdForCaretBelow = function (listOfFrames: EditorFrameObj
     
 };
 
-// This method returns a boolean value indicating whether the current position in contained within the specific frames types (sublevel)
+// This method returns a boolean value indicating whether the caret (current position) is contained
+// within one of the frame types specified in "containerTypes"
 export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, currFrameId: number, caretPosition: CaretPosition, containerTypes: string[]): boolean {
     let isAncestorTypeFound = false;
     let frameToCheckId = (caretPosition === CaretPosition.body) ? 

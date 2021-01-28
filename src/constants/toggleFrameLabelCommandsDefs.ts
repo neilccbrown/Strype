@@ -1,13 +1,13 @@
 import { ToggleFrameLabelCommandDef } from "@/types/types";
 
+//Commands for toggling the frame labels
 export enum KeyModifier {
     ctrl = "ctrl",
     alt = "alt",
     shift = "shift",
 }
 
-//Commands for toggling the frame labels
-const toggleFrameLabelsDefs: {[type: string]: ToggleFrameLabelCommandDef} = {
+export const toggleFrameLabelsDefs: {[type: string]: ToggleFrameLabelCommandDef} = {
     importFrom: {
         type: "importFrom",
         modifierKeyShortcuts: [KeyModifier.ctrl, KeyModifier.shift],
@@ -22,6 +22,3 @@ const toggleFrameLabelsDefs: {[type: string]: ToggleFrameLabelCommandDef} = {
     },
 };
 
-export default {
-    ToggleFrameLabelCommandDefs: toggleFrameLabelsDefs,
-}

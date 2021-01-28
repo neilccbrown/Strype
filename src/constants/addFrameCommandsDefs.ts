@@ -1,7 +1,7 @@
 import { AddFrameCommandDef, Definitions } from "@/types/types";
 
 //Commands for Frame insertion, one command can match more than 1 frame ONLY when there is a TOTAL distinct context between the two
-const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef|AddFrameCommandDef[]} = {
+export const addCommandsDefs: {[id: string]: AddFrameCommandDef[]} = {
     "i": [
         {
             type: Definitions.IfDefinition,
@@ -16,92 +16,89 @@ const addFrameCommandsDefs: {[id: string]: AddFrameCommandDef|AddFrameCommandDef
             index:1,
         },
     ],
-    "l": {
+    "l": [{
         type: Definitions.ElifDefinition,
         description: "elif",
         shortcut: "l",
-    },
-    "e": {
+    }],
+    "e": [{
         type: Definitions.ElseDefinition,
         description: "else",
         shortcut: "e",
-    },
+    }],
     "f": [
         {
             type: Definitions.ForDefinition,
             description: "for",
             shortcut: "f",
+            index: 0,
         },
         {
             type: Definitions.FuncDefDefinition,
             description: "function definition",
             shortcut: "f",
+            index: 1,
         },
     ],
-    "w": {
+    "w": [{
         type: Definitions.WhileDefinition,
         description: "while",
         shortcut: "w",
-    },
-    "b" : {
+    }],
+    "b" : [{
         type: Definitions.BreakDefinition,
         description: "break",
         shortcut: "b",
-    },
-    "u" : {
+    }],
+    "u" : [{
         type: Definitions.ContinueDefinition,
         description: "continue",
         shortcut: "u",
-    },
-    "=": {
+    }],
+    "=": [{
         type: Definitions.VarAssignDefinition,
         description: "variable assignment",
         shortcut: "=",
-    },
-    " ": {
+    }],
+    " ": [{
         type: Definitions.EmptyDefinition,
         description: "method call",
         shortcut: " ",
         symbol: "⌴",//"␣"
-    },
-    "r": {
+    }],
+    "r": [{
         type: Definitions.ReturnDefinition,
         description: "return",
         shortcut: "r",
-    },
-    "c": {
+    }],
+    "c": [{
         type: Definitions.CommentDefinition,
         description: "comment",
         shortcut: "c",
-    },
-    "t": {
+    }],
+    "t": [{
         type: Definitions.TryDefinition,
         description: "try",
         shortcut: "t",
-    },
-    "a" : {
+    }],
+    "a" : [{
         type: Definitions.RaiseDefinition,
         description: "raise",
         shortcut: "a",
-    },
-    "x": {
+    }],
+    "x": [{
         type: Definitions.ExceptDefinition,
         description: "except",
         shortcut: "x",
-    },
-    "n": {
+    }],
+    "n": [{
         type: Definitions.FinallyDefinition,
         description: "finally",
         shortcut: "n",
-    },
-    "h": {
+    }],
+    "h": [{
         type: Definitions.WithDefinition,
         description: "with",
         shortcut: "h",
-    },
+    }],
 };
-
-
-export default {
-    AddFrameCommandsDefs: addFrameCommandsDefs,
-}
