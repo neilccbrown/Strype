@@ -11,7 +11,7 @@
 //////////////////////
 import Vue from "vue";
 import store from "@/store/store";
-import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
+import {addCommandsDefs} from "@/constants/addFrameCommandsDefs";
 
 //////////////////////
 //     Component    //
@@ -25,6 +25,7 @@ export default Vue.extend({
         shortcut: String, //the keyboard shortcut to add the frame 
         symbol: String, //the displayed shortcut in the UI, it can be a symbolic representation
         description: String, //the description of the frame
+        index: Number, //when more than 1 frame is assigned to a shortcut, the index tells which frame definition should be used
     },
 
     methods: {
@@ -32,7 +33,7 @@ export default Vue.extend({
             //add the frame in the editor
             store.dispatch(
                 "addFrameWithCommand",
-                addFrameCommandsDefs.AddFrameCommandsDefs[this.shortcut].type
+                addCommandsDefs[this.shortcut][this.index].type
             );
         },
     },
