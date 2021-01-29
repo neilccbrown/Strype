@@ -158,7 +158,7 @@ export default Vue.extend({
     max-width: 300px;
 }
 
-ul {
+.popup ul {
     overflow: auto;
     max-height: 145px;
     list-style: none;
@@ -166,7 +166,7 @@ ul {
     width: auto;
 }
 
-li {
+.popup li {
     padding-left: 5px;
     padding-right: 25px;
 }

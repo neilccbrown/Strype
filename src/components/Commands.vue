@@ -22,15 +22,20 @@
             <div class="frameCommands">
                 <AddFrameCommand
                     v-for="addFrameCommand in addFrameCommands"
-                    :key="addFrameCommand.type.type"
-                    :type="addFrameCommand.type.type"
-                    :shortcut="addFrameCommand.shortcut"
+                    :key="addFrameCommand[0].type.type"
+                    :type="addFrameCommand[0].type.type"
+                    :shortcut="addFrameCommand[0].shortcut"
                     :symbol="
-                        addFrameCommand.symbol !== undefined
-                            ? addFrameCommand.symbol
-                            : addFrameCommand.shortcut
+                        addFrameCommand[0].symbol !== undefined
+                            ? addFrameCommand[0].symbol
+                            : addFrameCommand[0].shortcut
                     "
-                    :description="addFrameCommand.description"
+                    :description="addFrameCommand[0].description"
+                    :index="
+                        addFrameCommand[0].index!==undefined
+                        ? addFrameCommand[0].index
+                        : 0
+                    "
                 />
             </div>
             <hr />
@@ -58,7 +63,7 @@ import { flashData } from "@/helpers/webUSB";
 import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId} from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition} from "@/types/types";
-import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"
+import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
 import $ from "jquery";
 
@@ -93,7 +98,7 @@ export default Vue.extend({
             return getCommandsContainerUIID();
         },
 
-        addFrameCommands(): Record<string, AddFrameCommandDef> {
+        addFrameCommands(): Record<string, AddFrameCommandDef[]> {
             //We retrieve the add frame commands associated with the current frame 
             //if the frame is enabled, we always check, if it is disabled we return no frame when caret is body, and check when caret is below
             const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
@@ -244,7 +249,7 @@ export default Vue.extend({
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
                             store.dispatch(
                                 "addFrameWithCommand",
-                                this.addFrameCommands[event.key.toLowerCase()].type                
+                                this.addFrameCommands[event.key.toLowerCase()][0].type                
                             );
                         }
                     }

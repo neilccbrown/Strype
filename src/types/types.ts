@@ -1,4 +1,4 @@
-import toggleFrameLabelsDefs, {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"; 
+import {KeyModifier, toggleFrameLabelsDefs} from "@/constants/toggleFrameLabelCommandsDefs"; 
 
 // Type Definitions
 
@@ -94,6 +94,7 @@ export interface AddFrameCommandDef {
     description: string;
     shortcut: string;
     symbol?: string;
+    index?: number; //the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
 // This is an array with all the frame Definitions objects.
@@ -403,9 +404,9 @@ export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
     labels: [
-        { label: "from ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommandDefs.importFrom, optionalSlot: false},
+        { label: "from ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand: toggleFrameLabelsDefs.importFrom, optionalSlot: false},
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
-        { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand:toggleFrameLabelsDefs.ToggleFrameLabelCommandDefs.importAs, optionalSlot: false},
+        { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand: toggleFrameLabelsDefs.importAs, optionalSlot: false},
     ],    
     colour: "#CBD4C8",
     draggableGroup: DraggableGroupTypes.imports,
