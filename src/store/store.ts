@@ -4,6 +4,7 @@ import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDef
 import addFrameCommandsDefs from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import initialTestState from "@/store/initial-test-state";
+import initialEmptyState from "@/store/initial-empty-state";
 import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -16,11 +17,11 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
     state: {
-        debugging: true,
+        debugging: true,//false,//
 
-        frameObjects: initialTestState,//*/ initialState,
+        frameObjects: initialEmptyState, //initialState,// initialTestState,//*/
 
-        frameMap : [-1,-2,-3,1,2,3,4,5,6,7] as number[],//[-1,1,2,-2,-3,3,4,5,6,7,8,9,10,11,14,15,12,16,13,17] as number[], // flat map of all the frames in a sequence
+        frameMap : [] as number[],//[-1,1,2,-2,-3,3,4,5,6,7,8,9,10,11,14,15,12,16,13,17] as number[], //[-1,-2,-3,1,2,3,4,5,6,7] as number[],// // flat map of all the frames in a sequence
 
         nextAvailableId: Math.max.apply({},Object.keys(initialState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
 
