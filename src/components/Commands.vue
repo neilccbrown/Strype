@@ -152,7 +152,7 @@ export default Vue.extend({
                 }
 
                 //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")
-                if(!store.getters.getIsEditing() && !(event.ctrlKey || event.metaKey) && event.key.match(/^[a-z A-Z]$/)){
+                if(!store.getters.getIsEditing() && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z]$/) || event.key === "Backspace")){
                     event.preventDefault();
                 }
             }
