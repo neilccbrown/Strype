@@ -69,7 +69,6 @@ export default Vue.extend({
         list: [String],
         slotId: String,
         token: String,
-        contextAC: String,
         cursorPosition: {
             type: Object,
             default: () => DefaultCursorPosition,

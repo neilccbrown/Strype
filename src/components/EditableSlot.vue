@@ -44,7 +44,6 @@
             :slotId="UIID"
             ref="AC"
             :token="token"
-            :contextAC="contextAC"
             :cursorPosition="cursorPosition"
             @acItemClicked="acItemClicked"
         />
@@ -56,8 +55,8 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { CaretPosition, Definitions, FrameObject, CursorPosition} from "@/types/types";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getEditableSlotHiddenSpanUIID } from "@/helpers/editor";
-import { getCandidatesForAC } from "@/autocompletion/acManager";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
+import { getCandidatesForAC, getImportCandidatesForAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
 export default Vue.extend({
@@ -100,7 +99,6 @@ export default Vue.extend({
 
             // used to filter the AC
             token: "",
-            contextAC: "",
             cursorPosition: {} as CursorPosition,
             showAC: false,
               
@@ -153,22 +151,20 @@ export default Vue.extend({
                 if(inputField && frame.frameType.type !== Definitions.CommentDefinition.type){
                     //get the autocompletion candidates
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
-                    let contextAC = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(0, textBeforeCaret.lastIndexOf(".")) : "";
-                    let tokenAC = (textBeforeCaret.indexOf(".") > -1) ? textBeforeCaret.substr(textBeforeCaret.lastIndexOf(".") + 1) : textBeforeCaret;
+                    let tokenAC = "";
                
                     this.showAC = true;
                     
                     //workout the correct context if we are in a code editable slot
-                    if(frame.frameType.type !== Definitions.ImportDefinition.type){
-                        const resultsAC = getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
-                        contextAC = resultsAC.contextAC;
-                        tokenAC = resultsAC.tokenAC;
-                        this.showAC = resultsAC.showAC;
-                    }
+                    const isImportFrame = (frame.frameType.type === Definitions.ImportDefinition.type)
+                    const resultsAC = (isImportFrame) 
+                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID))
+                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
+                    tokenAC = resultsAC.tokenAC;
+                    this.showAC = resultsAC.showAC;
                     
                     if(this.showAC){
                         this.token = tokenAC.toLowerCase();
-                        this.contextAC = contextAC.toLowerCase();
                     }
                 }
             },
