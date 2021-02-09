@@ -150,21 +150,17 @@ export default Vue.extend({
                 // if the imput field exists and it is not a comment
                 if(inputField && frame.frameType.type !== Definitions.CommentDefinition.type){
                     //get the autocompletion candidates
-                    const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
-                    let tokenAC = "";
-               
-                    this.showAC = true;
+                    const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";               
                     
                     //workout the correct context if we are in a code editable slot
                     const isImportFrame = (frame.frameType.type === Definitions.ImportDefinition.type)
                     const resultsAC = (isImportFrame) 
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
-                    tokenAC = resultsAC.tokenAC;
                     this.showAC = resultsAC.showAC;
                     
                     if(this.showAC){
-                        this.token = tokenAC.toLowerCase();
+                        this.token = resultsAC.tokenAC.toLowerCase();
                     }
                 }
             },
