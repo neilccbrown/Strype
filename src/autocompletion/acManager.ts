@@ -184,7 +184,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     */
 
     const parser = new Parser();
-    const userCode = parser.getCodeWithoutErrors(frameId);
+    const userCode = parser.getCodeWithoutErrors(frameId,true);
     prepareBrythonCode(userCode, contextAC, acSpanId, documentationSpanId, false);
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
