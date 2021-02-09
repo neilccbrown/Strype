@@ -1,4 +1,7 @@
 import Parser from "@/parser/parser";
+import store from "@/store/store";
+import { FrameObject } from "@/types/types";
+import moduleDescription from "@/autocompletion/microbit.json"
 
 const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
@@ -25,7 +28,69 @@ function runPythonCode(code: string): void {
 // Brython does not have the documentation for the built-in method 'breakpoint'; hence, we need to hardcode it
 const breakpointDocumentation = "Help on built-in function breakpoint in module builtins:\nbreakpoint(...)\nbreakpoint(*args, **kws)\n\nCall sys.breakpointhook(*args, **kws).  sys.breakpointhook() must accept\nwhatever arguments are passed.\n\nBy default, this drops you into the pdb debugger."
 
-// Check every time you're in a slot and see how to show the AC
+// Function to be used in getCandidatesForAC() and getImportCandidatesForAC() 
+// This parts contains the logic used with Brython to retrieve the AC elements.
+function prepareBrythonCode(userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, isImportModuleAC: boolean): void{
+    let inspectionCode ="";
+
+    /*
+    *       STEP 1 : Run the code and get the AC results
+    */
+    // append the line that gets all the possible names of the namespace and the context
+    // The builtins will be used only if we don't have a context
+    inspectionCode += "\ntry:"
+    if(isImportModuleAC){
+        inspectionCode += "\n"+INDENT+"namesForAutocompletion="+contextAC;
+    }
+    else{
+        inspectionCode += "\n"+INDENT+"namesForAutocompletion="+((contextAC)?"":" dir(__builtins__) +")+" dir("+contextAC+")";
+    }
+    inspectionCode += "\nexcept:\n"+INDENT+"pass"
+    // Define the slot id we are talking about
+    inspectionCode += "\ntry:"
+    // append the line that removes useless names and saves them to the results
+    inspectionCode += "\n"+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]"
+    // If there are no results, we notify the hidden span that there is no AC available
+    inspectionCode += "\n"+INDENT+"if(len(results)>0):"
+    inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text = results"
+    // Fake a click to the hidden span to trigger the AC window to show
+    inspectionCode += "\n"+INDENT+INDENT+"event1 = window.MouseEvent.new('click')"
+    inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].dispatchEvent(event1)"
+    inspectionCode += "\n"+INDENT+"else:"
+    // We empty any previous results so that the AC won't be shown
+    inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
+    inspectionCode += "\nexcept:\n"+INDENT+"pass" 
+
+    /*
+    *       STEP 2 : Get the documentation for each one of the results
+    */
+
+    inspectionCode += "\ntry:";
+    inspectionCode += "\n"+INDENT+"documentation=[]";
+    inspectionCode += "\n"+INDENT+"for result in results:";
+    inspectionCode += "\n"+INDENT+INDENT+"typeOfResult = type(exec(result))";
+    // built-in types most likely refer to variable or values defined by the user
+    inspectionCode += "\n"+INDENT+INDENT+"isBuiltInType = typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset, type);"
+    inspectionCode += "\n"+INDENT+INDENT+"if isBuiltInType:";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Type of: '+typeOfResult.__name__);"
+    inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Function '+result+' with arguments: '+exec(result+'.__code__.co_varnames'));"
+    inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Built-in value')"
+    inspectionCode += "\n"+INDENT+INDENT+"elif result != 'breakpoint':"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(help(exec(result)).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
+    inspectionCode += "\n"+INDENT+INDENT+"else:"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(\"\"\""+breakpointDocumentation+"\"\"\");"
+    inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
+    inspectionCode += "\n"+INDENT+"event2 = window.MouseEvent.new('click')"
+    inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].dispatchEvent(event2)"
+    inspectionCode += "\nexcept:\n"+INDENT+"pass";
+
+    // We need to put the user code before, so that the inspection can work on the code's results
+    runPythonCode(userCode + inspectionCode);
+}
+
+// Check every time you're in a slot and see how to show the AC (for the code section)
 export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
     //check that we are in a literal: here returns nothing
     //in a non terminated string literal
@@ -120,61 +185,36 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
 
     const parser = new Parser();
     const userCode = parser.getCodeWithoutErrors(frameId);
-    let inspectionCode ="";
+    prepareBrythonCode(userCode, contextAC, acSpanId, documentationSpanId, false);
+    return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
+}
 
-    /*
-    *       STEP 1 : Run the code and get the AC results
-    */
-    // append the line that gets all the possible names of the namespace and the context
-    // The builtins will be used only if we don't have a context
-    inspectionCode += "\ntry:"
-    inspectionCode += "\n"+INDENT+"namesForAutocompletion="+((contextAC)?"":" dir(__builtins__) +")+" dir("+contextAC+")";
-    inspectionCode += "\nexcept:\n"+INDENT+"pass"
-    // Define the slot id we are talking about
-    inspectionCode += "\ntry:"
-    // append the line that removes useless names and saves them to the results
-    inspectionCode += "\n"+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]"
-    // If there are no results, we notify the hidden span that there is no AC available
-    inspectionCode += "\n"+INDENT+"if(len(results)>0):"
-    inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text = results"
-    // Fake a click to the hidden span to trigger the AC window to show
-    inspectionCode += "\n"+INDENT+INDENT+"event1 = window.MouseEvent.new('click')"
-    inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].dispatchEvent(event1)"
-    inspectionCode += "\n"+INDENT+"else:"
-    // We empty any previous results so that the AC won't be shown
-    inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
-    inspectionCode += "\nexcept:\n"+INDENT+"pass" 
+// Check every time you're in a slot and see how to show the AC (for the imports section)
+// Depending on what part of the import frame we are at, the AC will follow a different strategy:
+// if we're on the "from" slot or the "import" slot (no "from" enabled) --> we retrieve the module name on the hard coded JSON module names list
+// if we're on the "import" slot ("from" slot enabled) --> we retrieve the module's part directly via Brython
+export function getImportCandidatesForAC(slotCode: string, frameId: number, slotIndex: number, acSpanId: string, documentationSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
+    //only keep the required part of the code token (for example if it's "firstMeth, secondMe" we only keep "secondMeth")
+    if(slotCode.indexOf(",") > -1){
+        slotCode = slotCode.substr(slotCode.lastIndexOf(",")).trim();
+    }
 
-    /*
-    *       STEP 2 : Get the documentation for each one of the results
-    */
-
-    inspectionCode += "\ntry:";
-    inspectionCode += "\n"+INDENT+"documentation=[]";
-    inspectionCode += "\n"+INDENT+"for result in results:";
-    inspectionCode += "\n"+INDENT+INDENT+"typeOfResult = type(exec(result))";
-    // built-in types most likely refer to variable or values defined by the user
-    inspectionCode += "\n"+INDENT+INDENT+"isBuiltInType = typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset, type);"
-    inspectionCode += "\n"+INDENT+INDENT+"if isBuiltInType:";
-    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Type of: '+typeOfResult.__name__);"
-    inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
-    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Function '+result+' with arguments: '+exec(result+'.__code__.co_varnames'));"
-    inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
-    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Built-in value')"
-    inspectionCode += "\n"+INDENT+INDENT+"elif result != 'breakpoint':"
-    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(help(exec(result)).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
-    inspectionCode += "\n"+INDENT+INDENT+"else:"
-    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(\"\"\""+breakpointDocumentation+"\"\"\");"
-    inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
-    inspectionCode += "\n"+INDENT+"event2 = window.MouseEvent.new('click')"
-    inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].dispatchEvent(event2)"
-    inspectionCode += "\nexcept:\n"+INDENT+"pass";
-
-    // We need to put the user code before, so that the inspection can work on the code's results
-    runPythonCode(userCode + inspectionCode);
-
-    console.log(userCode)
-    console.log(inspectionCode)
+    //find out how to address the AC based on that import (are we looking for a module name or for a module part?)
+    const frame: FrameObject = store.getters.getFrameObjectFromId(frameId);
+    const lookupModulePart = (slotIndex == 1 && frame.contentDict[0].shownLabel); //false -> we look at a module itself, true -> we look at a module part  
+    let contextAC = "";
+    const tokenAC = slotCode;
+    if(lookupModulePart){
+        //we look at the module part --> get the module part candidates from Brython
+        contextAC = frame.contentDict[0].code;
+        const userCode = "import " + contextAC;
+        prepareBrythonCode(userCode, contextAC, acSpanId, documentationSpanId, false);
+    }
+    else{
+        //we look at the module --> get the module candidates from hard coded JSON
+        contextAC = "['" + moduleDescription.modules.join("','") + "']";
+        prepareBrythonCode("", contextAC, acSpanId, documentationSpanId, true);
+    }
 
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
