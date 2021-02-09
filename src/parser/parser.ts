@@ -1,5 +1,5 @@
 import store from "@/store/store";
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions } from "@/types/types";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions , LoopFrames} from "@/types/types";
 import { functions, invokeMap } from "lodash";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import { Store } from "vuex";
@@ -14,6 +14,7 @@ export default class Parser {
     private line = 0;
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
+    private excludeLoops = false;
 
     private parseSlot(slot: string, position: number) {
         // This method parses semantically, by checking that every
@@ -49,12 +50,16 @@ export default class Parser {
             return "";
         }
 
+        const isLoopFrame = this.excludeLoops && Object.values(LoopFrames).find((t) => t.type === block.frameType.type);
+        // the loop frames must not be added to the code and nor should their contents be indented
+        const conditionalIndent = (isLoopFrame)? "" : INDENT
+
         output += 
-            this.parseStatement(block, indentation) + 
+            ((!isLoopFrame)? this.parseStatement(block, indentation) : "") + 
             ((block.frameType.allowChildren && children.length > 0)?
                 this.parseFrames(
-                    store.getters.getFramesForParentId(block.id),
-                    indentation + INDENT
+                    children,
+                    indentation + conditionalIndent
                 ) :
                 "") // empty bodies are added as empty lines in the code
             + 
@@ -143,10 +148,14 @@ export default class Parser {
         return output;
     }
 
-    public parse(stopAtFrameId?: number): string {
+    public parse(stopAtFrameId?: number, excludeLoops?: boolean): string {
         let output = "";
         if(stopAtFrameId){
             this.stopAtFrameId = stopAtFrameId;
+        }
+
+        if(excludeLoops){
+            this.excludeLoops = excludeLoops;
         }
 
         //console.time();
@@ -235,8 +244,8 @@ export default class Parser {
     
     }
 
-    public getCodeWithoutErrors(endFrameId: number): string {
-        const code = this.parse(endFrameId);
+    public getCodeWithoutErrors(endFrameId: number, excludeLoops?: boolean): string {
+        const code = this.parse(endFrameId,excludeLoops);
 
         const errors = this.getErrors(code);
 
@@ -289,7 +298,6 @@ export default class Parser {
         let output = "";                     // the code that will go to Brython
         let prevIndentation = 0;             // holds the indentation of the previous line
         const openedTryMap = [] as string[]; // For each try opened, we store the white spaces in front of it.
-        const exceptIsOpened = false;          // When the except is open no need to add try catch in it.
         let tryFromTheUser = false;          // When the except is open no need to add try catch in it.
 
         // Now add try/except statements around each statement and block

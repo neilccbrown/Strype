@@ -118,9 +118,9 @@ const initialDemoState: EditorFrameObjects = {
         isDisabled: false,
         isSelected: false,
         isVisible: true,
-        parentId: 0,
+        parentId: 3,
         childrenIds: [],
-        jointParentId: 3,
+        jointParentId: 0,
         jointFrameIds: [],
         contentDict: {
             0: {code :  "display.scroll(myString)", focused: false, error :"", shownLabel: true},

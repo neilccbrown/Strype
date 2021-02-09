@@ -119,7 +119,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     */
 
     const parser = new Parser();
-    const userCode = parser.getCodeWithoutErrors(frameId);
+    const userCode = parser.getCodeWithoutErrors(frameId,true);
     let inspectionCode ="";
 
     /*
@@ -172,10 +172,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
 
     // We need to put the user code before, so that the inspection can work on the code's results
     runPythonCode(userCode + inspectionCode);
-
-    console.log(userCode)
-    console.log(inspectionCode)
-
+    // console.log(userCode);
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
 
