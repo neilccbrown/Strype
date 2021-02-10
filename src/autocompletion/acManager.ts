@@ -184,7 +184,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     */
 
     const parser = new Parser();
-    const userCode = parser.getCodeWithoutErrors(frameId);
+    const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
     prepareBrythonCode(userCode, contextAC, acSpanId, documentationSpanId, false);
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
@@ -215,7 +215,7 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
         contextAC = "['" + moduleDescription.modules.join("','") + "']";
         prepareBrythonCode("", contextAC, acSpanId, documentationSpanId, true);
     }
-
+ 
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
 

@@ -447,6 +447,10 @@ export const Definitions = {
     CommentDefinition,
 };
 
+export const LoopFrames = {
+    ForDefinition,
+    WhileDefinition,
+};
 
 export const EmptyFrameObject: FrameObject = {
     frameType: DefaultFramesDefinition,
