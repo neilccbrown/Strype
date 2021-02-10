@@ -50,12 +50,12 @@ export default class Parser {
             return "";
         }
 
-        const isLoopFrame = this.excludeLoops && Object.values(LoopFrames).find((t) => t.type === block.frameType.type);
-        // the loop frames must not be added to the code and nor should their contents be indented
-        const conditionalIndent = (isLoopFrame)? "" : INDENT
+        const passBlock = this.excludeLoops && Object.values(LoopFrames).find((t) => t.type === block.frameType.type);
+        // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
+        const conditionalIndent = (passBlock)? "" : INDENT
 
         output += 
-            ((!isLoopFrame)? this.parseStatement(block, indentation) : "") + 
+            ((!passBlock)? this.parseStatement(block, indentation) : "") + 
             ((block.frameType.allowChildren && children.length > 0)?
                 this.parseFrames(
                     children,
@@ -183,7 +183,7 @@ export default class Parser {
             code = this.parse();
         }
 
-        const parsedCode = TPyParser.parse(code);
+        //const parsedCode = TPyParser.parse(code);
 
         return TPyParser.findAllErrors(code);
     }
@@ -244,8 +244,8 @@ export default class Parser {
     
     }
 
-    public getCodeWithoutErrors(endFrameId: number, excludeLoops?: boolean): string {
-        const code = this.parse(endFrameId,excludeLoops);
+    public getCodeWithoutErrorsAndLoops(endFrameId: number): string {
+        const code = this.parse(endFrameId,true);
 
         const errors = this.getErrors(code);
 
