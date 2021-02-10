@@ -1,8 +1,6 @@
 import store from "@/store/store";
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions , LoopFrames} from "@/types/types";
-import { functions, invokeMap } from "lodash";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
-import { Store } from "vuex";
 
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\"";
