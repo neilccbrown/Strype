@@ -64,28 +64,43 @@ function prepareBrythonCode(userCode: string, contextAC: string, acSpanId: strin
     /*
     *       STEP 2 : Get the documentation for each one of the results
     */
-
+    
+    inspectionCode += "\nfrom io import StringIO";
+    inspectionCode += "\nimport sys";
+    inspectionCode += "\ndocumentation=[]";
     inspectionCode += "\ntry:";
-    inspectionCode += "\n"+INDENT+"documentation=[]";
     inspectionCode += "\n"+INDENT+"for result in results:";
-    inspectionCode += "\n"+INDENT+INDENT+"typeOfResult = type(exec(result))";
+    inspectionCode += "\n"+INDENT+INDENT+"try:";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"typeOfResult = type(exec(result))";
+    inspectionCode += "\n"+INDENT+INDENT+"except:";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('No documentation available')";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"continue";
     // built-in types most likely refer to variable or values defined by the user
-    inspectionCode += "\n"+INDENT+INDENT+"isBuiltInType = typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset, type);"
+    inspectionCode += "\n"+INDENT+INDENT+"isBuiltInType = (typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset));"
     inspectionCode += "\n"+INDENT+INDENT+"if isBuiltInType:";
     inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Type of: '+typeOfResult.__name__);"
     inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
-    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Function '+result+' with arguments: '+exec(result+'.__code__.co_varnames'));"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Function '+result+' with arguments: ' + str(exec(result+'.__code__.co_varnames')).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
     inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
     inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Built-in value')"
     inspectionCode += "\n"+INDENT+INDENT+"elif result != 'breakpoint':"
-    inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(help(exec(result)).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
-    inspectionCode += "\n"+INDENT+INDENT+"else:"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"old_stdout = sys.stdout";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"sys.stdout = mystdout = StringIO()";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"help(result)";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.append(mystdout.getvalue().replace(\"'\",\" \").replace(\"\\\"\",\" \"))";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"except:";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.append('No documentation available')"
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+"finally:";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
+    inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
+    inspectionCode += "\n"+INDENT+INDENT+"else:";
     inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(\"\"\""+breakpointDocumentation+"\"\"\");"
     inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
     inspectionCode += "\n"+INDENT+"event2 = window.MouseEvent.new('click')"
     inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].dispatchEvent(event2)"
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
-
+    
     // We need to put the user code before, so that the inspection can work on the code's results
     runPythonCode(userCode + inspectionCode);
 }
