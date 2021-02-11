@@ -44,7 +44,6 @@
             :id="documentationSpanID"
             :key="documentationSpanID"
             class="hidden"
-            @click="showDocumentationAC"
         > 
         </span>
     </div>
@@ -115,14 +114,20 @@ export default Vue.extend({
     methods: {  
         // On a fake Click -triggered by Brython's code- the suggestions popup
         showSuggestionsAC(): void {
-            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement).textContent?.replaceAll("'","\"");
+            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"");
+            const parsedResIndexes: number[] = [];
             const parsedResults: string[]= JSON.parse(allResults??"");
-            this.results = parsedResults.filter( (result) => result.toLowerCase().startsWith(this.token))
-        },
-
-        showDocumentationAC(): void {
-            const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement).textContent?.replaceAll("'","\"")??"";
-            this.documentation = JSON.parse(allDocumentations??"");
+            this.results = parsedResults.filter((result, index) => {
+                if(result.toLowerCase().startsWith(this.token)){
+                    parsedResIndexes.push(index)
+                    return true;
+                }
+                return false;
+            });    
+            
+            const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
+            const parsedDoc: string[] = JSON.parse(allDocumentations??"");
+            this.documentation = parsedDoc.filter((doc, index) => (parsedResIndexes.includes(index)));
         },  
 
         changeSelection(delta: number): void {

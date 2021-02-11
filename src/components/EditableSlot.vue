@@ -40,7 +40,7 @@
             :value="code"
         />
         <AutoCompletion
-            v-if="focused && showAC" 
+            v-show="focused && showAC" 
             :slotId="UIID"
             ref="AC"
             :token="token"
@@ -56,7 +56,7 @@ import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { CaretPosition, Definitions, FrameObject, CursorPosition} from "@/types/types";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
-import { getCandidatesForAC, getImportCandidatesForAC } from "@/autocompletion/acManager";
+import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
 export default Vue.extend({
@@ -142,7 +142,6 @@ export default Vue.extend({
                         isFirstChange: this.isFirstChange,
                     }
                 );
-                this.isFirstChange = false;
 
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
@@ -158,11 +157,12 @@ export default Vue.extend({
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
                     this.showAC = resultsAC.showAC;
-                    
                     if(this.showAC){
-                        this.token = resultsAC.tokenAC.toLowerCase();
+                        this.token = resultsAC.tokenAC.toLowerCase();  
                     }
                 }
+
+                this.isFirstChange = false;
             },
         },
 
@@ -219,6 +219,8 @@ export default Vue.extend({
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
             this.isFirstChange = true;
+            //reset the AC context
+            resetCurrentContextAC();
             store.dispatch(
                 "setFocusEditableSlot",
                 {
@@ -307,8 +309,19 @@ export default Vue.extend({
         
         acItemClicked() {
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-            const selectedItem = (document.querySelector(".hoveredAcItem") as HTMLLIElement).textContent?.trim()
-            this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
+            const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
+            const newCode = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
+            //set the input field as well because it is used later when the code is updated
+            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+            const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
+            // if the input field exists and it is not a comment
+            if(inputField && frame.frameType.type !== Definitions.CommentDefinition.type){
+                //get the autocompletion candidates
+                inputField.value = newCode;
+                inputField.setSelectionRange(newCode.length, newCode.length);
+            }
+                    
+            this.code = newCode;
             this.showAC = false;
         },
 
