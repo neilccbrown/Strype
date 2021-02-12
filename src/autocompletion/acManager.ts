@@ -7,8 +7,7 @@ const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
     "==","=","!=",">=","<=","<",">"];
 
-const operatorsWithBrackets = [...operators,"(",")","[","]","{","}"];
-const operatorsWithBracketsAndSpace = [...operatorsWithBrackets," "];
+const operatorWithSpace = [...operators, " "];
 
 const INDENT = "    ";
 
@@ -195,8 +194,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     
     // if the string's last character is an operator or symbol that means there is no context and tokenAC
     // we also try to avoid checking for context and token when the line ends with multiple dots, as it creates a problem to Brython
-    if(!operatorsWithBracketsAndSpace.includes(slotCode.substr(codeIndex).slice(-1)) && !slotCode.substr(codeIndex).endsWith("..")) {
-    
+    if(!operatorWithSpace.includes(slotCode.substr(codeIndex).slice(-1)) && !slotCode.substr(codeIndex).endsWith("..")) {
         // code we will give us context and token is the last piece of code after the last white space
         const subCode = slotCode.substr(codeIndex).split(" ").slice(-1).pop()??"";
 

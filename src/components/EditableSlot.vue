@@ -310,12 +310,12 @@ export default Vue.extend({
         acItemClicked() {
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
             const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
-            const newCode = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
-            //set the input field as well because it is used later when the code is updated
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+            const newCode = this.code.substr(0,inputField.selectionStart) + selectedItem.substring(this.token.length) + this.code.substr(inputField.selectionStart);
+            //set the input field as well because it is used later when the code is updated
             const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
             // if the input field exists and it is not a comment
-            if(inputField && frame.frameType.type !== Definitions.CommentDefinition.type){
+            if(frame.frameType.type !== Definitions.CommentDefinition.type){
                 //get the autocompletion candidates
                 inputField.value = newCode;
                 inputField.setSelectionRange(newCode.length, newCode.length);
