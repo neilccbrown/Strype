@@ -209,12 +209,12 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     */
 
     const parser = new Parser();
-    const userCode = parser.getCodeWithoutErrors(frameId);
+    const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
 
     //the full AC and documentation are only recreated when a next context is notified
     prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, false);
     currentACContext = contextAC;
-    
+
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
 
@@ -244,8 +244,9 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
         contextAC = "['" + moduleDescription.modules.join("','") + "']";
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, true);
     }
+    
     currentACContext = contextAC;
-
+ 
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
 

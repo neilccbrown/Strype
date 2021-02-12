@@ -8,13 +8,15 @@
     <!-- Import for the fontawesome icons -->
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/all.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/v4-shims.css">
-    <script lang="JavaScript">window.onload=function(){
-      var tag = document.createElement("script");
-      tag.src = "./js/brython.min.js";
-      document.getElementsByTagName("head")[0].appendChild(tag);
-      var tag2 = document.createElement("script");
-      tag2.src = "./js/brython_stdlib.js";
-      document.getElementsByTagName("head")[0].appendChild(tag2);}</script>    
+    <script lang="JavaScript"> 
+      window.onload=function(){
+        var tag = document.createElement("script");
+        tag.src = "./js/brython.min.js";
+        document.getElementsByTagName("head")[0].appendChild(tag);
+        var tag2 = document.createElement("script");
+        tag2.src = "./js/brython_stdlib.js";
+        document.getElementsByTagName("head")[0].appendChild(tag2);
+      }
     </script>
     <title><%= htmlWebpackPlugin.options.title %></title>
   </head>
