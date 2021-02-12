@@ -112,6 +112,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
+    console.log((regenerateAC) ? (userCode + inspectionCode) : inspectionCode)
     runPythonCode((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
 
