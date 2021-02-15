@@ -63,7 +63,7 @@ import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId} from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition} from "@/types/types";
+import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition} from "@/types/types";
 import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
 import $ from "jquery";
@@ -161,6 +161,11 @@ export default Vue.extend({
 
                 //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")
                 if(!store.getters.getIsEditing() && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
+                    event.preventDefault();
+                }
+
+                //prevent spaces in import frame's editable slots
+                if(store.getters.getIsEditing() && store.getters.getCurrentFrameObject().frameType.type === ImportDefinition.type && event.key === " "){
                     event.preventDefault();
                 }
             }
