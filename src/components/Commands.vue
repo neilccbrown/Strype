@@ -51,6 +51,7 @@
             </div>
         </div>
         <text id="userCode"></text>
+        <span id="keystrokeSpan"></span>
     </div>
 </template>
 
@@ -127,6 +128,13 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
+                if(store.state.showKeystroke && (!store.state.isEditing || event.key.match(/^.{2,}$/))){
+                    //if we requested to log keystroke, display the keystroke event in an unobtrusive location
+                    (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "["+event.key+"]";
+                    //leave the message for a short moment only
+                    setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);         
+                }
+
                 const tutorial = document.getElementById(getTutorialUIID());
                 if(tutorial !== null || store.getters.isAppMenuOpened()){
                     if(store.getters.isAppMenuOpened() && store.getters.getIsEditing()){
@@ -377,5 +385,14 @@ export default Vue.extend({
 
 .commands-container{
     display: inline-block;
+}
+
+#keystrokeSpan{
+    bottom:2px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    position: absolute;
+    font-size:large;
+    color:#666666;
 }
 </style>
