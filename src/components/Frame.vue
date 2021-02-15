@@ -131,7 +131,9 @@ export default Vue.extend({
                 {name: this.$i18n.t("contextMenu.copy"), method: "copy"},
                 {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"},
                 {name: "", method: "", type: "divider"},
-                {name: this.$i18n.t("contextMenu.disable"), method: "disable"}],
+                {name: this.$i18n.t("contextMenu.disable"), method: "disable"},
+                {name: "", method: "", type: "divider"},
+                {name: this.$i18n.t("contextMenu.delete"), method: "delete"}],
         }
     },
 
@@ -256,9 +258,6 @@ export default Vue.extend({
             store.commit("setContextMenuShownId",this.uiid);
 
             if(action === "frame-context-menu") {
-                //keep information of what offset has to be observed from the "normal" menu positioning
-                let menuPosOffset = 0;
-
                 // Not all frames should be duplicated (e.g. Else)
                 // The target id, for a duplication, should be the same as the copied frame 
                 // except if that frame has joint frames: the target is the last joint frame.
@@ -277,8 +276,6 @@ export default Vue.extend({
                             1
                         );
                     }
-                    //update the offset
-                    menuPosOffset --;
                 }
 
                 //if a frame is disabled [respectively, enabled], show the enable [resp. disable] option
@@ -288,7 +285,7 @@ export default Vue.extend({
                 const enableDisableIndex = this.frameContextMenuOptions.findIndex((entry) => entry.name === this.$i18n.t("contextMenu.enable") || entry.name === this.$i18n.t("contextMenu.disable")  );
                 Vue.set(
                     this.frameContextMenuOptions,
-                    enableDisableIndex + menuPosOffset,
+                    enableDisableIndex,
                     disableOrEnableOption
                 );
 
@@ -432,6 +429,18 @@ export default Vue.extend({
                     }
                 );
             }
+        },
+
+        delete(): void {
+            if(this.isPartOfSelection){
+                //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
+                store.dispatch("deleteFrames", "Delete");
+            }
+            else{
+                //when deleting the specific frame, we place the caret below and simulate "backspace"
+                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
+                store.dispatch("deleteFrames", "Backspace");
+            }       
         },
 
     },
