@@ -352,7 +352,7 @@ export const WithDefinition: FramesDefinitions = {
 export const EmptyDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.empty,
-    labels: [{ label: "", slot: true, defaultText: "method call", optionalSlot: true}],
+    labels: [{ label: "", slot: true, defaultText: "function call", optionalSlot: true}],
     colour: "#F6F2E9",
 };
 

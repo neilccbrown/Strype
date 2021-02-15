@@ -187,7 +187,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     // There are 2+1 cases for the context.
     //   1) When the prev char is a `.` dot :  Image.a  -->  context = Image  AND  tokenAC = a
     //   2) When the prev char is not a dot:   x = x +  --> context = "" and tokenAC = ""
-    //   3?) The is a potential case that we are in a method call, and we need to return also the names and the number of arguments
+    //   3?) The is a potential case that we are in a function call, and we need to return also the names and the number of arguments
     //        e.g.  max( --> here the context = `max()` and no tokenAC. We may need to return the args to show a hint to the user.
 
     let tokenAC = "";
