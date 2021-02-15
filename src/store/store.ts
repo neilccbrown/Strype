@@ -208,7 +208,7 @@ export default new Vuex.Store({
                 }
                 else{
                     //Remove "finally" in joint frames allowed after "else" if we are in anything else than in a "try"
-                    if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
+                    if(rootJointFrame.frameType.type !== Definitions.TryDefinition.type && jointTypes.includes(Definitions.FinallyDefinition.type)){
                         jointTypes.splice(
                             jointTypes.indexOf(Definitions.FinallyDefinition.type),
                             1
@@ -219,7 +219,7 @@ export default new Vuex.Store({
                     const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
                     uniqueJointFrameTypes.forEach((frameDef) => {
                         if(jointTypes.includes(frameDef.type) &&
-                            rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
+                            rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === frameDef.type) !== undefined){
                             jointTypes.splice(
                                 jointTypes.indexOf(frameDef.type),
                                 1
