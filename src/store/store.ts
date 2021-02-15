@@ -1085,8 +1085,8 @@ export default new Vuex.Store({
             let backupCurrentFocus = false;
             let backupCurrentFrameVisibility = CaretPosition.none;
             if(payload.mockCurrentCursorFocus !== undefined){
-                //before saving the state, we "mock" a change of current state ID to a dummy
-                //value so that a difference is raised --> if users change the cursor, before doing undo,
+                //before saving the state, we "mock" a change of current state ID to a dummy value
+                //so that a difference is raised --> if users change the cursor, before doing undo,
                 //the cursor will correctly be at the right location. Same with focused.
                 backupCurrentFrame = state.currentFrame;
                 backupCurrentFocus = state.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused;
@@ -1120,6 +1120,11 @@ export default new Vuex.Store({
         },
 
         applyStateUndoRedoChanges(state, isUndo: boolean){
+            //flags for performing a change of current caret
+            let changeCaret = false;
+            let newCaretId = 0;
+            const oldCaretId = state.currentFrame.id;
+
             //performing the change if there is any change recorded in the state
             let changeList = [] as ObjectPropertyDiff[];
             if(isUndo) {
@@ -1141,7 +1146,6 @@ export default new Vuex.Store({
                 const checkErrorChangeEntry: ObjectPropertyDiff|undefined = changeList.find((changeEntry: ObjectPropertyDiff) => (changeEntry.propertyPathWithArrayFlag.match(/\.contentDict_false\.\d*_false\.code$/)?.length??0) > 0);
                 if(checkErrorChangeEntry){
                     const changePath = checkErrorChangeEntry.propertyPathWithArrayFlag;
-                    //frameObjects_false.2_false.contentDict_false.0_false.code
                     let indexOfId = "frameObjects_false.".length;
                     const frameId = changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId);
                     indexOfId = changePath.indexOf(".contentDict_false.") + ".contentDict_false.".length; 
@@ -1187,6 +1191,12 @@ export default new Vuex.Store({
                             changeEntry.value
                         );
 
+                        //if we update a current frame cursor, we make sure it is properly set
+                        if(statePartToChange === state.currentFrame && property==="id"){
+                            changeCaret = true;
+                            newCaretId = changeEntry.value;
+                        }
+
                         //if we "delete" something in an array, flag this array for clearning
                         if(lastPartIsArray && changeEntry.value===null && arraysToClean.indexOf(statePartToChange) === -1){
                             arraysToClean.push(statePartToChange);
@@ -1217,6 +1227,21 @@ export default new Vuex.Store({
                     Vue.set(state, "copiedFrameId", -100);
                 }
              
+                //if we notified a change of current caret, we make sure it makes correctly displayed 
+                if(changeCaret){
+                    Vue.set(
+                        state.frameObjects[oldCaretId],
+                        "caretVisibility",
+                        CaretPosition.none
+                    );
+        
+                    Vue.set(
+                        state.currentFrame,
+                        "caretPosition",
+                        state.frameObjects[newCaretId].caretVisibility
+                    );
+                }
+
                 //keep the arrays of changes in sync with undo/redo sequences
                 const stateDifferences = getObjectPropertiesDifferences(state, stateBeforeChanges);
                 if(isUndo){
