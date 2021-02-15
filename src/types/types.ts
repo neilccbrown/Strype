@@ -262,7 +262,7 @@ export const ElifDefinition: FramesDefinitions = {
 export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.else,
-    labels: [{ label: "else:", slot: false, defaultText: ""}],
+    labels: [{ label: "else :", slot: false, defaultText: ""}],
     draggableGroup: DraggableGroupTypes.ifCompound,
     isJointFrame: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
@@ -294,7 +294,7 @@ export const WhileDefinition: FramesDefinitions = {
 export const TryDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.try,
-    labels: [{ label: "try:", slot: false, defaultText: ""}],
+    labels: [{ label: "try :", slot: false, defaultText: ""}],
     allowJointChildren: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "#C7D9DC",
@@ -306,7 +306,7 @@ export const ExceptDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.except,
     labels: [
         { label: "except ", slot: true, defaultText: "exception", optionalSlot: true},
-        { label: ":", slot: false, defaultText: ""},
+        { label: " :", slot: false, defaultText: ""},
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "",
@@ -318,7 +318,7 @@ export const FinallyDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.finally,
     labels: [
-        { label: "finally:", slot: false, defaultText: ""},
+        { label: "finally :", slot: false, defaultText: ""},
     ],
     colour: "",
     isJointFrame: true,
@@ -331,7 +331,7 @@ export const FuncDefDefinition: FramesDefinitions = {
     labels: [
         { label: "def ", slot: true, defaultText: "name", optionalSlot: false},
         { label: "(", slot: true, defaultText: "arguments", optionalSlot: true},
-        { label: "):", slot: false, defaultText: ""},
+        { label: ") :", slot: false, defaultText: ""},
     ],
     colour: "#ECECC8",
     draggableGroup: DraggableGroupTypes.functionSignatures,
