@@ -11,6 +11,7 @@
                     <input
                         v-if="isComponentLoaded"
                         v-model="projectName" 
+                        spellcheck="false"
                         @mouseover="hover = true"
                         @mouseleave="hover = false"
                         @focus="onFocus()"

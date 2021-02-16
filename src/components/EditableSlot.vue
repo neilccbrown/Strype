@@ -3,6 +3,7 @@
         <input
             type="text"
             autocomplete="off"
+            spellcheck="false"
             v-if="isComponentLoaded"
             :disabled="isDisabled"
             v-model="code"
