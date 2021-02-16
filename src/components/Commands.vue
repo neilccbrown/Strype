@@ -125,6 +125,39 @@ export default Vue.extend({
     },
 
     created() {
+        if(store.state.showKeystroke){
+            window.addEventListener(
+                "dblclick",
+                (event: MouseEvent) => {
+                    (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "[double click]";
+                    //leave the message for a short moment only
+                    setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);    
+                }
+            );
+            
+            window.addEventListener(
+                "mousedown",
+                (event: MouseEvent) => {
+                    let mouseButton = "unknown mouse click";
+                    switch(event.button){
+                    case 0:
+                        mouseButton = "left click";
+                        break;
+                    case 1:
+                        mouseButton = "middle click";
+                        break;
+                    case 2:
+                        mouseButton = "right click";
+                        break;
+                    }
+                    (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "["+mouseButton+"]";
+                    //leave the message for a short moment only
+                    setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);    
+                }
+            );
+
+        }
+
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
