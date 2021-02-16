@@ -188,8 +188,8 @@ export default Vue.extend({
                     return;
                 }
 
-                //prevent default scrolling.
-                if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
+                //prevent default scrolling and navigation
+                if ( event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
                     event.preventDefault();
                     return;
                 }

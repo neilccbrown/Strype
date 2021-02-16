@@ -749,3 +749,8 @@ export const DefaultCursorPosition: CursorPosition = {
     left: 0,
     height: 0,
 };
+
+export interface EditableSlotReachInfos {
+    isKeyboard: boolean;
+    direction: -1 | 1;
+}

@@ -55,7 +55,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { CaretPosition, Definitions, FrameObject, CursorPosition} from "@/types/types";
+import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos} from "@/types/types";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
@@ -205,6 +205,17 @@ export default Vue.extend({
             componentUpdated: function (el, binding) {
                 if(binding.value !== binding.oldValue) {
                     if(binding.value){
+                        //when a slot gains focus, we check that it was reached via keyboard: if so, depending on the reaching direction
+                        //we set the text cursor to the start or the end of the text. When it's not reached via keyboard (i.e. via mouse)
+                        //we don't change the cursor ourselves as it will be set where the user clicked at.
+                        const editableSlotReachingInfo: EditableSlotReachInfos = store.getters.getEditableSlotViaKeyboard();
+                        if(editableSlotReachingInfo.isKeyboard){
+                            const cursorPos = (editableSlotReachingInfo.direction === -1) ? ((el as HTMLInputElement).value.length??0) : 0;
+                            (el as HTMLInputElement).setSelectionRange(cursorPos, cursorPos);
+                            //reset the flag informing how the slot has been reached
+                            store.commit("setEditableSlotViaKeyboard", false);
+                        }
+
                         el.focus();
                     }
                     else {
@@ -258,6 +269,11 @@ export default Vue.extend({
                         event.key
                     );
                     this.onBlur();
+                }
+                else {
+                    //no specific action to take, we just move the cursor to the left or to the right
+                    const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
+                    input.setSelectionRange(start + incrementStep, end + incrementStep);
                 }
             }
         },

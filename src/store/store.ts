@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos } from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import initialTestState from "@/store/initial-test-state";
@@ -60,6 +60,8 @@ export default new Vuex.Store({
         appLang: "en",
 
         isAppMenuOpened: false,
+
+        editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
     
     },
 
@@ -512,6 +514,10 @@ export default new Vuex.Store({
 
         getFrameContentVisibility: (state) => (frameId: number) => {
             return state.frameObjects[frameId].isContentVisible??true;
+        },
+
+        getEditableSlotViaKeyboard:(state) => () => {
+            return state.editableSlotViaKeyboard;
         },
     }, 
 
@@ -1375,6 +1381,10 @@ export default new Vuex.Store({
                 !payload.collapse
             );
         },
+
+        setEditableSlotViaKeyboard(state, payload: EditableSlotReachInfos) {
+            Vue.set(state, "editableSlotViaKeyboard", payload);
+        },
     },
 
     actions: {
@@ -1864,6 +1874,10 @@ export default new Vuex.Store({
                             focused: false,
                         }
                     );
+
+                    const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: change};
+                    commit("setEditableSlotViaKeyboard", slotReachInfos);
+
                     commit(
                         "setEditableFocus",
                         {
@@ -1957,6 +1971,9 @@ export default new Vuex.Store({
                 if(editableSlotsIndexes.length > 0) {
 
                     editFlag = true;
+
+                    const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: (directionDown) ? 1 : -1};
+                    commit("setEditableSlotViaKeyboard", slotReachInfos);
 
                     commit(
                         "setEditableFocus",
