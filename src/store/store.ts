@@ -51,7 +51,7 @@ export default new Vuex.Store({
 
         contextMenuShownId: "",
 
-        projectName: "My Project" as string,
+        projectName: i18n.t("appMenu.defaultProjName") as string,
 
         ignoredDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
 

@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import {KeyModifier, toggleFrameLabelsDefs} from "@/constants/toggleFrameLabelCommandsDefs"; 
 
 // Type Definitions
@@ -201,7 +202,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.importsContainer,
     labels: [
-        { label: "Imports:", slot: false, defaultText: ""},
+        { label: (i18n.t("appMessage.importsContainer") as string), slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
@@ -213,7 +214,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.funcDefsContainer,
     labels: [
-        { label: "Function Definitions:", slot: false, defaultText: ""},
+        { label: (i18n.t("appMessage.funcDefsContainer") as string), slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
@@ -226,7 +227,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.framesMainContainer,
     labels: [
-        { label: "Your code:", slot: false, defaultText: ""},
+        { label: (i18n.t("appMessage.mainContainer") as string), slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),

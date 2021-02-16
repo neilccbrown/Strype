@@ -282,7 +282,7 @@ export default Vue.extend({
                 const disableOrEnableOption = (this.isDisabled) 
                     ?  {name: this.$i18n.t("contextMenu.enable"), method: "enable"}
                     :  {name: this.$i18n.t("contextMenu.disable"), method: "disable"};
-                const enableDisableIndex = this.frameContextMenuOptions.findIndex((entry) => entry.name === this.$i18n.t("contextMenu.enable") || entry.name === this.$i18n.t("contextMenu.disable")  );
+                const enableDisableIndex = this.frameContextMenuOptions.findIndex((entry) => entry.method === "enable" || entry.method === "disable");
                 Vue.set(
                     this.frameContextMenuOptions,
                     enableDisableIndex,

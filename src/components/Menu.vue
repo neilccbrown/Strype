@@ -39,7 +39,7 @@
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
                     <select name="lang" id="appLangSelect" v-model="appLang">
                         <option value="en">English</option>
-                        <option value="ja">日本语</option>
+                        <option value="fr">Français</option>
                     </select>
                 </div> 
             </div>   
