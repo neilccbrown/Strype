@@ -17,7 +17,7 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
     state: {
-        debugging: false, // true,//
+        debugging: true,// false, // 
 
         frameObjects: initialDemoState, // initialState,// initialTestState, // 
 

@@ -54,6 +54,7 @@
 import Vue from "vue";
 import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition } from "@/types/types";
+import { builtinFunctions } from "@/autocompletion/pythonBuiltins";
 import { getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
 
 //////////////////////
@@ -115,19 +116,40 @@ export default Vue.extend({
         // On a fake Click -triggered by Brython's code- the suggestions popup
         showSuggestionsAC(): void {
             const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"");
+
             const parsedResIndexes: number[] = [];
-            const parsedResults: string[]= JSON.parse(allResults??"");
-            this.results = parsedResults.filter((result, index) => {
-                if(result.toLowerCase().startsWith(this.token)){
-                    parsedResIndexes.push(index)
-                    return true;
-                }
-                return false;
-            });    
-            
+            let parsedResults: string[]= JSON.parse(allResults??"");
+            //add the builtins to the results
+            parsedResults = parsedResults.concat(Object.keys(builtinFunctions));
+
             const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
-            const parsedDoc: string[] = JSON.parse(allDocumentations??"");
-            this.documentation = parsedDoc.filter((doc, index) => (parsedResIndexes.includes(index)));
+            let parsedDoc: string[] = JSON.parse(allDocumentations??"");
+            //add the builtin docs to the results
+            parsedDoc = parsedDoc.concat(Object.values(builtinFunctions));
+
+            // make list with indices, values and documentation
+            let resultsWithIndex = parsedResults.map( (e,i) => {
+                return {index: i, value: e, documentation: parsedDoc[i]}
+            });
+
+            // sort index/value/documenation tuples, based on aphabetic order of values
+            resultsWithIndex.sort( (a, b) => {
+                return a.value.toLowerCase().localeCompare(b.value.toLowerCase())
+            });
+
+            // Filter the list based on the contextAC
+            resultsWithIndex = resultsWithIndex.filter((result) => {
+                return result.value.toLowerCase().startsWith(this.token)
+            });    
+
+            this.results = resultsWithIndex.map( (e) => {
+                return e.value;
+            });
+
+            this.documentation = resultsWithIndex.map( (e) => {
+                return e.documentation;
+            });
+
         },  
 
         changeSelection(delta: number): void {

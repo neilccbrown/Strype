@@ -46,10 +46,10 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // The builtins will be used only if we don't have a context
         inspectionCode += "\ntry:"
         if(isImportModuleAC){
-            inspectionCode += "\n"+INDENT+"namesForAutocompletion="+contextAC;
+            inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
         }
         else{
-            inspectionCode += "\n"+INDENT+"namesForAutocompletion="+((contextAC)?"":" dir(__builtins__) +")+" dir("+contextAC+")";
+            inspectionCode += "\n"+INDENT+"namesForAutocompletion = dir("+contextAC+")";
         }
         inspectionCode += "\nexcept:\n"+INDENT+"pass"
         // Define the slot id we are talking about
@@ -90,7 +90,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"old_stdout = sys.stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"sys.stdout = mystdout = StringIO()";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"help(result)";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"help(exec(result))";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.append(mystdout.getvalue().replace(\"'\",\" \").replace(\"\\\"\",\" \"))";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"except:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.append('No documentation available')"
@@ -112,7 +112,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
-    console.log((regenerateAC) ? (userCode + inspectionCode) : inspectionCode)
+    // console.log((regenerateAC) ? (userCode + inspectionCode) : inspectionCode)
     runPythonCode((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
 

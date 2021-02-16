@@ -2,7 +2,7 @@
     <li
         v-show="this.item"
         :id="item"
-        class="popUpItems"
+        class="popUpItems newlines"
         :class="selectedItem"
         @mouseover="hoverOver()"
         @mouseout="hoverOut()"
@@ -67,6 +67,12 @@ export default Vue.extend({
 
 .hoveredAcItem {
      background-color: #9aaefd;
+}
+
+.newlines {
+    //Nedded for understanding the formated errors that split multiple
+    // errors with \n
+    white-space: pre-line !important;
 }
 </style>
 
