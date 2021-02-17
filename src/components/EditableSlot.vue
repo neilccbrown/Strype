@@ -311,16 +311,16 @@ export default Vue.extend({
 
         onEnterKeyUp(event: KeyboardEvent){
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
-            if(this.showAC) {
+            if(this.showAC && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-                this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + (document.querySelector(".selectedAcItem") as HTMLLIElement).textContent?.trim();
-                this.showAC = false;
+                this.acItemClicked();
             }
-            // If AC is not loaded, we want to take the focus from the slot
+            // If AC is not loaded or no selection is available, we want to take the focus from the slot
             else {
                 this.onLRKeyUp(event);
+                this.showAC = false;
             }
         },
         
