@@ -125,15 +125,8 @@ export default Vue.extend({
 
     data: function () {
         return {
-            //prepare a "default" version of the menu: it will be amended if required in handleClick()
-            frameContextMenuOptions: [
-                {name: this.$i18n.t("contextMenu.cut"), method: "cut"},
-                {name: this.$i18n.t("contextMenu.copy"), method: "copy"},
-                {name: this.$i18n.t("contextMenu.duplicate"), method: "duplicate"},
-                {name: "", method: "", type: "divider"},
-                {name: this.$i18n.t("contextMenu.disable"), method: "disable"},
-                {name: "", method: "", type: "divider"},
-                {name: this.$i18n.t("contextMenu.delete"), method: "delete"}],
+            //prepare an empty version of the menu: it will be updated as required in handleClick()
+            frameContextMenuOptions: [] as {name: string; method: string; type?: "divider"}[],
         }
     },
 
@@ -258,6 +251,15 @@ export default Vue.extend({
             store.commit("setContextMenuShownId",this.uiid);
 
             if(action === "frame-context-menu") {
+                this.frameContextMenuOptions = [
+                    {name: this.$i18n.t("contextMenu.cut") as string, method: "cut"},
+                    {name: this.$i18n.t("contextMenu.copy") as string, method: "copy"},
+                    {name: this.$i18n.t("contextMenu.duplicate") as string, method: "duplicate"},
+                    {name: "", method: "", type: "divider"},
+                    {name: this.$i18n.t("contextMenu.disable") as string, method: "disable"},
+                    {name: "", method: "", type: "divider"},
+                    {name: this.$i18n.t("contextMenu.delete") as string, method: "delete"}];
+
                 // Not all frames should be duplicated (e.g. Else)
                 // The target id, for a duplication, should be the same as the copied frame 
                 // except if that frame has joint frames: the target is the last joint frame.
