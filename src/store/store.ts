@@ -58,6 +58,8 @@ export default new Vuex.Store({
         appLang: "en",
 
         isAppMenuOpened: false,
+
+        indexedAcResults: [] as {index: number; value: string; documentation: string}[],
     
     },
 
@@ -510,6 +512,10 @@ export default new Vuex.Store({
 
         getFrameContentVisibility: (state) => (frameId: number) => {
             return state.frameObjects[frameId].isContentVisible??true;
+        },
+
+        getIndexedAcResults: (state) => () => {
+            return state.indexedAcResults;
         },
     }, 
 
@@ -1346,6 +1352,14 @@ export default new Vuex.Store({
                 state.frameObjects[payload.frameId],
                 "isContentVisible",
                 !payload.collapse
+            );
+        },
+
+        setIndexedAcResults(state, value: {index: number; value: string; documentation: string}[]){
+            Vue.set(
+                state,
+                "indexedAcResults",
+                value
             );
         },
     },

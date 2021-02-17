@@ -55,6 +55,10 @@ export function getAcSpanId(slotId: string): string {
     return slotId + "_ResultsSpan";
 }
 
+export function getReshowResultsId(slotId: string): string {
+    return slotId + "_ReshowResults";
+}
+
 export function getDocumentationSpanId(slotId: string): string {
     return slotId + "_DocumentationSpan";
 }

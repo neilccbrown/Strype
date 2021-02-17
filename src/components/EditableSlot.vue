@@ -40,9 +40,12 @@
             :value="code"
         />
         <AutoCompletion
-            v-show="focused && showAC" 
+            v-if="focused && showAC" 
             :slotId="UIID"
+            :context="contextAC"
             ref="AC"
+            :key="UIID+'_Autocompletion'"
+            :id="UIID+'_Autocompletion'"
             :token="token"
             :cursorPosition="cursorPosition"
             @acItemClicked="acItemClicked"
@@ -55,7 +58,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { CaretPosition, Definitions, FrameObject, CursorPosition} from "@/types/types";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId } from "@/helpers/editor";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
@@ -101,6 +104,7 @@ export default Vue.extend({
             token: "",
             cursorPosition: {} as CursorPosition,
             showAC: false,
+            contextAC: "",
               
         };
     },
@@ -154,16 +158,17 @@ export default Vue.extend({
                     //workout the correct context if we are in a code editable slot
                     const isImportFrame = (frame.frameType.type === Definitions.ImportDefinition.type)
                     const resultsAC = (isImportFrame) 
-                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID))
-                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
+                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getReshowResultsId(this.UIID))
+                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getReshowResultsId(this.UIID));
                     this.showAC = resultsAC.showAC;
+                    this.contextAC = resultsAC.contextAC;
                     if(this.showAC){
                         this.token = resultsAC.tokenAC.toLowerCase();  
                     }
                 }
 
                 this.isFirstChange = false;
-            },
+            }, 
         },
 
         focused(): boolean {

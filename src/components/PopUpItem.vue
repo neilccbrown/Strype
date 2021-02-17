@@ -2,7 +2,6 @@
     <li
         v-show="this.item"
         :id="item"
-        class="popUpItems newlines"
         :class="selectedItem"
         @mouseover="hoverOver()"
         @mouseout="hoverOut()"

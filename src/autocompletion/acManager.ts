@@ -30,12 +30,9 @@ function runPythonCode(code: string): void {
     }
 }
 
-// Brython does not have the documentation for the built-in method 'breakpoint'; hence, we need to hardcode it
-const breakpointDocumentation = "Help on built-in function breakpoint in module builtins:\nbreakpoint(...)\nbreakpoint(*args, **kws)\n\nCall sys.breakpointhook(*args, **kws).  sys.breakpointhook() must accept\nwhatever arguments are passed.\n\nBy default, this drops you into the pdb debugger."
-
 // Function to be used in getCandidatesForAC() and getImportCandidatesForAC() 
 // This parts contains the logic used with Brython to retrieve the AC elements.
-function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, isImportModuleAC: boolean): void{
+function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, isImportModuleAC: boolean, reshowResultsId: string): void{
     let inspectionCode ="";
 
     if(regenerateAC){
@@ -86,7 +83,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Function '+result+' with arguments: ' + str(exec(result+'.__code__.co_varnames')).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
         inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Built-in value')"
-        inspectionCode += "\n"+INDENT+INDENT+"elif result != 'breakpoint':"
+        inspectionCode += "\n"+INDENT+INDENT+"else:"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"old_stdout = sys.stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"sys.stdout = mystdout = StringIO()";
@@ -97,8 +94,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
-        inspectionCode += "\n"+INDENT+INDENT+"else:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append(\"\"\""+breakpointDocumentation+"\"\"\");"
         inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
         inspectionCode += "\nexcept:\n"+INDENT+"pass";
     }
@@ -107,18 +102,17 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // This must be done by Brython to be sure that the AC and documentation
     // have had time to load.
     inspectionCode += "\ntry:"
-    inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')"
-    inspectionCode += "\n"+INDENT+"document['"+acSpanId+"'].dispatchEvent(event)"
+    inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')";
+    inspectionCode += "\n"+INDENT+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
-    // console.log((regenerateAC) ? (userCode + inspectionCode) : inspectionCode)
     runPythonCode((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
 
 // Check every time you're in a slot and see how to show the AC (for the code section)
 // the full AC content isn't recreated every time, but only do so when we detect a change of context.
-export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
+export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string, reshowResultsId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
     //check that we are in a literal: here returns nothing
     //in a non terminated string literal
     //writing a number)
@@ -212,7 +206,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
 
     //the full AC and documentation are only recreated when a next context is notified
-    prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, false);
+    prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, false, reshowResultsId);
     currentACContext = contextAC;
 
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
@@ -222,7 +216,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
 // Depending on what part of the import frame we are at, the AC will follow a different strategy:
 // if we're on the "from" slot or the "import" slot (no "from" enabled) --> we retrieve the module name on the hard coded JSON module names list
 // if we're on the "import" slot ("from" slot enabled) --> we retrieve the module's part directly via Brython
-export function getImportCandidatesForAC(slotCode: string, frameId: number, slotIndex: number, acSpanId: string, documentationSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
+export function getImportCandidatesForAC(slotCode: string, frameId: number, slotIndex: number, acSpanId: string, documentationSpanId: string, reshowResultsId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
     //only keep the required part of the code token (for example if it's "firstMeth, secondMe" we only keep "secondMeth")
     if(slotCode.indexOf(",") > -1){
         slotCode = slotCode.substr(slotCode.lastIndexOf(",") + 1).trim();
@@ -237,12 +231,12 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
         //we look at the module part --> get the module part candidates from Brython
         contextAC = frame.contentDict[0].code;
         const userCode = "import " + contextAC;
-        prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0), userCode, contextAC, acSpanId, documentationSpanId, false);
+        prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0), userCode, contextAC, acSpanId, documentationSpanId, false, reshowResultsId);
     }
     else{
         //we look at the module --> get the module candidates from hard coded JSON
         contextAC = "['" + moduleDescription.modules.join("','") + "']";
-        prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, true);
+        prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, true, reshowResultsId);
     }
     
     currentACContext = contextAC;

@@ -10,6 +10,7 @@
                 <ul>
                     <PopUpItem
                         v-for="(item,index) in results"
+                        class="popUpItems"
                         :id="UIID+index"
                         :item="item"
                         :key="UIID+index"
@@ -25,6 +26,7 @@
             >
                 <ul class="limitWidthUl">
                     <PopUpItem
+                        class="newlines"
                         :id="UIID+'documentation'"
                         :item="this.documentation[this.selected]"
                         :key="UIID+'documentation'"
@@ -37,7 +39,7 @@
             :id="resutlsSpanID"
             :key="resutlsSpanID"
             class="hidden"
-            @click="showSuggestionsAC"
+            @click="loadNewSuggestionsAC"
         > 
         </span>
         <span 
@@ -46,16 +48,24 @@
             class="hidden"
         > 
         </span>
+        <span 
+            :id="reshowResultsID"
+            :key="reshowResultsID"
+            class="hidden"
+            @click="showSuggestionsAC"
+        > 
+        </span>
     </div>
 </template>
 
 <script lang="ts">
 //////////////////////
 import Vue from "vue";
+import store from "@/store/store.ts";
 import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition } from "@/types/types";
 import { builtinFunctions } from "@/autocompletion/pythonBuiltins";
-import { getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
+import { getAcSpanId , getDocumentationSpanId, getReshowResultsId } from "@/helpers/editor";
 
 //////////////////////
 export default Vue.extend({
@@ -73,6 +83,7 @@ export default Vue.extend({
             type: Object,
             default: () => DefaultCursorPosition,
         },
+        context: String,
     },
 
     data() {
@@ -90,6 +101,14 @@ export default Vue.extend({
 
         resutlsSpanID(): string {
             return getAcSpanId(this.slotId);
+        },
+
+        reshowResultsID(): string {
+            return getReshowResultsId(this.slotId);
+        },
+
+        areThereResults(): boolean {
+            return this.results.length>0;
         },
 
         documentationSpanID(): string {
@@ -110,25 +129,41 @@ export default Vue.extend({
             }; 
         },
 
+        indexedAcResults:  {
+            get(){
+                return store.getters.getIndexedAcResults();
+            },
+            set(value: string){
+                store.commit(
+                    "setIndexedAcResults",
+                    value
+                )
+            },
+        },
+
     },
 
     methods: {  
         // On a fake Click -triggered by Brython's code- the suggestions popup
-        showSuggestionsAC(): void {
+        loadNewSuggestionsAC(): void {
             const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"");
 
             const parsedResIndexes: number[] = [];
             let parsedResults: string[]= JSON.parse(allResults??"");
             //add the builtins to the results
-            parsedResults = parsedResults.concat(Object.keys(builtinFunctions));
+            if(this.context === "") { // When context is present we don't need builtins
+                parsedResults = parsedResults.concat(Object.keys(builtinFunctions));
+            }
 
             const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
             let parsedDoc: string[] = JSON.parse(allDocumentations??"");
             //add the builtin docs to the results
-            parsedDoc = parsedDoc.concat(Object.values(builtinFunctions));
+            if(this.context === "") {// When context is present we don't need builtins
+                parsedDoc = parsedDoc.concat(Object.values(builtinFunctions));
+            }
 
             // make list with indices, values and documentation
-            let resultsWithIndex = parsedResults.map( (e,i) => {
+            const resultsWithIndex: {index: number; value: string; documentation: string}[] = parsedResults.map( (e,i) => {
                 return {index: i, value: e, documentation: parsedDoc[i]}
             });
 
@@ -137,16 +172,25 @@ export default Vue.extend({
                 return a.value.toLowerCase().localeCompare(b.value.toLowerCase())
             });
 
+            // store it in the store, so that if it the template is destroyed the ac remains
+            this.indexedAcResults = resultsWithIndex
+
+            this.showSuggestionsAC();
+
+        },  
+
+        showSuggestionsAC(): void {
+
             // Filter the list based on the contextAC
-            resultsWithIndex = resultsWithIndex.filter((result) => {
+            const resultsWithIndex = this.indexedAcResults.filter((result: {index: number; value: string; documentation: string}) => {
                 return result.value.toLowerCase().startsWith(this.token)
             });    
 
-            this.results = resultsWithIndex.map( (e) => {
+            this.results = resultsWithIndex.map( (e: {index: number; value: string; documentation: string}) => {
                 return e.value;
             });
 
-            this.documentation = resultsWithIndex.map( (e) => {
+            this.documentation = resultsWithIndex.map( (e: {index: number; value: string; documentation: string}) => {
                 return e.documentation;
             });
 
