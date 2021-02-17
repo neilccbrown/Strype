@@ -39,9 +39,9 @@
     "editorConfirmChangeCode": "Le contenu actuel de l'éditeur sera définitivement perdu.\nSouhaitez-vous continuer ?",
     "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
     "enableInnerDisabledFrameConfirm": "Cette action activera le groupe entier de cadres désactivés auquel ce cadre appartient.\nSouhaitez-vous continuer ?",
-    "importsContainer": "Imports:",
+    "importsContainer": "Imports :",
     "funcDefsContainer": "Définitions de fonctions :",
-    "mainContainer": "Votre code:"
+    "mainContainer": "Votre code :"
   },
   "contextMenu": {
     "cut": "Couper",

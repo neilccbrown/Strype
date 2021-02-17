@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition } from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import initialTestState from "@/store/initial-test-state";
@@ -531,6 +531,23 @@ export default new Vuex.Store({
             );
             //then change the UI via i18n
             i18n.locale = lang;
+
+            //change the values of the container frames as they are not reactive
+            Object.values(state.frameObjects).forEach((frame) => {
+                switch(frame.frameType.type){
+                case ImportsContainerDefinition.type:
+                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.importsContainer") as string)
+                    break;
+                case FuncDefContainerDefinition.type:
+                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.funcDefsContainer") as string)
+                    break;
+                case MainFramesContainerDefinition.type:
+                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.mainContainer") as string)
+                    break;
+                default:
+                    break;
+                }
+            });
         },
 
         setIsAppMenuOpened(state, isOpened: boolean) {
