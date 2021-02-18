@@ -3,6 +3,7 @@
         <input
             type="text"
             autocomplete="off"
+            spellcheck="false"
             v-if="isComponentLoaded"
             :disabled="isDisabled"
             v-model="code"
@@ -40,7 +41,7 @@
             :value="code"
         />
         <AutoCompletion
-            v-if="focused && showAC" 
+            v-show="focused && showAC" 
             :slotId="UIID"
             ref="AC"
             :token="token"
@@ -54,9 +55,9 @@
 import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { CaretPosition, Definitions, FrameObject, CursorPosition} from "@/types/types";
+import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos} from "@/types/types";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
-import { getCandidatesForAC, getImportCandidatesForAC } from "@/autocompletion/acManager";
+import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
 export default Vue.extend({
@@ -101,7 +102,9 @@ export default Vue.extend({
             token: "",
             cursorPosition: {} as CursorPosition,
             showAC: false,
-              
+
+            //used to force a text cursor position, for example after inserting an AC candidate
+            textCursorPos: -1,              
         };
     },
     
@@ -142,7 +145,6 @@ export default Vue.extend({
                         isFirstChange: this.isFirstChange,
                     }
                 );
-                this.isFirstChange = false;
 
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
@@ -158,11 +160,20 @@ export default Vue.extend({
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
                     this.showAC = resultsAC.showAC;
-                    
                     if(this.showAC){
-                        this.token = resultsAC.tokenAC.toLowerCase();
+                        this.token = resultsAC.tokenAC.toLowerCase();  
                     }
                 }
+
+                //if we specify a text cursor position, set it in the input field at the next tick (because code needs to be updated first)
+                if(this.textCursorPos > -1){
+                    this.$nextTick(() => {
+                        inputField.setSelectionRange(this.textCursorPos, this.textCursorPos);
+                        this.textCursorPos = -1;
+                    });
+                }
+
+                this.isFirstChange = false;
             },
         },
 
@@ -204,6 +215,17 @@ export default Vue.extend({
             componentUpdated: function (el, binding) {
                 if(binding.value !== binding.oldValue) {
                     if(binding.value){
+                        //when a slot gains focus, we check that it was reached via keyboard: if so, depending on the reaching direction
+                        //we set the text cursor to the start or the end of the text. When it's not reached via keyboard (i.e. via mouse)
+                        //we don't change the cursor ourselves as it will be set where the user clicked at.
+                        const editableSlotReachingInfo: EditableSlotReachInfos = store.getters.getEditableSlotViaKeyboard();
+                        if(editableSlotReachingInfo.isKeyboard){
+                            const cursorPos = (editableSlotReachingInfo.direction === -1) ? ((el as HTMLInputElement).value.length??0) : 0;
+                            (el as HTMLInputElement).setSelectionRange(cursorPos, cursorPos);
+                            //reset the flag informing how the slot has been reached
+                            store.commit("setEditableSlotViaKeyboard", false);
+                        }
+
                         el.focus();
                     }
                     else {
@@ -219,6 +241,8 @@ export default Vue.extend({
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
             this.isFirstChange = true;
+            //reset the AC context
+            resetCurrentContextAC();
             store.dispatch(
                 "setFocusEditableSlot",
                 {
@@ -256,6 +280,11 @@ export default Vue.extend({
                     );
                     this.onBlur();
                 }
+                else {
+                    //no specific action to take, we just move the cursor to the left or to the right
+                    const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
+                    input.setSelectionRange(start + incrementStep, end + incrementStep);
+                }
             }
         },
 
@@ -292,23 +321,28 @@ export default Vue.extend({
 
         onEnterKeyUp(event: KeyboardEvent){
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
-            if(this.showAC) {
+            if(this.showAC && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-                this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + (document.querySelector(".selectedAcItem") as HTMLLIElement).textContent?.trim();
-                this.showAC = false;
+                this.acItemClicked();
             }
-            // If AC is not loaded, we want to take the focus from the slot
+            // If AC is not loaded or no selection is available, we want to take the focus from the slot
             else {
                 this.onLRKeyUp(event);
+                this.showAC = false;
             }
         },
         
         acItemClicked() {
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-            const selectedItem = (document.querySelector(".hoveredAcItem") as HTMLLIElement).textContent?.trim()
-            this.code = this.code.substr(0,this.code.lastIndexOf(this.token)) + selectedItem;
+            const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
+            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+            const currentTextCursorPos = inputField.selectionStart??0;
+            const newCode = this.code.substr(0, currentTextCursorPos) + selectedItem.substring(this.token.length) + this.code.substr(currentTextCursorPos);
+            // position the text cursor just after the AC selection
+            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length;
+            this.code = newCode;
             this.showAC = false;
         },
 

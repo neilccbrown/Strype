@@ -1,5 +1,5 @@
 import store from "@/store/store";
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions} from "@/types/types";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";

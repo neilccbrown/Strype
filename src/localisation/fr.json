@@ -1,0 +1,70 @@
+{
+  "messageBannerMessage": {
+      "deleteLargeCode": "Vous venez de supprimer une grande portion de code. Si vous le souhaitiez pas, vous pouvez :",
+      "uploadSuccessMicrobit": "Chargement vers micro:bit terminé.",
+      "uploadFailureMicrobit": "Chargement vers micro:bit échoué avec l'error \"{errorMsg}\"",
+      "noUndo" : "Il n'y a aucune action à annuler.",
+      "noRedo": "Il n'y a aucune action à refaire.",
+      "uploadEditorFileError": "Un problème est survenu lors du chargement de fichier pour l'éditeur : {errorMsg}. Votre code n'a pas été modifié.",
+      "uploadEditorFileNotSupported": "Ce format de fichier n'est pas supporté. Extension de fichier attendue: {list}. Votre code n'a pas été modifié.",
+      "uploadEditorFileSuccess": "Le chargement de fichier pour l'éditeur a été réalisé avec succès. Votre code a été chargé.",
+      "forbiddenFrameMove": "Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné."
+  },
+  "buttonLabel":{
+      "undo": "Annuler",
+      "yes": "Oui",
+      "no": "Non",
+      "ok": "OK",
+      "uploadToMicrobit": "Envoyer vers micro:bit",
+      "downloadHex": "Télécharger Hex",
+      "downloadPython": "Télécharger Python",
+      "skipTutorial": "Passer le tutoriel",
+      "next": "Suivant",
+      "startCoding": "Codez !"
+  },
+  "action": {
+    "uploadingToMicrobit": "Envoi en cours vers micro:bit ..."
+  },
+  "errorMessage": {
+    "wrongDataFormat": "le format de données ne peut pas être interprété par Strype",
+    "stateDataIntegrity" : "les données ne sont pas intègres pour être interprétées par Strype",
+    "dataNotObject" : "les données de décrivent pas un object",
+    "emptyEditableSlot": "Le champ de saisie ne peut pas être vide",
+    "emptyFrameBody": "Le contenu du cadre ne peut pas être vide",
+    "noValidChildFrameBody": "Le contenu du cadre doit avoir au moins un cadre actif / différent d'un commentaire ",
+    "errorTitle": "Erreur !"
+  },
+  "appMessage": {
+    "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",
+    "editorConfirmChangeCode": "Le contenu actuel de l'éditeur sera définitivement perdu.\nSouhaitez-vous continuer ?",
+    "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
+    "enableInnerDisabledFrameConfirm": "Cette action activera le groupe entier de cadres désactivés auquel ce cadre appartient.\nSouhaitez-vous continuer ?",
+    "importsContainer": "Imports :",
+    "funcDefsContainer": "Définitions de fonctions :",
+    "mainContainer": "Votre code :"
+  },
+  "contextMenu": {
+    "cut": "Couper",
+    "copy": "Copier",
+    "duplicate": "Dupliquer",
+    "paste": "Coller",
+    "enable": "Activer",
+    "disable": "Désactiver",
+    "undo": "Annuler",
+    "redo": "Refaire",
+    "delete": "Supprimer"
+  },
+  "appMenu": {
+    "defaultProjName": "Mon projet",
+    "importFile": "Importer à partir d'un fichier",
+    "exportFile": "Exporter vers un fichier",
+    "prefs": "Préférences",
+    "lang": "Langue: "
+  },
+  "tutorialExplanation": {
+    "commands": "Vous trouverez ici tous les cadres disponibles avec leur raccourci clavier !",
+    "codeEditor": "Cet endroit sert à écrire votre code",
+    "editorCaret": "Le curseur bleu indique l'endroit où vous éditez",
+    "editorMenus": "Plus d'options pour votre projet"
+  }
+}

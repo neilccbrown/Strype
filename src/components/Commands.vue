@@ -51,6 +51,7 @@
             </div>
         </div>
         <text id="userCode"></text>
+        <span id="keystrokeSpan"></span>
     </div>
 </template>
 
@@ -62,7 +63,7 @@ import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId} from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition} from "@/types/types";
+import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition, VarAssignDefinition} from "@/types/types";
 import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
 import $ from "jquery";
@@ -124,9 +125,50 @@ export default Vue.extend({
     },
 
     created() {
+        if(store.state.showKeystroke){
+            window.addEventListener(
+                "dblclick",
+                (event: MouseEvent) => {
+                    (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "[double click]";
+                    //leave the message for a short moment only
+                    setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);    
+                }
+            );
+            
+            window.addEventListener(
+                "mousedown",
+                (event: MouseEvent) => {
+                    let mouseButton = "unknown mouse click";
+                    switch(event.button){
+                    case 0:
+                        mouseButton = "left click";
+                        break;
+                    case 1:
+                        mouseButton = "middle click";
+                        break;
+                    case 2:
+                        mouseButton = "right click";
+                        break;
+                    }
+                    (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "["+mouseButton+"]";
+                    //leave the message for a short moment only
+                    setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);    
+                }
+            );
+
+        }
+
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
+                //if we requested to log keystroke, display the keystroke event in an unobtrusive location
+                //when editing, we don't show the keystroke for basic keys (like [a-zA-Z0-1]), only those whose key value is longer than 1
+                if(store.state.showKeystroke && (!store.state.isEditing || event.key.match(/^.{2,}$/))){
+                    (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "["+event.key+"]";
+                    //leave the message for a short moment only
+                    setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);         
+                }
+
                 const tutorial = document.getElementById(getTutorialUIID());
                 if(tutorial !== null || store.getters.isAppMenuOpened()){
                     if(store.getters.isAppMenuOpened() && store.getters.getIsEditing()){
@@ -144,16 +186,35 @@ export default Vue.extend({
                         (event.key === "z")
                     );
                     event.preventDefault();
+                    return;
                 }
 
-                //prevent default scrolling.
-                if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
+                //prevent default scrolling and navigation
+                if ( event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
                     event.preventDefault();
+                    return;
                 }
 
                 //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")
-                if(!store.getters.getIsEditing() && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z]$/) || event.key === "Backspace")){
+                if(!store.getters.getIsEditing() && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
                     event.preventDefault();
+                    return;
+                }
+
+                //prevent specific characters in specific frames (cf details)
+                if(store.getters.getIsEditing()){
+                    const frameType = store.getters.getCurrentFrameObject().frameType.type;
+                    //space in import frame's editable slots
+                    if(frameType === ImportDefinition.type && event.key === " "){
+                        event.preventDefault();
+                        return;
+                    }
+                    
+                    //= in var assignmet frame's editable slots
+                    if(frameType === VarAssignDefinition.type && event.key === "="){
+                        event.preventDefault();
+                        return;
+                    }
                 }
             }
         );
@@ -377,5 +438,14 @@ export default Vue.extend({
 
 .commands-container{
     display: inline-block;
+}
+
+#keystrokeSpan{
+    bottom:2px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    position: absolute;
+    font-size:large;
+    color:#666666;
 }
 </style>
