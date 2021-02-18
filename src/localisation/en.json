@@ -1,7 +1,6 @@
 {
   "messageBannerMessage": {
       "deleteLargeCode": "You just deleted a large piece of code. If you didn't mean to, you can:",
-      "yesnoTest": "Simple test Yes/No Change to another language?",
       "uploadSuccessMicrobit": "Upload to micro:bit completed.",
       "uploadFailureMicrobit": "Upload to micro:bit failed with error \"{errorMsg}\"",
       "noUndo" : "There is no undo action avaialble.",
@@ -27,8 +26,8 @@
     "uploadingToMicrobit": "Uploading to micro:bit ..."
   },
   "errorMessage": {
-    "wrongDataFormat": "the data format cannot be interpreted by WebFrames",
-    "stateDataIntegrity" : "the data doesn't have integrity to be interpreted by WebFrames",
+    "wrongDataFormat": "the data format cannot be interpreted by Strype",
+    "stateDataIntegrity" : "the data doesn't have integrity to be interpreted by Strype",
     "dataNotObject" : "the data doesn't describe an object",
     "emptyEditableSlot": "Input slot cannot be empty",
     "emptyFrameBody": "Body cannot be empty",
@@ -39,7 +38,10 @@
     "editorFileUpload": "Uploading your file to the editor...",
     "editorConfirmChangeCode": "Current editor's content will be permanently lost.\nDo you want to continue?",
     "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
-    "enableInnerDisabledFrameConfirm": "This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?"
+    "enableInnerDisabledFrameConfirm": "This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?",
+    "importsContainer": "Imports:",
+    "funcDefsContainer": "Function definitions:",
+    "mainContainer": "Your code:"
   },
   "contextMenu": {
     "cut": "Cut",
@@ -49,7 +51,8 @@
     "enable": "Enable",
     "disable": "Disable",
     "undo": "Undo",
-    "redo": "Redo"
+    "redo": "Redo",
+    "delete": "Delete"
   },
   "appMenu": {
     "defaultProjName": "My project",

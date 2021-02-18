@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import {KeyModifier, toggleFrameLabelsDefs} from "@/constants/toggleFrameLabelCommandsDefs"; 
 
 // Type Definitions
@@ -201,7 +202,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.importsContainer,
     labels: [
-        { label: "Imports:", slot: false, defaultText: ""},
+        { label: (i18n.t("appMessage.importsContainer") as string), slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
@@ -213,7 +214,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.funcDefsContainer,
     labels: [
-        { label: "Function Definitions:", slot: false, defaultText: ""},
+        { label: (i18n.t("appMessage.funcDefsContainer") as string), slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
@@ -226,7 +227,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.framesMainContainer,
     labels: [
-        { label: "Your code:", slot: false, defaultText: ""},
+        { label: (i18n.t("appMessage.mainContainer") as string), slot: false, defaultText: ""},
     ],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
@@ -262,7 +263,7 @@ export const ElifDefinition: FramesDefinitions = {
 export const ElseDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.else,
-    labels: [{ label: "else:", slot: false, defaultText: ""}],
+    labels: [{ label: "else :", slot: false, defaultText: ""}],
     draggableGroup: DraggableGroupTypes.ifCompound,
     isJointFrame: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
@@ -294,7 +295,7 @@ export const WhileDefinition: FramesDefinitions = {
 export const TryDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.try,
-    labels: [{ label: "try:", slot: false, defaultText: ""}],
+    labels: [{ label: "try :", slot: false, defaultText: ""}],
     allowJointChildren: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "#C7D9DC",
@@ -306,7 +307,7 @@ export const ExceptDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.except,
     labels: [
         { label: "except ", slot: true, defaultText: "exception", optionalSlot: true},
-        { label: ":", slot: false, defaultText: ""},
+        { label: " :", slot: false, defaultText: ""},
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
     colour: "",
@@ -318,7 +319,7 @@ export const FinallyDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.finally,
     labels: [
-        { label: "finally:", slot: false, defaultText: ""},
+        { label: "finally :", slot: false, defaultText: ""},
     ],
     colour: "",
     isJointFrame: true,
@@ -331,7 +332,7 @@ export const FuncDefDefinition: FramesDefinitions = {
     labels: [
         { label: "def ", slot: true, defaultText: "name", optionalSlot: false},
         { label: "(", slot: true, defaultText: "arguments", optionalSlot: true},
-        { label: "):", slot: false, defaultText: ""},
+        { label: ") :", slot: false, defaultText: ""},
     ],
     colour: "#ECECC8",
     draggableGroup: DraggableGroupTypes.functionSignatures,
@@ -352,7 +353,7 @@ export const WithDefinition: FramesDefinitions = {
 export const EmptyDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.empty,
-    labels: [{ label: "", slot: true, defaultText: "method call", optionalSlot: true}],
+    labels: [{ label: "", slot: true, defaultText: "function call", optionalSlot: true}],
     colour: "#F6F2E9",
 };
 
@@ -749,3 +750,8 @@ export const DefaultCursorPosition: CursorPosition = {
     left: 0,
     height: 0,
 };
+
+export interface EditableSlotReachInfos {
+    isKeyboard: boolean;
+    direction: -1 | 1;
+}

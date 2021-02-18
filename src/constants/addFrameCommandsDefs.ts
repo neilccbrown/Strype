@@ -62,7 +62,7 @@ export const addCommandsDefs: {[id: string]: AddFrameCommandDef[]} = {
     }],
     " ": [{
         type: Definitions.EmptyDefinition,
-        description: "method call",
+        description: "function call",
         shortcut: " ",
         symbol: "⌴",//"␣"
     }],

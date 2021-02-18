@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition } from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import initialState from "@/store/initial-state";
 import initialTestState from "@/store/initial-test-state";
@@ -18,6 +18,8 @@ Vue.use(Vuex);
 export default new Vuex.Store({
     state: {
         debugging: true,// false, // 
+
+        showKeystroke: true, //false, 
 
         frameObjects: initialDemoState, // initialState,// initialTestState, // 
 
@@ -49,7 +51,7 @@ export default new Vuex.Store({
 
         contextMenuShownId: "",
 
-        projectName: "My Project" as string,
+        projectName: i18n.t("appMenu.defaultProjName") as string,
 
         ignoredDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
 
@@ -60,6 +62,8 @@ export default new Vuex.Store({
         isAppMenuOpened: false,
 
         indexedAcResults: [] as {index: number; value: string; documentation: string}[],
+
+        editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
     
     },
 
@@ -208,7 +212,7 @@ export default new Vuex.Store({
                 }
                 else{
                     //Remove "finally" in joint frames allowed after "else" if we are in anything else than in a "try"
-                    if(rootJointFrame.frameType !== Definitions.TryDefinition && jointTypes.includes(Definitions.FinallyDefinition.type)){
+                    if(rootJointFrame.frameType.type !== Definitions.TryDefinition.type && jointTypes.includes(Definitions.FinallyDefinition.type)){
                         jointTypes.splice(
                             jointTypes.indexOf(Definitions.FinallyDefinition.type),
                             1
@@ -219,7 +223,7 @@ export default new Vuex.Store({
                     const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
                     uniqueJointFrameTypes.forEach((frameDef) => {
                         if(jointTypes.includes(frameDef.type) &&
-                            rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType === frameDef) !== undefined){
+                            rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === frameDef.type) !== undefined){
                             jointTypes.splice(
                                 jointTypes.indexOf(frameDef.type),
                                 1
@@ -517,6 +521,10 @@ export default new Vuex.Store({
         getIndexedAcResults: (state) => () => {
             return state.indexedAcResults;
         },
+        
+        getEditableSlotViaKeyboard:(state) => () => {
+            return state.editableSlotViaKeyboard;
+        },
     }, 
 
     mutations: {
@@ -529,6 +537,23 @@ export default new Vuex.Store({
             );
             //then change the UI via i18n
             i18n.locale = lang;
+
+            //change the values of the container frames as they are not reactive
+            Object.values(state.frameObjects).forEach((frame) => {
+                switch(frame.frameType.type){
+                case ImportsContainerDefinition.type:
+                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.importsContainer") as string)
+                    break;
+                case FuncDefContainerDefinition.type:
+                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.funcDefsContainer") as string)
+                    break;
+                case MainFramesContainerDefinition.type:
+                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.mainContainer") as string)
+                    break;
+                default:
+                    break;
+                }
+            });
         },
 
         setIsAppMenuOpened(state, isOpened: boolean) {
@@ -1089,8 +1114,8 @@ export default new Vuex.Store({
             let backupCurrentFocus = false;
             let backupCurrentFrameVisibility = CaretPosition.none;
             if(payload.mockCurrentCursorFocus !== undefined){
-                //before saving the state, we "mock" a change of current state ID to a dummy
-                //value so that a difference is raised --> if users change the cursor, before doing undo,
+                //before saving the state, we "mock" a change of current state ID to a dummy value
+                //so that a difference is raised --> if users change the cursor, before doing undo,
                 //the cursor will correctly be at the right location. Same with focused.
                 backupCurrentFrame = state.currentFrame;
                 backupCurrentFocus = state.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused;
@@ -1124,6 +1149,11 @@ export default new Vuex.Store({
         },
 
         applyStateUndoRedoChanges(state, isUndo: boolean){
+            //flags for performing a change of current caret
+            let changeCaret = false;
+            let newCaretId = 0;
+            const oldCaretId = state.currentFrame.id;
+
             //performing the change if there is any change recorded in the state
             let changeList = [] as ObjectPropertyDiff[];
             if(isUndo) {
@@ -1145,7 +1175,6 @@ export default new Vuex.Store({
                 const checkErrorChangeEntry: ObjectPropertyDiff|undefined = changeList.find((changeEntry: ObjectPropertyDiff) => (changeEntry.propertyPathWithArrayFlag.match(/\.contentDict_false\.\d*_false\.code$/)?.length??0) > 0);
                 if(checkErrorChangeEntry){
                     const changePath = checkErrorChangeEntry.propertyPathWithArrayFlag;
-                    //frameObjects_false.2_false.contentDict_false.0_false.code
                     let indexOfId = "frameObjects_false.".length;
                     const frameId = changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId);
                     indexOfId = changePath.indexOf(".contentDict_false.") + ".contentDict_false.".length; 
@@ -1191,6 +1220,12 @@ export default new Vuex.Store({
                             changeEntry.value
                         );
 
+                        //if we update a current frame cursor, we make sure it is properly set
+                        if(statePartToChange === state.currentFrame && property==="id"){
+                            changeCaret = true;
+                            newCaretId = changeEntry.value;
+                        }
+
                         //if we "delete" something in an array, flag this array for clearning
                         if(lastPartIsArray && changeEntry.value===null && arraysToClean.indexOf(statePartToChange) === -1){
                             arraysToClean.push(statePartToChange);
@@ -1221,6 +1256,21 @@ export default new Vuex.Store({
                     Vue.set(state, "copiedFrameId", -100);
                 }
              
+                //if we notified a change of current caret, we make sure it makes correctly displayed 
+                if(changeCaret){
+                    Vue.set(
+                        state.frameObjects[oldCaretId],
+                        "caretVisibility",
+                        CaretPosition.none
+                    );
+        
+                    Vue.set(
+                        state.currentFrame,
+                        "caretPosition",
+                        state.frameObjects[newCaretId].caretVisibility
+                    );
+                }
+
                 //keep the arrays of changes in sync with undo/redo sequences
                 const stateDifferences = getObjectPropertiesDifferences(state, stateBeforeChanges);
                 if(isUndo){
@@ -1361,6 +1411,10 @@ export default new Vuex.Store({
                 "indexedAcResults",
                 value
             );
+        },
+        
+        setEditableSlotViaKeyboard(state, payload: EditableSlotReachInfos) {
+            Vue.set(state, "editableSlotViaKeyboard", payload);
         },
     },
 
@@ -1851,6 +1905,10 @@ export default new Vuex.Store({
                             focused: false,
                         }
                     );
+
+                    const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: change};
+                    commit("setEditableSlotViaKeyboard", slotReachInfos);
+
                     commit(
                         "setEditableFocus",
                         {
@@ -1944,6 +2002,9 @@ export default new Vuex.Store({
                 if(editableSlotsIndexes.length > 0) {
 
                     editFlag = true;
+
+                    const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: (directionDown) ? 1 : -1};
+                    commit("setEditableSlotViaKeyboard", slotReachInfos);
 
                     commit(
                         "setEditableFocus",
