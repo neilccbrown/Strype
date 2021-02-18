@@ -102,7 +102,9 @@ export default Vue.extend({
             token: "",
             cursorPosition: {} as CursorPosition,
             showAC: false,
-              
+
+            //used to force a text cursor position, for example after inserting an AC candidate
+            textCursorPos: -1,              
         };
     },
     
@@ -161,6 +163,14 @@ export default Vue.extend({
                     if(this.showAC){
                         this.token = resultsAC.tokenAC.toLowerCase();  
                     }
+                }
+
+                //if we specify a text cursor position, set it in the input field at the next tick (because code needs to be updated first)
+                if(this.textCursorPos > -1){
+                    this.$nextTick(() => {
+                        inputField.setSelectionRange(this.textCursorPos, this.textCursorPos);
+                        this.textCursorPos = -1;
+                    });
                 }
 
                 this.isFirstChange = false;
@@ -328,16 +338,10 @@ export default Vue.extend({
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
             const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-            const newCode = this.code.substr(0,inputField.selectionStart) + selectedItem.substring(this.token.length) + this.code.substr(inputField.selectionStart);
-            //set the input field as well because it is used later when the code is updated
-            const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
-            // if the input field exists and it is not a comment
-            if(frame.frameType.type !== Definitions.CommentDefinition.type){
-                //get the autocompletion candidates
-                inputField.value = newCode;
-                inputField.setSelectionRange(newCode.length, newCode.length);
-            }
-                    
+            const currentTextCursorPos = inputField.selectionStart??0;
+            const newCode = this.code.substr(0, currentTextCursorPos) + selectedItem.substring(this.token.length) + this.code.substr(currentTextCursorPos);
+            // position the text cursor just after the AC selection
+            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length;
             this.code = newCode;
             this.showAC = false;
         },

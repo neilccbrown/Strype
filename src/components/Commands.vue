@@ -161,8 +161,9 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
+                //if we requested to log keystroke, display the keystroke event in an unobtrusive location
+                //when editing, we don't show the keystroke for basic keys (like [a-zA-Z0-1]), only those whose key value is longer than 1
                 if(store.state.showKeystroke && (!store.state.isEditing || event.key.match(/^.{2,}$/))){
-                    //if we requested to log keystroke, display the keystroke event in an unobtrusive location
                     (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "["+event.key+"]";
                     //leave the message for a short moment only
                     setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);         
