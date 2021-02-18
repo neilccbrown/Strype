@@ -268,14 +268,15 @@ export default Vue.extend({
 
         onUDKeyUp(event: KeyboardEvent) {
             // If the AutoCompletion is on we just browse through it's contents
-            if(this.showAC) {
+            // The `results` check, prevents `changeSelection()` when there are no results matching this token
+            // And instead, since there is no AC list to show, moves to the next slot
+            if(this.showAC && (this.$refs.AC as any).results.length > 0) {
                 (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
             }
             // Else we move the caret
             else {  
                 // In any case the focus is lost, and the caret is shown (below by default)
                 this.onBlur();
-                
                 //If the up arrow is pressed you need to move the caret as well.
                 if( event.key === "ArrowUp" ) {
                     store.dispatch(
