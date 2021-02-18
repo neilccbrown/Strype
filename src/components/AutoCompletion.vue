@@ -49,6 +49,12 @@
         > 
         </span>
         <span 
+            :id="typesSpanID"
+            :key="typesSpanID"
+            class="hidden"
+        > 
+        </span>
+        <span 
             :id="reshowResultsID"
             :key="reshowResultsID"
             class="hidden"
@@ -64,8 +70,8 @@ import Vue from "vue";
 import store from "@/store/store.ts";
 import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition } from "@/types/types";
-import { builtinFunctions } from "@/autocompletion/pythonBuiltins";
-import { getAcSpanId , getDocumentationSpanId, getReshowResultsId } from "@/helpers/editor";
+import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
+import { getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 
 //////////////////////
 export default Vue.extend({
@@ -115,6 +121,10 @@ export default Vue.extend({
             return getDocumentationSpanId(this.slotId);
         },
 
+        typesSpanID(): string {
+            return getTypesSpanId(this.slotId);
+        },
+
         popupPosition(): Record<string, string> {
             return {
                 "float" : "left",
@@ -146,25 +156,29 @@ export default Vue.extend({
     methods: {  
         // On a fake Click -triggered by Brython's code- the suggestions popup
         loadNewSuggestionsAC(): void {
+
+            // AC Results
             const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"");
-
-            const parsedResIndexes: number[] = [];
             let parsedResults: string[]= JSON.parse(allResults??"");
-            //add the builtins to the results
-            if(this.context === "") { // When context is present we don't need builtins
-                parsedResults = parsedResults.concat(Object.keys(builtinFunctions));
-            }
 
+            // AC Documentation
             const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
             let parsedDoc: string[] = JSON.parse(allDocumentations??"");
-            //add the builtin docs to the results
-            if(this.context === "") {// When context is present we don't need builtins
-                parsedDoc = parsedDoc.concat(Object.values(builtinFunctions));
+
+            // AC Types
+            const allTypes = (document.getElementById(this.typesSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
+            let parsedTypes: string[] = JSON.parse(allTypes??"");
+
+            // Append the builtin results/docs/types to the lists IFF there is no context
+            if(this.context === "") {
+                parsedDoc = parsedDoc.concat(Object.values(brythonBuiltins).map((e) => e.documentation));
+                parsedResults = parsedResults.concat(Object.keys(brythonBuiltins));
+                parsedTypes = parsedTypes.concat(Object.values(brythonBuiltins).map((e) => e.type));
             }
 
-            // make list with indices, values and documentation
-            const resultsWithIndex: {index: number; value: string; documentation: string}[] = parsedResults.map( (e,i) => {
-                return {index: i, value: e, documentation: parsedDoc[i]}
+            // make list with indices, values, documentation and types
+            const resultsWithIndex: {index: number; value: string; documentation: string; type: string}[] = parsedResults.map( (e,i) => {
+                return {index: i, value: e, documentation: parsedDoc[i], type:parsedTypes[i]}
             });
 
             // sort index/value/documenation tuples, based on aphabetic order of values

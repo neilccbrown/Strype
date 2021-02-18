@@ -61,7 +61,7 @@ export default new Vuex.Store({
 
         isAppMenuOpened: false,
 
-        indexedAcResults: [] as {index: number; value: string; documentation: string}[],
+        indexedAcResults: [] as {index: number; value: string; documentation: string; type: string}[],
 
         editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
     
@@ -520,6 +520,12 @@ export default new Vuex.Store({
 
         getIndexedAcResults: (state) => () => {
             return state.indexedAcResults;
+        },
+
+        getTypeOfAcResult: (state) => (acResult: string) => {
+            return (state.indexedAcResults.find( (e) => {
+                return e.value === acResult
+            })?.type)??"unknown";
         },
         
         getEditableSlotViaKeyboard:(state) => () => {

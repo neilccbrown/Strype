@@ -58,7 +58,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId } from "@/helpers/editor";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
@@ -160,8 +160,8 @@ export default Vue.extend({
                     //workout the correct context if we are in a code editable slot
                     const isImportFrame = (frame.frameType.type === Definitions.ImportDefinition.type)
                     const resultsAC = (isImportFrame) 
-                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getReshowResultsId(this.UIID))
-                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getReshowResultsId(this.UIID));
+                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID))
+                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));
                     this.showAC = resultsAC.showAC;
                     this.contextAC = resultsAC.contextAC;
                     if(this.showAC){
@@ -344,9 +344,12 @@ export default Vue.extend({
             const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
-            const newCode = this.code.substr(0, currentTextCursorPos) + selectedItem.substring(this.token.length) + this.code.substr(currentTextCursorPos);
-            // position the text cursor just after the AC selection
-            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length;
+            const isSelectedFunction = store.getters.getTypeOfAcResult(selectedItem) === "builtin_function_or_method";
+            const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
+            + selectedItem 
+            + ((isSelectedFunction)?"()":"")
+            + this.code.substr(currentTextCursorPos);
+            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length + ((isSelectedFunction)?1:0) ;
             this.code = newCode;
             this.showAC = false;
         },
