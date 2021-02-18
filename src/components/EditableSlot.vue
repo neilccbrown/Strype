@@ -351,7 +351,7 @@ export default Vue.extend({
             const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
-            const newCode = this.code.substr(0, currentTextCursorPos) + selectedItem.substring(this.token.length) + this.code.substr(currentTextCursorPos);
+            const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) + selectedItem + this.code.substr(currentTextCursorPos);
             // position the text cursor just after the AC selection
             this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length;
             this.code = newCode;
