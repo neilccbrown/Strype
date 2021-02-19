@@ -113,10 +113,6 @@ export default Vue.extend({
             return getReshowResultsId(this.slotId);
         },
 
-        areThereResults(): boolean {
-            return this.results.length>0;
-        },
-
         documentationSpanID(): string {
             return getDocumentationSpanId(this.slotId);
         },
@@ -156,7 +152,7 @@ export default Vue.extend({
     methods: {  
         // On a fake Click -triggered by Brython's code- the suggestions popup
         loadNewSuggestionsAC(): void {
-
+            
             // AC Results
             const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"");
             let parsedResults: string[]= JSON.parse(allResults??"");

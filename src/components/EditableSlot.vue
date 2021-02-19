@@ -351,7 +351,9 @@ export default Vue.extend({
             const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
-            const isSelectedFunction = store.getters.getTypeOfAcResult(selectedItem) === "builtin_function_or_method";
+            // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
+            const typeOfSelected: string  = store.getters.getTypeOfAcResult(selectedItem);
+            const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
 
             const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
             + selectedItem 

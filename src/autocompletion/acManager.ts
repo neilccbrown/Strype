@@ -32,6 +32,16 @@ function runPythonCode(code: string): void {
 
 // Function to be used in getCandidatesForAC() and getImportCandidatesForAC() 
 // This parts contains the logic used with Brython to retrieve the AC elements.
+/*
+ * @param regenerateAC -> If false we simply reshow AutoCompletion without running Brython code again
+ * @param userCode 
+ * @param contextAC -> Anything before the dot in the text before the current cursor position
+ * @param acSpanId -> The UIID of the ac span where the AC results goto
+ * @param documentationSpanId -> The UIID of the ac span where the AC documentation goes to
+ * @param typesSpanId -> The UIID of the ac spand where the AC types goto
+ * @param isImportModuleAC -> Are we needing AC for an import slot?
+ * @param reshowResultsId -> The UIID of the hidden 'button` that would trigger the existing AC to reshow.
+ */
 function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string): void{
     let inspectionCode ="";
 
@@ -63,8 +73,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
-        */
-        
+        */ 
+
         inspectionCode += "\nfrom io import StringIO";
         inspectionCode += "\nimport sys";
         inspectionCode += "\ndocumentation=[]";
@@ -72,9 +82,9 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\ntry:";
         inspectionCode += "\n"+INDENT+"for result in results:";
         inspectionCode += "\n"+INDENT+INDENT+"try:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"typeOfResult = type(exec(result))";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"print(result+'  --  '+typeOfResult)";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"types.append(typeOfResult)";
+        // If there is context available, the `type()` needs it in order to give proper results. 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"typeOfResult = type(exec("+((contextAC)?("'"+contextAC+".'+"):"")+"result))";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"types.append(typeOfResult.__name__)";
         inspectionCode += "\n"+INDENT+INDENT+"except:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('No documentation available')";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"continue";
@@ -111,7 +121,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
-
     runPythonCode((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
 
