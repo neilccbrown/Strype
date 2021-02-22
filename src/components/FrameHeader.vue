@@ -9,7 +9,7 @@
             :key="item.label + frameId"
         >
             <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
-            <div class="next-to-eachother" :class="{hidden: isLabelHidden(index)}">{{ item.label }}</div>
+            <div class="next-to-eachother" :class="{hidden: isLabelHidden(index), leftMargin: index > 0, rightMargin: true}">{{ item.label }}</div>
             <EditableSlot
                 v-if="item.slot"
                 :isDisabled="isDisabled"
@@ -84,6 +84,14 @@ export default Vue.extend({
 
 .hidden {
     display: none;
+}
+
+.leftMargin{
+    margin-left: 2px;
+}
+
+.rightMargin{
+    margin-right: 2px;
 }
 
 .frame-btn-collapse {
