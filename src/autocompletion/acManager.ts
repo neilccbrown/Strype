@@ -54,6 +54,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\ntry:"
         if(isImportModuleAC){
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
+            contextAC = "";
         }
         else{
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = dir("+contextAC+")";
