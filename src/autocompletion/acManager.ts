@@ -38,7 +38,7 @@ function runPythonCode(code: string): void {
  * @param contextAC -> Anything before the dot in the text before the current cursor position
  * @param acSpanId -> The UIID of the ac span where the AC results goto
  * @param documentationSpanId -> The UIID of the ac span where the AC documentation goes to
- * @param typesSpanId -> The UIID of the ac spand where the AC types goto
+ * @param typesSpanId -> The UIID of the ac spand where the AC types go to
  * @param isImportModuleAC -> Are we needing AC for an import slot?
  * @param reshowResultsId -> The UIID of the hidden 'button` that would trigger the existing AC to reshow.
  */
