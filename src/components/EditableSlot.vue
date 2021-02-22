@@ -49,7 +49,7 @@
             :id="UIID+'_Autocompletion'"
             :token="token"
             :cursorPosition="cursorPosition"
-            @acItemClicked="acItemClicked"
+            @acItemClicked="acItemClicked('click')"
         />
     </div>
 </template>
@@ -337,7 +337,7 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-                this.acItemClicked();
+                this.acItemClicked("enter");
             }
             // If AC is not loaded or no selection is available, we want to take the focus from the slot
             else {
@@ -346,9 +346,10 @@ export default Vue.extend({
             }
         },
         
-        acItemClicked() {
+        acItemClicked(clickOrEnter: string) {
+            // A different items needs selected if clicked rather than enter key pressed.
+            const selectedItem = (clickOrEnter === "click")? ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim()) : (((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-            const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
