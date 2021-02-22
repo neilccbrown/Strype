@@ -54,6 +54,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\ntry:"
         if(isImportModuleAC){
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
+            contextAC = "";
         }
         else{
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = dir("+contextAC+")";
@@ -220,7 +221,6 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
 
     //the full AC and documentation are only recreated when a next context is notified
-    console.log("CurrentContext= ["+currentACContext+"] ContextAC= ["+contextAC+"]  Flag="+(currentACContext.localeCompare(contextAC) != 0));
     prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId);
     currentACContext = contextAC;
 
