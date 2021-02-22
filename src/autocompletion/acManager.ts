@@ -220,6 +220,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
 
     //the full AC and documentation are only recreated when a next context is notified
+    console.log("CurrentContext= ["+currentACContext+"] ContextAC= ["+contextAC+"]  Flag="+(currentACContext.localeCompare(contextAC) != 0));
     prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId);
     currentACContext = contextAC;
 
