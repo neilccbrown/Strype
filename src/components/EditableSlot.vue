@@ -49,7 +49,7 @@
             :id="UIID+'_Autocompletion'"
             :token="token"
             :cursorPosition="cursorPosition"
-            @acItemClicked="acItemClicked('click')"
+            @acItemClicked="acItemClicked"
         />
     </div>
 </template>
@@ -254,7 +254,7 @@ export default Vue.extend({
                     slotId: this.$props.slotIndex,
                     caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
-            );      
+            );    
         },
 
         onBlur(): void {
@@ -337,7 +337,7 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-                this.acItemClicked("enter");
+                this.acItemClicked(document.querySelector(".selectedAcItem")?.id??"");
             }
             // If AC is not loaded or no selection is available, we want to take the focus from the slot
             else {
@@ -346,9 +346,11 @@ export default Vue.extend({
             }
         },
         
-        acItemClicked(clickOrEnter: string) {
-            // A different items needs selected if clicked rather than enter key pressed.
-            const selectedItem = (clickOrEnter === "click")? ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim()) : (((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
+        acItemClicked(item: string) {
+            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.textContent?.trim();
+            if(selectedItem === undefined) {
+                return;
+            }
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;

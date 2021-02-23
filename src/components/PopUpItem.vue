@@ -1,12 +1,12 @@
 <template>
     <li
         v-show="this.item"
-        :id="item"
         :class="selectedItem"
+        :id="id"
         @mouseover="hoverOver()"
         @mouseout="hoverOut()"
         @mousedown.prevent.stop
-        @mouseup.prevent.stop="$emit('acItemClicked',item)"
+        @mouseup.prevent.stop="$emit('acItemClicked',id)"
     >
         {{item}}
     </li>
@@ -23,6 +23,7 @@ export default Vue.extend({
 
     props: {
         item: String,
+        id: String,
         selected: Boolean,
         isSelectable: Boolean,
     },
