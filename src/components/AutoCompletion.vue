@@ -154,10 +154,10 @@ export default Vue.extend({
         loadNewSuggestionsAC(): void {
             
             // AC Results
-            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"");
+            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
             let parsedResults: string[] = [];
             try {
-                parsedResults= JSON.parse(allResults??"");    
+                parsedResults= JSON.parse(allResults);    
             }
             catch (error) {
                 console.log("Error on Results")

@@ -347,7 +347,7 @@ export default Vue.extend({
         },
         
         acItemClicked(item: string) {
-            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.textContent?.trim();
+            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.textContent?.trim()??"";
             if(selectedItem === undefined) {
                 return;
             }
