@@ -154,7 +154,7 @@ export default Vue.extend({
         loadNewSuggestionsAC(): void {
             
             // AC Results
-            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
+            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"{}";
             let parsedResults: string[] = [];
             try {
                 parsedResults= JSON.parse(allResults);    
@@ -164,20 +164,20 @@ export default Vue.extend({
             }
 
             // AC Documentation
-            const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
+            const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"{}";
             let parsedDoc: string[] = [];
             try {
-                parsedDoc= JSON.parse(allDocumentations??"");    
+                parsedDoc= JSON.parse(allDocumentations);    
             }
             catch (error) {
                 console.log("Error on Documentation")
             }
 
             // AC Types
-            const allTypes = (document.getElementById(this.typesSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
+            const allTypes = (document.getElementById(this.typesSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"{}";
             let parsedTypes: string[] = [];
             try {
-                parsedTypes= JSON.parse(allTypes??"");    
+                parsedTypes= JSON.parse(allTypes);    
             }
             catch (error) {
                 console.log("Error on  Types")
