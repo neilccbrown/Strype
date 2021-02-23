@@ -1,13 +1,12 @@
 <template>
     <li
         v-show="this.item"
-        :id="item"
-        class="popUpItems"
         :class="selectedItem"
+        :id="id"
         @mouseover="hoverOver()"
         @mouseout="hoverOut()"
         @mousedown.prevent.stop
-        @mouseup.prevent.stop="$emit('acItemClicked',item)"
+        @mouseup.prevent.stop="$emit('acItemClicked',id)"
     >
         {{item}}
     </li>
@@ -24,6 +23,7 @@ export default Vue.extend({
 
     props: {
         item: String,
+        id: String,
         selected: Boolean,
         isSelectable: Boolean,
     },
@@ -67,6 +67,12 @@ export default Vue.extend({
 
 .hoveredAcItem {
      background-color: #9aaefd;
+}
+
+.newlines {
+    //Nedded for understanding the formated errors that split multiple
+    // errors with \n
+    white-space: pre-line !important;
 }
 </style>
 

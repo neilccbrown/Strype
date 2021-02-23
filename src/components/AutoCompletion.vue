@@ -10,6 +10,7 @@
                 <ul>
                     <PopUpItem
                         v-for="(item,index) in results"
+                        class="popUpItems"
                         :id="UIID+index"
                         :item="item"
                         :key="UIID+index"
@@ -25,6 +26,7 @@
             >
                 <ul class="limitWidthUl">
                     <PopUpItem
+                        class="newlines"
                         :id="UIID+'documentation'"
                         :item="this.documentation[this.selected]"
                         :key="UIID+'documentation'"
@@ -37,7 +39,7 @@
             :id="resutlsSpanID"
             :key="resutlsSpanID"
             class="hidden"
-            @click="showSuggestionsAC"
+            @click="loadNewSuggestionsAC"
         > 
         </span>
         <span 
@@ -46,15 +48,30 @@
             class="hidden"
         > 
         </span>
+        <span 
+            :id="typesSpanID"
+            :key="typesSpanID"
+            class="hidden"
+        > 
+        </span>
+        <span 
+            :id="reshowResultsID"
+            :key="reshowResultsID"
+            class="hidden"
+            @click="showSuggestionsAC"
+        > 
+        </span>
     </div>
 </template>
 
 <script lang="ts">
 //////////////////////
 import Vue from "vue";
+import store from "@/store/store.ts";
 import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition } from "@/types/types";
-import { getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
+import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
+import { getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 
 //////////////////////
 export default Vue.extend({
@@ -72,6 +89,7 @@ export default Vue.extend({
             type: Object,
             default: () => DefaultCursorPosition,
         },
+        context: String,
     },
 
     data() {
@@ -91,8 +109,16 @@ export default Vue.extend({
             return getAcSpanId(this.slotId);
         },
 
+        reshowResultsID(): string {
+            return getReshowResultsId(this.slotId);
+        },
+
         documentationSpanID(): string {
             return getDocumentationSpanId(this.slotId);
+        },
+
+        typesSpanID(): string {
+            return getTypesSpanId(this.slotId);
         },
 
         popupPosition(): Record<string, string> {
@@ -109,25 +135,94 @@ export default Vue.extend({
             }; 
         },
 
+        indexedAcResults:  {
+            get(){
+                return store.getters.getIndexedAcResults();
+            },
+            set(value: string){
+                store.commit(
+                    "setIndexedAcResults",
+                    value
+                )
+            },
+        },
+
     },
 
     methods: {  
         // On a fake Click -triggered by Brython's code- the suggestions popup
-        showSuggestionsAC(): void {
-            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"");
-            const parsedResIndexes: number[] = [];
-            const parsedResults: string[]= JSON.parse(allResults??"");
-            this.results = parsedResults.filter((result, index) => {
-                if(result.toLowerCase().startsWith(this.token)){
-                    parsedResIndexes.push(index)
-                    return true;
-                }
-                return false;
-            });    
+        loadNewSuggestionsAC(): void {
             
-            const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"";
-            const parsedDoc: string[] = JSON.parse(allDocumentations??"");
-            this.documentation = parsedDoc.filter((doc, index) => (parsedResIndexes.includes(index)));
+            // AC Results
+            const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"{}";
+            let parsedResults: string[] = [];
+            try {
+                parsedResults= JSON.parse(allResults);    
+            }
+            catch (error) {
+                console.log("Error on Results")
+            }
+
+            // AC Documentation
+            const allDocumentations = (document.getElementById(this.documentationSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"{}";
+            let parsedDoc: string[] = [];
+            try {
+                parsedDoc= JSON.parse(allDocumentations);    
+            }
+            catch (error) {
+                console.log("Error on Documentation")
+            }
+
+            // AC Types
+            const allTypes = (document.getElementById(this.typesSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"{}";
+            let parsedTypes: string[] = [];
+            try {
+                parsedTypes= JSON.parse(allTypes);    
+            }
+            catch (error) {
+                console.log("Error on  Types")
+            }
+            
+
+            // Append the builtin results/docs/types to the lists IFF there is no context
+            if(this.context === "") {
+                parsedDoc = parsedDoc.concat(Object.values(brythonBuiltins).map((e) => e.documentation));
+                parsedResults = parsedResults.concat(Object.keys(brythonBuiltins));
+                parsedTypes = parsedTypes.concat(Object.values(brythonBuiltins).map((e) => e.type));
+            }
+
+            // make list with indices, values, documentation and types
+            const resultsWithIndex: {index: number; value: string; documentation: string; type: string}[] = parsedResults.map( (e,i) => {
+                return {index: i, value: e, documentation: parsedDoc[i], type:parsedTypes[i]}
+            });
+
+            // sort index/value/documenation tuples, based on aphabetic order of values
+            resultsWithIndex.sort( (a, b) => {
+                return a.value.toLowerCase().localeCompare(b.value.toLowerCase())
+            });
+
+            // store it in the store, so that if it the template is destroyed the ac remains
+            this.indexedAcResults = resultsWithIndex
+
+            this.showSuggestionsAC();
+
+        },  
+
+        showSuggestionsAC(): void {
+
+            // Filter the list based on the contextAC
+            const resultsWithIndex = this.indexedAcResults.filter((result: {index: number; value: string; documentation: string}) => {
+                return result.value.toLowerCase().startsWith(this.token)
+            });    
+
+            this.results = resultsWithIndex.map( (e: {index: number; value: string; documentation: string}) => {
+                return e.value;
+            });
+
+            this.documentation = resultsWithIndex.map( (e: {index: number; value: string; documentation: string}) => {
+                return e.documentation;
+            });
+
         },  
 
         changeSelection(delta: number): void {

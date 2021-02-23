@@ -190,8 +190,10 @@ export default Vue.extend({
                 }
 
                 //prevent default scrolling and navigation
-                if ( event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
-                    event.preventDefault();
+                if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                    if(!(event.shiftKey || event.ctrlKey || event.metaKey)){
+                        event.preventDefault();
+                    }
                     return;
                 }
 
@@ -232,7 +234,7 @@ export default Vue.extend({
 
                 const isEditing = store.getters.getIsEditing();
 
-                if ( event.key === "ArrowDown" || event.key === "ArrowUp" ) {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                     //first we remove the focus of the current active element (to avoid editable slots to keep it)
                     (document.activeElement as HTMLElement).blur();
 

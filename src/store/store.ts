@@ -17,7 +17,7 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
     state: {
-        debugging: false, // true,//
+        debugging: true,// false, // 
 
         showKeystroke: true, //false, 
 
@@ -60,6 +60,8 @@ export default new Vuex.Store({
         appLang: "en",
 
         isAppMenuOpened: false,
+
+        indexedAcResults: [] as {index: number; value: string; documentation: string; type: string}[],
 
         editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
     
@@ -516,6 +518,16 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].isContentVisible??true;
         },
 
+        getIndexedAcResults: (state) => () => {
+            return state.indexedAcResults;
+        },
+
+        getTypeOfAcResult: (state) => (acResult: string) => {
+            return (state.indexedAcResults.find( (e) => {
+                return e.value === acResult
+            })?.type)??"unknown";
+        },
+        
         getEditableSlotViaKeyboard:(state) => () => {
             return state.editableSlotViaKeyboard;
         },
@@ -1399,6 +1411,14 @@ export default new Vuex.Store({
             );
         },
 
+        setIndexedAcResults(state, value: {index: number; value: string; documentation: string}[]){
+            Vue.set(
+                state,
+                "indexedAcResults",
+                value
+            );
+        },
+        
         setEditableSlotViaKeyboard(state, payload: EditableSlotReachInfos) {
             Vue.set(state, "editableSlotViaKeyboard", payload);
         },

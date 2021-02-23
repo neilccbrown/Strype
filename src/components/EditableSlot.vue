@@ -41,9 +41,12 @@
             :value="code"
         />
         <AutoCompletion
-            v-show="focused && showAC" 
+            v-if="focused && showAC" 
             :slotId="UIID"
+            :context="contextAC"
             ref="AC"
+            :key="UIID+'_Autocompletion'"
+            :id="UIID+'_Autocompletion'"
             :token="token"
             :cursorPosition="cursorPosition"
             @acItemClicked="acItemClicked"
@@ -55,8 +58,8 @@
 import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos} from "@/types/types";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId } from "@/helpers/editor";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
@@ -102,7 +105,7 @@ export default Vue.extend({
             token: "",
             cursorPosition: {} as CursorPosition,
             showAC: false,
-
+            contextAC: "",
             //used to force a text cursor position, for example after inserting an AC candidate
             textCursorPos: -1,              
         };
@@ -157,9 +160,10 @@ export default Vue.extend({
                     //workout the correct context if we are in a code editable slot
                     const isImportFrame = (frame.frameType.type === Definitions.ImportDefinition.type)
                     const resultsAC = (isImportFrame) 
-                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID))
-                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID));
+                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID))
+                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));
                     this.showAC = resultsAC.showAC;
+                    this.contextAC = resultsAC.contextAC;
                     if(this.showAC){
                         this.token = resultsAC.tokenAC.toLowerCase();  
                     }
@@ -174,7 +178,7 @@ export default Vue.extend({
                 }
 
                 this.isFirstChange = false;
-            },
+            }, 
         },
 
         focused(): boolean {
@@ -250,7 +254,7 @@ export default Vue.extend({
                     slotId: this.$props.slotIndex,
                     caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
-            );      
+            );    
         },
 
         onBlur(): void {
@@ -266,44 +270,52 @@ export default Vue.extend({
         },
 
         onLRKeyUp(event: KeyboardEvent) {
-            //get the input field
-            const input: HTMLInputElement = this.$el.firstElementChild as HTMLInputElement;
-            if(input !== undefined){
-                const start = input.selectionStart ?? 0;
-                const end = input.selectionEnd ?? 0;
+            //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special
+            if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
+                //get the input field
+                const input: HTMLInputElement = this.$el.firstElementChild as HTMLInputElement;
+                if(input !== undefined){
+                    const start = input.selectionStart ?? 0;
+                    const end = input.selectionEnd ?? 0;
                 
-                if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
+                    if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
                     
-                    store.dispatch(
-                        "leftRightKey",
-                        event.key
-                    );
-                    this.onBlur();
-                }
-                else {
+                        store.dispatch(
+                            "leftRightKey",
+                            event.key
+                        );
+                        this.onBlur();
+                    }
+                    else {
                     //no specific action to take, we just move the cursor to the left or to the right
-                    const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
-                    input.setSelectionRange(start + incrementStep, end + incrementStep);
+                        const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
+                        const cursorPos = (incrementStep == -1) ? start : end;
+                        input.setSelectionRange(cursorPos + incrementStep, cursorPos + incrementStep);
+                    }
                 }
             }
         },
 
         onUDKeyUp(event: KeyboardEvent) {
-            // If the AutoCompletion is on we just browse through it's contents
-            if(this.showAC) {
-                (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
-            }
-            // Else we move the caret
-            else {  
+            //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special
+            if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
+                // If the AutoCompletion is on we just browse through it's contents
+            // The `results` check, prevents `changeSelection()` when there are no results matching this token
+            // And instead, since there is no AC list to show, moves to the next slot
+                if(this.showAC && (this.$refs.AC as any).results.length > 0) {
+                    (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
+                }
+                // Else we move the caret
+                else {  
                 // In any case the focus is lost, and the caret is shown (below by default)
-                this.onBlur();
-                
-                //If the up arrow is pressed you need to move the caret as well.
-                if( event.key === "ArrowUp" ) {
-                    store.dispatch(
-                        "changeCaretPosition",
-                        event.key
-                    );
+                    this.onBlur();
+                    //If the up arrow is pressed you need to move the caret as well.
+                    if( event.key === "ArrowUp" ) {
+                        store.dispatch(
+                            "changeCaretPosition",
+                            event.key
+                        );
+                    }
                 }
             }
         },
@@ -325,7 +337,7 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-                this.acItemClicked();
+                this.acItemClicked(document.querySelector(".selectedAcItem")?.id??"");
             }
             // If AC is not loaded or no selection is available, we want to take the focus from the slot
             else {
@@ -334,14 +346,26 @@ export default Vue.extend({
             }
         },
         
-        acItemClicked() {
+        acItemClicked(item: string) {
+            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.textContent?.trim()??"";
+            if(selectedItem === undefined) {
+                return;
+            }
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-            const selectedItem = ((document.querySelector(".hoveredAcItem") as HTMLLIElement)?.textContent?.trim())??(((document.querySelector(".selectedAcItem") as HTMLLIElement)?.textContent?.trim())??"");
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
-            const newCode = this.code.substr(0, currentTextCursorPos) + selectedItem.substring(this.token.length) + this.code.substr(currentTextCursorPos);
-            // position the text cursor just after the AC selection
-            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length;
+            // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
+            const typeOfSelected: string  = store.getters.getTypeOfAcResult(selectedItem);
+            const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
+
+            const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
+            + selectedItem 
+            + ((isSelectedFunction)?"()":"")
+            + this.code.substr(currentTextCursorPos);
+            
+            // position the text cursor just after the AC selection - in the parenthesis for functions
+            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length + ((isSelectedFunction)?1:0) ;
+            
             this.code = newCode;
             this.showAC = false;
         },

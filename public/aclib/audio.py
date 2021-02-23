@@ -6,7 +6,9 @@ def is_playing():
 def stop():
     return
 
-class AudioFrame(list):
+class __AudioFrame(list):
     def __init__(self):
         for i in range(32):
             self.append(0)
+
+AudioFrame=__AudioFrame()
