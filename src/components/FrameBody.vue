@@ -22,6 +22,8 @@
                 @start="handleMultiDrag($event)"
                 @end="multiDragEnd($event)"
                 :hasCommentsToMove="this.hasCommentsToMove"
+                filter="input"
+                :preventOnFilter="false"
             >
                 <Frame
                     v-for="frame in frames"
