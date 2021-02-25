@@ -131,7 +131,7 @@ export default Vue.extend({
         },
 
         code: {
-            get(){
+            get(): string{
                 return store.getters.getContentForFrameSlot(
                     this.$parent.$props.frameId,
                     this.$props.slotIndex
@@ -189,7 +189,7 @@ export default Vue.extend({
         },
 
         erroneous(): boolean {
-            return store.getters.getIsErroneousSlot(
+            return this.code.trim().length == 0 && store.getters.getIsErroneousSlot(
                 this.$props.frameId,
                 this.$props.slotIndex
             );
@@ -212,6 +212,9 @@ export default Vue.extend({
             //This is needed to set the focus when a frame with slots has just been added (i.e. when `leftRightKey` is called after `addFrameWithCommand` in Commands.vue)
             inserted: function (el,binding) {
                 if(binding.value) {
+                    //when entering a new editableslot, we make sure to reset the flag informing how the slot has been reache
+                    store.commit("setEditableSlotViaKeyboard", {isKeyboard: false, direction: 1});
+
                     el.focus();
                 }
             },
@@ -227,7 +230,7 @@ export default Vue.extend({
                             const cursorPos = (editableSlotReachingInfo.direction === -1) ? ((el as HTMLInputElement).value.length??0) : 0;
                             (el as HTMLInputElement).setSelectionRange(cursorPos, cursorPos);
                             //reset the flag informing how the slot has been reached
-                            store.commit("setEditableSlotViaKeyboard", false);
+                            store.commit("setEditableSlotViaKeyboard", {isKeyboard: false, direction: 1});
                         }
 
                         el.focus();
