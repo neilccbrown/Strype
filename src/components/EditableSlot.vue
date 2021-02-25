@@ -131,7 +131,7 @@ export default Vue.extend({
         },
 
         code: {
-            get(){
+            get(): string{
                 return store.getters.getContentForFrameSlot(
                     this.$parent.$props.frameId,
                     this.$props.slotIndex
@@ -189,7 +189,7 @@ export default Vue.extend({
         },
 
         erroneous(): boolean {
-            return store.getters.getIsErroneousSlot(
+            return this.code.trim().length == 0 && store.getters.getIsErroneousSlot(
                 this.$props.frameId,
                 this.$props.slotIndex
             );
