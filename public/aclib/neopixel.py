@@ -1,5 +1,5 @@
 #nly declared 1 constructor here... 
-class __NeoPixel():
+class NeoPixel():
     def __init__(self,_pin_,_n_,bpp=3):
         pass
     def clear(self):
@@ -13,4 +13,3 @@ class __NeoPixel():
     def fill(self,_colour_):
         return'''
 
-NeoPixel=__NeoPixel()
