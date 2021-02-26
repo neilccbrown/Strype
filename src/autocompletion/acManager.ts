@@ -84,7 +84,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+"for result in results:";
         inspectionCode += "\n"+INDENT+INDENT+"try:";
         // If there is context available, the `type()` needs it in order to give proper results. 
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"typeOfResult = type(exec("+((contextAC)?("'"+contextAC+".'+"):"")+"result))";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"typeOfResult = type(exec("+((contextAC.length>0)?("'"+contextAC+".'+"):"")+"result))";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"types.append(typeOfResult.__name__)";
         inspectionCode += "\n"+INDENT+INDENT+"except:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('No documentation available')";
@@ -94,7 +94,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+"if isBuiltInType:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Type of: '+typeOfResult.__name__);"
         inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Function '+result+' with arguments: ' + str(exec(result+'.__code__.co_varnames')).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Function '+result+' with arguments: ' + str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames')).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
         inspectionCode += "\n"+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"documentation.append('Built-in value')"
         inspectionCode += "\n"+INDENT+INDENT+"else:"
