@@ -939,14 +939,7 @@ export default new Vuex.Store({
                 state.frameObjects[payload.frameId].contentDict[payload.slotId],
                 "code",
                 payload.code
-            )
-
-            //clear the potential error
-            Vue.set(
-                state.frameObjects[payload.frameId].contentDict[payload.slotId],
-                "error",
-                ""
-            )
+            );
         },
 
         setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
