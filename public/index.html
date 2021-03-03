@@ -27,6 +27,11 @@
     <div onclick="brython()" id="brythonContainer"></div>  
       <script type="text/python3">
 from browser import document, window
+import sys as __sys
+import __osMB 
+import __timeMB
+__sys.modules["os"] = __osMB
+__sys.modules["time"] = __timeMB
 exec(document['userCode'].text)
       </script>
     </div>
