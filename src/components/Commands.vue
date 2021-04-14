@@ -18,27 +18,29 @@
             </div>
         </div>
         <hr />
-        <div :id="commandsContainerUUID">
-            <div class="frameCommands">
-                <AddFrameCommand
-                    v-for="addFrameCommand in addFrameCommands"
-                    :key="addFrameCommand[0].type.type"
-                    :type="addFrameCommand[0].type.type"
-                    :shortcut="addFrameCommand[0].shortcut"
-                    :symbol="
-                        addFrameCommand[0].symbol !== undefined
-                            ? addFrameCommand[0].symbol
-                            : addFrameCommand[0].shortcut
-                    "
-                    :description="addFrameCommand[0].description"
-                    :index="
-                        addFrameCommand[0].index!==undefined
-                        ? addFrameCommand[0].index
-                        : 0
-                    "
-                />
+        <div :id="commandsContainerUUID" >
+            <div id="addFramePanel" v-if="!isEditing">
+                <div class="frameCommands">
+                    <AddFrameCommand
+                        v-for="addFrameCommand in addFrameCommands"
+                        :key="addFrameCommand[0].type.type"
+                        :type="addFrameCommand[0].type.type"
+                        :shortcut="addFrameCommand[0].shortcut"
+                        :symbol="
+                            addFrameCommand[0].symbol !== undefined
+                                ? addFrameCommand[0].symbol
+                                : addFrameCommand[0].shortcut
+                        "
+                        :description="addFrameCommand[0].description"
+                        :index="
+                            addFrameCommand[0].index!==undefined
+                            ? addFrameCommand[0].index
+                            : 0
+                        "
+                    />
+                </div>
+                <hr />
             </div>
-            <hr />
             <div class="toggleFrameLabelCommands">
                 <ToggleFrameLabelCommand
                     v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
@@ -97,6 +99,10 @@ export default Vue.extend({
 
         commandsContainerUUID(): string {
             return getCommandsContainerUIID();
+        },
+
+        isEditing(): boolean {
+            return store.getters.getIsEditing();
         },
 
         addFrameCommands(): Record<string, AddFrameCommandDef[]> {

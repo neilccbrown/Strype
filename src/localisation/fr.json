@@ -16,8 +16,8 @@
       "no": "Non",
       "ok": "OK",
       "uploadToMicrobit": "Envoyer vers micro:bit",
-      "downloadHex": "Télécharger Hex",
-      "downloadPython": "Télécharger Python",
+      "downloadHex": "Convertir vers Hex",
+      "downloadPython": "Convertir vers Python",
       "skipTutorial": "Passer le tutoriel",
       "next": "Suivant",
       "startCoding": "Codez !"
