@@ -16,7 +16,7 @@
       "no": "Non",
       "ok": "OK",
       "uploadToMicrobit": "Envoyer vers micro:bit",
-      "saveToMicrobit": "Envoyer vers micro:bit",
+      "sendToMicrobit": "Envoyer vers micro:bit",
       "downloadHex": "Convertir vers Hex",
       "downloadPython": "Convertir vers Python",
       "skipTutorial": "Passer le tutoriel",

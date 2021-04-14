@@ -2,7 +2,7 @@
     <div class="commands">
         <div :id="buttonsContainerUIID" class="commands-container">
             <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
-            <button @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.saveToMicrobit'"/>
+            <button @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.sendToMicrobit'"/>
             <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
         </div>
         <div v-if="showProgress" class="progress cmd-progress-container">

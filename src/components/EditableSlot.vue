@@ -18,7 +18,9 @@
             @keydown.prevent.stop.esc
             @keyup.esc="onEscKeyUp($event)"
             @keydown.prevent.stop.enter
-            @keyup.enter.prevent.stop="onEnterKeyUp($event)"
+            @keyup.enter.prevent.stop="onEnterOrTabKeyUp($event)"
+            @keydown.tab="onTabKeyDown($event)"
+            @keyup.tab="onEnterOrTabKeyUp($event)"
             @keyup="logCursorPosition()"
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
             :id="UIID"
@@ -334,7 +336,16 @@ export default Vue.extend({
             // when we reach at here, the "esc" key event is just propagated and acts as normal
         },
 
-        onEnterKeyUp(event: KeyboardEvent){
+        onTabKeyDown(event: KeyboardEvent){
+            // We keep the default browser behaviour when tab is pressed AND we're not having AC on.
+            // As browsers would use the "keydown" event, we have to intercept the event at this stage.
+            if(this.showAC && document.querySelector(".selectedAcItem")) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        },
+
+        onEnterOrTabKeyUp(event: KeyboardEvent){
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
             if(this.showAC && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
@@ -343,8 +354,11 @@ export default Vue.extend({
                 this.acItemClicked(document.querySelector(".selectedAcItem")?.id??"");
             }
             // If AC is not loaded or no selection is available, we want to take the focus from the slot
+            // (for Enter --> we use onLRKeyUp(); for Tab --> we don't do anything special, keep the default browser behaviour)
             else {
-                this.onLRKeyUp(event);
+                if(event.key == "Enter") {
+                    this.onLRKeyUp(event);
+                }
                 this.showAC = false;
             }
         },
