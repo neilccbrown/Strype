@@ -470,6 +470,11 @@ export default Vue.extend({
 
 .block:hover{
     border: 1px solid #B4B4B4;
+    cursor: grab;
+}
+
+.block:active{
+    cursor: grabbing;
 }
 
 .error {
