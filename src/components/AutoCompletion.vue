@@ -67,7 +67,7 @@
 <script lang="ts">
 //////////////////////
 import Vue from "vue";
-import store from "@/store/store.ts";
+import store from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition } from "@/types/types";
 import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
