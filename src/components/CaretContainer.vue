@@ -234,4 +234,8 @@ export default Vue.extend({
     padding-top: 0px;
     padding-bottom: 0px;
 }
+
+.caret-container:hover{
+    cursor: pointer;
+}
 </style>
