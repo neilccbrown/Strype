@@ -2,6 +2,7 @@ import Vue from "vue";
 import Vuex from "vuex";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition } from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
+import emptyState from "@/store/empty-state";
 import initialState from "@/store/initial-state";
 import initialTestState from "@/store/initial-test-state";
 import initialDemoState from "@/store/initial-demo-state";
@@ -17,15 +18,17 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
     state: {
-        debugging: true,// false, // 
+        /*these flags need checking when a build is done + toggleTutorialState()*/
+        debugging: false, //true,
 
         showKeystroke: true, //false, 
 
-        frameObjects: initialDemoState, // initialState,// initialTestState, // 
+        frameObjects: emptyState, //initialTestState, // initialState,// initialDemoState, // 
 
-        frameMap : [-1,1,-2,-3,2,3,4] as number[],//[-1,1,2,-2,-3,3,4,5,6,7,8,9,10,11,14,15,12,16,13,17] as number[], //[-1,-2,-3,1,2,3,4,5,6,7] as number[],// // flat map of all the frames in a sequence
+        frameMap : [-1,-2,-3] as number[],//[-1,1,-2,-3,2,3,4] as number[],//[-1,1,2,-2,-3,3,4,5,6,7,8,9,10,11,14,15,12,16,13,17] as number[], //[-1,-2,-3,1,2,3,4,5,6,7] as number[],// // flat map of all the frames in a sequence
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialDemoState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
+        nextAvailableId: Math.max.apply({},Object.keys(emptyState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
+        /*END of flags that need checking when a build is done*/
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
@@ -583,7 +586,7 @@ export default new Vuex.Store({
             Vue.set(
                 state,
                 "frameObjects",
-                (toggle) ? tutorialState: ((state.debugging)? initialTestState : initialDemoState)
+                (toggle) ? tutorialState: ((state.debugging)? initialTestState : emptyState)
             );
         },
 
