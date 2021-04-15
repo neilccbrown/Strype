@@ -21,6 +21,8 @@
             @keyup.enter.prevent.stop="onEnterOrTabKeyUp($event)"
             @keydown.tab="onTabKeyDown($event)"
             @keyup.tab="onEnterOrTabKeyUp($event)"
+            @keydown.187="onEqualOrSpaceKeyDown($event)"
+            @keydown.32="onEqualOrSpaceKeyDown($event)"
             @keyup="logCursorPosition()"
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
             :id="UIID"
@@ -61,7 +63,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
-import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos} from "@/types/types";
+import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
@@ -122,11 +124,16 @@ export default Vue.extend({
             return store.getters.getInitContentForFrameSlot();
         },
 
+        
+        frameType(): string{
+            return store.getters.getFrameObjectFromId(this.frameId).frameType.type;
+        },
+
         inputTextStyle(): Record<string, string> {
             return {
                 "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : (store.getters.getFrameObjectFromId(this.frameId).frameType.type === Definitions.CommentDefinition.type)
+                "color" : (this.frameType === Definitions.CommentDefinition.type)
                     ? "#97971E"
                     : "#000",
             };
@@ -360,6 +367,16 @@ export default Vue.extend({
                     this.onLRKeyUp(event);
                 }
                 this.showAC = false;
+            }
+        },
+
+        onEqualOrSpaceKeyDown(event: KeyboardEvent){
+            // If the frame is a variable assignment frame and we are in the left hand side editable slot,
+            // pressing "=" or " " keys move to RHS editable slot
+            if(this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
+                this.onLRKeyUp(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
+                event.preventDefault();
+                event.stopPropagation();
             }
         },
         
