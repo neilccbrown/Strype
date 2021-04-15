@@ -30,8 +30,8 @@
                 </div>
             </div> 
             <hr/>
-            <a class="project-impexp-div" href="#" @click="importFile()" v-t="'appMenu.importFile'" />
-            <a class="project-impexp-div" href="#" @click="exportFile()" v-t="'appMenu.exportFile'"/>
+            <a class="project-impexp-div" href="#" @click="importFile()" v-t="'appMenu.loadProject'" />
+            <a class="project-impexp-div" href="#" @click="exportFile()" v-t="'appMenu.saveProject'"/>
             <hr/>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
