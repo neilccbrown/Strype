@@ -4,7 +4,7 @@
         :class="{error: empty}"
         :id="uiid"
     >
-        <div v-if="showFrameContent">
+        <div>
             <CaretContainer
             :frameId="this.frameId"
             :caretVisibility="this.caretVisibility"
@@ -46,9 +46,6 @@
             :content="errorMessage"
             ></b-popover>
         </div>
-        <div v-else>
-            <span class="omitted-content-span">...</span>
-        </div>
     </div>
 </template>
 
@@ -80,7 +77,6 @@ export default Vue.extend({
         frameId: Number,
         isDisabled: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not
-        showFrameContent: Boolean, //flag indicating if the body's content should be hidden (UI wise)
     },
 
     data() {
@@ -231,13 +227,6 @@ export default Vue.extend({
 
 .error {
     border: 1px solid #d66 !important;
-}
-
-.omitted-content-span {
-    margin-left: 10px;
-    font-size: x-large;
-    bottom: 5px;
-    position: relative;
 }
 
 </style>
