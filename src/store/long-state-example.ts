@@ -1,6 +1,6 @@
 import {CaretPosition, EditorFrameObjects, Definitions, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
 
-const initialState: EditorFrameObjects = {
+const longStateExample: EditorFrameObjects = {
     0: {
         id: 0,
         frameType : RootContainerFrameDefinition,
@@ -329,6 +329,6 @@ const initialState: EditorFrameObjects = {
 
 };
 
-export default initialState;
+export default longStateExample;
 
 
