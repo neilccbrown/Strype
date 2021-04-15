@@ -44,18 +44,28 @@
                     ref="frameBody"
                 />
                 <CaretContainer
+                    v-if="!isLastJointFrame && hasJointFrameObjects"
                     :frameId="this.frameId"
                     :caretVisibility="this.caretVisibility"
                     :caretAssignedPosition="caretPosition.below"
                     :isFrameDisabled="this.isDisabled"
                     @hide-context-menus="handleClick($event,'paste')"
                 />
-                
                 <JointFrames 
-                    v-if="allowsJointChildren"
+                    v-if="allowsJointChildren && hasJointFrameObjects"
                     :jointParentId="frameId"
                     :isDisabled="isDisabled"
                     :isParentSelected="isPartOfSelection"
+                />
+            </div>
+            <div>
+                <CaretContainer
+                    v-if="(!isJointFrame || isLastJointFrame) && !hasJointFrameObjects"
+                    :frameId="this.frameId"
+                    :caretVisibility="this.caretVisibility"
+                    :caretAssignedPosition="caretPosition.below"
+                    :isFrameDisabled="this.isDisabled"
+                    @hide-context-menus="handleClick($event,'paste')"
                 />
             </div>
             <b-popover
@@ -136,6 +146,10 @@ export default Vue.extend({
                 this.frameId,
                 "all"
             ).length >0;
+        },
+
+        isLastJointFrame(): boolean {
+            return store.getters.getIsLastJointChild(this.frameId);
         },
 
         allowsJointChildren(): boolean {

@@ -13,7 +13,7 @@ import initialStates from "@/store/initial-states";
 
 Vue.use(Vuex);
 
-const initialState: StateObject = initialStates["usabilityEvalState"];
+const initialState: StateObject = initialStates["debugging"];
 
 export default new Vuex.Store({
     state: {
@@ -532,6 +532,11 @@ export default new Vuex.Store({
         
         getEditableSlotViaKeyboard:(state) => () => {
             return state.editableSlotViaKeyboard;
+        },
+
+        getIsLastJointChild:(state) => (frameId: number) => {
+            const jointParentId = state.frameObjects[frameId].jointParentId;
+            return (([...state.frameObjects[jointParentId].jointFrameIds].pop())??-10)==frameId;
         },
     }, 
 
