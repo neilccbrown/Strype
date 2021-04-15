@@ -755,3 +755,14 @@ export interface EditableSlotReachInfos {
     isKeyboard: boolean;
     direction: -1 | 1;
 }
+
+export interface StateObject {
+    debugging: boolean;
+    initialState: EditorFrameObjects;
+    frameMap: number[];
+    showKeystroke: boolean;
+}
+
+export interface StateObjects {
+    [id: string]: StateObject;
+}

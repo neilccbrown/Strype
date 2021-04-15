@@ -1,33 +1,32 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject } from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
-import emptyState from "@/store/empty-state";
-import initialState from "@/store/initial-state";
-import initialTestState from "@/store/initial-test-state";
-import initialDemoState from "@/store/initial-demo-state";
-import tutorialState from "@/store/tutorial-state"
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
-import i18n from "@/i18n"
+import i18n from "@/i18n";
+import tutorialState from "@/store/tutorial-state";
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getAllSiblings, getNextSibling, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
+import initialStates from "@/store/initial-states";
 
 Vue.use(Vuex);
+
+const initialState: StateObject = initialStates["usabilityEvalState"];
 
 export default new Vuex.Store({
     state: {
         /*these flags need checking when a build is done + toggleTutorialState()*/
-        debugging: false, //true,
+        debugging: initialState.debugging,
 
-        showKeystroke: true, //false, 
+        showKeystroke: initialState.showKeystroke,
 
-        frameObjects: emptyState, //initialTestState, // initialState,// initialDemoState, // 
+        frameObjects: initialState.initialState,
 
-        frameMap : [-1,-2,-3] as number[],//[-1,1,-2,-3,2,3,4] as number[],//[-1,1,2,-2,-3,3,4,5,6,7,8,9,10,11,14,15,12,16,13,17] as number[], //[-1,-2,-3,1,2,3,4,5,6,7] as number[],// // flat map of all the frames in a sequence
+        frameMap : initialState.frameMap, // flat map of all the frames in a sequence
 
-        nextAvailableId: Math.max.apply({},Object.keys(emptyState).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
+        nextAvailableId: Math.max.apply({},Object.keys(initialState.frameMap).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
         /*END of flags that need checking when a build is done*/
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
@@ -586,7 +585,7 @@ export default new Vuex.Store({
             Vue.set(
                 state,
                 "frameObjects",
-                (toggle) ? tutorialState: ((state.debugging)? initialTestState : emptyState)
+                (toggle) ? tutorialState: initialState.initialState
             );
         },
 
