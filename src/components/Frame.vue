@@ -15,7 +15,7 @@
                 :class="{error: erroneous, statementOrJoint: isStatementOrJointFrame, blockWithBody: !isStatementOrJointFrame}"
                 :id="uiid"
                 @click="toggleCaret($event)"
-                @contextmenu.prevent.stop="handleClick($event,'frame-context-menu')"
+                @contextmenu="handleClick($event,'frame-context-menu')"
             >
                 <vue-simple-context-menu
                     v-show="allowContextMenu"
@@ -247,8 +247,12 @@ export default Vue.extend({
         },
 
         handleClick (event: MouseEvent, action: string) {
-
             store.commit("setContextMenuShownId",this.uiid);
+
+            // only show the frame menu if we are not editing
+            if(store.getters.getIsEditing()){
+                return;
+            }
 
             if(action === "frame-context-menu") {
                 this.frameContextMenuOptions = [
@@ -298,6 +302,10 @@ export default Vue.extend({
                 });
                 
                 ((this.$refs.frameContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+
+                //prevent default menu to show
+                event.preventDefault();
+                event.stopPropagation();
             }
         },
 
