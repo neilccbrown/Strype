@@ -1,8 +1,8 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition } from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
-import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
+import { extractIdsFromEditableSlotUIID, getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import tutorialState from "@/store/tutorial-state";
@@ -530,6 +530,18 @@ export default new Vuex.Store({
             return state.editableSlotViaKeyboard;
         },
 
+        retrieveUserDefinedElements:(state) => (slotUIID: string) => {
+            // Retrieve the user defined functions and variables.
+            // The payload slotUIID is used to make sure we don't look up the variable/function in the current frame
+            // (for example, if we are in a variable assignment, we shouldn't pick up on that variable being written)
+            const currentFrameAndSlotIds = extractIdsFromEditableSlotUIID(slotUIID);
+            if(currentFrameAndSlotIds.frameId > 0){
+                return Object.values(state.frameObjects).filter((frame: FrameObject) => (frame.id != currentFrameAndSlotIds.frameId 
+                    && (frame.frameType.type === FuncDefDefinition.type || frame.frameType.type === VarAssignDefinition.type)))
+                    .map((frame: FrameObject) => frame.contentDict[0].code)
+            }
+            return [] as string[];
+        },
     }, 
 
     mutations: {

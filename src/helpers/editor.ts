@@ -4,7 +4,27 @@ import { CaretPosition } from "@/types/types";
 export const undoMaxSteps = 10;
 
 export function getEditableSlotUIID(frameId: number, slotIndex: number): string  {
+    //note: changing that should be impacted on extractIdsFromEditableSlotUIID() below
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
+}
+
+export function extractIdsFromEditableSlotUIID(editableSlotUIID: string): {frameId: number; slotIndex: number}{
+    const shortenUIID = editableSlotUIID.replace("input_frameId_","");
+    const idsArray = shortenUIID.split("_slot_");
+
+    //some default value that wouldn't match an existing frame / valid slotIndex.
+    let frameId = -10; 
+    let slotIndex = -1; 
+    
+    // just making sure nothing got wrong...
+    if(idsArray && idsArray.length === 2){
+        if(!isNaN(parseInt(idsArray[0], 10)) && !isNaN(parseInt(idsArray[1], 10))){
+            frameId = parseInt(idsArray[0], 10);
+            slotIndex = parseInt(idsArray[1], 10);
+        }
+    }
+
+    return {frameId: frameId, slotIndex: slotIndex};
 }
 
 export function getFrameContainerUIID(frameIndex: number): string {

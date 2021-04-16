@@ -33,7 +33,8 @@
     "emptyEditableSlot": "Le champ de saisie ne peut pas être vide",
     "emptyFrameBody": "Le contenu du cadre ne peut pas être vide",
     "noValidChildFrameBody": "Le contenu du cadre doit avoir au moins un cadre actif / différent d'un commentaire ",
-    "errorTitle": "Erreur !"
+    "errorTitle": "Erreur !",
+    "errorUserDefinedVarFuncMsg": "(Cette variable ou fonction definie dans votre code comporte une erreur, corrigez sa définition...)"
   },
   "appMessage": {
     "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",

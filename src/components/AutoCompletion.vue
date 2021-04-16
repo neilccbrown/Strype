@@ -182,13 +182,24 @@ export default Vue.extend({
             catch (error) {
                 console.log("Error on  Types")
             }
-            
+
 
             // Append the builtin results/docs/types to the lists IFF there is no context
             if(this.context === "") {
                 parsedDoc = parsedDoc.concat(Object.values(brythonBuiltins).map((e) => e.documentation));
                 parsedResults = parsedResults.concat(Object.keys(brythonBuiltins));
                 parsedTypes = parsedTypes.concat(Object.values(brythonBuiltins).map((e) => e.type));
+
+                // The list of results might not include some the user-defined functions and variables because the user code can't compile. 
+                // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
+                const userDefinedFuncVars: string[] = store.getters.retrieveUserDefinedElements(this.slotId); 
+                userDefinedFuncVars.forEach((userDefItem) => {
+                    if(parsedResults.find((result) => (result === userDefItem)) === undefined){
+                        parsedResults.push(userDefItem);
+                        parsedDoc.push(this.$i18n.t("errorMessage.errorUserDefinedVarFuncMsg") as string);
+                        parsedTypes.push("")
+                    }
+                });
             }
 
             // make list with indices, values, documentation and types
