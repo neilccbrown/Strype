@@ -30,6 +30,7 @@
                     :isDisabled="isDisabled"
                     v-blur="isDisabled"
                     :frameId="frameId"
+                    :frameType="frameType.type"
                     :labels="frameType.labels"
                     class="frame-header"
                     :frameAllowChildren="allowChildren"

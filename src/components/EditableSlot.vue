@@ -27,7 +27,7 @@
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
             :id="UIID"
             :key="UIID"
-            class="input"
+            class="editableslot-input"
             :style="inputTextStyle"
         />
         <b-popover
@@ -131,7 +131,7 @@ export default Vue.extend({
 
         inputTextStyle(): Record<string, string> {
             return {
-                "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
+                "background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
                 "color" : (this.frameType === Definitions.CommentDefinition.type)
                     ? "#97971E"
@@ -413,7 +413,7 @@ export default Vue.extend({
         computeFitWidthValue(): string {
             const placeholder = document.getElementById(this.placeholderUIID);
             let computedWidth = "150px"; //default value if cannot be computed
-            const offset = 10;
+            const offset = 8;
             if (placeholder) {
                 placeholder.textContent = (this.code.length > 0) ? this.code : this.defaultText;
                 //the width is computed from the placeholder's width from which
@@ -432,14 +432,31 @@ export default Vue.extend({
     border: 1px solid #FF0000 !important;
 }
 
-.input {
+.editableslot-input {
     border-radius: 5px;
-    border: 1px solid transparent;;
+    border: 1px solid transparent;
 }
 
-.input:hover {
-    border: 1px solid #B4B4B4;;
+.editableslot-input:hover {
+    border: 1px solid #615f5f;
 }
+
+.editableslot-input:focus {
+    border: 1px solid #615f5f;
+}
+
+.editableslot-input::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+  font-style: italic;
+}
+
+.editableslot-input:-ms-input-placeholder { /* Internet Explorer 10-11 */
+  font-style: italic;
+}
+
+.editableslot-input::-ms-input-placeholder { /* Microsoft Edge */
+  font-style: italic;
+}
+
 
 .editableslot-placeholder {
     position: absolute;
