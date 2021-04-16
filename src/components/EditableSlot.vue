@@ -21,8 +21,7 @@
             @keyup.enter.prevent.stop="onEnterOrTabKeyUp($event)"
             @keydown.tab="onTabKeyDown($event)"
             @keyup.tab="onEnterOrTabKeyUp($event)"
-            @keydown.187="onEqualOrSpaceKeyDown($event)"
-            @keydown.32="onEqualOrSpaceKeyDown($event)"
+            @keydown="onEqualOrSpaceKeyDown($event)"
             @keyup="logCursorPosition()"
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
             :id="UIID"
@@ -372,8 +371,10 @@ export default Vue.extend({
 
         onEqualOrSpaceKeyDown(event: KeyboardEvent){
             // If the frame is a variable assignment frame and we are in the left hand side editable slot,
-            // pressing "=" or " " keys move to RHS editable slot
-            if(this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
+            // pressing "=" or space keys move to RHS editable slot
+            // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
+            // we explicitly check the "key" property value check here as any other key could have been typed
+            if((event.key === "=" || event.key === " ") && this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
                 this.onLRKeyUp(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
