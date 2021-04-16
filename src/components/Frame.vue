@@ -44,7 +44,7 @@
                     ref="frameBody"
                 />
                 <CaretContainer
-                    v-if="!isLastJointFrame && hasJointFrameObjects"
+                    v-if="hasJointFrameObjects"
                     :frameId="this.frameId"
                     :caretVisibility="this.caretVisibility"
                     :caretAssignedPosition="caretPosition.below"
@@ -60,7 +60,7 @@
             </div>
             <div>
                 <CaretContainer
-                    v-if="(!isJointFrame || isLastJointFrame) && !hasJointFrameObjects"
+                    v-if="!hasJointFrameObjects"
                     :frameId="this.frameId"
                     :caretVisibility="this.caretVisibility"
                     :caretAssignedPosition="caretPosition.below"
