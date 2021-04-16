@@ -154,10 +154,6 @@ export default Vue.extend({
             ).length >0;
         },
 
-        isLastJointFrame(): boolean {
-            return store.getters.getIsLastJointChild(this.frameId);
-        },
-
         allowsJointChildren(): boolean {
             return store.getters.getAllowsJointChildren(this.frameId);
         },

@@ -534,10 +534,6 @@ export default new Vuex.Store({
             return state.editableSlotViaKeyboard;
         },
 
-        getIsLastJointChild:(state) => (frameId: number) => {
-            const jointParentId = state.frameObjects[frameId].jointParentId;
-            return (([...state.frameObjects[jointParentId].jointFrameIds].pop())??-10)==frameId;
-        },
     }, 
 
     mutations: {
