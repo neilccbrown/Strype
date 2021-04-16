@@ -43,6 +43,12 @@
                     :showFrameContent="showFrameContent"
                     ref="frameBody"
                 />
+                <!-- We have two caret containers because the frames which 
+                     have joint children cannot have the caret outside them,
+                     as the joint children sit whithin their parent; hence,
+                     if you take it out, the caret will jump out of the 'if' and
+                     then inside the go on the 'elif/else'
+                 -->
                 <CaretContainer
                     v-if="hasJointFrameObjects"
                     :frameId="this.frameId"
