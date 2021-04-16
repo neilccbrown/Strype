@@ -57,8 +57,8 @@
   },
   "appMenu": {
     "defaultProjName": "Mon projet",
-    "importFile": "Importer à partir d'un fichier",
-    "exportFile": "Exporter vers un fichier",
+    "loadProject": "Charger un projet",
+    "saveProject": "Sauvegarder ce projet",
     "prefs": "Préférences",
     "lang": "Langue: "
   },

@@ -30,17 +30,16 @@
                     :isDisabled="isDisabled"
                     v-blur="isDisabled"
                     :frameId="frameId"
+                    :frameType="frameType.type"
                     :labels="frameType.labels"
                     class="frame-header"
                     :frameAllowChildren="allowChildren"
-                    :showFrameContent="showFrameContent"
                 />
                 <FrameBody
                     v-if="allowChildren"
                     :frameId="frameId"
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
-                    :showFrameContent="showFrameContent"
                     ref="frameBody"
                 />
                 <!-- We have two caret containers because the frames which 
@@ -221,10 +220,6 @@ export default Vue.extend({
 
         multiDragPosition(): string {
             return store.getters.getMultiDragPosition(this.$props.frameId);
-        },
-
-        showFrameContent(): boolean {
-            return store.getters.getFrameContentVisibility(this.$props.frameId);
         },
     },
 

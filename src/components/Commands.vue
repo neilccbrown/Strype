@@ -217,12 +217,6 @@ export default Vue.extend({
                         event.preventDefault();
                         return;
                     }
-                    
-                    //= in var assignmet frame's editable slots
-                    if(frameType === VarAssignDefinition.type && event.key === "="){
-                        event.preventDefault();
-                        return;
-                    }
                 }
             }
         );

@@ -179,7 +179,8 @@ html,body {
  }
 
 #app {
-    font-family: Avenir, Helvetica, Arial, sans-serif;
+    font-family: 'Source Sans Pro', sans-serif;
+    font-size: 17px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: #2c3e50;

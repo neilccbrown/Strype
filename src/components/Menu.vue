@@ -9,29 +9,31 @@
             <div style="width: 100%;">
                 <div class="project-name-div">
                     <input
+                        ref="projectNameInput"
                         v-if="isComponentLoaded"
                         v-model="projectName" 
                         spellcheck="false"
-                        @mouseover="hover = true"
-                        @mouseleave="hover = false"
+                        @click="nameEditing = true"
                         @focus="onFocus()"
                         @blur="onBlur()"
                         @keyup.enter.prevent.stop="blur()"
                         @keypress="validateInput($event)"
                         class="project-name"
+                        :class="{'project-name-noborder': !nameEditing}"
                         id="name-input-field"
                         autocomplete="off"
                         :style="inputTextStyle"
                     />                    
                     <i 
                         style="margin-left: 2px;" 
-                        class="fa fa-pencil-alt"
-                        :class="{penHidden: !hover}"></i>  
+                        class="fa"
+                        @click="onProjectPenEditClick()"
+                        :class="{'fa-check': nameEditing, 'fa-pencil-alt': !nameEditing}"></i>  
                 </div>
             </div> 
             <hr/>
-            <a class="project-impexp-div" href="#" @click="importFile()" v-t="'appMenu.importFile'" />
-            <a class="project-impexp-div" href="#" @click="exportFile()" v-t="'appMenu.exportFile'"/>
+            <a class="project-impexp-div" href="#" @click="importFile()" v-t="'appMenu.loadProject'" />
+            <a class="project-impexp-div" href="#" @click="exportFile()" v-t="'appMenu.saveProject'"/>
             <hr/>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
@@ -121,7 +123,7 @@ export default Vue.extend({
     data() {
         return {
             showMenu: false,
-            hover: false,
+            nameEditing: false,
             //this flag is used to "delay" the computation of the input text field's width,
             //so that the width is rightfully computed when displayed for the first time
             isComponentLoaded : false,
@@ -268,7 +270,7 @@ export default Vue.extend({
         computeFitWidthValue(): string {
             const placeholder = document.getElementById("projectNameDiv");
             let width = 5;
-            const offset = 2;
+            const offset = 8; //2+2*padding value + border
             if (placeholder) {
                 placeholder.textContent = this.projectName 
                 //the width is computed from the placeholder's width from which
@@ -302,6 +304,10 @@ export default Vue.extend({
         },
 
         onBlur(): void {
+            //just change the flag with a sligh a delay to avoid the issue that when being in the input field and clicking on the tick, the flag has already changed
+            setTimeout(() => {
+                this.nameEditing = false;
+            }, 500);
             store.commit(
                 "setEditFlag",
                 false
@@ -319,6 +325,15 @@ export default Vue.extend({
                 "undoRedo",
                 isUndo
             );
+        },
+
+        onProjectPenEditClick(): void {
+            if(!this.nameEditing){
+                // When the pen is shown (i.e. the project name is not being edited) we toggle the flag
+                // and get the focus on the input field and
+                this.nameEditing = true;
+                (this.$refs.projectNameInput as HTMLInputElement).focus();                
+            }
         },
         
     },
@@ -352,10 +367,13 @@ export default Vue.extend({
 }
 
 .project-name {
-    border: 0;
-    padding: 0; 
+    //don't forget to update the autosize offset if padding or borderis changed!
+    border: #6d6c6a solid 1px;
+    padding: 0px 2px; 
     background: transparent;
     text-align:center;
+    color: #274D19;
+    outline: none;
 }
 
 .project-name-div {
@@ -363,13 +381,8 @@ export default Vue.extend({
     display: inline;
 }
 
-.project-name-div input {
-    outline: none;
-    color: #274D19;
-}
-
-.penHidden {
-    visibility: hidden;
+.project-name-noborder {
+     border-width: 0px;
 }
 
 .project-impexp-div {

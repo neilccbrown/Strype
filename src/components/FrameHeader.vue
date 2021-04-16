@@ -1,15 +1,17 @@
 <template>
     <div>
-        <div class="next-to-eachother" v-if="showCollapseButton">
-            <button class="frame-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-        </div>
         <div
             class="next-to-eachother"
             v-for="(item, index) in labels"
             :key="item.label + frameId"
         >
             <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
-            <div class="next-to-eachother" :class="{hidden: isLabelHidden(index), leftMargin: index > 0, rightMargin: true}">{{ item.label }}</div>
+            <div 
+                class="next-to-eachother" 
+                style="font-weight: 600;"
+                :class="{hidden: isLabelHidden(index), leftMargin: index > 0, rightMargin: true, 'frameColouredLabel': !isCommentFrame}">
+                    {{ item.label }}
+            </div>
             <EditableSlot
                 v-if="item.slot"
                 :isDisabled="isDisabled"
@@ -30,6 +32,7 @@
 import Vue from "vue";
 import EditableSlot from "@/components/EditableSlot.vue";
 import store from "@/store/store";
+import {CommentDefinition} from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -47,31 +50,20 @@ export default Vue.extend({
         // than a label in the frame (e.g. `with` ... `as ... ) 
         labels: Array,
         frameId: Number,
+        frameType: String,
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
-        showFrameContent: Boolean,
     },
 
-    computed: {
-        showCollapseButton(): boolean{
-            return this.$props.frameAllowChildren && (store.getters.getFramesForParentId(this.$props.frameId).length > 0);
-        },
-        collapseButtonLabel(): string {
-            return (this.$props.showFrameContent) ? "\u25BC" : "\u25B6";
+    computed:{
+        isCommentFrame(): boolean{
+            return this.frameType===CommentDefinition.type;
         },
     },
 
     methods: {
         isLabelHidden(slotIndex: number): boolean { 
             return !store.getters.getIsCurrentFrameLabelShown(this.$props.frameId, slotIndex);
-        },
-
-        toggleCollapse(): void {
-            //update the visibilty of the frame's content
-            store.dispatch(
-                "toggleFrameContentVisibility",
-                {frameId: this.frameId, collapse: this.$props.showFrameContent}
-            );
         },
     },
 });
@@ -94,14 +86,7 @@ export default Vue.extend({
     margin-right: 2px;
 }
 
-.frame-btn-collapse {
-    border-color: transparent;
-    background-color: transparent;
-    font-size: small;
-    color:rgba(0,0,0,0.25);
-}
-
-.frame-btn-collapse:focus {
-    outline: none;
+.frameColouredLabel{
+    color: rgb(2, 33, 168);
 }
 </style>

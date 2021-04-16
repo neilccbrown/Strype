@@ -516,10 +516,6 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].multiDragPosition;
         },
 
-        getFrameContentVisibility: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].isContentVisible??true;
-        },
-
         getIndexedAcResults: (state) => () => {
             return state.indexedAcResults;
         },
@@ -798,7 +794,7 @@ export default new Vuex.Store({
                         newId = currentFrame.childrenIds[0];
 
                         // If the child allows children, and it isn't collapsed, go to its body, else to its bottom
-                        newPosition = (state.frameObjects[newId].frameType.allowChildren && (state.frameObjects[newId].isContentVisible??true)) ? CaretPosition.body : CaretPosition.below;
+                        newPosition = (state.frameObjects[newId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
                     }
                     //if the currentFrame has NO children go below it, except if it is a container --> next container
                     else {
@@ -822,7 +818,7 @@ export default new Vuex.Store({
                         newId = childrenAndJointFramesIds[currentFrameIndex + 1];
 
                         // If the new current frame allows children & isn't collapsed go to its body, else to its bottom
-                        newPosition = (state.frameObjects[newId].frameType.allowChildren && (state.frameObjects[newId].isContentVisible??true))? CaretPosition.body : CaretPosition.below;
+                        newPosition = (state.frameObjects[newId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
                     }
                     // If that's the content of a container, go to the next container if possible (body)
                     else if(currentFrame.parentId < 0){
@@ -851,7 +847,7 @@ export default new Vuex.Store({
                 );
 
                 // If ((not allow children && I am below) || I am in body || (frame is collapsed)) ==> I go out of the frame
-                if ( (!currentFrame.frameType.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body || !(currentFrame.isContentVisible??true)){
+                if ( (!currentFrame.frameType.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body){
                     const currentFrameIndex = childrenAndJointFramesIds.indexOf(state.currentFrame.id);
                   
                     // If the current is not on the top of its parent's children
@@ -1397,14 +1393,6 @@ export default new Vuex.Store({
                     ""
                 );
             });
-        },
-
-        setFrameContentVisibility(state, payload: {frameId: number; collapse: boolean}) {
-            Vue.set(
-                state.frameObjects[payload.frameId],
-                "isContentVisible",
-                !payload.collapse
-            );
         },
 
         setIndexedAcResults(state, value: {index: number; value: string; documentation: string}[]){
@@ -2818,21 +2806,6 @@ export default new Vuex.Store({
                 );
             }
         
-        },
-
-        toggleFrameContentVisibility({commit, state}, payload: {frameId: number; collapse: boolean}) {
-            //set the flag on the collapsed/expanded frame
-            commit("setFrameContentVisibility", payload);
-
-            //move the caret under the collapsed frame if the caret was somewhere inside the frame
-            if(payload.collapse){
-                const nextSiblingPos = state.frameMap.indexOf(getNextSibling(state.frameObjects, payload.frameId));
-                const collapsedFramePos = state.frameMap.indexOf(payload.frameId);
-                const currentFramePos = state.frameMap.indexOf(state.currentFrame.id);
-                if(currentFramePos > collapsedFramePos && (nextSiblingPos === -1 || currentFramePos < nextSiblingPos)){
-                    commit("setCurrentFrame", {id: payload.frameId, caretPosition: CaretPosition.below});
-                }                
-            }
         },
     },
     

@@ -227,6 +227,7 @@ export default Vue.extend({
     margin-left: 5px;
     cursor:default;
     color: #274D19;
+    font-weight: 600;
 }
 
 .container-frames {

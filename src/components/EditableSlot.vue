@@ -21,11 +21,12 @@
             @keyup.enter.prevent.stop="onEnterOrTabKeyUp($event)"
             @keydown.tab="onTabKeyDown($event)"
             @keyup.tab="onEnterOrTabKeyUp($event)"
+            @keydown="onEqualOrSpaceKeyDown($event)"
             @keyup="logCursorPosition()"
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
             :id="UIID"
             :key="UIID"
-            class="input"
+            class="editableslot-input"
             :style="inputTextStyle"
         />
         <b-popover
@@ -61,7 +62,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
-import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos} from "@/types/types";
+import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
@@ -122,11 +123,16 @@ export default Vue.extend({
             return store.getters.getInitContentForFrameSlot();
         },
 
+        
+        frameType(): string{
+            return store.getters.getFrameObjectFromId(this.frameId).frameType.type;
+        },
+
         inputTextStyle(): Record<string, string> {
             return {
-                "background-color": ((this.code.trim().length > 0) ? "transparent" : "#FFFFFF") + " !important",
+                "background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : (store.getters.getFrameObjectFromId(this.frameId).frameType.type === Definitions.CommentDefinition.type)
+                "color" : (this.frameType === Definitions.CommentDefinition.type)
                     ? "#97971E"
                     : "#000",
             };
@@ -362,6 +368,18 @@ export default Vue.extend({
                 this.showAC = false;
             }
         },
+
+        onEqualOrSpaceKeyDown(event: KeyboardEvent){
+            // If the frame is a variable assignment frame and we are in the left hand side editable slot,
+            // pressing "=" or space keys move to RHS editable slot
+            // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
+            // we explicitly check the "key" property value check here as any other key could have been typed
+            if((event.key === "=" || event.key === " ") && this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
+                this.onLRKeyUp(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        },
         
         acItemClicked(item: string) {
             const selectedItem = (document.getElementById(item) as HTMLLIElement)?.textContent?.trim()??"";
@@ -396,7 +414,7 @@ export default Vue.extend({
         computeFitWidthValue(): string {
             const placeholder = document.getElementById(this.placeholderUIID);
             let computedWidth = "150px"; //default value if cannot be computed
-            const offset = 10;
+            const offset = 8;
             if (placeholder) {
                 placeholder.textContent = (this.code.length > 0) ? this.code : this.defaultText;
                 //the width is computed from the placeholder's width from which
@@ -415,14 +433,31 @@ export default Vue.extend({
     border: 1px solid #FF0000 !important;
 }
 
-.input {
+.editableslot-input {
     border-radius: 5px;
-    border: 1px solid transparent;;
+    border: 1px solid transparent;
 }
 
-.input:hover {
-    border: 1px solid #B4B4B4;;
+.editableslot-input:hover {
+    border: 1px solid #615f5f;
 }
+
+.editableslot-input:focus {
+    border: 1px solid #615f5f;
+}
+
+.editableslot-input::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+  font-style: italic;
+}
+
+.editableslot-input:-ms-input-placeholder { /* Internet Explorer 10-11 */
+  font-style: italic;
+}
+
+.editableslot-input::-ms-input-placeholder { /* Microsoft Edge */
+  font-style: italic;
+}
+
 
 .editableslot-placeholder {
     position: absolute;
