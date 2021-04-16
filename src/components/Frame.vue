@@ -542,4 +542,8 @@ export default Vue.extend({
     padding-top: 5px;
 }
 
+.frame-header{
+    margin-left: 14px;
+}
+
 </style>
