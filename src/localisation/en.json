@@ -33,7 +33,9 @@
     "emptyEditableSlot": "Input slot cannot be empty",
     "emptyFrameBody": "Body cannot be empty",
     "noValidChildFrameBody": "Body needs to have at least one enabled / non-comment frame ",
-    "errorTitle": "Error!"
+    "errorTitle": "Error!",
+    "errorUserDefinedFuncMsg": "User-defined function\nthis function definition contains errors",
+    "errorUserDefinedVarMsg": "User-defined variable\none of this variable assignment contains errors"
   },
   "appMessage": {
     "editorFileUpload": "Uploading your file to the editor...",
