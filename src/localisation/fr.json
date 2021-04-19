@@ -34,7 +34,8 @@
     "emptyFrameBody": "Le contenu du cadre ne peut pas être vide",
     "noValidChildFrameBody": "Le contenu du cadre doit avoir au moins un cadre actif / différent d'un commentaire ",
     "errorTitle": "Erreur !",
-    "errorUserDefinedVarFuncMsg": "(Cette variable ou fonction definie dans votre code comporte une erreur, corrigez sa définition...)"
+    "errorUserDefinedFuncMsg": "Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
+    "errorUserDefinedVarMsg": "Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs"
   },
   "appMessage": {
     "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",

@@ -765,3 +765,8 @@ export interface StateObject {
 export interface StateObjects {
     [id: string]: StateObject;
 }
+
+export interface UserDefinedElement {
+    name: string;
+    isFunction: boolean;
+}

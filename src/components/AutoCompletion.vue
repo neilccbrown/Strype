@@ -69,7 +69,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import { DefaultCursorPosition } from "@/types/types";
+import { DefaultCursorPosition, UserDefinedElement } from "@/types/types";
 import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import { getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 
@@ -192,12 +192,12 @@ export default Vue.extend({
 
                 // The list of results might not include some the user-defined functions and variables because the user code can't compile. 
                 // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
-                const userDefinedFuncVars: string[] = store.getters.retrieveUserDefinedElements(this.slotId); 
+                const userDefinedFuncVars: UserDefinedElement[] = store.getters.retrieveUserDefinedElements(); 
                 userDefinedFuncVars.forEach((userDefItem) => {
-                    if(parsedResults.find((result) => (result === userDefItem)) === undefined){
-                        parsedResults.push(userDefItem);
-                        parsedDoc.push(this.$i18n.t("errorMessage.errorUserDefinedVarFuncMsg") as string);
-                        parsedTypes.push("")
+                    if(parsedResults.find((result) => (result === userDefItem.name)) === undefined){
+                        parsedResults.push(userDefItem.name);
+                        parsedDoc.push((userDefItem.isFunction) ? this.$i18n.t("errorMessage.errorUserDefinedFuncMsg") as string : this.$i18n.t("errorMessage.errorUserDefinedVarMsg") as string);
+                        parsedTypes.push("");
                     }
                 });
             }

@@ -34,7 +34,8 @@
     "emptyFrameBody": "Body cannot be empty",
     "noValidChildFrameBody": "Body needs to have at least one enabled / non-comment frame ",
     "errorTitle": "Error!",
-    "errorUserDefinedVarFuncMsg": "(This variable or function defined in your code has an error, correct its definition...)"
+    "errorUserDefinedFuncMsg": "User-defined function\nthis function definition contains errors",
+    "errorUserDefinedVarMsg": "User-defined variable\none of this variable assignment contains errors"
   },
   "appMessage": {
     "editorFileUpload": "Uploading your file to the editor...",
