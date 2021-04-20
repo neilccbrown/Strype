@@ -163,7 +163,7 @@ export default Vue.extend({
                 // if the imput field exists and it is not a comment
                 if(inputField && frame.frameType.type !== Definitions.CommentDefinition.type){
                     //get the autocompletion candidates
-                    const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";               
+                    const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
                     
                     //workout the correct context if we are in a code editable slot
                     const isImportFrame = (frame.frameType.type === Definitions.ImportDefinition.type)

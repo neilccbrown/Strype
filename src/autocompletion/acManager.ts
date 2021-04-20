@@ -7,7 +7,7 @@ const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
     "==","=","!=",">=","<=","<",">"];
 
-const operatorWithSpace = [...operators, " "];
+const keywordsWihtSurroundSpaces = [" and ", " in ", " is ", " or " ];
 
 const INDENT = "    ";
 
@@ -15,6 +15,33 @@ let currentACContext= "_temp_AC_context_";
 
 export function resetCurrentContextAC(): void {
     currentACContext = "_temp_AC_context_";
+}
+
+// Checks if the code passed as argument should not trigger the AC (implying the caret is at the end of this code)
+function isACNeededToShow(code: string): boolean {
+    //if there is no space in the code, the AC could be shown
+    if(code.indexOf(" ") === -1){
+        return true;
+    }
+
+    //check if we follow a symbols operator 
+    let foundOperatorFlag = false;
+    operators.forEach((op) => {
+        if(code.trim().endsWith(op)) {
+            foundOperatorFlag = true;
+        }
+    });
+
+    if(!foundOperatorFlag) {
+        //then check if we follow a non symbols operators (need a trailing space)
+        keywordsWihtSurroundSpaces.forEach((op) => {
+            if(code.toLowerCase().match(".*"+op+" *")) {
+                foundOperatorFlag = true;
+            }
+        });
+    }  
+
+    return foundOperatorFlag;
 }
 
 function runPythonCode(code: string): void {
@@ -204,7 +231,13 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     
     // if the string's last character is an operator or symbol that means there is no context and tokenAC
     // we also try to avoid checking for context and token when the line ends with multiple dots, as it creates a problem to Brython
-    if(!operatorWithSpace.includes(slotCode.substr(codeIndex).slice(-1)) && !slotCode.substr(codeIndex).endsWith("..")) {
+    if(!slotCode.substr(codeIndex).endsWith("..") && !operators.includes(slotCode.substr(codeIndex).slice(-1))) {
+        // we don't want to show the autocompletion if the code at the current position is 
+        // after a space that doesn't separate some parts of an operator. In other words,
+        // we want to avoid to show the autocompletion EVERYTIME the space key is hit.
+        if(slotCode.trim().length > 0 && !isACNeededToShow(slotCode)){
+            return {tokenAC: tokenAC , contextAC: contextAC, showAC: false};
+        }
         // code we will give us context and token is the last piece of code after the last white space
         const subCode = slotCode.substr(codeIndex).split(" ").slice(-1).pop()??"";
 
