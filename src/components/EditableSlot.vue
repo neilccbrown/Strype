@@ -1,5 +1,6 @@
 <template>
-    <div class="next-to-eachother">
+    <div class="next-to-eachother editable-slot"
+    >        
         <input
             type="text"
             autocomplete="off"
@@ -29,22 +30,26 @@
             class="editableslot-input"
             :style="inputTextStyle"
         />
+        
         <b-popover
-          v-if="erroneous"
-          :target="UIID"
-          :title="this.$i18n.t('errorMessage.errorTitle')"
-          triggers="hover focus"
-          :content="errorMessage"
-          class="popover"
+        v-if="erroneous"
+        :target="UIID"
+        :title="this.$i18n.t('errorMessage.errorTitle')"
+        triggers="hover focus"
+        :content="errorMessage"
+        class="popover"
         >
         </b-popover>
+
         <div 
             class="editableslot-placeholder"
             :id="placeholderUIID"
             :value="code"
         />
+
         <AutoCompletion
             v-if="focused && showAC" 
+            class="ac"
             :slotId="UIID"
             :context="contextAC"
             ref="AC"
@@ -467,9 +472,26 @@ export default Vue.extend({
 }
 
 .popover {
-    //Nedded for understanding the formated errors that split multiple
+    // Nedded for the code to understand the formated errors which split multiple
     // errors with \n
     white-space: pre-line !important;
+}
+
+.editable-slot{
+    position: relative;
+    // width: 100px;
+    // overflow-x: hidden;
+    // box-sizing: border-box;
+    //   display: flex;
+}
+
+.ac {
+    position: absolute;
+    // bottom: 0px;
+    left: 0px;
+    // overflow-x: hidden;
+    // width: 300%;
+    z-index: 10;
 }
 
 </style>
