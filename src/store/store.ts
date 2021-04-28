@@ -13,7 +13,7 @@ import initialStates from "@/store/initial-states";
 
 Vue.use(Vuex);
 
-const initialState: StateObject = initialStates["debugging"];
+const initialState: StateObject = initialStates["demoState"];
 
 export default new Vuex.Store({
     state: {

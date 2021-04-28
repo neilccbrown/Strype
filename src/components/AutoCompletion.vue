@@ -2,7 +2,7 @@
     <div 
         v-show="results.length>0"
     >
-        <div>
+        <div class="popupContainer">
             <div
                 :style="popupPosition"
                 class="popup"
@@ -17,6 +17,7 @@
                         :selected="index==selected"
                         v-on="$listeners"
                         :isSelectable="true"
+                        ref="results"
                     />
                 </ul>
             </div>
@@ -31,6 +32,7 @@
                         :item="this.documentation[this.selected]"
                         :key="UIID+'documentation'"
                         :isSelectable="false"
+                        ref="documentations"
                     />
                 </ul>
             </div>
@@ -132,6 +134,8 @@ export default Vue.extend({
             return {
                 "float" : "right",
                 "right": -(this.cursorPosition.left+25)+"px",
+                //this is needed to avoid showing an empty documentation pane
+                "min-width":((this.documentation[this.selected]?.length>0)?"200px":"0px"),
             }; 
         },
 
@@ -152,7 +156,6 @@ export default Vue.extend({
     methods: {  
         // On a fake Click -triggered by Brython's code- the suggestions popup
         loadNewSuggestionsAC(): void {
-            
             // AC Results
             const allResults = (document.getElementById(this.resutlsSpanID) as HTMLSpanElement)?.textContent?.replaceAll("'","\"")??"{}";
             let parsedResults: string[] = [];
@@ -257,11 +260,13 @@ export default Vue.extend({
     display: "none";
 }
 
+.popupContainer {
+    display: flex;
+}
+
 .popup{
     background-color: #fff;
     border:1px solid #d0d0d0;
-    position : "relative";
-    display : "inline-block";
 }
 
 .limitWidthUl{
@@ -274,6 +279,7 @@ export default Vue.extend({
     list-style: none;
     padding-left: 0;
     width: auto;
+    cursor: pointer;
 }
 
 .popup li {

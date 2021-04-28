@@ -47,15 +47,15 @@
     "mainContainer": "Votre code :"
   },
   "contextMenu": {
-    "cut": "Couper",
-    "copy": "Copier",
-    "duplicate": "Dupliquer",
-    "paste": "Coller",
-    "enable": "Activer",
-    "disable": "Désactiver",
-    "undo": "Annuler",
-    "redo": "Refaire",
-    "delete": "Supprimer"
+    "cut": "Couper ce cadre",
+    "copy": "Copier ce cadre",
+    "duplicate": "Dupliquer ce cadre",
+    "paste": "Coller ce cadre",
+    "enable": "Activer ce cadre",
+    "disable": "Désactiver ce cadre",
+    "undo": "Annuler ce cadre",
+    "redo": "Refaire ce cadre",
+    "delete": "Supprimer ce cadre"
   },
   "appMenu": {
     "defaultProjName": "Mon projet",
