@@ -274,7 +274,7 @@ export default Vue.extend({
         },
 
         onBlur(): void {
-            //this.showAC = false;
+            this.showAC = false;
             store.dispatch(
                 "updateErrorsOnSlotValidation",
                 {
@@ -341,7 +341,7 @@ export default Vue.extend({
             if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
-                //this.showAC = false;
+                this.showAC = false;
             }
             // If AC is not loaded, we want to take the focus from the slot
             // when we reach at here, the "esc" key event is just propagated and acts as normal
@@ -370,7 +370,7 @@ export default Vue.extend({
                 if(event.key == "Enter") {
                     this.onLRKeyUp(event);
                 }
-                //this.showAC = false;
+                this.showAC = false;
             }
         },
 
@@ -407,7 +407,7 @@ export default Vue.extend({
             this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length + ((isSelectedFunction)?1:0) ;
             
             this.code = newCode;
-            //this.showAC = false;
+            this.showAC = false;
         },
 
         // store the cursor position to give it as input to AutoCompletionPopUp
