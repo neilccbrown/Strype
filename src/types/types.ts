@@ -330,7 +330,7 @@ export const FuncDefDefinition: FramesDefinitions = {
     type: FuncDefIdentifiers.funcdef,
     labels: [
         { label: "def ", slot: true, defaultText: "name", optionalSlot: false},
-        { label: "(", slot: true, defaultText: "arguments", optionalSlot: true},
+        { label: "(", slot: true, defaultText: "parameters", optionalSlot: true},
         { label: ") :", slot: false, defaultText: ""},
     ],
     colour: "#ECECC8",
