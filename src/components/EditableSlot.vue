@@ -48,7 +48,7 @@
         />
 
         <AutoCompletion
-            v-if="showAC" 
+            v-if="focused && showAC" 
             class="ac"
             :slotId="UIID"
             :context="contextAC"
