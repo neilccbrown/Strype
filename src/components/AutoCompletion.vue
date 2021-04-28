@@ -2,7 +2,7 @@
     <div 
         v-show="results.length>0"
     >
-        <div>
+        <div class="next-to-eachother ">
             <div
                 :style="popupPosition"
                 class="popup"
@@ -257,11 +257,16 @@ export default Vue.extend({
     display: "none";
 }
 
+.next-to-eachother {
+    display: inline-block;
+    // position: absolute;
+}
+
 .popup{
     background-color: #fff;
     border:1px solid #d0d0d0;
-    position : "relative";
-    display : "inline-block";
+    // position : relative;
+     display: inline-block;
 }
 
 .limitWidthUl{
@@ -274,6 +279,7 @@ export default Vue.extend({
     list-style: none;
     padding-left: 0;
     width: auto;
+    cursor: pointer;
 }
 
 .popup li {
