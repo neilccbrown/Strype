@@ -11,8 +11,8 @@
             v-focus="focused"
             @focus="onFocus()"
             @blur="onBlur()"
-            @keyup.left.prevent.stop="onLRKeyUp($event)"
-            @keyup.right.prevent.stop="onLRKeyUp($event)"
+            @keydown.left="onLRKeyUp($event)"
+            @keydown.right="onLRKeyUp($event)"
             @keyup.up.prevent.stop="onUDKeyUp($event)"
             @keyup.down.prevent.stop="onUDKeyUp($event)"
             @keydown.prevent.stop.esc
@@ -281,7 +281,7 @@ export default Vue.extend({
         },
 
         onLRKeyUp(event: KeyboardEvent) {
-            //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special
+            //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special (browser handles it)
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
                 //get the input field
                 const input: HTMLInputElement = this.$el.firstElementChild as HTMLInputElement;
@@ -298,12 +298,14 @@ export default Vue.extend({
                         this.onBlur();
                     }
                     else {
-                    //no specific action to take, we just move the cursor to the left or to the right
+                        //no specific action to take, we just move the cursor to the left or to the right
                         const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
                         const cursorPos = (incrementStep == -1) ? start : end;
                         input.setSelectionRange(cursorPos + incrementStep, cursorPos + incrementStep);
                     }
                 }
+                event.preventDefault();
+                event.stopImmediatePropagation();
             }
         },
 

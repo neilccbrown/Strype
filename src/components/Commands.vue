@@ -197,8 +197,34 @@ export default Vue.extend({
 
                 //prevent default scrolling and navigation
                 if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
-                    if(!(event.shiftKey || event.ctrlKey || event.metaKey)){
-                        event.preventDefault();
+
+                    if (event.key === "ArrowDown" || event.key === "ArrowUp" ) {
+                        //first we remove the focus of the current active element (to avoid editable slots to keep it)
+                        (document.activeElement as HTMLElement).blur();
+
+                        if(event.shiftKey){
+                            store.dispatch( 
+                                "selectMultipleFrames",
+                                event.key
+                            );
+                        }
+                        else {
+                            store.dispatch(
+                                "changeCaretPosition",
+                                event.key
+                            );
+                        }
+                    }
+                    else{
+                        //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by EditableSlots.
+                        if(!store.getters.getIsEditing()){
+                            store.dispatch(
+                                "leftRightKey",
+                                event.key
+                            );
+                            event.stopImmediatePropagation();
+                            event.preventDefault();
+                        }
                     }
                     return;
                 }
@@ -234,24 +260,7 @@ export default Vue.extend({
 
                 const isEditing = store.getters.getIsEditing();
 
-                if (event.key === "ArrowDown" || event.key === "ArrowUp" ) {
-                    //first we remove the focus of the current active element (to avoid editable slots to keep it)
-                    (document.activeElement as HTMLElement).blur();
-
-                    if(event.shiftKey){
-                        store.dispatch( 
-                            "selectMultipleFrames",
-                            event.key
-                        );
-                    }
-                    else {
-                        store.dispatch(
-                            "changeCaretPosition",
-                            event.key
-                        );
-                    }
-                }      
-                else if(event.key == "Escape"){
+                if(event.key == "Escape"){
                     if(store.getters.areAnyFramesSelected()){
                         store.commit("unselectAllFrames");
                         store.commit("makeSelectedFramesVisible");
@@ -294,13 +303,7 @@ export default Vue.extend({
                     }
                     //cases when there is no editing:
                     else if(!(event.ctrlKey || event.metaKey)){
-                        if (( event.key === "ArrowLeft" || event.key === "ArrowRight")) { 
-                            store.dispatch(
-                                "leftRightKey",
-                                event.key
-                            );
-                        }
-                        else if(event.key == "Delete" || event.key == "Backspace"){
+                        if(event.key == "Delete" || event.key == "Backspace"){
                             //delete a frame or a frame selection
                             store.dispatch(
                                 "deleteFrames",
