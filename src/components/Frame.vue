@@ -12,7 +12,7 @@
             <div 
                 :style="frameStyle" 
                 class="block frameDiv" 
-                :class="{error: erroneous, statementOrJoint: isStatementOrJointFrame, blockWithBody: !isStatementOrJointFrame}"
+                :class="{error: erroneous, statementOrJoint: isStatementOrJointFrame}"
                 :id="uiid"
                 @click="toggleCaret($event)"
                 @contextmenu="handleClick($event,'frame-context-menu')"
@@ -476,15 +476,10 @@ export default Vue.extend({
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
-    border: 1px solid #B4B4B4;
 }
 
 .statementOrJoint {
     border: 1px solid transparent;
-}
-
-.blockWithBody {
-    border: 1px solid #B4B4B4;
 }
 
 .block:hover{

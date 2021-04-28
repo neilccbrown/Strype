@@ -49,13 +49,13 @@
   "contextMenu": {
     "cut": "Cut",
     "copy": "Copy",
-    "duplicate": "Duplicate",
-    "paste": "Paste",
-    "enable": "Enable",
-    "disable": "Disable",
-    "undo": "Undo",
-    "redo": "Redo",
-    "delete": "Delete"
+    "duplicate": "Duplicate Frame",
+    "paste": "Paste Frame",
+    "enable": "Enable Frame",
+    "disable": "Disable Frame",
+    "undo": "Undo Frame",
+    "redo": "Redo Frame",
+    "delete": "Delete Frame"
   },
   "appMenu": {
     "defaultProjName": "My project",
