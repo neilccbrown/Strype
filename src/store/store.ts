@@ -1257,11 +1257,6 @@ export default new Vuex.Store({
                         }
                     }
                 });
-
-                //If the copied frame doesn't exist after changes, we revert to the default -100 value.
-                if(state.frameObjects[state.copiedFrameId] === undefined){
-                    Vue.set(state, "copiedFrameId", -100);
-                }
              
                 //if we notified a change of current caret, we make sure it makes correctly displayed 
                 if(changeCaret){
