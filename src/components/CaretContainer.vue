@@ -102,7 +102,14 @@ export default Vue.extend({
             "keydown",
             (event: KeyboardEvent) => {
                 if(!this.isEditing && (event.ctrlKey || event.metaKey) && (event.key === "v")) {
-                    this.paste();
+                    // A paste via shortcut cannot get the verification that would be done via a click
+                    // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here
+                    const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
+                    if(currentFrame.id === this.frameId && currentFrame.caretVisibility === this.caretAssignedPosition && this.pasteAvailable && store.getters.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) { 
+                        //we need to update the context menu as if it had been shown
+                        store.commit("setContextMenuShownId",this.uiid);
+                        this.paste();
+                    }
                     event.preventDefault();
                     return;
                 }
@@ -202,8 +209,10 @@ export default Vue.extend({
         },
 
         paste(): void {
-            // We check again that the paste can be performed as there is no verification using keyboard shortcut, contrary to displaying the menu
-            if(store.getters.getCurrentFrameObject().id === this.$props.frameId && store.getters.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)){
+            // We check upon the context menu informations because a click could be generated on a hovered caret and we can't distinguish 
+            // by any other mean which caret is the one the user clicked on.
+            const currentShownContextMenuUUID: string = store.getters.getContextMenuShownId();
+            if(currentShownContextMenuUUID === this.uiid){
                 if(store.getters.isSelectionCopied()){
                     store.dispatch(
                         "pasteSelection",
