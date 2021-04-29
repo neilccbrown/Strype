@@ -26,7 +26,7 @@ export default new Vuex.Store({
 
         frameMap : initialState.frameMap, // flat map of all the frames in a sequence
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialState.frameMap).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
+        nextAvailableId: Math.max(...initialState.frameMap)+1, // won't work for tutorial, as it is not needed in there
         /*END of flags that need checking when a build is done*/
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
