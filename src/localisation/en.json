@@ -8,7 +8,8 @@
       "uploadEditorFileError": "Something wrong happened during editor file upload: {errorMsg}. Your code has not changed.",
       "uploadEditorFileNotSupported": "This file format is not supported. Expected file extension: {list}. Your code has not changed.",
       "uploadEditorFileSuccess": "The editor file upload is successful. Your code has been loaded.",
-      "forbiddenFrameMove": "The selected frame(s) cannot be moved because it results in illegal code."
+      "forbiddenFrameMove": "The selected frame(s) cannot be moved because it results in illegal code.",
+      "functionFrameCantDelete": "A function definition frame cannot be deleted from its body."
   },
   "buttonLabel":{
       "undo": "Undo",

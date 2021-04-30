@@ -525,6 +525,7 @@ export const MessageTypes = {
     uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
     uploadEditorFileSucces: "uploadEditorFileSuccess",
     forbiddenFrameMove: "forbiddenFrameMove",
+    functionFrameCantDelete: "functionFrameCantDelete",
 }
 
 //empty message
@@ -626,6 +627,13 @@ const ForbiddenFrameMove: MessageDefinition = {
     path: imagePaths.empty,
 }
 
+const FunctionFrameCantDelete: MessageDefinition = {
+    type: MessageTypes.functionFrameCantDelete,
+    message: "messageBannerMessage.functionFrameCantDelete",
+    buttons: [],
+    path: imagePaths.empty,
+}
+
 export const MessageDefinitions = {
     NoMessage,
     LargeDeletion,
@@ -638,6 +646,7 @@ export const MessageDefinitions = {
     UploadEditorFileNotSupported,
     UploadEditorFileSuccess,
     ForbiddenFrameMove,
+    FunctionFrameCantDelete,
 };
 
 //WebUSB listener
