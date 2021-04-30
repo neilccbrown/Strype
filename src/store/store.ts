@@ -1260,11 +1260,14 @@ export default new Vuex.Store({
              
                 //if we notified a change of current caret, we make sure it makes correctly displayed 
                 if(changeCaret){
-                    Vue.set(
-                        state.frameObjects[oldCaretId],
-                        "caretVisibility",
-                        CaretPosition.none
-                    );
+                    //if the frame where the previous state of the caret was notified still exists, we set its caret to "none"
+                    if(state.frameMap.includes(oldCaretId)){
+                        Vue.set(
+                            state.frameObjects[oldCaretId],
+                            "caretVisibility",
+                            CaretPosition.none
+                        );
+                    }
         
                     Vue.set(
                         state.currentFrame,
