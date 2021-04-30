@@ -109,6 +109,7 @@ export default Vue.extend({
                         //we need to update the context menu as if it had been shown
                         store.commit("setContextMenuShownId",this.uiid);
                         this.paste();
+                        event.stopImmediatePropagation();
                     }
                     event.preventDefault();
                     return;
