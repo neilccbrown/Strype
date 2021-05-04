@@ -4,7 +4,20 @@ import { CaretPosition } from "@/types/types";
 export const undoMaxSteps = 10;
 
 export function getEditableSlotUIID(frameId: number, slotIndex: number): string  {
+    //if a change is done in this method, also update isElementEditableSlotInput()
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
+}
+
+export function isElementEditableSlotInput(element: EventTarget | null): boolean{
+    if(!(element instanceof HTMLInputElement)){
+        return false;
+    }
+
+    return (((element as HTMLInputElement).id.match("^input_frameId_\\d+_slot_\\d+$")?.length)??0) > 0;
+}
+
+export function getFrameContextMenuUIID(frameUIID: string): string{
+    return frameUIID + "frameContextMenu"
 }
 
 export function getFrameContainerUIID(frameIndex: number): string {

@@ -101,6 +101,7 @@ import store from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
+import { getFrameContextMenuUIID } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -313,6 +314,10 @@ export default Vue.extend({
                 });
                 
                 ((this.$refs.frameContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+                //the menu could have "forcely" been disabled by us to prevent duplicated menu showing in the editable slots
+                //so we make sure we restore the visibility of that menu
+                const contextMenu = document.getElementById(getFrameContextMenuUIID(this.uiid));  
+                contextMenu?.removeAttribute("hidden");
 
                 //prevent default menu to show
                 event.preventDefault();
