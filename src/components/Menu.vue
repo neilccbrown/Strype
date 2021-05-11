@@ -104,7 +104,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { fileImportSupportedFormats, getEditorMenuUIID } from "@/helpers/editor";
+import { fileImportSupportedFormats, getEditorMenuUIID, getTutorialUIID } from "@/helpers/editor";
 import $ from "jquery";
 import { Slide } from "vue-burger-menu"
 
@@ -134,6 +134,26 @@ export default Vue.extend({
         //when the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
         //because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
         this.isComponentLoaded  = true;
+
+        //we also register the keyboad event handling for the menu here
+        window.addEventListener(
+            "keydown",
+            (event: KeyboardEvent) => {
+                const tutorial = document.getElementById(getTutorialUIID());
+                if(tutorial !== null){
+                    //if the tutorial is displayed, we don't do anything here
+                    event.preventDefault();
+                    return;
+                }
+
+                //handle the Ctrl/Meta + S command for saving the project
+                if(event.key === "s" && (event.metaKey || event.ctrlKey)){
+                    this.exportFile();
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                }
+            }
+        );
     },
 
     computed: {

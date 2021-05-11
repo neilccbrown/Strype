@@ -62,7 +62,7 @@ import Menu from "@/components/Menu.vue";
 import Tutorial from "@/components/Tutorial.vue";
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID } from "./helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -117,7 +117,25 @@ export default Vue.extend({
             // Browsers won't display a customised message, and can detect when to prompt the user,
             // so we don't need to do anything special.
             event.returnValue = true;
-        })
+        });
+
+        //prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
+        window.addEventListener(
+            "contextmenu",
+            (event: MouseEvent) => {
+                if(!isElementEditableSlotInput(event.target)){
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                }
+                else{
+                    const currentCustomMenuId: string = store.getters.getContextMenuShownId();
+                    if(currentCustomMenuId.length > 0){
+                        const customMenu = document.getElementById(getFrameContextMenuUIID(currentCustomMenuId));
+                        customMenu?.setAttribute("hidden", "true");
+                    }
+                }
+            }
+        );
     },
 
     methods: {

@@ -26,7 +26,7 @@ export default new Vuex.Store({
 
         frameMap : initialState.frameMap, // flat map of all the frames in a sequence
 
-        nextAvailableId: Math.max.apply({},Object.keys(initialState.frameMap).map(Number))+1 as number, // won't work for tutorial, as it is not needed in there
+        nextAvailableId: Math.max(...initialState.frameMap)+1, // won't work for tutorial, as it is not needed in there
         /*END of flags that need checking when a build is done*/
 
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
@@ -1257,19 +1257,17 @@ export default new Vuex.Store({
                         }
                     }
                 });
-
-                //If the copied frame doesn't exist after changes, we revert to the default -100 value.
-                if(state.frameObjects[state.copiedFrameId] === undefined){
-                    Vue.set(state, "copiedFrameId", -100);
-                }
              
                 //if we notified a change of current caret, we make sure it makes correctly displayed 
                 if(changeCaret){
-                    Vue.set(
-                        state.frameObjects[oldCaretId],
-                        "caretVisibility",
-                        CaretPosition.none
-                    );
+                    //if the frame where the previous state of the caret was notified still exists, we set its caret to "none"
+                    if(state.frameMap.includes(oldCaretId)){
+                        Vue.set(
+                            state.frameObjects[oldCaretId],
+                            "caretVisibility",
+                            CaretPosition.none
+                        );
+                    }
         
                     Vue.set(
                         state.currentFrame,
@@ -1772,7 +1770,7 @@ export default new Vuex.Store({
                 //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
                 //if backspace is pressed
                 //  case current frame is Container --> do nothing, a container cannot be deleted
-                //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent
+                //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent (except for function definitions frames)
                 //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
                 //(*) with all sub levels children
 
@@ -1802,11 +1800,30 @@ export default new Vuex.Store({
                 else {
                     if (currentFrame.id > 0) {
                         if(state.currentFrame.caretPosition === CaretPosition.body ){
-                            //just move the cursor one level up
-                            commit(
-                                "changeCaretWithKeyboard",
-                                "ArrowUp"
-                            );
+                            //we just make sure the frame to delete isn't a function definition frame:
+                            //we can't delete a function def frame with backspace in its body because it will result
+                            //in its content put directly into the function defs container. So we just alert the users.
+                            if(currentFrame.frameType.type !== FuncDefDefinition.type){
+                                //just move the cursor one level up
+                                commit(
+                                    "changeCaretWithKeyboard",
+                                    "ArrowUp"
+                                );
+                            }
+                            else{
+                                //just show the user a message and do nothing else
+                                commit(
+                                    "setMessageBanner",
+                                    MessageDefinitions.FunctionFrameCantDelete
+                                );
+                
+                                //don't leave the message for ever
+                                setTimeout(()=>commit(
+                                    "setMessageBanner",
+                                    MessageDefinitions.NoMessage
+                                ), 7000);
+                                return;
+                            }
                         }
                         else{
                             //move the cursor up to the previous sibling bottom if available, otherwise body of parent
