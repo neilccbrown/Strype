@@ -45,7 +45,7 @@
     "enableInnerDisabledFrameConfirm": "This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?",
     "importsContainer": "Imports:",
     "funcDefsContainer": "Function definitions:",
-    "mainContainer": "Your code:"
+    "mainContainer": "My code:"
   },
   "contextMenu": {
     "cut": "Cut",

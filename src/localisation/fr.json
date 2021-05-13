@@ -45,7 +45,7 @@
     "enableInnerDisabledFrameConfirm": "Cette action activera le groupe entier de cadres désactivés auquel ce cadre appartient.\nSouhaitez-vous continuer ?",
     "importsContainer": "Imports :",
     "funcDefsContainer": "Définitions de fonctions :",
-    "mainContainer": "Votre code :"
+    "mainContainer": "Mon code :"
   },
   "contextMenu": {
     "cut": "Couper ce cadre",
