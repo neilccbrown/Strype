@@ -28,10 +28,10 @@
                 <div class="row no-gutters" >
                     <Menu 
                         :id="menuUIID" 
-                        class="col-auto"
+                        class="col-auto noselect"
                     />
                     <div class="col">
-                        <div :id="editorUIID" class="editor-code-div" >
+                        <div :id="editorUIID" class="editor-code-div noselect" >
                             <FrameContainer
                                 v-for="container in containerFrames"
                                 :key="container.frameType.type + '-id:' + container.id"
@@ -45,7 +45,7 @@
                     </div>
                 </div>
             </div>
-            <Commands :id="commandsContainerId" class="col-4" />
+            <Commands :id="commandsContainerId" class="col-4 noselect" />
         </div>
     </div>
 </template>
@@ -222,5 +222,15 @@ html,body {
 .top {
     text-align: center;
     margin-left:10px;
+}
+
+.noselect {
+  -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome, Edge, Opera and Firefox */
 }
 </style>
