@@ -1,7 +1,7 @@
 import store from "@/store/store";
 import { CaretPosition } from "@/types/types";
 
-export const undoMaxSteps = 10;
+export const undoMaxSteps = 50;
 
 export function getEditableSlotUIID(frameId: number, slotIndex: number): string  {
     //if a change is done in this method, also update isElementEditableSlotInput()

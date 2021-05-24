@@ -194,8 +194,10 @@ export default Vue.extend({
                     return;
                 }
 
+                const isEditing = store.getters.getIsEditing();
+
                 //prevent default scrolling and navigation
-                if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                if (!isEditing && (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight")) {
 
                     if (event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                         //first we remove the focus of the current active element (to avoid editable slots to keep it)
@@ -216,7 +218,7 @@ export default Vue.extend({
                     }
                     else{
                         //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by EditableSlots.
-                        if(!store.getters.getIsEditing()){
+                        if(!isEditing){
                             store.dispatch(
                                 "leftRightKey",
                                 event.key
@@ -229,13 +231,13 @@ export default Vue.extend({
                 }
 
                 //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")
-                if(!store.getters.getIsEditing() && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
+                if(!isEditing && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
                     event.preventDefault();
                     return;
                 }
 
                 //prevent specific characters in specific frames (cf details)
-                if(store.getters.getIsEditing()){
+                if(isEditing){
                     const frameType = store.getters.getCurrentFrameObject().frameType.type;
                     //space in import frame's editable slots
                     if(frameType === ImportDefinition.type && event.key === " "){
@@ -258,6 +260,7 @@ export default Vue.extend({
                 }
 
                 const isEditing = store.getters.getIsEditing();
+                const ignoreKeyEvent: boolean = store.getters.getIgnoreKeyEvent();
 
                 if(event.key == "Escape"){
                     if(store.getters.areAnyFramesSelected()){
@@ -303,12 +306,17 @@ export default Vue.extend({
                     //cases when there is no editing:
                     else if(!(event.ctrlKey || event.metaKey)){
                         if(event.key == "Delete" || event.key == "Backspace"){
-                            //delete a frame or a frame selection
-                            store.dispatch(
-                                "deleteFrames",
-                                event.key
-                            );
-                            event.stopImmediatePropagation();
+                            if(!ignoreKeyEvent){
+                                //delete a frame or a frame selection
+                                store.dispatch(
+                                    "deleteFrames",
+                                    event.key
+                                );
+                                event.stopImmediatePropagation();
+                            }
+                            else{
+                                store.commit("setIgnoreKeyEvent", false);
+                            }
                         }
                         //add the frame in the editor if allowed
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){

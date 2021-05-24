@@ -12,16 +12,18 @@
             v-focus="focused"
             @focus="onFocus()"
             @blur="onBlur()"
-            @keydown.left="onLRKeyUp($event)"
-            @keydown.right="onLRKeyUp($event)"
-            @keyup.up.prevent.stop="onUDKeyUp($event)"
-            @keyup.down.prevent.stop="onUDKeyUp($event)"
+            @keydown.left="onLRKeyDown($event)"
+            @keydown.right="onLRKeyDown($event)"
+            @keydown.up.prevent.stop="onUDKeyDown($event)"
+            @keydown.down.prevent.stop="onUDKeyDown($event)"
             @keydown.prevent.stop.esc
             @keyup.esc="onEscKeyUp($event)"
             @keydown.prevent.stop.enter
             @keyup.enter.prevent.stop="onEnterOrTabKeyUp($event)"
             @keydown.tab="onTabKeyDown($event)"
             @keyup.tab="onEnterOrTabKeyUp($event)"
+            @keydown.backspace="onBackSpaceKeyDown()"
+            @keyup.backspace="onBackSpaceKeyUp()"
             @keydown="onEqualOrSpaceKeyDown($event)"
             @keyup="logCursorPosition()"
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
@@ -115,7 +117,11 @@ export default Vue.extend({
             showAC: false,
             contextAC: "",
             //used to force a text cursor position, for example after inserting an AC candidate
-            textCursorPos: -1,              
+            textCursorPos: -1,    
+            //used the flags to indicate whether the user has explictly marked a pause when deleting text with backspace
+            //or that the slot is initially empty
+            canBackspaceDeleteFrame: true,   
+            stillBackSpaceDown: false,
         };
     },
     
@@ -145,10 +151,14 @@ export default Vue.extend({
 
         code: {
             get(): string{
-                return store.getters.getContentForFrameSlot(
+                const code = store.getters.getContentForFrameSlot(
                     this.$parent.$props.frameId,
                     this.$props.slotIndex
                 );
+                if(code.length > 0){
+                    this.setBreakSpaceFlag(false);
+                }
+                return code;
             },
             set(value: string){
                 store.dispatch(
@@ -218,6 +228,10 @@ export default Vue.extend({
                 this.$props.slotIndex
             );
         },
+
+        isFirstVisibleInFrame(): boolean{
+            return store.getters.getIsSlotFirstVisibleInFrame(this.frameId, this.slotIndex);
+        },
     },
 
     directives: {
@@ -257,6 +271,9 @@ export default Vue.extend({
     },
 
     methods: {
+        setBreakSpaceFlag(value: boolean){
+            this.canBackspaceDeleteFrame = value;
+        },
 
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
@@ -285,7 +302,7 @@ export default Vue.extend({
             );
         },
 
-        onLRKeyUp(event: KeyboardEvent) {
+        onLRKeyDown(event: KeyboardEvent) {
             //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special (browser handles it)
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
                 //get the input field
@@ -314,12 +331,12 @@ export default Vue.extend({
             }
         },
 
-        onUDKeyUp(event: KeyboardEvent) {
+        onUDKeyDown(event: KeyboardEvent) {
             //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
                 // If the AutoCompletion is on we just browse through it's contents
-            // The `results` check, prevents `changeSelection()` when there are no results matching this token
-            // And instead, since there is no AC list to show, moves to the next slot
+                // The `results` check, prevents `changeSelection()` when there are no results matching this token
+                // And instead, since there is no AC list to show, moves to the next slot
                 if(this.showAC && (this.$refs.AC as any).results.length > 0) {
                     (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
                 }
@@ -367,10 +384,10 @@ export default Vue.extend({
                 this.acItemClicked(document.querySelector(".selectedAcItem")?.id??"");
             }
             // If AC is not loaded or no selection is available, we want to take the focus from the slot
-            // (for Enter --> we use onLRKeyUp(); for Tab --> we don't do anything special, keep the default browser behaviour)
+            // (for Enter --> we use onLRKeyDown(); for Tab --> we don't do anything special, keep the default browser behaviour)
             else {
                 if(event.key == "Enter") {
-                    this.onLRKeyUp(event);
+                    this.onLRKeyDown(event);
                 }
                 this.showAC = false;
             }
@@ -382,10 +399,42 @@ export default Vue.extend({
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
             if((event.key === "=" || event.key === " ") && this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
-                this.onLRKeyUp(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
+                this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
             }
+        },
+
+        onBackSpaceKeyDown(){
+            // When the backspace key is hit we delete the container frame when 
+            // 1) there is no text in the slot
+            // 2) we are in the first slot of a frame (*first that appears in the UI*) 
+            // To avoid unwanted deletion, we "force" a delay before removing the frame.
+            this.stillBackSpaceDown = true;
+            if(this.isFirstVisibleInFrame && this.code.length == 0){
+                //if the user had already released the key up, no point waiting, we delete straight away
+                if(this.canBackspaceDeleteFrame){
+                    store.dispatch(
+                        "deleteFrameFromSlot",
+                        this.frameId
+                    );
+                }
+                else{        
+                    setTimeout(()=>{
+                        if(this.stillBackSpaceDown){
+                            store.dispatch(
+                                "deleteFrameFromSlot",
+                                this.frameId
+                            );
+                        }
+                    }, 600);
+                }
+            }
+        },
+
+        onBackSpaceKeyUp(){
+            this.canBackspaceDeleteFrame = (this.code.length == 0);
+            this.stillBackSpaceDown = false;
         },
         
         acItemClicked(item: string) {

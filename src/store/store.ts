@@ -35,6 +35,8 @@ export default new Vuex.Store({
 
         isEditing: false,
 
+        ignoreKeyEvent: false, //this flag can be used anywhere a key event should be ignored within the application
+
         currentMessage: MessageDefinitions.NoMessage,
 
         preCompileErrors: [] as string[],
@@ -538,6 +540,21 @@ export default new Vuex.Store({
             return Object.values(state.frameObjects).filter((frame: FrameObject) => (frame.id !== state.currentFrame.id 
                 && (frame.frameType.type === FuncDefDefinition.type || frame.frameType.type === VarAssignDefinition.type)))
                 .map((frame: FrameObject) => ({name: frame.contentDict[0].code, isFunction: frame.frameType.type === FuncDefDefinition.type}) as UserDefinedElement);
+        },
+
+        getIsSlotFirstVisibleInFrame:(state) => (frameId: number, slotIndex: number) => {
+            // This getter checks if the given slot of a given frame is *visually* the first shown to the user
+            let otherFrameIndex = 0;
+            for(otherFrameIndex; otherFrameIndex < slotIndex; otherFrameIndex++){
+                if((state.frameObjects[frameId].contentDict[slotIndex]?.shownLabel)??true){
+                    return false;
+                }
+            }
+            return true;
+        },
+
+        getIgnoreKeyEvent: (state) => () => {
+            return state.ignoreKeyEvent;
         },
     }, 
 
@@ -1413,6 +1430,10 @@ export default new Vuex.Store({
         setEditableSlotViaKeyboard(state, payload: EditableSlotReachInfos) {
             Vue.set(state, "editableSlotViaKeyboard", payload);
         },
+
+        setIgnoreKeyEvent(state, value: boolean){
+            Vue.set(state, "ignoreKeyEvent", value);
+        },
     },
 
     actions: {
@@ -1891,6 +1912,22 @@ export default new Vuex.Store({
                     "setMessageBanner",
                     MessageDefinitions.NoMessage
                 ), 7000);
+            }
+        },
+        
+        deleteFrameFromSlot({commit, dispatch, state}, frameId: number){            
+            // Before we delete the frame, we need to "invalidate" the key events: as this action (deleteFrameFromSlot) is triggered on a key down event, 
+            // when the key (backspace) is released, the key up event is fired, but since the frame is deleted, 
+            // the event is caught at the window level (and since we are no more in editing mode, the deletion method is called again). So we invalidate the 
+            // key event momently so that this window key up event is ignored.
+            // Furthermore, we make sure that the frame hasn't been already deleted: in case a long press, we don't want to have many deletion
+            // triggered from "stacked" calls to this method
+            if(state.frameObjects[frameId]){
+                commit("setIgnoreKeyEvent", true);
+                dispatch(
+                    "deleteFrames",
+                    "Backspace"
+                );  
             }
         },
 
