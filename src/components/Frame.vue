@@ -481,6 +481,7 @@ export default Vue.extend({
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
+    border: 1px solid transparent;
 }
 
 .statementOrJoint {
@@ -488,7 +489,7 @@ export default Vue.extend({
 }
 
 .block:hover{
-    border: 1px solid #B4B4B4;
+    border-color: #B4B4B4;
     cursor: grab;
 }
 
