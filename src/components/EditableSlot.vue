@@ -175,8 +175,9 @@ export default Vue.extend({
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
 
-                // if the imput field exists and it is not a comment
-                if(inputField && frame.frameType.type !== CommentDefinition.type){
+                // if the imput field exists and it is not a "free texting" slot
+                // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
+                if(inputField && ((frame.frameType.labels[this.slotIndex].acceptAC)??true)){
                     //get the autocompletion candidates
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
                     

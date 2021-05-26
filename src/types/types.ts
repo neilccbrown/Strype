@@ -38,6 +38,7 @@ export interface FrameLabel {
     slot: boolean;
     defaultText: string;
     optionalSlot?: boolean;
+    acceptAC?: boolean;
 }
 
 
@@ -272,7 +273,7 @@ export const ForDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.for,
     labels: [
-        { label: "for ", slot: true, defaultText: "identifier", optionalSlot: false},
+        { label: "for ", slot: true, defaultText: "identifier", optionalSlot: false, acceptAC: false},
         { label: " in ", slot: true, defaultText: "list", optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
@@ -329,8 +330,8 @@ export const FuncDefDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: FuncDefIdentifiers.funcdef,
     labels: [
-        { label: "def ", slot: true, defaultText: "name", optionalSlot: false},
-        { label: "(", slot: true, defaultText: "parameters", optionalSlot: true},
+        { label: "def ", slot: true, defaultText: "name", optionalSlot: false, acceptAC: false},
+        { label: "(", slot: true, defaultText: "parameters", optionalSlot: true, acceptAC: false},
         { label: ") :", slot: false, defaultText: ""},
     ],
     colour: "#ECECC8",
@@ -367,7 +368,7 @@ export const VarAssignDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.varassign,
     labels: [
-        { label: "", slot: true, defaultText: "identifier", optionalSlot: false},
+        { label: "", slot: true, defaultText: "identifier", optionalSlot: false, acceptAC: false},
         { label: " = ", slot: true, defaultText: "value", optionalSlot: false},
     ],
     colour: "#F6F2E9",
@@ -415,7 +416,7 @@ export const ImportDefinition: FramesDefinitions = {
 export const CommentDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.comment,
-    labels: [{ label: "# ", slot: true, defaultText: "your comment", optionalSlot: true}],
+    labels: [{ label: "# ", slot: true, defaultText: "your comment", optionalSlot: true, acceptAC: false}],
     colour: "#F6F2E9",
 };
 
