@@ -69,7 +69,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
-import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, CommentDefinition} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
@@ -143,7 +143,7 @@ export default Vue.extend({
             return {
                 "background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : (this.frameType === Definitions.CommentDefinition.type)
+                "color" : (this.frameType === CommentDefinition.type)
                     ? "#97971E"
                     : "#000",
             };
@@ -176,12 +176,12 @@ export default Vue.extend({
                 const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
 
                 // if the imput field exists and it is not a comment
-                if(inputField && frame.frameType.type !== Definitions.CommentDefinition.type){
+                if(inputField && frame.frameType.type !== CommentDefinition.type){
                     //get the autocompletion candidates
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
                     
                     //workout the correct context if we are in a code editable slot
-                    const isImportFrame = (frame.frameType.type === Definitions.ImportDefinition.type)
+                    const isImportFrame = (frame.frameType.type === ImportDefinition.type)
                     const resultsAC = (isImportFrame) 
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));
@@ -288,6 +288,16 @@ export default Vue.extend({
                     caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
             );    
+            // When there is no code, we can suppose that we are in a new frame.
+            // So, for import frames (from/import slots only) we show the AC automatically
+            if(this.frameType === ImportDefinition.type && this.slotIndex < 2 && this.code.length === 0){
+                const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));   
+                this.showAC = resultsAC.showAC;
+                this.contextAC = resultsAC.contextAC;
+                if(this.showAC){
+                    this.token = resultsAC.tokenAC.toLowerCase();  
+                }
+            }
         },
 
         onBlur(): void {
@@ -436,7 +446,7 @@ export default Vue.extend({
             this.canBackspaceDeleteFrame = (this.code.length == 0);
             this.stillBackSpaceDown = false;
         },
-        
+
         acItemClicked(item: string) {
             const selectedItem = (document.getElementById(item) as HTMLLIElement)?.textContent?.trim()??"";
             if(selectedItem === undefined) {
