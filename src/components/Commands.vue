@@ -69,6 +69,7 @@ import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageD
 import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
 import $ from "jquery";
+import Parser from "@/parser/parser";
 
 export default Vue.extend({
     name: "Commands",
@@ -353,70 +354,96 @@ export default Vue.extend({
         },
 
         flash() {
-            if (navigator.usb) {
-                const webUSBListener: WebUSBListener = {
-                    onUploadProgressHandler: (percent) => {
-                        this.$data.showProgress = true;
-                        this.$data.progressPercent = percent;
-                    },
-
-                    onUploadSuccessHandler: () => {
-                        store.commit(
-                            "setMessageBanner",
-                            MessageDefinitions.UploadSuccessMicrobit
-                        );
-
-                        this.$data.showProgress = false;
-
-                        //don't leave the message for ever
-                        setTimeout(()=>store.commit(
-                            "setMessageBanner",
-                            MessageDefinitions.NoMessage
-                        ), 7000);
-                    },
-                    onUploadFailureHandler: (error) => {
-                        this.$data.showProgress = false;
- 
-                        const message = MessageDefinitions.UploadFailureMicrobit;
-                        const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
-
-                        store.commit(
-                            "setMessageBanner",
-                            message
-                        );
-
-                        this.$data.showProgress = false;
-
-                        //don't leave the message for ever
-                        setTimeout(()=>store.commit(
-                            "setMessageBanner",
-                            MessageDefinitions.NoMessage
-                        ), 7000);
-                    },
-                };
-                flashData(webUSBListener);
+            let proceed = true;
+            if(store.getters.getPreCompileErrors().length>0) {
+                proceed = false;
+                alert(this.$i18n.t("appMessage.preCompiledErrorNeedFix"));
             }
-            else {
-                alert("This browser does not support webUSB connections. Please use a browser such as Google Chrome.");
+            else{
+                //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
+                //(we clear the errors because when the code is parsed, the lines with errors are ignored from the output
+                // so we need to reset those errors before reparsing - errors will be "reconstructed" in getErrorsFormatted())
+                store.commit("clearAllErrors");
+                const parser = new Parser();
+                const out = parser.parse();
+                const errors = parser.getErrorsFormatted(out);
+                if (errors) {
+                    proceed = false;
+                    alert(errors);
+                }
+            }            
+            
+            if(proceed){
+                if (navigator.usb) {
+                    const webUSBListener: WebUSBListener = {
+                        onUploadProgressHandler: (percent) => {
+                            this.$data.showProgress = true;
+                            this.$data.progressPercent = percent;
+                        },
+
+                        onUploadSuccessHandler: () => {
+                            store.commit(
+                                "setMessageBanner",
+                                MessageDefinitions.UploadSuccessMicrobit
+                            );
+
+                            this.$data.showProgress = false;
+
+                            //don't leave the message for ever
+                            setTimeout(()=>store.commit(
+                                "setMessageBanner",
+                                MessageDefinitions.NoMessage
+                            ), 7000);
+                        },
+                        onUploadFailureHandler: (error) => {
+                            this.$data.showProgress = false;
+ 
+                            const message = MessageDefinitions.UploadFailureMicrobit;
+                            const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
+
+                            store.commit(
+                                "setMessageBanner",
+                                message
+                            );
+
+                            this.$data.showProgress = false;
+
+                            //don't leave the message for ever
+                            setTimeout(()=>store.commit(
+                                "setMessageBanner",
+                                MessageDefinitions.NoMessage
+                            ), 7000);
+                        },
+                    };
+                    flashData(webUSBListener);
+                }
+                else {
+                    alert(this.$i18n.t("appMessage.noWebUSB"));
+                }
             }
         },
         downloadHex() {
-            if(store.getters.getPreCompileErrors().length>0) {
-                alert("Please fix existing errors first.");
+            if(store.getters.getPreCompileErrors().length > 0) {
+                alert(this.$i18n.t("appMessage.preCompiledErrorNeedFix"));
+                return;
             }
-            else {
-                downloadHex(); 
+            //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
+            store.commit("clearAllErrors");
+            const succeeded = downloadHex(); 
+            //We show the image only if the download has succeeded
+            if(succeeded) {
                 store.dispatch("setMessageBanner", MessageDefinitions.DownloadHex);
             }
         },
         downloadPython() {
             if(store.getters.getPreCompileErrors().length>0) {
-                alert("Please fix existing errors first.");
+                alert(this.$i18n.t("appMessage.preCompiledErrorNeedFix"));
+                return;
             }
-            else {
-                downloadPython();
-            }
+            //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
+            store.commit("clearAllErrors");
+            downloadPython(); 
         },
     },
 });

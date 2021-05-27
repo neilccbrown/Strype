@@ -213,7 +213,7 @@ export default Vue.extend({
         },
 
         erroneous(): boolean {
-            return this.code.trim().length == 0 && store.getters.getIsErroneousSlot(
+            return store.getters.getIsErroneousSlot(
                 this.$props.frameId,
                 this.$props.slotIndex
             );

@@ -1616,7 +1616,18 @@ export default new Vuex.Store({
                                 error: "",
                             }
                         );
-                        commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
+                        commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));                
+                    }
+                    //if there is still an error here, it may be an error from tigerpython. We clear them here as they'll show up when required (e.g. downloading the file)
+                    if(errorMessage !== i18n.t("errorMessage.emptyEditableSlot")){
+                        commit(
+                            "setSlotErroneous", 
+                            {
+                                frameId: payload.frameId, 
+                                slotIndex: payload.slotId, 
+                                error: "",
+                            }
+                        );
                     }
                 }
                 else if(!optionalSlot){

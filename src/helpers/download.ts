@@ -2,7 +2,7 @@ import { saveAs } from "file-saver";
 import { compileBlob } from "./compile";
 import Parser from "@/parser/parser";
 
-export function downloadHex() {
+export function downloadHex(): boolean {
     const blob = compileBlob();
 
     if (blob) {
@@ -10,7 +10,9 @@ export function downloadHex() {
             blob,
             "main.hex"
         );
+        return true;
     }
+    return false;
 }
 
 export function downloadPython() {

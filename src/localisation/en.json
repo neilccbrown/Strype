@@ -45,7 +45,10 @@
     "enableInnerDisabledFrameConfirm": "This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?",
     "importsContainer": "Imports:",
     "funcDefsContainer": "Function definitions:",
-    "mainContainer": "My code:"
+    "mainContainer": "My code:",
+    "preCompiledErrorNeedFix": "Please fix existing errors first.",
+    "noWebUSB": "This browser does not support webUSB connections. Please use a browser such as Google Chrome.",
+    "emptyCodeError" : "The code cannot be empty."
   },
   "contextMenu": {
     "cut": "Cut",
