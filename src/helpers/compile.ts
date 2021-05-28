@@ -1,5 +1,7 @@
 import Parser from "@/parser/parser";
 import Compiler from "@/compiler/compiler";
+import Vue from "vue";
+import i18n from "@/i18n";
 
 function compileCode(): Compiler {
     const parser = new Parser();
@@ -21,7 +23,13 @@ export function compileHex() {
         return hex;
     }
     catch (error) {
-        alert(error);
+        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+        Vue.$confirm({
+            message: error.message,
+            button: {
+                yes: i18n.t("buttonLabel.ok"),
+            },
+        });    
     }
 }
 
@@ -31,7 +39,13 @@ export function compileBlob() {
         return blob;
     }
     catch (error) {
-        alert(error);
+        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+        Vue.$confirm({
+            message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+            button: {
+                yes: i18n.t("buttonLabel.ok"),
+            },
+        });    
     }
 }
 
@@ -41,6 +55,12 @@ export async function compileBuffer() {
         return buffer;
     }
     catch (error) {
-        alert(error);
+        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+        Vue.$confirm({
+            message: error.message,
+            button: {
+                yes: i18n.t("buttonLabel.ok"),
+            },
+        });    
     }
 }

@@ -1,6 +1,8 @@
 import { saveAs } from "file-saver";
 import { compileBlob } from "./compile";
 import Parser from "@/parser/parser";
+import i18n from "@/i18n";
+import Vue from "vue";
 
 export function downloadHex(): boolean {
     const blob = compileBlob();
@@ -21,7 +23,13 @@ export function downloadPython() {
 
     const errors = parser.getErrorsFormatted(out);
     if (errors) {
-        alert(`Error:${errors}`);
+        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+        Vue.$confirm({
+            message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+            button: {
+                yes: i18n.t("buttonLabel.ok"),
+            },
+        });
         return;
     }
 

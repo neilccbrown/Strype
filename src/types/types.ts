@@ -7,6 +7,13 @@ import {KeyModifier, toggleFrameLabelsDefs} from "@/constants/toggleFrameLabelCo
  *  NOTE that all types start with a lower-case as this is the way TS works.
  */
 
+export interface FrameSlotContent{
+    code: string;
+    focused: boolean;
+    error: string;
+    shownLabel: boolean;
+}
+
 export interface FrameObject {
     frameType: FramesDefinitions;
     id: number;
@@ -18,7 +25,7 @@ export interface FrameObject {
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
-    contentDict: { [index: number]: {code: string ; focused: boolean ; error: string; shownLabel: boolean}}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
+    contentDict: { [index: number]: FrameSlotContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
     error?: string;
     multiDragPosition: string;
 

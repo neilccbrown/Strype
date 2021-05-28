@@ -417,14 +417,15 @@ export default Vue.extend({
         },
 
         onBackSpaceKeyDown(){
-            // When the backspace key is hit we delete the container frame when 
-            // 1) there is no text in the slot
-            // 2) we are in the first slot of a frame (*first that appears in the UI*) 
+            // When the backspace key is hit we delete the container frame when:
+            //  1) there is no text in the slot
+            //  2) we are in the first slot of a frame (*first that appears in the UI*) 
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
             this.stillBackSpaceDown = true;
             if(this.isFirstVisibleInFrame && this.code.length == 0){
                 //if the user had already released the key up, no point waiting, we delete straight away
                 if(this.canBackspaceDeleteFrame){
+                    this.onBlur();
                     store.dispatch(
                         "deleteFrameFromSlot",
                         this.frameId
@@ -433,6 +434,7 @@ export default Vue.extend({
                 else{        
                     setTimeout(()=>{
                         if(this.stillBackSpaceDown){
+                            this.onBlur();
                             store.dispatch(
                                 "deleteFrameFromSlot",
                                 this.frameId

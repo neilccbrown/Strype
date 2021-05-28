@@ -199,7 +199,6 @@ export default Vue.extend({
 
                 //prevent default scrolling and navigation
                 if (!isEditing && (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight")) {
-
                     if (event.key === "ArrowDown" || event.key === "ArrowUp" ) {
                         //first we remove the focus of the current active element (to avoid editable slots to keep it)
                         (document.activeElement as HTMLElement).blur();
@@ -219,14 +218,12 @@ export default Vue.extend({
                     }
                     else{
                         //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by EditableSlots.
-                        if(!isEditing){
-                            store.dispatch(
-                                "leftRightKey",
-                                event.key
-                            );
-                            event.stopImmediatePropagation();
-                            event.preventDefault();
-                        }
+                        store.dispatch(
+                            "leftRightKey",
+                            event.key
+                        );
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
                     }
                     return;
                 }
@@ -357,7 +354,13 @@ export default Vue.extend({
             let proceed = true;
             if(store.getters.getPreCompileErrors().length>0) {
                 proceed = false;
-                alert(this.$i18n.t("appMessage.preCompiledErrorNeedFix"));
+                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+                Vue.$confirm({
+                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+                    button: {
+                        yes: this.$i18n.t("buttonLabel.ok"),
+                    },
+                });    
             }
             else{
                 //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
@@ -369,7 +372,13 @@ export default Vue.extend({
                 const errors = parser.getErrorsFormatted(out);
                 if (errors) {
                     proceed = false;
-                    alert(errors);
+                    //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+                    Vue.$confirm({
+                        message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+                        button: {
+                            yes: this.$i18n.t("buttonLabel.ok"),
+                        },
+                    });    
                 }
             }            
             
@@ -419,13 +428,25 @@ export default Vue.extend({
                     flashData(webUSBListener);
                 }
                 else {
-                    alert(this.$i18n.t("appMessage.noWebUSB"));
+                    //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+                    Vue.$confirm({
+                        message: this.$i18n.t("appMessage.noWebUSB") as string,
+                        button: {
+                            yes: this.$i18n.t("buttonLabel.ok"),
+                        },
+                    });    
                 }
             }
         },
         downloadHex() {
             if(store.getters.getPreCompileErrors().length > 0) {
-                alert(this.$i18n.t("appMessage.preCompiledErrorNeedFix"));
+                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+                Vue.$confirm({
+                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+                    button: {
+                        yes: this.$i18n.t("buttonLabel.ok"),
+                    },
+                });    
                 return;
             }
             //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
@@ -438,7 +459,13 @@ export default Vue.extend({
         },
         downloadPython() {
             if(store.getters.getPreCompileErrors().length>0) {
-                alert(this.$i18n.t("appMessage.preCompiledErrorNeedFix"));
+                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+                Vue.$confirm({
+                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+                    button: {
+                        yes: this.$i18n.t("buttonLabel.ok"),
+                    },
+                });    
                 return;
             }
             //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
