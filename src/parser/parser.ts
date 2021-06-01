@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import store from "@/store/store";
 import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
@@ -169,7 +170,6 @@ export default class Parser {
         //console.timeEnd();
 
         //console.log(TPyParser.parse(output))
-
         return output + disabledFrameBlockFlag;
     }
 
@@ -187,6 +187,11 @@ export default class Parser {
     }
 
     public getErrorsFormatted(inputCode = ""): string {
+        // We don't consider an empty code as a valid code: generate an error for that and set the main frame container erroneous
+        if(inputCode.trim().length == 0){
+            return i18n.t("appMessage.emptyCodeError") as string;
+        }
+
         const errors = this.getErrors(inputCode);
         let errorString = "";
         store.commit("clearAllErrors");

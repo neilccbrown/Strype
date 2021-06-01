@@ -7,6 +7,13 @@ import {KeyModifier, toggleFrameLabelsDefs} from "@/constants/toggleFrameLabelCo
  *  NOTE that all types start with a lower-case as this is the way TS works.
  */
 
+export interface FrameSlotContent{
+    code: string;
+    focused: boolean;
+    error: string;
+    shownLabel: boolean;
+}
+
 export interface FrameObject {
     frameType: FramesDefinitions;
     id: number;
@@ -18,7 +25,7 @@ export interface FrameObject {
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
-    contentDict: { [index: number]: {code: string ; focused: boolean ; error: string; shownLabel: boolean}}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
+    contentDict: { [index: number]: FrameSlotContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
     error?: string;
     multiDragPosition: string;
 
@@ -38,6 +45,7 @@ export interface FrameLabel {
     slot: boolean;
     defaultText: string;
     optionalSlot?: boolean;
+    acceptAC?: boolean;
 }
 
 
@@ -272,7 +280,7 @@ export const ForDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.for,
     labels: [
-        { label: "for ", slot: true, defaultText: "identifier", optionalSlot: false},
+        { label: "for ", slot: true, defaultText: "identifier", optionalSlot: false, acceptAC: false},
         { label: " in ", slot: true, defaultText: "list", optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
@@ -329,8 +337,8 @@ export const FuncDefDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: FuncDefIdentifiers.funcdef,
     labels: [
-        { label: "def ", slot: true, defaultText: "name", optionalSlot: false},
-        { label: "(", slot: true, defaultText: "parameters", optionalSlot: true},
+        { label: "def ", slot: true, defaultText: "name", optionalSlot: false, acceptAC: false},
+        { label: "(", slot: true, defaultText: "parameters", optionalSlot: true, acceptAC: false},
         { label: ") :", slot: false, defaultText: ""},
     ],
     colour: "#ECECC8",
@@ -367,7 +375,7 @@ export const VarAssignDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.varassign,
     labels: [
-        { label: "", slot: true, defaultText: "identifier", optionalSlot: false},
+        { label: "", slot: true, defaultText: "identifier", optionalSlot: false, acceptAC: false},
         { label: " = ", slot: true, defaultText: "value", optionalSlot: false},
     ],
     colour: "#F6F2E9",
@@ -415,7 +423,7 @@ export const ImportDefinition: FramesDefinitions = {
 export const CommentDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.comment,
-    labels: [{ label: "# ", slot: true, defaultText: "your comment", optionalSlot: true}],
+    labels: [{ label: "# ", slot: true, defaultText: "your comment", optionalSlot: true, acceptAC: false}],
     colour: "#F6F2E9",
 };
 

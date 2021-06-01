@@ -12,16 +12,18 @@
             v-focus="focused"
             @focus="onFocus()"
             @blur="onBlur()"
-            @keydown.left="onLRKeyUp($event)"
-            @keydown.right="onLRKeyUp($event)"
-            @keyup.up.prevent.stop="onUDKeyUp($event)"
-            @keyup.down.prevent.stop="onUDKeyUp($event)"
+            @keydown.left="onLRKeyDown($event)"
+            @keydown.right="onLRKeyDown($event)"
+            @keydown.up.prevent.stop="onUDKeyDown($event)"
+            @keydown.down.prevent.stop="onUDKeyDown($event)"
             @keydown.prevent.stop.esc
             @keyup.esc="onEscKeyUp($event)"
             @keydown.prevent.stop.enter
             @keyup.enter.prevent.stop="onEnterOrTabKeyUp($event)"
             @keydown.tab="onTabKeyDown($event)"
             @keyup.tab="onEnterOrTabKeyUp($event)"
+            @keydown.backspace="onBackSpaceKeyDown()"
+            @keyup.backspace="onBackSpaceKeyUp()"
             @keydown="onEqualOrSpaceKeyDown($event)"
             @keyup="logCursorPosition()"
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
@@ -67,7 +69,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
-import { CaretPosition, Definitions, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, CommentDefinition} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 
@@ -115,7 +117,11 @@ export default Vue.extend({
             showAC: false,
             contextAC: "",
             //used to force a text cursor position, for example after inserting an AC candidate
-            textCursorPos: -1,              
+            textCursorPos: -1,    
+            //used the flags to indicate whether the user has explictly marked a pause when deleting text with backspace
+            //or that the slot is initially empty
+            canBackspaceDeleteFrame: true,   
+            stillBackSpaceDown: false,
         };
     },
     
@@ -137,7 +143,7 @@ export default Vue.extend({
             return {
                 "background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : (this.frameType === Definitions.CommentDefinition.type)
+                "color" : (this.frameType === CommentDefinition.type)
                     ? "#97971E"
                     : "#000",
             };
@@ -145,10 +151,14 @@ export default Vue.extend({
 
         code: {
             get(): string{
-                return store.getters.getContentForFrameSlot(
+                const code = store.getters.getContentForFrameSlot(
                     this.$parent.$props.frameId,
                     this.$props.slotIndex
                 );
+                if(code.length > 0){
+                    this.setBreakSpaceFlag(false);
+                }
+                return code;
             },
             set(value: string){
                 store.dispatch(
@@ -165,13 +175,14 @@ export default Vue.extend({
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
 
-                // if the imput field exists and it is not a comment
-                if(inputField && frame.frameType.type !== Definitions.CommentDefinition.type){
+                // if the imput field exists and it is not a "free texting" slot
+                // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
+                if(inputField && ((frame.frameType.labels[this.slotIndex].acceptAC)??true)){
                     //get the autocompletion candidates
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
                     
                     //workout the correct context if we are in a code editable slot
-                    const isImportFrame = (frame.frameType.type === Definitions.ImportDefinition.type)
+                    const isImportFrame = (frame.frameType.type === ImportDefinition.type)
                     const resultsAC = (isImportFrame) 
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));
@@ -202,7 +213,7 @@ export default Vue.extend({
         },
 
         erroneous(): boolean {
-            return this.code.trim().length == 0 && store.getters.getIsErroneousSlot(
+            return store.getters.getIsErroneousSlot(
                 this.$props.frameId,
                 this.$props.slotIndex
             );
@@ -217,6 +228,10 @@ export default Vue.extend({
                 this.$props.frameId,
                 this.$props.slotIndex
             );
+        },
+
+        isFirstVisibleInFrame(): boolean{
+            return store.getters.getIsSlotFirstVisibleInFrame(this.frameId, this.slotIndex);
         },
     },
 
@@ -257,6 +272,9 @@ export default Vue.extend({
     },
 
     methods: {
+        setBreakSpaceFlag(value: boolean){
+            this.canBackspaceDeleteFrame = value;
+        },
 
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
@@ -271,6 +289,16 @@ export default Vue.extend({
                     caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
             );    
+            // When there is no code, we can suppose that we are in a new frame.
+            // So, for import frames (from/import slots only) we show the AC automatically
+            if(this.frameType === ImportDefinition.type && this.slotIndex < 2 && this.code.length === 0){
+                const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));   
+                this.showAC = resultsAC.showAC;
+                this.contextAC = resultsAC.contextAC;
+                if(this.showAC){
+                    this.token = resultsAC.tokenAC.toLowerCase();  
+                }
+            }
         },
 
         onBlur(): void {
@@ -285,7 +313,7 @@ export default Vue.extend({
             );
         },
 
-        onLRKeyUp(event: KeyboardEvent) {
+        onLRKeyDown(event: KeyboardEvent) {
             //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special (browser handles it)
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
                 //get the input field
@@ -314,12 +342,12 @@ export default Vue.extend({
             }
         },
 
-        onUDKeyUp(event: KeyboardEvent) {
+        onUDKeyDown(event: KeyboardEvent) {
             //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
                 // If the AutoCompletion is on we just browse through it's contents
-            // The `results` check, prevents `changeSelection()` when there are no results matching this token
-            // And instead, since there is no AC list to show, moves to the next slot
+                // The `results` check, prevents `changeSelection()` when there are no results matching this token
+                // And instead, since there is no AC list to show, moves to the next slot
                 if(this.showAC && (this.$refs.AC as any).results.length > 0) {
                     (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
                 }
@@ -367,10 +395,10 @@ export default Vue.extend({
                 this.acItemClicked(document.querySelector(".selectedAcItem")?.id??"");
             }
             // If AC is not loaded or no selection is available, we want to take the focus from the slot
-            // (for Enter --> we use onLRKeyUp(); for Tab --> we don't do anything special, keep the default browser behaviour)
+            // (for Enter --> we use onLRKeyDown(); for Tab --> we don't do anything special, keep the default browser behaviour)
             else {
                 if(event.key == "Enter") {
-                    this.onLRKeyUp(event);
+                    this.onLRKeyDown(event);
                 }
                 this.showAC = false;
             }
@@ -382,12 +410,46 @@ export default Vue.extend({
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
             if((event.key === "=" || event.key === " ") && this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
-                this.onLRKeyUp(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
+                this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
             }
         },
-        
+
+        onBackSpaceKeyDown(){
+            // When the backspace key is hit we delete the container frame when:
+            //  1) there is no text in the slot
+            //  2) we are in the first slot of a frame (*first that appears in the UI*) 
+            // To avoid unwanted deletion, we "force" a delay before removing the frame.
+            this.stillBackSpaceDown = true;
+            if(this.isFirstVisibleInFrame && this.code.length == 0){
+                //if the user had already released the key up, no point waiting, we delete straight away
+                if(this.canBackspaceDeleteFrame){
+                    this.onBlur();
+                    store.dispatch(
+                        "deleteFrameFromSlot",
+                        this.frameId
+                    );
+                }
+                else{        
+                    setTimeout(()=>{
+                        if(this.stillBackSpaceDown){
+                            this.onBlur();
+                            store.dispatch(
+                                "deleteFrameFromSlot",
+                                this.frameId
+                            );
+                        }
+                    }, 600);
+                }
+            }
+        },
+
+        onBackSpaceKeyUp(){
+            this.canBackspaceDeleteFrame = (this.code.length == 0);
+            this.stillBackSpaceDown = false;
+        },
+
         acItemClicked(item: string) {
             const selectedItem = (document.getElementById(item) as HTMLLIElement)?.textContent?.trim()??"";
             if(selectedItem === undefined) {

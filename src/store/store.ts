@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -34,6 +34,8 @@ export default new Vuex.Store({
         currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's initial content being edited.
 
         isEditing: false,
+
+        ignoreKeyEvent: false, //this flag can be used anywhere a key event should be ignored within the application
 
         currentMessage: MessageDefinitions.NoMessage,
 
@@ -538,6 +540,16 @@ export default new Vuex.Store({
             return Object.values(state.frameObjects).filter((frame: FrameObject) => (frame.id !== state.currentFrame.id 
                 && (frame.frameType.type === FuncDefDefinition.type || frame.frameType.type === VarAssignDefinition.type)))
                 .map((frame: FrameObject) => ({name: frame.contentDict[0].code, isFunction: frame.frameType.type === FuncDefDefinition.type}) as UserDefinedElement);
+        },
+
+        getIsSlotFirstVisibleInFrame:(state) => (frameId: number, slotIndex: number) => {
+            // This getter checks if the given slot of a given frame is *visually* the first shown to the user
+            const contentDict = Object.values(state.frameObjects[frameId].contentDict);
+            return (contentDict.find((content: FrameSlotContent, index) => (index < slotIndex && content.shownLabel)) === undefined);
+        },
+
+        getIgnoreKeyEvent: (state) => () => {
+            return state.ignoreKeyEvent;
         },
     }, 
 
@@ -1413,6 +1425,10 @@ export default new Vuex.Store({
         setEditableSlotViaKeyboard(state, payload: EditableSlotReachInfos) {
             Vue.set(state, "editableSlotViaKeyboard", payload);
         },
+
+        setIgnoreKeyEvent(state, value: boolean){
+            Vue.set(state, "ignoreKeyEvent", value);
+        },
     },
 
     actions: {
@@ -1595,7 +1611,18 @@ export default new Vuex.Store({
                                 error: "",
                             }
                         );
-                        commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
+                        commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));                
+                    }
+                    //if there is still an error here, it may be an error from tigerpython. We clear them here as they'll show up when required (e.g. downloading the file)
+                    if(errorMessage !== i18n.t("errorMessage.emptyEditableSlot")){
+                        commit(
+                            "setSlotErroneous", 
+                            {
+                                frameId: payload.frameId, 
+                                slotIndex: payload.slotId, 
+                                error: "",
+                            }
+                        );
                     }
                 }
                 else if(!optionalSlot){
@@ -1891,6 +1918,22 @@ export default new Vuex.Store({
                     "setMessageBanner",
                     MessageDefinitions.NoMessage
                 ), 7000);
+            }
+        },
+        
+        deleteFrameFromSlot({commit, dispatch, state}, frameId: number){            
+            // Before we delete the frame, we need to "invalidate" the key events: as this action (deleteFrameFromSlot) is triggered on a key down event, 
+            // when the key (backspace) is released, the key up event is fired, but since the frame is deleted, 
+            // the event is caught at the window level (and since we are no more in editing mode, the deletion method is called again). So we invalidate the 
+            // key event momently so that this window key up event is ignored.
+            // Furthermore, we make sure that the frame hasn't been already deleted: in case a long press, we don't want to have many deletion
+            // triggered from "stacked" calls to this method
+            if(state.frameObjects[frameId]){
+                commit("setIgnoreKeyEvent", true);
+                dispatch(
+                    "deleteFrames",
+                    "Backspace"
+                );  
             }
         },
 
