@@ -1,9 +1,9 @@
 <template>
     <div class="commands">
         <div :id="buttonsContainerUIID" class="commands-container">
-            <button  v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'"/>
-            <button @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.sendToMicrobit'"/>
-            <button @click="downloadPython" v-t="'buttonLabel.downloadPython'"/>
+            <button type="button" v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
+            <button type="button" @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.sendToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
+            <button type="button" @click="downloadPython" v-t="'buttonLabel.downloadPython'" class="btn btn-secondary cmd-button"/>
         </div>
         <div v-if="showProgress" class="progress cmd-progress-container">
             <div 
@@ -513,5 +513,14 @@ export default Vue.extend({
     position: absolute;
     font-size:large;
     color:#666666;
+}
+
+.cmd-button{
+    padding: 1px 6px 1px 6px !important;
+    margin-top: 5px;
+}
+
+.cmd-button-margin{
+    margin-right: 5px;
 }
 </style>
