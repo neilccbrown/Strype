@@ -544,7 +544,8 @@ export default new Vuex.Store({
 
         getIsSlotFirstVisibleInFrame:(state) => (frameId: number, slotIndex: number) => {
             // This getter checks if the given slot of a given frame is *visually* the first shown to the user
-            return (Object.values(state.frameObjects[frameId].contentDict).find((content: FrameSlotContent, index) => (index < slotIndex && content.shownLabel)) === undefined);
+            const contentDict = Object.values(state.frameObjects[frameId].contentDict);
+            return (contentDict.find((content: FrameSlotContent, index) => (index < slotIndex && content.shownLabel)) === undefined);
         },
 
         getIgnoreKeyEvent: (state) => () => {
