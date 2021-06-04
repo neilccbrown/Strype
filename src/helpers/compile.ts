@@ -19,7 +19,7 @@ function compileCode(): Compiler {
 
 export function compileHex() {
     try {
-        const hex = compileCode().getIntelHex();
+        const hex = compileCode().getUniversalHex();
         return hex;
     }
     catch (error) {

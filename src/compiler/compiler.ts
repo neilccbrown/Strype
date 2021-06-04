@@ -1,11 +1,12 @@
-import firmware from "./firmware";
-import { MicropythonFsHex } from "@microbit/microbit-fs";
+import {firmwareV1, firmwareV2} from "./firmware";
+import { MicropythonFsHex, microbitBoardId } from "@microbit/microbit-fs";
 import { readFileAsync } from "@/helpers/readFileAsync";
 
 export default class Compiler {
   micropythonFs: MicropythonFsHex;
   constructor() {
-      this.micropythonFs = new MicropythonFsHex(firmware);
+      this.micropythonFs = new MicropythonFsHex([{ hex: firmwareV1, boardId: microbitBoardId.V1 }, 
+          { hex: firmwareV2, boardId: microbitBoardId.V2 }]);
       this.micropythonFs.setStorageSize(20 * 1024);
   }
   public compile(inputPython: string) {
@@ -14,11 +15,11 @@ export default class Compiler {
           inputPython
       );
   }
-  public getIntelHex(): string {
-      return this.micropythonFs.getIntelHex();
+  public getUniversalHex(): string {
+      return this.micropythonFs.getUniversalHex();
   }
   public getBlob(): Blob {
-      const code = this.getIntelHex();
+      const code = this.getUniversalHex();
 
       return new Blob(
           [code],
