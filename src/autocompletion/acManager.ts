@@ -93,12 +93,30 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]"
         // If there are no results, we notify the hidden span that there is no AC available
         inspectionCode += "\n"+INDENT+"if(len(results)>0):"
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text = results"
+        //We are creating a Dictionary with tuples of {module: [list of results]}
+        // If there is no context, we wan to know each result's source/module
+        // The results can belong to one of the following three modules:
+        // 1) $exec_XXX --> user defined methods
+        // 2) builtins --> user defined variable
+        // 3) Any other imported library
+        inspectionCode += "\n"+INDENT+"resultsWithModules={}"
+        inspectionCode += "\n"+INDENT+"for name in results:"
+        inspectionCode += "\n"+INDENT+INDENT+"mod = globals()[name].__module__"
+        inspectionCode += "\n"+INDENT+INDENT+"if mod.startswith(\"$exec\"):"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"mod=\"userFunctions\""
+        inspectionCode += "\n"+INDENT+INDENT+"if mod not in resultsWithModules :"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"resultsWithModules[mod]=[]"
+        inspectionCode += "\n"+INDENT+INDENT+"resultsWithModules[mod].append(name)"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
+
         inspectionCode += "\n"+INDENT+"else:"
         // We empty any previous results so that the AC won't be shown
         inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
         inspectionCode += "\nexcept:\n"+INDENT+"pass" 
 
+        
+
+        
         /*
         *       STEP 2 : Get the documentation for each one of the results
         */ 
@@ -137,6 +155,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
         inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
         inspectionCode += "\n"+INDENT+"document['"+typesSpanId+"'].text = types;"
+        inspectionCode += "\n"+INDENT+"document['test'].text = resultsWithModules;"
         inspectionCode += "\nexcept:\n"+INDENT+"pass";
     }
 
