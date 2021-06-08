@@ -158,7 +158,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         
         inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
         inspectionCode += "\n"+INDENT+"document['"+typesSpanId+"'].text = types;"
-        inspectionCode += "\n"+INDENT+"document['test'].text = resultsWithModules;"
 
         inspectionCode += "\nexcept:\n"+INDENT+"pass";
     }

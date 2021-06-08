@@ -37,7 +37,7 @@
                     <PopUpItem
                         class="newlines"
                         :id="UIID+'documentation'"
-                        :item="this.indexedAcResults[this.currentModule][this.selected]"
+                        :item="currentDocumentation"
                         :key="UIID+'documentation'"
                         :isSelectable="false"
                         ref="documentations"
@@ -69,13 +69,6 @@
             :key="reshowResultsID"
             class="hidden"
             @click="showSuggestionsAC"
-        > 
-        </span>
-        <span 
-            :id="test"
-            :key="test"
-            class="hidden"
-            @click="loadNewSuggestionsAC"
         > 
         </span>
     </div>
@@ -113,7 +106,7 @@ export default Vue.extend({
         return {
             results: [] as string[],
             documentation: [] as string[],
-            selected: 0,
+            selected: 7,
             currentModule: "",
         }
     },
@@ -163,12 +156,19 @@ export default Vue.extend({
             get(){
                 return store.getters.getIndexedAcResults();
             },
-            set(value: string){
+            set(value: indexedAcResultsWithModule){
                 store.commit(
                     "setIndexedAcResults",
                     value
                 )
             },
+        },
+
+        currentDocumentation(): string {
+
+            return ((this.indexedAcResults[this.$data.currentModule]??"")[this.$data.selected]??"").documentation;
+            //((this.indexedAcResults??{})[this.$data.currentModule??""][this.$data.selected??0].documentation)??"";
+            //(((this.indexedAcResults[this.$data.currentModule??""]??{})[this.$data.selected??0]).documentation)??"";
         },
 
     },
@@ -283,9 +283,10 @@ export default Vue.extend({
 
             // store it in the store, so that if it the template is destroyed the ac remains
             this.currentModule = Object.keys(resultsWithIndex)[0];
+            console.log("yeap");
             console.log(this.currentModule);
             this.indexedAcResults = resultsWithIndex;
-
+            console.log(this.indexedAcResults );
             this.showSuggestionsAC();
 
         },  
