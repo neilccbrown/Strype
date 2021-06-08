@@ -136,6 +136,11 @@ export default Vue.extend({
                 }
             }
         );
+
+        //register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
+        if (navigator.usb) {
+            navigator.usb.addEventListener("disconnect", () => store.commit("setPreviousDAPWrapper", undefined));
+        }
     },
 
     methods: {

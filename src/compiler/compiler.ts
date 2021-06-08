@@ -33,4 +33,29 @@ export default class Compiler {
 
       return buffer;
   }
+
+  public getBytesForBoardId(boardId: number): Uint8Array {
+      if (boardId == microbitBoardId.V1 || boardId == microbitBoardId.V1+1) {
+          return this.micropythonFs.getIntelHexBytes(0x9900);
+      } 
+      else {//microbitBoardId.V2 || microbitBoardId.V2+1
+          return this.micropythonFs.getIntelHexBytes(0x9903);
+      }
+  }
+  
+  public getIntelHexForBoardId(boardId: number): ArrayBufferLike{
+      let hexStr: string;
+      if (boardId == microbitBoardId.V1 || boardId == 0x9901) {
+          hexStr = this.micropythonFs.getIntelHex(0x9900);
+      } 
+      else {//microbitBoardId.V2 || microbitBoardId.V2+1
+          hexStr = this.micropythonFs.getIntelHex(0x9903);
+      }
+      // iHex is ASCII so we can do a 1-to-1 conversion from chars to bytes
+      const hexBuffer = new Uint8Array(hexStr.length);
+      for (let i = 0, strLen = hexStr.length; i < strLen; i++) {
+          hexBuffer[i] = hexStr.charCodeAt(i);
+      }
+      return hexBuffer.buffer;
+  }
 }
