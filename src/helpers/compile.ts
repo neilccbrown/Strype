@@ -19,7 +19,7 @@ function compileCode(): Compiler {
 
 export function compileHex() {
     try {
-        const hex = compileCode().getIntelHex();
+        const hex = compileCode().getUniversalHex();
         return hex;
     }
     catch (error) {
@@ -62,5 +62,25 @@ export async function compileBuffer() {
                 yes: i18n.t("buttonLabel.ok"),
             },
         });    
+    }
+}
+
+// The content of this method is based on the microbit python editor (python-main.js)
+export function compileFlashAndBuffer(boardId: number): { flash: Uint8Array; buffer: ArrayBufferLike } | undefined {
+    try {
+        const compiler = compileCode();
+        const flashBytes = compiler.getBytesForBoardId(boardId);
+        const hexBuffer = compiler.getIntelHexForBoardId(boardId);
+        return {flash: flashBytes, buffer: hexBuffer};
+    }
+    catch (error) {
+        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+        Vue.$confirm({
+            message: error.message,
+            button: {
+                yes: i18n.t("buttonLabel.ok"),
+            },
+        });    
+        return undefined
     }
 }

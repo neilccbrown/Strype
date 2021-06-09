@@ -10,6 +10,8 @@ import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBl
 import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getAllSiblings, getNextSibling, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
+import {DAPWrapper} from "@/helpers/partial-flashing"
+
 
 Vue.use(Vuex);
 
@@ -69,6 +71,10 @@ export default new Vuex.Store({
 
         editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
     
+        /* the following wrapper is used for interacting with the microbit board via DAP*/
+        DAPWrapper: undefined, //expected type when set: DAPWrapper
+
+        previousDAPWrapper: undefined, //expected type when set:DAPWrapper
     },
 
     getters: {
@@ -550,6 +556,14 @@ export default new Vuex.Store({
 
         getIgnoreKeyEvent: (state) => () => {
             return state.ignoreKeyEvent;
+        },
+
+        getDAPWrapper: (state) => () => {
+            return state.DAPWrapper;
+        },
+
+        getPreviousDAPWrapper: (state) => () => {
+            return state.previousDAPWrapper;
         },
     }, 
 
@@ -1428,6 +1442,14 @@ export default new Vuex.Store({
 
         setIgnoreKeyEvent(state, value: boolean){
             Vue.set(state, "ignoreKeyEvent", value);
+        },
+
+        setDAPWrapper(state, wrapper: DAPWrapper){
+            Vue.set(state, "DAPWrapper", wrapper);
+        },
+
+        setPreviousDAPWrapper(state, wrapper: DAPWrapper){
+            Vue.set(state, "previousDAPWrapper", wrapper);
         },
     },
 
