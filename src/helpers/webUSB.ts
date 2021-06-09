@@ -33,13 +33,15 @@ export async function flashData(listener: WebUSBListener) {
         }
     };
 
+    // The core part of the flashing process is here, this is based on the microbit python editor
+    // (python-main.js)
     return PartialFlashingJS.PartialFlashing.connectDapAsync()
         .then(function() {
-            // Collect data to flash, partial flashing can use just the flash bytes,
-            // but full flashing needs the entire Intel Hex to include the UICR data
             const dapWrapper: PartialFlashingJS.DAPWrapper = store.getters.getDAPWrapper();
             // Warning: the boardID from DAPWrapper is a string, and in hex format, so we need to convert it 
             const boardId = parseInt(dapWrapper.boardId, 16);
+            // as metioned on microbit's python-main.js: Collect data to flash, partial flashing can use just the flash bytes,
+            // but full flashing needs the entire Intel Hex to include the UICR data
             const flashAndBufferArray: {flash: Uint8Array; buffer: ArrayBufferLike} | undefined = compileFlashAndBuffer(boardId);
             if(flashAndBufferArray){
                 const flashBytes = flashAndBufferArray.flash;

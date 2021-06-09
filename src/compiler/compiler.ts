@@ -16,6 +16,7 @@ export default class Compiler {
       );
   }
   public getUniversalHex(): string {
+      //retrieve the universal HEX file to be compatible by both v1 and v2 (https://tech.microbit.org/software/hex-format/)
       return this.micropythonFs.getUniversalHex();
   }
   public getBlob(): Blob {
@@ -34,6 +35,11 @@ export default class Compiler {
       return buffer;
   }
 
+  /**
+   * The two methods below are wrappers based on the code used on the microbit python editor
+   * There is something a bit unclear about the board ID to use as the V1 or V2 values from 
+   * microBoardId enum do not always work, but the +1 values, as they use, work..
+   */
   public getBytesForBoardId(boardId: number): Uint8Array {
       if (boardId == microbitBoardId.V1 || boardId == microbitBoardId.V1+1) {
           return this.micropythonFs.getIntelHexBytes(0x9900);

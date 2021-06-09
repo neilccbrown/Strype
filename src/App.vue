@@ -119,7 +119,7 @@ export default Vue.extend({
             event.returnValue = true;
         });
 
-        //prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
+        // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
         window.addEventListener(
             "contextmenu",
             (event: MouseEvent) => {
@@ -137,7 +137,7 @@ export default Vue.extend({
             }
         );
 
-        //register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
+        // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
         if (navigator.usb) {
             navigator.usb.addEventListener("disconnect", () => store.commit("setPreviousDAPWrapper", undefined));
         }
@@ -145,8 +145,8 @@ export default Vue.extend({
 
     methods: {
         applyShowAppProgress(event: AppEvent) {
-            //if the progress bar is shown, we block the width of the application to the viewport
-            //and revert it otherwise
+            // If the progress bar is shown, we block the width of the application to the viewport
+            // and revert it otherwise
             this.showAppProgress = event.requestAttention;
             if(event.requestAttention) {
                 this.progressbarMessage = event.message ?? "";   

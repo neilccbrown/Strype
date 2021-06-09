@@ -65,6 +65,7 @@ export async function compileBuffer() {
     }
 }
 
+// The content of this method is based on the microbit python editor (python-main.js)
 export function compileFlashAndBuffer(boardId: number): { flash: Uint8Array; buffer: ArrayBufferLike } | undefined {
     try {
         const compiler = compileCode();
