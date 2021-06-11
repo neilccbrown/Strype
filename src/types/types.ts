@@ -790,7 +790,13 @@ export interface UserDefinedElement {
 
 export type indexedAcResult = {
     index: number; 
-    value: string; 
+    acResult: string; 
+    documentation: string; 
+    type: string;
+}
+
+export type acResultType = {
+    acResult: string; 
     documentation: string; 
     type: string;
 }
@@ -798,3 +804,8 @@ export type indexedAcResult = {
 export type indexedAcResultsWithModule = {
     [module: string]: indexedAcResult[];
 }
+
+export type acResultsWithModule = {
+    [module: string]: acResultType[];
+}
+

@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, indexedAcResult, indexedAcResultsWithModule} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -65,7 +65,7 @@ export default new Vuex.Store({
 
         isAppMenuOpened: false,
 
-        indexedAcResults: [] as indexedAcResult[],
+        acResults: [] as acResultsWithModule[],
 
         editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
     
@@ -518,14 +518,8 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].multiDragPosition;
         },
 
-        getIndexedAcResults: (state) => () => {
-            return state.indexedAcResults;
-        },
-
-        getTypeOfAcResult: (state) => (acResult: string) => {
-            return (state.indexedAcResults.find( (e) => {
-                return e.value === acResult
-            })?.type)??"unknown";
+        getAcResults: (state) => () => {
+            return state.acResults;
         },
         
         getEditableSlotViaKeyboard:(state) => () => {
@@ -1414,10 +1408,10 @@ export default new Vuex.Store({
             });
         },
 
-        setIndexedAcResults(state, value: indexedAcResult[]){
+        setAcResults(state, value: acResultsWithModule){
             Vue.set(
                 state,
-                "indexedAcResults",
+                "acResults",
                 value
             );
         },

@@ -348,7 +348,7 @@ export default Vue.extend({
                 // If the AutoCompletion is on we just browse through it's contents
                 // The `results` check, prevents `changeSelection()` when there are no results matching this token
                 // And instead, since there is no AC list to show, moves to the next slot
-                if(this.showAC && (this.$refs.AC as any).results.length > 0) {
+                if(Object.keys(this.showAC && (this.$refs.AC as any).resultsToShow).length > 0) {
                     (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
                 }
                 // Else we move the caret
@@ -459,7 +459,7 @@ export default Vue.extend({
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
-            const typeOfSelected: string  = store.getters.getTypeOfAcResult(selectedItem);
+            const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected();
             const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
 
             const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
