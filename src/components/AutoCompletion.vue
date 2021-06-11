@@ -331,9 +331,6 @@ export default Vue.extend({
         },
 
         getCurrentDocumentation(): string {
-
-            console.log(this.currentModule);
-            console.log(this.resultsToShow[this.currentModule]);
             return (this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as acResultType)?.documentation;
         },
         
