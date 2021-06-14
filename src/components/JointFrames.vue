@@ -8,7 +8,7 @@
             :disabled="isEditing"
             :key="'Draggagle-Joint-'+this.jointParentId"
             @start="handleMultiDrag($event)"
-            @end="multiDragEnd($event)"
+            @end="multiDragEnd()"
         >
             <Frame
                 v-for="frame in jointFrames"
@@ -118,7 +118,7 @@ export default Vue.extend({
             }
         },   
 
-        multiDragEnd(event: any): void {
+        multiDragEnd(): void {
             store.commit("removeMultiDragStyling");
         },   
 

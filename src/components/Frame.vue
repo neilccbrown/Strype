@@ -120,7 +120,9 @@ export default Vue.extend({
     beforeCreate() {
         const components = this.$options.components;
         if (components !== undefined) {
+            /* eslint-disable */
             components.FrameBody = require("@/components/FrameBody.vue").default;
+            /* eslint-disable */
             components.JointFrames = require("@/components/JointFrames.vue").default;
         }
     },

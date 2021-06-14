@@ -172,7 +172,7 @@ export default Vue.extend({
         redoImagePath(): string {
             return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.svg") : require("@/assets/images/redo.svg");
         },
-        editorFileMenuOption(): {}[] {
+        editorFileMenuOption(): Record<string,string>[] {
             return  [{name: "import", method: "importFile"}, {name: "export", method: "exportFile"}];
         },
 

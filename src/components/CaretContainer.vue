@@ -38,7 +38,6 @@ import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-
 import $ from "jquery";
 import { getCaretUIID, getEditorMiddleUIID } from "@/helpers/editor";
 
-
 //////////////////////
 //     Component    //
 //////////////////////
@@ -85,7 +84,7 @@ export default Vue.extend({
         pasteAvailable(): boolean {
             return store.getters.getIsCopiedAvailable();
         },
-        pasteOption(): {}[] {
+        pasteOption(): Record<symbol, string>[] {
             return this.pasteAvailable? [{name: this.$i18n.t("contextMenu.paste"), method: "paste"}] : [{}];
         },
         allowContextMenu(): boolean {

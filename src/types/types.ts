@@ -809,3 +809,6 @@ export type acResultsWithModule = {
     [module: string]: acResultType[];
 }
 
+export interface VoidFunction {
+    (): void;
+}
