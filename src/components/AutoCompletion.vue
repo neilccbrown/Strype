@@ -287,7 +287,8 @@ export default Vue.extend({
                 lastIndex += filteredResults.length;    
             }    
 
-            if(Object.keys(this.resultsToShow).length > 0) {
+            //if there are resutls
+            if(Object.values(this.resultsToShow)[0].length > 0) {
                 // get the first module as the selected
                 this.currentModule = Object.keys(this.resultsToShow).filter((e) => this.resultsToShow[e].length>0)[0];
 
@@ -343,7 +344,7 @@ export default Vue.extend({
         },
 
         getCurrentDocumentation(): string {
-            return (this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as acResultType)?.documentation;
+            return (this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as acResultType)?.documentation??"";
         },
         
     }, 
