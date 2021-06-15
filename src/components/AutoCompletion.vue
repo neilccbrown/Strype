@@ -204,9 +204,6 @@ export default Vue.extend({
 
             // Append the Python results,docs and types to the lists IFF there is no context
             if(this.context === "") {
-                parsedDoc["Python"] = Object.values(brythonBuiltins).map((e) => e.documentation);
-                parsedResults["Python"] = Object.keys(brythonBuiltins);
-                parsedTypes["Python"] = Object.values(brythonBuiltins).map((e) => e.type);
 
                 // The list of results might not include some the user-defined functions and variables because the user code can't compile. 
                 // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
@@ -214,6 +211,12 @@ export default Vue.extend({
                 const userDefinedFuncVars: UserDefinedElement[] = store.getters.retrieveUserDefinedElements(); 
                 userDefinedFuncVars.forEach((userDefItem) => {
                     if(userDefItem.isFunction) {
+                        //If module has not been created, create it
+                        if(parsedResults["My Functions"] === undefined) { 
+                            parsedResults["My Functions"] = []
+                            parsedDoc["My Functions"] = []
+                            parsedTypes["My Functions"] = []
+                        }
                         if(parsedResults["My Functions"].find((result) => (result === userDefItem.name)) === undefined) {
                             parsedResults["My Functions"].push(userDefItem.name);
                             parsedDoc["My Functions"].push(this.$i18n.t("errorMessage.errorUserDefinedFuncMsg") as string);
@@ -221,14 +224,23 @@ export default Vue.extend({
                         }
                     }
                     else {
+                        //If module has not been created, create it
+                        if(parsedResults["My Variables"] === undefined) { 
+                            parsedResults["My Variables"] = []
+                            parsedDoc["My Variables"] = []
+                            parsedTypes["My Variables"] = []
+                        }
                         if(parsedResults["My Variables"].find((result) => (result === userDefItem.name)) === undefined) {
                             parsedResults["My Variables"].push(userDefItem.name);
                             parsedDoc["My Variables"].push(this.$i18n.t("errorMessage.errorUserDefinedVarMsg") as string);
                             parsedTypes["My Variables"].push("");
                         }
                     }
-                    
                 });
+
+                parsedDoc["Python"] = Object.values(brythonBuiltins).map((e) => e.documentation);
+                parsedResults["Python"] = Object.keys(brythonBuiltins);
+                parsedTypes["Python"] = Object.values(brythonBuiltins).map((e) => e.type);
             }
             
             const acResults: acResultsWithModule = {};
@@ -348,7 +360,7 @@ export default Vue.extend({
     border-color:#919191;
 }
 .module:hover{
-    cursor: not-allowed;
+    cursor: default;
 }
 
 .hidden{
@@ -373,7 +385,7 @@ export default Vue.extend({
     max-height: 145px;
     list-style: none;
     padding-left: 0;
-    width: auto;
+    width: max-content;
     cursor: pointer;
 }
 
