@@ -1131,7 +1131,7 @@ export default new Vuex.Store({
             )
         },
 
-        saveStateChanges(state, payload: {previousState: object; mockCurrentCursorFocus?: EditableFocusPayload}) {
+        saveStateChanges(state, payload: {previousState: Record<string, unknown>; mockCurrentCursorFocus?: EditableFocusPayload}) {
             //Saves the state changes in diffPreviousState.
             //However it is not just doing it without checking up things: because of the caret issues we need to generate a mock change of currentFrame.Id etc 
             //if there is no difference and the action may rely on the cursor position.
