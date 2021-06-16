@@ -288,7 +288,7 @@ export default Vue.extend({
             }    
 
             //if there are resutls
-            if(Object.values(this.resultsToShow)[0].length > 0) {
+            if(Object.values(this.resultsToShow).filter((e) => e.length>0)?.length > 0) {
                 // get the first module as the selected
                 this.currentModule = Object.keys(this.resultsToShow).filter((e) => this.resultsToShow[e].length>0)[0];
 
@@ -318,9 +318,10 @@ export default Vue.extend({
 
         },
 
-        getTypeOfSelected(): string {
-            // Here we are making all the ACresult objects in one single array in which we are then finding the selected and return its type
-            return ((([] as indexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==this.selected) as indexedAcResult)?.type;
+        getTypeOfSelected(id: string): string {
+            // We start by getting the index
+            const indexOfSelected = parseInt(id.replace(this.UIID,""));
+            return ((([] as indexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as indexedAcResult)?.type;
         },
 
         getModuleOfSelected(delta: number): string {

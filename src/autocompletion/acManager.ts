@@ -102,7 +102,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // 2) builtins --> user defined variable
         // 3) Any other imported library
         inspectionCode += "\n"+INDENT+INDENT+"for name in results:"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"module = globals()[name].__module__"
+        // in case the contextAC is not empty, this is the 'module'
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals()[name].__module__"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=\"My Functions\""
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
@@ -112,12 +113,13 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // if there is no list for the specific mod, create it and append the name; otherwise just append the name
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)"
         inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
-
+        
         // If there are no results
         inspectionCode += "\n"+INDENT+"else:"
         // We empty any previous results so that the AC won't be shown
         inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
         inspectionCode += "\nexcept:\n"+INDENT+"pass" 
+
 
         /*
         *       STEP 2 : Get the documentation for each one of the results

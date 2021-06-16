@@ -463,7 +463,8 @@ export default Vue.extend({
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
-            const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected();
+            const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
+
             const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
 
             const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
