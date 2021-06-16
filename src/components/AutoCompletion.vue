@@ -1,6 +1,6 @@
 <template>
     <div 
-        v-show="Object.keys(resultsToShow).length>0"
+        v-show="areResultsToShow()"
     >
         <div class="popupContainer">
             <div
@@ -288,7 +288,7 @@ export default Vue.extend({
             }    
 
             //if there are resutls
-            if(Object.values(this.resultsToShow).filter((e) => e.length>0)?.length > 0) {
+            if(this.areResultsToShow()) {
                 // get the first module as the selected
                 this.currentModule = Object.keys(this.resultsToShow).filter((e) => this.resultsToShow[e].length>0)[0];
 
@@ -347,6 +347,10 @@ export default Vue.extend({
 
         getCurrentDocumentation(): string {
             return (this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as acResultType)?.documentation??"";
+        },
+
+        areResultsToShow(): boolean {
+            return Object.values(this.resultsToShow).filter((e) => e.length>0)?.length > 0
         },
         
     }, 
