@@ -1,7 +1,8 @@
 import Parser from "@/parser/parser";
 import store from "@/store/store";
 import { FrameObject } from "@/types/types";
-import moduleDescription from "@/autocompletion/microbit.json"
+import moduleDescription from "@/autocompletion/microbit.json";
+import i18n from "@/i18n";
 
 const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
@@ -96,18 +97,19 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+"resultsWithModules={}"
         inspectionCode += "\n"+INDENT+"if(len(results)>0):"
         //We are creating a Dictionary with tuples of {module: [list of results]}
-        // If there is no context, we wan to know each result's source/module
-        // The results can belong to one of the following three modules:
+        // If there is no context, we want to know each result's source/module
+        // The results can belong to one of the following four modules:
         // 1) $exec_XXX --> user defined methods
         // 2) builtins --> user defined variable
         // 3) Any other imported library
+        // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue) 
         inspectionCode += "\n"+INDENT+INDENT+"for name in results:"
         // in case the contextAC is not empty, this is the 'module'
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals()[name].__module__"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=\"My Functions\""
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\""
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=\"My Variables\""
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\""
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"else:"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=module.capitalize()"
         // if there is no list for the specific mod, create it and append the name; otherwise just append the name
@@ -146,7 +148,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"if isBuiltInType:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult.__name__ or 'No documentation available'));"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function '+result+' with arguments: ' + str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames')).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function '+result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Built-in value')"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"else:"

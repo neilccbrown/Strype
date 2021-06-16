@@ -22,6 +22,9 @@ export default new Vuex.Store({
         /*these flags need checking when a build is done + toggleTutorialState()*/
         debugging: initialState.debugging,
 
+        // Flag used to keep the AC shown for debug purposes
+        debugAC: false,
+
         showKeystroke: initialState.showKeystroke,
 
         frameObjects: initialState.initialState,
@@ -558,6 +561,10 @@ export default new Vuex.Store({
 
         getPreviousDAPWrapper: (state) => () => {
             return state.previousDAPWrapper;
+        },
+
+        getDebugAC: (state) => () => {
+            return state.debugAC;
         },
     }, 
 

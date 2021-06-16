@@ -321,6 +321,7 @@ export default Vue.extend({
         getTypeOfSelected(id: string): string {
             // We start by getting the index
             const indexOfSelected = parseInt(id.replace(this.UIID,""));
+            // Here we are making all the ACresult objects in a flatten array (with contact.apply()) in which we are then finding the selected and return its type
             return ((([] as indexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as indexedAcResult)?.type;
         },
 
@@ -328,7 +329,7 @@ export default Vue.extend({
 
             const numItemsInCurrModule = this.resultsToShow[this.currentModule].length;
 
-            // if theselected is out of bounds, i.e.  (selected < indexOfFirstElement OR selected>indexOfLastElement)
+            // if the selected is out of bounds, i.e.  (selected < indexOfFirstElement OR selected>indexOfLastElement)
             if ( this.selected < this.resultsToShow[this.currentModule][0].index 
                 ||
                 this.selected > this.resultsToShow[this.currentModule][numItemsInCurrModule -1].index

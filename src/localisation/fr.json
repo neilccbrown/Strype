@@ -73,5 +73,11 @@
     "codeEditor": "Cet endroit sert à écrire votre code",
     "editorCaret": "Le curseur bleu indique l'endroit où vous éditez",
     "editorMenus": "Plus d'options pour votre projet"
+  },
+
+  "autoCompletion": {
+    "myFunctions": "Mes Fonctions",
+    "myVariables": "Mes Variables"
   }
+
 }

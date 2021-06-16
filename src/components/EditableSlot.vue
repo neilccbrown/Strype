@@ -122,8 +122,6 @@ export default Vue.extend({
             //or that the slot is initially empty
             canBackspaceDeleteFrame: true,   
             stillBackSpaceDown: false,
-            // Flag used to keep the AC shown for debug purposes
-            debugAC: false,
         };
     },
     
@@ -234,6 +232,10 @@ export default Vue.extend({
 
         isFirstVisibleInFrame(): boolean{
             return store.getters.getIsSlotFirstVisibleInFrame(this.frameId, this.slotIndex);
+        },
+
+        debugAC(): boolean{
+            return store.getters.getDebugAC();
         },
     },
 
