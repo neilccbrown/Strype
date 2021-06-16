@@ -71,7 +71,7 @@ export default Vue.extend({
 
 .newlines {
     //Nedded for understanding the formated errors that split multiple
-    // errors with \n
+    // lines with \n
     white-space: pre-line !important;
 }
 </style>

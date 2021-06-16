@@ -233,6 +233,10 @@ export default Vue.extend({
         isFirstVisibleInFrame(): boolean{
             return store.getters.getIsSlotFirstVisibleInFrame(this.frameId, this.slotIndex);
         },
+
+        debugAC(): boolean{
+            return store.getters.getDebugAC();
+        },
     },
 
     directives: {
@@ -302,15 +306,17 @@ export default Vue.extend({
         },
 
         onBlur(): void {
-            this.showAC = false;
-            store.dispatch(
-                "updateErrorsOnSlotValidation",
-                {
-                    frameId: this.$props.frameId,
-                    slotId: this.$props.slotIndex,
-                    code: this.code.trim(),
-                }   
-            );
+            if(!this.debugAC) {
+                this.showAC = false;
+                store.dispatch(
+                    "updateErrorsOnSlotValidation",
+                    {
+                        frameId: this.$props.frameId,
+                        slotId: this.$props.slotIndex,
+                        code: this.code.trim(),
+                    }   
+                );
+            }
         },
 
         onLRKeyDown(event: KeyboardEvent) {
@@ -348,7 +354,7 @@ export default Vue.extend({
                 // If the AutoCompletion is on we just browse through it's contents
                 // The `results` check, prevents `changeSelection()` when there are no results matching this token
                 // And instead, since there is no AC list to show, moves to the next slot
-                if(this.showAC && (this.$refs.AC as any).results.length > 0) {
+                if(Object.keys(this.showAC && (this.$refs.AC as any).resultsToShow).length > 0) {
                     (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
                 }
                 // Else we move the caret
@@ -371,7 +377,7 @@ export default Vue.extend({
             if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
-                this.showAC = false;
+                this.showAC = this.debugAC || false;
             }
             // If AC is not loaded, we want to take the focus from the slot
             // when we reach at here, the "esc" key event is just propagated and acts as normal
@@ -400,7 +406,7 @@ export default Vue.extend({
                 if(event.key == "Enter") {
                     this.onLRKeyDown(event);
                 }
-                this.showAC = false;
+                this.showAC = this.debugAC || false;
             }
         },
 
@@ -459,7 +465,8 @@ export default Vue.extend({
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
-            const typeOfSelected: string  = store.getters.getTypeOfAcResult(selectedItem);
+            const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
+
             const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
 
             const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
@@ -471,7 +478,7 @@ export default Vue.extend({
             this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length + ((isSelectedFunction)?1:0) ;
             
             this.code = newCode;
-            this.showAC = false;
+            this.showAC = this.debugAC || false;
         },
 
         // store the cursor position to give it as input to AutoCompletionPopUp

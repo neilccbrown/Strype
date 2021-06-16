@@ -22,7 +22,7 @@
                 :key="'Draggagle-Container-'+this.frameId"
                 :id="'Draggagle-Container-'+this.frameId"
                 @start ="handleMultiDrag($event)"
-                @end="multiDragEnd($event)"
+                @end="multiDragEnd()"
                 :hasCommentsToMove="this.hasCommentsToMove"
                 filter="input"
                 :preventOnFilter="false"
@@ -191,7 +191,7 @@ export default Vue.extend({
             }
         },   
 
-        multiDragEnd(event: any): void {
+        multiDragEnd(): void {
             store.commit("removeMultiDragStyling");
         },   
 

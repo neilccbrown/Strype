@@ -65,7 +65,7 @@ import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId } from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition, VarAssignDefinition} from "@/types/types";
+import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition} from "@/types/types";
 import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
 import $ from "jquery";
@@ -135,7 +135,7 @@ export default Vue.extend({
         if(store.state.showKeystroke){
             window.addEventListener(
                 "dblclick",
-                (event: MouseEvent) => {
+                () => {
                     (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "[double click]";
                     //leave the message for a short moment only
                     setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);    
@@ -345,9 +345,9 @@ export default Vue.extend({
     },
 
     methods: {
-        handleAppScroll(event: MouseWheelEvent) {
+        handleAppScroll(event: WheelEvent) {
             const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
-            $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as MouseWheelEvent).deltaY/2);
+            $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
         },
 
         flash() {

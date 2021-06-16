@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -21,6 +21,9 @@ export default new Vuex.Store({
     state: {
         /*these flags need checking when a build is done + toggleTutorialState()*/
         debugging: initialState.debugging,
+
+        // Flag used to keep the AC shown for debug purposes
+        debugAC: false,
 
         showKeystroke: initialState.showKeystroke,
 
@@ -67,7 +70,7 @@ export default new Vuex.Store({
 
         isAppMenuOpened: false,
 
-        indexedAcResults: [] as {index: number; value: string; documentation: string; type: string}[],
+        acResults: [] as acResultsWithModule[],
 
         editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
     
@@ -524,14 +527,8 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].multiDragPosition;
         },
 
-        getIndexedAcResults: (state) => () => {
-            return state.indexedAcResults;
-        },
-
-        getTypeOfAcResult: (state) => (acResult: string) => {
-            return (state.indexedAcResults.find( (e) => {
-                return e.value === acResult
-            })?.type)??"unknown";
+        getAcResults: (state) => () => {
+            return state.acResults;
         },
         
         getEditableSlotViaKeyboard:(state) => () => {
@@ -564,6 +561,10 @@ export default new Vuex.Store({
 
         getPreviousDAPWrapper: (state) => () => {
             return state.previousDAPWrapper;
+        },
+
+        getDebugAC: (state) => () => {
+            return state.debugAC;
         },
     }, 
 
@@ -1137,7 +1138,7 @@ export default new Vuex.Store({
             )
         },
 
-        saveStateChanges(state, payload: {previousState: object; mockCurrentCursorFocus?: EditableFocusPayload}) {
+        saveStateChanges(state, payload: {previousState: Record<string, unknown>; mockCurrentCursorFocus?: EditableFocusPayload}) {
             //Saves the state changes in diffPreviousState.
             //However it is not just doing it without checking up things: because of the caret issues we need to generate a mock change of currentFrame.Id etc 
             //if there is no difference and the action may rely on the cursor position.
@@ -1428,10 +1429,10 @@ export default new Vuex.Store({
             });
         },
 
-        setIndexedAcResults(state, value: {index: number; value: string; documentation: string}[]){
+        setAcResults(state, value: acResultsWithModule){
             Vue.set(
                 state,
-                "indexedAcResults",
+                "acResults",
                 value
             );
         },

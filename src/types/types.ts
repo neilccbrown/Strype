@@ -787,3 +787,24 @@ export interface UserDefinedElement {
     name: string;
     isFunction: boolean;
 }
+export interface indexedAcResult {
+    index: number; 
+    acResult: string; 
+    documentation: string; 
+    type: string;
+}
+
+export interface acResultType {
+    acResult: string; 
+    documentation: string; 
+    type: string;
+}
+export interface indexedAcResultsWithModule {
+    [module: string]: indexedAcResult[];
+}
+export interface acResultsWithModule {
+    [module: string]: acResultType[];
+}
+export interface VoidFunction {
+    (): void;
+}

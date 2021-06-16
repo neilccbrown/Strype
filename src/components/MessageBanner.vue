@@ -33,7 +33,7 @@
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, DefaultFormattedMessage} from "@/types/types";
+import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, VoidFunction} from "@/types/types";
 
 export default Vue.extend({
     name: "MessageBanner",
