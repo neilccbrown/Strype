@@ -1,3 +1,5 @@
+import __MBConfig
+
 def panic(_number_):
   return
 def reset():
@@ -269,3 +271,10 @@ Image.XMAS=Image()
 Image.YES=Image()
 Image.ALL_CLOCKS=(Image(),Image())
 Image.ALL_ARROWS=(Image(),Image())
+
+if __MBConfig._isMBV2_:
+    class SoundEvent:
+        def __init__(self, value):
+            pass
+    SoundEvent.LOUD = SoundEvent('loud')
+    SoundEvent.QUIET = SoundEvent('quiet')

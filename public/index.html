@@ -30,13 +30,26 @@
       <script type="text/python3">
 from browser import document, window
 import sys as __sys
+import __MBConfig
 import __osMB 
 import __timeMB
 __sys.modules["os"] = __osMB
 __sys.modules["time"] = __timeMB
+#before doing AC, set the global property for __MBConfig._isMBV2 to be used in potential microbit imported modules
+__MBConfig._isMBV2_ = document.getElementById("toggle_mbv2_checkbox").checked
+__microbitModules = ["audio", "machine", "microbit", "micropython", "music", "neopixel", "radio", "random", "speech", "utime"]
+__modulesToDelete = []
+for module in __sys.modules:
+  if str(module) in __microbitModules:
+    __modulesToDelete.append(str(module))
+for module in __modulesToDelete:
+    del __sys.modules[module]
+__modulesToDelete=[]
+#AC part
 exec(document['userCode'].text)
       </script>
     </div>
+    <input type="checkbox" id="toggle_mbv2_checkbox" checked="checked">isV2</input>
     <div id="app"></div>
     <!-- built files will be auto injected -->
   </body>
