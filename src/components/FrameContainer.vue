@@ -26,6 +26,7 @@
                 :hasCommentsToMove="this.hasCommentsToMove"
                 filter="input"
                 :preventOnFilter="false"
+                class="frameMapped"
             >
                 <Frame 
                     v-for="frame in frames" 

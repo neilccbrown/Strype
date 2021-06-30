@@ -175,7 +175,7 @@ export default Vue.extend({
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
 
-                // if the imput field exists and it is not a "free texting" slot
+                // if the input field exists and it is not a "free texting" slot
                 // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
                 if(inputField && ((frame.frameType.labels[this.slotIndex].acceptAC)??true)){
                     //get the autocompletion candidates
@@ -354,12 +354,12 @@ export default Vue.extend({
                 // If the AutoCompletion is on we just browse through it's contents
                 // The `results` check, prevents `changeSelection()` when there are no results matching this token
                 // And instead, since there is no AC list to show, moves to the next slot
-                if(Object.keys(this.showAC && (this.$refs.AC as any).resultsToShow).length > 0) {
+                if(this.showAC && (this.$refs.AC as any)?.areResultsToShow()) {
                     (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
                 }
                 // Else we move the caret
                 else {  
-                // In any case the focus is lost, and the caret is shown (below by default)
+                    // In any case the focus is lost, and the caret is shown (below by default)
                     this.onBlur();
                     //If the up arrow is pressed you need to move the caret as well.
                     if( event.key === "ArrowUp" ) {
@@ -377,7 +377,7 @@ export default Vue.extend({
             if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
-                this.showAC = this.debugAC || false;
+                this.showAC = this.debugAC;
             }
             // If AC is not loaded, we want to take the focus from the slot
             // when we reach at here, the "esc" key event is just propagated and acts as normal
@@ -406,8 +406,8 @@ export default Vue.extend({
                 if(event.key == "Enter") {
                     this.onLRKeyDown(event);
                 }
-                this.showAC = this.debugAC || false;
             }
+            this.showAC = this.debugAC;
         },
 
         onEqualOrSpaceKeyDown(event: KeyboardEvent){
@@ -478,7 +478,7 @@ export default Vue.extend({
             this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length + ((isSelectedFunction)?1:0) ;
             
             this.code = newCode;
-            this.showAC = this.debugAC || false;
+            this.showAC = this.debugAC;
         },
 
         // store the cursor position to give it as input to AutoCompletionPopUp

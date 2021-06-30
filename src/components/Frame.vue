@@ -11,7 +11,7 @@
         >
             <div 
                 :style="frameStyle" 
-                class="block frameDiv" 
+                class="block frameDiv frameMapped" 
                 :class="{error: erroneous, statementOrJoint: isStatementOrJointFrame}"
                 :id="uiid"
                 @click="toggleCaret($event)"
@@ -42,20 +42,6 @@
                     :caretVisibility="caretVisibility"
                     ref="frameBody"
                 />
-                <!-- We have two caret containers because the frames which 
-                     have joint children cannot have the caret outside them,
-                     as the joint children sit whithin their parent; hence,
-                     if you take it out, the caret will jump out of the 'if' and
-                     then inside the go on the 'elif/else'
-                 -->
-                <CaretContainer
-                    v-if="hasJointFrameObjects"
-                    :frameId="this.frameId"
-                    :caretVisibility="this.caretVisibility"
-                    :caretAssignedPosition="caretPosition.below"
-                    :isFrameDisabled="this.isDisabled"
-                    @hide-context-menus="handleClick($event,'paste')"
-                />
                 <JointFrames 
                     v-if="allowsJointChildren && hasJointFrameObjects"
                     :jointParentId="frameId"
@@ -65,7 +51,7 @@
             </div>
             <div>
                 <CaretContainer
-                    v-if="!hasJointFrameObjects"
+                    v-if="!isJointFrame"
                     :frameId="this.frameId"
                     :caretVisibility="this.caretVisibility"
                     :caretAssignedPosition="caretPosition.below"
@@ -224,6 +210,7 @@ export default Vue.extend({
         multiDragPosition(): string {
             return store.getters.getMultiDragPosition(this.$props.frameId);
         },
+
     },
 
     mounted() {
@@ -396,7 +383,7 @@ export default Vue.extend({
                     "copySelection"
                 ); 
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
-                store.dispatch("deleteFrames", "Delete");
+                store.dispatch("deleteFrames", {key: "Delete", availablePositions: []});
             }
             else{
                 store.dispatch(
@@ -405,7 +392,7 @@ export default Vue.extend({
                 );
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
                 store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
-                store.dispatch("deleteFrames", "Backspace");
+                store.dispatch("deleteFrames", {key: "Backspace", availablePositions: this.getAvailableCaretPositions()});
             }                    
         },
 
@@ -462,14 +449,28 @@ export default Vue.extend({
         delete(): void {
             if(this.isPartOfSelection){
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
-                store.dispatch("deleteFrames", "Delete");
+                store.dispatch("deleteFrames", {key: "Delete", availablePositions: []});
             }
             else{
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
                 store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
-                store.dispatch("deleteFrames", "Backspace");
+                store.dispatch("deleteFrames", {key: "Backspace", availablePositions: this.getAvailableCaretPositions()});
             }       
         },
+
+        // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
+        // We get the available caret positions through the DOM, where they are all present.
+        getAvailableCaretPositions() {
+            // We start by getting from the DOM all the available carets
+            const allCaretDOMpositions = document.getElementsByClassName("caret");
+            // We create a list that hold objects of {id,position) for each available caret
+            return Object.values(allCaretDOMpositions).map((e)=> {
+                return {
+                    id: parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_","")), 
+                    caretPosition: e.id.replace("caret_","").replace(/_*-*\d/g,""),
+                }
+            })
+        }, 
 
     },
 

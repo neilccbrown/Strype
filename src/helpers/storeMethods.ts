@@ -311,7 +311,7 @@ export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameOb
     return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
 };
 
-export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[], frameMap: number[]) => {
+export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[]) => {
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.

@@ -33,9 +33,26 @@ export default Vue.extend({
             //add the frame in the editor
             store.dispatch(
                 "addFrameWithCommand",
-                addCommandsDefs[this.shortcut][this.index].type
+                {
+                    frame: addCommandsDefs[this.shortcut][this.index].type,
+                    caretPositions: this.getAvailableCaretPositions(),
+                }
             );
         },
+
+        // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
+        // We get the available caret positions through the DOM, where they are all present.
+        getAvailableCaretPositions() {
+            // We start by getting from the DOM all the available carets
+            const allCaretDOMpositions = document.getElementsByClassName("caret");
+            // We create a list that hold objects of {id,position) for each available caret
+            return Object.values(allCaretDOMpositions).map((e)=> {
+                return {
+                    id: parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_","")), 
+                    caretPosition: e.id.replace("caret_","").replace(/_*-*\d/g,""),
+                }
+            })
+        }, 
     },
 });
 </script>

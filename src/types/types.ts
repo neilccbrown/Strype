@@ -97,6 +97,10 @@ export interface EditableFocusPayload {
     slotId: number;
     focused: boolean;
 }
+export interface ChangeCaretPayload {
+    key: string;
+    availablePositions: CurrentFrame[];
+}
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string;
@@ -253,6 +257,9 @@ export const IfDefinition: FramesDefinitions = {
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
     colour: "#E0DFE4",
     innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
+    forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+        .concat(Object.values(FuncDefIdentifiers))
+        .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
 };
 
 export const ElifDefinition: FramesDefinitions = {

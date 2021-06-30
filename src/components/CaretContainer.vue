@@ -17,6 +17,7 @@
             @option-clicked="optionClicked"
         />
         <Caret
+            class="caret"
             :id="caretUIID"
             :isBlurred="overCaret"
             :isInvisible="isInvisible"

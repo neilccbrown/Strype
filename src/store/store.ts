@@ -1,16 +1,18 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule, ChangeCaretPayload} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import tutorialState from "@/store/tutorial-state";
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, frameForSelection, getParentOrJointParent, generateFrameMap, getAllSiblings, getNextSibling, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow} from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, getParentOrJointParent, generateFrameMap, getAllSiblings, getNextSibling, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
+import { next } from "cheerio/lib/api/traversing";
+import { xor } from "lodash";
 
 
 Vue.use(Vuex);
@@ -176,12 +178,91 @@ export default new Vuex.Store({
         },
         getCurrentFrameAddFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition) => {
             const currentFrame  = state.frameObjects[frameId];
+            const parent = state.frameObjects[currentFrame.parentId];
+
+            // list with all potential joint children to be added
+            let allowedJointChildren: string[] = [];
+            // if we are on a JointFrame's context, we need to know which is this joint frame (can be different from the currentFrame)
+            let focusedFrame = undefined;
+            // We need the next joint of the current in order to contextualise the potential joint frames
+            let nextJointChildID = -100;
+
+            const uniqueJointFrameTypes = [Definitions.FinallyDefinition.type, Definitions.ElseDefinition.type];
+
+            // The RULE for the JOINTS is:
+            // We allow joint addition only at the end of the body
+
+            // Two possible cases:
+            // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame
+            // (b) and (a)
+            if ( caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0 ){
+                focusedFrame = currentFrame;
+            }
+            // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame
+            // (a) and (b)
+            else if ( caretPosition === CaretPosition.below && [...parent.childrenIds].pop() === currentFrame.id) {
+                focusedFrame = parent
+            }
+
+            //if we are in the joint context
+            if(focusedFrame!==undefined) {
+
+                // (c) -> I am either in a joint parent
+                if(focusedFrame.frameType.allowJointChildren ) {
+                    allowedJointChildren = [...focusedFrame.frameType.jointFrameTypes];
+                    nextJointChildID = focusedFrame.jointFrameIds[0]??-100;
+                }
+                // (c) -> Or a joint child
+                else if(focusedFrame.jointParentId>0){
+                    // we get the allowed joints from our joint parent
+                    allowedJointChildren = [...state.frameObjects[focusedFrame.jointParentId].frameType.jointFrameTypes];
+                    const focusedsIndexInJointParent = state.frameObjects[focusedFrame.jointParentId].jointFrameIds.indexOf(focusedFrame.id);
+                    // get the next joint child from the parent (based on my index)
+                    nextJointChildID = state.frameObjects[focusedFrame.jointParentId].jointFrameIds[focusedsIndexInJointParent+1]??-100;
+                }
+
+                // If (c) was true
+                if(allowedJointChildren.length>0) {
+
+                    // This seems stupid, but it is the only way to ensure FINALLY is after ELSE
+                    const uniqueJointFrameTypes = [Definitions.ElseDefinition.type,Definitions.FinallyDefinition.type];
+                    console.log(uniqueJointFrameTypes)
+                    // -100 means there is no next Joint Child => focused is the last
+                    if(nextJointChildID === -100){
+                        // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
+                        if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
+                            allowedJointChildren.splice(
+                                0,
+                                allowedJointChildren.indexOf(focusedFrame.frameType.type)+1 //delete from the beginning to the current frame type
+                            );
+                        }
+                        //else show them all
+                    }
+                    // on the presence of a next child
+                    else{
+                        const nextJointChild = state.frameObjects[nextJointChildID];          
+
+                        // if the next is not unique, show all non-uniques
+                        if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)) {
+                            allowedJointChildren = allowedJointChildren.filter( (x) => !uniqueJointFrameTypes.includes(x)) // difference
+                        }
+                        // else if the next is unique, show all but the available up to before the existing unique (i.e. at most up to ELSE)
+                        else {
+                            allowedJointChildren.splice(
+                                allowedJointChildren.indexOf(nextJointChild.frameType.type),
+                                allowedJointChildren.length - allowedJointChildren.indexOf(nextJointChild.frameType.type) //delete from the index of the nextJointChild to the end
+                            );
+                        }
+
+                    }
+                }
+            }
 
             //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
-            let forbiddenTypes = (caretPosition === CaretPosition.body) ? 
+            const forbiddenTypes = (caretPosition === CaretPosition.body) ? 
                 [...currentFrame.frameType.forbiddenChildrenTypes] :
                 ((currentFrame.jointParentId > 0) ? [...state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes] : [...state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes]);
-         
+
             //as there is no static rule for showing the "break" or "continue" statements,
             //we need to check if the current frame is within a "for" or a "while" loop.
             //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
@@ -209,144 +290,33 @@ export default new Vuex.Store({
                     ...[ReturnDefinition.type]
                 );
             }
-         
-            //joint frames are retrieved only for the current frame or the joint frame root if the caret is below
-            let jointTypes = (caretPosition === CaretPosition.below) ?
-                [...currentFrame.frameType.jointFrameTypes] : 
-                [];
 
-            //update the list of joint frames depending on where we are in the joint frames structure to respect the rules
-            if(jointTypes.length > 0){
-                const rootJointFrame = (currentFrame.jointParentId > 0) ? state.frameObjects[currentFrame.jointParentId] : currentFrame;
 
-                //after a joint frame (including the root frame) which is disabled, no joint frame can be added
-                if(currentFrame.isDisabled){
-                    jointTypes = [];                    
-                }
-                else{
-                    //Remove "finally" in joint frames allowed after "else" if we are in anything else than in a "try"
-                    if(rootJointFrame.frameType.type !== Definitions.TryDefinition.type && jointTypes.includes(Definitions.FinallyDefinition.type)){
-                        jointTypes.splice(
-                            jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                            1
-                        );
-                    }
-
-                    //remove joint frames that can ony be included once if they already are in the current joint frames structure
-                    const uniqueJointFrameTypes = [Definitions.ElseDefinition, Definitions.FinallyDefinition];
-                    uniqueJointFrameTypes.forEach((frameDef) => {
-                        if(jointTypes.includes(frameDef.type) &&
-                            rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === frameDef.type) !== undefined){
-                            jointTypes.splice(
-                                jointTypes.indexOf(frameDef.type),
-                                1
-                            );
-                        }
-                    });
-                    
-                    //ensure the intermediate following joint frames orders are respected: if > elseif > else and try > except > else > finally
-                    if(rootJointFrame.jointFrameIds.length > 0) {
-                        const isCurrentFrameIntermediateJointFrame = (currentFrame.id === rootJointFrame.id 
-                            || rootJointFrame.jointFrameIds.indexOf(currentFrame.id) < rootJointFrame.jointFrameIds.length -1);
-                    
-                        //Forbid every frame if we are in an intermediate joint, no frame should be added except allowed joint frames
-                        if(isCurrentFrameIntermediateJointFrame ) {
-                            forbiddenTypes = Object.values(AllFrameTypesIdentifier);
-                        }
-                    
-                        //workout what types can be left for if and try joint frames structures.
-                        if(rootJointFrame.frameType.type === Definitions.IfDefinition.type){  
-                            //"if" joint frames --> only "elif" can be added after an intermediate joint frame                   
-                            if(isCurrentFrameIntermediateJointFrame) {
-                                jointTypes = jointTypes.filter((type) => type !== Definitions.ElseDefinition.type);
-                            }
-                        }
-                        else if (rootJointFrame.frameType.type === Definitions.TryDefinition.type){
-                            const hasFinally = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.FinallyDefinition.type) !== undefined);
-                            const hasElse = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ElseDefinition.type) !== undefined);
-                            const hasExcept = (rootJointFrame.jointFrameIds.find((jointFrameId) => state.frameObjects[jointFrameId]?.frameType.type === Definitions.ExceptDefinition.type) !== undefined);
-
-                            //"try" joint frames & "except" joint frames --> we make sure that "try" > "except" (n frames) > "else" and "finally" order is respected
-                            if(currentFrame.frameType.type === Definitions.TryDefinition.type){
-                                if(hasElse && !hasFinally){
-                                    jointTypes.splice(
-                                        jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                                        1
-                                    );
-                                }
-                                if(hasExcept){
-                                    uniqueJointFrameTypes.forEach((frameType) => {
-                                        if(jointTypes.includes(frameType.type)){
-                                            jointTypes.splice(
-                                                jointTypes.indexOf(frameType.type),
-                                                1
-                                            );
-                                        }
-                                    });
-                                }
-                            }
-                            else if( currentFrame.frameType.type === Definitions.ExceptDefinition.type){
-                                //if this isn't the last expect in the joint frames structure, we need to know what is following it.
-                                const indexOfCurrentFrameInJoints = (rootJointFrame.jointFrameIds.indexOf(currentFrame.id));
-                                if(indexOfCurrentFrameInJoints < rootJointFrame.jointFrameIds.length -1){
-                                    //This "except" is not the last joint frame: we check if the following joint frame is "except"
-                                    //if so, we remove "finally" and "else" from the joint frame types (if still there) to be sure 
-                                    //none of these type frames can be added immediately after which could result in "...except > finally/else > except..."
-                                    if(state.frameObjects[rootJointFrame.jointFrameIds[indexOfCurrentFrameInJoints + 1]]?.frameType.type === Definitions.ExceptDefinition.type){
-                                        uniqueJointFrameTypes.forEach((frameType) => {
-                                            if(jointTypes.includes(frameType.type)){
-                                                jointTypes.splice(
-                                                    jointTypes.indexOf(frameType.type),
-                                                    1
-                                                );
-                                            }
-                                        }); 
-                                    }
-                                    //And if this "except" frame is followed by an "else" but no "finally" is present, we remove "finally"
-                                    //to avoid "... except > finally > else"
-                                    else if(hasElse && !hasFinally){
-                                        jointTypes.splice(
-                                            jointTypes.indexOf(Definitions.FinallyDefinition.type),
-                                            1
-                                        );                                   
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            //remove the commands that are forbidden and not defined as joint frames
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = JSON.parse(JSON.stringify(addCommandsDefs));
-            for (const frameShortcut in addCommandsDefs) {
-                //we might have more than 1 frame assigned to a shortcut (case when there is a clear context distinction)
-                //when this happens, there will always be at most 1 of those frames to keep.
-                const frameDefsToCheckArray: AddFrameCommandDef[] = [...addCommandsDefs[frameShortcut]];
-                
-                //remove the frame definition that we don't need in filteredCommands:
-                //step 1 - we first loop the frame definition array for that shortcut and remove the definitions we don't need,
-                //step 2 - then if there is no more frame definition in the array for that shortcut, we delete the key/value entry filteredCommands
-                //step 1:
-                let frameArrayIndex=0;
-                frameDefsToCheckArray.forEach((frameDefToCheck: AddFrameCommandDef) => {
-                    if(forbiddenTypes.includes(frameDefToCheck.type.type) 
-                        && !jointTypes.includes(frameDefToCheck.type.type)){
-                        filteredCommands[frameShortcut].splice(frameArrayIndex, 1);
-                        frameArrayIndex--; //to be consistent with the deletion
-                    }                    
-                    frameArrayIndex++;
-                });
+            const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {}
 
-                //step 2:
-                if(filteredCommands[frameShortcut].length === 0){
+            // for each shortcut we get a list of the corresponding commans
+            for (const frameShortcut in addCommandsDefs) {
+
+                // keep all the allowedJointChildren with their commands (as they may be deleted in the next step
+                allowedJointCommand[frameShortcut] = filteredCommands[frameShortcut].filter( (x) => allowedJointChildren.includes(x.type.type))
+                
+                // filtered = filtered - forbidden - allJoints
+                // all joints need to be removed here as they may overlap with the forbiden and the allowed ones. Allowed will be added on the next step
+                filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter( (x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame)
+
+                // filtered = filtered + allowed
+                filteredCommands[frameShortcut].push(...allowedJointCommand[frameShortcut])
+                
+                // remove any empty commands (forbidden) for this shortcut
+                if( filteredCommands[frameShortcut].length === 0){
                     Vue.delete(
                         filteredCommands,
                         frameShortcut
                     );                    
                 }
             }
-
+            
             return filteredCommands;
         },
         getCurrentFrameToggleFrameLabelCommands: (state) => () => {
@@ -798,140 +768,41 @@ export default new Vuex.Store({
             );
         },
 
-        changeCaretWithKeyboard(state, eventType: string) {
-
-            let newId = state.currentFrame.id;
-            let newPosition = state.currentFrame.caretPosition;
-
-            //Turn off previous caret
-            state.frameObjects[newId].caretVisibility = CaretPosition.none;
-
-            const currentFrame = state.frameObjects[state.currentFrame.id];
+        changeCaretWithKeyboard(state, payload: ChangeCaretPayload) {
             
-            // Create the list of children + joints with which the caret will work with
-            let childrenAndJointFramesIds = [] as number[];
-            const parentId = getParent(state.frameObjects,currentFrame);
+            const currId = state.currentFrame.id;
+            const currPosition = state.currentFrame.caretPosition;
 
-            if (eventType === "ArrowDown") {            
-                
-                childrenAndJointFramesIds = 
-                childrenListWithJointFrames(
-                    state.frameObjects, 
-                    currentFrame.id,
-                    state.currentFrame.caretPosition, 
-                    "down"
-                );
+            //Turn off previous caret 
+            Vue.set(
+                state.frameObjects[currId],
+                "caretVisibility",
+                CaretPosition.none
+            );
 
-                if(state.currentFrame.caretPosition === CaretPosition.body) {
-                    //if the currentFrame has children
-                    if(currentFrame.childrenIds.length > 0) {
+            const currentCaret: CurrentFrame = {id: currId, caretPosition: currPosition};
+            // Where is the current in the list
+            const currentCaretIndex = payload.availablePositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
 
-                        // The first child becomes the current frame
-                        newId = currentFrame.childrenIds[0];
-
-                        // If the child allows children, and it isn't collapsed, go to its body, else to its bottom
-                        newPosition = (state.frameObjects[newId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
-                    }
-                    //if the currentFrame has NO children go below it, except if it is a container --> next container
-                    else {
-                        if(currentFrame.id < 0){
-                            if(childrenAndJointFramesIds.indexOf(currentFrame.id) + 1 < childrenAndJointFramesIds.length){
-                                newId = childrenAndJointFramesIds[childrenAndJointFramesIds.indexOf(currentFrame.id) + 1];
-                                newPosition = CaretPosition.body;
-                            }
-                            //else we stay where we are.
-                        }
-                        else{
-                            newPosition = CaretPosition.below;
-                        }                        
-                    }
-                }
-                else {
-                    const currentFrameIndex = childrenAndJointFramesIds.indexOf(state.currentFrame.id);
-                    // If not in the end of the list
-                    if( currentFrameIndex + 1 < childrenAndJointFramesIds.length) {
-                        // The next child becomes the current frame
-                        newId = childrenAndJointFramesIds[currentFrameIndex + 1];
-
-                        // If the new current frame allows children & isn't collapsed go to its body, else to its bottom
-                        newPosition = (state.frameObjects[newId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
-                    }
-                    // If that's the content of a container, go to the next container if possible (body)
-                    else if(currentFrame.parentId < 0){
-                        const containers = state.frameObjects[0].childrenIds;
-                        const indexOfCurrentContainer = containers.indexOf(currentFrame.parentId);
-                        if(indexOfCurrentContainer + 1 < containers.length) {
-                            newId = containers[indexOfCurrentContainer + 1];
-                            newPosition = CaretPosition.body;
-                        }
-                    }
-                    else {
-                        newId = (parentId > 0)? parentId : currentFrame.id;
-
-                        newPosition = CaretPosition.below;
-                    }
-                }
-            }
-            else if (eventType === "ArrowUp") {
-
-                childrenAndJointFramesIds = 
-                childrenListWithJointFrames(
-                    state.frameObjects, 
-                    currentFrame.id, 
-                    state.currentFrame.caretPosition,
-                    "up"
-                );
-
-                // If ((not allow children && I am below) || I am in body || (frame is collapsed)) ==> I go out of the frame
-                if ( (!currentFrame.frameType.allowChildren && state.currentFrame.caretPosition === CaretPosition.below) || state.currentFrame.caretPosition === CaretPosition.body){
-                    const currentFrameIndex = childrenAndJointFramesIds.indexOf(state.currentFrame.id);
-                  
-                    // If the current is not on the top of its parent's children
-                    if (currentFrameIndex > 0) {
-                        // Goto parent's previous child below
-                        newId = childrenAndJointFramesIds[currentFrameIndex - 1];
-
-                        //the caret position is below except for Containers where it is always body
-                        newPosition = (newId < 0) ? CaretPosition.body : CaretPosition.below;
-                    }
-                    else {
-                        newId = (parentId !== 0)? parentId : currentFrame.id;
-
-                        newPosition = CaretPosition.body;
-                    }
-                }
-                else { // That only validates for (Allow children && position == below) ==> I go in the frame
-                    const currentFrameChildrenLength = currentFrame.childrenIds.length;
-                    //if the currentFrame has children
-                    if (currentFrameChildrenLength > 0) {
-
-                        // Current's last child becomes the current frame
-                        newId = currentFrame.childrenIds[currentFrameChildrenLength-1];
-
-                        newPosition = CaretPosition.below;
-                    }
-                    else {
-                        newPosition = CaretPosition.body;
-                    }
-                }
-            }
+            const delta = (payload.key === "ArrowDown")?1:-1;
+            const nextCaret: CurrentFrame = payload.availablePositions[currentCaretIndex + delta]??currentCaret;
 
             Vue.set(
                 state.currentFrame,
                 "id",
-                newId
+                nextCaret.id
             );
 
             Vue.set(
                 state.currentFrame,
                 "caretPosition",
-                newPosition
+                nextCaret.caretPosition
             );
 
             Vue.set(
-                state.frameObjects[newId],
+                state.frameObjects[nextCaret.id],
                 "caretVisibility",
-                newPosition
+                nextCaret.caretPosition
             );
 
         },
@@ -1725,20 +1596,20 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        changeCaretPosition({ commit }, key) {
+        changeCaretPosition({ commit }, payload: ChangeCaretPayload) {
             commit(
                 "changeCaretWithKeyboard",
-                key
+                payload
             );
             
             commit("unselectAllFrames");
         },
 
-        addFrameWithCommand({ commit, state, dispatch }, payload: FramesDefinitions) {
+        addFrameWithCommand({ commit, state, dispatch }, payload: {frame: FramesDefinitions, caretPositions: CurrentFrame[]}) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
             //Prepare the newFrame object based on the frameType
-            const isJointFrame = payload.isJointFrame;
+            const isJointFrame = payload.frame.isJointFrame;
             
             let parentId = (isJointFrame) ? 0 : state.currentFrame.id;
             //if the cursor is below a frame, we actually add to the current's frame parent)
@@ -1752,7 +1623,7 @@ export default new Vuex.Store({
 
             const newFrame = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
-                frameType: payload,
+                frameType: payload.frame,
                 id: state.nextAvailableId++,
                 parentId: isJointFrame ? 0 : parentId, 
                 jointParentId: isJointFrame
@@ -1761,7 +1632,7 @@ export default new Vuex.Store({
                 contentDict:
                     //find each editable slot and create an empty & unfocused entry for it
                     //optional labels are not visible by default, not optional labels are visible by default
-                    payload.labels.filter((el)=> el.slot).reduce(
+                    payload.frame.labels.filter((el)=> el.slot).reduce(
                         (acc, cur, idx) => ({ 
                             ...acc, 
                             [idx]: {code: "", focused: false, error: "", shownLabel:(!cur?.optionalLabel ?? true)},
@@ -1774,11 +1645,29 @@ export default new Vuex.Store({
                 "addFrameObject",
                 newFrame
             );
+
+            // We need a list to store the caret positions of this newly added frame,
+            // which will then be merged to the existing caret positions
+            const newFramesCaretPositions: CurrentFrame[] = [];
+            if( newFrame.allowChildren ){
+                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.body});
+            }
+            if( !isJointFrame ){
+                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.below});
+            }
+
+            const indexOfCurrent = payload.caretPositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
+        
             
             //"move" the caret along
             dispatch(
                 "leftRightKey",
-                "ArrowRight"                
+                { 
+                    key: "ArrowRight",
+                    // the olde positions, with the new ones added at the right place
+                    availablePositions:payload.caretPositions.splice(indexOfCurrent,0,...newFramesCaretPositions),
+                }
+
             ).then(
                 () => 
                     //save state changes
@@ -1793,7 +1682,7 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        deleteFrames({commit, state}, payload: string){
+        deleteFrames({commit, state}, payload: ChangeCaretPayload){
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             
             let showDeleteMessage = false;
@@ -1807,7 +1696,7 @@ export default new Vuex.Store({
                 if(state.selectedFrames[state.selectedFrames.length-1] !== state.currentFrame.id){
                     commit("setCurrentFrame", {id: state.selectedFrames[state.selectedFrames.length-1], caretPosition: CaretPosition.below});
                 }
-                payload = "Backspace";
+                payload.key = "Backspace";
                 framesIdToDelete = state.selectedFrames.reverse();
                 //this flag to show the delete message is set on a per frame deletion basis,
                 //but here we could have 3+ single frames delete, so we need to also check to selection length.
@@ -1842,7 +1731,7 @@ export default new Vuex.Store({
                 let frameToDeleteId = 0;
                 let deleteChildren = false;
 
-                if(payload === "Delete"){
+                if(payload.key === "Delete"){
                     if(indexOfCurrentFrame + 1 < listOfSiblings.length){
                         frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
                     } 
@@ -1857,7 +1746,7 @@ export default new Vuex.Store({
                                 //just move the cursor one level up
                                 commit(
                                     "changeCaretWithKeyboard",
-                                    "ArrowUp"
+                                    payload
                                 );
                             }
                             else{
@@ -1969,13 +1858,13 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        leftRightKey({commit, state} , key) {
+        leftRightKey({commit, state} , payload: ChangeCaretPayload) {
             let editFlag = state.isEditing;
             
             if(editFlag) {
                 const currentEditableSlots = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).filter((slot) => slot[1].shownLabel);
                 const posCurSlot = currentEditableSlots.findIndex((slot) => slot[1].focused);
-                const change = (key === "ArrowLeft") ? -1: 1;
+                const change = (payload.key === "ArrowLeft") ? -1: 1;
 
                 // if we won't exceed the editable slots
                 if( posCurSlot + change >= 0 && posCurSlot + change <= currentEditableSlots.length - 1 ){
@@ -2009,10 +1898,10 @@ export default new Vuex.Store({
                     );
 
                     // The caret is set to Body, so with a right click we just show it. With a left click, we move up
-                    if(key === "ArrowLeft") {
+                    if(payload.key === "ArrowLeft") {
                         commit(
                             "changeCaretWithKeyboard",
-                            "ArrowUp"
+                            payload
                         );
                     }
                 }
@@ -2024,13 +1913,13 @@ export default new Vuex.Store({
                 //  direction = up | down
                 let directionDown = true;
 
-                if(key === "ArrowRight") {
+                if(payload.key === "ArrowRight") {
                     const parent = state.frameObjects[currentFrame.parentId];
                     //In the case we are in the body and there are no children OR caret bellow and last in parent, move the caret
                     if ((state.currentFrame.caretPosition === CaretPosition.body && !(currentFrame.childrenIds.length >0)) || (state.currentFrame.caretPosition === CaretPosition.below && parent.childrenIds.indexOf(currentFrame.id) === parent.childrenIds.length-1)) {
                         commit(
                             "changeCaretWithKeyboard",
-                            "ArrowDown"
+                            payload
                         );
                         return;
                     }
@@ -2055,7 +1944,7 @@ export default new Vuex.Store({
                     else if (state.currentFrame.caretPosition == CaretPosition.below) {
                         commit(
                             "changeCaretWithKeyboard",
-                            "ArrowUp"
+                            payload
                         );
                         return;
                     }
@@ -2101,7 +1990,10 @@ export default new Vuex.Store({
                     //In the case of no editable slots, just move the caret
                     commit(
                         "changeCaretWithKeyboard",
-                        (directionDown)? "ArrowDown" : "ArrowUp"
+                        {
+                            key: (directionDown)? "ArrowDown" : "ArrowUp",
+                            availablePositions: payload.availablePositions,
+                        }
                     );
                 }
 
