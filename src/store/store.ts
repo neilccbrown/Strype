@@ -11,8 +11,7 @@ import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFra
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
-import { next } from "cheerio/lib/api/traversing";
-import { xor } from "lodash";
+
 
 
 Vue.use(Vuex);
@@ -216,17 +215,16 @@ export default new Vuex.Store({
                 else if(focusedFrame.jointParentId>0){
                     // we get the allowed joints from our joint parent
                     allowedJointChildren = [...state.frameObjects[focusedFrame.jointParentId].frameType.jointFrameTypes];
-                    const focusedsIndexInJointParent = state.frameObjects[focusedFrame.jointParentId].jointFrameIds.indexOf(focusedFrame.id);
+                    const focusedIndexInJointParent = state.frameObjects[focusedFrame.jointParentId].jointFrameIds.indexOf(focusedFrame.id);
                     // get the next joint child from the parent (based on my index)
-                    nextJointChildID = state.frameObjects[focusedFrame.jointParentId].jointFrameIds[focusedsIndexInJointParent+1]??-100;
+                    nextJointChildID = state.frameObjects[focusedFrame.jointParentId].jointFrameIds[focusedIndexInJointParent+1]??-100;
                 }
 
                 // If (c) was true
                 if(allowedJointChildren.length>0) {
 
-                    // This seems stupid, but it is the only way to ensure FINALLY is after ELSE
                     const uniqueJointFrameTypes = [Definitions.ElseDefinition.type,Definitions.FinallyDefinition.type];
-                    console.log(uniqueJointFrameTypes)
+
                     // -100 means there is no next Joint Child => focused is the last
                     if(nextJointChildID === -100){
                         // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
@@ -246,17 +244,27 @@ export default new Vuex.Store({
                         if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)) {
                             allowedJointChildren = allowedJointChildren.filter( (x) => !uniqueJointFrameTypes.includes(x)) // difference
                         }
-                        // else if the next is unique, show all but the available up to before the existing unique (i.e. at most up to ELSE)
+                        // else if the next AND the current are uniques (i.e. I am in an ELSE and there is a FINALLY after me)
+                        else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)) {
+                            allowedJointChildren = [];
+                        }
+                        // In the case where only the next is unique
+                        // show all but the available up to before the existing unique (i.e. at most up to ELSE)
                         else {
                             allowedJointChildren.splice(
                                 allowedJointChildren.indexOf(nextJointChild.frameType.type),
                                 allowedJointChildren.length - allowedJointChildren.indexOf(nextJointChild.frameType.type) //delete from the index of the nextJointChild to the end
                             );
                         }
-
                     }
                 }
             }
+
+            Vue.set(
+                state.currentFrame,
+                "parentToAdd",
+                focusedFrame??currentFrame.id
+            );
 
             //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
             const forbiddenTypes = (caretPosition === CaretPosition.body) ? 
@@ -295,7 +303,7 @@ export default new Vuex.Store({
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = JSON.parse(JSON.stringify(addCommandsDefs));
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {}
 
-            // for each shortcut we get a list of the corresponding commans
+            // for each shortcut we get a list of the corresponding commands
             for (const frameShortcut in addCommandsDefs) {
 
                 // keep all the allowedJointChildren with their commands (as they may be deleted in the next step
@@ -590,41 +598,6 @@ export default new Vuex.Store({
                 "frameObjects",
                 (toggle) ? tutorialState: initialState.initialState
             );
-        },
-
-        addFrameObject(state, newFrame: FrameObject) {
- 
-            let indexToAdd = 0;
-            const isAddingJointFrame = (newFrame.jointParentId > 0);
-            const parentToAdd = (isAddingJointFrame) ? newFrame.jointParentId : newFrame.parentId;
-
-            const listToUpdate = (isAddingJointFrame) ? state.frameObjects[parentToAdd].jointFrameIds : state.frameObjects[parentToAdd].childrenIds;
-            
-            // Adding a joint frame
-            if (state.currentFrame.caretPosition === CaretPosition.below) {
-                //calculate index in parent list
-                const childToCheck = (state.frameObjects[state.currentFrame.id].jointParentId > 0 && newFrame.jointParentId === 0) ?
-                    state.frameObjects[state.currentFrame.id].jointParentId :
-                    state.currentFrame.id;
-                indexToAdd = listToUpdate.indexOf(childToCheck) + 1;
-            }
-
-            // Add the frame id to its parent's childrenIds list
-            listToUpdate.splice(
-                indexToAdd,
-                0,
-                newFrame.id
-            );
-
-            // Add the new frame to the list
-            // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
-            Vue.set(
-                state.frameObjects,
-                newFrame.id,
-                newFrame
-            );
-        
-            generateFrameMap(state.frameObjects,state.frameMap);
         },
 
         deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
@@ -1606,29 +1579,52 @@ export default new Vuex.Store({
         },
 
         addFrameWithCommand({ commit, state, dispatch }, payload: {frame: FramesDefinitions, caretPositions: CurrentFrame[]}) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
-            //Prepare the newFrame object based on the frameType
-            const isJointFrame = payload.frame.isJointFrame;
-            
-            let parentId = (isJointFrame) ? 0 : state.currentFrame.id;
-            //if the cursor is below a frame, we actually add to the current's frame parent)
-            if(parentId > 0 && state.currentFrame.caretPosition === CaretPosition.below) {
-                const currentFrame = state.frameObjects[state.currentFrame.id];
-                const parentOfCurrent = (currentFrame.jointParentId > 0) ?
-                    state.frameObjects[state.frameObjects[currentFrame.jointParentId].parentId] :
-                    state.frameObjects[currentFrame.parentId];
-                parentId = parentOfCurrent.id;
+            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            const currentFrame = state.frameObjects[state.currentFrame.id];
+            const addingJointFrame = payload.frame.isJointFrame;
+
+            // find parent id 
+            let parentId = 0
+            let listToUpdate: number[] = [];
+            let indexToAdd = 0;
+
+            let  focusedFrame: FrameObject = currentFrame
+
+            if(state.currentFrame.caretPosition === CaretPosition.below) {
+                focusedFrame = state.frameObjects[currentFrame.parentId]
             }
 
+            if(addingJointFrame){
+                // if the focusedFrame allows for joint children
+                // Add it in index 0 on the focusedFrame's joint list
+                if(focusedFrame.frameType.allowJointChildren) {
+                    parentId = focusedFrame.id
+                    listToUpdate = focusedFrame.jointFrameIds
+                }
+                // else the focusedFrame is a joint child (e.g. elif)
+                // thus we need to take the the focusedFrame's joint parent (e.g. if) and
+                // put the frame below our focusedFrame joint frame
+                else {
+                    parentId = focusedFrame.jointParentId
+                    listToUpdate = state.frameObjects[focusedFrame.jointParentId].jointFrameIds
+                    indexToAdd = listToUpdate.indexOf(focusedFrame.id) +1 //id
+                }
+            }
+            // else -not joint- simply add it to the focusedFrame's parent, below the focusedFrame
+            else {
+                parentId = focusedFrame.id
+                listToUpdate = focusedFrame.childrenIds
+                indexToAdd = listToUpdate.indexOf(currentFrame.id) +1 // for the case that we are on the body, indexOf is -1 so result = 0
+            }
+
+            // construct the new Frame object to be added
             const newFrame = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: payload.frame,
                 id: state.nextAvailableId++,
-                parentId: isJointFrame ? 0 : parentId, 
-                jointParentId: isJointFrame
-                    ? (state.frameObjects[state.currentFrame.id].jointParentId > 0) ? state.frameObjects[state.currentFrame.id].jointParentId : state.currentFrame.id
-                    : 0,
+                parentId: addingJointFrame ? 0 : parentId, // Despite we calculated parentID earlier, it may not be used
+                jointParentId: addingJointFrame ? parentId : 0,
                 contentDict:
                     //find each editable slot and create an empty & unfocused entry for it
                     //optional labels are not visible by default, not optional labels are visible by default
@@ -1641,10 +1637,22 @@ export default new Vuex.Store({
                     ),
             };
 
-            commit(
-                "addFrameObject",
+            // Add the frame id to its parent's childrenIds list
+            listToUpdate.splice(
+                indexToAdd,
+                0,
+                newFrame.id
+            );
+
+            // Add the new frame to the list
+            // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
+            Vue.set(
+                state.frameObjects,
+                newFrame.id,
                 newFrame
             );
+        
+            generateFrameMap(state.frameObjects,state.frameMap);
 
             // We need a list to store the caret positions of this newly added frame,
             // which will then be merged to the existing caret positions
@@ -1652,20 +1660,19 @@ export default new Vuex.Store({
             if( newFrame.allowChildren ){
                 newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.body});
             }
-            if( !isJointFrame ){
+            if( !addingJointFrame ){
                 newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.below});
             }
 
             const indexOfCurrent = payload.caretPositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
         
-            
             //"move" the caret along
             dispatch(
                 "leftRightKey",
                 { 
                     key: "ArrowRight",
-                    // the olde positions, with the new ones added at the right place
-                    availablePositions:payload.caretPositions.splice(indexOfCurrent,0,...newFramesCaretPositions),
+                    // the old positions, with the new ones added at the right place
+                    availablePositions: payload.caretPositions.splice(indexOfCurrent,0,...newFramesCaretPositions),
                 }
 
             ).then(
