@@ -35,21 +35,24 @@ export default Vue.extend({
                 "addFrameWithCommand",
                 {
                     frame: addCommandsDefs[this.shortcut][this.index].type,
-                    caretPositions: this.getAvailableCaretPositions(),
+                    availablePositions: this.getAvailableNavigationPositions(),
                 }
             );
         },
 
         // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
         // We get the available caret positions through the DOM, where they are all present.
-        getAvailableCaretPositions() {
-            // We start by getting from the DOM all the available carets
-            const allCaretDOMpositions = document.getElementsByClassName("caret");
-            // We create a list that hold objects of {id,position) for each available caret
+        getAvailableNavigationPositions() {
+            // We start by getting from the DOM all the available caret and editable slot positions
+            const allCaretDOMpositions = document.getElementsByClassName("frameMap");
+            // We create a list that hold objects of {id,caretPosition?,slotNumber?) for each available navigation positions
             return Object.values(allCaretDOMpositions).map((e)=> {
                 return {
-                    id: parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_","")), 
-                    caretPosition: e.id.replace("caret_","").replace(/_*-*\d/g,""),
+                    id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
+            ||
+            parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
+                    caretPosition: (e.id.startsWith("caret")) && e.id.replace("caret_","").replace(/_*-*\d/g,""),
+                    slotNumber: (e.id.startsWith("input")) && parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")),
                 }
             })
         }, 

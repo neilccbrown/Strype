@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, AllFrameTypesIdentifier, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule, ChangeCaretPayload} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule, NavigationPayload} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -16,7 +16,7 @@ import {DAPWrapper} from "@/helpers/partial-flashing"
 
 Vue.use(Vuex);
 
-const initialState: StateObject = initialStates["demoState"];
+const initialState: StateObject = initialStates["debugging"];
 
 export default new Vuex.Store({
     state: {
@@ -741,7 +741,7 @@ export default new Vuex.Store({
             );
         },
 
-        changeCaretWithKeyboard(state, payload: ChangeCaretPayload) {
+        changeCaretWithKeyboard(state, payload: NavigationPayload) {
             
             const currId = state.currentFrame.id;
             const currPosition = state.currentFrame.caretPosition;
@@ -754,11 +754,12 @@ export default new Vuex.Store({
             );
 
             const currentCaret: CurrentFrame = {id: currId, caretPosition: currPosition};
+            const listOfCaretPositions = payload.availablePositions.filter(((e)=> e.slotNumber === false));
             // Where is the current in the list
-            const currentCaretIndex = payload.availablePositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
+            const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
 
             const delta = (payload.key === "ArrowDown")?1:-1;
-            const nextCaret: CurrentFrame = payload.availablePositions[currentCaretIndex + delta]??currentCaret;
+            const nextCaret = listOfCaretPositions[currentCaretIndex + delta]??currentCaret;
 
             Vue.set(
                 state.currentFrame,
@@ -1569,7 +1570,7 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        changeCaretPosition({ commit }, payload: ChangeCaretPayload) {
+        changeCaretPosition({ commit }, payload: NavigationPayload) {
             commit(
                 "changeCaretWithKeyboard",
                 payload
@@ -1589,6 +1590,8 @@ export default new Vuex.Store({
             let listToUpdate: number[] = [];
             let indexToAdd = 0;
 
+            // The frame by which we have to contextualise the addition
+            // current frame by default (on caret==body)
             let  focusedFrame: FrameObject = currentFrame
 
             if(state.currentFrame.caretPosition === CaretPosition.below) {
@@ -1619,7 +1622,7 @@ export default new Vuex.Store({
             }
 
             // construct the new Frame object to be added
-            const newFrame = {
+            const newFrame:FrameObject = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: payload.frame,
                 id: state.nextAvailableId++,
@@ -1657,7 +1660,7 @@ export default new Vuex.Store({
             // We need a list to store the caret positions of this newly added frame,
             // which will then be merged to the existing caret positions
             const newFramesCaretPositions: CurrentFrame[] = [];
-            if( newFrame.allowChildren ){
+            if( newFrame.frameType.allowChildren ){
                 newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.body});
             }
             if( !addingJointFrame ){
@@ -1665,16 +1668,18 @@ export default new Vuex.Store({
             }
 
             const indexOfCurrent = payload.caretPositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
-        
+            
+            // the old positions, with the new ones added at the right place
+            // done here as we cannot splice while giving it as input
+            payload.caretPositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions)
+
             //"move" the caret along
             dispatch(
                 "leftRightKey",
                 { 
                     key: "ArrowRight",
-                    // the old positions, with the new ones added at the right place
-                    availablePositions: payload.caretPositions.splice(indexOfCurrent,0,...newFramesCaretPositions),
+                    availablePositions: payload.caretPositions,
                 }
-
             ).then(
                 () => 
                     //save state changes
@@ -1689,7 +1694,7 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        deleteFrames({commit, state}, payload: ChangeCaretPayload){
+        deleteFrames({commit, state}, payload: NavigationPayload){
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             
             let showDeleteMessage = false;
@@ -1865,150 +1870,79 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        leftRightKey({commit, state} , payload: ChangeCaretPayload) {
-            let editFlag = state.isEditing;
-            
-            if(editFlag) {
+        leftRightKey({commit, state} , payload: NavigationPayload) {
+
+            //  used for moving index up (+1) or down (-1)
+            const directionDown = payload.key === "ArrowRight";
+            const directionDelta = (directionDown)?+1:-1;
+
+            let currentFramePosition;
+
+            if (state.isEditing){ 
                 const currentEditableSlots = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).filter((slot) => slot[1].shownLabel);
-                const posCurSlot = currentEditableSlots.findIndex((slot) => slot[1].focused);
-                const change = (payload.key === "ArrowLeft") ? -1: 1;
-
-                // if we won't exceed the editable slots
-                if( posCurSlot + change >= 0 && posCurSlot + change <= currentEditableSlots.length - 1 ){
-                    commit(
-                        "setEditableFocus",
-                        {
-                            frameId: state.currentFrame.id,
-                            slotId: currentEditableSlots[posCurSlot][0],
-                            focused: false,
-                        }
-                    );
-
-                    const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: change};
-                    commit("setEditableSlotViaKeyboard", slotReachInfos);
-
-                    commit(
-                        "setEditableFocus",
-                        {
-                            frameId: state.currentFrame.id,
-                            slotId: currentEditableSlots[posCurSlot + change][0],
-                            focused: true,
-                        }
-                    );
-                }
-                // Else we are at the edge and we need to change move caret
-                else {
-
-                    commit(
-                        "setEditFlag",
-                        false
-                    );
-
-                    // The caret is set to Body, so with a right click we just show it. With a left click, we move up
-                    if(payload.key === "ArrowLeft") {
-                        commit(
-                            "changeCaretWithKeyboard",
-                            payload
-                        );
-                    }
-                }
+                const posOfCurSlot = currentEditableSlots.findIndex((slot) => slot[1].focused);
+                currentFramePosition = payload.availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === state.currentFrame.id); 
             }
-            else { 
-                const currentFrame = state.frameObjects[state.currentFrame.id];
-                // By nextFrame we mean either the next or the previous frame, depending on the direction
-                let nextFrame = 0;
-                //  direction = up | down
-                let directionDown = true;
+            else {
+                currentFramePosition = payload.availablePositions.findIndex( (e) => e.caretPosition === state.currentFrame.caretPosition && e.id === state.currentFrame.id); 
+            }
+            
+            const nextPosition = (payload.availablePositions[currentFramePosition+directionDelta]??payload.availablePositions[currentFramePosition])                        
 
-                if(payload.key === "ArrowRight") {
-                    const parent = state.frameObjects[currentFrame.parentId];
-                    //In the case we are in the body and there are no children OR caret bellow and last in parent, move the caret
-                    if ((state.currentFrame.caretPosition === CaretPosition.body && !(currentFrame.childrenIds.length >0)) || (state.currentFrame.caretPosition === CaretPosition.below && parent.childrenIds.indexOf(currentFrame.id) === parent.childrenIds.length-1)) {
-                        commit(
-                            "changeCaretWithKeyboard",
-                            payload
-                        );
-                        return;
-                    }
-                    else {
-                        const framesIdList = 
-                        childrenListWithJointFrames(
-                            state.frameObjects,
-                            currentFrame.id,
-                            state.currentFrame.caretPosition,
-                            "down"
-                        );
-                        // avoid getting an out of bound exception
-                        nextFrame = (framesIdList.indexOf(currentFrame.id)+1 < framesIdList.length) ? framesIdList[framesIdList.indexOf(currentFrame.id)+1] : framesIdList[framesIdList.length - 1];   
-                    }
-                }
-                else {
-                    // If bellow a frame that does not allow children OR in the body, we check for this frame's slots
-                    if((state.currentFrame.caretPosition === CaretPosition.below && !state.frameObjects[currentFrame.id].frameType.allowChildren) || state.currentFrame.caretPosition === CaretPosition.body)  {
-                        nextFrame = currentFrame.id;
-                    }
-                    // in the case where you are bellow and you are simply going in it body
-                    else if (state.currentFrame.caretPosition == CaretPosition.below) {
-                        commit(
-                            "changeCaretWithKeyboard",
-                            payload
-                        );
-                        return;
-                    }
-                    else {
-                        const framesIdList = 
-                        childrenListWithJointFrames(
-                            state.frameObjects,
-                            currentFrame.id,
-                            state.currentFrame.caretPosition,
-                            "up"
-                        );
-                        // avoid getting an out of bound exception
-                        nextFrame = (framesIdList.indexOf(currentFrame.id) > 0) ? framesIdList[framesIdList.indexOf(currentFrame.id)-1] : framesIdList[0];
-                    }
-                    directionDown = false;
-                }
+            // irrespective to where we are going to, we need to make sure to hide current caret
+            Vue.set(
+                state.frameObjects[state.currentFrame.id],
+                "caretVisibility",
+                CaretPosition.none
+            );
 
-                //If there are editable slots, go in the first available slot
-                const editableSlotsIndexes: number[] = [];
-                Object.entries(state.frameObjects[nextFrame].contentDict).forEach((entry) => {
-                    if(entry[1].shownLabel){
-                        editableSlotsIndexes.push(parseInt(entry[0]));
-                    }
-                });
-
-                if(editableSlotsIndexes.length > 0) {
-
-                    editFlag = true;
-
-                    const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: (directionDown) ? 1 : -1};
-                    commit("setEditableSlotViaKeyboard", slotReachInfos);
-
-                    commit(
-                        "setEditableFocus",
-                        {
-                            frameId: state.frameObjects[nextFrame].id,
-                            slotId: (directionDown)? editableSlotsIndexes[0] : editableSlotsIndexes[editableSlotsIndexes.length -1],
-                            focused: true,
-                        }
-                    );
-                }
-                else {
-                    //In the case of no editable slots, just move the caret
-                    commit(
-                        "changeCaretWithKeyboard",
-                        {
-                            key: (directionDown)? "ArrowDown" : "ArrowUp",
-                            availablePositions: payload.availablePositions,
-                        }
-                    );
-                }
-
+            // If next position is an editable slot
+            if( nextPosition.slotNumber !== false) {
                 commit(
                     "setEditFlag",
-                    editFlag
+                    true
+                );
+                const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: directionDelta};
+                commit("setEditableSlotViaKeyboard", slotReachInfos);
+
+                commit(
+                    "setEditableFocus",
+                    {
+                        frameId: nextPosition.id,
+                        slotId: nextPosition.slotNumber,
+                        focused: true,
+                    }
+                );
+                
+            }
+            else {
+                // else we set editFlag to false as we are moving to a caret position
+                commit(
+                    "setEditFlag",
+                    false
+                );
+
+                Vue.set(
+                    state.frameObjects[nextPosition.id],
+                    "caretVisibility",
+                    nextPosition.caretPosition
+                );
+       
+                Vue.set(
+                    state.currentFrame,
+                    "caretPosition",
+                    nextPosition.caretPosition
                 );
             }
+
+            //In any case change the current frame
+            Vue.set(
+                state.currentFrame,
+                "id",
+                nextPosition.id
+            );
+
+            
         },
         
         //Toggle the current frame label that matches the type specified in the payload.

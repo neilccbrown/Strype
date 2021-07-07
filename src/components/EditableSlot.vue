@@ -29,7 +29,7 @@
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
             :id="UIID"
             :key="UIID"
-            class="editableslot-input"
+            class="editableslot-input frameMap"
             :style="inputTextStyle"
         />
         
@@ -328,11 +328,15 @@ export default Vue.extend({
                     const start = input.selectionStart ?? 0;
                     const end = input.selectionEnd ?? 0;
                 
+                    // If we're trying to go off the bounds of this slot
                     if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
                     
                         store.dispatch(
                             "leftRightKey",
-                            event.key
+                            {
+                                key: event.key,
+                                availablePositions: this.getAvailableNavigationPositions(),
+                            }
                         );
                         this.onBlur();
                     }
@@ -365,7 +369,10 @@ export default Vue.extend({
                     if( event.key === "ArrowUp" ) {
                         store.dispatch(
                             "changeCaretPosition",
-                            event.key
+                            {
+                                key: event.key,
+                                availablePositions: this.getAvailableNavigationPositions(),
+                            }
                         );
                     }
                 }
@@ -499,6 +506,23 @@ export default Vue.extend({
             }
             return computedWidth;
         },
+
+        // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
+        // We get the available caret positions through the DOM, where they are all present.
+        getAvailableNavigationPositions() {
+            // We start by getting from the DOM all the available caret and editable slot positions
+            const allCaretDOMpositions = document.getElementsByClassName("frameMap");
+            // We create a list that hold objects of {id,caretPosition?,slotNumber?) for each available navigation positions
+            return Object.values(allCaretDOMpositions).map((e)=> {
+                return {
+                    id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
+            ||
+            parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
+                    caretPosition: (e.id.startsWith("caret")) && e.id.replace("caret_","").replace(/_*-*\d/g,""),
+                    slotNumber: (e.id.startsWith("input")) && parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")),
+                }
+            })
+        }, 
 
     },
 });

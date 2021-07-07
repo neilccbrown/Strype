@@ -1,6 +1,6 @@
 <template>
     <div 
-        class="caret"
+        class="caret frameMap"
         :class="{blurred: isBlurred, invisible: isInvisible}">
     </div>
 </template>
