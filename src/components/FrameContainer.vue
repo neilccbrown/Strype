@@ -26,7 +26,6 @@
                 :hasCommentsToMove="this.hasCommentsToMove"
                 filter="input"
                 :preventOnFilter="false"
-                class="frameMapped"
             >
                 <Frame 
                     v-for="frame in frames" 
@@ -37,7 +36,6 @@
                     :isJointFrame="false"
                     :allowChildren="frame.frameType.allowChildren"
                     :caretVisibility="frame.caretVisibility"
-                    class="frame" 
                 />
             </Draggable>
         </div>

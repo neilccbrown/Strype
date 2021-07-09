@@ -175,7 +175,7 @@ export default new Vuex.Store({
         getIsEditableFocused: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].focused;
         },
-        getCurrentFrameAddFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition) => {
+        generateAvailableFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition) => {
             const currentFrame  = state.frameObjects[frameId];
             const parent = state.frameObjects[currentFrame.parentId];
 
@@ -417,7 +417,7 @@ export default new Vuex.Store({
                 return false;
             }     
 
-            const allowedFrameTypes: [AddFrameCommandDef[]] = getters.getCurrentFrameAddFrameCommands(targetFrameId, targetCaretPosition);
+            const allowedFrameTypes: [AddFrameCommandDef[]] = getters.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
             // isFrameCopied needs to be checked in the case that the original frame which was copied has been deleted.
             const copiedType: string = sourceFrameList[frameToBeMovedId].frameType.type;
            
@@ -433,7 +433,7 @@ export default new Vuex.Store({
 
         getIfPositionAllowsSelectedFrames: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition, areFramesCopied: boolean) => {
         
-            const allowedFrameTypes: [AddFrameCommandDef[]] = getters.getCurrentFrameAddFrameCommands(targetFrameId, targetCaretPosition);
+            const allowedFrameTypes: [AddFrameCommandDef[]] = getters.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
 
             const selectedFramesIds = (areFramesCopied)?state.copiedSelectionFrameIds:state.selectedFrames;
             const sourceList = (areFramesCopied)?state.copiedFrames:state.frameObjects;

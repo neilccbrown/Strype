@@ -44,7 +44,7 @@ export default Vue.extend({
         // We get the available caret positions through the DOM, where they are all present.
         getAvailableNavigationPositions() {
             // We start by getting from the DOM all the available caret and editable slot positions
-            const allCaretDOMpositions = document.getElementsByClassName("frameMap");
+            const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
             // We create a list that hold objects of {id,caretPosition?,slotNumber?) for each available navigation positions
             return Object.values(allCaretDOMpositions).map((e)=> {
                 return {
