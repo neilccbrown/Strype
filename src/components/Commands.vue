@@ -206,7 +206,10 @@ export default Vue.extend({
                         if(event.shiftKey){
                             store.dispatch( 
                                 "selectMultipleFrames",
-                                event.key
+                                {
+                                    key: event.key,
+                                    availablePositions: this.getAvailableNavigationPositions(),
+                                }
                             );
                         }
                         else {
@@ -495,8 +498,8 @@ export default Vue.extend({
             return Object.values(allCaretDOMpositions).map((e)=> {
                 return {
                     id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
-            ||
-            parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
+                    ||
+                    parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
                     caretPosition: (e.id.startsWith("caret")) && e.id.replace("caret_","").replace(/_*-*\d/g,""),
                     slotNumber: (e.id.startsWith("input")) && parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")),
                 }

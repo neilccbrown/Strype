@@ -98,7 +98,7 @@ export interface EditableFocusPayload {
     focused: boolean;
 }
 
-export interface navigationPosition {
+export interface NavigationPosition {
     id: number;
     // Both the following can be boolean, as if one has a value, the other one has false (e.g. caretPosition = below AND slotNumber = false)
     caretPosition?: CaretPosition|boolean;
@@ -106,7 +106,7 @@ export interface navigationPosition {
 }
 export interface NavigationPayload {
     key: string;
-    availablePositions: navigationPosition[];
+    availablePositions: NavigationPosition[];
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;

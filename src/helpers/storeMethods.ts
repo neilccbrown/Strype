@@ -459,3 +459,5 @@ export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, cu
 
     return isAncestorTypeFound;
 }
+
+// A method that finds the actual frame we are focused at (for selecting, deleting and adding). It also returns it's index and the list in which it's in

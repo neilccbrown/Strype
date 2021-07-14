@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule, NavigationPayload} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule, NavigationPayload, NavigationPosition} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -11,6 +11,7 @@ import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFra
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
+import { siblings } from "cheerio/lib/api/traversing";
 
 
 
@@ -1579,7 +1580,7 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        addFrameWithCommand({ commit, state, dispatch }, payload: {frame: FramesDefinitions, caretPositions: CurrentFrame[]}) {
+        addFrameWithCommand({ commit, state, dispatch }, payload: {frame: FramesDefinitions, availablePositions: NavigationPosition[]}) {
 
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             const currentFrame = state.frameObjects[state.currentFrame.id];
@@ -1619,7 +1620,7 @@ export default new Vuex.Store({
                 parentId = focusedFrame.id
                 listToUpdate = focusedFrame.childrenIds
                 indexToAdd = listToUpdate.indexOf(currentFrame.id) +1 // for the case that we are on the body, indexOf is -1 so result = 0
-            }
+            } 
 
             // construct the new Frame object to be added
             const newFrame:FrameObject = {
@@ -1657,28 +1658,37 @@ export default new Vuex.Store({
         
             generateFrameMap(state.frameObjects,state.frameMap);
 
-            // We need a list to store the caret positions of this newly added frame,
+            // We need a list to store the navigational positions of this newly added frame,
             // which will then be merged to the existing caret positions
-            const newFramesCaretPositions: CurrentFrame[] = [];
+            const newFramesCaretPositions: NavigationPosition[] = [];
+            
+            //first add the slot numbers
+            Object.values(newFrame.contentDict).forEach( (element,index) => {
+                if(element.shownLabel){
+                    newFramesCaretPositions.push({id: newFrame.id, caretPosition:false, slotNumber: index})
+                }
+            });
+      
+      
+            //now add the caret positions
             if( newFrame.frameType.allowChildren ){
-                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.body});
+                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.body, slotNumber: false});
             }
             if( !addingJointFrame ){
-                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.below});
+                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.below, slotNumber: false});
             }
-
-            const indexOfCurrent = payload.caretPositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
+            const indexOfCurrent = payload.availablePositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
-            payload.caretPositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions)
+            payload.availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions)
 
             //"move" the caret along
             dispatch(
                 "leftRightKey",
                 { 
                     key: "ArrowRight",
-                    availablePositions: payload.caretPositions,
+                    availablePositions: payload.availablePositions,
                 }
             ).then(
                 () => 
@@ -2371,69 +2381,62 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        selectMultipleFrames({state, commit}, key: string) {
+        selectMultipleFrames({state, commit}, payload: NavigationPayload) {
             
-            const direction = (key==="ArrowUp")? "up" : "down"
+            const directionUp = payload.key==="ArrowUp"
+            const delta = directionUp? -1 : +1;
+            const currentFrame = state.frameObjects[state.currentFrame.id];
 
-            // The frame the selection will start from
-            const frameToSelectId =  
-                (state.currentFrame.caretPosition === CaretPosition.body)?
-                    // Body
-                    (direction === "up")?
-                        -100 : // in the body and going up is not possible
-                        [...state.frameObjects[state.currentFrame.id].childrenIds].shift()??-100 // body and going down, first child if it exists
-                    :
-                    // Below
-                    (direction === "up")?
-                        // up
-                        (checkIfLastJointChild(state.frameObjects, state.currentFrame.id))? 
-                            (state.selectedFrames.includes(state.currentFrame.id))?          // we need to check whether this joint is selected
-                                -100                                                         // if it is selected we should not do anything
-                                :      
-                                state.frameObjects[state.currentFrame.id].jointParentId     // Otherwise select its parent
-                            : 
-                            state.currentFrame.id // below and going up, is the last jointframe => target is the parent, otherwise the frame itself 
-                        :
-                        // down
-                        // Are we below a frame which has joint children -> ie above a Joint
-                        [...state.frameObjects[state.currentFrame.id].jointFrameIds].shift()     // If yes, give me the first joint child
-                        ??                                                                       // else
-                        (getNextSibling(state.frameObjects,                                      // below and going down, get next sibling.
-                            (checkIfLastJointChild(state.frameObjects, state.currentFrame.id))?  // If we are below the last joint child
-                                (state.selectedFrames.includes(state.currentFrame.id))?          // we need to check whether this joint is selected
-                                    -100                                                         // if it is selected we should not do anything
-                                    :                                                            // otherwise
-                                    state.frameObjects[state.currentFrame.id].jointParentId      // we need to select below our parent
-                                :
-                                state.currentFrame.id)                                           // if not below a joint child, select the current
-                        );
-
-            if(frameToSelectId === -100) {
-                return;
+            // we filter the payload to remove the slot positions
+            const availablePositions = payload.availablePositions.filter((e) => e.slotNumber === false);
+            
+            let siblingsOrChildren: number[] = []
+            let index = 0;
+            
+            if(state.currentFrame.caretPosition === CaretPosition.below) {
+                siblingsOrChildren = state.frameObjects[currentFrame.parentId].childrenIds
+                index = siblingsOrChildren.indexOf(currentFrame.id) + (directionUp?+1:0);
+            }
+            else {
+                siblingsOrChildren = currentFrame.childrenIds
+                // we need to get -1 if we are not going up, so that we can select the frame we are above
+                // i.e. if we are above the first child frame, we need index of current to be -1 so that when
+                // adding the delta (+1) to get
+                index += (!directionUp)?-1:0
             }
 
-            const newCurrentCaret = 
-                (direction === "up")?
-                    // up
-                    (checkIfFirstChild(state.frameObjects,frameToSelectId))? CaretPosition.body : CaretPosition.below
-                    :
-                    // down
-                    CaretPosition.below;
+            // the frame to be selected is the next towards the direction
+            const frameIdToBeSelected = siblingsOrChildren[index+delta]??-100
 
-            const newCurrentId = 
-                (direction === "up")?
-                    //up
-                    (newCurrentCaret === CaretPosition.below)? // direction=up and caret=down => there is another frame before me
-                        getPreviousIdForCaretBelow(state.frameObjects, frameToSelectId)// the previous frame is the new current
-                        :
-                        state.frameObjects[frameToSelectId].parentId // otherwise it is the parent
-                    :
-                    // down
-                    [...state.frameObjects[frameToSelectId].jointFrameIds].pop()??frameToSelectId//The next frame after me of me if it there no next
+            // We cannot select something, so we return
+            if(frameIdToBeSelected===-100){
+                return
+            }
 
+            const availablePositionsOfSiblings: NavigationPosition[] = []
+            availablePositions.forEach((element) => {
+                // we need to keep the elements which correspond to the siblingsOrChildren list
+                // we only include bellows
+                if(siblingsOrChildren.includes(element.id) && element.caretPosition === CaretPosition.below) {
+                    // going down, we cannot select a body position
+                    availablePositionsOfSiblings.push(element)
+                }
+                // except when going upwards we may need the our parent's body to be added
+                else if(directionUp && currentFrame.parentId === element.id && element.caretPosition == CaretPosition.body){
+                    availablePositionsOfSiblings.push(element)
+                }
+            })
+            
+            // In the new list with the available positions that we could go to, we first find the index of the current
+            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.id === state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
+            // and then we find the new current
+            // NOTE here that the one to be selected and the new current can be different. i.e. I am below the first child of an if and going up
+            // the one to be selected is the one I am bellow, and the current is the body of the if! (i.e. the parent)
+            const newCurrent = availablePositionsOfSiblings[indexOfCurrent+delta]
           
-            commit("selectDeselectFrame", {frameId: frameToSelectId, direction: direction}) 
-            commit("setCurrentFrame", {id: newCurrentId, caretPosition: newCurrentCaret});
+
+            commit("selectDeselectFrame", {frameId: frameIdToBeSelected, direction: payload.key.replace("Arrow","").toLowerCase()}) 
+            commit("setCurrentFrame", newCurrent);
 
         },
 
