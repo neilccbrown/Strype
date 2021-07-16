@@ -1706,7 +1706,10 @@ export default new Vuex.Store({
 
         deleteFrames({commit, state}, payload: NavigationPayload){
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
-            
+
+            // we remove the editable slots from the available positions
+            const availablePositions = payload.availablePositions.filter((e) => e.slotNumber === false);
+
             let showDeleteMessage = false;
 
             //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
@@ -1739,24 +1742,31 @@ export default new Vuex.Store({
                 const currentFrame = state.frameObjects[currentFrameId];
 
                 // Create the list of children + joints with which the caret will work with
-                const parentId = getParent(state.frameObjects,currentFrame);
+                // const parentId = getParent(state.frameObjects,currentFrame);
 
-                const listOfSiblings = 
-                childrenListWithJointFrames(
-                    state.frameObjects, 
-                    currentFrame.id, 
-                    state.currentFrame.caretPosition,
-                    "down"
-                );
+                // const listOfSiblings = 
+                // childrenListWithJointFrames(
+                //     state.frameObjects, 
+                //     currentFrame.id, 
+                //     state.currentFrame.caretPosition,
+                //     "down"
+                // );
 
-                const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
-                let frameToDeleteId = 0;
+                // const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
+                let frameToDelete: NavigationPosition = {id:-100};
                 let deleteChildren = false;
 
                 if(payload.key === "Delete"){
-                    if(indexOfCurrentFrame + 1 < listOfSiblings.length){
-                        frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
-                    } 
+                    // if(indexOfCurrentFrame + 1 < listOfSiblings.length){
+                    //     frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
+                    // } 
+                    const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === state.currentFrame.caretPosition);
+                    frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100}
+                    
+                    // The only time to prevent deletion with 'delete' is to when below what we've clinking it is a joint root's below
+                    if((state.frameObjects[frameToDelete.id]?.jointFrameIds.length??0)>0 && frameToDelete.caretPosition === CaretPosition.below){
+                        frameToDelete.id = -100
+                    }
                 }
                 else {
                     if (currentFrame.id > 0) {
@@ -1788,31 +1798,33 @@ export default new Vuex.Store({
                         }
                         else{
                             //move the cursor up to the previous sibling bottom if available, otherwise body of parent
-                            let newId = parentId;
-                            if(indexOfCurrentFrame - 1 >= 0){
-                                newId = listOfSiblings[indexOfCurrentFrame - 1];
-                                //make sure that this sibling isn't a joint frame root, otherwise, we need to get its last joint frame instead of the root
-                                if(state.frameObjects[newId].jointFrameIds.length > 0 && !state.frameObjects[newId].jointFrameIds.includes(currentFrameId)){
-                                    newId = [...state.frameObjects[newId].jointFrameIds].pop() as number;
-                                }
-                            }
-                            const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
+                            // let newId = parentId;
+                            // if(indexOfCurrentFrame - 1 >= 0){
+                            //     newId = listOfSiblings[indexOfCurrentFrame - 1];
+                            //     //make sure that this sibling isn't a joint frame root, otherwise, we need to get its last joint frame instead of the root
+                            //     if(state.frameObjects[newId].jointFrameIds.length > 0 && !state.frameObjects[newId].jointFrameIds.includes(currentFrameId)){
+                            //         newId = [...state.frameObjects[newId].jointFrameIds].pop() as number;
+                            //     }
+                            // }
+                            // const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
+                            const newCurrent = availablePositions[availablePositions.findIndex((e)=> e.id===currentFrame.id)-1]??state.currentFrame
                             commit(
                                 "setCurrentFrame",
-                                {id: newId, caretPosition: newPosition}
+                                // {id: newId, caretPosition: newPosition}
+                                {id: newCurrent.id, caretPosition: newCurrent.caretPosition}
                             );
                             deleteChildren = true;
                         }
-                        frameToDeleteId = currentFrame.id;
+                        frameToDelete.id = currentFrame.id;
                     }
                 }
 
                 //Delete the frame if a frame to delete has been found
-                if(frameToDeleteId > 0){
+                if(frameToDelete.id > 0){
                     //before actually deleting the frame(s), we check if the user should be notified of a large deletion
                     if(countRecursiveChildren(
                         state.frameObjects,
-                        frameToDeleteId,
+                        frameToDelete.id,
                         3
                     ) >= 3){
                         showDeleteMessage = true;
@@ -1821,8 +1833,8 @@ export default new Vuex.Store({
                     commit(
                         "deleteFrame",
                         {
-                            key:payload,
-                            frameToDeleteId: frameToDeleteId,  
+                            key:payload.key,
+                            frameToDeleteId: frameToDelete.id,  
                             deleteChildren: deleteChildren,
                         }
                     );

@@ -449,7 +449,7 @@ export default Vue.extend({
         delete(): void {
             if(this.isPartOfSelection){
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
-                store.dispatch("deleteFrames", {key: "Delete", availablePositions: []});
+                store.dispatch("deleteFrames", {key: "Delete", availablePositions: this.getAvailableNavigationPositions()});
             }
             else{
                 //when deleting the specific frame, we place the caret below and simulate "backspace"

@@ -320,7 +320,7 @@ export default Vue.extend({
                                     "deleteFrames",
                                     { 
                                         key: event.key,
-                                        availablePositions: (event.key == "Delete")?[]:this.getAvailableNavigationPositions(),
+                                        availablePositions: this.getAvailableNavigationPositions(),
                                     }
                                 );
                                 event.stopImmediatePropagation();
