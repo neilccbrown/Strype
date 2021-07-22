@@ -18,7 +18,7 @@ module.exports = {
             }),
         ],
     },
-    publicPath: "/",//"/webframes-test/",
+    publicPath: "/",
     pluginOptions: {
         i18n: {
             locale: "en",
