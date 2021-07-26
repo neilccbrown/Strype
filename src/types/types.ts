@@ -130,6 +130,7 @@ export interface FramesDefinitions {
     colour: string;
     draggableGroup: DraggableGroupTypes;
     innerJointDraggableGroup: DraggableGroupTypes;
+    isImportFrame: boolean;
 }
 
 // Identifiers of the containers
@@ -192,6 +193,7 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     colour: "",
     draggableGroup: DraggableGroupTypes.none,
     innerJointDraggableGroup: DraggableGroupTypes.none,
+    isImportFrame: false,
 };
 
 export const BlockDefinition: FramesDefinitions = {
@@ -432,6 +434,7 @@ export const ImportDefinition: FramesDefinitions = {
     ],    
     colour: "#CBD4C8",
     draggableGroup: DraggableGroupTypes.imports,
+    isImportFrame: true,
 };
 
 export const CommentDefinition: FramesDefinitions = {
@@ -801,23 +804,23 @@ export interface UserDefinedElement {
     name: string;
     isFunction: boolean;
 }
-export interface indexedAcResult {
+export interface IndexedAcResult {
     index: number; 
     acResult: string; 
     documentation: string; 
     type: string;
 }
 
-export interface acResultType {
+export interface AcResultType {
     acResult: string; 
     documentation: string; 
     type: string;
 }
-export interface indexedAcResultsWithModule {
-    [module: string]: indexedAcResult[];
+export interface IndexedAcResultWithModule {
+    [module: string]: IndexedAcResult[];
 }
-export interface acResultsWithModule {
-    [module: string]: acResultType[];
+export interface AcResultsWithModule {
+    [module: string]: AcResultType[];
 }
 export interface VoidFunction {
     (): void;

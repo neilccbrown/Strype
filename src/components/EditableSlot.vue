@@ -59,6 +59,7 @@
             :id="UIID+'_Autocompletion'"
             :token="token"
             :cursorPosition="cursorPosition"
+            :isImportFrame="isImportFrame()"
             @acItemClicked="acItemClicked"
         />
     </div>
@@ -523,6 +524,11 @@ export default Vue.extend({
                 }
             })
         }, 
+
+
+        isImportFrame(): boolean {
+            return store.getters.isImportFrame(this.frameId)
+        },
 
     },
 });

@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, acResultsWithModule, NavigationPayload, NavigationPosition} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPayload, NavigationPosition} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -72,7 +72,7 @@ export default new Vuex.Store({
 
         isAppMenuOpened: false,
 
-        acResults: [] as acResultsWithModule[],
+        acResults: [] as AcResultsWithModule[],
 
         editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
     
@@ -544,6 +544,10 @@ export default new Vuex.Store({
 
         getDebugAC: (state) => () => {
             return state.debugAC;
+        },
+
+        isImportFrame: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].frameType.isImportFrame;
         },
     }, 
 
@@ -1275,7 +1279,7 @@ export default new Vuex.Store({
             });
         },
 
-        setAcResults(state, value: acResultsWithModule){
+        setAcResults(state, value: AcResultsWithModule){
             Vue.set(
                 state,
                 "acResults",
@@ -1580,7 +1584,7 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        addFrameWithCommand({ commit, state, dispatch }, payload: {frame: FramesDefinitions, availablePositions: NavigationPosition[]}) {
+        addFrameWithCommand({ commit, state, dispatch }, payload: {frame: FramesDefinitions; availablePositions: NavigationPosition[]}) {
 
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             const currentFrame = state.frameObjects[state.currentFrame.id];
@@ -1623,7 +1627,7 @@ export default new Vuex.Store({
             } 
 
             // construct the new Frame object to be added
-            const newFrame:FrameObject = {
+            const newFrame: FrameObject = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: payload.frame,
                 id: state.nextAvailableId++,
@@ -1757,14 +1761,15 @@ export default new Vuex.Store({
                 let deleteChildren = false;
 
                 if(payload.key === "Delete"){
-                    // if(indexOfCurrentFrame + 1 < listOfSiblings.length){
-                    //     frameToDeleteId = listOfSiblings[indexOfCurrentFrame + 1];
-                    // } 
+                    
+                    // Where the current sits in the available positions
                     const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === state.currentFrame.caretPosition);
+                    // the "next" position of the current
                     frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100}
                     
-                    // The only time to prevent deletion with 'delete' is to when below what we've clinking it is a joint root's below
-                    if((state.frameObjects[frameToDelete.id]?.jointFrameIds.length??0)>0 && frameToDelete.caretPosition === CaretPosition.below){
+                    // The only time to prevent deletion with 'delete' is when next posision is a joint root's below OR a method declaration bellow
+                    if( (state.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || state.frameObjects[frameToDelete.id]?.frameType.type === FuncDefDefinition.type)
+                         && frameToDelete.caretPosition === CaretPosition.below){
                         frameToDelete.id = -100
                     }
                 }
@@ -1797,20 +1802,9 @@ export default new Vuex.Store({
                             }
                         }
                         else{
-                            //move the cursor up to the previous sibling bottom if available, otherwise body of parent
-                            // let newId = parentId;
-                            // if(indexOfCurrentFrame - 1 >= 0){
-                            //     newId = listOfSiblings[indexOfCurrentFrame - 1];
-                            //     //make sure that this sibling isn't a joint frame root, otherwise, we need to get its last joint frame instead of the root
-                            //     if(state.frameObjects[newId].jointFrameIds.length > 0 && !state.frameObjects[newId].jointFrameIds.includes(currentFrameId)){
-                            //         newId = [...state.frameObjects[newId].jointFrameIds].pop() as number;
-                            //     }
-                            // }
-                            // const newPosition = (indexOfCurrentFrame - 1 >= 0 || currentFrame.jointParentId > 0) ? CaretPosition.below : CaretPosition.body;
                             const newCurrent = availablePositions[availablePositions.findIndex((e)=> e.id===currentFrame.id)-1]??state.currentFrame
                             commit(
                                 "setCurrentFrame",
-                                // {id: newId, caretPosition: newPosition}
                                 {id: newCurrent.id, caretPosition: newCurrent.caretPosition}
                             );
                             deleteChildren = true;

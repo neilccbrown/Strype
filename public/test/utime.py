@@ -9,6 +9,6 @@ def ticks_ms():
 def ticks_us():
     return 0
 def ticks_add(_ticks_,_add_):
-    return 0
+    return 0;
 def ticks_diff(_ticks1_,_ticks2_):
     return 0
