@@ -108,6 +108,10 @@ export interface NavigationPayload {
     key: string;
     availablePositions: NavigationPosition[];
 }
+export interface DeleteFromSlotPayload {
+    frameId: number;
+    availablePositions: NavigationPosition[];
+}
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string;

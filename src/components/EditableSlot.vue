@@ -442,7 +442,10 @@ export default Vue.extend({
                     this.onBlur();
                     store.dispatch(
                         "deleteFrameFromSlot",
-                        this.frameId
+                        {
+                            frameId: this.frameId,
+                            availablePositions: this.getAvailableNavigationPositions(),
+                        }
                     );
                 }
                 else{        
@@ -451,7 +454,10 @@ export default Vue.extend({
                             this.onBlur();
                             store.dispatch(
                                 "deleteFrameFromSlot",
-                                this.frameId
+                                {
+                                    frameId: this.frameId,
+                                    availablePositions: this.getAvailableNavigationPositions(),
+                                }
                             );
                         }
                     }, 600);

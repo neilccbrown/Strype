@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPayload, NavigationPosition} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPayload, NavigationPosition, DeleteFromSlotPayload} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -1861,18 +1861,21 @@ export default new Vuex.Store({
             }
         },
         
-        deleteFrameFromSlot({commit, dispatch, state}, frameId: number){            
+        deleteFrameFromSlot({commit, dispatch, state}, payload: DeleteFromSlotPayload){            
             // Before we delete the frame, we need to "invalidate" the key events: as this action (deleteFrameFromSlot) is triggered on a key down event, 
             // when the key (backspace) is released, the key up event is fired, but since the frame is deleted, 
             // the event is caught at the window level (and since we are no more in editing mode, the deletion method is called again). So we invalidate the 
             // key event momently so that this window key up event is ignored.
             // Furthermore, we make sure that the frame hasn't been already deleted: in case a long press, we don't want to have many deletion
             // triggered from "stacked" calls to this method
-            if(state.frameObjects[frameId]){
+            if(state.frameObjects[payload.frameId]){
                 commit("setIgnoreKeyEvent", true);
                 dispatch(
                     "deleteFrames",
-                    "Backspace"
+                    {
+                        key: "Backspace",
+                        availablePositions : payload.availablePositions,
+                    }
                 );  
             }
         },

@@ -94,7 +94,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // Define the slot id we are talking about
         inspectionCode += "\n"+INDENT+"try:"
         // append the line that removes useless names and saves them to the results
-        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]"
+        // we also need to remove validContext so that we don't get it in the results
+        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$') and name!='validContext']"
         // If there are no results, we notify the hidden span that there is no AC available
         
         inspectionCode += "\n"+INDENT+INDENT+"resultsWithModules={}"
@@ -110,7 +111,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // in case the contextAC is not empty, this is the 'module'
          
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if not module:";
+        
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if module:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\""
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
