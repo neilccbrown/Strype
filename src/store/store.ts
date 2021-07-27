@@ -261,12 +261,6 @@ export default new Vuex.Store({
                 }
             }
 
-            Vue.set(
-                state.currentFrame,
-                "parentToAdd",
-                focusedFrame??currentFrame.id
-            );
-
             //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
             const forbiddenTypes = (caretPosition === CaretPosition.body) ? 
                 [...currentFrame.frameType.forbiddenChildrenTypes] :
