@@ -247,19 +247,22 @@ export default Vue.extend({
             const acResults: AcResultsWithModule = {};
             
             Object.keys(parsedDoc).forEach( (module: string) => {
-
-                // For each module we create an indexed list with all the results
-                const listOfElements: AcResultType[] = parsedResults[module].map( (element,i) => {
-                    // We are not assigning the indexes at that stage as we will need to sort first
-                    return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i]}
-                });
-                // Sort is done as a seperate step, as it is more efficient to join the lists (parsedResults, parsedDoc and parsedTypes) first
-                // and then sort, instead of sorting first, as this would require to sort one list and based on this sorting, sort the others as well
-                listOfElements.sort( (a, b) => {
-                    return a.acResult.toLowerCase().localeCompare(b.acResult.toLowerCase())
-                });
-                
-                acResults[this.isImportFrame?"":module] = listOfElements;
+                // We do not include modules that had not result in them
+                if(parsedResults[module].length>0){
+                    // For each module we create an indexed list with all the results
+                    // We filter first, as if we have a block without a name (i.e. funct with empty mame) we should exclude these
+                    const listOfElements: AcResultType[] = parsedResults[module].filter((e) => e!=="").map( (element,i) => {
+                        // We are not assigning the indexes at that stage as we will need to sort first
+                        return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i]}
+                    });
+                    // Sort is done as a seperate step, as it is more efficient to join the lists (parsedResults, parsedDoc and parsedTypes) first
+                    // and then sort, instead of sorting first, as this would require to sort one list and based on this sorting, sort the others as well
+                    listOfElements.sort( (a, b) => {
+                        return a.acResult.toLowerCase().localeCompare(b.acResult.toLowerCase())
+                    });
+                    
+                    acResults[this.isImportFrame?"":module] = listOfElements;
+                }
             });
 
             // store it in the store, so that if it the template is destroyed the ac remains

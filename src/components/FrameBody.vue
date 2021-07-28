@@ -38,12 +38,12 @@
                 />
             </Draggable>
             <b-popover
-            v-if="empty"
-            :target="uiid"
-            :title="this.$i18n.t('errorMessage.errorTitle')"
-            triggers="hover focus"
-            placement="left"
-            :content="errorMessage"
+                v-if="empty"
+                :target="uiid"
+                :title="this.$i18n.t('errorMessage.errorTitle')"
+                triggers="hover focus"
+                placement="left"
+                :content="errorMessage"
             ></b-popover>
         </div>
     </div>
