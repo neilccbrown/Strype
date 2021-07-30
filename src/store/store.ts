@@ -1965,6 +1965,14 @@ export default new Vuex.Store({
                 //we show the label: add the slot in precompiled error if the slot is empty
                 if(state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].code.trim().length == 0){
                     commit(
+                        "setSlotErroneous", 
+                        {
+                            frameId: state.currentFrame.id, 
+                            slotIndex: frameLabeToTogglelIndex,  
+                            error: i18n.t("errorMessage.emptyEditableSlot"),
+                        }
+                    );
+                    commit(
                         "addPreCompileErrors",
                         slotUIID
                     );
@@ -1972,6 +1980,14 @@ export default new Vuex.Store({
             }
             else{
                 //we hide the label: remove the slot in precompiled error
+                commit(
+                    "setSlotErroneous", 
+                    {
+                        frameId: state.currentFrame.id, 
+                        slotIndex: frameLabeToTogglelIndex, 
+                        error: "",
+                    }
+                );
                 commit(
                     "removePreCompileErrors",
                     slotUIID
