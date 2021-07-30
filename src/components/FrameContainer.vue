@@ -36,7 +36,6 @@
                     :isJointFrame="false"
                     :allowChildren="frame.frameType.allowChildren"
                     :caretVisibility="frame.caretVisibility"
-                    class="frame" 
                 />
             </Draggable>
         </div>

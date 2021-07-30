@@ -114,7 +114,7 @@ export default Vue.extend({
                 return {};
             }
             
-            return store.getters.getCurrentFrameAddFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
+            return store.getters.generateAvailableFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
         },
 
         toggleFrameLabelCommands(): ToggleFrameLabelCommandDef[] {
@@ -218,6 +218,7 @@ export default Vue.extend({
                     }
                     else{
                         //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by EditableSlots.
+                        // We start by getting from the DOM all the available caret and editable slot positions
                         store.dispatch(
                             "leftRightKey",
                             event.key
@@ -320,7 +321,7 @@ export default Vue.extend({
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
                             store.dispatch(
                                 "addFrameWithCommand",
-                                this.addFrameCommands[event.key.toLowerCase()][0].type                
+                                this.addFrameCommands[event.key.toLowerCase()][0].type
                             );
                         }
                     }

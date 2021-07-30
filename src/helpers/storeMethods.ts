@@ -1,4 +1,4 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition} from "@/types/types";
 import Vue from "vue";
 import { getSHA1HashForObject } from "@/helpers/common";
 
@@ -311,7 +311,7 @@ export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameOb
     return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
 };
 
-export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[], frameMap: number[]) => {
+export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[]) => {
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.
@@ -458,4 +458,21 @@ export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, cu
     }
 
     return isAncestorTypeFound;
-}
+};
+
+// Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
+// We get the available caret positions through the DOM, where they are all present.
+export const getAvailableNavigationPositions = function(): NavigationPosition[] {
+    // We start by getting from the DOM all the available caret and editable slot positions
+    const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
+    // We create a list that hold objects of {id,caretPosition,slotNumber) for each available navigation positions
+    return Object.values(allCaretDOMpositions).map((e)=> {
+        return {
+            id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
+            ||
+            parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
+            caretPosition: (e.id.startsWith("caret"))? e.id.replace("caret_","").replace(/_*-*\d/g,"") : false,
+            slotNumber: (e.id.startsWith("input"))? parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")) : false,
+        }
+    })
+};
