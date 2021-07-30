@@ -1,18 +1,16 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPayload, NavigationPosition, DeleteFromSlotPayload} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import tutorialState from "@/store/tutorial-state";
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, childrenListWithJointFrames, countRecursiveChildren, getParent, getParentOrJointParent, generateFrameMap, getAllSiblings, getNextSibling, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow} from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, generateFrameMap, getAllSiblings, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow, getAvailableNavigationPositions} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
-import { siblings } from "cheerio/lib/api/traversing";
-
 
 
 Vue.use(Vuex);
@@ -740,7 +738,7 @@ export default new Vuex.Store({
             );
         },
 
-        changeCaretWithKeyboard(state, payload: NavigationPayload) {
+        changeCaretWithKeyboard(state, key: string) {
             
             const currId = state.currentFrame.id;
             const currPosition = state.currentFrame.caretPosition;
@@ -753,11 +751,12 @@ export default new Vuex.Store({
             );
 
             const currentCaret: CurrentFrame = {id: currId, caretPosition: currPosition};
-            const listOfCaretPositions = payload.availablePositions.filter(((e)=> e.slotNumber === false));
+            const availablePositions = getAvailableNavigationPositions();
+            const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
             // Where is the current in the list
             const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
 
-            const delta = (payload.key === "ArrowDown")?1:-1;
+            const delta = (key === "ArrowDown")?1:-1;
             const nextCaret = listOfCaretPositions[currentCaretIndex + delta]??currentCaret;
 
             Vue.set(
@@ -1569,20 +1568,20 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        changeCaretPosition({ commit }, payload: NavigationPayload) {
+        changeCaretPosition({ commit }, key: string) {
             commit(
                 "changeCaretWithKeyboard",
-                payload
+                key
             );
             
             commit("unselectAllFrames");
         },
 
-        addFrameWithCommand({ commit, state, dispatch }, payload: {frame: FramesDefinitions; availablePositions: NavigationPosition[]}) {
+        addFrameWithCommand({ commit, state, dispatch }, frame: FramesDefinitions) {
 
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             const currentFrame = state.frameObjects[state.currentFrame.id];
-            const addingJointFrame = payload.frame.isJointFrame;
+            const addingJointFrame = frame.isJointFrame;
 
             // find parent id 
             let parentId = 0
@@ -1623,14 +1622,14 @@ export default new Vuex.Store({
             // construct the new Frame object to be added
             const newFrame: FrameObject = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
-                frameType: payload.frame,
+                frameType: frame,
                 id: state.nextAvailableId++,
                 parentId: addingJointFrame ? 0 : parentId, // Despite we calculated parentID earlier, it may not be used
                 jointParentId: addingJointFrame ? parentId : 0,
                 contentDict:
                     //find each editable slot and create an empty & unfocused entry for it
                     //optional labels are not visible by default, not optional labels are visible by default
-                    payload.frame.labels.filter((el)=> el.slot).reduce(
+                    frame.labels.filter((el)=> el.slot).reduce(
                         (acc, cur, idx) => ({ 
                             ...acc, 
                             [idx]: {code: "", focused: false, error: "", shownLabel:(!cur?.optionalLabel ?? true)},
@@ -1675,18 +1674,19 @@ export default new Vuex.Store({
             if( !addingJointFrame ){
                 newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.below, slotNumber: false});
             }
-            const indexOfCurrent = payload.availablePositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
+            const availablePositions = getAvailableNavigationPositions();
+            const indexOfCurrent = availablePositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
-            payload.availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions)
+            availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions)
 
             //"move" the caret along
             dispatch(
                 "leftRightKey",
                 { 
                     key: "ArrowRight",
-                    availablePositions: payload.availablePositions,
+                    availablePositions: availablePositions,
                 }
             ).then(
                 () => 
@@ -1702,11 +1702,12 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        deleteFrames({commit, state}, payload: NavigationPayload){
+        deleteFrames({commit, state}, key: string){
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
 
             // we remove the editable slots from the available positions
-            const availablePositions = payload.availablePositions.filter((e) => e.slotNumber === false);
+            let availablePositions = getAvailableNavigationPositions();
+            availablePositions = availablePositions.filter((e) => e.slotNumber === false);
 
             let showDeleteMessage = false;
 
@@ -1719,7 +1720,7 @@ export default new Vuex.Store({
                 if(state.selectedFrames[state.selectedFrames.length-1] !== state.currentFrame.id){
                     commit("setCurrentFrame", {id: state.selectedFrames[state.selectedFrames.length-1], caretPosition: CaretPosition.below});
                 }
-                payload.key = "Backspace";
+                key = "Backspace";
                 framesIdToDelete = state.selectedFrames.reverse();
                 //this flag to show the delete message is set on a per frame deletion basis,
                 //but here we could have 3+ single frames delete, so we need to also check to selection length.
@@ -1736,32 +1737,19 @@ export default new Vuex.Store({
                 //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
                 //(*) with all sub levels children
 
-
                 const currentFrame = state.frameObjects[currentFrameId];
 
-                // Create the list of children + joints with which the caret will work with
-                // const parentId = getParent(state.frameObjects,currentFrame);
-
-                // const listOfSiblings = 
-                // childrenListWithJointFrames(
-                //     state.frameObjects, 
-                //     currentFrame.id, 
-                //     state.currentFrame.caretPosition,
-                //     "down"
-                // );
-
-                // const indexOfCurrentFrame = listOfSiblings.indexOf(currentFrame.id);
                 let frameToDelete: NavigationPosition = {id:-100};
                 let deleteChildren = false;
 
-                if(payload.key === "Delete"){
+                if(key === "Delete"){
                     
                     // Where the current sits in the available positions
                     const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === state.currentFrame.caretPosition);
                     // the "next" position of the current
                     frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100}
                     
-                    // The only time to prevent deletion with 'delete' is when next posision is a joint root's below OR a method declaration bellow
+                    // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration bellow
                     if( (state.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || state.frameObjects[frameToDelete.id]?.frameType.type === FuncDefDefinition.type)
                          && frameToDelete.caretPosition === CaretPosition.below){
                         frameToDelete.id = -100
@@ -1777,7 +1765,7 @@ export default new Vuex.Store({
                                 //just move the cursor one level up
                                 commit(
                                     "changeCaretWithKeyboard",
-                                    payload
+                                    key
                                 );
                             }
                             else{
@@ -1821,7 +1809,7 @@ export default new Vuex.Store({
                     commit(
                         "deleteFrame",
                         {
-                            key:payload.key,
+                            key:key,
                             frameToDeleteId: frameToDelete.id,  
                             deleteChildren: deleteChildren,
                         }
@@ -1855,21 +1843,18 @@ export default new Vuex.Store({
             }
         },
         
-        deleteFrameFromSlot({commit, dispatch, state}, payload: DeleteFromSlotPayload){            
+        deleteFrameFromSlot({commit, dispatch, state}, frameId: number){            
             // Before we delete the frame, we need to "invalidate" the key events: as this action (deleteFrameFromSlot) is triggered on a key down event, 
             // when the key (backspace) is released, the key up event is fired, but since the frame is deleted, 
             // the event is caught at the window level (and since we are no more in editing mode, the deletion method is called again). So we invalidate the 
             // key event momently so that this window key up event is ignored.
             // Furthermore, we make sure that the frame hasn't been already deleted: in case a long press, we don't want to have many deletion
             // triggered from "stacked" calls to this method
-            if(state.frameObjects[payload.frameId]){
+            if(state.frameObjects[frameId]){
                 commit("setIgnoreKeyEvent", true);
                 dispatch(
                     "deleteFrames",
-                    {
-                        key: "Backspace",
-                        availablePositions : payload.availablePositions,
-                    }
+                    "Backspace"
                 );  
             }
         },
@@ -1883,24 +1868,25 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        leftRightKey({commit, state} , payload: NavigationPayload) {
+        leftRightKey({commit, state} , key: string) {
 
             //  used for moving index up (+1) or down (-1)
-            const directionDown = payload.key === "ArrowRight";
+            const directionDown = key === "ArrowRight";
             const directionDelta = (directionDown)?+1:-1;
+            const availablePositions = getAvailableNavigationPositions();
 
             let currentFramePosition;
 
             if (state.isEditing){ 
                 const currentEditableSlots = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).filter((slot) => slot[1].shownLabel);
                 const posOfCurSlot = currentEditableSlots.findIndex((slot) => slot[1].focused);
-                currentFramePosition = payload.availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === state.currentFrame.id); 
+                currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === state.currentFrame.id); 
             }
             else {
-                currentFramePosition = payload.availablePositions.findIndex( (e) => e.caretPosition === state.currentFrame.caretPosition && e.id === state.currentFrame.id); 
+                currentFramePosition = availablePositions.findIndex( (e) => e.caretPosition === state.currentFrame.caretPosition && e.id === state.currentFrame.id); 
             }
             
-            const nextPosition = (payload.availablePositions[currentFramePosition+directionDelta]??payload.availablePositions[currentFramePosition])                        
+            const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition])                        
 
             // irrespective to where we are going to, we need to make sure to hide current caret
             Vue.set(
@@ -2384,14 +2370,15 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        selectMultipleFrames({state, commit}, payload: NavigationPayload) {
+        selectMultipleFrames({state, commit}, key: string) {
             
-            const directionUp = payload.key==="ArrowUp"
+            const directionUp = key==="ArrowUp"
             const delta = directionUp? -1 : +1;
             const currentFrame = state.frameObjects[state.currentFrame.id];
 
             // we filter the payload to remove the slot positions
-            const availablePositions = payload.availablePositions.filter((e) => e.slotNumber === false);
+            let availablePositions:NavigationPosition[]  = getAvailableNavigationPositions();
+            availablePositions = availablePositions.filter((e) => e.slotNumber === false);
             
             let siblingsOrChildren: number[] = []
             let index = 0;
@@ -2438,7 +2425,7 @@ export default new Vuex.Store({
             const newCurrent = availablePositionsOfSiblings[indexOfCurrent+delta]
           
 
-            commit("selectDeselectFrame", {frameId: frameIdToBeSelected, direction: payload.key.replace("Arrow","").toLowerCase()}) 
+            commit("selectDeselectFrame", {frameId: frameIdToBeSelected, direction: key.replace("Arrow","").toLowerCase()}) 
             commit("setCurrentFrame", newCurrent);
 
         },

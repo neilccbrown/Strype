@@ -206,19 +206,13 @@ export default Vue.extend({
                         if(event.shiftKey){
                             store.dispatch( 
                                 "selectMultipleFrames",
-                                {
-                                    key: event.key,
-                                    availablePositions: this.getAvailableNavigationPositions(),
-                                }
+                                event.key
                             );
                         }
                         else {
                             store.dispatch(
                                 "changeCaretPosition",
-                                {
-                                    key: event.key,
-                                    availablePositions: this.getAvailableNavigationPositions(),
-                                }
+                                event.key
                             );
                         }
                     }
@@ -227,10 +221,7 @@ export default Vue.extend({
                         // We start by getting from the DOM all the available caret and editable slot positions
                         store.dispatch(
                             "leftRightKey",
-                            {
-                                key: event.key,
-                                availablePositions: this.getAvailableNavigationPositions(),
-                            }
+                            event.key
                         );
                         event.stopImmediatePropagation();
                         event.preventDefault();
@@ -318,10 +309,7 @@ export default Vue.extend({
                                 //delete a frame or a frame selection
                                 store.dispatch(
                                     "deleteFrames",
-                                    { 
-                                        key: event.key,
-                                        availablePositions: this.getAvailableNavigationPositions(),
-                                    }
+                                    event.key
                                 );
                                 event.stopImmediatePropagation();
                             }
@@ -333,10 +321,7 @@ export default Vue.extend({
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
                             store.dispatch(
                                 "addFrameWithCommand",
-                                {
-                                    frame: this.addFrameCommands[event.key.toLowerCase()][0].type,
-                                    availablePositions: this.getAvailableNavigationPositions(),
-                                }
+                                this.addFrameCommands[event.key.toLowerCase()][0].type
                             );
                         }
                     }
@@ -488,23 +473,6 @@ export default Vue.extend({
             store.commit("clearAllErrors");
             downloadPython(); 
         },
-
-        // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
-        // We get the available caret positions through the DOM, where they are all present.
-        getAvailableNavigationPositions() {
-            // We start by getting from the DOM all the available caret and editable slot positions
-            const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
-            // We create a list that hold objects of {id,caretPosition?,slotNumber?) for each available navigation positions
-            return Object.values(allCaretDOMpositions).map((e)=> {
-                return {
-                    id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
-                    ||
-                    parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
-                    caretPosition: (e.id.startsWith("caret")) && e.id.replace("caret_","").replace(/_*-*\d/g,""),
-                    slotNumber: (e.id.startsWith("input")) && parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")),
-                }
-            })
-        }, 
     },
 });
 </script>

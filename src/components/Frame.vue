@@ -11,7 +11,7 @@
         >
             <div 
                 :style="frameStyle" 
-                class="block frameDiv frameMapped" 
+                class="block frameDiv" 
                 :class="{error: erroneous, statementOrJoint: isStatementOrJointFrame}"
                 :id="uiid"
                 @click="toggleCaret($event)"
@@ -383,7 +383,7 @@ export default Vue.extend({
                     "copySelection"
                 ); 
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
-                store.dispatch("deleteFrames", {key: "Delete", availablePositions: []});
+                store.dispatch("deleteFrames", "Delete");
             }
             else{
                 store.dispatch(
@@ -391,8 +391,8 @@ export default Vue.extend({
                     this.$props.frameId
                 );
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
-                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
-                store.dispatch("deleteFrames", {key: "Backspace", availablePositions: this.getAvailableNavigationPositions()});
+                store.commit("setCurrentFrame", this.$props.frameId);
+                store.dispatch("deleteFrames", "Backspace");
             }                    
         },
 
@@ -449,31 +449,14 @@ export default Vue.extend({
         delete(): void {
             if(this.isPartOfSelection){
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
-                store.dispatch("deleteFrames", {key: "Delete", availablePositions: this.getAvailableNavigationPositions()});
+                store.dispatch("deleteFrames", "Delete");
             }
             else{
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
                 store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
-                store.dispatch("deleteFrames", {key: "Backspace", availablePositions: this.getAvailableNavigationPositions()});
+                store.dispatch("deleteFrames","Backspace");
             }       
         },
-
-        // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
-        // We get the available caret positions through the DOM, where they are all present.
-        getAvailableNavigationPositions() {
-            // We start by getting from the DOM all the available caret and editable slot positions
-            const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
-            // We create a list that hold objects of {id,caretPosition?,slotNumber?) for each available navigation positions
-            return Object.values(allCaretDOMpositions).map((e)=> {
-                return {
-                    id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
-                    ||
-                    parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
-                    caretPosition: (e.id.startsWith("caret")) && e.id.replace("caret_","").replace(/_*-*\d/g,""),
-                    slotNumber: (e.id.startsWith("input")) && parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")),
-                }
-            })
-        }, 
 
     },
 

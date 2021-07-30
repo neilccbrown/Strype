@@ -40,7 +40,6 @@
                                 :containerLabel="container.frameType.labels[0].label"
                                 :caretVisibility="container.caretVisibility"
                                 :frameType="container.frameType"
-                                class="frameMapped"
                             />
                         </div>
                     </div>
