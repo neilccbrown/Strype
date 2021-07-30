@@ -3,6 +3,7 @@ import store from "@/store/store";
 import { FrameObject } from "@/types/types";
 import moduleDescription from "@/autocompletion/microbit.json";
 import i18n from "@/i18n";
+import _ from "lodash";
 
 const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
@@ -24,24 +25,23 @@ function isACNeededToShow(code: string): boolean {
     if(code.indexOf(" ") === -1){
         return true;
     }
-
-    //check if we follow a symbols operator 
+ 
+    //check if we follow a symbols operator (that may not have surrounding spaces)
     let foundOperatorFlag = false;
     operators.forEach((op) => {
-        if(code.trim().endsWith(op)) {
+        if(code.match(".*"+_.escapeRegExp(op)+" *[a-zA-Z0-9_$()\\[\\]{}]*$")) {
             foundOperatorFlag = true;
         }
     });
-
+ 
     if(!foundOperatorFlag) {
-        //then check if we follow a non symbols operators (need a trailing space)
+        //then check if we follow a non symbols operators (that need surrounding spaces)
         keywordsWihtSurroundSpaces.forEach((op) => {
-            if(code.toLowerCase().match(".*"+op+" *")) {
+            if(code.toLowerCase().match(".* "+op+" +[^ ]*")) {
                 foundOperatorFlag = true;
             }
         });
     }  
-
     return foundOperatorFlag;
 }
 
