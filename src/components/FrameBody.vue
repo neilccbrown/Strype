@@ -17,6 +17,7 @@
                 @change.self="handleDragAndDrop($event)"
                 @unchoose="showSelectedFrames()"
                 animation= "200"
+                swapThreshold = "0.2"
                 :disabled="isEditing"
                 :key="'Draggagle-Body-'+this.frameId"
                 @start="handleMultiDrag($event)"
