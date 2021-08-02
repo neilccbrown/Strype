@@ -5,6 +5,7 @@
             :group="jointDraggableGroup"
             @change.self="handleDragAndDrop($event)"
             animation="200"
+            swapThreshold = "0.2"
             :disabled="isEditing"
             :key="'Draggagle-Joint-'+this.jointParentId"
             @start="handleMultiDrag($event)"
