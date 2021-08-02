@@ -221,7 +221,9 @@ export default Vue.extend({
                         // We start by getting from the DOM all the available caret and editable slot positions
                         store.dispatch(
                             "leftRightKey",
-                            event.key
+                            {
+                                key:event.key,
+                            }
                         );
                         event.stopImmediatePropagation();
                         event.preventDefault();

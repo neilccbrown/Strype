@@ -1655,7 +1655,7 @@ export default new Vuex.Store({
         
             generateFrameMap(state.frameObjects,state.frameMap);
 
-            // We need a list to store the navigational positions of this newly added frame,
+            // As the new frame isn't yet added to the DOM, we need a list to store its navigational positions,
             // which will then be merged to the existing caret positions
             const newFramesCaretPositions: NavigationPosition[] = [];
             
@@ -1681,10 +1681,10 @@ export default new Vuex.Store({
             // done here as we cannot splice while giving it as input
             availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions)
 
-            //"move" the caret along
+            //"move" the caret along, using the newly computed positions
             dispatch(
                 "leftRightKey",
-                { 
+                {
                     key: "ArrowRight",
                     availablePositions: availablePositions,
                 }
@@ -1868,13 +1868,13 @@ export default new Vuex.Store({
             commit("unselectAllFrames");
         },
 
-        leftRightKey({commit, state} , key: string) {
+        leftRightKey({commit, state} , payload: {key: string, availablePositions?: NavigationPosition[]}) {
 
             //  used for moving index up (+1) or down (-1)
-            const directionDown = key === "ArrowRight";
+            const directionDown = payload.key === "ArrowRight";
             const directionDelta = (directionDown)?+1:-1;
-            const availablePositions = getAvailableNavigationPositions();
-
+            // if the available positions are not passed as argument, we compute them from the DOM
+            const availablePositions = payload.availablePositions??getAvailableNavigationPositions();
             let currentFramePosition;
 
             if (state.isEditing){ 
@@ -1965,6 +1965,14 @@ export default new Vuex.Store({
                 //we show the label: add the slot in precompiled error if the slot is empty
                 if(state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].code.trim().length == 0){
                     commit(
+                        "setSlotErroneous", 
+                        {
+                            frameId: state.currentFrame.id, 
+                            slotIndex: frameLabeToTogglelIndex,  
+                            error: i18n.t("errorMessage.emptyEditableSlot"),
+                        }
+                    );
+                    commit(
                         "addPreCompileErrors",
                         slotUIID
                     );
@@ -1972,6 +1980,14 @@ export default new Vuex.Store({
             }
             else{
                 //we hide the label: remove the slot in precompiled error
+                commit(
+                    "setSlotErroneous", 
+                    {
+                        frameId: state.currentFrame.id, 
+                        slotIndex: frameLabeToTogglelIndex, 
+                        error: "",
+                    }
+                );
                 commit(
                     "removePreCompileErrors",
                     slotUIID

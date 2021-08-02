@@ -123,6 +123,8 @@ export default Vue.extend({
             //or that the slot is initially empty
             canBackspaceDeleteFrame: true,   
             stillBackSpaceDown: false,
+            //use to make sure that a tab event is a proper sequence (down > up) within an editable slot
+            tabDownTriggered: false,
         };
     },
     
@@ -331,10 +333,11 @@ export default Vue.extend({
                 
                     // If we're trying to go off the bounds of this slot
                     if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
-                    
                         store.dispatch(
                             "leftRightKey",
-                            event.key
+                            {
+                                key: event.key,
+                            }
                         );
                         this.onBlur();
                     }
@@ -386,15 +389,21 @@ export default Vue.extend({
         },
 
         onTabKeyDown(event: KeyboardEvent){
-            // We keep the default browser behaviour when tab is pressed AND we're not having AC on.
+            // We keep the default browser behaviour when tab is pressed AND we're not having AC on, and we don't use the Shift modifier key
             // As browsers would use the "keydown" event, we have to intercept the event at this stage.
-            if(this.showAC && document.querySelector(".selectedAcItem")) {
+            if(!event.shiftKey && this.showAC && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
                 event.stopPropagation();
+                this.tabDownTriggered = true;
             }
         },
 
         onEnterOrTabKeyUp(event: KeyboardEvent){
+            //if the tab event has not been triggered by this component, we should ignore it
+            if(event.key === "Tab" && !this.tabDownTriggered) {
+                return;
+            }
+
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
             if(this.showAC && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
@@ -410,6 +419,7 @@ export default Vue.extend({
                 }
             }
             this.showAC = this.debugAC;
+            this.tabDownTriggered = false;
         },
 
         onEqualOrSpaceKeyDown(event: KeyboardEvent){
