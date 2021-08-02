@@ -333,10 +333,11 @@ export default Vue.extend({
                 
                     // If we're trying to go off the bounds of this slot
                     if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
-                    
                         store.dispatch(
                             "leftRightKey",
-                            event.key
+                            {
+                                key: event.key,
+                            }
                         );
                         this.onBlur();
                     }
