@@ -808,3 +808,21 @@ export interface acResultsWithModule {
 export interface VoidFunction {
     (): void;
 }
+
+//Representation of an item of the (microbit) API using a coded identifier with its potential children
+export interface APICodedItem {
+    name: string, //a UUID coded name that represent a single item of the API description (** do not use "." in the coded names, it messes i18n **)
+    codePortion: string, //the code portion that will builds an example use in the editor
+    children?: APICodedItem[];
+}
+
+//Representation of an item of the (microbit) API textual description based on a coded indentifier
+export interface APIItemTextualDescription {
+    name: string; //a UUID coded name that represent a single item of the API description
+    label: string; //the textual value of the item
+    doc: string; //the documentation for this item
+    exampleCodePortion: string, //the code portion that will builds an example use in the editor
+    level: number; //the level of the item in the API hierarchy
+    isFinal: boolean; //indicates if that is a termination item
+    immediateParentName: string; //the name of the immediate parent of this item - empty string if level 1
+}

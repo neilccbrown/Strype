@@ -22,7 +22,9 @@
       "downloadPython": "Convertir vers Python",
       "skipTutorial": "Passer le tutoriel",
       "next": "Suivant",
-      "startCoding": "Codez !"
+      "startCoding": "Codez !",
+      "addFrame": "Ajouter un cadre",
+      "insertInFrame": "Insérer dans le cadre"
   },
   "action": {
     "uploadingToMicrobit": "Envoi en cours vers micro:bit ..."
@@ -78,6 +80,16 @@
   "autoCompletion": {
     "myFunctions": "Mes Fonctions",
     "myVariables": "Mes Variables"
-  }
+  },
 
+  "apidiscovery" : {
+    "generatedColdeLabel": "Code: ",
+    "microbitAPI": {
+    }
+  },
+
+  "commandTabs": {
+      "0": "Ajoute un cadre",
+      "1": "Explore micro:bit"
+  }
 }

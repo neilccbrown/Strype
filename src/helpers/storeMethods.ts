@@ -1,5 +1,6 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, APICodedItem, APIItemTextualDescription } from "@/types/types";
 import Vue from "vue";
+import i18n from "@/i18n"
 import { getSHA1HashForObject } from "@/helpers/common";
 
 export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId: number) => {
@@ -458,4 +459,24 @@ export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, cu
     }
 
     return isAncestorTypeFound;
+}
+
+// Compiles a flat API textual description. The API hierarchy structure is saved independently from the textual associated content,
+// so that locale changes updates the API textual description easily
+export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?: number, immediateParentName?: string): APIItemTextualDescription[] {
+    const apiDocumentedItems = [] as APIItemTextualDescription[];
+    apiCodedItems.forEach((apiItem) => {
+        const apiItemChildren = (apiItem.children) ? apiItem.children : [] as APICodedItem[]; 
+        apiDocumentedItems.push({name: apiItem.name,
+            label: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_label") as string,
+            doc: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string,
+            level: level??1,
+            exampleCodePortion: apiItem.codePortion,
+            isFinal: (apiItemChildren.length == 0),
+            immediateParentName: (immediateParentName??""), //if the parent's name isn't provided as argument (i.e. for level 1), an empty value is used instead
+        });
+        //add the children
+        apiDocumentedItems.push(...compileTextualAPI(apiItemChildren, (level) ? (level + 1) : 2, apiItem.name));
+    }) 
+    return apiDocumentedItems;
 }
