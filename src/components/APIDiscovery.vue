@@ -16,7 +16,7 @@
             </div>
         </div>
         <div class="api-code-container" v-if="showCodeGeneratorPart">
-            <button @click="useExampleCode()" v-html="(isEditing) ? $t('buttonLabel.insertInFrame') : $t('buttonLabel.addFrame')" :disabled="isCodeEmpty || isSelectedIntermediateItem" class="api-code-button btn btn-secondary" />
+            <button @click="useExampleCode()" v-html="(isEditing) ? $t('buttonLabel.insertInFrame') : $t('buttonLabel.addFrame')" :disabled="isCodeEmpty() || isSelectedIntermediateItem()" class="api-code-button btn btn-secondary" />
             <div>
                 <span class="api-code-label" v-html="$t('apidiscovery.generatedColdeLabel')"/>
                 <span v-for="level in codeLevels" :key="'apiCodeSpan_'+level" :style="'color:'+getLevelColor(level)">{{mbAPIExampleCodeParts[level-1]}}</span>
@@ -56,19 +56,17 @@ export default Vue.extend({
         showCodeGeneratorPart(): boolean {
             return store.getters.getCanShowAPICodeGenerator();
         },
+    },
 
+    methods:{
         isCodeEmpty(): boolean{
-            console.log("is code empty: " + !this.mbAPIExampleCodeParts.find((name) => (name && name.length > 0)))
             return !this.mbAPIExampleCodeParts.find((name) => (name && name.length > 0));
         },
 
         isSelectedIntermediateItem(): boolean {
-            console.log("is selected intermediate: "+((!this.flatAPIDesc.find((item) => item.name === this.selectedAPIItemName)?.isFinal)??true))
             return (!this.flatAPIDesc.find((item) => item.name === this.selectedAPIItemName)?.isFinal)??true;
         },
-    },
 
-    methods:{
         isItemShowable(itemName: string, itemLevel: number): boolean {
             //To decide if this API item should be shown, we check these two cases:
             //- if there is no item selected, then all level 1 items are shown
