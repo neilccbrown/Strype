@@ -85,7 +85,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import { DefaultCursorPosition, UserDefinedElement, indexedAcResultsWithModule, indexedAcResult, acResultType, acResultsWithModule } from "@/types/types";
+import { DefaultCursorPosition, UserDefinedElement, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
 import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import { getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 
@@ -106,11 +106,12 @@ export default Vue.extend({
             default: () => DefaultCursorPosition,
         },
         context: String,
+        isImportFrame: Boolean,
     },
 
     data() {
         return {
-            resultsToShow: {} as indexedAcResultsWithModule,
+            resultsToShow: {} as IndexedAcResultWithModule,
             documentation: [] as string[],
             selected: 0,
             currentModule: "",
@@ -159,7 +160,7 @@ export default Vue.extend({
             get(){
                 return store.getters.getAcResults();
             },
-            set(value: acResultsWithModule){
+            set(value: AcResultsWithModule){
                 store.commit(
                     "setAcResults",
                     value
@@ -243,22 +244,25 @@ export default Vue.extend({
                 parsedTypes["Python"] = Object.values(brythonBuiltins).map((e) => e.type);
             }
             
-            const acResults: acResultsWithModule = {};
+            const acResults: AcResultsWithModule = {};
             
             Object.keys(parsedDoc).forEach( (module: string) => {
-
-                // For each module we create an indexed list with all the results
-                const listOfElements: acResultType[] = parsedResults[module].map( (element,i) => {
-                    // We are not assigning the indexes at that stage as we will need to sort first
-                    return {acResult: element, documentation: parsedDoc[module][i], type:parsedTypes[module][i]}
-                });
-                // Sort is done as a seperate step, as it is more efficient to join the lists (parsedResults, parsedDoc and parsedTypes) first
-                // and then sort, instead of sorting first, as this would require to sort one list and based on this sorting, sort the others as well
-                listOfElements.sort( (a, b) => {
-                    return a.acResult.toLowerCase().localeCompare(b.acResult.toLowerCase())
-                });
-                
-                acResults[module] = listOfElements;
+                // We do not include modules that had not result in them
+                if(parsedResults[module].length>0){
+                    // For each module we create an indexed list with all the results
+                    // We filter first, as if we have a block without a name (i.e. funct with empty mame) we should exclude these
+                    const listOfElements: AcResultType[] = parsedResults[module].filter((e) => e!=="").map( (element,i) => {
+                        // We are not assigning the indexes at that stage as we will need to sort first
+                        return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i]}
+                    });
+                    // Sort is done as a seperate step, as it is more efficient to join the lists (parsedResults, parsedDoc and parsedTypes) first
+                    // and then sort, instead of sorting first, as this would require to sort one list and based on this sorting, sort the others as well
+                    listOfElements.sort( (a, b) => {
+                        return a.acResult.toLowerCase().localeCompare(b.acResult.toLowerCase())
+                    });
+                    
+                    acResults[this.isImportFrame?"":module] = listOfElements;
+                }
             });
 
             // store it in the store, so that if it the template is destroyed the ac remains
@@ -277,12 +281,12 @@ export default Vue.extend({
             let lastIndex=0;
             for (const module in this.acResults) {
                 // Filter the list based on the token
-                const filteredResults: acResultType[] = this.acResults[module].filter( (element: indexedAcResult) => 
+                const filteredResults: AcResultType[] = this.acResults[module].filter( (element: IndexedAcResult) => 
                     element.acResult.toLowerCase().startsWith(this.token))
 
                 // Add the indices
                 this.resultsToShow[module] = filteredResults.map((e,i) => {
-                    return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type }
+                    return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"" }
                 })
                 lastIndex += filteredResults.length;    
             }    
@@ -322,7 +326,7 @@ export default Vue.extend({
             // We start by getting the index
             const indexOfSelected = parseInt(id.replace(this.UIID,""));
             // Here we are making all the ACresult objects in a flatten array (with contact.apply()) in which we are then finding the selected and return its type
-            return ((([] as indexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as indexedAcResult)?.type;
+            return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type;
         },
 
         getModuleOfSelected(delta: number): string {
@@ -346,7 +350,7 @@ export default Vue.extend({
         },
 
         getCurrentDocumentation(): string {
-            return (this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as acResultType)?.documentation??"";
+            return (this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType)?.documentation??"";
         },
 
         areResultsToShow(): boolean {

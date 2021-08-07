@@ -17,6 +17,7 @@
                 @change.self="handleDragAndDrop($event)"
                 @unchoose="showSelectedFrames()"
                 animation= "200"
+                swapThreshold = "0.2"
                 :disabled="isEditing"
                 :key="'Draggagle-Body-'+this.frameId"
                 @start="handleMultiDrag($event)"
@@ -38,12 +39,12 @@
                 />
             </Draggable>
             <b-popover
-            v-if="empty"
-            :target="uiid"
-            :title="this.$i18n.t('errorMessage.errorTitle')"
-            triggers="hover focus"
-            placement="left"
-            :content="errorMessage"
+                v-if="empty"
+                :target="uiid"
+                :title="this.$i18n.t('errorMessage.errorTitle')"
+                triggers="hover focus"
+                placement="left"
+                :content="errorMessage"
             ></b-popover>
         </div>
     </div>

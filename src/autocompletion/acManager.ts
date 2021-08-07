@@ -3,6 +3,7 @@ import store from "@/store/store";
 import { FrameObject } from "@/types/types";
 import moduleDescription from "@/autocompletion/microbit.json";
 import i18n from "@/i18n";
+import _ from "lodash";
 
 const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
@@ -24,24 +25,23 @@ function isACNeededToShow(code: string): boolean {
     if(code.indexOf(" ") === -1){
         return true;
     }
-
-    //check if we follow a symbols operator 
+ 
+    //check if we follow a symbols operator (that may not have surrounding spaces)
     let foundOperatorFlag = false;
     operators.forEach((op) => {
-        if(code.trim().endsWith(op)) {
+        if(code.match(".*"+_.escapeRegExp(op)+" *[a-zA-Z0-9_$()\\[\\]{}]*$")) {
             foundOperatorFlag = true;
         }
     });
-
+ 
     if(!foundOperatorFlag) {
-        //then check if we follow a non symbols operators (need a trailing space)
+        //then check if we follow a non symbols operators (that need surrounding spaces)
         keywordsWihtSurroundSpaces.forEach((op) => {
-            if(code.toLowerCase().match(".*"+op+" *")) {
+            if(code.toLowerCase().match(".* "+op+" +[^ ]*")) {
                 foundOperatorFlag = true;
             }
         });
     }  
-
     return foundOperatorFlag;
 }
 
@@ -94,7 +94,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // Define the slot id we are talking about
         inspectionCode += "\n"+INDENT+"try:"
         // append the line that removes useless names and saves them to the results
-        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]"
+        // we also need to remove validContext so that we don't get it in the results
+        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$') and name!='validContext']"
         // If there are no results, we notify the hidden span that there is no AC available
         
         inspectionCode += "\n"+INDENT+INDENT+"resultsWithModules={}"
@@ -108,15 +109,18 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue) 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"for name in results:"
         // in case the contextAC is not empty, this is the 'module'
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals()[name].__module__"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\""
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\""
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"else:"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"module=module.capitalize()"
+         
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
+        
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if module:";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\""
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\""
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=module.capitalize()"
         // if there is no list for the specific mod, create it and append the name; otherwise just append the name
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"INDENT+resultsWithModules.setdefault(module,[]).append(name)"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
         
         // If there are no results
@@ -128,13 +132,14 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
-        */ 
+        */
 
         inspectionCode += "\n"+INDENT+"from io import StringIO";
         inspectionCode += "\n"+INDENT+"import sys";
         inspectionCode += "\n"+INDENT+"documentation={}";
         inspectionCode += "\n"+INDENT+"types={}";
         inspectionCode += "\n"+INDENT+"try:";
+
         // For each module
         inspectionCode += "\n"+INDENT+INDENT+"for module in resultsWithModules:";
         // For each result in the specific module
@@ -175,10 +180,10 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // Fake a click to the hidden span to trigger the AC window to show
     // This must be done by Brython to be sure that the AC and documentation
     // have had time to load.
-    inspectionCode += "\n"+INDENT+"try:"
-    inspectionCode += "\n"+INDENT+INDENT+"event = window.MouseEvent.new('click')";
-    inspectionCode += "\n"+INDENT+INDENT+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
-    inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass";
+    inspectionCode += "\ntry:"
+    inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')";
+    inspectionCode += "\n"+INDENT+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
+    inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
     runPythonCode((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);

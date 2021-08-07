@@ -1,6 +1,6 @@
 <template>
     <div 
-        class="caret"
+        class="caret navigationPosition"
         :class="{blurred: isBlurred, invisible: isInvisible}">
     </div>
 </template>

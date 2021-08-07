@@ -42,20 +42,6 @@
                     :caretVisibility="caretVisibility"
                     ref="frameBody"
                 />
-                <!-- We have two caret containers because the frames which 
-                     have joint children cannot have the caret outside them,
-                     as the joint children sit whithin their parent; hence,
-                     if you take it out, the caret will jump out of the 'if' and
-                     then inside the go on the 'elif/else'
-                 -->
-                <CaretContainer
-                    v-if="hasJointFrameObjects"
-                    :frameId="this.frameId"
-                    :caretVisibility="this.caretVisibility"
-                    :caretAssignedPosition="caretPosition.below"
-                    :isFrameDisabled="this.isDisabled"
-                    @hide-context-menus="handleClick($event,'paste')"
-                />
                 <JointFrames 
                     v-if="allowsJointChildren && hasJointFrameObjects"
                     :jointParentId="frameId"
@@ -65,7 +51,7 @@
             </div>
             <div>
                 <CaretContainer
-                    v-if="!hasJointFrameObjects"
+                    v-if="!isJointFrame"
                     :frameId="this.frameId"
                     :caretVisibility="this.caretVisibility"
                     :caretAssignedPosition="caretPosition.below"
@@ -224,6 +210,7 @@ export default Vue.extend({
         multiDragPosition(): string {
             return store.getters.getMultiDragPosition(this.$props.frameId);
         },
+
     },
 
     mounted() {
@@ -404,7 +391,7 @@ export default Vue.extend({
                     this.$props.frameId
                 );
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
-                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
+                store.commit("setCurrentFrame", this.$props.frameId);
                 store.dispatch("deleteFrames", "Backspace");
             }                    
         },
@@ -467,7 +454,7 @@ export default Vue.extend({
             else{
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
                 store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
-                store.dispatch("deleteFrames", "Backspace");
+                store.dispatch("deleteFrames","Backspace");
             }       
         },
 

@@ -96,6 +96,12 @@ export default class Parser {
                     this.parseSlot(statement.contentDict[currSlotIndex].code,currentPosition);
                 }
             }
+            else if(!statement.contentDict[currSlotIndex].shownLabel){
+                //even if the label and its slot aren't visible, they need to be logged within the framePositionMap
+                //as 0 length elements to line framePositionMap up with the slot indexes
+                positions.push(output.length);
+                lengths.push(0);
+            }
             currSlotIndex++;
         });
         

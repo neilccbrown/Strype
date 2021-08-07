@@ -18,6 +18,7 @@
                 @change.self="handleDragAndDrop($event)"
                 @unchoose="showSelectedFrames()"
                 :animation="300"
+                swapThreshold = "0.2"
                 :disabled="isEditing"
                 :key="'Draggagle-Container-'+this.frameId"
                 :id="'Draggagle-Container-'+this.frameId"
@@ -36,7 +37,6 @@
                     :isJointFrame="false"
                     :allowChildren="frame.frameType.allowChildren"
                     :caretVisibility="frame.caretVisibility"
-                    class="frame" 
                 />
             </Draggable>
         </div>
