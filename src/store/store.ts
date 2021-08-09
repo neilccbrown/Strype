@@ -549,7 +549,7 @@ export default new Vuex.Store({
             return state.debugAC;
         },
 
-        // Check up if the API generator can shown, depending on the current position in the code editor (cf. details in method)
+        // Check up if the API generator can be shown, depending on the current position in the code editor (cf. details in method)
         getCanShowAPICodeGenerator: (state) => () => {
             // first check if we are in an editoble slot or at a position where the caret is shown
             const currentFrame = state.frameObjects[state.currentFrame.id];

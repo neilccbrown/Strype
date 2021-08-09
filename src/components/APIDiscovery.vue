@@ -11,15 +11,15 @@
                             {{apiDescItem.label}}
                             <i :id="apiDescItem.name+'_info'" v-if="apiDescItem.doc.length > 0" class="fas fa-info-circle" v-b-tooltip.html.v-info.bottomright="{customClass: 'api-info-tooltip'}" :title="apiDescItem.doc" style="color: #bbc6b6;"/> 
                         </b-card-text>
+                        <div class="api-code-container" v-if="apiDescItem.name===selectedAPIItemName  && !isSelectedIntermediateItem()">
+                            <button @click="useExampleCode()" v-html="(isEditing) ? $t('buttonLabel.insertInFrame') : $t('buttonLabel.addFrame')" :disabled="!showCodeGeneratorPart || isCodeEmpty() || isSelectedIntermediateItem()" class="api-code-button btn btn-secondary" />
+                            <div>
+                                <span class="api-code-label" v-html="$t('apidiscovery.generatedColdeLabel')"/>
+                                <span>{{ '&hellip;&nbsp;'+mbAPIExampleCodeParts[apiDescItem.level-1]}}</span>
+                            </div>
+                        </div>
                     </b-card>
                 </div> 
-            </div>
-        </div>
-        <div class="api-code-container" v-if="showCodeGeneratorPart">
-            <button @click="useExampleCode()" v-html="(isEditing) ? $t('buttonLabel.insertInFrame') : $t('buttonLabel.addFrame')" :disabled="isCodeEmpty() || isSelectedIntermediateItem()" class="api-code-button btn btn-secondary" />
-            <div>
-                <span class="api-code-label" v-html="$t('apidiscovery.generatedColdeLabel')"/>
-                <span v-for="level in codeLevels" :key="'apiCodeSpan_'+level" :style="'color:'+getLevelColor(level)">{{mbAPIExampleCodeParts[level-1]}}</span>
             </div>
         </div>
     </div>
@@ -277,7 +277,7 @@ export default Vue.extend({
 }
 
 .api-code-label{
-    color:#6c757d;
+    color:#bcc1c5;
 }
 
 .api-code-button {
@@ -306,6 +306,10 @@ export default Vue.extend({
 }
 
 //the following overwrites the bootstrap tooltip class
+.tooltip {
+      opacity: 1.0 !important;
+}
+
 .tooltip-inner {
     max-width: 500px !important;
     text-align: justify !important;

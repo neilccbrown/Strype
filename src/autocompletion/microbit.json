@@ -94,8 +94,7 @@
                 {"name":"ImgUp","codePortion":"shift_up(n)"},
                 {"name":"imgDown","codePortion":"shift_down(n)"},
                 {"name":"ImgCrop","codePortion":"crop(x, y, w, h)"},
-                {"name":"ImgFill","codePortion":"fill(value)"},
-                {"name":"ImgBlit","codePortion":"blit(src, x, y, w, h, xdest=0, ydest=0)"}]}]},
+                {"name":"ImgFill","codePortion":"fill(value)"}]}]},
         {"name":"button","codePortion":"button_a.", "children":[
             {"name":"buttonIsPress","codePortion":"isPressed()"},
             {"name":"buttonWasPress","codePortion":"wasPressed()"},
