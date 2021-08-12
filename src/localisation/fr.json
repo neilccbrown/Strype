@@ -23,8 +23,9 @@
       "skipTutorial": "Passer le tutoriel",
       "next": "Suivant",
       "startCoding": "Codez !",
-      "addFrame": "Ajouter un cadre",
-      "insertInFrame": "Insérer dans le cadre"
+      "addCodeExtract": "Ajouter au code",
+      "showMore": "montrer plus",
+      "showLess": "montrer moins"
   },
   "action": {
     "uploadingToMicrobit": "Envoi en cours vers micro:bit ..."
@@ -83,7 +84,6 @@
   },
 
   "apidiscovery" : {
-    "generatedColdeLabel": "Code: ",
     "microbitAPI": {
     }
   },

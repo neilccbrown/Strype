@@ -483,12 +483,19 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
 export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?: number, immediateParentName?: string): APIItemTextualDescription[] {
     const apiDocumentedItems = [] as APIItemTextualDescription[];
     apiCodedItems.forEach((apiItem) => {
+        // documentation (simple and extra) is not always provided in the json files (for easier readablilty)
+        // therefore, we check if the value can be found against the key for doc/extradoc and assign an empty string if not found
+        const shortDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_doc")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string : "";
+        const extraDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
+
         const apiItemChildren = (apiItem.children) ? apiItem.children : [] as APICodedItem[]; 
         apiDocumentedItems.push({name: apiItem.name,
             label: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_label") as string,
-            doc: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string,
+            doc: shortDoc,
+            extradoc: extraDoc,
             level: level??1,
-            exampleCodePortion: apiItem.codePortion,
+            codePortion: apiItem.codePortion,
+            extraCodePortion : apiItem.extraCodePortion??"",
             isFinal: (apiItemChildren.length == 0),
             immediateParentName: (immediateParentName??""), //if the parent's name isn't provided as argument (i.e. for level 1), an empty value is used instead
         });

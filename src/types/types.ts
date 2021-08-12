@@ -824,7 +824,8 @@ export interface VoidFunction {
 //Representation of an item of the (microbit) API using a coded identifier with its potential children
 export interface APICodedItem {
     name: string, //a UUID coded name that represent a single item of the API description (** do not use "." in the coded names, it messes i18n **)
-    codePortion: string, //the code portion that will builds an example use in the editor
+    codePortion: string, //the code portion that will builds an example use in the editor (code builder)
+    extraCodePortion?: string, //the optional full code portion to be shown in extra doc -- this code portion isn't used in the code builder
     children?: APICodedItem[];
 }
 
@@ -832,8 +833,10 @@ export interface APICodedItem {
 export interface APIItemTextualDescription {
     name: string; //a UUID coded name that represent a single item of the API description
     label: string; //the textual value of the item
-    doc: string; //the documentation for this item
-    exampleCodePortion: string, //the code portion that will builds an example use in the editor
+    doc: string; //the documentation for this item (short and always visible)
+    extradoc: string; //the rest of the documentation for this item (visible on demand);
+    codePortion: string, //the code portion that will builds an example use in the editor (code builder)
+    extraCodePortion: string, //the full code portion to be shown in extra doc (or empty string if none) -- this code portion isn't used in the code builder
     level: number; //the level of the item in the API hierarchy
     isFinal: boolean; //indicates if that is a termination item
     immediateParentName: string; //the name of the immediate parent of this item - empty string if level 1

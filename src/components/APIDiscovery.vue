@@ -2,21 +2,63 @@
     <div class="api-container">
         <div class="api-items-container">
             <div v-for="(apiDescItem) in flatAPIDesc" :key="apiDescItem.name">
-                <div v-if="isItemShowable(apiDescItem.name, apiDescItem.level)" class="api-item-container"
-                    @click="updateSelectedItem(apiDescItem.name, apiDescItem.isFinal, apiDescItem.immediateParentName, apiDescItem.exampleCodePortion, apiDescItem.level)"
-                    :style="getAPIItemContainerStyle(apiDescItem.level)">
-                    <span :id="apiDescItem.name+'_bullet'" v-html="getItemBullet(apiDescItem.name, apiDescItem.isFinal, apiDescItem.level)" :class="{'api-item-bullet-icon': true, 'api-item-bullet-invisible-icon': apiDescItem.isFinal}"/>
-                    <b-card :style="getCardStyle(apiDescItem.name, apiDescItem.level)" style="flex-grow:2; cursor: pointer;">
+                <div 
+                    v-if="isItemShowable(apiDescItem.name, apiDescItem.level)" 
+                    class="api-item-container"
+                    @click="updateSelectedItem(apiDescItem.name, apiDescItem.isFinal, apiDescItem.immediateParentName, apiDescItem.codePortion, apiDescItem.level)"
+                    :style="getAPIItemContainerStyle(apiDescItem.level)"
+                >
+                    <span 
+                        :id="apiDescItem.name+'_bullet'" 
+                        v-html="getItemBullet(apiDescItem.name, apiDescItem.isFinal, apiDescItem.level)" 
+                        :class="{'api-item-bullet-icon': true, 'api-item-bullet-invisible-icon': apiDescItem.isFinal}"
+                    />
+                    <b-card :style="getCardStyle(apiDescItem.name, apiDescItem.level)">
                         <b-card-text>
-                            {{apiDescItem.label}}
-                            <i :id="apiDescItem.name+'_info'" v-if="apiDescItem.doc.length > 0" class="fas fa-info-circle" v-b-tooltip.html.v-info.bottomright="{customClass: 'api-info-tooltip'}" :title="apiDescItem.doc" style="color: #bbc6b6;"/> 
+                            <span>{{apiDescItem.label}}</span>
+                            <i 
+                                :id="apiDescItem.name+'_info'" 
+                                v-if="apiDescItem.doc.length > 0 || apiDescItem.codePortion.length > 0" 
+                                class="fas fa-info-circle" 
+                                style="margin-left: 5px; color: #bbc6b6;"
+                            />
+                            <b-popover
+                                triggers="hover" 
+                                v-if="apiDescItem.doc.length > 0 || apiDescItem.codePortion.length > 0" 
+                                :target="apiDescItem.name+'_info'" 
+                                variant="info" 
+                                placement="bottomright" 
+                                @show="onShowAPIInfo" 
+                                @shown="onShownAPIInfo(apiDescItem.extradoc.length > 0)"
+                            >
+                                <span v-html="apiDescItem.doc"/>
+                                <div :style="getCodeExampleDivStyle(apiDescItem.doc.length > 0)" v-if="apiDescItem.isFinal" v-html="getCodeExample(apiDescItem.level, apiDescItem.codePortion)"/>
+                                <div v-if="apiDescItem.extradoc.length > 0">
+                                    <a 
+                                        @click="showExtraDoc=!showExtraDoc;" 
+                                        size="sm" 
+                                        class="show-more-link popover-body" 
+                                    >
+                                        {{getShowExtraCodeLinkLabel()}}
+                                    </a>
+                                    <i 
+                                        :class="{'show-more-chevron': true, fas: true, 'fa-chevron-up': showExtraDoc, 'fa-chevron-down': !showExtraDoc}"
+                                        @click="showExtraDoc=!showExtraDoc;" 
+                                    />
+                                    <div v-show="showExtraDoc">                                   
+                                        <span v-html="apiDescItem.extradoc"/>
+                                        <div :style="getCodeExampleDivStyle(true)" v-if="apiDescItem.extraCodePortion" v-html="getCodeExample(apiDescItem.level, apiDescItem.extraCodePortion)"/>
+                                    </div>
+                                </div>
+                            </b-popover>
                         </b-card-text>
                         <div class="api-code-container" v-if="apiDescItem.name===selectedAPIItemName  && !isSelectedIntermediateItem()">
-                            <button @click="useExampleCode()" v-html="(isEditing) ? $t('buttonLabel.insertInFrame') : $t('buttonLabel.addFrame')" :disabled="!showCodeGeneratorPart || isCodeEmpty() || isSelectedIntermediateItem()" class="api-code-button btn btn-secondary" />
-                            <div>
-                                <span class="api-code-label" v-html="$t('apidiscovery.generatedColdeLabel')"/>
-                                <span>{{ '&hellip;&nbsp;'+mbAPIExampleCodeParts[apiDescItem.level-1]}}</span>
-                            </div>
+                            <button 
+                                @click="useExampleCode()" 
+                                v-html="$t('buttonLabel.addCodeExtract')" 
+                                :disabled="!showCodeGeneratorPart || isSelectedIntermediateItem()" 
+                                class="api-code-button btn btn-secondary" 
+                            />
                         </div>
                     </b-card>
                 </div> 
@@ -40,6 +82,7 @@ export default Vue.extend({
             selectedAPIHierarchyNames: [] as string[], //the list containing the names of the selected item's parents, then selected item, and then its immediate children
             codeLevels: 4, //this shouldn't change in the component, but just makes an easy way to adapt the code if more levels in the API are changed some day
             mbAPIExampleCodeParts: [] as string[], //the example code parts generated when using the API discovery tool (each part <==> one API level)
+            showExtraDoc: false,
         }
     },
 
@@ -59,10 +102,6 @@ export default Vue.extend({
     },
 
     methods:{
-        isCodeEmpty(): boolean{
-            return !this.mbAPIExampleCodeParts.find((name) => (name && name.length > 0));
-        },
-
         isSelectedIntermediateItem(): boolean {
             return (!this.flatAPIDesc.find((item) => item.name === this.selectedAPIItemName)?.isFinal)??true;
         },
@@ -112,8 +151,9 @@ export default Vue.extend({
             //the text colour changes to white when the card is selected to increase the contrast from the background colours
             //(the non selected colour is in line with the commands foreground colour CSS in Commands.vue)
             const foregroundColor =  (this.selectedAPIHierarchyNames.slice(0, this.selectedAPIHierarchyNames.indexOf(this.selectedAPIItemName) + 1).includes(itemName)) ? "white" : "#252323";
-            
-            return {"background-color": backgroundColor, "color": foregroundColor};
+
+            //we can now create the style object, adding the bits that are systematically added to the card (flex grow property, cursor style)            
+            return {"background-color": backgroundColor, "color": foregroundColor, "flex-grow": "2", "cursor": "pointer"};
         },
 
         getItemBullet(itemName: string, isItemFinal: boolean, itemLevel: number): string {
@@ -153,7 +193,7 @@ export default Vue.extend({
                     this.mbAPIExampleCodeParts.splice(0, this.codeLevels);
                     while(hierarchyLevel > 0){
                         const parentItem = this.flatAPIDesc.find((item) => item.name == parentName);
-                        this.mbAPIExampleCodeParts[hierarchyLevel-1] =  parentItem?.exampleCodePortion??"";
+                        this.mbAPIExampleCodeParts[hierarchyLevel-1] =  parentItem?.codePortion??"";
                         parentName = parentItem?.immediateParentName??"";
                         hierarchyLevel--;
                     }
@@ -168,7 +208,7 @@ export default Vue.extend({
                 let parentName = itemImmediateParentName;
                 while(hierarchyLevel > 0){
                     const parentItem = this.flatAPIDesc.find((item) => item.name == parentName);
-                    this.mbAPIExampleCodeParts[hierarchyLevel-1] =  parentItem?.exampleCodePortion??"";
+                    this.mbAPIExampleCodeParts[hierarchyLevel-1] =  parentItem?.codePortion??"";
                     parentName = parentItem?.immediateParentName??"";
                     hierarchyLevel--;
                 }
@@ -194,6 +234,34 @@ export default Vue.extend({
             else{
                 this.selectedAPIHierarchyNames = [];
             }
+        },
+
+        // Methods that "assemble" the different bits of code portion to show an example in the UI (i.e. the div content)
+        // Each part of the example are left in black, italic font (to be consistent with the documentation),
+        // the arguments of a method are coloured in a specific colour.
+        // Because the API info can be shown on hovering the (i) symbol, we need to make sure we get the right code example:
+        // it is as in this.mbAPIExampleCodeParts *up to* the level of the hovered API element:
+        // this method requires then the hovered element level, and its code portion
+        getCodeExample(APIElementLevel: number, APIElementCodePortion: string): string{
+            let exampleStr = "";
+            for(let level = 1; level <= this.codeLevels; level++){
+                const isHoveredLevel = (level==APIElementLevel);
+                if(isHoveredLevel || (this.mbAPIExampleCodeParts[level -1] && this.mbAPIExampleCodeParts[level-1].length > 0)){
+                    let examplePortion = (isHoveredLevel) ? APIElementCodePortion : this.mbAPIExampleCodeParts[level-1];
+                    if(examplePortion.includes("(")){
+                        examplePortion = examplePortion.replace(/\(.*\)/, function(matchedStr){
+                            //trim the parenthesis from the matched expression
+                            return "(</span><span class=\"code-example-args\">" + matchedStr.replaceAll(/(\(|\))/g, "") + "</span><span>)"
+                        });
+                    }
+                    exampleStr = exampleStr.concat("<span>" + examplePortion + "</span>");
+                    if(isHoveredLevel){
+                        // if we have reached the hovered element's level, no need to look for more code portions
+                        break;
+                    }
+                }
+            }
+            return exampleStr;   
         },
 
         // Actions to take when the generated code is to be sent to the main code:
@@ -239,6 +307,37 @@ export default Vue.extend({
                     this.selectedAPIHierarchyNames = [];
                 });
         },
+
+        onShowAPIInfo(){
+            // When the popop is opened, we first set the flag to show the extra doc to "true" in order to prepare the popup size correctly
+            this.showExtraDoc=true;
+        },
+
+        onShownAPIInfo(needMinWidth: boolean){
+            // When the popup is shown, we assign the right min width if the popup contains extra doc,
+            // so that when the extra doc is show, the popup doesn't resize and make the popup disappear.
+            // Moreover, we make the popup explicitely visible here - we need to keep it hidden to avoid the flicker
+            // when resetting the flag to false (as initially, the extra doc isn't shown)
+            const infoPopupElement = document.getElementsByClassName("popover")[0];
+            if(infoPopupElement){
+                if(needMinWidth){
+                    (infoPopupElement as HTMLDivElement).style.minWidth=  (infoPopupElement as HTMLDivElement).offsetWidth+"px";
+                }
+                this.showExtraDoc = false;
+                (infoPopupElement as HTMLDivElement).style.visibility = "visible";
+            }            
+        },
+
+        getShowExtraCodeLinkLabel(): string{
+            return this.$i18n.t((this.showExtraDoc) ? "buttonLabel.showLess":"buttonLabel.showMore") as string;
+        },
+
+        getCodeExampleDivStyle(needTopMargin: boolean){
+            // Gets the style for the code example div. Only the margin top is actually dynamic 
+            // (if there is no documentation to show, then we don't want a margin)
+            const marginTop = (needTopMargin) ? "10px" : "0px";
+            return {"margin-top": marginTop, display: "table", "background-color": "rgba(255,255,255,.6)", color: "black", "font-style": "italic", "border-top": "3px solid #B4B4B4", "padding": "5px"}
+        },
     },
 });
 </script>
@@ -269,15 +368,30 @@ export default Vue.extend({
     color: transparent;
     cursor: default;
 }
- 
+
+.code-example-args{
+    color:#0e84b5;
+}
+
+.show-more-link{
+    margin-top:10px !important;
+    display:inline-block;
+    color: green;
+    padding:0px !important;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.show-more-chevron{
+    margin-left: 2px;
+    font-size:10px;
+    cursor: pointer;
+}
+
 .api-code-container{
     display: flex;
     align-items: baseline; 
     margin-top: 10px;
-}
-
-.api-code-label{
-    color:#bcc1c5;
 }
 
 .api-code-button {
@@ -286,32 +400,16 @@ export default Vue.extend({
     margin-right: 5px;
 }
 
-.api-info-tooldtip{
-    max-width: none !important;
-}
-
-//this class is used in the API documentation (in the localised json files)
-.api-link {
-    color:white;
-    text-decoration: underline;
-}
-
-.api-link:hover {
-    color:rgb(234, 190, 240) ;
-}
-
 //the following ovewrites the bootstrap card class
 .card-body{
     padding: 5px !important;
 }
 
 //the following overwrites the bootstrap tooltip class
-.tooltip {
-      opacity: 1.0 !important;
+.popover {
+    max-width: 500px !important;
+    visibility: hidden; //in order to avoid flickering when preparing the extra doc popups
 }
 
-.tooltip-inner {
-    max-width: 500px !important;
-    text-align: justify !important;
-}
+
 </style>
