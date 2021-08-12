@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, EmptyDefinition} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -330,10 +330,19 @@ export default new Vuex.Store({
             });
             return commands;
         },
-        getIsCurrentFrameLabelShown: (state) => (frameId: number, slotIndex: number) => {
-            //for an optional label, the corresponding contentDict is always definined with a shown value
-            if(state.frameObjects[frameId].frameType.labels[slotIndex]?.optionalLabel === true){
-                return (state.frameObjects[frameId].contentDict[slotIndex].shownLabel);
+        getIsCurrentFrameLabelShown: (state, getters) => (frameId: number, slotIndex: number) => {
+            const frame = state.frameObjects[frameId]
+
+            // if it is an optional Label (as there are optional slots WHITOUT optional labels [e.g. functional params[) and it is not a function call
+            if(frame.frameType.labels[slotIndex]?.optionalLabel === true && frame.frameType.type !== EmptyDefinition.type){
+
+                // show the label IFF:
+                // 1) we are focused on this frame
+                // 2) it has code in it
+                // 3) We are editing this frame
+                return state.currentFrame.id === frameId || 
+                        frame.contentDict[slotIndex].code !== "" || 
+                        (getters.getIsEditing() && state.currentFrame.id === frameId);
             }
 
             //not optional label --> it's never hidden so we don't need to check any flag

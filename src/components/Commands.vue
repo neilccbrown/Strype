@@ -65,7 +65,7 @@ import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
 import { flashData } from "@/helpers/webUSB";
 import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId } from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition} from "@/types/types";
+import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition, FromImportDefinition} from "@/types/types";
 import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
 import $ from "jquery";
@@ -241,7 +241,7 @@ export default Vue.extend({
                 if(isEditing){
                     const frameType = store.getters.getCurrentFrameObject().frameType.type;
                     //space in import frame's editable slots
-                    if(frameType === ImportDefinition.type && event.key === " "){
+                    if((frameType === ImportDefinition.type || frameType === FromImportDefinition.type) && event.key === " "){
                         event.preventDefault();
                         return;
                     }

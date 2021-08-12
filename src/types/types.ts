@@ -423,9 +423,21 @@ export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
     labels: [
-        { label: "from ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand: toggleFrameLabelsDefs.importFrom, optionalSlot: false},
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
-        { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand: toggleFrameLabelsDefs.importAs, optionalSlot: false},
+        { label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true},
+    ],    
+    colour: "#CBD4C8",
+    draggableGroup: DraggableGroupTypes.imports,
+    isImportFrame: true,
+};
+
+export const FromImportDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: ImportFrameTypesIdentifiers.import,
+    labels: [
+        { label: "from ", slot: true, defaultText: "module", optionalSlot: false},
+        { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
+        { label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true},
     ],    
     colour: "#CBD4C8",
     draggableGroup: DraggableGroupTypes.imports,
@@ -464,6 +476,7 @@ export const Definitions = {
     ReturnDefinition,
     VarAssignDefinition,
     ImportDefinition,
+    FromImportDefinition,
     CommentDefinition,
 };
 

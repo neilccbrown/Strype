@@ -39,6 +39,12 @@ export const addCommandsDefs: {[id: string]: AddFrameCommandDef[]} = {
             shortcut: "f",
             index: 1,
         },
+        {
+            type: Definitions.FromImportDefinition,
+            description: "from...import",
+            shortcut: "f",
+            index:1,
+        },
     ],
     "w": [{
         type: Definitions.WhileDefinition,
