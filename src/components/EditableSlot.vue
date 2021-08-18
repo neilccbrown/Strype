@@ -25,7 +25,7 @@
             @keydown.backspace="onBackSpaceKeyDown()"
             @keyup.backspace="onBackSpaceKeyUp()"
             @keydown="onEqualOrSpaceKeyDown($event)"
-            @keyup="logCursorPosition()"
+            @keyup="logCursorPositionAndCheckBracket($event)"
             :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
             :id="UIID"
             :key="UIID"
@@ -494,9 +494,33 @@ export default Vue.extend({
         },
 
         // store the cursor position to give it as input to AutoCompletionPopUp
-        logCursorPosition() {
+        // Also checks if s bracket is opened, so it closes it
+        logCursorPositionAndCheckBracket(event: KeyboardEvent) {
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
+
+            const openBracketCharacters = ["(","{","[","\"","'"];
+            const characterIndex= openBracketCharacters.indexOf(event.key)
+
+            if(characterIndex !== -1) {
+                //create a list with the closing bracket for each one of the opening in the same index
+                const closeBracketCharacters = [")","}","]","\"","'"];
+                
+                // get the input field
+                const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+                const currentTextCursorPos = inputField.selectionStart??0;
+
+                // add the closing bracket to the text
+                const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
+                + closeBracketCharacters[characterIndex] // the needed closing bracket or punctuation mark
+                + this.code.substr(currentTextCursorPos);
+
+                this.showAC = false;
+                // set the text in the input field and move the cursor inside the brackets
+                this.textCursorPos  = currentTextCursorPos;
+                this.code = newCode;
+            }
+
         },
         
         computeFitWidthValue(): string {
