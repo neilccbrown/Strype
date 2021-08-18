@@ -1887,8 +1887,7 @@ export default new Vuex.Store({
             let currentFramePosition;
 
             if (state.isEditing){ 
-                const currentEditableSlots = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).filter((slot) => slot[1].shownLabel);
-                const posOfCurSlot = currentEditableSlots.findIndex((slot) => slot[1].focused);
+                const posOfCurSlot = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
                 currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === state.currentFrame.id); 
             }
             else {
