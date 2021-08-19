@@ -35,6 +35,7 @@
         "textarea-caret": "^3.1.0",
         "tigerpython-parser": "git+https://github.com/a-vorontsov/TigerPython-Parser.git",
         "v-blur": "^1.0.4",
+        "velocity": "^0.7.3",
         "vue": "^2.6.12",
         "vue-autosize-input": "^0.1.0",
         "vue-browser-detect-plugin": "^0.1.13",

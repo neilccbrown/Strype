@@ -21,23 +21,25 @@
         <div :id="commandsContainerUUID" >
             <div id="addFramePanel" v-if="!isEditing">
                 <div class="frameCommands">
-                    <AddFrameCommand
-                        v-for="addFrameCommand in addFrameCommands"
-                        :key="addFrameCommand[0].type.type"
-                        :type="addFrameCommand[0].type.type"
-                        :shortcut="addFrameCommand[0].shortcut"
-                        :symbol="
-                            addFrameCommand[0].symbol !== undefined
-                                ? addFrameCommand[0].symbol
-                                : addFrameCommand[0].shortcut
-                        "
-                        :description="addFrameCommand[0].description"
-                        :index="
-                            addFrameCommand[0].index!==undefined
-                            ? addFrameCommand[0].index
-                            : 0
-                        "
-                    />
+                    <transition-group name="list" tag="p">
+                        <AddFrameCommand
+                            v-for="addFrameCommand in addFrameCommands"
+                            :key="addFrameCommand[0].type.type"
+                            :type="addFrameCommand[0].type.type"
+                            :shortcut="addFrameCommand[0].shortcut"
+                            :symbol="
+                                addFrameCommand[0].symbol !== undefined
+                                    ? addFrameCommand[0].symbol
+                                    : addFrameCommand[0].shortcut
+                            "
+                            :description="addFrameCommand[0].description"
+                            :index="
+                                addFrameCommand[0].index!==undefined
+                                ? addFrameCommand[0].index
+                                : 0
+                            "
+                        />
+                    </transition-group>
                 </div>
                 <hr />
             </div>
@@ -525,5 +527,13 @@ export default Vue.extend({
 
 .cmd-button-margin{
     margin-right: 5px;
+}
+
+.list-enter-active, .list-leave-active {
+  transition: all 1s;
+}
+.list-enter, .list-leave-to /* .list-leave-active below version 2.1.8 */ {
+  opacity: 0;
+  transform: translate3d(3);
 }
 </style>
