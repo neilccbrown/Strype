@@ -33,7 +33,7 @@ export default new Vuex.Store({
 
         nextAvailableId: Math.max(...initialState.frameMap)+1, // won't work for tutorial, as it is not needed in there
 
-        importContaierId: -1,
+        importContainerId: -1,
 
         functionDefContainerId: -2,
         /*END of flags that need checking when a build is done*/
@@ -569,8 +569,8 @@ export default new Vuex.Store({
                 // we are at a caret position. We can always add a new method call frame as long as we're not in one of the following:
                 // - imports container
                 // - function definition container
-                return (state.currentFrame.caretPosition == CaretPosition.body && currentFrame.id != state.importContaierId && currentFrame.id != state.functionDefContainerId) 
-                    || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId && currentFrame.parentId != state.importContaierId && currentFrame.parentId != state.functionDefContainerId);        
+                return (state.currentFrame.caretPosition == CaretPosition.body && currentFrame.id != state.importContainerId && currentFrame.id != state.functionDefContainerId) 
+                    || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId && currentFrame.parentId != state.importContainerId && currentFrame.parentId != state.functionDefContainerId);        
             }
         },
 

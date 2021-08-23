@@ -3,54 +3,54 @@
         <div class="api-items-container">
             <div v-for="(apiDescItem) in flatAPIDesc" :key="apiDescItem.name">
                 <div 
-                    v-if="isItemShowable(apiDescItem.name, apiDescItem.level)" 
+                    v-if="isItemShowable(apiDescItem)" 
                     class="api-item-container"
-                    @click="updateSelectedItem(apiDescItem.name, apiDescItem.isFinal, apiDescItem.immediateParentName, apiDescItem.codePortion, apiDescItem.level)"
+                    @click="updateSelectedItem(apiDescItem)"
                     :style="getAPIItemContainerStyle(apiDescItem.level)"
                 >
                     <span 
                         :id="apiDescItem.name+'_bullet'" 
-                        v-html="getItemBullet(apiDescItem.name, apiDescItem.isFinal, apiDescItem.level)" 
+                        v-html="getItemBullet(apiDescItem)" 
                         :class="{'api-item-bullet-icon': true, 'api-item-bullet-invisible-icon': apiDescItem.isFinal}"
                     />
-                    <b-card :style="getCardStyle(apiDescItem.name, apiDescItem.level)">
+                    <b-card :style="getCardStyle(apiDescItem)">
                         <b-card-text>
                             <span>{{apiDescItem.label}}</span>
-                            <i 
-                                :id="apiDescItem.name+'_info'" 
-                                v-if="apiDescItem.doc.length > 0 || apiDescItem.codePortion.length > 0" 
-                                class="fas fa-info-circle" 
-                                style="margin-left: 5px; color: #bbc6b6;"
-                            />
-                            <b-popover
-                                triggers="hover" 
-                                v-if="apiDescItem.doc.length > 0 || apiDescItem.codePortion.length > 0" 
-                                :target="apiDescItem.name+'_info'" 
-                                variant="info" 
-                                placement="bottomright" 
-                                @show="onShowAPIInfo" 
-                                @shown="onShownAPIInfo(apiDescItem.extradoc.length > 0)"
-                            >
-                                <span v-html="apiDescItem.doc"/>
-                                <div :style="getCodeExampleDivStyle(apiDescItem.doc.length > 0)" v-if="apiDescItem.isFinal" v-html="getCodeExample(apiDescItem.level, apiDescItem.codePortion)"/>
-                                <div v-if="apiDescItem.extradoc.length > 0">
-                                    <a 
-                                        @click="showExtraDoc=!showExtraDoc;" 
-                                        size="sm" 
-                                        class="show-more-link popover-body" 
-                                    >
-                                        {{getShowExtraCodeLinkLabel()}}
-                                    </a>
-                                    <i 
-                                        :class="{'show-more-chevron': true, fas: true, 'fa-chevron-up': showExtraDoc, 'fa-chevron-down': !showExtraDoc}"
-                                        @click="showExtraDoc=!showExtraDoc;" 
-                                    />
-                                    <div v-show="showExtraDoc">                                   
-                                        <span v-html="apiDescItem.extradoc"/>
-                                        <div :style="getCodeExampleDivStyle(true)" v-if="apiDescItem.extraCodePortion" v-html="getCodeExample(apiDescItem.level, apiDescItem.extraCodePortion)"/>
+                            <div v-if="apiDescItem.doc.length > 0 || apiDescItem.codePortion.length > 0" style="display: inline">
+                                <i 
+                                    :id="apiDescItem.name+'_info'"  
+                                    class="fas fa-info-circle" 
+                                    style="margin-left: 5px; color: #bbc6b6;"
+                                />
+                                <b-popover
+                                    triggers="hover" 
+                                    :target="apiDescItem.name+'_info'" 
+                                    variant="info" 
+                                    placement="bottomright" 
+                                    @show="onShowAPIInfo" 
+                                    @shown="onShownAPIInfo(apiDescItem.extradoc.length > 0)"
+                                >
+                                    <span v-html="apiDescItem.doc"/>
+                                    <div :style="getCodeExampleDivStyle(apiDescItem.doc.length > 0)" v-if="apiDescItem.isFinal" v-html="getCodeExample(apiDescItem)"/>
+                                    <div v-if="apiDescItem.extradoc.length > 0">
+                                        <a 
+                                            @click="showExtraDoc=!showExtraDoc;" 
+                                            size="sm" 
+                                            class="show-more-link popover-body" 
+                                        >
+                                            {{getShowExtraCodeLinkLabel()}}
+                                        </a>
+                                        <i 
+                                            :class="{'show-more-chevron': true, fas: true, 'fa-chevron-up': showExtraDoc, 'fa-chevron-down': !showExtraDoc}"
+                                            @click="showExtraDoc=!showExtraDoc;" 
+                                        />
+                                        <div v-show="showExtraDoc">                                   
+                                            <span v-html="apiDescItem.extradoc"/>
+                                            <div :style="getCodeExampleDivStyle(true)" v-if="apiDescItem.extraCodePortion" v-html="getCodeExample(apiDescItem, true)"/>
+                                        </div>
                                     </div>
-                                </div>
-                            </b-popover>
+                                </b-popover>
+                            </div>
                         </b-card-text>
                         <div class="api-code-container" v-if="apiDescItem.name===selectedAPIItemName  && !isSelectedIntermediateItem()">
                             <button 
@@ -79,7 +79,9 @@ export default Vue.extend({
     data: function () {
         return {
             selectedAPIItemName: "",
+            selectedAPIItemLevel: 0,
             selectedAPIHierarchyNames: [] as string[], //the list containing the names of the selected item's parents, then selected item, and then its immediate children
+            itemsToShow: [] as string[], //the list containing the names of the items that need to be shown (displayed) in the UI (cf. isItemShowable() for details)
             codeLevels: 4, //this shouldn't change in the component, but just makes an easy way to adapt the code if more levels in the API are changed some day
             mbAPIExampleCodeParts: [] as string[], //the example code parts generated when using the API discovery tool (each part <==> one API level)
             showExtraDoc: false,
@@ -106,19 +108,15 @@ export default Vue.extend({
             return (!this.flatAPIDesc.find((item) => item.name === this.selectedAPIItemName)?.isFinal)??true;
         },
 
-        isItemShowable(itemName: string, itemLevel: number): boolean {
+        isItemShowable(item: APIItemTextualDescription): boolean {
             //To decide if this API item should be shown, we check these two cases:
             //- if there is no item selected, then all level 1 items are shown
             //- if there is an item selected, we keep all level 1 items, the parents to that item, it's immediate parent siblings, its siblings and its first children
             if(this.selectedAPIItemName.length == 0){
-                return itemLevel == 1;
+                return item.level == 1;
             }
-            else {             
-                const selectedItemImmedateParent = this.flatAPIDesc.find((item) => item.name == this.selectedAPIItemName)?.immediateParentName??"";
-                const selectedItemSiblings = this.flatAPIDesc.filter((item) => item.immediateParentName == selectedItemImmedateParent && item.name != this.selectedAPIItemName).map((item) => item.name);
-                const selectedItemGrandParent = this.flatAPIDesc.find((item) => item.name == selectedItemImmedateParent)?.immediateParentName??"";
-                const selectedItemImmediateParentSiblings = this.flatAPIDesc.filter((item) => item.immediateParentName == selectedItemGrandParent).map((item) => item.name);
-                return itemLevel==1 || this.selectedAPIHierarchyNames.includes(itemName) || selectedItemSiblings.includes(itemName) || selectedItemImmediateParentSiblings.includes(itemName);
+            else {
+                return this.itemsToShow.includes(item.name);
             }
         },
 
@@ -140,23 +138,23 @@ export default Vue.extend({
             return levelColor;
         },
 
-        getCardStyle(itemName: string, itemLevel: number): Record<string, string> {
+        getCardStyle(item: APIItemTextualDescription): Record<string, string> {
             //the background of the card changes according to two factors:
             //1) selected/no selected
             //2) the level
-            const backgroundColor = (this.selectedAPIHierarchyNames.slice(0, this.selectedAPIHierarchyNames.indexOf(this.selectedAPIItemName) + 1).includes(itemName)) 
-                ? this.getLevelColor(itemLevel) 
+            const backgroundColor = (this.selectedAPIHierarchyNames.slice(0, this.selectedAPIHierarchyNames.indexOf(this.selectedAPIItemName) + 1).includes(item.name)) 
+                ? this.getLevelColor(item.level) 
                 : "";
 
             //the text colour changes to white when the card is selected to increase the contrast from the background colours
             //(the non selected colour is in line with the commands foreground colour CSS in Commands.vue)
-            const foregroundColor =  (this.selectedAPIHierarchyNames.slice(0, this.selectedAPIHierarchyNames.indexOf(this.selectedAPIItemName) + 1).includes(itemName)) ? "white" : "#252323";
+            const foregroundColor =  (this.selectedAPIHierarchyNames.slice(0, this.selectedAPIHierarchyNames.indexOf(this.selectedAPIItemName) + 1).includes(item.name)) ? "white" : "#252323";
 
             //we can now create the style object, adding the bits that are systematically added to the card (flex grow property, cursor style)            
             return {"background-color": backgroundColor, "color": foregroundColor, "flex-grow": "2", "cursor": "pointer"};
         },
 
-        getItemBullet(itemName: string, isItemFinal: boolean, itemLevel: number): string {
+        getItemBullet(item: APIItemTextualDescription): string {
             // Returns the string value for setting the bullet of an item.
             // We follow that logic:
             // - show a (+) bullet for all items when nothing is selected (i.e. all level 1 entries)
@@ -168,28 +166,27 @@ export default Vue.extend({
                 return "+";
             }
 
-            const selectedItemLevel = (this.flatAPIDesc.find((item) => item.name === this.selectedAPIItemName)?.level)??0; //the level *should* be retrieved, that's too keep TS happy
-            if(itemLevel <= selectedItemLevel && this.selectedAPIHierarchyNames.includes(itemName) && !isItemFinal){
+            if(item.level <= this.selectedAPIItemLevel && this.selectedAPIHierarchyNames.includes(item.name) && !item.isFinal){
                 return "&minus;"; // the "-" from the numpad is shorter than "+" and makes the alignment messy, that's why we use this symbol instead 
             }
             
             return "+";
         },
 
-        updateSelectedItem(itemName: string, isItemFinal: boolean, itemImmediateParentName: string, itemCodePortion: string, itemLevel: number) {
+        updateSelectedItem(selectedItem: APIItemTextualDescription) {
             // Change the selected item to the item clicked on if its bullet was "(+)" (i.e. expandable) or a final item,
             // change to its immediate parent (or to none if reached level 1) if it's bullet was "(-)" (i.e. collapsable),
             //find out if the item is currently expandable - the class *should* be set, test undefined for keeping TS happy
-            const itemBulletValue = (document.getElementById(itemName+"_bullet")?.textContent)??"";
-            if(itemBulletValue == "+" || (isItemFinal && (this.selectedAPIItemName != itemName))){
+            const itemBulletValue = (document.getElementById(selectedItem.name+"_bullet")?.textContent)??"";
+            if(itemBulletValue == "+" || (selectedItem.isFinal && (this.selectedAPIItemName != selectedItem.name))){
                 //when the item is selected, we add the code portion in the code example only if the selected item is in the same hierarchy than the previously selected
                 //otherwise, we reconstruct a new example code from scratch
-                if(this.selectedAPIHierarchyNames.includes(itemName)){
-                    this.mbAPIExampleCodeParts[itemLevel-1] = itemCodePortion; 
+                if(this.selectedAPIHierarchyNames.includes(selectedItem.name)){
+                    this.mbAPIExampleCodeParts[selectedItem.level-1] = selectedItem.codePortion; 
                 }
                 else{
-                    let parentName = itemName;
-                    let hierarchyLevel = itemLevel;
+                    let parentName = selectedItem.name;
+                    let hierarchyLevel = selectedItem.level;
                     this.mbAPIExampleCodeParts.splice(0, this.codeLevels);
                     while(hierarchyLevel > 0){
                         const parentItem = this.flatAPIDesc.find((item) => item.name == parentName);
@@ -198,14 +195,16 @@ export default Vue.extend({
                         hierarchyLevel--;
                     }
                 }   
-                this.selectedAPIItemName = itemName;
+                this.selectedAPIItemName = selectedItem.name;
+                this.selectedAPIItemLevel = selectedItem.level;
             }
             else{
-                this.selectedAPIItemName = itemImmediateParentName;
+                this.selectedAPIItemName = selectedItem.immediateParentName;
+                this.selectedAPIItemLevel = selectedItem.level - 1;
                 //as we could have closed any level of the hierarchy, we just rewrite the whole code example from scratch
-                let hierarchyLevel = itemLevel;
+                let hierarchyLevel = selectedItem.level;
                 this.mbAPIExampleCodeParts.splice(0, this.codeLevels);
-                let parentName = itemImmediateParentName;
+                let parentName = selectedItem.immediateParentName;
                 while(hierarchyLevel > 0){
                     const parentItem = this.flatAPIDesc.find((item) => item.name == parentName);
                     this.mbAPIExampleCodeParts[hierarchyLevel-1] =  parentItem?.codePortion??"";
@@ -234,26 +233,28 @@ export default Vue.extend({
             else{
                 this.selectedAPIHierarchyNames = [];
             }
+
+            //update the list of items to be shown in the UI, which is based on the selected item:
+            //- all items of level 1,  the parents to that selected item, it's immediate parent siblings, its siblings and its first children
+            const selectedItemGrandParent = this.flatAPIDesc.find((item) => item.name == selectedItem.immediateParentName)?.immediateParentName??"";
+            const selectedItemSiblings = this.flatAPIDesc.filter((item) => item.immediateParentName == selectedItem.immediateParentName && item.name != this.selectedAPIItemName).map((item) => item.name);
+            const selectedItemImmediateParentSiblings = this.flatAPIDesc.filter((item) => item.immediateParentName == selectedItemGrandParent).map((item) => item.name);
+            const firstLevelItems = this.flatAPIDesc.filter((item) => item.level == 1).map((item) => item.name);
+            this.itemsToShow = [...this.selectedAPIHierarchyNames, ...selectedItemSiblings,... selectedItemImmediateParentSiblings,... firstLevelItems]
         },
 
-        // Methods that "assemble" the different bits of code portion to show an example in the UI (i.e. the div content)
-        // Each part of the example are left in black, italic font (to be consistent with the documentation),
-        // the arguments of a method are coloured in a specific colour.
-        // Because the API info can be shown on hovering the (i) symbol, we need to make sure we get the right code example:
-        // it is as in this.mbAPIExampleCodeParts *up to* the level of the hovered API element:
-        // this method requires then the hovered element level, and its code portion
-        getCodeExample(APIElementLevel: number, APIElementCodePortion: string): string{
+        // Prepare the code example for the hovered API element.
+        getCodeExample(item: APIItemTextualDescription, isExtraCode?: boolean): string{
             let exampleStr = "";
             for(let level = 1; level <= this.codeLevels; level++){
-                const isHoveredLevel = (level==APIElementLevel);
+                const isHoveredLevel = (level==item.level);
                 if(isHoveredLevel || (this.mbAPIExampleCodeParts[level -1] && this.mbAPIExampleCodeParts[level-1].length > 0)){
-                    let examplePortion = (isHoveredLevel) ? APIElementCodePortion : this.mbAPIExampleCodeParts[level-1];
-                    if(examplePortion.includes("(")){
-                        examplePortion = examplePortion.replace(/\(.*\)/, function(matchedStr){
-                            //trim the parenthesis from the matched expression
-                            return "(</span><span class=\"code-example-args\">" + matchedStr.replaceAll(/(\(|\))/g, "") + "</span><span>)"
-                        });
-                    }
+                    const codePortion = (isExtraCode??false) ? item.extraCodePortion : item.codePortion;
+                    let examplePortion = (isHoveredLevel) ? codePortion : this.mbAPIExampleCodeParts[level-1];
+                    examplePortion = examplePortion.replace(/\(.*\)/, function(matchedStr){
+                        //trim the parenthesis from the matched expression
+                        return "(</span><span class=\"code-example-args\">" + matchedStr.replaceAll(/(\(|\))/g, "") + "</span><span>)"
+                    });
                     exampleStr = exampleStr.concat("<span>" + examplePortion + "</span>");
                     if(isHoveredLevel){
                         // if we have reached the hovered element's level, no need to look for more code portions
@@ -304,6 +305,7 @@ export default Vue.extend({
                 .then(()=>{
                 //in any case, once the code generator has been used, we reset the API discovery
                     this.selectedAPIItemName = "";
+                    this.selectedAPIItemLevel = 0;
                     this.selectedAPIHierarchyNames = [];
                 });
         },

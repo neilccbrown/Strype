@@ -478,8 +478,8 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
     })
 };
 
-// Compiles a flat API textual description. The API hierarchy structure is saved independently from the textual associated content,
-// so that locale changes updates the API textual description easily
+// This methods creates a flat map (array) of the API with the textual content. For localisation, the textual content is separated from the API hierarchical map (i.e. in microbit.json),
+// this methods binds the textual content of the API based on the API item keys.
 export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?: number, immediateParentName?: string): APIItemTextualDescription[] {
     const apiDocumentedItems = [] as APIItemTextualDescription[];
     apiCodedItems.forEach((apiItem) => {
