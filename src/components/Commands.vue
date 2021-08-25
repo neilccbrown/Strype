@@ -551,7 +551,7 @@ export default Vue.extend({
 .list-enter-active, .list-leave-active {
   transition: all 1s;
 }
-.list-enter, .list-leave-to /* .list-leave-active below version 2.1.8 */ {
+.list-enter, .list-leave-to {
   opacity: 0;
   transform: translate3d(3);
 }

@@ -424,6 +424,8 @@ export const ImportDefinition: FramesDefinitions = {
     type: ImportFrameTypesIdentifiers.import,
     labels: [
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
+        // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
+        // and thus not giving us back any AC results on the shortcut
         //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
     ],    
     colour: "#CBD4C8",
@@ -437,6 +439,8 @@ export const FromImportDefinition: FramesDefinitions = {
     labels: [
         { label: "from ", slot: true, defaultText: "module", optionalSlot: false},
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
+        // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
+        // and thus not giving us back any AC results on the shortcut
         //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
     ],    
     colour: "#CBD4C8",
