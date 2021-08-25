@@ -17,42 +17,45 @@
                 <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
             </div>
         </div>
-        <hr />
-        <div :id="commandsContainerUUID" >
-            <div id="addFramePanel" v-if="!isEditing">
-                <div class="frameCommands">
-                    <transition-group name="list" tag="p">
-                        <AddFrameCommand
-                            v-for="addFrameCommand in addFrameCommands"
-                            :key="addFrameCommand[0].type.type"
-                            :type="addFrameCommand[0].type.type"
-                            :shortcut="addFrameCommand[0].shortcut"
-                            :symbol="
-                                addFrameCommand[0].symbol !== undefined
-                                    ? addFrameCommand[0].symbol
-                                    : addFrameCommand[0].shortcut
-                            "
-                            :description="addFrameCommand[0].description"
-                            :index="
-                                addFrameCommand[0].index!==undefined
-                                ? addFrameCommand[0].index
-                                : 0
-                            "
-                        />
-                    </transition-group>
-                </div>
-                <hr />
-            </div>
-            <div class="toggleFrameLabelCommands">
-                <ToggleFrameLabelCommand
-                    v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
-                    :key="toggleFrameLabelCommand.type"
-                    :type="toggleFrameLabelCommand.type"
-                    :modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
-                    :keyShortcut="toggleFrameLabelCommand.keyShortcut"
-                    :description="toggleFrameLabelCommand.displayCommandText"
-                />
-            </div>
+        <div @mousedown.prevent.stop @mouseup.prevent.stop>
+            <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
+                <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)">
+                    <div :id="commandsContainerUUID" class="command-tab-content" >
+                        <div id="addFramePanel" v-if="!isEditing">
+                            <div class="frameCommands">
+                                <AddFrameCommand
+                                    v-for="addFrameCommand in addFrameCommands"
+                                    :key="addFrameCommand[0].type.type"
+                                    :type="addFrameCommand[0].type.type"
+                                    :shortcut="addFrameCommand[0].shortcut"
+                                    :symbol="
+                                        addFrameCommand[0].symbol !== undefined
+                                            ? addFrameCommand[0].symbol
+                                            : addFrameCommand[0].shortcut
+                                    "
+                                    :description="addFrameCommand[0].description"
+                                    :index="
+                                        addFrameCommand[0].index!==undefined
+                                        ? addFrameCommand[0].index
+                                        : 0
+                                    "
+                                />
+                            </div>
+                        </div>
+                        <div class="toggleFrameLabelCommands">
+                            <ToggleFrameLabelCommand
+                                v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
+                                :key="toggleFrameLabelCommand.type"
+                                :type="toggleFrameLabelCommand.type"
+                                :modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
+                                :keyShortcut="toggleFrameLabelCommand.keyShortcut"
+                                :description="toggleFrameLabelCommand.displayCommandText"
+                            />
+                        </div>
+                    </div>
+                </b-tab>
+                <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)"><APIDiscovery  class="command-tab-content"/></b-tab>
+            </b-tabs>
         </div>
         <text id="userCode"></text>
         <span id="keystrokeSpan"></span>
@@ -64,6 +67,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
+import APIDiscovery from "@/components/APIDiscovery.vue"
 import { flashData } from "@/helpers/webUSB";
 import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId } from "@/helpers/editor"
 import { downloadHex, downloadPython } from "@/helpers/download";
@@ -80,6 +84,7 @@ export default Vue.extend({
     components: {
         AddFrameCommand,
         ToggleFrameLabelCommand,
+        APIDiscovery,
     },
 
     data: function () {
@@ -87,6 +92,7 @@ export default Vue.extend({
             showProgress: false,
             progressPercent: 0,
             uploadThroughUSB: false,
+            tabIndex: 0,
         }
     },
 
@@ -443,6 +449,7 @@ export default Vue.extend({
                 }
             }
         },
+
         downloadHex() {
             if(store.getters.getPreCompileErrors().length > 0) {
                 //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
@@ -462,6 +469,7 @@ export default Vue.extend({
                 store.dispatch("setMessageBanner", MessageDefinitions.DownloadHex);
             }
         },
+
         downloadPython() {
             if(store.getters.getPreCompileErrors().length>0) {
                 //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
@@ -477,6 +485,15 @@ export default Vue.extend({
             store.commit("clearAllErrors");
             downloadPython(); 
         },
+
+        getTabClasses(tabIndex: number): string[] {
+            if(tabIndex == this.tabIndex){
+                return ["commands-tab commands-tab-active"]
+            }
+            else {
+                return ["commands-tab"]
+            }
+        },
     },
 });
 </script>
@@ -484,7 +501,7 @@ export default Vue.extend({
 <style lang="scss">
 .commands {
     border-left: #383b40 1px solid;
-    color: rgb(37, 35, 35);
+    color: #252323;
     background-color: #E2E7E0;
 }
 
@@ -535,5 +552,24 @@ export default Vue.extend({
 .list-enter, .list-leave-to /* .list-leave-active below version 2.1.8 */ {
   opacity: 0;
   transform: translate3d(3);
+.commands-tab{
+    color: #787978 !important;
+    border-color: #bbc8b6 !important;
+    background-color: transparent !important;
+    margin-top: 10px;
+}
+
+.commands-tab-active{
+    color: #274D19 !important;
+    border-bottom-color: #E2E7E0 !important;
+}
+
+.command-tab-content {
+ margin-left: 5px;
+}
+
+//the following overrides the bootstrap tab generated styles
+#commandsTabs ul{
+    border-bottom-color: #bbc8b6 !important;
 }
 </style>
