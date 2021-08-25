@@ -55,38 +55,6 @@ export default Vue.extend({
     border: 1px solid #d0d0d0;
 }
 
-// .slide-fade-enter-active {
-//   transition: all .3s ease; //animation: bounce-in .5s;
-// }
-// .slide-fade-leave-active {
-//   transition: all .8s cubic-bezier(1.0, 0.5, 0.8, 1.0);
-// }
-// .slide-fade-enter, .slide-fade-leave-to
-// /* .slide-fade-leave-active below version 2.1.8 */ {
-//   transform: translateX(10px);
-//   opacity: 0;
-// }
-// @keyframes bounce-in {
-//   0% {
-//     transform: scale(0);
-//   }
-//   50% {
-//     transform: scale(1.5);
-//   }
-//   100% {
-//     transform: scale(1);
-//   }
-// }
-// .section-leave-active, .section-enter-active {
-//   transition: 0.5s;
-// }
-// .section-enter {
-//   transform: translateY(100%) !important;
-// }
-// .section-leave-to {
-//   transform: translateY(-100%);
-// }
-
 .section-enter-active, .section-leave-active {
   transition: opacity .3s ease;
 }
