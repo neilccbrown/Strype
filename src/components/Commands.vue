@@ -23,23 +23,25 @@
                     <div :id="commandsContainerUUID" class="command-tab-content" >
                         <div id="addFramePanel" v-if="!isEditing">
                             <div class="frameCommands">
-                                <AddFrameCommand
-                                    v-for="addFrameCommand in addFrameCommands"
-                                    :key="addFrameCommand[0].type.type"
-                                    :type="addFrameCommand[0].type.type"
-                                    :shortcut="addFrameCommand[0].shortcut"
-                                    :symbol="
-                                        addFrameCommand[0].symbol !== undefined
-                                            ? addFrameCommand[0].symbol
-                                            : addFrameCommand[0].shortcut
-                                    "
-                                    :description="addFrameCommand[0].description"
-                                    :index="
-                                        addFrameCommand[0].index!==undefined
-                                        ? addFrameCommand[0].index
-                                        : 0
-                                    "
-                                />
+                                <transition-group name="list" tag="p">
+                                    <AddFrameCommand
+                                        v-for="addFrameCommand in addFrameCommands"
+                                        :key="addFrameCommand[0].type.type"
+                                        :type="addFrameCommand[0].type.type"
+                                        :shortcut="addFrameCommand[0].shortcut"
+                                        :symbol="
+                                            addFrameCommand[0].symbol !== undefined
+                                                ? addFrameCommand[0].symbol
+                                                : addFrameCommand[0].shortcut
+                                        "
+                                        :description="addFrameCommand[0].description"
+                                        :index="
+                                            addFrameCommand[0].index!==undefined
+                                            ? addFrameCommand[0].index
+                                            : 0
+                                        "
+                                    />
+                                </transition-group>
                             </div>
                         </div>
                         <div class="toggleFrameLabelCommands">
@@ -552,6 +554,8 @@ export default Vue.extend({
 .list-enter, .list-leave-to /* .list-leave-active below version 2.1.8 */ {
   opacity: 0;
   transform: translate3d(3);
+}
+
 .commands-tab{
     color: #787978 !important;
     border-color: #bbc8b6 !important;
