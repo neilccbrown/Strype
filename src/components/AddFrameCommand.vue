@@ -54,4 +54,12 @@ export default Vue.extend({
     border-radius: 4px;
     border: 1px solid #d0d0d0;
 }
+
+.section-enter-active, .section-leave-active {
+  transition: opacity .3s ease;
+}
+.section-enter, .section-leave-to
+{
+  opacity: 0;
+}
 </style>
