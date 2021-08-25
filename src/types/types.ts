@@ -424,7 +424,7 @@ export const ImportDefinition: FramesDefinitions = {
     type: ImportFrameTypesIdentifiers.import,
     labels: [
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
-        { label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true},
+        //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
     ],    
     colour: "#CBD4C8",
     draggableGroup: DraggableGroupTypes.imports,
@@ -437,7 +437,7 @@ export const FromImportDefinition: FramesDefinitions = {
     labels: [
         { label: "from ", slot: true, defaultText: "module", optionalSlot: false},
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
-        { label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true},
+        //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
     ],    
     colour: "#CBD4C8",
     draggableGroup: DraggableGroupTypes.imports,
