@@ -39,7 +39,7 @@
         :title="this.$i18n.t('errorMessage.errorTitle')"
         triggers="hover focus"
         :content="errorMessage"
-        class="popover"
+        custom-class="error-popover"
         >
         </b-popover>
 
@@ -582,7 +582,7 @@ export default Vue.extend({
     white-space: nowrap;
 }
 
-.popover {
+.error-popover {
     // Nedded for the code to understand the formated errors which split multiple
     // errors with \n
     white-space: pre-line !important;

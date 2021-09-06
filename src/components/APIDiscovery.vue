@@ -27,6 +27,7 @@
                                     :target="apiDescItem.name+'_info'" 
                                     variant="info" 
                                     placement="bottomright" 
+                                    custom-class="api-popover"
                                     @show="onShowAPIInfo" 
                                     @shown="onShownAPIInfo(apiDescItem.extradoc.length > 0)"
                                 >
@@ -320,7 +321,7 @@ export default Vue.extend({
             // so that when the extra doc is show, the popup doesn't resize and make the popup disappear.
             // Moreover, we make the popup explicitely visible here - we need to keep it hidden to avoid the flicker
             // when resetting the flag to false (as initially, the extra doc isn't shown)
-            const infoPopupElement = document.getElementsByClassName("popover")[0];
+            const infoPopupElement = document.getElementsByClassName("api-popover")[0];
             if(infoPopupElement){
                 if(needMinWidth){
                     (infoPopupElement as HTMLDivElement).style.minWidth=  (infoPopupElement as HTMLDivElement).offsetWidth+"px";
@@ -408,7 +409,7 @@ export default Vue.extend({
 }
 
 //the following overwrites the bootstrap tooltip class
-.popover {
+.api-popover {
     max-width: 500px !important;
     visibility: hidden; //in order to avoid flickering when preparing the extra doc popups
 }
