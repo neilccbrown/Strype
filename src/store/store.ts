@@ -15,7 +15,7 @@ import moduleDescription from "@/autocompletion/microbit.json";
 
 Vue.use(Vuex);
 
-const initialState: StateObject = initialStates["debugging"];
+const initialState: StateObject = initialStates["demoState"];
 
 export default new Vuex.Store({
     state: {
@@ -1927,7 +1927,7 @@ export default new Vuex.Store({
         leftRightKey({commit, state} , payload: {key: string, availablePositions?: NavigationPosition[]}) {
 
             //  used for moving index up (+1) or down (-1)
-            const directionDown = payload.key === "ArrowRight";
+            const directionDown = payload.key === "ArrowRight" || payload.key === "Enter";
             const directionDelta = (directionDown)?+1:-1;
             // if the available positions are not passed as argument, we compute them from the DOM
             const availablePositions = payload.availablePositions??getAvailableNavigationPositions();

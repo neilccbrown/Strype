@@ -142,6 +142,7 @@ const CommentFrameTypesIdentifier = {
 // Identifiers of the frame types
 const ImportFrameTypesIdentifiers = {
     import: "import",
+    fromimport: "from-import",
 }
 
 const FuncDefIdentifiers = {
@@ -435,7 +436,7 @@ export const ImportDefinition: FramesDefinitions = {
 
 export const FromImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
-    type: ImportFrameTypesIdentifiers.import,
+    type: ImportFrameTypesIdentifiers.fromimport,
     labels: [
         { label: "from ", slot: true, defaultText: "module", optionalSlot: false},
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
