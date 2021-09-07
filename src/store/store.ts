@@ -42,6 +42,8 @@ export default new Vuex.Store({
 
         currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's initial content being edited.
 
+        commandsTabIndex: 0, //this is the selected tab index of the Commands' tab panel.
+
         isEditing: false,
 
         ignoreKeyEvent: false, //this flag can be used anywhere a key event should be ignored within the application
@@ -106,6 +108,9 @@ export default new Vuex.Store({
         },
         isAppMenuOpened: (state) => () => {
             return state.isAppMenuOpened;
+        },
+        getCommandsTabIndex: (state) => () => {
+            return state.commandsTabIndex;
         },
         getFrameObjectFromId: (state) => (frameId: number) => {
             return state.frameObjects[frameId];
@@ -634,6 +639,10 @@ export default new Vuex.Store({
                 "isAppMenuOpened",
                 isOpened
             );
+        },
+
+        setCommandsTabIndex(state, index: number) {
+            Vue.set(state, "commandsTabIndex", index);
         },
 
         updateStateBeforeChanges(state, release: boolean) {
@@ -1625,6 +1634,9 @@ export default new Vuex.Store({
         },
 
         changeCaretPosition({ commit }, key: string) {
+            // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
+            commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
+
             commit(
                 "changeCaretWithKeyboard",
                 key
@@ -1638,6 +1650,11 @@ export default new Vuex.Store({
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             const currentFrame = state.frameObjects[state.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
+
+            // If the added frame is a function call frame, we explicitely select the API discoverability tab in the Commands panel
+            if(frame.type === EmptyDefinition.type){
+                commit("setCommandsTabIndex", 1); //1 is the index of the API discoverablity tab
+            }
 
             // find parent id 
             let parentId = 0
@@ -1934,6 +1951,9 @@ export default new Vuex.Store({
             let currentFramePosition;
 
             if (state.isEditing){ 
+                // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
+                commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
+                
                 const posOfCurSlot = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
                 currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === state.currentFrame.id); 
             }

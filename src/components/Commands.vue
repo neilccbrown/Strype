@@ -94,7 +94,6 @@ export default Vue.extend({
             showProgress: false,
             progressPercent: 0,
             uploadThroughUSB: false,
-            tabIndex: 0,
         }
     },
 
@@ -104,6 +103,15 @@ export default Vue.extend({
     },
 
     computed: {
+        tabIndex: {
+            get(): number{
+                return store.getters.getCommandsTabIndex();
+            },
+            set(index: number){
+                store.commit("setCommandsTabIndex", index);
+            },
+        },
+
         buttonsContainerUIID(): string {
             return getEditorButtonsContainerUIID();
         },
