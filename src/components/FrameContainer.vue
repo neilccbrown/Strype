@@ -69,16 +69,6 @@ export default Vue.extend({
 
     data() {
         return {
-            collapseButtonLabel: "\u25BC",
-            containerStyle: {
-                display:"block",
-                backgroundColor:(this.frameType === FrameContainersDefinitions.ImportsContainerDefinition) 
-                    ? Definitions.ImportDefinition.colour
-                    : (this.frameType === FrameContainersDefinitions.FuncDefContainerDefinition)
-                        ? Definitions.FuncDefDefinition.colour
-                        : Definitions.ReturnDefinition.colour,
-            },
-            isCollapsed: false,
             overCaret: false,
             hasCommentsToMove: false,
         }
@@ -135,15 +125,41 @@ export default Vue.extend({
         id(): string {
             return "frameContainerId_" + this.$props.frameId;
         },
+
+        isCollapsed: {
+            get(): boolean {
+                return store.getters.getContainerCollapsed(this.frameId);
+            },
+            set(value: boolean){
+                store.commit(
+                    "setCollapseStatusContainer",
+                    {
+                        frameId: this.frameId,
+                        isCollapsed: value,
+                    }
+                )
+            },
+        },
+
+        collapseButtonLabel(): string {
+            return (this.isCollapsed) ? "\u25B6" : "\u25BC";
+        },
+
+        containerStyle(): Record<string, string> {
+            return {
+                "display": (this.isCollapsed) ? "none" : "block",
+                "backgroundColor": `${(this.frameType === FrameContainersDefinitions.ImportsContainerDefinition) 
+                    ? Definitions.ImportDefinition.colour
+                    : (this.frameType === FrameContainersDefinitions.FuncDefContainerDefinition)
+                        ? Definitions.FuncDefDefinition.colour
+                        : Definitions.ReturnDefinition.colour}`,
+            };
+        },
     },
 
     methods: {
         toggleCollapse(): void {
-            this.$data.isCollapsed = !this.$data.isCollapsed;
-            //update the button label
-            this.$data.collapseButtonLabel = (this.$data.isCollapsed) ? "\u25B6" : "\u25BC";
-            //update the div style
-            this.$data.containerStyle["display"] = (this.$data.isCollapsed) ? "none" : "block";
+            this.isCollapsed = !this.isCollapsed;
         },
         
         handleDragAndDrop(event: any): void {

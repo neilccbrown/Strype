@@ -84,6 +84,7 @@ export default new Vuex.Store({
         DAPWrapper: undefined, //expected type when set: DAPWrapper
 
         previousDAPWrapper: undefined, //expected type when set:DAPWrapper
+
     },
 
     getters: {
@@ -586,6 +587,10 @@ export default new Vuex.Store({
         isImportFrame: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.isImportFrame;
         },
+
+        getContainerCollapsed: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].isCollapsed;
+        },
     }, 
 
     mutations: {
@@ -833,6 +838,21 @@ export default new Vuex.Store({
                 nextCaret.caretPosition
             );
 
+            const nextFrameObject = state.frameObjects[nextCaret.id];
+            if( "isCollapsed" in nextFrameObject ) {
+                Vue.set(
+                    nextFrameObject,
+                    "isCollapsed",
+                    false
+                );
+            }
+            else if("isCollapsed" in state.frameObjects[nextFrameObject.parentId]){
+                Vue.set(
+                    state.frameObjects[nextFrameObject.parentId],
+                    "isCollapsed",
+                    false
+                );
+            }
         },
 
         setCurrentFrame(state, newCurrentFrame: CurrentFrame) {
@@ -1350,6 +1370,14 @@ export default new Vuex.Store({
 
         setPreviousDAPWrapper(state, wrapper: DAPWrapper){
             Vue.set(state, "previousDAPWrapper", wrapper);
+        },
+
+        setCollapseStatusContainer(state, payload: {frameId: number; isCollapsed: boolean}) {
+            Vue.set(
+                state.frameObjects[payload.frameId],
+                "isCollapsed",
+                payload.isCollapsed
+            );
         },
     },
 
