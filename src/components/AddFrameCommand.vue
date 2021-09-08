@@ -56,7 +56,7 @@ export default Vue.extend({
 }
 
 .section-enter-active, .section-leave-active {
-  transition: opacity .3s ease;
+  transition: opacity .2s ease;
 }
 .section-enter, .section-leave-to
 {
