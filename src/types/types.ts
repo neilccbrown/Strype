@@ -1,6 +1,5 @@
 import i18n from "@/i18n";
-import {KeyModifier, toggleFrameLabelsDefs} from "@/constants/toggleFrameLabelCommandsDefs"; 
-import { faKaaba } from "@fortawesome/free-solid-svg-icons";
+import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"; 
 
 // Type Definitions
 
