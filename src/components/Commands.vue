@@ -557,7 +557,7 @@ export default Vue.extend({
 }
 
 .list-enter-active, .list-leave-active {
-  transition: all 1s;
+  transition: all .5s;
 }
 .list-enter, .list-leave-to {
   opacity: 0;

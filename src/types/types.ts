@@ -1,5 +1,5 @@
 import i18n from "@/i18n";
-import {KeyModifier, toggleFrameLabelsDefs} from "@/constants/toggleFrameLabelCommandsDefs"; 
+import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"; 
 
 // Type Definitions
 
@@ -20,6 +20,7 @@ export interface FrameObject {
     isDisabled: boolean;
     isSelected: boolean;
     isVisible: boolean;
+    isCollapsed?: boolean;
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
@@ -123,6 +124,7 @@ export interface FramesDefinitions {
     isJointFrame: boolean;
     jointFrameTypes: string[];
     colour: string;
+    isCollapsed?: boolean;
     draggableGroup: DraggableGroupTypes;
     innerJointDraggableGroup: DraggableGroupTypes;
     isImportFrame: boolean;
@@ -142,6 +144,7 @@ const CommentFrameTypesIdentifier = {
 // Identifiers of the frame types
 const ImportFrameTypesIdentifiers = {
     import: "import",
+    fromimport: "from-import",
 }
 
 const FuncDefIdentifiers = {
@@ -219,6 +222,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.importsContainer") as string), slot: false, defaultText: ""},
     ],
+    isCollapsed: false,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
@@ -231,6 +235,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.funcDefsContainer") as string), slot: false, defaultText: ""},
     ],
+    isCollapsed: false,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
@@ -244,6 +249,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.mainContainer") as string), slot: false, defaultText: ""},
     ],
+    isCollapsed: false,
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
     colour: "#BBC6B6",
@@ -435,7 +441,7 @@ export const ImportDefinition: FramesDefinitions = {
 
 export const FromImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
-    type: ImportFrameTypesIdentifiers.import,
+    type: ImportFrameTypesIdentifiers.fromimport,
     labels: [
         { label: "from ", slot: true, defaultText: "module", optionalSlot: false},
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},

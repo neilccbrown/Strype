@@ -14,10 +14,10 @@ const initialStates: StateObjects = {
     },
 
     "demoState": {
-        debugging: true,
+        debugging: false,
         initialState: initialDemoState,
         frameMap: [-1,1,-2,-3,2,3,4] as number[],
-        showKeystroke: false,
+        showKeystroke: true,
     },
 
     "debugging": {
