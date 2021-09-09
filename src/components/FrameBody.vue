@@ -129,7 +129,7 @@ export default Vue.extend({
             //check if there are at least 1 frame, NOT disabled
             if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== CommentDefinition.type).length < 1 && this.caretVisibility !== this.caretPosition.body) {
                 empty = true;
-                store.commit("addPreCompileErrors",this.uiid);                
+                store.commit("addPreCompileErrors", {id: this.uiid, errorMsg: this.$i18n.t("errorMessage.emptyEditableSlot")});                
             }
             else {
                 store.commit("removePreCompileErrors",this.uiid);

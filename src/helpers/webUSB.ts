@@ -3,6 +3,7 @@ import { compileFlashAndBuffer } from "./compile";
 import {WebUSBListener} from "@/types/types"
 import * as PartialFlashingJS from "./partial-flashing"
 import store from "@/store/store"; 
+import Compiler from "@/compiler/compiler";
 
 
 async function getUSBAccess() {
@@ -21,7 +22,7 @@ export async function connectUSB() {
     return daplink;
 }
 
-export async function flashData(listener: WebUSBListener) {
+export async function flashData(listener: WebUSBListener, compiler: Compiler) {
     let progressValue = 0;
 
     const updateProgress = function(progress: number) {
@@ -42,7 +43,7 @@ export async function flashData(listener: WebUSBListener) {
             const boardId = parseInt(dapWrapper.boardId, 16);
             // as metioned on microbit's python-main.js: Collect data to flash, partial flashing can use just the flash bytes,
             // but full flashing needs the entire Intel Hex to include the UICR data
-            const flashAndBufferArray: {flash: Uint8Array; buffer: ArrayBufferLike} | undefined = compileFlashAndBuffer(boardId);
+            const flashAndBufferArray: {flash: Uint8Array; buffer: ArrayBufferLike} | undefined = compileFlashAndBuffer(compiler, boardId);
             if(flashAndBufferArray){
                 const flashBytes = flashAndBufferArray.flash;
                 const hexBuffer = flashAndBufferArray.buffer;

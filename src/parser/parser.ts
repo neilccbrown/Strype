@@ -1,10 +1,34 @@
+import Compiler from "@/compiler/compiler";
 import i18n from "@/i18n";
 import store from "@/store/store";
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames} from "@/types/types";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
-const DISABLEDFRAMES_FLAG =  "\"\"\"";
+const DISABLEDFRAMES_FLAG =  "\"\"\""; 
+
+export function parseCodeAndGetParseElements(requireCompilation: boolean): ParserElements{
+    //clear the errors before we parse the code, to be sure that ALL the code is being processed every time
+    store.commit("clearAllErrors");
+
+    //because the errors have been cleared, we put the precompiled errors back in place
+    const precompiledErrors = JSON.parse(JSON.stringify(store.getters.getPreCompileErrors()));
+    store.dispatch("restorePrecompiledErrors", precompiledErrors);
+
+    const parser = new Parser();
+    const out = parser.parse();
+    const errors = parser.getErrorsFormatted(out);
+    if(store.getters.getIsDebugging() && errors){
+        throw Error(errors);
+    }
+ 
+    const compiler = new Compiler();
+    if(requireCompilation){
+        compiler.compile(out);
+    }
+
+    return {parsedOutput: out, errors: errors, compiler: compiler};
+}
 
 export default class Parser {
     private stopAtFrameId = -100; // default value to indicate there is no stop
@@ -200,8 +224,6 @@ export default class Parser {
 
         const errors = this.getErrors(inputCode);
         let errorString = "";
-        store.commit("clearAllErrors");
-        
         if (errors.length > 0) {
             errorString = `${errors.map((e: any) => {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;

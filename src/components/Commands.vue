@@ -77,7 +77,7 @@ import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageD
 import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
 import browserDetect from "vue-browser-detect-plugin";
 import $ from "jquery";
-import Parser from "@/parser/parser";
+import { parseCodeAndGetParseElements } from "@/parser/parser";
 
 export default Vue.extend({
     name: "Commands",
@@ -373,7 +373,10 @@ export default Vue.extend({
 
         flash() {
             let proceed = true;
-            if(store.getters.getPreCompileErrors().length>0) {
+            
+            //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
+            const parserElements = parseCodeAndGetParseElements(true);
+            if (parserElements.errors) {
                 proceed = false;
                 //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
                 Vue.$confirm({
@@ -383,26 +386,7 @@ export default Vue.extend({
                     },
                 });    
             }
-            else{
-                //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
-                //(we clear the errors because when the code is parsed, the lines with errors are ignored from the output
-                // so we need to reset those errors before reparsing - errors will be "reconstructed" in getErrorsFormatted())
-                store.commit("clearAllErrors");
-                const parser = new Parser();
-                const out = parser.parse();
-                const errors = parser.getErrorsFormatted(out);
-                if (errors) {
-                    proceed = false;
-                    //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                    Vue.$confirm({
-                        message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                        button: {
-                            yes: this.$i18n.t("buttonLabel.ok"),
-                        },
-                    });    
-                }
-            }            
-            
+                       
             if(proceed){
                 if (navigator.usb) {
                     const webUSBListener: WebUSBListener = {
@@ -446,7 +430,7 @@ export default Vue.extend({
                             ), 7000);
                         },
                     };
-                    flashData(webUSBListener);
+                    flashData(webUSBListener, parserElements.compiler);
                 }
                 else {
                     //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
@@ -461,38 +445,10 @@ export default Vue.extend({
         },
 
         downloadHex() {
-            if(store.getters.getPreCompileErrors().length > 0) {
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-                return;
-            }
-            //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
-            store.commit("clearAllErrors");
-            const succeeded = downloadHex(); 
-            //We show the image only if the download has succeeded
-            if(succeeded) {
-                store.dispatch("setMessageBanner", MessageDefinitions.DownloadHex);
-            }
+            downloadHex();
         },
 
         downloadPython() {
-            if(store.getters.getPreCompileErrors().length>0) {
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-                return;
-            }
-            //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
-            store.commit("clearAllErrors");
             downloadPython(); 
         },
 
