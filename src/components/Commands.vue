@@ -65,20 +65,18 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
+import APIDiscovery from "@/components/APIDiscovery.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
-import APIDiscovery from "@/components/APIDiscovery.vue"
-import { flashData } from "@/helpers/webUSB";
-import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId } from "@/helpers/editor"
+import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition, FromImportDefinition} from "@/types/types";
-import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
-import browserDetect from "vue-browser-detect-plugin";
+import { getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getTutorialUIID } from "@/helpers/editor";
+import { flash } from "@/helpers/webUSB";
+import store from "@/store/store";
+import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, ImportDefinition, ToggleFrameLabelCommandDef } from "@/types/types";
 import $ from "jquery";
-import { parseCodeAndGetParseElements } from "@/parser/parser";
-
+import Vue from "vue";
+import browserDetect from "vue-browser-detect-plugin";
 export default Vue.extend({
     name: "Commands",
     store,
@@ -372,76 +370,7 @@ export default Vue.extend({
         },
 
         flash() {
-            let proceed = true;
-            
-            //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
-            const parserElements = parseCodeAndGetParseElements(true);
-            if (parserElements.errors) {
-                proceed = false;
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-            }
-                       
-            if(proceed){
-                if (navigator.usb) {
-                    const webUSBListener: WebUSBListener = {
-                        onUploadProgressHandler: (percent) => {
-                            this.$data.showProgress = true;
-                            this.$data.progressPercent = percent;
-                        },
-
-                        onUploadSuccessHandler: () => {
-                            store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.UploadSuccessMicrobit
-                            );
-
-                            this.$data.showProgress = false;
-
-                            //don't leave the message for ever
-                            setTimeout(()=>store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.NoMessage
-                            ), 7000);
-                        },
-                        onUploadFailureHandler: (error) => {
-                            this.$data.showProgress = false;
- 
-                            const message = MessageDefinitions.UploadFailureMicrobit;
-                            const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
-
-                            store.commit(
-                                "setMessageBanner",
-                                message
-                            );
-
-                            this.$data.showProgress = false;
-
-                            //don't leave the message for ever
-                            setTimeout(()=>store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.NoMessage
-                            ), 7000);
-                        },
-                    };
-                    flashData(webUSBListener, parserElements.compiler);
-                }
-                else {
-                    //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                    Vue.$confirm({
-                        message: this.$i18n.t("appMessage.noWebUSB") as string,
-                        button: {
-                            yes: this.$i18n.t("buttonLabel.ok"),
-                        },
-                    });    
-                }
-            }
+            flash(this.$data);
         },
 
         downloadHex() {

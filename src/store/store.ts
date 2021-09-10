@@ -2,7 +2,7 @@ import Vue from "vue";
 import Vuex from "vuex";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, APIItemTextualDescription, ImportDefinition, CommentDefinition, EmptyDefinition} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
-import { getEditableSlotUIID, parseEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
+import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import tutorialState from "@/store/tutorial-state";
@@ -12,7 +12,7 @@ import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
 import moduleDescription from "@/autocompletion/microbit.json";
-import { parseCodeAndGetParseElements } from "@/parser/parser";
+import Parser from "@/parser/parser";
 
 Vue.use(Vuex);
 
@@ -51,7 +51,7 @@ export default new Vuex.Store({
 
         currentMessage: MessageDefinitions.NoMessage,
 
-        preCompileErrors: {} as {[id: string]: string}, // a map of editable slot UIIDs and error messages
+        preCompileErrors: [] as string[],
 
         diffToPreviousState: [] as ObjectPropertyDiff[][],
 
@@ -394,7 +394,7 @@ export default new Vuex.Store({
         },
 
         getPreCompileErrorExists: (state) => (id: string) => {
-            return Object.keys(state.preCompileErrors).includes(id);
+            return state.preCompileErrors.includes(id);
         },
         getIsMessageBannerOn: (state) => () => {
             return state.currentMessage !== MessageDefinitions.NoMessage;
@@ -953,17 +953,17 @@ export default new Vuex.Store({
             });  
         },
 
-        addPreCompileErrors(state, payload: {id: string, errorMsg: string}) {
+        addPreCompileErrors(state, id: string) {
             //if it exists remove it else add it
-            if(!Object.keys(state.preCompileErrors).includes(payload.id)) {
-                Vue.set(state.preCompileErrors,payload.id, payload.errorMsg);
+            if(!state.preCompileErrors.includes(id)) {
+                state.preCompileErrors.push(id);
             }
         },
 
         removePreCompileErrors(state, id: string ) {
             //if it exists remove it else add it
-            if(Object.keys(state.preCompileErrors).includes(id)) {
-                Vue.delete(state.preCompileErrors, id);
+            if(state.preCompileErrors.includes(id)) {
+                state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
             }
         },
         
@@ -1145,8 +1145,8 @@ export default new Vuex.Store({
                     const frameId = changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId);
                     indexOfId = changePath.indexOf(".contentDict_false.") + ".contentDict_false.".length; 
                     const slotId = changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId);
-                    if(Object.keys(state.preCompileErrors).includes(getEditableSlotUIID(parseInt(frameId), parseInt(slotId)))) {
-                        Vue.delete(state.preCompileErrors, getEditableSlotUIID(parseInt(frameId), parseInt(slotId)));
+                    if(state.preCompileErrors.includes(getEditableSlotUIID(parseInt(frameId), parseInt(slotId)))) {
+                        state.preCompileErrors.splice(state.preCompileErrors.indexOf(getEditableSlotUIID(parseInt(frameId), parseInt(slotId))),1);
                         state.frameObjects[parseInt(frameId)].contentDict[parseInt(slotId)].error="";
                     }
                 }
@@ -1275,8 +1275,8 @@ export default new Vuex.Store({
                         );
 
                         const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
-                        if(Object.keys(state.preCompileErrors).includes(uiid)) {
-                            Vue.delete(state.preCompileErrors, uiid);
+                        if(state.preCompileErrors.includes(uiid)) {
+                            state.preCompileErrors.splice(state.preCompileErrors.indexOf(uiid),1);
                         }
                     });
                 } 
@@ -1291,7 +1291,7 @@ export default new Vuex.Store({
                             );
     
                             const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
-                            Vue.set(state.preCompileErrors, uiid, i18n.t("errorMessage.emptyEditableSlot"));
+                            state.preCompileErrors.push(uiid);
                         }
                     });
                 }                 
@@ -1537,7 +1537,7 @@ export default new Vuex.Store({
             );
         },
 
-        updateErrorsOnSlotValidation({state, commit, getters}, payload: EditableSlotPayload) {            
+        updateErrorsOnSlotValidation({state, commit, getters}, payload: EditableSlotPayload) {  
             commit(
                 "setEditFlag",
                 false
@@ -1559,7 +1559,7 @@ export default new Vuex.Store({
                         frameId: payload.frameId,
                         slotId: payload.slotId,
                     }
-                )
+                )                
 
                 const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[payload.slotId].optionalSlot ?? true;
                 const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
@@ -1597,27 +1597,22 @@ export default new Vuex.Store({
                             error: i18n.t("errorMessage.emptyEditableSlot"),
                         }
                     );
-                    commit("addPreCompileErrors", {id: getEditableSlotUIID(payload.frameId, payload.slotId), errorMsg: i18n.t("errorMessage.emptyEditableSlot")});
+                    commit("addPreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
                 }
-
-                // We check Python error (with TigerPython) at this stage
-                parseCodeAndGetParseElements(false);
+                
+                // We check Python error (with TigerPython) for this portion of code only.
+                // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared.
+                // If we are not on a joint element, we check the joint siblings up to the root, otherwise, the single current line suffice.
+                // (we need to find out what is the next frame to provide a stop value)
+                const availablePositions = getAvailableNavigationPositions();
+                const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
+                const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
+                const nextCaretId = listOfCaretPositions[currentCaretIndex + 1].id??-100;
+                const startFrameId = (state.frameObjects[payload.frameId].jointParentId > 0) ? state.frameObjects[payload.frameId].jointParentId : payload.frameId;
+                const parser = new Parser();
+                const portionOutput = parser.parse(startFrameId, nextCaretId);
+                parser.getErrorsFormatted(portionOutput);
             }
-        },
-
-        restorePrecompiledErrors({state, commit}, precompiledErrors) {
-            Vue.set(state, "preCompileErrors", precompiledErrors);
-            Object.entries(state.preCompileErrors).forEach((entry) => {
-                const frameIdAndSlotIndex = parseEditableSlotUIID(entry[0]);
-                commit(
-                    "setSlotErroneous", 
-                    {
-                        frameId: frameIdAndSlotIndex.frameId, 
-                        slotIndex: frameIdAndSlotIndex.slotIndex,  
-                        error: entry[1],
-                    }
-                );
-            } );
         },
 
         setFocusEditableSlot({commit}, payload: {frameId: number; slotId: number; caretPosition: CaretPosition}){            
@@ -2099,7 +2094,7 @@ export default new Vuex.Store({
                     );
                     commit(
                         "addPreCompileErrors",
-                        {id: slotUIID, errorMsg: i18n.t("errorMessage.emptyEditableSlot")}
+                        slotUIID
                     );
                 }
             }

@@ -7,30 +7,33 @@ import { ErrorInfo, TPyParser } from "tigerpython-parser";
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\""; 
 
+// Parse the code contained in the editor, and generate a compiler for this code if no error are found.
+// The method returns an object containing the output code and the compiler.
 export function parseCodeAndGetParseElements(requireCompilation: boolean): ParserElements{
-    //clear the errors before we parse the code, to be sure that ALL the code is being processed every time
-    store.commit("clearAllErrors");
-
-    //because the errors have been cleared, we put the precompiled errors back in place
-    const precompiledErrors = JSON.parse(JSON.stringify(store.getters.getPreCompileErrors()));
-    store.dispatch("restorePrecompiledErrors", precompiledErrors);
+    // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
+    // Therefore, we expect the errors to already be found out when this method is called, and we don't need
+    // to retrieve them again.
 
     const parser = new Parser();
     const out = parser.parse();
-    const errors = parser.getErrorsFormatted(out);
-    if(store.getters.getIsDebugging() && errors){
-        throw Error(errors);
-    }
+
+    // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
+    // by an error class on a frame ("frameDiv" + "error"), a frame body ("frame-body-container" + "error") 
+    // or an editable slot ("editableslot-input" + "error").
+    const hasErrors = (document.getElementsByClassName("framDiv error").length > 0) || 
+        (document.getElementsByClassName("frame-body-container error").length > 0) || 
+        (document.getElementsByClassName("editableslot-input error").length > 0);
  
     const compiler = new Compiler();
     if(requireCompilation){
         compiler.compile(out);
     }
 
-    return {parsedOutput: out, errors: errors, compiler: compiler};
+    return {parsedOutput: out, hasErrors: hasErrors, compiler: compiler};
 }
 
 export default class Parser {
+    private startAtFrameId = -100; // default value to indicate there is no start
     private stopAtFrameId = -100; // default value to indicate there is no stop
     private exitFlag = false; // becomes true when the stopAtFrameId is reached.
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
@@ -177,8 +180,11 @@ export default class Parser {
         return output;
     }
 
-    public parse(stopAtFrameId?: number, excludeLoops?: boolean): string {
+    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoops?: boolean): string {
         let output = "";
+        if(startAtFrameId){
+            this.startAtFrameId = startAtFrameId;
+        }
         if(stopAtFrameId){
             this.stopAtFrameId = stopAtFrameId;
         }
@@ -188,7 +194,7 @@ export default class Parser {
         }
 
         //console.time();
-        output += this.parseFrames(store.getters.getFramesForParentId(0));
+        output += this.parseFrames((this.startAtFrameId > -100) ? [store.getters.getFrameObjectFromId(this.startAtFrameId)] : store.getters.getFramesForParentId(0));
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
@@ -247,10 +253,15 @@ export default class Parser {
                         });
                     }
                     else {
-                        store.commit("setFrameErroneous", {
-                            frameId: this.framePositionMap[error.line].frameId,
-                            error: error.msg,
-                        });
+                        //we do not show a Tiger python error here if the frame is already having a precompiled error for empty body 
+                        //AND the error from Tiger python is "There is a body or indentation missing."
+                        if(!(error.msg === "There is a body or indentation missing." &&
+                         Object.keys(store.getters.getPreCompileErrors()).includes("frameBodyId_"+this.framePositionMap[error.line].frameId))){
+                            store.commit("setFrameErroneous", {
+                                frameId: this.framePositionMap[error.line].frameId,
+                                error: error.msg,
+                            });
+                        }
                     }
                 }
             });
@@ -276,7 +287,7 @@ export default class Parser {
     }
 
     public getCodeWithoutErrorsAndLoops(endFrameId: number): string {
-        const code = this.parse(endFrameId,true);
+        const code = this.parse(undefined, endFrameId, true);
 
         const errors = this.getErrors(code);
 

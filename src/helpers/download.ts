@@ -5,11 +5,10 @@ import i18n from "@/i18n";
 import Vue from "vue";
 import store from "@/store/store"
 import { MessageDefinitions } from "@/types/types";
-import $ from "jquery";
 
 export function downloadHex() {
     const parserElements = parseCodeAndGetParseElements(true);
-    let succeeded = $.isEmptyObject(store.getters.getPreCompileErrors()) && parserElements.errors.length == 0;
+    let succeeded = !parserElements.hasErrors;
     if(succeeded){
         const blob = compileBlob(parserElements.compiler);
         if (blob) {
@@ -37,7 +36,7 @@ export function downloadHex() {
 
 export function downloadPython() {
     const parserElements = parseCodeAndGetParseElements(false);
-    if (parserElements.errors) {
+    if (parserElements.hasErrors) {
         //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
         Vue.$confirm({
             message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,

@@ -1,10 +1,85 @@
 import * as DAPjs from "dapjs";
 import { compileFlashAndBuffer } from "./compile";
-import {WebUSBListener} from "@/types/types"
+import {FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, WebUSBListener} from "@/types/types"
 import * as PartialFlashingJS from "./partial-flashing"
 import store from "@/store/store"; 
 import Compiler from "@/compiler/compiler";
+import { parseCodeAndGetParseElements } from "@/parser/parser";
+import Vue from "vue";
+import i18n from "@/i18n";
 
+export function flash(callerData: Record<string, any>) {
+    let proceed = true;
+            
+    //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
+    const parserElements = parseCodeAndGetParseElements(true);
+    if (parserElements.hasErrors) {
+        proceed = false;
+        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+        Vue.$confirm({
+            message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+            button: {
+                yes: i18n.t("buttonLabel.ok"),
+            },
+        });    
+    }
+               
+    if(proceed){
+        if (navigator.usb) {
+            const webUSBListener: WebUSBListener = {
+                onUploadProgressHandler: (percent) => {
+                    callerData.showProgress = true;
+                    callerData.progressPercent = percent;
+                },
+
+                onUploadSuccessHandler: () => {
+                    store.commit(
+                        "setMessageBanner",
+                        MessageDefinitions.UploadSuccessMicrobit
+                    );
+
+                    callerData.showProgress = false;
+
+                    //don't leave the message for ever
+                    setTimeout(()=>store.commit(
+                        "setMessageBanner",
+                        MessageDefinitions.NoMessage
+                    ), 7000);
+                },
+                onUploadFailureHandler: (error) => {
+                    callerData.showProgress = false;
+
+                    const message = MessageDefinitions.UploadFailureMicrobit;
+                    const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
+
+                    store.commit(
+                        "setMessageBanner",
+                        message
+                    );
+
+                    callerData.showProgress = false;
+
+                    //don't leave the message for ever
+                    setTimeout(()=>store.commit(
+                        "setMessageBanner",
+                        MessageDefinitions.NoMessage
+                    ), 7000);
+                },
+            };
+            flashData(webUSBListener, parserElements.compiler);
+        }
+        else {
+            //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+            Vue.$confirm({
+                message: i18n.t("appMessage.noWebUSB") as string,
+                button: {
+                    yes: i18n.t("buttonLabel.ok"),
+                },
+            });    
+        }
+    }
+}
 
 async function getUSBAccess() {
     const device = await navigator.usb.requestDevice({
