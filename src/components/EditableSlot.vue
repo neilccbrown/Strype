@@ -26,7 +26,7 @@
             @keyup.backspace="onBackSpaceKeyUp()"
             @keydown="onEqualOrSpaceKeyDown($event)"
             @keyup="logCursorPositionAndCheckBracket($event)"
-            :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
+            :class="{editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
             :key="UIID"
             class="editableslot-input navigationPosition"
@@ -34,7 +34,7 @@
         />
         
         <b-popover
-        v-if="erroneous"
+        v-if="erroneous()"
         :target="UIID"
         :title="this.$i18n.t('errorMessage.errorTitle')"
         triggers="hover focus"
@@ -215,13 +215,6 @@ export default Vue.extend({
             );
         },
 
-        erroneous(): boolean {
-            return store.getters.getIsErroneousSlot(
-                this.$props.frameId,
-                this.$props.slotIndex
-            );
-        },
-
         UIID(): string {
             return getEditableSlotUIID(this.$props.frameId, this.$props.slotIndex);
         },
@@ -283,6 +276,14 @@ export default Vue.extend({
             this.canBackspaceDeleteFrame = value;
         },
 
+        erroneous(): boolean {
+            // Only show the popup when there is an error and the code hasn't changed
+            return this.isFirstChange && store.getters.getIsErroneousSlot(
+                this.$props.frameId,
+                this.$props.slotIndex
+            );
+        },
+
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
             this.isFirstChange = true;
@@ -319,6 +320,8 @@ export default Vue.extend({
                         code: this.code.trim(),
                     }   
                 );
+                //reset the flag for first code change
+                this.isFirstChange = true;
             }
         },
 
@@ -431,6 +434,16 @@ export default Vue.extend({
                 this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
+            }
+            // We also prevent start and end trailing spaces on all slots except comments
+            else if(this.frameType !== CommentDefinition.type && event.key === " "){
+                const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+                const currentTextCursorPos = inputField.selectionStart??0;
+                const currentTextLength = this.code.length;
+                if(currentTextCursorPos == 0 || currentTextCursorPos == currentTextLength){
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
             }
         },
 
@@ -579,7 +592,7 @@ export default Vue.extend({
     position: absolute;
     display: inline-block;
     visibility: hidden;
-    white-space: nowrap;
+    white-space: pre; //spaces must be preserve to ensure coherency with the text written by users
 }
 
 .error-popover {

@@ -923,17 +923,6 @@ export default new Vuex.Store({
             }           
         },
 
-        setFrameErroneous(state, payload: {frameId: number; error: string}){
-            const existingError =  state.frameObjects[payload.frameId].error;
-            // Sometimes we need to extend the error, if more than one errors are on the same frame
-            const newError = (existingError === "" || payload.error === "" ) ? payload.error: (existingError +"\n" + payload.error);
-            Vue.set(
-                state.frameObjects[payload.frameId],
-                "error",
-                newError
-            );
-        },
-
         clearAllErrors(state) {
             Object.keys(state.frameObjects).forEach((id: any) => {
                 if(state.frameObjects[id].error !==""){
@@ -1559,7 +1548,17 @@ export default new Vuex.Store({
                         frameId: payload.frameId,
                         slotId: payload.slotId,
                     }
-                )                
+                )       
+                
+                // As upon validation of the slot we check errors for that frame, we clear the errors related to this frame slot beforehand
+                commit(
+                    "setSlotErroneous", 
+                    {
+                        frameId: payload.frameId, 
+                        slotIndex: payload.slotId, 
+                        error: "",
+                    }
+                );
 
                 const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[payload.slotId].optionalSlot ?? true;
                 const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
@@ -1576,17 +1575,6 @@ export default new Vuex.Store({
                         );
                         commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));                
                     }
-                    //if there is still an error here, it may be an error from tigerpython. We clear them here as they'll show up when required (e.g. downloading the file)
-                    if(errorMessage !== i18n.t("errorMessage.emptyEditableSlot")){
-                        commit(
-                            "setSlotErroneous", 
-                            {
-                                frameId: payload.frameId, 
-                                slotIndex: payload.slotId, 
-                                error: "",
-                            }
-                        );
-                    }
                 }
                 else if(!optionalSlot){
                     commit(
@@ -1601,15 +1589,19 @@ export default new Vuex.Store({
                 }
                 
                 // We check Python error (with TigerPython) for this portion of code only.
-                // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared.
-                // If we are not on a joint element, we check the joint siblings up to the root, otherwise, the single current line suffice.
-                // (we need to find out what is the next frame to provide a stop value)
+                // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared on the SLOT only.
+                // If we are not on a joint element, we check the whole joint siblings from root to last joint, otherwise, the single current line suffice.
+                const isJoinFrame = (state.frameObjects[payload.frameId].jointParentId > 0);
+                //we need to find out what is the next frame to provide a stop value
                 const availablePositions = getAvailableNavigationPositions();
                 const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
-                const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
-                const nextCaretId = listOfCaretPositions[currentCaretIndex + 1].id??-100;
-                const startFrameId = (state.frameObjects[payload.frameId].jointParentId > 0) ? state.frameObjects[payload.frameId].jointParentId : payload.frameId;
-                const parser = new Parser();
+                const caretPosition = (state.frameObjects[payload.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
+                const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===payload.frameId && e.caretPosition === caretPosition);
+                const nextCaretId =  (isJoinFrame) 
+                    ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.id===state.frameObjects[payload.frameId].jointParentId && e.caretPosition === CaretPosition.below) + 1]?.id??-100
+                    : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.below) ? 1 : 2)]?.id??-100);
+                const startFrameId = (isJoinFrame) ? state.frameObjects[payload.frameId].jointParentId : payload.frameId;
+                const parser = new Parser(true);
                 const portionOutput = parser.parse(startFrameId, nextCaretId);
                 parser.getErrorsFormatted(portionOutput);
             }

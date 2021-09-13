@@ -41,31 +41,12 @@ export default class Parser {
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
     private excludeLoops = false;
+    private ignoreCheckErrors = false;
 
-    private parseSlot(slot: string, position: number) {
-        // This method parses semantically, by checking that every
-        // token presented is known to the program (declared, keyword, or imported)
-
-        // The list of all things that cannot be a name 
-        const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
-            "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
-            "==","=","!=",">=","<=","<",">","(",")","[","]","{","}",
-        ];
-        // list of keywords that are not user or library defined.
-        const keywords = ["in","and","or","await","is","True","False",
-            "lambda", "as", "from","del","not","with",
-        ];
-
-        let slotsCopy: string = slot;
-        // first replace all the operators with a white space, so names can be separated
-        operators.forEach( (operator) => slotsCopy=slotsCopy.replaceAll(operator," "))
-
-        // Now tokenise the names based on white spaces
-        let tokens: string[] = slotsCopy.split(/\s+/);
-
-        // Now remove all the keywords.
-        tokens = tokens.filter((token: string)=> !keywords.includes(token));
-
+    constructor(ignoreCheckErrors?: boolean){
+        if(ignoreCheckErrors != undefined){
+            this.ignoreCheckErrors = ignoreCheckErrors;
+        }
     }
 
     private parseBlock(block: FrameObject, indentation: string): string {
@@ -119,8 +100,6 @@ export default class Parser {
                     // add its code to the output
                     output += statement.contentDict[currSlotIndex].code + " ";
                     lengths.push(output.length-currentPosition+1);
-
-                    this.parseSlot(statement.contentDict[currSlotIndex].code,currentPosition);
                 }
             }
             else if(!statement.contentDict[currSlotIndex].shownLabel){
@@ -251,17 +230,6 @@ export default class Parser {
                             ), 
                             error: error.msg,
                         });
-                    }
-                    else {
-                        //we do not show a Tiger python error here if the frame is already having a precompiled error for empty body 
-                        //AND the error from Tiger python is "There is a body or indentation missing."
-                        if(!(error.msg === "There is a body or indentation missing." &&
-                         Object.keys(store.getters.getPreCompileErrors()).includes("frameBodyId_"+this.framePositionMap[error.line].frameId))){
-                            store.commit("setFrameErroneous", {
-                                frameId: this.framePositionMap[error.line].frameId,
-                                error: error.msg,
-                            });
-                        }
                     }
                 }
             });
@@ -417,7 +385,7 @@ export default class Parser {
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {
-        return (frame.error!=="" || Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
+        return !this.ignoreCheckErrors && (frame.error!=="" || Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
     }
 
     private isCompoundStatement(line: string, spaces: string[]): boolean {
