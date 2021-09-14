@@ -1688,11 +1688,6 @@ export default new Vuex.Store({
             const currentFrame = state.frameObjects[state.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
 
-            // If the added frame is a function call frame, we explicitely select the API discoverability tab in the Commands panel
-            if(frame.type === EmptyDefinition.type){
-                commit("setCommandsTabIndex", 1); //1 is the index of the API discoverablity tab
-            }
-
             // find parent id 
             let parentId = 0
             let listToUpdate: number[] = [];
@@ -1988,13 +1983,15 @@ export default new Vuex.Store({
             let currentFramePosition;
 
             if (state.isEditing){ 
-                // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
+                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
                 commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
                 
                 const posOfCurSlot = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
                 currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === state.currentFrame.id); 
             }
             else {
+                // When we enter an editable slot, we explicitely select the API discovery tab in the Commands panel
+                commit("setCommandsTabIndex", 1); //0 is the index of the API discovery tab
                 currentFramePosition = availablePositions.findIndex( (e) => e.caretPosition === state.currentFrame.caretPosition && e.id === state.currentFrame.id); 
             }
             
