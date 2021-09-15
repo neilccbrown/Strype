@@ -213,7 +213,7 @@
             "ImgFill_doc": "Sets the brightness of all the pixels in the image to the value, which has to be between 0 (dark) and 9 (bright). This method will raise an exception when called on any of the built-in read-only images, like <i>Image.HEART.</i>",
             "button_label": "Button",    
             "button_doc": "There are two buttons on the board, called <i>button_a</i> (left button) and <i>button_b</i> (right button). The example here are for <i>button_a</i>, but they are valid for <i>button_b</i> as well. You may replace <i>button_a</i> by <i>button_b</i> in your code.",
-            "buttonIsPress_label": "Know if a button is presssed",
+            "buttonIsPress_label": "Know if a button is pressed",
             "buttonIsPress_doc": "Returns <i>True</i> if the specified button is currently being held down, and <i>False</i> otherwise.",
             "buttonWasPress_label": "Know if a button was pressed",
             "buttonWasPress_doc": "Returns <i>True</i> or <i>False</i> to indicate if the button was pressed (went from up to down) since the device started or the last time this method was called. Calling this method will clear the press state so that the button must be pressed again before this method will return <i>True</i> again.",

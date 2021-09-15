@@ -12,6 +12,7 @@ import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
 import moduleDescription from "@/autocompletion/microbit.json";
+import Parser from "@/parser/parser";
 
 Vue.use(Vuex);
 
@@ -41,6 +42,8 @@ export default new Vuex.Store({
         currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
         currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's initial content being edited.
+
+        commandsTabIndex: 0, //this is the selected tab index of the Commands' tab panel.
 
         isEditing: false,
 
@@ -88,6 +91,9 @@ export default new Vuex.Store({
     },
 
     getters: {
+        getIsDebugging: (state) => (): boolean => {
+            return state.debugging;
+        },
         getStateJSONStrWithCheckpoints : (state) => (): string => {
             //we get the state's checksum and the current app version,
             //and add them to the state's copy object to return
@@ -107,6 +113,9 @@ export default new Vuex.Store({
         },
         isAppMenuOpened: (state) => () => {
             return state.isAppMenuOpened;
+        },
+        getCommandsTabIndex: (state) => () => {
+            return state.commandsTabIndex;
         },
         getFrameObjectFromId: (state) => (frameId: number) => {
             return state.frameObjects[frameId];
@@ -641,6 +650,10 @@ export default new Vuex.Store({
             );
         },
 
+        setCommandsTabIndex(state, index: number) {
+            Vue.set(state, "commandsTabIndex", index);
+        },
+
         updateStateBeforeChanges(state, release: boolean) {
             //if the flag release is true, we clear the current stateBeforeChanges value
             Vue.set(
@@ -910,17 +923,6 @@ export default new Vuex.Store({
             }           
         },
 
-        setFrameErroneous(state, payload: {frameId: number; error: string}){
-            const existingError =  state.frameObjects[payload.frameId].error;
-            // Sometimes we need to extend the error, if more than one errors are on the same frame
-            const newError = (existingError === "" || payload.error === "" ) ? payload.error: (existingError +"\n" + payload.error);
-            Vue.set(
-                state.frameObjects[payload.frameId],
-                "error",
-                newError
-            );
-        },
-
         clearAllErrors(state) {
             Object.keys(state.frameObjects).forEach((id: any) => {
                 if(state.frameObjects[id].error !==""){
@@ -940,7 +942,7 @@ export default new Vuex.Store({
             });  
         },
 
-        addPreCompileErrors(state, id: string ) {
+        addPreCompileErrors(state, id: string) {
             //if it exists remove it else add it
             if(!state.preCompileErrors.includes(id)) {
                 state.preCompileErrors.push(id);
@@ -1278,7 +1280,7 @@ export default new Vuex.Store({
                             );
     
                             const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
-                            state.preCompileErrors.push(uiid)
+                            state.preCompileErrors.push(uiid);
                         }
                     });
                 }                 
@@ -1524,7 +1526,7 @@ export default new Vuex.Store({
             );
         },
 
-        updateErrorsOnSlotValidation({state, commit, getters}, payload: EditableSlotPayload) {            
+        updateErrorsOnSlotValidation({state, commit, getters}, payload: EditableSlotPayload) {  
             commit(
                 "setEditFlag",
                 false
@@ -1539,6 +1541,9 @@ export default new Vuex.Store({
                         focused: false,
                     }
                 );
+                
+                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
+                commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
 
                 commit(
                     "setCurrentInitCodeValue",
@@ -1546,7 +1551,17 @@ export default new Vuex.Store({
                         frameId: payload.frameId,
                         slotId: payload.slotId,
                     }
-                )
+                )       
+                
+                // As upon validation of the slot we check errors for that frame, we clear the errors related to this frame slot beforehand
+                commit(
+                    "setSlotErroneous", 
+                    {
+                        frameId: payload.frameId, 
+                        slotIndex: payload.slotId, 
+                        error: "",
+                    }
+                );
 
                 const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[payload.slotId].optionalSlot ?? true;
                 const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
@@ -1563,17 +1578,6 @@ export default new Vuex.Store({
                         );
                         commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));                
                     }
-                    //if there is still an error here, it may be an error from tigerpython. We clear them here as they'll show up when required (e.g. downloading the file)
-                    if(errorMessage !== i18n.t("errorMessage.emptyEditableSlot")){
-                        commit(
-                            "setSlotErroneous", 
-                            {
-                                frameId: payload.frameId, 
-                                slotIndex: payload.slotId, 
-                                error: "",
-                            }
-                        );
-                    }
                 }
                 else if(!optionalSlot){
                     commit(
@@ -1586,6 +1590,23 @@ export default new Vuex.Store({
                     );
                     commit("addPreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
                 }
+                
+                // We check Python error (with TigerPython) for this portion of code only.
+                // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared on the SLOT only.
+                // If we are not on a joint element, we check the whole joint siblings from root to last joint, otherwise, the single current line suffice.
+                const isJoinFrame = (state.frameObjects[payload.frameId].jointParentId > 0);
+                //we need to find out what is the next frame to provide a stop value
+                const availablePositions = getAvailableNavigationPositions();
+                const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
+                const caretPosition = (state.frameObjects[payload.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
+                const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===payload.frameId && e.caretPosition === caretPosition);
+                const nextCaretId =  (isJoinFrame) 
+                    ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.id===state.frameObjects[payload.frameId].jointParentId && e.caretPosition === CaretPosition.below) + 1]?.id??-100
+                    : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.below) ? 1 : 2)]?.id??-100);
+                const startFrameId = (isJoinFrame) ? state.frameObjects[payload.frameId].jointParentId : payload.frameId;
+                const parser = new Parser(true);
+                const portionOutput = parser.parse(startFrameId, nextCaretId);
+                parser.getErrorsFormatted(portionOutput);
             }
         },
 
@@ -1620,6 +1641,9 @@ export default new Vuex.Store({
                     focused: true,
                 }
             );   
+
+            // When we enter an editable slot, we explicitely select the API discovery tab in the Commands panel
+            commit("setCommandsTabIndex", 1); //1 is the index of the API discovery tab
         
             commit("unselectAllFrames");
         },
@@ -1653,6 +1677,9 @@ export default new Vuex.Store({
         },
 
         changeCaretPosition({ commit }, key: string) {
+            // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
+            commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
+
             commit(
                 "changeCaretWithKeyboard",
                 key

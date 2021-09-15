@@ -65,20 +65,18 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
+import APIDiscovery from "@/components/APIDiscovery.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
-import APIDiscovery from "@/components/APIDiscovery.vue"
-import { flashData } from "@/helpers/webUSB";
-import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId } from "@/helpers/editor"
+import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition, FromImportDefinition} from "@/types/types";
-import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
-import browserDetect from "vue-browser-detect-plugin";
+import { getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getTutorialUIID } from "@/helpers/editor";
+import { flash } from "@/helpers/webUSB";
+import store from "@/store/store";
+import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, ImportDefinition, ToggleFrameLabelCommandDef } from "@/types/types";
 import $ from "jquery";
-import Parser from "@/parser/parser";
-
+import Vue from "vue";
+import browserDetect from "vue-browser-detect-plugin";
 export default Vue.extend({
     name: "Commands",
     store,
@@ -94,7 +92,6 @@ export default Vue.extend({
             showProgress: false,
             progressPercent: 0,
             uploadThroughUSB: false,
-            tabIndex: 0,
         }
     },
 
@@ -104,6 +101,15 @@ export default Vue.extend({
     },
 
     computed: {
+        tabIndex: {
+            get(): number{
+                return store.getters.getCommandsTabIndex();
+            },
+            set(index: number){
+                store.commit("setCommandsTabIndex", index);
+            },
+        },
+
         buttonsContainerUIID(): string {
             return getEditorButtonsContainerUIID();
         },
@@ -364,127 +370,14 @@ export default Vue.extend({
         },
 
         flash() {
-            let proceed = true;
-            if(store.getters.getPreCompileErrors().length>0) {
-                proceed = false;
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-            }
-            else{
-                //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
-                //(we clear the errors because when the code is parsed, the lines with errors are ignored from the output
-                // so we need to reset those errors before reparsing - errors will be "reconstructed" in getErrorsFormatted())
-                store.commit("clearAllErrors");
-                const parser = new Parser();
-                const out = parser.parse();
-                const errors = parser.getErrorsFormatted(out);
-                if (errors) {
-                    proceed = false;
-                    //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                    Vue.$confirm({
-                        message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                        button: {
-                            yes: this.$i18n.t("buttonLabel.ok"),
-                        },
-                    });    
-                }
-            }            
-            
-            if(proceed){
-                if (navigator.usb) {
-                    const webUSBListener: WebUSBListener = {
-                        onUploadProgressHandler: (percent) => {
-                            this.$data.showProgress = true;
-                            this.$data.progressPercent = percent;
-                        },
-
-                        onUploadSuccessHandler: () => {
-                            store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.UploadSuccessMicrobit
-                            );
-
-                            this.$data.showProgress = false;
-
-                            //don't leave the message for ever
-                            setTimeout(()=>store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.NoMessage
-                            ), 7000);
-                        },
-                        onUploadFailureHandler: (error) => {
-                            this.$data.showProgress = false;
- 
-                            const message = MessageDefinitions.UploadFailureMicrobit;
-                            const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
-
-                            store.commit(
-                                "setMessageBanner",
-                                message
-                            );
-
-                            this.$data.showProgress = false;
-
-                            //don't leave the message for ever
-                            setTimeout(()=>store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.NoMessage
-                            ), 7000);
-                        },
-                    };
-                    flashData(webUSBListener);
-                }
-                else {
-                    //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                    Vue.$confirm({
-                        message: this.$i18n.t("appMessage.noWebUSB") as string,
-                        button: {
-                            yes: this.$i18n.t("buttonLabel.ok"),
-                        },
-                    });    
-                }
-            }
+            flash(this.$data);
         },
 
         downloadHex() {
-            if(store.getters.getPreCompileErrors().length > 0) {
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-                return;
-            }
-            //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
-            store.commit("clearAllErrors");
-            const succeeded = downloadHex(); 
-            //We show the image only if the download has succeeded
-            if(succeeded) {
-                store.dispatch("setMessageBanner", MessageDefinitions.DownloadHex);
-            }
+            downloadHex();
         },
 
         downloadPython() {
-            if(store.getters.getPreCompileErrors().length>0) {
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-                return;
-            }
-            //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
-            store.commit("clearAllErrors");
             downloadPython(); 
         },
 

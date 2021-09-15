@@ -1,12 +1,39 @@
+import Compiler from "@/compiler/compiler";
 import i18n from "@/i18n";
 import store from "@/store/store";
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames} from "@/types/types";
+import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
-const DISABLEDFRAMES_FLAG =  "\"\"\"";
+const DISABLEDFRAMES_FLAG =  "\"\"\""; 
+
+// Parse the code contained in the editor, and generate a compiler for this code if no error are found.
+// The method returns an object containing the output code and the compiler.
+export function parseCodeAndGetParseElements(requireCompilation: boolean): ParserElements{
+    // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
+    // Therefore, we expect the errors to already be found out when this method is called, and we don't need
+    // to retrieve them again.
+
+    const parser = new Parser();
+    const out = parser.parse();
+
+    // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
+    // by an error class on a frame ("frameDiv" + "error"), a frame body ("frame-body-container" + "error") 
+    // or an editable slot ("editableslot-input" + "error").
+    const hasErrors = (document.getElementsByClassName("framDiv error").length > 0) || 
+        (document.getElementsByClassName("frame-body-container error").length > 0) || 
+        (document.getElementsByClassName("editableslot-input error").length > 0);
+ 
+    const compiler = new Compiler();
+    if(requireCompilation){
+        compiler.compile(out);
+    }
+
+    return {parsedOutput: out, hasErrors: hasErrors, compiler: compiler};
+}
 
 export default class Parser {
+    private startAtFrameId = -100; // default value to indicate there is no start
     private stopAtFrameId = -100; // default value to indicate there is no stop
     private exitFlag = false; // becomes true when the stopAtFrameId is reached.
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
@@ -14,31 +41,12 @@ export default class Parser {
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
     private excludeLoops = false;
+    private ignoreCheckErrors = false;
 
-    private parseSlot(slot: string, position: number) {
-        // This method parses semantically, by checking that every
-        // token presented is known to the program (declared, keyword, or imported)
-
-        // The list of all things that cannot be a name 
-        const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
-            "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
-            "==","=","!=",">=","<=","<",">","(",")","[","]","{","}",
-        ];
-        // list of keywords that are not user or library defined.
-        const keywords = ["in","and","or","await","is","True","False",
-            "lambda", "as", "from","del","not","with",
-        ];
-
-        let slotsCopy: string = slot;
-        // first replace all the operators with a white space, so names can be separated
-        operators.forEach( (operator) => slotsCopy=slotsCopy.replaceAll(operator," "))
-
-        // Now tokenise the names based on white spaces
-        let tokens: string[] = slotsCopy.split(/\s+/);
-
-        // Now remove all the keywords.
-        tokens = tokens.filter((token: string)=> !keywords.includes(token));
-
+    constructor(ignoreCheckErrors?: boolean){
+        if(ignoreCheckErrors != undefined){
+            this.ignoreCheckErrors = ignoreCheckErrors;
+        }
     }
 
     private parseBlock(block: FrameObject, indentation: string): string {
@@ -92,8 +100,6 @@ export default class Parser {
                     // add its code to the output
                     output += statement.contentDict[currSlotIndex].code + " ";
                     lengths.push(output.length-currentPosition+1);
-
-                    this.parseSlot(statement.contentDict[currSlotIndex].code,currentPosition);
                 }
             }
             else if(!statement.contentDict[currSlotIndex].shownLabel){
@@ -153,8 +159,11 @@ export default class Parser {
         return output;
     }
 
-    public parse(stopAtFrameId?: number, excludeLoops?: boolean): string {
+    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoops?: boolean): string {
         let output = "";
+        if(startAtFrameId){
+            this.startAtFrameId = startAtFrameId;
+        }
         if(stopAtFrameId){
             this.stopAtFrameId = stopAtFrameId;
         }
@@ -164,7 +173,7 @@ export default class Parser {
         }
 
         //console.time();
-        output += this.parseFrames(store.getters.getFramesForParentId(0));
+        output += this.parseFrames((this.startAtFrameId > -100) ? [store.getters.getFrameObjectFromId(this.startAtFrameId)] : store.getters.getFramesForParentId(0));
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
@@ -200,8 +209,6 @@ export default class Parser {
 
         const errors = this.getErrors(inputCode);
         let errorString = "";
-        store.commit("clearAllErrors");
-        
         if (errors.length > 0) {
             errorString = `${errors.map((e: any) => {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
@@ -224,17 +231,9 @@ export default class Parser {
                             error: error.msg,
                         });
                     }
-                    else {
-                        store.commit("setFrameErroneous", {
-                            frameId: this.framePositionMap[error.line].frameId,
-                            error: error.msg,
-                        });
-                    }
                 }
             });
-
         }
-        
 
         return errorString;
     }
@@ -249,12 +248,11 @@ export default class Parser {
             }
         }
         // If the offset was inside none of the slots, then return false
-        return false;
-    
+        return false;    
     }
 
     public getCodeWithoutErrorsAndLoops(endFrameId: number): string {
-        const code = this.parse(endFrameId,true);
+        const code = this.parse(undefined, endFrameId, true);
 
         const errors = this.getErrors(code);
 
@@ -384,7 +382,7 @@ export default class Parser {
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {
-        return (frame.error!=="" || Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
+        return !this.ignoreCheckErrors && (frame.error!=="" || Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
     }
 
     private isCompoundStatement(line: string, spaces: string[]): boolean {
