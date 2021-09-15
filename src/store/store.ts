@@ -1541,6 +1541,9 @@ export default new Vuex.Store({
                         focused: false,
                     }
                 );
+                
+                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
+                commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
 
                 commit(
                     "setCurrentInitCodeValue",
@@ -1638,6 +1641,9 @@ export default new Vuex.Store({
                     focused: true,
                 }
             );   
+
+            // When we enter an editable slot, we explicitely select the API discovery tab in the Commands panel
+            commit("setCommandsTabIndex", 1); //1 is the index of the API discovery tab
         
             commit("unselectAllFrames");
         },
@@ -1983,15 +1989,10 @@ export default new Vuex.Store({
             let currentFramePosition;
 
             if (state.isEditing){ 
-                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
-                commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
-                
                 const posOfCurSlot = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
                 currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === state.currentFrame.id); 
             }
             else {
-                // When we enter an editable slot, we explicitely select the API discovery tab in the Commands panel
-                commit("setCommandsTabIndex", 1); //0 is the index of the API discovery tab
                 currentFramePosition = availablePositions.findIndex( (e) => e.caretPosition === state.currentFrame.caretPosition && e.id === state.currentFrame.id); 
             }
             
