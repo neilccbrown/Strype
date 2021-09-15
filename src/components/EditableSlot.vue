@@ -435,12 +435,11 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
             }
-            // We also prevent start and end trailing spaces on all slots except comments
+            // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
             else if(this.frameType !== CommentDefinition.type && event.key === " "){
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const currentTextCursorPos = inputField.selectionStart??0;
-                const currentTextLength = this.code.length;
-                if(currentTextCursorPos == 0 || currentTextCursorPos == currentTextLength){
+                if(currentTextCursorPos == 0){
                     event.preventDefault();
                     event.stopPropagation();
                 }
@@ -592,7 +591,7 @@ export default Vue.extend({
     position: absolute;
     display: inline-block;
     visibility: hidden;
-    white-space: pre; //spaces must be preserve to ensure coherency with the text written by users
+    white-space: pre; //as this div placeholder is used to dynamically compute the width of the input field, we have to preserve the spaces exactly written by the user in the input field.
 }
 
 .error-popover {

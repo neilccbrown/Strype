@@ -8,14 +8,6 @@ export function getEditableSlotUIID(frameId: number, slotIndex: number): string 
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
 }
 
-// This method is the counterpart of getEditableSlotUIID: it gets the frameId and the slotIndex based on the UIID
-export function parseEditableSlotUIID(UIID: string): {frameId: string, slotIndex: string}{
-    //We use a temporary string formatted as "<frameId>_<slotIndex>"
-    const tempUIID = UIID.replace("input_frameId_", "").replace("_slot_", "_");
-    const indexOfSeparator = tempUIID.indexOf("_");
-    return {frameId: tempUIID.substr(0, indexOfSeparator), slotIndex: tempUIID.substr(indexOfSeparator+1)};
-}
-
 export function isElementEditableSlotInput(element: EventTarget | null): boolean{
     if(!(element instanceof HTMLInputElement)){
         return false;

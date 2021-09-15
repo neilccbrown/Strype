@@ -233,9 +233,7 @@ export default class Parser {
                     }
                 }
             });
-
         }
-        
 
         return errorString;
     }
@@ -250,8 +248,7 @@ export default class Parser {
             }
         }
         // If the offset was inside none of the slots, then return false
-        return false;
-    
+        return false;    
     }
 
     public getCodeWithoutErrorsAndLoops(endFrameId: number): string {
