@@ -382,7 +382,7 @@ export default class Parser {
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {
-        return !this.ignoreCheckErrors && (frame.error!=="" || Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
+        return !this.ignoreCheckErrors && (Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
     }
 
     private isCompoundStatement(line: string, spaces: string[]): boolean {

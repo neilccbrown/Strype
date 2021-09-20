@@ -70,7 +70,6 @@ const tutorialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "Tutorial example:", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
-        error: "",
     },
     2: {
         frameType: Definitions.VarAssignDefinition,
@@ -87,7 +86,6 @@ const tutorialState: EditorFrameObjects = {
             1: {code :  "[\"Joe\", \"Sam\", \"Ash\"]", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
-        error: "",
     },
     3: {
         frameType: Definitions.ForDefinition,
@@ -104,7 +102,6 @@ const tutorialState: EditorFrameObjects = {
             1: {code :  "nameList", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
-        error: "",
     },
     4: {
         frameType: Definitions.EmptyDefinition,
@@ -119,7 +116,6 @@ const tutorialState: EditorFrameObjects = {
         contentDict: { 0: {code :  "print(\"Hello \" + name)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
-        error: "",
     },
 };
 

@@ -73,7 +73,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [3],
         contentDict: { 0: {code :  "1 > 0", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 
@@ -89,7 +88,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "a = 2", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     3: {
@@ -104,7 +102,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "3", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     4: {
@@ -119,7 +116,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "a = 4", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     5: {
@@ -134,7 +130,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "print(5)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     6: {
@@ -149,7 +144,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "x = 6", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     7: {
@@ -164,7 +158,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "a = 7", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
    

@@ -376,17 +376,9 @@ export default new Vuex.Store({
         getIsErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].error !== "";
         },
-
-        getIsErroneousFrame: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].error !== "";
-        },
         
         getErrorForSlot: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].error;
-        },
-
-        getErrorForFrame: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].error;
         },
 
         getPreCompileErrors: (state) => () => {
@@ -925,13 +917,6 @@ export default new Vuex.Store({
 
         clearAllErrors(state) {
             Object.keys(state.frameObjects).forEach((id: any) => {
-                if(state.frameObjects[id].error !==""){
-                    Vue.set(
-                        state.frameObjects[id],
-                        "error",
-                        ""
-                    );
-                }
                 Object.keys(state.frameObjects[id].contentDict).forEach((slot: any) => {
                     Vue.set(
                         state.frameObjects[id].contentDict[slot],

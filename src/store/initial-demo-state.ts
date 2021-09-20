@@ -75,7 +75,6 @@ const initialDemoState: EditorFrameObjects = {
             1: {code : "*", focused: false, error :"", shownLabel: true},
             2: {code : "", focused: false, error :"", shownLabel: false} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 
@@ -93,7 +92,6 @@ const initialDemoState: EditorFrameObjects = {
             0: {code :  "myString", focused: false, error :"", shownLabel: true},
             1: {code :  "\"Hello micro:bit!\"", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 
@@ -111,7 +109,6 @@ const initialDemoState: EditorFrameObjects = {
             0: {code :  "True", focused: false, error :"", shownLabel: true},
         },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 
@@ -129,7 +126,6 @@ const initialDemoState: EditorFrameObjects = {
             0: {code :  "display.scroll(myString)", focused: false, error :"", shownLabel: true},
         },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 
