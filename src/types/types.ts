@@ -28,7 +28,6 @@ export interface FrameObject {
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
     contentDict: { [index: number]: FrameSlotContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
-    error?: string;
     multiDragPosition: string;
 
 }
@@ -508,7 +507,6 @@ export const EmptyFrameObject: FrameObject = {
     jointFrameIds: [], //this contains the IDs of the joint frames
     caretVisibility: CaretPosition.none,
     contentDict: { },
-    error: "",
     multiDragPosition: "",
 }
 

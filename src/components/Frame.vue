@@ -12,7 +12,7 @@
             <div 
                 :style="frameStyle" 
                 class="block frameDiv" 
-                :class="{error: erroneous, statementOrJoint: isStatementOrJointFrame}"
+                :class="{statementOrJoint: isStatementOrJointFrame}"
                 :id="uiid"
                 @click="toggleCaret($event)"
                 @contextmenu="handleClick($event,'frame-context-menu')"
@@ -59,14 +59,6 @@
                     @hide-context-menus="handleClick($event,'paste')"
                 />
             </div>
-            <b-popover
-            v-if="erroneous"
-            :target="uiid"
-            :title="this.$i18n.t('errorMessage.errorTitle')"
-            triggers="hover focus"
-            placement="left"
-            :content="errorMessage"
-            ></b-popover>
         </div>
         <div 
             v-if="multiDragPosition === 'middle' || multiDragPosition === 'first'"
@@ -170,20 +162,8 @@ export default Vue.extend({
             return CaretPosition;
         },
 
-        erroneous(): boolean {
-            return store.getters.getIsErroneousFrame(
-                this.$props.frameId
-            );
-        },
-
         uiid(): string {
             return "frame_id_"+this.$props.frameId;
-        },
-
-        errorMessage(): string{
-            return store.getters.getErrorForFrame(
-                this.$props.frameId
-            );
         },
 
         allowContextMenu(): boolean {
@@ -484,10 +464,6 @@ export default Vue.extend({
 
 .block:active{
     cursor: grabbing;
-}
-
-.error {
-    border: 1px solid #FF0000 !important;
 }
 
 .selected {
