@@ -123,7 +123,7 @@ const initialDemoState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {
-            0: {code :  "display.scroll(myString)", focused: false, error :"", shownLabel: true},
+            0: {code :  "display.scroll(\"Hi\")", focused: false, error :"", shownLabel: true},
         },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
