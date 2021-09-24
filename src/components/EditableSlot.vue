@@ -508,13 +508,26 @@ export default Vue.extend({
         // store the cursor position to give it as input to AutoCompletionPopUp
         // Also checks if s bracket is opened, so it closes it
         logCursorPositionAndCheckBracket(event: KeyboardEvent) {
-            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+
+            // if we are adding a " or a ' character, it may not be an opening one, but a closing one.
+            if(event.key === "\"" || event.key === "'") {
+                // if the the count of " or ' is an even number it means that there we are adding a
+                // closing character rather than an opening. [ *Bear in mind that it is even because the
+                // character has already been added to this stage, as we are on a keyup event* ]
+                if((this.code.match(new RegExp(event.key, "g")) || []).length % 2 === 0) {
+                    return
+                }
+            }
+
+            const inputField =document.getElementById(this.UIID) as HTMLInputElement;
             this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
 
             const openBracketCharacters = ["(","{","[","\"","'"];
             const characterIndex= openBracketCharacters.indexOf(event.key)
 
+            //check if the character we are addign is an openBracketCharacter
             if(characterIndex !== -1) {
+
                 //create a list with the closing bracket for each one of the opening in the same index
                 const closeBracketCharacters = [")","}","]","\"","'"];
                 
@@ -523,7 +536,7 @@ export default Vue.extend({
                 const currentTextCursorPos = inputField.selectionStart??0;
 
                 // add the closing bracket to the text
-                const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
+                const newCode = this.code.substr(0, currentTextCursorPos) 
                 + closeBracketCharacters[characterIndex] // the needed closing bracket or punctuation mark
                 + this.code.substr(currentTextCursorPos);
 
