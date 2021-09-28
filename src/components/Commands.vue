@@ -61,6 +61,10 @@
         </div>
         <text id="userCode"></text>
         <span id="keystrokeSpan"></span>
+
+        /* IFDEBUG
+            <textarea rows="3" maxlength="100" ></textarea>
+        FIDEBUG */
     </div>
 </template>
 
