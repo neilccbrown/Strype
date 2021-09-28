@@ -351,7 +351,7 @@ export default Vue.extend({
 }
 
 .api-items-container{
-    max-height: 60vh; //% won't work here. use vh and adapt if the presentation changes...
+    max-height: 85vh; //% won't work here. use vh and adapt if the presentation changes...
     overflow-y: auto;
 }
 
