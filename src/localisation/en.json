@@ -379,5 +379,8 @@
     "commandTabs": {
         "0": "Add Frame",
         "1": "Explore micro:bit"
+    },
+    "console": {
+        "run":"Run Code"
     }
 }

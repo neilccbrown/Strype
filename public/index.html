@@ -32,9 +32,11 @@ from browser import document, window
 import sys as __sys
 import __osMB 
 import __timeMB
+import editor
 __sys.modules["os"] = __osMB
 __sys.modules["time"] = __timeMB
-exec(document['userCode'].text)
+exec(document['editor'].text)
+document['run'].bind('click',lambda *args: editor.run())
       </script>
     <div id="app"></div>
     <!-- built files will be auto injected -->

@@ -59,11 +59,11 @@
                 <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)"><APIDiscovery  class="command-tab-content"/></b-tab>
             </b-tabs>
         </div>
-        <text id="userCode"></text>
+        <text id="editor"></text>
         <span id="keystrokeSpan"></span>
 
         /* IFDEBUG
-            <textarea rows="3" maxlength="100" ></textarea>
+            <python-console/>
         FIDEBUG */
     </div>
 </template>
@@ -81,6 +81,11 @@ import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, I
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
+/* IFDEBUG */
+import PythonConsole from "@/components/PythonConsole.vue"
+/* FIDEBUG */
+
+
 export default Vue.extend({
     name: "Commands",
     store,
@@ -89,6 +94,9 @@ export default Vue.extend({
         AddFrameCommand,
         ToggleFrameLabelCommand,
         APIDiscovery,
+        /* IFDEBUG */
+        PythonConsole, 
+        /* FIDEBUG */
     },
 
     data: function () {
@@ -473,4 +481,5 @@ export default Vue.extend({
 #commandsTabs ul{
     border-bottom-color: #bbc8b6 !important;
 }
+
 </style>
