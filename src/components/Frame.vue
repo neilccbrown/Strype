@@ -33,7 +33,7 @@
                     :frameType="frameType.type"
                     :labels="frameType.labels"
                     class="frame-header"
-                    :style="(isJointFrame) ? 'margin-left:13px;' : 'margin-left:14px;'"
+                    :style="frameMarginStyle['header']"
                     :frameAllowChildren="allowChildren"
                 />
                 <FrameBody
@@ -42,7 +42,7 @@
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
                     ref="frameBody"
-                    :style="(isJointFrame) ? 'margin-left:11px;' : 'margin-left:12px;'"
+                    :style="frameMarginStyle['body']"
                 />
                 <JointFrames 
                     v-if="allowsJointChildren && hasJointFrameObjects"
@@ -147,6 +147,11 @@ export default Vue.extend({
                     "background-color": `${this.getFrameBgColor()} !important`,
                     "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
+        },
+
+        frameMarginStyle(): Record<string, Record<string, string>> {
+            return {"header": (this.isJointFrame)? {"margin-left": "13px"} : {"margin-left": "14px"},
+                    "body": (this.isJointFrame)? {"margin-left": "11px"} : {"margin-left": "12px"}}
         },
 
         frameSelectedCssClass(): string {

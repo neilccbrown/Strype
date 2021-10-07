@@ -509,7 +509,9 @@ export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?:
 };
 
 export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {
-    // As upon validation of the slot we check errors for that frame, we clear the errors related to this frame slot beforehand
+    // This method for checking errors is called when a frame slot is edited, or during undo/redo changes. As we don't have a way to
+    // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
+    // we clear the errors completely for that frame/slot before we check the errors again for it.
     store.commit(
         "setSlotErroneous", 
         {
@@ -524,16 +526,8 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     const optionalSlot = frameObject.frameType.labels[slotId].optionalSlot ?? true;
     const errorMessage = store.getters.getErrorForSlot(frameId,slotId);
     if(code !== "") {
-        //if the user entered text on previously left blank slot, remove the error
+        //if the user entered text in a slot that was blank before the change, remove the error
         if(!optionalSlot && errorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
-            store.commit(
-                "setSlotErroneous", 
-                {
-                    frameId: frameId, 
-                    slotIndex: slotId, 
-                    error: "",
-                }
-            );
             store.commit("removePreCompileErrors", getEditableSlotUIID(frameId, slotId));                
         }
     }
@@ -551,7 +545,7 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
                 
     // We check Python error (with TigerPython) for this portion of code only.
     // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared on the SLOT only.
-    // If we are not on a joint element, we check the whole joint siblings from root to last joint, otherwise, the single current line suffice.
+    // If we are on a joint element, we check the whole joint siblings from root to last joint, otherwise, the single current line suffice.
     const isJoinFrame = (frameObject.jointParentId > 0);
     //we need to find out what is the next frame to provide a stop value
     const availablePositions = getAvailableNavigationPositions();
