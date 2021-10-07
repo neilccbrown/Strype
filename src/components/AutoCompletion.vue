@@ -214,9 +214,6 @@ export default Vue.extend({
                     if(userDefItem.isFunction) {
                         //If module has not been created, create it
                         if(parsedResults["My Functions"] === undefined) { 
-                            // parsedResults["My Functions"] = []
-                            // parsedDoc["My Functions"] = []
-                            // parsedTypes["My Functions"] = []
                             parsedResults = {"My Functions":[], ...parsedResults};
                             parsedDoc = {"My Functions":[], ...parsedDoc};
                             parsedTypes = {"My Functions":[], ...parsedTypes};
