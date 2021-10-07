@@ -111,7 +111,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // in case the contextAC is not empty, this is the 'module'
          
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
-        
+
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if module:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\""
@@ -121,6 +121,19 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=module.capitalize()"
         // if there is no list for the specific mod, create it and append the name; otherwise just append the name
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)"
+
+        // Before we finish we need to have the "My Variables" on the top of the list(dictionary)
+        // Get the index of "My Variables" in the dictionary
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"indexOfMyVariables = list(resultsWithModules.keys()).index(\""+i18n.t("autoCompletion.myVariables")+"\")"
+        // If it is present
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"if indexOfMyVariables >= 0:"
+        // Convert the dictionary to a list
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"tups = list(resultsWithModules.items())"
+        // Swap My Variables with the module in the first place
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
+        // Convert back to dictionary!
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
+
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
         
         // If there are no results
@@ -328,5 +341,6 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
  
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
+
 
 

@@ -214,9 +214,12 @@ export default Vue.extend({
                     if(userDefItem.isFunction) {
                         //If module has not been created, create it
                         if(parsedResults["My Functions"] === undefined) { 
-                            parsedResults["My Functions"] = []
-                            parsedDoc["My Functions"] = []
-                            parsedTypes["My Functions"] = []
+                            // parsedResults["My Functions"] = []
+                            // parsedDoc["My Functions"] = []
+                            // parsedTypes["My Functions"] = []
+                            parsedResults = {"My Functions":[], ...parsedResults};
+                            parsedDoc = {"My Functions":[], ...parsedDoc};
+                            parsedTypes = {"My Functions":[], ...parsedTypes};
                         }
                         if(parsedResults["My Functions"].find((result) => (result === userDefItem.name)) === undefined) {
                             parsedResults["My Functions"].push(userDefItem.name);
@@ -227,9 +230,9 @@ export default Vue.extend({
                     else {
                         //If module has not been created, create it
                         if(parsedResults["My Variables"] === undefined) { 
-                            parsedResults["My Variables"] = []
-                            parsedDoc["My Variables"] = []
-                            parsedTypes["My Variables"] = []
+                            parsedResults = {"My Variables":[], ...parsedResults};
+                            parsedDoc = {"My Variables":[], ...parsedDoc};
+                            parsedTypes = {"My Variables":[], ...parsedTypes};
                         }
                         if(parsedResults["My Variables"].find((result) => (result === userDefItem.name)) === undefined) {
                             parsedResults["My Variables"].push(userDefItem.name);
@@ -293,10 +296,11 @@ export default Vue.extend({
 
             //if there are resutls
             if(this.areResultsToShow()) {
-                // get the first module as the selected
+                // set the first module as the selected one
                 this.currentModule = Object.keys(this.resultsToShow).filter((e) => this.resultsToShow[e].length>0)[0];
 
                 this.currentDocumentation = this.getCurrentDocumentation();
+                
             }
             
         },  
@@ -406,5 +410,6 @@ export default Vue.extend({
 }
 
 </style>
+
 
 
