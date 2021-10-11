@@ -1,7 +1,7 @@
 import Compiler from "@/compiler/compiler";
 import i18n from "@/i18n";
 import store from "@/store/store";
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements} from "@/types/types";
+import { CodeStyle, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
@@ -22,7 +22,7 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean): Parse
     // or an editable slot ("editableslot-input" + "error").
     const hasErrors = (document.getElementsByClassName("framDiv error").length > 0) || 
         (document.getElementsByClassName("frame-body-container error").length > 0) || 
-        (document.getElementsByClassName("editableslot-input error").length > 0);
+        (document.getElementsByClassName("editableslot-div error").length > 0);
  
     const compiler = new Compiler();
     if(requireCompilation){
@@ -410,4 +410,78 @@ export default class Parser {
         // it's not a function definition  if
         return line.startsWith(spaces+"def ")  // it starts with a def
     }
+}
+
+function parseTPASTBit(bit: Record<string, any>, offset?: number): StyledCodeSplits[] {
+    const res = [] as StyledCodeSplits[];
+    const offsetConst = offset ?? 0;
+    if(bit.kind=="Constant"){
+        //we reach a literal that we consider as a split of the code
+        switch(bit.value_type){
+        case "str":
+            res.push({start: bit.pos+offsetConst, end: bit.end_pos+offsetConst, style: CodeStyle.string});
+            break;
+        case "float":
+        case "int":
+            res.push({start: bit.pos+offsetConst, end: bit.pos + bit.value.length+offsetConst, style: CodeStyle.number});
+            break;
+        case "bool":
+            res.push({start: bit.pos+offsetConst, end: bit.pos +((bit.value) ? "True".length : "False".length) + offsetConst, style: CodeStyle.bool});
+            break; 
+        default:
+            break;
+        }    
+    }
+    else{
+        //there is a complex code that needs further exploration
+        if(bit.kind=="Expr"){
+            res.push(...parseTPASTBit(bit.expr))
+        }
+        if(bit.left){
+            //an operation, we parse the left and right parts
+            res.push(...parseTPASTBit(bit.left));
+            if(bit.right){
+                res.push(...parseTPASTBit(bit.right));
+            }
+            if(bit.kind=="Compare"){
+                console.log("Compare!")
+                console.log(bit.comparators.arguments)
+                //there is a problem getting the other parts of the expression object with comparison
+                //so trick it by getting the parser only parsing what's after the operator
+                
+            }
+        }
+        if(bit.func){
+            //a function call, we parse the base and attribute and args parts
+            if(bit.func.base){
+                res.push(...parseTPASTBit(bit.func.base));
+            }
+            if(bit.func.attr){
+                res.push(...parseTPASTBit(bit.func.attr));
+            }
+            (bit.args as Array<Record<string, any>>).forEach((subBit) => {
+                res.push(...parseTPASTBit(subBit));
+            });
+        }
+        if(bit.elts){
+            //an array or a tuple, we parse each indexed object parts
+            (bit.elts as Array<Record<string, any>>).forEach((subBit) => {
+                res.push(...parseTPASTBit(subBit));
+            });
+        }
+    }
+    res.sort((split1,split2) => split1.start - split2.start);
+    return res;
+}
+
+export function getStyledCodeLiteralsSplits(code: string): StyledCodeSplits[]{
+    // This method uses TigerPython AST parser to retrieve the literal "splits" of the given code.
+    // Note that we *only* retrieve the litteral splits.
+    const parsedCode = TPyParser.parse(code);
+    console.log(parsedCode)
+    if(parsedCode.body && parsedCode.body[0]){
+        return parseTPASTBit(parsedCode.body[0]);    
+    }
+    return [];
+
 }

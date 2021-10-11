@@ -1,6 +1,15 @@
 <template>
     <div class="next-to-eachother editable-slot"
-    >        
+    >
+        <div id="editableSlotSpans" :style="spanTextStyle">
+            <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
+            <span 
+                :key="UIID+'_'+index" 
+                v-for="(styledCodePart, index) in this.styledCodeParts" 
+                :class="styledCodePart.style"
+                :data-placeholder="defaultText"
+            >{{styledCodePart.code}}</span>
+        </div>
         <input
             type="text"
             autocomplete="off"
@@ -32,7 +41,6 @@
             class="editableslot-input navigationPosition"
             :style="inputTextStyle"
         />
-        
         <b-popover
         v-if="erroneous()"
         :target="UIID"
@@ -70,9 +78,11 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
+import { getStyledCodeLiteralsSplits } from "@/parser/parser";
+
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -125,6 +135,8 @@ export default Vue.extend({
             stillBackSpaceDown: false,
             //use to make sure that a tab event is a proper sequence (down > up) within an editable slot
             tabDownTriggered: false,
+            //an array of code "parts" associated with styles (to emphasis the literal types i.e. numbers, strings and booleans)
+            styledCodeParts: [] as StyledCodePart[],
         };
     },
     
@@ -144,12 +156,19 @@ export default Vue.extend({
 
         inputTextStyle(): Record<string, string> {
             return {
-                "background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important",
+                "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important", //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
                 "width" : this.computeFitWidthValue(),
                 "color" : (this.frameType === CommentDefinition.type)
                     ? "#97971E"
-                    : "#000",
+                    : (this.focused) ? "#000" : "transparent", //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
             };
+        },
+
+        spanTextStyle(): Record<string, string> {
+            //when the input has focus, we hide the spans, otherwise we show the right background colours
+            return (this.focused) 
+                ? {"visibility": "hidden"} 
+                : {"background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important"};
         },
 
         code: {
@@ -161,6 +180,7 @@ export default Vue.extend({
                 if(code.length > 0){
                     this.setBreakSpaceFlag(false);
                 }
+                this.generateStyledCodeParts(code);
                 return code;
             },
             set(value: string){
@@ -274,6 +294,36 @@ export default Vue.extend({
     methods: {
         setBreakSpaceFlag(value: boolean){
             this.canBackspaceDeleteFrame = value;
+        },
+
+        generateStyledCodeParts(code: string){
+            this.styledCodeParts.splice(0, this.styledCodeParts.length);
+            if(code.trim().length === 0){
+                this.styledCodeParts[0] = {code: "", style: CodeStyle.empty}
+            }
+            else{
+                //we use TigerPython parser to get the different code parts we are interested in:
+                //literals for strings, booleans, numbers.
+                const styledCodeSplits = getStyledCodeLiteralsSplits(code);
+                let codePos = 0;
+                console.log(styledCodeSplits)
+                console.log(code)
+                styledCodeSplits.forEach((codeSplit) => {
+                    //if the start index is ahead of the current position index, we make a first token
+                    if(codeSplit.start > codePos){
+                        console.log("part 1: <"+code.substring(codePos, codeSplit.start)+">")
+                        this.styledCodeParts.push({code: code.substring(codePos, codeSplit.start), style: CodeStyle.none});
+                    } 
+                    console.log("part 2: <"+code.substring(codeSplit.start, codeSplit.end)+">")  
+                    this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
+                    codePos=codeSplit.end;
+                })
+                //check for a potential trailing part
+                if(codePos < code.length){
+                    console.log("part 2: <"+code.substring(codePos)+">")
+                    this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
+                }
+            }
         },
 
         erroneous(): boolean {
@@ -577,6 +627,11 @@ export default Vue.extend({
 .editableslot-input {
     border-radius: 5px;
     border: 1px solid transparent;
+    padding: 1px 2px;
+    position:absolute;
+    top: 0%;
+    left: 0%;
+    outline: none;
 }
 
 .editableslot-input:hover {
@@ -599,6 +654,20 @@ export default Vue.extend({
   font-style: italic;
 }
 
+#editableSlotSpans{
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 1px 2px;
+}
+
+.editableSlotSpansHidden {
+    visibility: hidden;
+}
+
+#editableSlotSpans span{
+    outline: none;
+    white-space: pre;
+}
 
 .editableslot-placeholder {
     position: absolute;
@@ -623,4 +692,25 @@ export default Vue.extend({
     z-index: 10;
 }
 
+// Classes implenting the style tokens defined in type.ts (for the interface StyledCodePart)
+.string-token {
+    color: #006600;
+}
+
+.number-token {
+    color: blue;
+}
+
+.bool-token {
+    color: purple; 
+}
+
+.empty-token {
+    font-style: italic;
+    color: grey;
+}
+
+.empty-token:empty::before {
+    content:attr(data-placeholder);
+}
 </style>

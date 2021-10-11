@@ -16,7 +16,7 @@ import Parser from "@/parser/parser";
 
 Vue.use(Vuex);
 
-const initialState: StateObject = initialStates["demoState"];
+const initialState: StateObject = initialStates["longDemoState"];
 
 export default new Vuex.Store({
     state: {

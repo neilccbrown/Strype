@@ -90,7 +90,8 @@ const initialDemoState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {
             0: {code :  "myString", focused: false, error :"", shownLabel: true},
-            1: {code :  "\"Hello micro:bit!\"", focused: false, error :"", shownLabel: true} },
+            //1: {code :  "2 +\"Hello micro:bit!\"   + True-   nothing", focused: false, error :"", shownLabel: true} },
+            1: {code :  "(2,504,50.8)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -123,8 +124,8 @@ const initialDemoState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {
-            0: {code :  "display.scroll(myString)", focused: false, error :"", shownLabel: true},
-        },
+            0: {code :  "display.scroll(\"test\",False,2.5)", focused: false, error :"", shownLabel: true},
+        },    
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },

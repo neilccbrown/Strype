@@ -219,7 +219,7 @@ const longStateExample: EditorFrameObjects = {
         childrenIds: [14,15],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: {code :  "gesture == \"shake\"", focused: false, error :"", shownLabel: true} },
+        contentDict: { 0: {code :  "\"shake\" > gesture", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
