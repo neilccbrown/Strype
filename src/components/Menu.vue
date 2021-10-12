@@ -32,14 +32,14 @@
                 </div>
             </div> 
             <div class="menu-separator-div"></div>
-            <a class="project-impexp-div" href="#" @click="importFile()" v-t="'appMenu.loadProject'" />
-            <a class="project-impexp-div" href="#" @click="exportFile()" v-t="'appMenu.saveProject'"/>
+            <a class="project-impexp-div" href="#" @click="importFile();toggleMenuOnOff(undefined);" v-t="'appMenu.loadProject'" />
+            <a class="project-impexp-div" href="#" @click="exportFile();toggleMenuOnOff(undefined);" v-t="'appMenu.saveProject'"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang">
+                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(undefined)">
                         <option value="en">English</option>
                         <option value="fr">Français</option>
                     </select>
