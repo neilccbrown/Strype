@@ -1,16 +1,6 @@
 <template>
-    <div class="next-to-eachother editable-slot"
-    >
-        <div id="editableSlotSpans" :style="spanTextStyle">
-            <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
-            <span 
-                :key="UIID+'_'+index" 
-                v-for="(styledCodePart, index) in this.styledCodeParts" 
-                :class="styledCodePart.style"
-                :data-placeholder="defaultText"
-            >{{styledCodePart.code}}</span>
-        </div>
-        <input
+    <div class="next-to-eachother editable-slot">
+          <input
             type="text"
             autocomplete="off"
             spellcheck="false"
@@ -41,13 +31,22 @@
             class="editableslot-input navigationPosition"
             :style="inputTextStyle"
         />
+        <div id="editableSlotSpans" :style="spanTextStyle">
+            <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
+            <span 
+                :key="UIID+'_'+index" 
+                v-for="(styledCodePart, index) in this.styledCodeParts" 
+                :class="styledCodePart.style"
+                :data-placeholder="defaultText"
+            >{{styledCodePart.code}}</span>
+        </div>
         <b-popover
-        v-if="erroneous()"
-        :target="UIID"
-        :title="this.$i18n.t('errorMessage.errorTitle')"
-        triggers="hover focus"
-        :content="errorMessage"
-        custom-class="error-popover"
+            v-if="erroneous()"
+            :target="UIID"
+            :title="this.$i18n.t('errorMessage.errorTitle')"
+            triggers="hover focus"
+            :content="errorMessage"
+            custom-class="error-popover"
         >
         </b-popover>
 
@@ -82,7 +81,6 @@ import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, Var
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
-
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -302,25 +300,19 @@ export default Vue.extend({
                 this.styledCodeParts[0] = {code: "", style: CodeStyle.empty}
             }
             else{
-                //we use TigerPython parser to get the different code parts we are interested in:
-                //literals for strings, booleans, numbers.
+                //get the "bits" of code that are literals
                 const styledCodeSplits = getStyledCodeLiteralsSplits(code);
                 let codePos = 0;
-                console.log(styledCodeSplits)
-                console.log(code)
                 styledCodeSplits.forEach((codeSplit) => {
                     //if the start index is ahead of the current position index, we make a first token
                     if(codeSplit.start > codePos){
-                        console.log("part 1: <"+code.substring(codePos, codeSplit.start)+">")
                         this.styledCodeParts.push({code: code.substring(codePos, codeSplit.start), style: CodeStyle.none});
                     } 
-                    console.log("part 2: <"+code.substring(codeSplit.start, codeSplit.end)+">")  
                     this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
                     codePos=codeSplit.end;
                 })
                 //check for a potential trailing part
                 if(codePos < code.length){
-                    console.log("part 2: <"+code.substring(codePos)+">")
                     this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
                 }
             }

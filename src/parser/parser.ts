@@ -183,8 +183,6 @@ export default class Parser {
             disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG ;
         }
         //console.timeEnd();
-
-        //console.log(TPyParser.parse(output))
         return output + disabledFrameBlockFlag;
     }
 
@@ -412,76 +410,57 @@ export default class Parser {
     }
 }
 
-function parseTPASTBit(bit: Record<string, any>, offset?: number): StyledCodeSplits[] {
-    const res = [] as StyledCodeSplits[];
-    const offsetConst = offset ?? 0;
-    if(bit.kind=="Constant"){
-        //we reach a literal that we consider as a split of the code
-        switch(bit.value_type){
-        case "str":
-            res.push({start: bit.pos+offsetConst, end: bit.end_pos+offsetConst, style: CodeStyle.string});
-            break;
-        case "float":
-        case "int":
-            res.push({start: bit.pos+offsetConst, end: bit.pos + bit.value.length+offsetConst, style: CodeStyle.number});
-            break;
-        case "bool":
-            res.push({start: bit.pos+offsetConst, end: bit.pos +((bit.value) ? "True".length : "False".length) + offsetConst, style: CodeStyle.bool});
-            break; 
-        default:
-            break;
-        }    
-    }
-    else{
-        //there is a complex code that needs further exploration
-        if(bit.kind=="Expr"){
-            res.push(...parseTPASTBit(bit.expr))
-        }
-        if(bit.left){
-            //an operation, we parse the left and right parts
-            res.push(...parseTPASTBit(bit.left));
-            if(bit.right){
-                res.push(...parseTPASTBit(bit.right));
-            }
-            if(bit.kind=="Compare"){
-                console.log("Compare!")
-                console.log(bit.comparators.arguments)
-                //there is a problem getting the other parts of the expression object with comparison
-                //so trick it by getting the parser only parsing what's after the operator
-                
-            }
-        }
-        if(bit.func){
-            //a function call, we parse the base and attribute and args parts
-            if(bit.func.base){
-                res.push(...parseTPASTBit(bit.func.base));
-            }
-            if(bit.func.attr){
-                res.push(...parseTPASTBit(bit.func.attr));
-            }
-            (bit.args as Array<Record<string, any>>).forEach((subBit) => {
-                res.push(...parseTPASTBit(subBit));
-            });
-        }
-        if(bit.elts){
-            //an array or a tuple, we parse each indexed object parts
-            (bit.elts as Array<Record<string, any>>).forEach((subBit) => {
-                res.push(...parseTPASTBit(subBit));
-            });
-        }
-    }
-    res.sort((split1,split2) => split1.start - split2.start);
-    return res;
-}
-
 export function getStyledCodeLiteralsSplits(code: string): StyledCodeSplits[]{
-    // This method uses TigerPython AST parser to retrieve the literal "splits" of the given code.
-    // Note that we *only* retrieve the litteral splits.
-    const parsedCode = TPyParser.parse(code);
-    console.log(parsedCode)
-    if(parsedCode.body && parsedCode.body[0]){
-        return parseTPASTBit(parsedCode.body[0]);    
-    }
-    return [];
+    //we use regular expressions to get the different code parts we are interested in:
+    //literals for strings, booleans, numbers.
+    //in order to avoid finding other tokens inside strings and ease the findings we work with a transformed copy of the code,
+    //which contains replaced strings values that cannot match numbers/booleans
+    let tempCode = code;
+    const styledCodeSplits = [] as StyledCodeSplits[];
+   
+    //first look for strings (contained between "" or '')
+    const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1/g;
+    let matchesArray = [...tempCode.matchAll(strRegEx)];
+    matchesArray.forEach((matchBit) => {
+        styledCodeSplits.push({start:matchBit.index??0, end: (matchBit.index??0) + matchBit[0].length,style: CodeStyle.string})
+        //and we transform the temp string for masking the string contents
+        tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+    })      
 
+    //then we look for numbers (format examples: 9, 9+1j, 0x9, 0o11, 0b1001, 0.9e1)
+    const numberRegEx = /(^| +|[,+\-()/*%&|~^><=])(-?(0b[01]+)|(0x[0-9A-Fa-f]+)|(\d+(\.\d+|)[eE]-?\d+)|((\d+(\.\d+|)[+-]\d+(\.\d+|)j)|(\d+(\.\d+|)j)|(\d+(\.\d+|))))($| +|[,+\-()/*%&|~^><=])/g;
+    matchesArray = [...tempCode.matchAll(numberRegEx)];
+    while(matchesArray.length > 0){
+        matchesArray.forEach((matchBit) => {
+            //the number that we found is located in the group 2 of the match, we save it
+            const startOfNumber = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
+            const lengthOfNumber = matchBit[2].length;
+            styledCodeSplits.push({start:startOfNumber, end: startOfNumber + lengthOfNumber,style: CodeStyle.number})
+            //and we transform the temp string for another iteration of the number checks
+            tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+        })               
+                   
+        //prepare for next iteration:
+        matchesArray = [...tempCode.matchAll(numberRegEx)];
+    }
+
+    //finally we look for booleans (True and False)
+    const boolRegEx = /(^| +|[,+\-(/*%&|~^><=[]])((True)|(False))($| +|[,+\-)\]/*%&|~^><=])/g;
+    matchesArray = [...tempCode.matchAll(boolRegEx)];
+    while(matchesArray.length > 0){
+        matchesArray.forEach((matchBit) => {
+            //the boolean value that we found is located in the group 2 of the match, we save it
+            const startOfBool = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
+            const lengthOfBool = matchBit[2].length;
+            styledCodeSplits.push({start:startOfBool, end: startOfBool + lengthOfBool,style: CodeStyle.bool})
+            //and we transform the temp string for another iteration of the boolean checks
+            tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+        })               
+                   
+        //prepare for next iteration:
+        matchesArray = [...tempCode.matchAll(boolRegEx)];
+    }
+    
+    //we sort the split bits by start index before returning the result
+    return styledCodeSplits.sort((split1,split2) => split1.start - split2.start);
 }
