@@ -553,7 +553,7 @@ export default Vue.extend({
             //on Windows with non English keyboard layouts, some of the brackets/quotes are produced with a key combination,
             //so key.up will be called several times
             //to avoid problems, we ignore those keys
-            if(["Control", "AltGraph", "Alt", "Shift", "Delete", "Backspace"].includes(event.key)){
+            if(["Control", "AltGraph", "Alt", "Shift", "Delete", "Backspace", "ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(event.key)){
                 return;
             }
 
