@@ -19,7 +19,7 @@
         </div>
         <div @mousedown.prevent.stop @mouseup.prevent.stop>
             <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
-                <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" v-if="!isEditing">
+                <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
                     <div :id="commandsContainerUUID" class="command-tab-content" >
                         <div id="addFramePanel">
                             <div class="frameCommands">
@@ -384,11 +384,12 @@ export default Vue.extend({
         },
 
         getTabClasses(tabIndex: number): string[] {
+            const disabledClassStr = (this.isEditing) ? " commands-tab-disabled" : "";
             if(tabIndex == this.tabIndex){
                 return ["commands-tab commands-tab-active"]
             }
             else {
-                return ["commands-tab"]
+                return ["commands-tab" + disabledClassStr]
             }
         },
     },
@@ -470,5 +471,9 @@ export default Vue.extend({
 //the following overrides the bootstrap tab generated styles
 #commandsTabs ul{
     border-bottom-color: #bbc8b6 !important;
+}
+
+.nav-item{
+    cursor: no-drop;
 }
 </style>
