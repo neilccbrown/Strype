@@ -54,11 +54,13 @@
                             </div>
                         </b-card-text>
                         <div class="api-code-container" v-if="apiDescItem.name===selectedAPIItemName  && !isSelectedIntermediateItem()">
-                            <button 
+                            <!-- FF disabled button still get listeners that mess with focus/blur of inputs, so use div instead -->
+                            <div
                                 @click="useExampleCode()" 
                                 v-html="$t('buttonLabel.addCodeExtract')" 
-                                :disabled="!showCodeGeneratorPart || isSelectedIntermediateItem()" 
+                                :disabled="disabledAPI()" 
                                 class="api-code-button btn btn-secondary" 
+                                :class="{'api-code-button-disabled': disabledAPI()}"
                             />
                         </div>
                     </b-card>
@@ -87,6 +89,7 @@ export default Vue.extend({
             codeLevels: 4, //this shouldn't change in the component, but just makes an easy way to adapt the code if more levels in the API are changed some day
             mbAPIExampleCodeParts: [] as string[], //the example code parts generated when using the API discovery tool (each part <==> one API level)
             showExtraDoc: false,
+            addedAPICode: false, //a flag indicating if something has been added with the API
         }
     },
 
@@ -110,11 +113,23 @@ export default Vue.extend({
             return (!this.flatAPIDesc.find((item) => item.name === this.selectedAPIItemName)?.isFinal)??true;
         },
 
+        disabledAPI(): boolean{
+            return !this.showCodeGeneratorPart || this.isSelectedIntermediateItem();
+        },
+
         isItemShowable(item: APIItemTextualDescription): boolean {
             //To decide if this API item should be shown, we check these two cases:
-            //- if there is no item selected, then all level 1 items are shown
+            //- if there is no item selected, or if the API needs to be reset*, then all level 1 items are shown
             //- if there is an item selected, we keep all level 1 items, the parents to that item, it's immediate parent siblings, its siblings and its first children
-            if(this.selectedAPIItemName.length == 0){
+            //(*) reset the API when we added something && we are no longer editing the code
+            if(this.selectedAPIItemName.length == 0 || (this.addedAPICode && !this.isEditing)){
+                if(this.addedAPICode && !this.isEditing){
+                    //we can now relase the flag and reset the API
+                    this.addedAPICode = false;
+                    this.selectedAPIItemName = "";
+                    this.selectedAPIItemLevel = 0;
+                    this.selectedAPIHierarchyNames = [];
+                }
                 return item.level == 1;
             }
             else {
@@ -273,27 +288,31 @@ export default Vue.extend({
         // 3) reset the API discovery
         // Note: for avoiding repeating a section of the code, 2) is moved to another method
         useExampleCode(): void {
-            const newCode = this.mbAPIExampleCodeParts.join("");
-            if(!this.isEditing){
+            //if the API is disabled, this action should trigger anything
+            if(!this.disabledAPI()){
+                const newCode = this.mbAPIExampleCodeParts.join("");
+                if(!this.isEditing){
                 // part 1): not editing the code: we create a new method call frame, then add the code in (parts 2 & 3)
-                store.dispatch(
-                    "addFrameWithCommand",
-                    EmptyDefinition
-                ).then(() => {
+                    store.dispatch(
+                        "addFrameWithCommand",
+                        EmptyDefinition
+                    ).then(() => {
                     //as we added a new frame, we need to get the new current frame
-                    this.addExampleCodeInSlot(store.getters.getCurrentFrameObject().id, 0, newCode);1
-                });
-            }
-            else{
+                        this.addExampleCodeInSlot(store.getters.getCurrentFrameObject().id, 0, newCode);1
+                    });
+                }
+                else{
                 //editing mode, just add the code in the existing slot (parts 2 & 3)
-                const currentFrame = store.getters.getCurrentFrameObject() as FrameObject;
-                const currentSlotIndex = parseInt(Object.entries(currentFrame.contentDict).find((entry) => entry[1].focused)?.[0]??"-1") ;
-                this.addExampleCodeInSlot(currentFrame.id, currentSlotIndex, newCode); 
-            }            
+                    const currentFrame = store.getters.getCurrentFrameObject() as FrameObject;
+                    const currentSlotIndex = parseInt(Object.entries(currentFrame.contentDict).find((entry) => entry[1].focused)?.[0]??"-1") ;
+                    this.addExampleCodeInSlot(currentFrame.id, currentSlotIndex, newCode); 
+                }  
+            }          
         },
 
         // The externalised part to add the code example content in an editable slot (cf useExampleCode() parts 2 & 3) 
         addExampleCodeInSlot(frameId: number, slotIndex: number, content: string){
+            this.addedAPICode = true;
             store.dispatch(
                 "setFrameEditableSlotContent",
                 {
@@ -305,13 +324,7 @@ export default Vue.extend({
                 }
             )
                 .then(()=>{
-                    //in any case, once the code generator has been used, we reset the API discovery
-                    this.selectedAPIItemName = "";
-                    this.selectedAPIItemLevel = 0;
-                    this.selectedAPIHierarchyNames = [];
-                })
-                .then(() => {
-                    //and we select the arguments of the added functions (if applies)
+                    //we select the arguments of the added functions (if applies)
                     const inputField = document.getElementById(getEditableSlotUIID(frameId, slotIndex)) as HTMLInputElement;
                     if(inputField && inputField.value.match(/^.*\(.*\)$/)){
                         inputField.setSelectionRange(inputField.value.indexOf("(") + 1, inputField.value.lastIndexOf(")"), "forward");
@@ -409,6 +422,12 @@ export default Vue.extend({
     padding: 1px 6px 1px 6px !important;
     white-space:nowrap;
     margin-right: 5px;
+    cursor: pointer;
+}
+
+.api-code-button-disabled{
+    cursor: default !important;
+    opacity: 0.65 !important;
 }
 
 //the following ovewrites the bootstrap card class

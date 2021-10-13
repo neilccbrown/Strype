@@ -56,7 +56,9 @@
                         </div>
                     </div>
                 </b-tab>
-                <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)"><APIDiscovery  class="command-tab-content"/></b-tab>
+                <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
+                    <APIDiscovery  class="command-tab-content"/>
+                </b-tab>
             </b-tabs>
         </div>
         <text id="userCode"></text>
