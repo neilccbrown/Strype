@@ -19,9 +19,9 @@
         </div>
         <div @mousedown.prevent.stop @mouseup.prevent.stop>
             <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
-                <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)">
+                <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" v-if="!isEditing">
                     <div :id="commandsContainerUUID" class="command-tab-content" >
-                        <div id="addFramePanel" v-if="!isEditing">
+                        <div id="addFramePanel">
                             <div class="frameCommands">
                                 <transition-group name="list" tag="p">
                                     <AddFrameCommand
