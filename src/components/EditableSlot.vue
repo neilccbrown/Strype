@@ -23,7 +23,7 @@
             @keyup.tab="onEnterOrTabKeyUp($event)"
             @keydown.backspace="onBackSpaceKeyDown()"
             @keyup.backspace="onBackSpaceKeyUp()"
-            @keydown="onEqualOrSpaceKeyDown($event)"
+            @keydown="onKeyDown($event)"
             @keyup="logCursorPositionAndCheckBracket($event)"
             :class="{editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
@@ -135,6 +135,8 @@ export default Vue.extend({
             tabDownTriggered: false,
             //an array of code "parts" associated with styles (to emphasis the literal types i.e. numbers, strings and booleans)
             styledCodeParts: [] as StyledCodePart[],
+            //we need to track the key.down events for the bracket/quote closing method (cf details there)
+            keyDownStr: "" as string,
         };
     },
     
@@ -467,7 +469,10 @@ export default Vue.extend({
             this.tabDownTriggered = false;
         },
 
-        onEqualOrSpaceKeyDown(event: KeyboardEvent){
+        onKeyDown(event: KeyboardEvent){
+            //we store the key.down key event.key value for the bracket/quote closing method (cf details there)
+            this.keyDownStr = event.key;
+
             // If the frame is a variable assignment frame and we are in the left hand side editable slot,
             // pressing "=" or space keys move to RHS editable slot
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
@@ -549,37 +554,30 @@ export default Vue.extend({
 
         // store the cursor position to give it as input to AutoCompletionPopUp
         // Also checks if s bracket is opened, so it closes it
-        logCursorPositionAndCheckBracket(event: KeyboardEvent) {
-            //on Windows with non English keyboard layouts, some of the brackets/quotes are produced with a key combination,
-            //so key.up will be called several times
-            //to avoid problems, we ignore those keys
-            if(["Control", "AltGraph", "Alt", "Shift", "Delete", "Backspace", "ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(event.key)){
-                return;
-            }
-
-            // get the input field
-            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-            const currentTextCursorPos = inputField.selectionStart??0;
-            this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
-
-
-            //get the hit key informations. Don't key.event here because the result isn't consistent with different keyboard layouts
-            const openBracketCharacters = ["(","{","[","\"","'"];
-            const characterIndex= openBracketCharacters.indexOf(this.code[(inputField.selectionStart??1)-1]);
-            const charValue = openBracketCharacters[characterIndex];
-
+        // Note: the method is called on the key.up event BUT some issues on key.up are found with Windows/different keyboard layouts (i.e. French)
+        // therefore, we do not use the key.event of the key.up event, but the stored key.down event from this component's data
+        logCursorPositionAndCheckBracket() {
             // if we are adding a " or a ' character, it may not be an opening one, but a closing one.
-            if(charValue === "\"" || charValue === "'") {
+            if(this.keyDownStr === "\"" || this.keyDownStr === "'") {
                 // if the the count of " or ' is an even number it means that there we are adding a
                 // closing character rather than an opening. [ *Bear in mind that it is even because the
                 // character has already been added to this stage, as we are on a keyup event* ]
-                if((this.code.match(new RegExp(charValue, "g")) || []).length % 2 === 0) {
+                if((this.code.match(new RegExp(this.keyDownStr, "g")) || []).length % 2 === 0) {
                     return
                 }
             }
 
+            // get the input field and caret position
+            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+            const currentTextCursorPos = inputField.selectionStart??0;
+            this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
+
+            const openBracketCharacters = ["(","{","[","\"","'"];
+            const characterIndex= openBracketCharacters.indexOf(this.keyDownStr)
+
             //check if the character we are addign is an openBracketCharacter
             if(characterIndex !== -1) {
+
                 //create a list with the closing bracket for each one of the opening in the same index
                 const closeBracketCharacters = [")","}","]","\"","'"];
 
@@ -594,6 +592,8 @@ export default Vue.extend({
                 this.code = newCode;
             }
 
+            //we reset the key.down value here, to avoid over-doing the method on all key.up called on the modifier keys
+            this.keyDownStr="";
         },
         
         computeFitWidthValue(): string {
