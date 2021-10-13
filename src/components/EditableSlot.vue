@@ -24,7 +24,7 @@
             @keydown.backspace="onBackSpaceKeyDown()"
             @keyup.backspace="onBackSpaceKeyUp()"
             @keydown="onKeyDown($event)"
-            @keyup="logCursorPositionAndCheckBracket($event)"
+            @keyup="logCursorPositionAndCheckBracket()"
             :class="{editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
             :key="UIID"
