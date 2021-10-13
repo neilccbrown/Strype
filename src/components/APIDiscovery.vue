@@ -72,6 +72,7 @@
 import Vue from "vue";
 import {APIItemTextualDescription, EmptyDefinition, FrameObject} from "@/types/types"
 import store from "@/store/store"
+import { getEditableSlotUIID } from "@/helpers/editor";
 
 export default Vue.extend({
     name: "APIDiscovery",
@@ -304,10 +305,17 @@ export default Vue.extend({
                 }
             )
                 .then(()=>{
-                //in any case, once the code generator has been used, we reset the API discovery
+                    //in any case, once the code generator has been used, we reset the API discovery
                     this.selectedAPIItemName = "";
                     this.selectedAPIItemLevel = 0;
                     this.selectedAPIHierarchyNames = [];
+                })
+                .then(() => {
+                    //and we select the arguments of the added functions (if applies)
+                    const inputField = document.getElementById(getEditableSlotUIID(frameId, slotIndex)) as HTMLInputElement;
+                    if(inputField && inputField.value.match(/^.*\(.*\)$/)){
+                        inputField.setSelectionRange(inputField.value.indexOf("(") + 1, inputField.value.lastIndexOf(")"), "forward");
+                    }
                 });
         },
 
