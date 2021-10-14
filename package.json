@@ -33,7 +33,7 @@
         "python-shell": "^2.0.3",
         "sortablejs": "^1.11.2-alpha.3",
         "textarea-caret": "^3.1.0",
-        "tigerpython-parser": "git+https://github.com/pierrewtLanca/TigerPython-Parser.git",
+        "tigerpython-parser": "git+https://gitlab.bluej.org/webframes/tiger-python.git",
         "v-blur": "^1.0.4",
         "velocity": "^0.7.3",
         "vue": "^2.6.12",

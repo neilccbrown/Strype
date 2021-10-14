@@ -62,7 +62,7 @@ const longStateExample: EditorFrameObjects = {
     },
 
     1: {
-        frameType: Definitions.ImportDefinition,
+        frameType: Definitions.FromImportDefinition,
         id: 1,
         isDisabled: false,
         isSelected: false,

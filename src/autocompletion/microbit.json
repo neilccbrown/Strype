@@ -176,8 +176,8 @@
             {"name":"temp", "codePortion":"temperature()"},
             {"name":"reset", "codePortion":"reset()"},
             {"name":"runned", "codePortion":"running_time()"},
-            {"name":"panic", "codePortion":"panic(n)"},
-            {"name":"sleep", "codePortion":"sleep(n)"}
+            {"name":"sleep", "codePortion":"sleep(n)"},
+            {"name":"panic", "codePortion":"panic(n)"}
         ]}
     ]
 }

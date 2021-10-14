@@ -15,7 +15,7 @@ import moduleDescription from "@/autocompletion/microbit.json";
 
 Vue.use(Vuex);
 
-const initialState: StateObject = initialStates["longDemoState"];
+const initialState: StateObject = initialStates["demoState"];
 
 export default new Vuex.Store({
     state: {
