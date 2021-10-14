@@ -373,7 +373,18 @@
             "speechT_extradoc": "The output is generated from <a href=\"https://microbit-micropython.readthedocs.io/en/v1.0.1/speech.html#phonemes\" target=\"_blank\">this text to phoneme translation table</a>.<br/>This function should be used to generate a first approximation of phonemes that can be further hand-edited to improve accuracy, inflection and emphasis.",
             "speechP_label": "Pronounce phonemes",
             "speechP_doc": "Pronounces the phonemes in the string <b>phonemes</b>. See <a href=\"https://microbit-micropython.readthedocs.io/en/v1.0.1/speech.html#phonemes\" target=\"_blank\">this</a> for details of how to use phonemes to finely control the output of the speech synthesiser.",
-            "speechP_extradoc": "Override the optional <b>pitch</b> (64 by default), <b>speed</b> (72 by default), <b>mouth</b> (128 by default) and <b>throat</b> (128 by default) settings to change the timbre (quality) of the voice. Look at the <a href=\"https://microbit-micropython.readthedocs.io/en/v1.0.1/speech.html\" target=\"_blank\">online documentation</a> for a detailed explanation on how to use these parameters."
+            "speechP_extradoc": "Override the optional <b>pitch</b> (64 by default), <b>speed</b> (72 by default), <b>mouth</b> (128 by default) and <b>throat</b> (128 by default) settings to change the timbre (quality) of the voice. Look at the <a href=\"https://microbit-micropython.readthedocs.io/en/v1.0.1/speech.html\" target=\"_blank\">online documentation</a> for a detailed explanation on how to use these parameters.",
+            "microbit_label":"Other functions",
+            "microbit_doc":"Functions of the microbit module to control the board.",
+            "reset_label":"Restart the board",
+            "temp_label":"Get the micro:bit temperature",
+            "temp_doc":"The temperature is returned in degrees Celcius.",
+            "runned_label":"Get how long the board has been running",
+            "runned_doc":"Return the number of milliseconds since the board was switched on or restarted.",
+            "sleep_label":"Pause the micro:bit",
+            "sleep_doc":"Will pause the execution on the micro:bit for n milliseconds.",
+            "panic_label":"Enter panic mode",
+            "panic_doc":"Requires restart. Pass in an arbitrary integer <= 255 to indicate a status."
         }
     },
     "commandTabs": {

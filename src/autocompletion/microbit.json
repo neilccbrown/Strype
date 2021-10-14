@@ -171,6 +171,13 @@
             {"name":"speechSay","codePortion":"say(words)","extraCodePortion":"say(words, pitch=64, speed=72, mouth=128, throat=128)"},
             {"name":"speechSing","codePortion":"sing(phonemes)","extraCodePortion":"sing(phonemes, pitch=64, speed=72, mouth=128, throat=128)"},
             {"name":"speechT","codePortion":"translate(words)"},
-            {"name":"speechP","codePortion":"pronounce(phonemes)", "extraCodePortion":"pronounce(phonemes, pitch=64, speed=72, mouth=128, throat=128)"}]}
+            {"name":"speechP","codePortion":"pronounce(phonemes)", "extraCodePortion":"pronounce(phonemes, pitch=64, speed=72, mouth=128, throat=128)"}]},
+        {"name":"microbit", "codePortion":"", "children":[
+            {"name":"temp", "codePortion":"temperature()"},
+            {"name":"reset", "codePortion":"reset()"},
+            {"name":"runned", "codePortion":"running_time()"},
+            {"name":"panic", "codePortion":"panic(n)"},
+            {"name":"sleep", "codePortion":"sleep(n)"}
+        ]}
     ]
 }
