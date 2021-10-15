@@ -509,7 +509,7 @@ export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?:
 };
 
 export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {
-    // This method for checking errors is called when a frame slot is edited, or during undo/redo changes. As we don't have a way to
+    // This method for checking errors is called when a frame slot has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
     // we clear the errors completely for that frame/slot before we check the errors again for it.
     store.commit(

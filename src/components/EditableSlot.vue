@@ -297,8 +297,13 @@ export default Vue.extend({
         },
 
         generateStyledCodeParts(code: string){
+            //In order to show the code literals for string, number and boolean tokens, we use an overlay
+            //of <span> elements when the editable slot is not being edited.
+            //Therefore, we parse the code to retrieve the literals and apply styling for each "bits" of code
+            //to generate the <span> elements.
             this.styledCodeParts.splice(0, this.styledCodeParts.length);
             if(code.trim().length === 0){
+                //if there is nothing in the slot, we use the style "empty" that looks like an input placeholder
                 this.styledCodeParts[0] = {code: "", style: CodeStyle.empty}
             }
             else{
@@ -306,14 +311,18 @@ export default Vue.extend({
                 const styledCodeSplits = getStyledCodeLiteralsSplits(code);
                 let codePos = 0;
                 styledCodeSplits.forEach((codeSplit) => {
-                    //if the start index is ahead of the current position index, we make a first token
-                    if(codeSplit.start > codePos){
+                    //While iterating through the code splits that are *only* for the literals,
+                    //we reconstruct the missing bits of code (parts which are not literals) 
+                    //so that we end up with the *full* code.
+                    if(codeSplit.start > codePos){                        
+                        //check if there is a "normal" code section before that literal
                         this.styledCodeParts.push({code: code.substring(codePos, codeSplit.start), style: CodeStyle.none});
                     } 
+                    //add the literal
                     this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
                     codePos=codeSplit.end;
                 })
-                //check for a potential trailing part
+                //check for a potential trailing "normal" part
                 if(codePos < code.length){
                     this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
                 }
