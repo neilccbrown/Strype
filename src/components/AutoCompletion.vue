@@ -249,7 +249,7 @@ export default Vue.extend({
             Object.keys(parsedDoc).forEach( (module: string) => {
                 // We do not include modules that had not result in them
 
-                if(parsedResults[module].length??0 > 0){
+                if((parsedResults[module].length??0) > 0){
                     // For each module we create an indexed list with all the results
                     // We filter first, as if we have a block without a name (i.e. funct with empty mame) we should exclude these
                     const listOfElements: AcResultType[] = parsedResults[module].filter((e) => e!=="").map( (element,i) => {
