@@ -98,6 +98,24 @@ export interface EditableFocusPayload {
     slotId: number;
     focused: boolean;
 }
+
+export enum CodeStyle{
+    none = "",
+    string = "string-token",
+    number = "number-token",
+    bool = "bool-token",
+    empty = "empty-token",
+}
+export interface StyledCodePart {
+    code: string,
+    style: CodeStyle, 
+}
+
+export interface StyledCodeSplits {
+    start: number,
+    end: number,
+    style: CodeStyle,
+}
 export interface NavigationPosition {
     id: number;
     // Both the following can be boolean, as if one has a value, the other one has false (e.g. caretPosition = below AND slotNumber = false)

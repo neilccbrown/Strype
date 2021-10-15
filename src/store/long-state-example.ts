@@ -62,7 +62,7 @@ const longStateExample: EditorFrameObjects = {
     },
 
     1: {
-        frameType: Definitions.ImportDefinition,
+        frameType: Definitions.FromImportDefinition,
         id: 1,
         isDisabled: false,
         isSelected: false,
@@ -87,9 +87,7 @@ const longStateExample: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: {code : "", focused: false, error :"", shownLabel: false},
-            1: {code : "music", focused: false, error :"", shownLabel: true},
-            2: {code : "", focused: false, error :"", shownLabel: false} },
+        contentDict: { 0: {code : "music", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },

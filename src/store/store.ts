@@ -6,13 +6,12 @@ import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import tutorialState from "@/store/tutorial-state";
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, compileTextualAPI } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, compileTextualAPI, checkCodeErrors } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, generateFrameMap, getAllSiblings, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow, getAvailableNavigationPositions} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
 import moduleDescription from "@/autocompletion/microbit.json";
-import Parser from "@/parser/parser";
 
 Vue.use(Vuex);
 
@@ -1106,25 +1105,8 @@ export default new Vuex.Store({
             const stateBeforeChanges = JSON.parse(JSON.stringify(state));
             if(changeList.length > 0){
                 //this flag stores the arrays that need to be "cleaned" (i.e., removing the null elements)
-                const arraysToClean = [] as {[id: string]: any}[];
-
-                //precompiled errors on editor slots are not saved for undo/redo
-                //so if there is a change on an editable slot value in the change list, we clear the errors for that slot
-                //so that the errors are still correct once undo/redo is applied
-                //note : we do it in a separate foreach to be sure we dont clear errors if they were supposed to be marked
-                const checkErrorChangeEntry: ObjectPropertyDiff|undefined = changeList.find((changeEntry: ObjectPropertyDiff) => (changeEntry.propertyPathWithArrayFlag.match(/\.contentDict_false\.\d*_false\.code$/)?.length??0) > 0);
-                if(checkErrorChangeEntry){
-                    const changePath = checkErrorChangeEntry.propertyPathWithArrayFlag;
-                    let indexOfId = "frameObjects_false.".length;
-                    const frameId = changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId);
-                    indexOfId = changePath.indexOf(".contentDict_false.") + ".contentDict_false.".length; 
-                    const slotId = changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId);
-                    if(state.preCompileErrors.includes(getEditableSlotUIID(parseInt(frameId), parseInt(slotId)))) {
-                        state.preCompileErrors.splice(state.preCompileErrors.indexOf(getEditableSlotUIID(parseInt(frameId), parseInt(slotId))),1);
-                        state.frameObjects[parseInt(frameId)].contentDict[parseInt(slotId)].error="";
-                    }
-                }
-
+                const arraysToClean = [] as {[id: string]: any}[];                
+                
                 //if the value in the changes isn't "null" --> replaced/add, otherwise, delete.
                 changeList.forEach((changeEntry: ObjectPropertyDiff) => {
                     //we reconstruct what in the state should be changed based on the difference path
@@ -1207,6 +1189,22 @@ export default new Vuex.Store({
                         "caretPosition",
                         state.frameObjects[newCaretId].caretVisibility
                     );
+                }
+
+                //finally, if there is a change on an editable slot, we trigger an error check for that slot/slot context
+                //to make sure that the update on the editable slot is coherent with errors shown
+                //If a change has something related to an editable slot content, we do an error check there
+                const checkErrorChangeEntry: ObjectPropertyDiff|undefined = changeList.find((changeEntry: ObjectPropertyDiff) => (changeEntry.propertyPathWithArrayFlag.match(/\.contentDict_false\.\d*_false\.code$/)?.length??0) > 0);
+                if(checkErrorChangeEntry){
+                    //retrieve the elements we need to check an error regarding that slot
+                    const changePath = checkErrorChangeEntry.propertyPathWithArrayFlag;
+                    let indexOfId = "frameObjects_false.".length;
+                    const frameId = parseInt(changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId));
+                    indexOfId = changePath.indexOf(".contentDict_false.") + ".contentDict_false.".length; 
+                    const slotId = parseInt(changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId));
+                    const code = checkErrorChangeEntry.value; 
+                    //now check the errors
+                    checkCodeErrors(frameId, slotId, code);
                 }
 
                 //keep the arrays of changes in sync with undo/redo sequences
@@ -1511,7 +1509,7 @@ export default new Vuex.Store({
             );
         },
 
-        updateErrorsOnSlotValidation({state, commit, getters}, payload: EditableSlotPayload) {  
+        updateErrorsOnSlotValidation({state, commit}, payload: EditableSlotPayload) {  
             commit(
                 "setEditFlag",
                 false
@@ -1538,60 +1536,8 @@ export default new Vuex.Store({
                     }
                 )       
                 
-                // As upon validation of the slot we check errors for that frame, we clear the errors related to this frame slot beforehand
-                commit(
-                    "setSlotErroneous", 
-                    {
-                        frameId: payload.frameId, 
-                        slotIndex: payload.slotId, 
-                        error: "",
-                    }
-                );
-
-                const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[payload.slotId].optionalSlot ?? true;
-                const errorMessage = getters.getErrorForSlot(payload.frameId,payload.slotId);
-                if(payload.code !== "") {
-                    //if the user entered text on previously left blank slot, remove the error
-                    if(!optionalSlot && errorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
-                        commit(
-                            "setSlotErroneous", 
-                            {
-                                frameId: payload.frameId, 
-                                slotIndex: payload.slotId, 
-                                error: "",
-                            }
-                        );
-                        commit("removePreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));                
-                    }
-                }
-                else if(!optionalSlot){
-                    commit(
-                        "setSlotErroneous", 
-                        {
-                            frameId: payload.frameId, 
-                            slotIndex: payload.slotId,  
-                            error: i18n.t("errorMessage.emptyEditableSlot"),
-                        }
-                    );
-                    commit("addPreCompileErrors", getEditableSlotUIID(payload.frameId, payload.slotId));
-                }
-                
-                // We check Python error (with TigerPython) for this portion of code only.
-                // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared on the SLOT only.
-                // If we are not on a joint element, we check the whole joint siblings from root to last joint, otherwise, the single current line suffice.
-                const isJoinFrame = (state.frameObjects[payload.frameId].jointParentId > 0);
-                //we need to find out what is the next frame to provide a stop value
-                const availablePositions = getAvailableNavigationPositions();
-                const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
-                const caretPosition = (state.frameObjects[payload.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
-                const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===payload.frameId && e.caretPosition === caretPosition);
-                const nextCaretId =  (isJoinFrame) 
-                    ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.id===state.frameObjects[payload.frameId].jointParentId && e.caretPosition === CaretPosition.below) + 1]?.id??-100
-                    : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.below) ? 1 : 2)]?.id??-100);
-                const startFrameId = (isJoinFrame) ? state.frameObjects[payload.frameId].jointParentId : payload.frameId;
-                const parser = new Parser(true);
-                const portionOutput = parser.parse(startFrameId, nextCaretId);
-                parser.getErrorsFormatted(portionOutput);
+                // Now we check errors in relation with this code update
+                checkCodeErrors(payload.frameId, payload.slotId, payload.code);
             }
         },
 

@@ -221,8 +221,7 @@ export default Vue.extend({
 .frame-body-container {
     background-color: #F6F2E9;
     margin-bottom: 4px;
-    margin-right: 0px;
-    margin-left: 12px;
+    margin-right: 4px;
     border-color: #000 !important;
     border-radius: 8px;
 }
