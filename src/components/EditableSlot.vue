@@ -523,7 +523,7 @@ export default Vue.extend({
             this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
 
             const openBracketCharacters = ["(","{","[","\"","'"];
-            const characterIndex= openBracketCharacters.indexOf(event.key)
+            const characterIndex= openBracketCharacters.indexOf(event.key);
 
             //check if the character we are addign is an openBracketCharacter
             if(characterIndex !== -1) {

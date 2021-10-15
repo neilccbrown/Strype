@@ -124,16 +124,19 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
 
         // Before we finish we need to have the "My Variables" on the top of the list(dictionary)
         // Get the index of "My Variables" in the dictionary
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"indexOfMyVariables = list(resultsWithModules.keys()).index(\""+i18n.t("autoCompletion.myVariables")+"\")"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"indexOfMyVariables = list(resultsWithModules.keys()).index(\""+i18n.t("autoCompletion.myVariables")+"\")"
         // If it is present
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"if indexOfMyVariables >= 0:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if indexOfMyVariables >= 0:"
         // Convert the dictionary to a list
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"tups = list(resultsWithModules.items())"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups = list(resultsWithModules.items())"
         // Swap My Variables with the module in the first place
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
         // Convert back to dictionary!
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except:\n"+INDENT+INDENT+INDENT+INDENT+"pass" 
 
+        
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
         
         // If there are no results
