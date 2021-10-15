@@ -1,7 +1,7 @@
 import Compiler from "@/compiler/compiler";
 import i18n from "@/i18n";
 import store from "@/store/store";
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements} from "@/types/types";
+import { CodeStyle, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
@@ -22,7 +22,7 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean): Parse
     // or an editable slot ("editableslot-input" + "error").
     const hasErrors = (document.getElementsByClassName("framDiv error").length > 0) || 
         (document.getElementsByClassName("frame-body-container error").length > 0) || 
-        (document.getElementsByClassName("editableslot-input error").length > 0);
+        (document.getElementsByClassName("editableslot-div error").length > 0);
  
     const compiler = new Compiler();
     if(requireCompilation){
@@ -183,8 +183,6 @@ export default class Parser {
             disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG ;
         }
         //console.timeEnd();
-
-        //console.log(TPyParser.parse(output))
         return output + disabledFrameBlockFlag;
     }
 
@@ -410,4 +408,59 @@ export default class Parser {
         // it's not a function definition  if
         return line.startsWith(spaces+"def ")  // it starts with a def
     }
+}
+
+export function getStyledCodeLiteralsSplits(code: string): StyledCodeSplits[]{
+    //we use regular expressions to get the different code parts we are interested in:
+    //literals for strings, booleans, numbers.
+    //in order to avoid finding other tokens inside strings and ease the findings we work with a transformed copy of the code,
+    //which contains replaced strings values that cannot match numbers/booleans
+    let tempCode = code;
+    const styledCodeSplits = [] as StyledCodeSplits[];
+   
+    //first look for strings (contained between "" or '')
+    const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1/g;
+    let matchesArray = [...tempCode.matchAll(strRegEx)];
+    matchesArray.forEach((matchBit) => {
+        styledCodeSplits.push({start:matchBit.index??0, end: (matchBit.index??0) + matchBit[0].length,style: CodeStyle.string})
+        //and we transform the temp string for masking the string contents
+        tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+    })      
+
+    //then we look for numbers (format examples: 9, 9+1j, 0x9, 0o11, 0b1001, 0.9e1)
+    const numberRegEx = /(^| +|[,+\-()/*%&|~^><=])(-?(0b[01]+)|(0x[0-9A-Fa-f]+)|(\d+(\.\d+|)[eE]-?\d+)|((\d+(\.\d+|)[+-]\d+(\.\d+|)j)|(\d+(\.\d+|)j)|(\d+(\.\d+|))))($| +|[,+\-()/*%&|~^><=])/g;
+    matchesArray = [...tempCode.matchAll(numberRegEx)];
+    while(matchesArray.length > 0){
+        matchesArray.forEach((matchBit) => {
+            //the number that we found is located in the group 2 of the match, we save it
+            const startOfNumber = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
+            const lengthOfNumber = matchBit[2].length;
+            styledCodeSplits.push({start:startOfNumber, end: startOfNumber + lengthOfNumber,style: CodeStyle.number})
+            //and we transform the temp string for another iteration of the number checks
+            tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+        })               
+                   
+        //prepare for next iteration:
+        matchesArray = [...tempCode.matchAll(numberRegEx)];
+    }
+
+    //finally we look for booleans (True and False)
+    const boolRegEx = /(^| +|[,+\-(/*%&|~^><=[]])((True)|(False))($| +|[,+\-)\]/*%&|~^><=])/g;
+    matchesArray = [...tempCode.matchAll(boolRegEx)];
+    while(matchesArray.length > 0){
+        matchesArray.forEach((matchBit) => {
+            //the boolean value that we found is located in the group 2 of the match, we save it
+            const startOfBool = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
+            const lengthOfBool = matchBit[2].length;
+            styledCodeSplits.push({start:startOfBool, end: startOfBool + lengthOfBool,style: CodeStyle.bool})
+            //and we transform the temp string for another iteration of the boolean checks
+            tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+        })               
+                   
+        //prepare for next iteration:
+        matchesArray = [...tempCode.matchAll(boolRegEx)];
+    }
+    
+    //we sort the split bits by start index before returning the result
+    return styledCodeSplits.sort((split1,split2) => split1.start - split2.start);
 }

@@ -33,6 +33,7 @@
                     :frameType="frameType.type"
                     :labels="frameType.labels"
                     class="frame-header"
+                    :style="frameMarginStyle['header']"
                     :frameAllowChildren="allowChildren"
                 />
                 <FrameBody
@@ -41,6 +42,7 @@
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
                     ref="frameBody"
+                    :style="frameMarginStyle['body']"
                 />
                 <JointFrames 
                     v-if="allowsJointChildren && hasJointFrameObjects"
@@ -143,9 +145,13 @@ export default Vue.extend({
                 ? {"color":"#000 !important"}
                 : {
                     "background-color": `${this.getFrameBgColor()} !important`,
-                    "padding-left": "2px",
                     "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
+        },
+
+        frameMarginStyle(): Record<string, Record<string, string>> {
+            return {"header": (this.isJointFrame)? {"margin-left": "13px"} : {"margin-left": "14px"},
+                    "body": (this.isJointFrame)? {"margin-left": "11px"} : {"margin-left": "12px"}}
         },
 
         frameSelectedCssClass(): string {
@@ -445,8 +451,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.block {
-    padding-right: 4px;
+.block {    
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
@@ -502,9 +507,4 @@ export default Vue.extend({
     border-right: 3px solid #000000 !important;
     padding-top: 5px;
 }
-
-.frame-header{
-    margin-left: 14px;
-}
-
 </style>

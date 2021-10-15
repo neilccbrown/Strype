@@ -1,7 +1,6 @@
 <template>
-    <div class="next-to-eachother editable-slot"
-    >        
-        <input
+    <div class="next-to-eachother editable-slot">
+          <input
             type="text"
             autocomplete="off"
             spellcheck="false"
@@ -24,22 +23,30 @@
             @keyup.tab="onEnterOrTabKeyUp($event)"
             @keydown.backspace="onBackSpaceKeyDown()"
             @keyup.backspace="onBackSpaceKeyUp()"
-            @keydown="onEqualOrSpaceKeyDown($event)"
-            @keyup="logCursorPositionAndCheckBracket($event)"
+            @keydown="onKeyDown($event)"
+            @keyup="logCursorPositionAndCheckBracket()"
             :class="{editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
             :key="UIID"
             class="editableslot-input navigationPosition"
             :style="inputTextStyle"
         />
-        
+        <div id="editableSlotSpans" :style="spanTextStyle">
+            <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
+            <span 
+                :key="UIID+'_'+index" 
+                v-for="(styledCodePart, index) in this.styledCodeParts" 
+                :class="styledCodePart.style"
+                :data-placeholder="defaultText"
+            >{{styledCodePart.code}}</span>
+        </div>
         <b-popover
-        v-if="erroneous()"
-        :target="UIID"
-        :title="this.$i18n.t('errorMessage.errorTitle')"
-        triggers="hover focus"
-        :content="errorMessage"
-        custom-class="error-popover"
+            v-if="erroneous()"
+            :target="UIID"
+            :title="this.$i18n.t('errorMessage.errorTitle')"
+            triggers="hover focus"
+            :content="errorMessage"
+            custom-class="error-popover"
         >
         </b-popover>
 
@@ -70,9 +77,10 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
+import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -125,6 +133,10 @@ export default Vue.extend({
             stillBackSpaceDown: false,
             //use to make sure that a tab event is a proper sequence (down > up) within an editable slot
             tabDownTriggered: false,
+            //an array of code "parts" associated with styles (to emphasis the literal types i.e. numbers, strings and booleans)
+            styledCodeParts: [] as StyledCodePart[],
+            //we need to track the key.down events for the bracket/quote closing method (cf details there)
+            keyDownStr: "" as string,
         };
     },
     
@@ -144,12 +156,19 @@ export default Vue.extend({
 
         inputTextStyle(): Record<string, string> {
             return {
-                "background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important",
+                "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important", //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
                 "width" : this.computeFitWidthValue(),
                 "color" : (this.frameType === CommentDefinition.type)
                     ? "#97971E"
-                    : "#000",
+                    : (this.focused) ? "#000" : "transparent", //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
             };
+        },
+
+        spanTextStyle(): Record<string, string> {
+            //when the input has focus, we hide the spans, otherwise we show the right background colours
+            return (this.focused) 
+                ? {"visibility": "hidden"} 
+                : {"background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important"};
         },
 
         code: {
@@ -161,6 +180,7 @@ export default Vue.extend({
                 if(code.length > 0){
                     this.setBreakSpaceFlag(false);
                 }
+                this.generateStyledCodeParts(code);
                 return code;
             },
             set(value: string){
@@ -274,6 +294,39 @@ export default Vue.extend({
     methods: {
         setBreakSpaceFlag(value: boolean){
             this.canBackspaceDeleteFrame = value;
+        },
+
+        generateStyledCodeParts(code: string){
+            //In order to show the code literals for string, number and boolean tokens, we use an overlay
+            //of <span> elements when the editable slot is not being edited.
+            //Therefore, we parse the code to retrieve the literals and apply styling for each "bits" of code
+            //to generate the <span> elements.
+            this.styledCodeParts.splice(0, this.styledCodeParts.length);
+            if(code.trim().length === 0){
+                //if there is nothing in the slot, we use the style "empty" that looks like an input placeholder
+                this.styledCodeParts[0] = {code: "", style: CodeStyle.empty}
+            }
+            else{
+                //get the "bits" of code that are literals
+                const styledCodeSplits = getStyledCodeLiteralsSplits(code);
+                let codePos = 0;
+                styledCodeSplits.forEach((codeSplit) => {
+                    //While iterating through the code splits that are *only* for the literals,
+                    //we reconstruct the missing bits of code (parts which are not literals) 
+                    //so that we end up with the *full* code.
+                    if(codeSplit.start > codePos){                        
+                        //check if there is a "normal" code section before that literal
+                        this.styledCodeParts.push({code: code.substring(codePos, codeSplit.start), style: CodeStyle.none});
+                    } 
+                    //add the literal
+                    this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
+                    codePos=codeSplit.end;
+                })
+                //check for a potential trailing "normal" part
+                if(codePos < code.length){
+                    this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
+                }
+            }
         },
 
         erroneous(): boolean {
@@ -425,7 +478,10 @@ export default Vue.extend({
             this.tabDownTriggered = false;
         },
 
-        onEqualOrSpaceKeyDown(event: KeyboardEvent){
+        onKeyDown(event: KeyboardEvent){
+            //we store the key.down key event.key value for the bracket/quote closing method (cf details there)
+            this.keyDownStr = event.key;
+
             // If the frame is a variable assignment frame and we are in the left hand side editable slot,
             // pressing "=" or space keys move to RHS editable slot
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
@@ -507,33 +563,32 @@ export default Vue.extend({
 
         // store the cursor position to give it as input to AutoCompletionPopUp
         // Also checks if s bracket is opened, so it closes it
-        logCursorPositionAndCheckBracket(event: KeyboardEvent) {
-
+        // Note: the method is called on the key.up event BUT some issues on key.up are found with Windows/different keyboard layouts (i.e. French)
+        // therefore, we do not use the key.event of the key.up event, but the stored key.down event from this component's data
+        logCursorPositionAndCheckBracket() {
             // if we are adding a " or a ' character, it may not be an opening one, but a closing one.
-            if(event.key === "\"" || event.key === "'") {
+            if(this.keyDownStr === "\"" || this.keyDownStr === "'") {
                 // if the the count of " or ' is an even number it means that there we are adding a
                 // closing character rather than an opening. [ *Bear in mind that it is even because the
                 // character has already been added to this stage, as we are on a keyup event* ]
-                if((this.code.match(new RegExp(event.key, "g")) || []).length % 2 === 0) {
+                if((this.code.match(new RegExp(this.keyDownStr, "g")) || []).length % 2 === 0) {
                     return
                 }
             }
 
-            const inputField =document.getElementById(this.UIID) as HTMLInputElement;
+            // get the input field and caret position
+            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+            const currentTextCursorPos = inputField.selectionStart??0;
             this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
 
             const openBracketCharacters = ["(","{","[","\"","'"];
-            const characterIndex= openBracketCharacters.indexOf(event.key)
+            const characterIndex= openBracketCharacters.indexOf(this.keyDownStr)
 
             //check if the character we are addign is an openBracketCharacter
             if(characterIndex !== -1) {
 
                 //create a list with the closing bracket for each one of the opening in the same index
                 const closeBracketCharacters = [")","}","]","\"","'"];
-                
-                // get the input field
-                const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-                const currentTextCursorPos = inputField.selectionStart??0;
 
                 // add the closing bracket to the text
                 const newCode = this.code.substr(0, currentTextCursorPos) 
@@ -546,6 +601,8 @@ export default Vue.extend({
                 this.code = newCode;
             }
 
+            //we reset the key.down value here, to avoid over-doing the method on all key.up called on the modifier keys
+            this.keyDownStr="";
         },
         
         computeFitWidthValue(): string {
@@ -577,6 +634,11 @@ export default Vue.extend({
 .editableslot-input {
     border-radius: 5px;
     border: 1px solid transparent;
+    padding: 1px 2px;
+    position:absolute;
+    top: 0%;
+    left: 0%;
+    outline: none;
 }
 
 .editableslot-input:hover {
@@ -599,6 +661,20 @@ export default Vue.extend({
   font-style: italic;
 }
 
+#editableSlotSpans{
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 1px 2px;
+}
+
+.editableSlotSpansHidden {
+    visibility: hidden;
+}
+
+#editableSlotSpans span{
+    outline: none;
+    white-space: pre;
+}
 
 .editableslot-placeholder {
     position: absolute;
@@ -623,4 +699,25 @@ export default Vue.extend({
     z-index: 10;
 }
 
+// Classes implenting the style tokens defined in type.ts (for the interface StyledCodePart)
+.string-token {
+    color: #006600;
+}
+
+.number-token {
+    color: blue;
+}
+
+.bool-token {
+    color: purple; 
+}
+
+.empty-token {
+    font-style: italic;
+    color: grey;
+}
+
+.empty-token:empty::before {
+    content:attr(data-placeholder);
+}
 </style>
