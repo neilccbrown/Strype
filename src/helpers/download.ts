@@ -1,28 +1,42 @@
 import { saveAs } from "file-saver";
 import { compileBlob } from "./compile";
-import Parser from "@/parser/parser";
+import { parseCodeAndGetParseElements } from "@/parser/parser";
 import i18n from "@/i18n";
 import Vue from "vue";
+import store from "@/store/store"
+import { MessageDefinitions } from "@/types/types";
 
-export function downloadHex(): boolean {
-    const blob = compileBlob();
-
-    if (blob) {
-        saveAs(
-            blob,
-            "main.hex"
-        );
-        return true;
+export function downloadHex() {
+    const parserElements = parseCodeAndGetParseElements(true);
+    let succeeded = !parserElements.hasErrors;
+    if(succeeded){
+        const blob = compileBlob(parserElements.compiler);
+        if (blob) {
+            saveAs(blob, "main.hex");
+        }
+        else{
+            succeeded = false;
+        }
     }
-    return false;
+
+    //We show the image only if the download has succeeded
+    if(succeeded){
+        store.dispatch("setMessageBanner", MessageDefinitions.DownloadHex);
+    } 
+    else{
+        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
+        Vue.$confirm({
+            message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+            button: {
+                yes: i18n.t("buttonLabel.ok"),
+            },
+        });    
+    }
 }
 
 export function downloadPython() {
-    const parser = new Parser();
-    const out = parser.parse();
-
-    const errors = parser.getErrorsFormatted(out);
-    if (errors) {
+    const parserElements = parseCodeAndGetParseElements(false);
+    if (parserElements.hasErrors) {
         //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
         Vue.$confirm({
             message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
@@ -34,7 +48,7 @@ export function downloadPython() {
     }
 
     const blob = new Blob(
-        [out],
+        [parserElements.parsedOutput],
         { type: "application/octet-stream" }
     );
     saveAs(

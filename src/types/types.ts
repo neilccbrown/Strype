@@ -1,5 +1,6 @@
 import i18n from "@/i18n";
-import {KeyModifier, toggleFrameLabelsDefs} from "@/constants/toggleFrameLabelCommandsDefs"; 
+import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"; 
+import Compiler from "@/compiler/compiler";
 
 // Type Definitions
 
@@ -20,13 +21,13 @@ export interface FrameObject {
     isDisabled: boolean;
     isSelected: boolean;
     isVisible: boolean;
+    isCollapsed?: boolean;
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
     contentDict: { [index: number]: FrameSlotContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
-    error?: string;
     multiDragPosition: string;
 
 }
@@ -97,6 +98,30 @@ export interface EditableFocusPayload {
     slotId: number;
     focused: boolean;
 }
+
+export enum CodeStyle{
+    none = "",
+    string = "string-token",
+    number = "number-token",
+    bool = "bool-token",
+    empty = "empty-token",
+}
+export interface StyledCodePart {
+    code: string,
+    style: CodeStyle, 
+}
+
+export interface StyledCodeSplits {
+    start: number,
+    end: number,
+    style: CodeStyle,
+}
+export interface NavigationPosition {
+    id: number;
+    // Both the following can be boolean, as if one has a value, the other one has false (e.g. caretPosition = below AND slotNumber = false)
+    caretPosition?: string|false;
+    slotNumber?: number|false;
+}
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string;
@@ -117,8 +142,10 @@ export interface FramesDefinitions {
     isJointFrame: boolean;
     jointFrameTypes: string[];
     colour: string;
+    isCollapsed?: boolean;
     draggableGroup: DraggableGroupTypes;
     innerJointDraggableGroup: DraggableGroupTypes;
+    isImportFrame: boolean;
 }
 
 // Identifiers of the containers
@@ -135,6 +162,7 @@ const CommentFrameTypesIdentifier = {
 // Identifiers of the frame types
 const ImportFrameTypesIdentifiers = {
     import: "import",
+    fromimport: "from-import",
 }
 
 const FuncDefIdentifiers = {
@@ -181,6 +209,7 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     colour: "",
     draggableGroup: DraggableGroupTypes.none,
     innerJointDraggableGroup: DraggableGroupTypes.none,
+    isImportFrame: false,
 };
 
 export const BlockDefinition: FramesDefinitions = {
@@ -211,6 +240,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.importsContainer") as string), slot: false, defaultText: ""},
     ],
+    isCollapsed: false,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
@@ -223,6 +253,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.funcDefsContainer") as string), slot: false, defaultText: ""},
     ],
+    isCollapsed: false,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
@@ -236,6 +267,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.mainContainer") as string), slot: false, defaultText: ""},
     ],
+    isCollapsed: false,
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
     colour: "#BBC6B6",
@@ -253,6 +285,9 @@ export const IfDefinition: FramesDefinitions = {
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
     colour: "#E0DFE4",
     innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
+    forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+        .concat(Object.values(FuncDefIdentifiers))
+        .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
 };
 
 export const ElifDefinition: FramesDefinitions = {
@@ -412,12 +447,29 @@ export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
     labels: [
-        { label: "from ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand: toggleFrameLabelsDefs.importFrom, optionalSlot: false},
         { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
-        { label: "as ", slot: true, defaultText: "module", optionalLabel: true, toggleLabelCommand: toggleFrameLabelsDefs.importAs, optionalSlot: false},
+        // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
+        // and thus not giving us back any AC results on the shortcut
+        //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
     ],    
     colour: "#CBD4C8",
     draggableGroup: DraggableGroupTypes.imports,
+    isImportFrame: true,
+};
+
+export const FromImportDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: ImportFrameTypesIdentifiers.fromimport,
+    labels: [
+        { label: "from ", slot: true, defaultText: "module", optionalSlot: false},
+        { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
+        // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
+        // and thus not giving us back any AC results on the shortcut
+        //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
+    ],    
+    colour: "#CBD4C8",
+    draggableGroup: DraggableGroupTypes.imports,
+    isImportFrame: true,
 };
 
 export const CommentDefinition: FramesDefinitions = {
@@ -452,6 +504,7 @@ export const Definitions = {
     ReturnDefinition,
     VarAssignDefinition,
     ImportDefinition,
+    FromImportDefinition,
     CommentDefinition,
 };
 
@@ -472,7 +525,6 @@ export const EmptyFrameObject: FrameObject = {
     jointFrameIds: [], //this contains the IDs of the joint frames
     caretVisibility: CaretPosition.none,
     contentDict: { },
-    error: "",
     multiDragPosition: "",
 }
 
@@ -787,28 +839,52 @@ export interface UserDefinedElement {
     name: string;
     isFunction: boolean;
 }
-
-export type indexedAcResult = {
+export interface IndexedAcResult {
     index: number; 
     acResult: string; 
     documentation: string; 
     type: string;
 }
 
-export type acResultType = {
+export interface AcResultType {
     acResult: string; 
     documentation: string; 
     type: string;
 }
-
-export type indexedAcResultsWithModule = {
-    [module: string]: indexedAcResult[];
+export interface IndexedAcResultWithModule {
+    [module: string]: IndexedAcResult[];
 }
-
-export type acResultsWithModule = {
-    [module: string]: acResultType[];
+export interface AcResultsWithModule {
+    [module: string]: AcResultType[];
 }
-
 export interface VoidFunction {
     (): void;
+}
+
+//Representation of an item of the (microbit) API using a coded identifier with its potential children
+export interface APICodedItem {
+    name: string, //a UUID coded name that represent a single item of the API description (** do not use "." in the coded names, it messes i18n **)
+    codePortion: string, //the code portion that will builds an example use in the editor (code builder)
+    extraCodePortion?: string, //the optional full code portion to be shown in extra doc -- this code portion isn't used in the code builder
+    children?: APICodedItem[];
+}
+
+//Representation of an item of the (microbit) API textual description based on a coded indentifier
+export interface APIItemTextualDescription {
+    name: string; //a UUID coded name that represent a single item of the API description
+    label: string; //the textual value of the item
+    doc: string; //the documentation for this item (short and always visible)
+    extradoc: string; //the rest of the documentation for this item (visible on demand);
+    codePortion: string, //the code portion that will builds an example use in the editor (code builder)
+    extraCodePortion: string, //the full code portion to be shown in extra doc (or empty string if none) -- this code portion isn't used in the code builder
+    level: number; //the level of the item in the API hierarchy
+    isFinal: boolean; //indicates if that is a termination item
+    immediateParentName: string; //the name of the immediate parent of this item - empty string if level 1
+}
+
+//Object containing the different elements produced when parsing the code, to be used by parsing callers
+export interface ParserElements {
+    parsedOutput : string, //the python code generated by the parser
+    hasErrors: boolean, //indicates the the code contains errors (precompiled & TigerPython errors)
+    compiler: Compiler, //the compiler associated with this parser, that allow access to more complex objects generated after parsing code (i.e. blob, hex...)
 }

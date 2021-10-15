@@ -1,12 +1,39 @@
+import Compiler from "@/compiler/compiler";
 import i18n from "@/i18n";
 import store from "@/store/store";
-import { FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames} from "@/types/types";
+import { CodeStyle, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
-const DISABLEDFRAMES_FLAG =  "\"\"\"";
+const DISABLEDFRAMES_FLAG =  "\"\"\""; 
+
+// Parse the code contained in the editor, and generate a compiler for this code if no error are found.
+// The method returns an object containing the output code and the compiler.
+export function parseCodeAndGetParseElements(requireCompilation: boolean): ParserElements{
+    // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
+    // Therefore, we expect the errors to already be found out when this method is called, and we don't need
+    // to retrieve them again.
+
+    const parser = new Parser();
+    const out = parser.parse();
+
+    // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
+    // by an error class on a frame ("frameDiv" + "error"), a frame body ("frame-body-container" + "error") 
+    // or an editable slot ("editableslot-input" + "error").
+    const hasErrors = (document.getElementsByClassName("framDiv error").length > 0) || 
+        (document.getElementsByClassName("frame-body-container error").length > 0) || 
+        (document.getElementsByClassName("editableslot-div error").length > 0);
+ 
+    const compiler = new Compiler();
+    if(requireCompilation){
+        compiler.compile(out);
+    }
+
+    return {parsedOutput: out, hasErrors: hasErrors, compiler: compiler};
+}
 
 export default class Parser {
+    private startAtFrameId = -100; // default value to indicate there is no start
     private stopAtFrameId = -100; // default value to indicate there is no stop
     private exitFlag = false; // becomes true when the stopAtFrameId is reached.
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
@@ -14,31 +41,12 @@ export default class Parser {
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
     private excludeLoops = false;
+    private ignoreCheckErrors = false;
 
-    private parseSlot(slot: string, position: number) {
-        // This method parses semantically, by checking that every
-        // token presented is known to the program (declared, keyword, or imported)
-
-        // The list of all things that cannot be a name 
-        const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
-            "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
-            "==","=","!=",">=","<=","<",">","(",")","[","]","{","}",
-        ];
-        // list of keywords that are not user or library defined.
-        const keywords = ["in","and","or","await","is","True","False",
-            "lambda", "as", "from","del","not","with",
-        ];
-
-        let slotsCopy: string = slot;
-        // first replace all the operators with a white space, so names can be separated
-        operators.forEach( (operator) => slotsCopy=slotsCopy.replaceAll(operator," "))
-
-        // Now tokenise the names based on white spaces
-        let tokens: string[] = slotsCopy.split(/\s+/);
-
-        // Now remove all the keywords.
-        tokens = tokens.filter((token: string)=> !keywords.includes(token));
-
+    constructor(ignoreCheckErrors?: boolean){
+        if(ignoreCheckErrors != undefined){
+            this.ignoreCheckErrors = ignoreCheckErrors;
+        }
     }
 
     private parseBlock(block: FrameObject, indentation: string): string {
@@ -92,9 +100,13 @@ export default class Parser {
                     // add its code to the output
                     output += statement.contentDict[currSlotIndex].code + " ";
                     lengths.push(output.length-currentPosition+1);
-
-                    this.parseSlot(statement.contentDict[currSlotIndex].code,currentPosition);
                 }
+            }
+            else if(!statement.contentDict[currSlotIndex].shownLabel){
+                //even if the label and its slot aren't visible, they need to be logged within the framePositionMap
+                //as 0 length elements to line framePositionMap up with the slot indexes
+                positions.push(output.length);
+                lengths.push(0);
             }
             currSlotIndex++;
         });
@@ -147,8 +159,11 @@ export default class Parser {
         return output;
     }
 
-    public parse(stopAtFrameId?: number, excludeLoops?: boolean): string {
+    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoops?: boolean): string {
         let output = "";
+        if(startAtFrameId){
+            this.startAtFrameId = startAtFrameId;
+        }
         if(stopAtFrameId){
             this.stopAtFrameId = stopAtFrameId;
         }
@@ -158,7 +173,7 @@ export default class Parser {
         }
 
         //console.time();
-        output += this.parseFrames(store.getters.getFramesForParentId(0));
+        output += this.parseFrames((this.startAtFrameId > -100) ? [store.getters.getFrameObjectFromId(this.startAtFrameId)] : store.getters.getFramesForParentId(0));
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
@@ -168,8 +183,6 @@ export default class Parser {
             disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG ;
         }
         //console.timeEnd();
-
-        //console.log(TPyParser.parse(output))
         return output + disabledFrameBlockFlag;
     }
 
@@ -194,8 +207,6 @@ export default class Parser {
 
         const errors = this.getErrors(inputCode);
         let errorString = "";
-        store.commit("clearAllErrors");
-        
         if (errors.length > 0) {
             errorString = `${errors.map((e: any) => {
                 return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
@@ -218,17 +229,9 @@ export default class Parser {
                             error: error.msg,
                         });
                     }
-                    else {
-                        store.commit("setFrameErroneous", {
-                            frameId: this.framePositionMap[error.line].frameId,
-                            error: error.msg,
-                        });
-                    }
                 }
             });
-
         }
-        
 
         return errorString;
     }
@@ -243,12 +246,11 @@ export default class Parser {
             }
         }
         // If the offset was inside none of the slots, then return false
-        return false;
-    
+        return false;    
     }
 
     public getCodeWithoutErrorsAndLoops(endFrameId: number): string {
-        const code = this.parse(endFrameId,true);
+        const code = this.parse(undefined, endFrameId, true);
 
         const errors = this.getErrors(code);
 
@@ -378,7 +380,7 @@ export default class Parser {
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {
-        return (frame.error!=="" || Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
+        return !this.ignoreCheckErrors && (Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
     }
 
     private isCompoundStatement(line: string, spaces: string[]): boolean {
@@ -406,4 +408,59 @@ export default class Parser {
         // it's not a function definition  if
         return line.startsWith(spaces+"def ")  // it starts with a def
     }
+}
+
+export function getStyledCodeLiteralsSplits(code: string): StyledCodeSplits[]{
+    //we use regular expressions to get the different code parts we are interested in:
+    //literals for strings, booleans, numbers.
+    //in order to avoid finding other tokens inside strings and ease the findings we work with a transformed copy of the code,
+    //which contains replaced strings values that cannot match numbers/booleans
+    let tempCode = code;
+    const styledCodeSplits = [] as StyledCodeSplits[];
+   
+    //first look for strings (contained between "" or '')
+    const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1/g;
+    let matchesArray = [...tempCode.matchAll(strRegEx)];
+    matchesArray.forEach((matchBit) => {
+        styledCodeSplits.push({start:matchBit.index??0, end: (matchBit.index??0) + matchBit[0].length,style: CodeStyle.string})
+        //and we transform the temp string for masking the string contents
+        tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+    })      
+
+    //then we look for numbers (format examples: 9, 9+1j, 0x9, 0o11, 0b1001, 0.9e1)
+    const numberRegEx = /(^| +|[,+\-()/*%&|~^><=])(-?(0b[01]+)|(0x[0-9A-Fa-f]+)|(\d+(\.\d+|)[eE]-?\d+)|((\d+(\.\d+|)[+-]\d+(\.\d+|)j)|(\d+(\.\d+|)j)|(\d+(\.\d+|))))($| +|[,+\-()/*%&|~^><=])/g;
+    matchesArray = [...tempCode.matchAll(numberRegEx)];
+    while(matchesArray.length > 0){
+        matchesArray.forEach((matchBit) => {
+            //the number that we found is located in the group 2 of the match, we save it
+            const startOfNumber = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
+            const lengthOfNumber = matchBit[2].length;
+            styledCodeSplits.push({start:startOfNumber, end: startOfNumber + lengthOfNumber,style: CodeStyle.number})
+            //and we transform the temp string for another iteration of the number checks
+            tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+        })               
+                   
+        //prepare for next iteration:
+        matchesArray = [...tempCode.matchAll(numberRegEx)];
+    }
+
+    //finally we look for booleans (True and False)
+    const boolRegEx = /(^| +|[,+\-(/*%&|~^><=[]])((True)|(False))($| +|[,+\-)\]/*%&|~^><=])/g;
+    matchesArray = [...tempCode.matchAll(boolRegEx)];
+    while(matchesArray.length > 0){
+        matchesArray.forEach((matchBit) => {
+            //the boolean value that we found is located in the group 2 of the match, we save it
+            const startOfBool = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
+            const lengthOfBool = matchBit[2].length;
+            styledCodeSplits.push({start:startOfBool, end: startOfBool + lengthOfBool,style: CodeStyle.bool})
+            //and we transform the temp string for another iteration of the boolean checks
+            tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
+        })               
+                   
+        //prepare for next iteration:
+        matchesArray = [...tempCode.matchAll(boolRegEx)];
+    }
+    
+    //we sort the split bits by start index before returning the result
+    return styledCodeSplits.sort((split1,split2) => split1.start - split2.start);
 }

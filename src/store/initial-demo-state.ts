@@ -26,6 +26,7 @@ const initialDemoState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
+        isCollapsed: false,
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -40,6 +41,7 @@ const initialDemoState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: { },
+        isCollapsed: false,
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -54,12 +56,13 @@ const initialDemoState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
+        isCollapsed: false,
         caretVisibility: CaretPosition.body,
         multiDragPosition: "",
     },
 
     1: {
-        frameType: Definitions.ImportDefinition,
+        frameType: Definitions.FromImportDefinition,
         id: 1,
         isDisabled: false,
         isSelected: false,
@@ -72,7 +75,6 @@ const initialDemoState: EditorFrameObjects = {
             1: {code : "*", focused: false, error :"", shownLabel: true},
             2: {code : "", focused: false, error :"", shownLabel: false} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 
@@ -90,7 +92,6 @@ const initialDemoState: EditorFrameObjects = {
             0: {code :  "myString", focused: false, error :"", shownLabel: true},
             1: {code :  "\"Hello micro:bit!\"", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 
@@ -108,7 +109,6 @@ const initialDemoState: EditorFrameObjects = {
             0: {code :  "True", focused: false, error :"", shownLabel: true},
         },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 
@@ -126,7 +126,6 @@ const initialDemoState: EditorFrameObjects = {
             0: {code :  "display.scroll(myString)", focused: false, error :"", shownLabel: true},
         },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 

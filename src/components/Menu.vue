@@ -31,15 +31,15 @@
                         :class="{'fa-check': nameEditing, 'fa-pencil-alt': !nameEditing}"></i>  
                 </div>
             </div> 
-            <hr/>
-            <a class="project-impexp-div" href="#" @click="importFile()" v-t="'appMenu.loadProject'" />
-            <a class="project-impexp-div" href="#" @click="exportFile()" v-t="'appMenu.saveProject'"/>
-            <hr/>
+            <div class="menu-separator-div"></div>
+            <a class="project-impexp-div" href="#" @click="importFile();toggleMenuOnOff(undefined);" v-t="'appMenu.loadProject'" />
+            <a class="project-impexp-div" href="#" @click="exportFile();toggleMenuOnOff(undefined);" v-t="'appMenu.saveProject'"/>
+            <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang">
+                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(undefined)">
                         <option value="en">English</option>
                         <option value="fr">Français</option>
                     </select>
@@ -411,6 +411,13 @@ export default Vue.extend({
 
 .bm-item-list > hr {
     margin: 0;
+    height: 1px !important;
+}
+
+.menu-separator-div {
+    border-top: 1px solid #c5c4c1 !important;
+    padding:0px;
+
 }
 
 .appMenu-prefs-div {
@@ -440,13 +447,13 @@ export default Vue.extend({
     border-right: black 1px solid !important;
 }
 
- .bm-item-list {
+.bm-item-list {
       color: #6d6c6a !important;
       margin-left: 0% !important;
       font-size: inherit !important;
 }
 
-.bm-item-list > * {
+.bm-item-list > :not(.menu-separator-div) {
       display: flex !important;
       text-decoration: none !important;
       padding: 0.4em !important;

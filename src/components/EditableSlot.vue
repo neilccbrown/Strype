@@ -1,7 +1,6 @@
 <template>
-    <div class="next-to-eachother editable-slot"
-    >        
-        <input
+    <div class="next-to-eachother editable-slot">
+          <input
             type="text"
             autocomplete="off"
             spellcheck="false"
@@ -24,22 +23,30 @@
             @keyup.tab="onEnterOrTabKeyUp($event)"
             @keydown.backspace="onBackSpaceKeyDown()"
             @keyup.backspace="onBackSpaceKeyUp()"
-            @keydown="onEqualOrSpaceKeyDown($event)"
-            @keyup="logCursorPosition()"
-            :class="{editableSlot: focused, error: erroneous, hidden: isHidden}"
+            @keydown="onKeyDown($event)"
+            @keyup="logCursorPositionAndCheckBracket()"
+            :class="{editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
             :key="UIID"
-            class="editableslot-input"
+            class="editableslot-input navigationPosition"
             :style="inputTextStyle"
         />
-        
+        <div id="editableSlotSpans" :style="spanTextStyle">
+            <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
+            <span 
+                :key="UIID+'_'+index" 
+                v-for="(styledCodePart, index) in this.styledCodeParts" 
+                :class="styledCodePart.style"
+                :data-placeholder="defaultText"
+            >{{styledCodePart.code}}</span>
+        </div>
         <b-popover
-        v-if="erroneous"
-        :target="UIID"
-        :title="this.$i18n.t('errorMessage.errorTitle')"
-        triggers="hover focus"
-        :content="errorMessage"
-        class="popover"
+            v-if="erroneous()"
+            :target="UIID"
+            :title="this.$i18n.t('errorMessage.errorTitle')"
+            triggers="hover focus"
+            :content="errorMessage"
+            custom-class="error-popover"
         >
         </b-popover>
 
@@ -59,6 +66,7 @@
             :id="UIID+'_Autocompletion'"
             :token="token"
             :cursorPosition="cursorPosition"
+            :isImportFrame="isImportFrame()"
             @acItemClicked="acItemClicked"
         />
     </div>
@@ -69,9 +77,10 @@ import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, CommentDefinition} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
+import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -122,8 +131,12 @@ export default Vue.extend({
             //or that the slot is initially empty
             canBackspaceDeleteFrame: true,   
             stillBackSpaceDown: false,
-            // Flag used to keep the AC shown for debug purposes
-            debugAC: false,
+            //use to make sure that a tab event is a proper sequence (down > up) within an editable slot
+            tabDownTriggered: false,
+            //an array of code "parts" associated with styles (to emphasis the literal types i.e. numbers, strings and booleans)
+            styledCodeParts: [] as StyledCodePart[],
+            //we need to track the key.down events for the bracket/quote closing method (cf details there)
+            keyDownStr: "" as string,
         };
     },
     
@@ -143,12 +156,19 @@ export default Vue.extend({
 
         inputTextStyle(): Record<string, string> {
             return {
-                "background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important",
+                "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important", //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
                 "width" : this.computeFitWidthValue(),
                 "color" : (this.frameType === CommentDefinition.type)
                     ? "#97971E"
-                    : "#000",
+                    : (this.focused) ? "#000" : "transparent", //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
             };
+        },
+
+        spanTextStyle(): Record<string, string> {
+            //when the input has focus, we hide the spans, otherwise we show the right background colours
+            return (this.focused) 
+                ? {"visibility": "hidden"} 
+                : {"background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important"};
         },
 
         code: {
@@ -160,6 +180,7 @@ export default Vue.extend({
                 if(code.length > 0){
                     this.setBreakSpaceFlag(false);
                 }
+                this.generateStyledCodeParts(code);
                 return code;
             },
             set(value: string){
@@ -177,14 +198,14 @@ export default Vue.extend({
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
 
-                // if the imput field exists and it is not a "free texting" slot
+                // if the input field exists and it is not a "free texting" slot
                 // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
                 if(inputField && ((frame.frameType.labels[this.slotIndex].acceptAC)??true)){
                     //get the autocompletion candidates
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
                     
                     //workout the correct context if we are in a code editable slot
-                    const isImportFrame = (frame.frameType.type === ImportDefinition.type)
+                    const isImportFrame = (frame.frameType.type === ImportDefinition.type || frame.frameType.type === FromImportDefinition.type)
                     const resultsAC = (isImportFrame) 
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));
@@ -214,13 +235,6 @@ export default Vue.extend({
             );
         },
 
-        erroneous(): boolean {
-            return store.getters.getIsErroneousSlot(
-                this.$props.frameId,
-                this.$props.slotIndex
-            );
-        },
-
         UIID(): string {
             return getEditableSlotUIID(this.$props.frameId, this.$props.slotIndex);
         },
@@ -234,6 +248,10 @@ export default Vue.extend({
 
         isFirstVisibleInFrame(): boolean{
             return store.getters.getIsSlotFirstVisibleInFrame(this.frameId, this.slotIndex);
+        },
+
+        debugAC(): boolean{
+            return store.getters.getDebugAC();
         },
     },
 
@@ -278,6 +296,47 @@ export default Vue.extend({
             this.canBackspaceDeleteFrame = value;
         },
 
+        generateStyledCodeParts(code: string){
+            //In order to show the code literals for string, number and boolean tokens, we use an overlay
+            //of <span> elements when the editable slot is not being edited.
+            //Therefore, we parse the code to retrieve the literals and apply styling for each "bits" of code
+            //to generate the <span> elements.
+            this.styledCodeParts.splice(0, this.styledCodeParts.length);
+            if(code.trim().length === 0){
+                //if there is nothing in the slot, we use the style "empty" that looks like an input placeholder
+                this.styledCodeParts[0] = {code: "", style: CodeStyle.empty}
+            }
+            else{
+                //get the "bits" of code that are literals
+                const styledCodeSplits = getStyledCodeLiteralsSplits(code);
+                let codePos = 0;
+                styledCodeSplits.forEach((codeSplit) => {
+                    //While iterating through the code splits that are *only* for the literals,
+                    //we reconstruct the missing bits of code (parts which are not literals) 
+                    //so that we end up with the *full* code.
+                    if(codeSplit.start > codePos){                        
+                        //check if there is a "normal" code section before that literal
+                        this.styledCodeParts.push({code: code.substring(codePos, codeSplit.start), style: CodeStyle.none});
+                    } 
+                    //add the literal
+                    this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
+                    codePos=codeSplit.end;
+                })
+                //check for a potential trailing "normal" part
+                if(codePos < code.length){
+                    this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
+                }
+            }
+        },
+
+        erroneous(): boolean {
+            // Only show the popup when there is an error and the code hasn't changed
+            return this.isFirstChange && store.getters.getIsErroneousSlot(
+                this.$props.frameId,
+                this.$props.slotIndex
+            );
+        },
+
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
             this.isFirstChange = true;
@@ -293,7 +352,7 @@ export default Vue.extend({
             );    
             // When there is no code, we can suppose that we are in a new frame.
             // So, for import frames (from/import slots only) we show the AC automatically
-            if(this.frameType === ImportDefinition.type && this.slotIndex < 2 && this.code.length === 0){
+            if((this.frameType === ImportDefinition.type || this.frameType === FromImportDefinition.type) && this.slotIndex < 2 && this.code.length === 0){
                 const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));   
                 this.showAC = resultsAC.showAC;
                 this.contextAC = resultsAC.contextAC;
@@ -314,6 +373,8 @@ export default Vue.extend({
                         code: this.code.trim(),
                     }   
                 );
+                //reset the flag for first code change
+                this.isFirstChange = true;
             }
         },
 
@@ -326,11 +387,13 @@ export default Vue.extend({
                     const start = input.selectionStart ?? 0;
                     const end = input.selectionEnd ?? 0;
                 
+                    // If we're trying to go off the bounds of this slot
                     if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
-                    
                         store.dispatch(
                             "leftRightKey",
-                            event.key
+                            {
+                                key: event.key,
+                            }
                         );
                         this.onBlur();
                     }
@@ -352,12 +415,12 @@ export default Vue.extend({
                 // If the AutoCompletion is on we just browse through it's contents
                 // The `results` check, prevents `changeSelection()` when there are no results matching this token
                 // And instead, since there is no AC list to show, moves to the next slot
-                if(Object.keys(this.showAC && (this.$refs.AC as any).resultsToShow).length > 0) {
+                if(this.showAC && (this.$refs.AC as any)?.areResultsToShow()) {
                     (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
                 }
                 // Else we move the caret
                 else {  
-                // In any case the focus is lost, and the caret is shown (below by default)
+                    // In any case the focus is lost, and the caret is shown (below by default)
                     this.onBlur();
                     //If the up arrow is pressed you need to move the caret as well.
                     if( event.key === "ArrowUp" ) {
@@ -375,22 +438,28 @@ export default Vue.extend({
             if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
-                this.showAC = this.debugAC || false;
+                this.showAC = this.debugAC;
             }
             // If AC is not loaded, we want to take the focus from the slot
             // when we reach at here, the "esc" key event is just propagated and acts as normal
         },
 
         onTabKeyDown(event: KeyboardEvent){
-            // We keep the default browser behaviour when tab is pressed AND we're not having AC on.
+            // We keep the default browser behaviour when tab is pressed AND we're not having AC on, and we don't use the Shift modifier key
             // As browsers would use the "keydown" event, we have to intercept the event at this stage.
-            if(this.showAC && document.querySelector(".selectedAcItem")) {
+            if(!event.shiftKey && this.showAC && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
                 event.stopPropagation();
+                this.tabDownTriggered = true;
             }
         },
 
         onEnterOrTabKeyUp(event: KeyboardEvent){
+            //if the tab event has not been triggered by this component, we should ignore it
+            if(event.key === "Tab" && !this.tabDownTriggered) {
+                return;
+            }
+
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
             if(this.showAC && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
@@ -404,11 +473,15 @@ export default Vue.extend({
                 if(event.key == "Enter") {
                     this.onLRKeyDown(event);
                 }
-                this.showAC = this.debugAC || false;
             }
+            this.showAC = this.debugAC;
+            this.tabDownTriggered = false;
         },
 
-        onEqualOrSpaceKeyDown(event: KeyboardEvent){
+        onKeyDown(event: KeyboardEvent){
+            //we store the key.down key event.key value for the bracket/quote closing method (cf details there)
+            this.keyDownStr = event.key;
+
             // If the frame is a variable assignment frame and we are in the left hand side editable slot,
             // pressing "=" or space keys move to RHS editable slot
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
@@ -417,6 +490,15 @@ export default Vue.extend({
                 this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
+            }
+            // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
+            else if(this.frameType !== CommentDefinition.type && event.key === " "){
+                const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+                const currentTextCursorPos = inputField.selectionStart??0;
+                if(currentTextCursorPos == 0){
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
             }
         },
 
@@ -463,7 +545,8 @@ export default Vue.extend({
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
-            const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected();
+            const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
+
             const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
 
             const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
@@ -475,13 +558,51 @@ export default Vue.extend({
             this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length + ((isSelectedFunction)?1:0) ;
             
             this.code = newCode;
-            this.showAC = this.debugAC || false;
+            this.showAC = this.debugAC;
         },
 
         // store the cursor position to give it as input to AutoCompletionPopUp
-        logCursorPosition() {
+        // Also checks if s bracket is opened, so it closes it
+        // Note: the method is called on the key.up event BUT some issues on key.up are found with Windows/different keyboard layouts (i.e. French)
+        // therefore, we do not use the key.event of the key.up event, but the stored key.down event from this component's data
+        logCursorPositionAndCheckBracket() {
+            // if we are adding a " or a ' character, it may not be an opening one, but a closing one.
+            if(this.keyDownStr === "\"" || this.keyDownStr === "'") {
+                // if the the count of " or ' is an even number it means that there we are adding a
+                // closing character rather than an opening. [ *Bear in mind that it is even because the
+                // character has already been added to this stage, as we are on a keyup event* ]
+                if((this.code.match(new RegExp(this.keyDownStr, "g")) || []).length % 2 === 0) {
+                    return
+                }
+            }
+
+            // get the input field and caret position
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+            const currentTextCursorPos = inputField.selectionStart??0;
             this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
+
+            const openBracketCharacters = ["(","{","[","\"","'"];
+            const characterIndex= openBracketCharacters.indexOf(this.keyDownStr)
+
+            //check if the character we are addign is an openBracketCharacter
+            if(characterIndex !== -1) {
+
+                //create a list with the closing bracket for each one of the opening in the same index
+                const closeBracketCharacters = [")","}","]","\"","'"];
+
+                // add the closing bracket to the text
+                const newCode = this.code.substr(0, currentTextCursorPos) 
+                + closeBracketCharacters[characterIndex] // the needed closing bracket or punctuation mark
+                + this.code.substr(currentTextCursorPos);
+
+                this.showAC = false;
+                // set the text in the input field and move the cursor inside the brackets
+                this.textCursorPos  = currentTextCursorPos;
+                this.code = newCode;
+            }
+
+            //we reset the key.down value here, to avoid over-doing the method on all key.up called on the modifier keys
+            this.keyDownStr="";
         },
         
         computeFitWidthValue(): string {
@@ -497,6 +618,10 @@ export default Vue.extend({
             return computedWidth;
         },
 
+        isImportFrame(): boolean {
+            return store.getters.isImportFrame(this.frameId)
+        },
+
     },
 });
 </script>
@@ -509,6 +634,11 @@ export default Vue.extend({
 .editableslot-input {
     border-radius: 5px;
     border: 1px solid transparent;
+    padding: 1px 2px;
+    position:absolute;
+    top: 0%;
+    left: 0%;
+    outline: none;
 }
 
 .editableslot-input:hover {
@@ -531,15 +661,29 @@ export default Vue.extend({
   font-style: italic;
 }
 
+#editableSlotSpans{
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 1px 2px;
+}
+
+.editableSlotSpansHidden {
+    visibility: hidden;
+}
+
+#editableSlotSpans span{
+    outline: none;
+    white-space: pre;
+}
 
 .editableslot-placeholder {
     position: absolute;
     display: inline-block;
     visibility: hidden;
-    white-space: nowrap;
+    white-space: pre; //as this div placeholder is used to dynamically compute the width of the input field, we have to preserve the spaces exactly written by the user in the input field.
 }
 
-.popover {
+.error-popover {
     // Nedded for the code to understand the formated errors which split multiple
     // errors with \n
     white-space: pre-line !important;
@@ -555,4 +699,25 @@ export default Vue.extend({
     z-index: 10;
 }
 
+// Classes implenting the style tokens defined in type.ts (for the interface StyledCodePart)
+.string-token {
+    color: #006600;
+}
+
+.number-token {
+    color: blue;
+}
+
+.bool-token {
+    color: purple; 
+}
+
+.empty-token {
+    font-style: italic;
+    color: grey;
+}
+
+.empty-token:empty::before {
+    content:attr(data-placeholder);
+}
 </style>

@@ -12,7 +12,7 @@
             <div 
                 :style="frameStyle" 
                 class="block frameDiv" 
-                :class="{error: erroneous, statementOrJoint: isStatementOrJointFrame}"
+                :class="{statementOrJoint: isStatementOrJointFrame}"
                 :id="uiid"
                 @click="toggleCaret($event)"
                 @contextmenu="handleClick($event,'frame-context-menu')"
@@ -33,6 +33,7 @@
                     :frameType="frameType.type"
                     :labels="frameType.labels"
                     class="frame-header"
+                    :style="frameMarginStyle['header']"
                     :frameAllowChildren="allowChildren"
                 />
                 <FrameBody
@@ -41,20 +42,7 @@
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
                     ref="frameBody"
-                />
-                <!-- We have two caret containers because the frames which 
-                     have joint children cannot have the caret outside them,
-                     as the joint children sit whithin their parent; hence,
-                     if you take it out, the caret will jump out of the 'if' and
-                     then inside the go on the 'elif/else'
-                 -->
-                <CaretContainer
-                    v-if="hasJointFrameObjects"
-                    :frameId="this.frameId"
-                    :caretVisibility="this.caretVisibility"
-                    :caretAssignedPosition="caretPosition.below"
-                    :isFrameDisabled="this.isDisabled"
-                    @hide-context-menus="handleClick($event,'paste')"
+                    :style="frameMarginStyle['body']"
                 />
                 <JointFrames 
                     v-if="allowsJointChildren && hasJointFrameObjects"
@@ -65,7 +53,7 @@
             </div>
             <div>
                 <CaretContainer
-                    v-if="!hasJointFrameObjects"
+                    v-if="!isJointFrame"
                     :frameId="this.frameId"
                     :caretVisibility="this.caretVisibility"
                     :caretAssignedPosition="caretPosition.below"
@@ -73,14 +61,6 @@
                     @hide-context-menus="handleClick($event,'paste')"
                 />
             </div>
-            <b-popover
-            v-if="erroneous"
-            :target="uiid"
-            :title="this.$i18n.t('errorMessage.errorTitle')"
-            triggers="hover focus"
-            placement="left"
-            :content="errorMessage"
-            ></b-popover>
         </div>
         <div 
             v-if="multiDragPosition === 'middle' || multiDragPosition === 'first'"
@@ -165,9 +145,13 @@ export default Vue.extend({
                 ? {"color":"#000 !important"}
                 : {
                     "background-color": `${this.getFrameBgColor()} !important`,
-                    "padding-left": "2px",
                     "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
+        },
+
+        frameMarginStyle(): Record<string, Record<string, string>> {
+            return {"header": (this.isJointFrame)? {"margin-left": "13px"} : {"margin-left": "14px"},
+                    "body": (this.isJointFrame)? {"margin-left": "11px"} : {"margin-left": "12px"}}
         },
 
         frameSelectedCssClass(): string {
@@ -184,20 +168,8 @@ export default Vue.extend({
             return CaretPosition;
         },
 
-        erroneous(): boolean {
-            return store.getters.getIsErroneousFrame(
-                this.$props.frameId
-            );
-        },
-
         uiid(): string {
             return "frame_id_"+this.$props.frameId;
-        },
-
-        errorMessage(): string{
-            return store.getters.getErrorForFrame(
-                this.$props.frameId
-            );
         },
 
         allowContextMenu(): boolean {
@@ -224,6 +196,7 @@ export default Vue.extend({
         multiDragPosition(): string {
             return store.getters.getMultiDragPosition(this.$props.frameId);
         },
+
     },
 
     mounted() {
@@ -404,7 +377,7 @@ export default Vue.extend({
                     this.$props.frameId
                 );
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
-                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
+                store.commit("setCurrentFrame", this.$props.frameId);
                 store.dispatch("deleteFrames", "Backspace");
             }                    
         },
@@ -467,7 +440,7 @@ export default Vue.extend({
             else{
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
                 store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
-                store.dispatch("deleteFrames", "Backspace");
+                store.dispatch("deleteFrames","Backspace");
             }       
         },
 
@@ -478,8 +451,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.block {
-    padding-right: 4px;
+.block {    
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
@@ -497,10 +469,6 @@ export default Vue.extend({
 
 .block:active{
     cursor: grabbing;
-}
-
-.error {
-    border: 1px solid #FF0000 !important;
 }
 
 .selected {
@@ -539,9 +507,4 @@ export default Vue.extend({
     border-right: 3px solid #000000 !important;
     padding-top: 5px;
 }
-
-.frame-header{
-    margin-left: 14px;
-}
-
 </style>

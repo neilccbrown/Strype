@@ -1,7 +1,9 @@
 import Parser from "@/parser/parser";
 import store from "@/store/store";
 import { FrameObject } from "@/types/types";
-import moduleDescription from "@/autocompletion/microbit.json"
+import moduleDescription from "@/autocompletion/microbit.json";
+import i18n from "@/i18n";
+import _ from "lodash";
 
 const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
     "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
@@ -23,24 +25,23 @@ function isACNeededToShow(code: string): boolean {
     if(code.indexOf(" ") === -1){
         return true;
     }
-
-    //check if we follow a symbols operator 
+ 
+    //check if we follow a symbols operator (that may not have surrounding spaces)
     let foundOperatorFlag = false;
     operators.forEach((op) => {
-        if(code.trim().endsWith(op)) {
+        if(code.match(".*"+_.escapeRegExp(op)+" *[a-zA-Z0-9_$()\\[\\]{}]*$")) {
             foundOperatorFlag = true;
         }
     });
-
+ 
     if(!foundOperatorFlag) {
-        //then check if we follow a non symbols operators (need a trailing space)
+        //then check if we follow a non symbols operators (that need surrounding spaces)
         keywordsWihtSurroundSpaces.forEach((op) => {
-            if(code.toLowerCase().match(".*"+op+" *")) {
+            if(code.toLowerCase().match(".* "+op+" +[^ ]*")) {
                 foundOperatorFlag = true;
             }
         });
     }  
-
     return foundOperatorFlag;
 }
 
@@ -78,6 +79,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         */
         // append the line that gets all the possible names of the namespace and the context
         // The builtins will be used only if we don't have a context
+        inspectionCode += "\nvalidContext = True"
         inspectionCode += "\ntry:"
         if(isImportModuleAC){
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
@@ -86,82 +88,109 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         else{
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = dir("+contextAC+")";
         }
-        inspectionCode += "\nexcept:\n"+INDENT+"pass"
+        inspectionCode += "\nexcept:\n"+INDENT+"validContext = False"
+        // if the previous lines created a problem, that means that the context or the token are not correct and we should stop
+        inspectionCode += "\nif(validContext):"
         // Define the slot id we are talking about
-        inspectionCode += "\ntry:"
+        inspectionCode += "\n"+INDENT+"try:"
         // append the line that removes useless names and saves them to the results
-        inspectionCode += "\n"+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$')]"
+        // we also need to remove validContext so that we don't get it in the results
+        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$') and name!='validContext']"
         // If there are no results, we notify the hidden span that there is no AC available
         
-        inspectionCode += "\n"+INDENT+"resultsWithModules={}"
-        inspectionCode += "\n"+INDENT+"if(len(results)>0):"
+        inspectionCode += "\n"+INDENT+INDENT+"resultsWithModules={}"
+        inspectionCode += "\n"+INDENT+INDENT+"if(len(results)>0):"
         //We are creating a Dictionary with tuples of {module: [list of results]}
-        // If there is no context, we wan to know each result's source/module
-        // The results can belong to one of the following three modules:
+        // If there is no context, we want to know each result's source/module
+        // The results can belong to one of the following four modules:
         // 1) $exec_XXX --> user defined methods
         // 2) builtins --> user defined variable
         // 3) Any other imported library
-        inspectionCode += "\n"+INDENT+INDENT+"for name in results:"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"module = globals()[name].__module__"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=\"My Functions\""
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=\"My Variables\""
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"else:"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module=module.capitalize()"
-        // if there is no list for the specific mod, create it and append the name; otherwise just append the name
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)"
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
+        // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue) 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"for name in results:"
+        // in case the contextAC is not empty, this is the 'module'
+         
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if module:";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\""
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\""
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=module.capitalize()"
+        // if there is no list for the specific mod, create it and append the name; otherwise just append the name
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)"
+
+        // Before we finish we need to have the "My Variables" on the top of the list(dictionary)
+        // Get the index of "My Variables" in the dictionary
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"indexOfMyVariables = list(resultsWithModules.keys()).index(\""+i18n.t("autoCompletion.myVariables")+"\")"
+        // If it is present
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if indexOfMyVariables >= 0:"
+        // Convert the dictionary to a list
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups = list(resultsWithModules.items())"
+        // Swap My Variables with the module in the first place
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
+        // Convert back to dictionary!
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except:\n"+INDENT+INDENT+INDENT+INDENT+"pass" 
+
+        
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
+        
         // If there are no results
-        inspectionCode += "\n"+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+"else:"
         // We empty any previous results so that the AC won't be shown
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
-        inspectionCode += "\nexcept:\n"+INDENT+"pass" 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
+        inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass" 
+
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
-        */ 
+        */
 
-        inspectionCode += "\nfrom io import StringIO";
-        inspectionCode += "\nimport sys";
-        inspectionCode += "\ndocumentation={}";
-        inspectionCode += "\ntypes={}";
-        inspectionCode += "\ntry:";
+        inspectionCode += "\n"+INDENT+"from io import StringIO";
+        inspectionCode += "\n"+INDENT+"import sys";
+        inspectionCode += "\n"+INDENT+"documentation={}";
+        inspectionCode += "\n"+INDENT+"types={}";
+        inspectionCode += "\n"+INDENT+"try:";
+
         // For each module
-        inspectionCode += "\n"+INDENT+"for module in resultsWithModules:";
+        inspectionCode += "\n"+INDENT+INDENT+"for module in resultsWithModules:";
         // For each result in the specific module
-        inspectionCode += "\n"+INDENT+INDENT+"for result in resultsWithModules[module]:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:";
-        // If there is context available, the `type()` needs it in order to give proper results. 
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"typeOfResult = type(exec("+((contextAC.length>0)?("'"+contextAC+".'+"):"")+"result))";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"types.setdefault(module,[]).append(typeOfResult.__name__ or 'No documentation available')";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('No documentation available')";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"continue";
-        // built-in types most likely refer to variable or values defined by the user
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"isBuiltInType = (typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset));"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"if isBuiltInType:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult.__name__ or 'No documentation available'));"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function '+result+' with arguments: ' + str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames')).replace(\"'\",\" \").replace(\"\\\"\",\" \"));"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Built-in value')"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"for result in resultsWithModules[module]:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"try:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"old_stdout = sys.stdout";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = mystdout = StringIO()";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"help(exec(result))";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append((mystdout.getvalue().replace(\"'\",\" \").replace(\"\\\"\",\" \")) or 'No documentation available')";
+        // If there is context available, the `type()` needs it in order to give proper results. 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"typeOfResult = type(exec("+((contextAC.length>0)?("'"+contextAC+".'+"):"")+"result))";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"types.setdefault(module,[]).append(typeOfResult.__name__ or 'No documentation available')";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"except:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('No documentation available')"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"finally:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
-        inspectionCode += "\n"+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
-        inspectionCode += "\n"+INDENT+"document['"+typesSpanId+"'].text = types;"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('No documentation available')";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"continue";
+        // built-in types most likely refer to variable or values defined by the user
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"isBuiltInType = (typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset));"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if isBuiltInType:";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult.__name__ or 'No documentation available'));"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function '+result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Built-in value')"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"try:";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"old_stdout = sys.stdout";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = mystdout = StringIO()";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"help(exec(result))";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append((mystdout.getvalue().replace(\"'\",\" \").replace(\"\\\"\",\" \")) or 'No documentation available')";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"except:";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('No documentation available')"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
+        inspectionCode += "\n"+INDENT+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
+        inspectionCode += "\n"+INDENT+INDENT+"document['"+typesSpanId+"'].text = types;"
 
-        inspectionCode += "\nexcept:\n"+INDENT+"pass";
+        inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass";
     }
 
     // Fake a click to the hidden span to trigger the AC window to show
@@ -315,5 +344,6 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
  
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
+
 
 

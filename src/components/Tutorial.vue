@@ -117,7 +117,7 @@ export default Vue.extend({
 
     data() {
         return {
-            showTutorial: !store.state.debugging,
+            showTutorial: false,//!store.state.debugging,
             currentStep: {} as TutorialStep,
             currentStepIndex: 0,
             currentStepHighligthedElementsDimensions: [] as TutorialHightightedElementDimension[],

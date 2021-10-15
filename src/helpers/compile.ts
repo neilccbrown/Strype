@@ -1,25 +1,10 @@
-import Parser from "@/parser/parser";
 import Compiler from "@/compiler/compiler";
 import Vue from "vue";
 import i18n from "@/i18n";
 
-function compileCode(): Compiler {
-    const parser = new Parser();
-    const out = parser.parse();
-
-    const errors = parser.getErrorsFormatted(out);
-    if (errors) {
-        throw Error(errors);
-    }
-
-    const compiler = new Compiler();
-    compiler.compile(out);
-    return compiler;
-}
-
-export function compileHex() {
+export function compileHex(compiler: Compiler) {
     try {
-        const hex = compileCode().getUniversalHex();
+        const hex = compiler.getUniversalHex();
         return hex;
     }
     catch (error) {
@@ -33,9 +18,9 @@ export function compileHex() {
     }
 }
 
-export function compileBlob() {
+export function compileBlob(compiler: Compiler) {
     try {
-        const blob = compileCode().getBlob();
+        const blob = compiler.getBlob();
         return blob;
     }
     catch (error) {
@@ -49,9 +34,9 @@ export function compileBlob() {
     }
 }
 
-export async function compileBuffer() {
+export async function compileBuffer(compiler: Compiler) {
     try {
-        const buffer = await compileCode().getBuffer();
+        const buffer = await compiler.getBuffer();
         return buffer;
     }
     catch (error) {
@@ -66,9 +51,8 @@ export async function compileBuffer() {
 }
 
 // The content of this method is based on the microbit python editor (python-main.js)
-export function compileFlashAndBuffer(boardId: number): { flash: Uint8Array; buffer: ArrayBufferLike } | undefined {
+export function compileFlashAndBuffer(compiler: Compiler, boardId: number): { flash: Uint8Array; buffer: ArrayBufferLike } | undefined {
     try {
-        const compiler = compileCode();
         const flashBytes = compiler.getBytesForBoardId(boardId);
         const hexBuffer = compiler.getIntelHexForBoardId(boardId);
         return {flash: flashBytes, buffer: hexBuffer};

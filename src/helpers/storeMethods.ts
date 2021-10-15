@@ -1,6 +1,10 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, APICodedItem, APIItemTextualDescription } from "@/types/types";
 import Vue from "vue";
+import store from "@/store/store"
+import i18n from "@/i18n"
 import { getSHA1HashForObject } from "@/helpers/common";
+import { getEditableSlotUIID } from "./editor";
+import Parser from "@/parser/parser";
 
 export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId: number) => {
     // When removing a frame in the list, we remove all its sub levels,
@@ -311,7 +315,7 @@ export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameOb
     return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
 };
 
-export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[], frameMap: number[]) => {
+export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[]) => {
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.
@@ -458,4 +462,101 @@ export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, cu
     }
 
     return isAncestorTypeFound;
-}
+};
+
+// Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
+// We get the available caret positions through the DOM, where they are all present.
+export const getAvailableNavigationPositions = function(): NavigationPosition[] {
+    // We start by getting from the DOM all the available caret and editable slot positions
+    const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
+    // We create a list that hold objects of {id,caretPosition,slotNumber) for each available navigation positions
+    return Object.values(allCaretDOMpositions).map((e)=> {
+        return {
+            id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
+            ||
+            parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
+            caretPosition: (e.id.startsWith("caret"))? e.id.replace("caret_","").replace(/_*-*\d/g,"") : false,
+            slotNumber: (e.id.startsWith("input"))? parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")) : false,
+        }
+    })
+};
+
+// This methods creates a flat map (array) of the API with the textual content. For localisation, the textual content is separated from the API hierarchical map (i.e. in microbit.json),
+// this methods binds the textual content of the API based on the API item keys.
+export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?: number, immediateParentName?: string): APIItemTextualDescription[] {
+    const apiDocumentedItems = [] as APIItemTextualDescription[];
+    apiCodedItems.forEach((apiItem) => {
+        // documentation (simple and extra) is not always provided in the json files (for easier readablilty)
+        // therefore, we check if the value can be found against the key for doc/extradoc and assign an empty string if not found
+        const shortDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_doc")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string : "";
+        const extraDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
+
+        const apiItemChildren = (apiItem.children) ? apiItem.children : [] as APICodedItem[]; 
+        apiDocumentedItems.push({name: apiItem.name,
+            label: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_label") as string,
+            doc: shortDoc,
+            extradoc: extraDoc,
+            level: level??1,
+            codePortion: apiItem.codePortion,
+            extraCodePortion : apiItem.extraCodePortion??"",
+            isFinal: (apiItemChildren.length == 0),
+            immediateParentName: (immediateParentName??""), //if the parent's name isn't provided as argument (i.e. for level 1), an empty value is used instead
+        });
+        //add the children
+        apiDocumentedItems.push(...compileTextualAPI(apiItemChildren, (level) ? (level + 1) : 2, apiItem.name));
+    }) 
+    return apiDocumentedItems;
+};
+
+export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {
+    // This method for checking errors is called when a frame slot has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
+    // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
+    // we clear the errors completely for that frame/slot before we check the errors again for it.
+    store.commit(
+        "setSlotErroneous", 
+        {
+            frameId: frameId, 
+            slotIndex: slotId, 
+            error: "",
+        }
+    );
+
+    const frameObject = store.getters.getFrameObjectFromId(frameId);
+
+    const optionalSlot = frameObject.frameType.labels[slotId].optionalSlot ?? true;
+    const errorMessage = store.getters.getErrorForSlot(frameId,slotId);
+    if(code !== "") {
+        //if the user entered text in a slot that was blank before the change, remove the error
+        if(!optionalSlot && errorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
+            store.commit("removePreCompileErrors", getEditableSlotUIID(frameId, slotId));                
+        }
+    }
+    else if(!optionalSlot){
+        store.commit(
+            "setSlotErroneous", 
+            {
+                frameId: frameId, 
+                slotIndex: slotId,  
+                error: i18n.t("errorMessage.emptyEditableSlot"),
+            }
+        );
+        store.commit("addPreCompileErrors", getEditableSlotUIID(frameId, slotId));
+    }
+                
+    // We check Python error (with TigerPython) for this portion of code only.
+    // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared on the SLOT only.
+    // If we are on a joint element, we check the whole joint siblings from root to last joint, otherwise, the single current line suffice.
+    const isJoinFrame = (frameObject.jointParentId > 0);
+    //we need to find out what is the next frame to provide a stop value
+    const availablePositions = getAvailableNavigationPositions();
+    const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
+    const caretPosition = (frameObject.frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
+    const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===frameId && e.caretPosition === caretPosition);
+    const nextCaretId =  (isJoinFrame) 
+        ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.id===frameObject.jointParentId && e.caretPosition === CaretPosition.below) + 1]?.id??-100
+        : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.below) ? 1 : 2)]?.id??-100);
+    const startFrameId = (isJoinFrame) ? frameObject.jointParentId : frameId;
+    const parser = new Parser(true);
+    const portionOutput = parser.parse(startFrameId, nextCaretId);
+    parser.getErrorsFormatted(portionOutput);
+};

@@ -26,6 +26,7 @@ const longStateExample: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
+        isCollapsed: false,
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -40,6 +41,7 @@ const longStateExample: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: { },
+        isCollapsed: false,
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -54,12 +56,13 @@ const longStateExample: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
+        isCollapsed: false,
         caretVisibility: CaretPosition.body,
         multiDragPosition: "",
     },
 
     1: {
-        frameType: Definitions.ImportDefinition,
+        frameType: Definitions.FromImportDefinition,
         id: 1,
         isDisabled: false,
         isSelected: false,
@@ -72,7 +75,6 @@ const longStateExample: EditorFrameObjects = {
             1: {code : "*", focused: false, error :"", shownLabel: true},
             2: {code : "", focused: false, error :"", shownLabel: false} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     2: {
@@ -85,11 +87,8 @@ const longStateExample: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: {code : "", focused: false, error :"", shownLabel: false},
-            1: {code : "music", focused: false, error :"", shownLabel: true},
-            2: {code : "", focused: false, error :"", shownLabel: false} },
+        contentDict: { 0: {code : "music", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     3: {
@@ -104,7 +103,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "At start:", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     4: {
@@ -119,7 +117,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "music.play(music.NYAN)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     5: {
@@ -134,7 +131,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "display.scroll(\"I love Stride micro:bit !\")", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     6: {
@@ -149,7 +145,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "Maintain this behaviour while on:", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     7: {
@@ -166,7 +161,6 @@ const longStateExample: EditorFrameObjects = {
             0: {code :  "currImg", focused: false, error :"", shownLabel: true},
             1: {code :  "Image.HEART", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     8: {
@@ -181,7 +175,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {0: {code :  "True", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     9: {
@@ -196,7 +189,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "display.show(currImg)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     10: {
@@ -213,7 +205,6 @@ const longStateExample: EditorFrameObjects = {
             0: {code :  "gesture", focused: false, error :"", shownLabel: true},
             1: {code :  "accelerometer.current_gesture()", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     11: {
@@ -228,7 +219,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "gesture == \"shake\"", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     14: {
@@ -243,7 +233,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "display.show(Image.SAD)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     15: {
@@ -258,7 +247,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "sleep(2000)", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     12: {
@@ -273,7 +261,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "button_a.is_pressed()", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     16: {
@@ -290,7 +277,6 @@ const longStateExample: EditorFrameObjects = {
             0: {code :  "currImg", focused: false, error :"", shownLabel: true},
             1: {code :  "Image.CHESSBOARD", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     13: {
@@ -305,7 +291,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: { 0: {code :  "button_b.is_pressed()", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
     17: {
@@ -322,7 +307,6 @@ const longStateExample: EditorFrameObjects = {
             0: {code :  "currImg", focused: false, error :"", shownLabel: true},
             1: {code :  "Image.COW", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
-        error: "",
         multiDragPosition: "",
     },
 

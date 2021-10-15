@@ -17,40 +17,49 @@
                 <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
             </div>
         </div>
-        <hr />
-        <div :id="commandsContainerUUID" >
-            <div id="addFramePanel" v-if="!isEditing">
-                <div class="frameCommands">
-                    <AddFrameCommand
-                        v-for="addFrameCommand in addFrameCommands"
-                        :key="addFrameCommand[0].type.type"
-                        :type="addFrameCommand[0].type.type"
-                        :shortcut="addFrameCommand[0].shortcut"
-                        :symbol="
-                            addFrameCommand[0].symbol !== undefined
-                                ? addFrameCommand[0].symbol
-                                : addFrameCommand[0].shortcut
-                        "
-                        :description="addFrameCommand[0].description"
-                        :index="
-                            addFrameCommand[0].index!==undefined
-                            ? addFrameCommand[0].index
-                            : 0
-                        "
-                    />
-                </div>
-                <hr />
-            </div>
-            <div class="toggleFrameLabelCommands">
-                <ToggleFrameLabelCommand
-                    v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
-                    :key="toggleFrameLabelCommand.type"
-                    :type="toggleFrameLabelCommand.type"
-                    :modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
-                    :keyShortcut="toggleFrameLabelCommand.keyShortcut"
-                    :description="toggleFrameLabelCommand.displayCommandText"
-                />
-            </div>
+        <div @mousedown.prevent.stop @mouseup.prevent.stop>
+            <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
+                <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
+                    <div :id="commandsContainerUUID" class="command-tab-content" >
+                        <div id="addFramePanel">
+                            <div class="frameCommands">
+                                <transition-group name="list" tag="p">
+                                    <AddFrameCommand
+                                        v-for="addFrameCommand in addFrameCommands"
+                                        :key="addFrameCommand[0].type.type"
+                                        :type="addFrameCommand[0].type.type"
+                                        :shortcut="addFrameCommand[0].shortcut"
+                                        :symbol="
+                                            addFrameCommand[0].symbol !== undefined
+                                                ? addFrameCommand[0].symbol
+                                                : addFrameCommand[0].shortcut
+                                        "
+                                        :description="addFrameCommand[0].description"
+                                        :index="
+                                            addFrameCommand[0].index!==undefined
+                                            ? addFrameCommand[0].index
+                                            : 0
+                                        "
+                                    />
+                                </transition-group>
+                            </div>
+                        </div>
+                        <div class="toggleFrameLabelCommands">
+                            <ToggleFrameLabelCommand
+                                v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
+                                :key="toggleFrameLabelCommand.type"
+                                :type="toggleFrameLabelCommand.type"
+                                :modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
+                                :keyShortcut="toggleFrameLabelCommand.keyShortcut"
+                                :description="toggleFrameLabelCommand.displayCommandText"
+                            />
+                        </div>
+                    </div>
+                </b-tab>
+                <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
+                    <APIDiscovery  class="command-tab-content"/>
+                </b-tab>
+            </b-tabs>
         </div>
         <text id="userCode"></text>
         <span id="keystrokeSpan"></span>
@@ -58,19 +67,18 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import store from "@/store/store";
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
+import APIDiscovery from "@/components/APIDiscovery.vue";
 import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
-import { flashData } from "@/helpers/webUSB";
-import { getCommandsContainerUIID, getEditorButtonsContainerUIID, getTutorialUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getCommandsRightPaneContainerId } from "@/helpers/editor"
+import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { AddFrameCommandDef,ToggleFrameLabelCommandDef, WebUSBListener, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, CaretPosition, ImportDefinition} from "@/types/types";
-import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs"
-import browserDetect from "vue-browser-detect-plugin";
+import { getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getTutorialUIID } from "@/helpers/editor";
+import { flash } from "@/helpers/webUSB";
+import store from "@/store/store";
+import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, ImportDefinition, ToggleFrameLabelCommandDef } from "@/types/types";
 import $ from "jquery";
-import Parser from "@/parser/parser";
-
+import Vue from "vue";
+import browserDetect from "vue-browser-detect-plugin";
 export default Vue.extend({
     name: "Commands",
     store,
@@ -78,6 +86,7 @@ export default Vue.extend({
     components: {
         AddFrameCommand,
         ToggleFrameLabelCommand,
+        APIDiscovery,
     },
 
     data: function () {
@@ -94,6 +103,15 @@ export default Vue.extend({
     },
 
     computed: {
+        tabIndex: {
+            get(): number{
+                return store.getters.getCommandsTabIndex();
+            },
+            set(index: number){
+                store.commit("setCommandsTabIndex", index);
+            },
+        },
+
         buttonsContainerUIID(): string {
             return getEditorButtonsContainerUIID();
         },
@@ -114,7 +132,7 @@ export default Vue.extend({
                 return {};
             }
             
-            return store.getters.getCurrentFrameAddFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
+            return store.getters.generateAvailableFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
         },
 
         toggleFrameLabelCommands(): ToggleFrameLabelCommandDef[] {
@@ -218,9 +236,12 @@ export default Vue.extend({
                     }
                     else{
                         //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by EditableSlots.
+                        // We start by getting from the DOM all the available caret and editable slot positions
                         store.dispatch(
                             "leftRightKey",
-                            event.key
+                            {
+                                key:event.key,
+                            }
                         );
                         event.stopImmediatePropagation();
                         event.preventDefault();
@@ -238,7 +259,7 @@ export default Vue.extend({
                 if(isEditing){
                     const frameType = store.getters.getCurrentFrameObject().frameType.type;
                     //space in import frame's editable slots
-                    if(frameType === ImportDefinition.type && event.key === " "){
+                    if((frameType === ImportDefinition.type || frameType === FromImportDefinition.type) && event.key === " "){
                         event.preventDefault();
                         return;
                     }
@@ -320,7 +341,7 @@ export default Vue.extend({
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
                             store.dispatch(
                                 "addFrameWithCommand",
-                                this.addFrameCommands[event.key.toLowerCase()][0].type                
+                                this.addFrameCommands[event.key.toLowerCase()][0].type
                             );
                         }
                     }
@@ -351,126 +372,25 @@ export default Vue.extend({
         },
 
         flash() {
-            let proceed = true;
-            if(store.getters.getPreCompileErrors().length>0) {
-                proceed = false;
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-            }
-            else{
-                //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
-                //(we clear the errors because when the code is parsed, the lines with errors are ignored from the output
-                // so we need to reset those errors before reparsing - errors will be "reconstructed" in getErrorsFormatted())
-                store.commit("clearAllErrors");
-                const parser = new Parser();
-                const out = parser.parse();
-                const errors = parser.getErrorsFormatted(out);
-                if (errors) {
-                    proceed = false;
-                    //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                    Vue.$confirm({
-                        message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                        button: {
-                            yes: this.$i18n.t("buttonLabel.ok"),
-                        },
-                    });    
-                }
-            }            
-            
-            if(proceed){
-                if (navigator.usb) {
-                    const webUSBListener: WebUSBListener = {
-                        onUploadProgressHandler: (percent) => {
-                            this.$data.showProgress = true;
-                            this.$data.progressPercent = percent;
-                        },
-
-                        onUploadSuccessHandler: () => {
-                            store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.UploadSuccessMicrobit
-                            );
-
-                            this.$data.showProgress = false;
-
-                            //don't leave the message for ever
-                            setTimeout(()=>store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.NoMessage
-                            ), 7000);
-                        },
-                        onUploadFailureHandler: (error) => {
-                            this.$data.showProgress = false;
- 
-                            const message = MessageDefinitions.UploadFailureMicrobit;
-                            const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
-
-                            store.commit(
-                                "setMessageBanner",
-                                message
-                            );
-
-                            this.$data.showProgress = false;
-
-                            //don't leave the message for ever
-                            setTimeout(()=>store.commit(
-                                "setMessageBanner",
-                                MessageDefinitions.NoMessage
-                            ), 7000);
-                        },
-                    };
-                    flashData(webUSBListener);
-                }
-                else {
-                    //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                    Vue.$confirm({
-                        message: this.$i18n.t("appMessage.noWebUSB") as string,
-                        button: {
-                            yes: this.$i18n.t("buttonLabel.ok"),
-                        },
-                    });    
-                }
-            }
+            flash(this.$data);
         },
+
         downloadHex() {
-            if(store.getters.getPreCompileErrors().length > 0) {
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-                return;
-            }
-            //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
-            store.commit("clearAllErrors");
-            const succeeded = downloadHex(); 
-            //We show the image only if the download has succeeded
-            if(succeeded) {
-                store.dispatch("setMessageBanner", MessageDefinitions.DownloadHex);
-            }
+            downloadHex();
         },
+
         downloadPython() {
-            if(store.getters.getPreCompileErrors().length>0) {
-                //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-                Vue.$confirm({
-                    message: this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: this.$i18n.t("buttonLabel.ok"),
-                    },
-                });    
-                return;
-            }
-            //clear any code error before checking the code (because otherwise the parsing will be wrong - errors will be "reacreated" anyway)
-            store.commit("clearAllErrors");
             downloadPython(); 
+        },
+
+        getTabClasses(tabIndex: number): string[] {
+            const disabledClassStr = (this.isEditing) ? " commands-tab-disabled" : "";
+            if(tabIndex == this.tabIndex){
+                return ["commands-tab commands-tab-active"]
+            }
+            else {
+                return ["commands-tab" + disabledClassStr]
+            }
         },
     },
 });
@@ -479,7 +399,7 @@ export default Vue.extend({
 <style lang="scss">
 .commands {
     border-left: #383b40 1px solid;
-    color: rgb(37, 35, 35);
+    color: #252323;
     background-color: #E2E7E0;
 }
 
@@ -522,5 +442,38 @@ export default Vue.extend({
 
 .cmd-button-margin{
     margin-right: 5px;
+}
+
+.list-enter-active, .list-leave-active {
+  transition: all .5s;
+}
+.list-enter, .list-leave-to {
+  opacity: 0;
+  transform: translate3d(3);
+}
+
+.commands-tab{
+    color: #787978 !important;
+    border-color: #bbc8b6 !important;
+    background-color: transparent !important;
+    margin-top: 10px;
+}
+
+.commands-tab-active{
+    color: #274D19 !important;
+    border-bottom-color: #E2E7E0 !important;
+}
+
+.command-tab-content {
+ margin-left: 5px;
+}
+
+//the following overrides the bootstrap tab generated styles
+#commandsTabs ul{
+    border-bottom-color: #bbc8b6 !important;
+}
+
+.nav-item{
+    cursor: no-drop;
 }
 </style>

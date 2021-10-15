@@ -6,6 +6,7 @@
     >
         <div>
             <CaretContainer
+            :id="uiid+'_caret_container'"
             :frameId="this.frameId"
             :caretVisibility="this.caretVisibility"
             :caretAssignedPosition="caretPosition.body"
@@ -17,6 +18,7 @@
                 @change.self="handleDragAndDrop($event)"
                 @unchoose="showSelectedFrames()"
                 animation= "200"
+                swapThreshold = "0.2"
                 :disabled="isEditing"
                 :key="'Draggagle-Body-'+this.frameId"
                 @start="handleMultiDrag($event)"
@@ -38,12 +40,12 @@
                 />
             </Draggable>
             <b-popover
-            v-if="empty"
-            :target="uiid"
-            :title="this.$i18n.t('errorMessage.errorTitle')"
-            triggers="hover focus"
-            placement="left"
-            :content="errorMessage"
+                v-if="empty"
+                :target="uiid+'_caret_container'"
+                :title="this.$i18n.t('errorMessage.errorTitle')"
+                triggers="hover focus"
+                placement="left"
+                :content="errorMessage"
             ></b-popover>
         </div>
     </div>
@@ -125,10 +127,11 @@ export default Vue.extend({
 
         empty(): boolean {
             let empty = false;
-            //check if there are at least 1 frame, NOT disabled
-            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== CommentDefinition.type).length < 1 && this.caretVisibility !== this.caretPosition.body) {
+            const currentFrameId = store.getters.getCurrentFrameObject().id;
+            //check if there are at least 1 frame, NOT disabled, and that we are not inside that frame body
+            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== CommentDefinition.type).length < 1 &&  !(this.caretVisibility === this.caretPosition.body && this.frameId===currentFrameId)) {
                 empty = true;
-                store.commit("addPreCompileErrors",this.uiid);                
+                store.commit("addPreCompileErrors", this.uiid);                
             }
             else {
                 store.commit("removePreCompileErrors",this.uiid);
@@ -218,11 +221,9 @@ export default Vue.extend({
 .frame-body-container {
     background-color: #F6F2E9;
     margin-bottom: 4px;
-    margin-right: 0px;
-    margin-left: 12px;
+    margin-right: 4px;
     border-color: #000 !important;
     border-radius: 8px;
-
 }
 
 .error {
