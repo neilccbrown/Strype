@@ -1,7 +1,34 @@
 {
-    "modules": ["audio","machine","time","utime","speech","random","radio","os","neopixel","music","micropython","microbit"],
+    "modules": ["audio","machine","microbit","micropython","music","neopixel","os","radio","random","speech","time","utime"],
+    "versions":{
+        "microbit":{
+            "set_volume": 2,
+            "microphone":2,
+            "speaker":2,
+            "pin_logo":2,
+            "pin_speaker":2,
+            "__PinDigital()":{
+                "PULL_UP":2,
+                "PULL_DOWN":2,
+                "NO_PULL":2,
+                "set_pull":2,
+                "get_pull":2,
+                "get_mode":2
+            },            
+            "__PinTouchNoSet":{
+                "CAPACITIVE":2,
+                "RESISITVE":2
+            },
+            "__PinTouch":{
+                "set_touch_mode":2
+            },
+            "SoundEvent":2,
+            "audio":2,
+            "Sound":2
+        }
+    },
     "api":[
-        {"name":"led","codePortion":"display.", "children":[
+        {"name":"led","codePortion":"display.","children":[
             {"name":"ledScroll","codePortion":"scroll(value)","extraCodePortion":"scroll(value, delay=150, wait=True, loop=False, monospace=False)"},
             {"name":"ledShowIm","codePortion":"show(image)"},
             {"name":"ledShowImTxt","codePortion":"show(value)","extraCodePortion":"show(value, delay=400, wait=True, loop=False, clear=False)"},
@@ -12,7 +39,7 @@
             {"name":"ledOff","codePortion":"off()"},
             {"name":"ledIsOn","codePortion":"display.is_on()"},
             {"name":"ledReadLight","codePortion":"display.read_light_level()"}]},
-        {"name":"Img","codePortion":"", "children": [
+        {"name":"Img","codePortion":"","children": [
             {"name":"ImgBuiltin","codePortion":"Img.", "children":[
                 {"name":"Img01","codePortion":"HEART"},
                 {"name":"Img02","codePortion":"HEART_SMALL"},
@@ -95,20 +122,31 @@
                 {"name":"imgDown","codePortion":"shift_down(n)"},
                 {"name":"ImgCrop","codePortion":"crop(x, y, w, h)"},
                 {"name":"ImgFill","codePortion":"fill(value)"}]}]},
-        {"name":"button","codePortion":"button_a.", "children":[
+        {"name":"button","codePortion":"button_a.","children":[
             {"name":"buttonIsPress","codePortion":"isPressed()"},
             {"name":"buttonWasPress","codePortion":"wasPressed()"},
             {"name":"buttonGetPress","codePortion":"get_presses()"}]},
-        {"name":"audio","codePortion":"audio.", "children":[
+        {"name":"sounds","codePortion":"Sound.","children":[
+                {"name":"sound01","codePortion":"GIGGLE"},
+                {"name":"sound02","codePortion":"HAPPY"},
+                {"name":"sound03","codePortion":"HELLO"},
+                {"name":"sound04","codePortion":"MYSTERIOUS"},
+                {"name":"sound05","codePortion":"SAD"},
+                {"name":"sound06","codePortion":"SLIDE"},
+                {"name":"sound07","codePortion":"SOARING"},
+                {"name":"sound08","codePortion":"SPRING"},
+                {"name":"sound09","codePortion":"TWINKLE"},
+                {"name":"sound10","codePortion":"YAWN"}]},
+        {"name":"audio","codePortion":"audio.","children":[
             {"name":"audioPlay","codePortion": "play(source)","extraCodePortion":"play(source, wait=True, pin=pin0, return_pin=None)"},
             {"name":"audioFrame","codePortion":"AudioFrame"}]},
-        {"name":"acc","codePortion":"accelerometer.", "children":[
+        {"name":"acc","codePortion":"accelerometer.","children":[
             {"name":"accGest","codePortion":"current_gesture()"},
             {"name":"accXYZ","codePortion":"get_values()"},
             {"name":"accX","codePortion":"get_x()"},
             {"name":"accY","codePortion":"get_y()"},
             {"name":"accZ","codePortion":"get_z()"}]},
-        {"name":"comp","codePortion":"compass.", "children":[
+        {"name":"comp","codePortion":"compass.","children":[
             {"name":"compHead","codePortion":"heading()"},
             {"name":"compIsCalib","codePortion":"is_calibrated()"},
             {"name":"compCalib","codePortion":"calibrate()"},
@@ -117,7 +155,7 @@
             {"name":"compGetY","codePortion":"get_y()"},
             {"name":"compGetZ","codePortion":"get_z()"},    
             {"name":"compGetField","codePortion":"get_field_strength()"}]},
-        {"name":"music","codePortion":"music.", "children":[
+        {"name":"music","codePortion":"music.","children":[
             {"name":"musicBuiltin","codePortion":"","children":[
                 {"name":"music1","codePortion":"DADADADUM"},
                 {"name":"music2","codePortion":"ENTERTAINER"},
@@ -147,7 +185,17 @@
             {"name":"musicStop","codePortion":"stop()","extraCodePortion":"stop(pin=microbit.pin0)"},
             {"name":"musicPitch","codePortion":"pitch(frequency)","extraCodePortion":"pitch(frequency, duration=-1, pin=microbit.pin0, wait=True)"},    
             {"name":"musicReset","codePortion":"reset()"}]},
-        {"name":"pin","codePortion":"", "children":[
+        {"name":"mic","codePortion":"microphone.", "children":[
+                {"name":"currSoundEvent","codePortion":"current_event()"},
+                {"name":"wasSoundEvent","codePortion":"was_event(event)"},
+                {"name":"isSoundEvent","codePortion":"is_event(event)"},
+                {"name":"soundEvents","codePortion":"get_events()"},
+                {"name":"soundEvThres","codePortion":"set_threshold(event, value)"},
+                {"name":"soundLevel","codePortion":"sound_level()"}]},
+            {"name":"speaker","codePortion":"speaker.", "children":[
+                    {"name":"speakerOn","codePortion":"on()"},
+                    {"name":"speakerOff","codePortion":"off()"}]},
+            {"name":"pin","codePortion":"","children":[
             {"name":"pinDig","codePortion":"pin5.","children":[
                 {"name":"pinDigR","codePortion":"read_digital()"},
                 {"name":"pintDigW","codePortion":"write_digital(value)"}
@@ -167,17 +215,18 @@
                 {"name":"pinTouTMcs","codePortion":"set_analog_period_microseconds(period)"},
                 {"name":"pinTouRD","codePortion":"read_digital()"},    
                 {"name":"pintTouWD","codePortion":"write_digital()"}]}]},
-        {"name":"speech","codePortion":"speech.", "children":[
-            {"name":"speechSay","codePortion":"say(words)","extraCodePortion":"say(words, pitch=64, speed=72, mouth=128, throat=128)"},
-            {"name":"speechSing","codePortion":"sing(phonemes)","extraCodePortion":"sing(phonemes, pitch=64, speed=72, mouth=128, throat=128)"},
+        {"name":"speech","codePortion":"speech.","children":[
+            {"name":"speechSay","codePortion":"say(words)","extraCodePortion":"say(words, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"},
+            {"name":"speechSing","codePortion":"sing(phonemes)","extraCodePortion":"sing(phonemes, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"},
             {"name":"speechT","codePortion":"translate(words)"},
-            {"name":"speechP","codePortion":"pronounce(phonemes)", "extraCodePortion":"pronounce(phonemes, pitch=64, speed=72, mouth=128, throat=128)"}]},
-        {"name":"microbit", "codePortion":"", "children":[
-            {"name":"temp", "codePortion":"temperature()"},
-            {"name":"reset", "codePortion":"reset()"},
-            {"name":"runned", "codePortion":"running_time()"},
-            {"name":"sleep", "codePortion":"sleep(n)"},
-            {"name":"panic", "codePortion":"panic(n)"}
+            {"name":"speechP","codePortion":"pronounce(phonemes)", "extraCodePortion":"pronounce(phonemes, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"}]},
+        {"name":"microbit","codePortion":"","children":[
+            {"name": "setVol","codePortion": "set_volume(n)"},
+            {"name":"temp","codePortion":"temperature()"},
+            {"name":"reset","codePortion":"reset()"},
+            {"name":"runned","codePortion":"running_time()"},
+            {"name":"sleep","codePortion":"sleep(n)"},
+            {"name":"panic","codePortion":"panic(n)"}
         ]}
     ]
 }
