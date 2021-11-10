@@ -80,10 +80,12 @@
 
     "autoCompletion": {
         "myFunctions": "My Functions",
-        "myVariables": "My Variables"
+        "myVariables": "My Variables",
+        "importedModules": "Imported modules"
     },
 
     "apidiscovery" : {
+        "v2InfoMsg": "This is only valid for the micro:bit board v2.",
         "microbitAPI": {
             "led_label": "LED display",
             "led_doc": "The 5x5 LED display of the micro:bit.",

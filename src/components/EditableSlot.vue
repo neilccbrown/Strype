@@ -76,7 +76,7 @@
 import Vue from "vue";
 import store from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
@@ -207,8 +207,8 @@ export default Vue.extend({
                     //workout the correct context if we are in a code editable slot
                     const isImportFrame = (frame.frameType.type === ImportDefinition.type || frame.frameType.type === FromImportDefinition.type)
                     const resultsAC = (isImportFrame) 
-                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID))
-                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));
+                        ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
+                        : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
                     this.showAC = resultsAC.showAC;
                     this.contextAC = resultsAC.contextAC;
                     if(this.showAC){
@@ -353,7 +353,7 @@ export default Vue.extend({
             // When there is no code, we can suppose that we are in a new frame.
             // So, for import frames (from/import slots only) we show the AC automatically
             if((this.frameType === ImportDefinition.type || this.frameType === FromImportDefinition.type) && this.slotIndex < 2 && this.code.length === 0){
-                const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID));   
+                const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));   
                 this.showAC = resultsAC.showAC;
                 this.contextAC = resultsAC.contextAC;
                 if(this.showAC){
@@ -537,7 +537,8 @@ export default Vue.extend({
         },
 
         acItemClicked(item: string) {
-            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.textContent?.trim()??"";
+            // Get the content of the <li> element through the child node to avoid getting nested text elements (like the version)
+            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.firstChild?.nodeValue?.trim()??"";
             if(selectedItem === undefined) {
                 return;
             }

@@ -3,6 +3,7 @@
     "versions":{
         "microbit":{
             "set_volume": 2,
+            "__Microphone":2,
             "microphone":2,
             "speaker":2,
             "pin_logo":2,
@@ -15,14 +16,13 @@
                 "get_pull":2,
                 "get_mode":2
             },            
-            "__PinTouchNoSet":{
-                "CAPACITIVE":2,
-                "RESISITVE":2
-            },
             "__PinTouch":{
+                "CAPACITIVE":2,
+                "RESISITVE":2,
                 "set_touch_mode":2
             },
             "SoundEvent":2,
+            "__Audio":2,
             "audio":2,
             "Sound":2
         }
@@ -126,7 +126,7 @@
             {"name":"buttonIsPress","codePortion":"isPressed()"},
             {"name":"buttonWasPress","codePortion":"wasPressed()"},
             {"name":"buttonGetPress","codePortion":"get_presses()"}]},
-        {"name":"sounds","codePortion":"Sound.","children":[
+        {"name":"sounds","codePortion":"Sound.","version":2,"children":[
                 {"name":"sound01","codePortion":"GIGGLE"},
                 {"name":"sound02","codePortion":"HAPPY"},
                 {"name":"sound03","codePortion":"HELLO"},
@@ -185,17 +185,17 @@
             {"name":"musicStop","codePortion":"stop()","extraCodePortion":"stop(pin=microbit.pin0)"},
             {"name":"musicPitch","codePortion":"pitch(frequency)","extraCodePortion":"pitch(frequency, duration=-1, pin=microbit.pin0, wait=True)"},    
             {"name":"musicReset","codePortion":"reset()"}]},
-        {"name":"mic","codePortion":"microphone.", "children":[
-                {"name":"currSoundEvent","codePortion":"current_event()"},
-                {"name":"wasSoundEvent","codePortion":"was_event(event)"},
-                {"name":"isSoundEvent","codePortion":"is_event(event)"},
-                {"name":"soundEvents","codePortion":"get_events()"},
-                {"name":"soundEvThres","codePortion":"set_threshold(event, value)"},
-                {"name":"soundLevel","codePortion":"sound_level()"}]},
-            {"name":"speaker","codePortion":"speaker.", "children":[
-                    {"name":"speakerOn","codePortion":"on()"},
-                    {"name":"speakerOff","codePortion":"off()"}]},
-            {"name":"pin","codePortion":"","children":[
+        {"name":"mic","codePortion":"microphone.","version":2, "children":[
+            {"name":"currSoundEvent","codePortion":"current_event()"},
+            {"name":"wasSoundEvent","codePortion":"was_event(event)"},
+            {"name":"isSoundEvent","codePortion":"is_event(event)"},
+            {"name":"soundEvents","codePortion":"get_events()"},
+            {"name":"soundEvThres","codePortion":"set_threshold(event, value)"},
+            {"name":"soundLevel","codePortion":"sound_level()"}]},
+        {"name":"speaker","codePortion":"speaker.","version":2, "children":[
+                {"name":"speakerOn","codePortion":"on()"},
+                {"name":"speakerOff","codePortion":"off()"}]},
+        {"name":"pin","codePortion":"","children":[
             {"name":"pinDig","codePortion":"pin5.","children":[
                 {"name":"pinDigR","codePortion":"read_digital()"},
                 {"name":"pintDigW","codePortion":"write_digital(value)"}
@@ -221,7 +221,7 @@
             {"name":"speechT","codePortion":"translate(words)"},
             {"name":"speechP","codePortion":"pronounce(phonemes)", "extraCodePortion":"pronounce(phonemes, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"}]},
         {"name":"microbit","codePortion":"","children":[
-            {"name": "setVol","codePortion": "set_volume(n)"},
+            {"name": "setVol","codePortion": "set_volume(n)","version":2},
             {"name":"temp","codePortion":"temperature()"},
             {"name":"reset","codePortion":"reset()"},
             {"name":"runned","codePortion":"running_time()"},

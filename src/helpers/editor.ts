@@ -80,4 +80,8 @@ export function getTypesSpanId(slotId: string): string {
     return slotId + "_TypesSpan";
 }
 
+export function getAcContextPathId(slotId: string): string{
+    return slotId+"_AcContextPathSpan";
+}
+
 export const fileImportSupportedFormats: string[] = ["spy"];
