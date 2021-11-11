@@ -492,10 +492,12 @@ export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?:
         const extraDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
 
         const apiItemChildren = (apiItem.children) ? apiItem.children : [] as APICodedItem[]; 
+        const version = (apiItem.version) ? apiItem.version : 1;
         apiDocumentedItems.push({name: apiItem.name,
             label: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_label") as string,
             doc: shortDoc,
             extradoc: extraDoc,
+            version: version,
             level: level??1,
             codePortion: apiItem.codePortion,
             extraCodePortion : apiItem.extraCodePortion??"",

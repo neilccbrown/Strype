@@ -19,8 +19,7 @@
                             <div v-if="apiDescItem.doc.length > 0 || apiDescItem.codePortion.length > 0" style="display: inline">
                                 <i 
                                     :id="apiDescItem.name+'_info'"  
-                                    class="fas fa-info-circle" 
-                                    style="margin-left: 5px; color: #bbc6b6;"
+                                    class="fas fa-info-circle api-item-info" 
                                 />
                                 <b-popover
                                     triggers="hover" 
@@ -52,6 +51,7 @@
                                     </div>
                                 </b-popover>
                             </div>
+                            <span v-if="(apiDescItem.version > 1)" class="api-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{apiDescItem.version}}</span>
                         </b-card-text>
                         <div class="api-code-container" v-if="apiDescItem.name===selectedAPIItemName  && !isSelectedIntermediateItem()">
                             <!-- FF disabled button still get listeners that mess with focus/blur of inputs, so use div instead -->
@@ -391,6 +391,20 @@ export default Vue.extend({
 .api-item-bullet-invisible-icon {
     color: transparent;
     cursor: default;
+}
+
+.api-item-version{
+    margin-left:5px;
+    color: white;
+    background-color: #bbc6b6;
+    border-radius: 5px;
+    padding:0px 2px;
+    float:right;
+}
+
+.api-item-info{
+    margin-left: 5px;
+    color: #bbc6b6;
 }
 
 .code-example-args{
