@@ -61,8 +61,12 @@
                 </b-tab>
             </b-tabs>
         </div>
-        <text id="userCode"></text>
+        <text id="editor"></text>
         <span id="keystrokeSpan"></span>
+
+        /* IFDEBUG
+            <python-console/>
+        FIDEBUG */
     </div>
 </template>
 
@@ -79,6 +83,11 @@ import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, I
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
+/* IFDEBUG */
+import PythonConsole from "@/components/PythonConsole.vue"
+/* FIDEBUG */
+
+
 export default Vue.extend({
     name: "Commands",
     store,
@@ -87,6 +96,9 @@ export default Vue.extend({
         AddFrameCommand,
         ToggleFrameLabelCommand,
         APIDiscovery,
+        /* IFDEBUG */
+        PythonConsole, 
+        /* FIDEBUG */
     },
 
     data: function () {

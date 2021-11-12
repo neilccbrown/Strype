@@ -45,9 +45,9 @@ function isACNeededToShow(code: string): boolean {
     return foundOperatorFlag;
 }
 
-function runPythonCode(code: string): void {
+export function runPythonCode(code: string): void {
 //evaluate the Python user code 
-    const userPythonCodeHTMLElt = document.getElementById("userCode");
+    const userPythonCodeHTMLElt = document.getElementById("editor");
 
     if(userPythonCodeHTMLElt){        
         (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;

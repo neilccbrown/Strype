@@ -379,6 +379,10 @@ export default class Parser {
         return output;
     }
 
+    public getFullCode(): string {
+        return this.parse(undefined, undefined, false);
+    }
+
     private checkIfFrameHasError(frame: FrameObject): boolean {
         return !this.ignoreCheckErrors && (Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
     }

@@ -11,8 +11,8 @@ import VueConfirmDialog from "vue-confirm-dialog";
 
 Vue.config.productionTip = false;
 
-//version of the application to check code's import compatibilty in the editor
-export const AppVersion = "0.5";
+//version of the application to check code's import compatibility in the editor
+export const AppVersion = "1";
 
 // Install BootstrapVue
 Vue.use(BootstrapVue);
