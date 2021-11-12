@@ -9,6 +9,7 @@
         @mouseup.prevent.stop="$emit('acItemClicked',id)"
     >
         {{item}}
+        <span v-if="version > 1" class="api-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
     </li>
 </template>
 
@@ -26,6 +27,7 @@ export default Vue.extend({
         id: String,
         selected: Boolean,
         isSelectable: Boolean,
+        version: Number,
     },
 
     data() {

@@ -30,6 +30,7 @@
                             v-on="$listeners"
                             :isSelectable="true"
                             ref="results"
+                            :version="item.version"
                         />
                     </div>
                 </ul>
@@ -46,6 +47,7 @@
                         :key="UIID+'documentation'"
                         :isSelectable="false"
                         ref="documentations"
+                        :version="1"
                     />
                 </ul>
             </div>
@@ -77,6 +79,11 @@
             @click="showSuggestionsAC"
         > 
         </span>
+        <span 
+            :id="acContextPathSpanID"
+            :key="acContextPathSpanID"
+        > 
+        </span>
     </div>
 </template>
 
@@ -87,8 +94,9 @@ import store from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition, UserDefinedElement, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
 import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
-import { getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
-
+import { getAcContextPathId, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
+import _ from "lodash";
+import moduleDescription from "@/autocompletion/microbit.json";
 //////////////////////
 export default Vue.extend({
     name: "AutoCompletion",
@@ -138,6 +146,14 @@ export default Vue.extend({
 
         typesSpanID(): string {
             return getTypesSpanId(this.slotId);
+        },
+
+        acContextPathSpanID(): string {
+            return getAcContextPathId(this.slotId);
+        },
+
+        acVersions(): Record<string, any> {
+            return moduleDescription.versions;
         },
 
         popupPosition(): Record<string, string> {
@@ -246,6 +262,7 @@ export default Vue.extend({
             
             const acResults: AcResultsWithModule = {};
 
+            let acContextPath = (document.getElementById(this.acContextPathSpanID) as HTMLSpanElement)?.textContent??"";
             Object.keys(parsedDoc).forEach( (module: string) => {
                 // We do not include modules that had not result in them
 
@@ -254,7 +271,8 @@ export default Vue.extend({
                     // We filter first, as if we have a block without a name (i.e. funct with empty mame) we should exclude these
                     const listOfElements: AcResultType[] = parsedResults[module].filter((e) => e!=="").map( (element,i) => {
                         // We are not assigning the indexes at that stage as we will need to sort first
-                        return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i]}
+                        // the version is retrieved from the version json object (for microbit), if no version is found, we set 1
+                        return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i], version:(_.get(this.acVersions, acContextPath+"."+element) as number)??1}
                     });
                     // Sort is done as a seperate step, as it is more efficient to join the lists (parsedResults, parsedDoc and parsedTypes) first
                     // and then sort, instead of sorting first, as this would require to sort one list and based on this sorting, sort the others as well
@@ -280,15 +298,33 @@ export default Vue.extend({
             // At this stage and since after filtering we have ended up with the final list, we are going to
             // index the results, in order to be able to browse through it with the keys and show the selected.
             let lastIndex=0;
+            let acContextPath = (document.getElementById(this.acContextPathSpanID) as HTMLSpanElement)?.textContent??"";
             for (const module in this.acResults) {
                 // Filter the list based on the token
                 const filteredResults: AcResultType[] = this.acResults[module].filter( (element: IndexedAcResult) => 
                     element.acResult.toLowerCase().startsWith(this.token))
 
-                // Add the indices
+                // Add the indices and the versions
+                // (the version is retrieved from the version json object (for microbit), if no version is found, we set 1)
                 this.resultsToShow[module] = filteredResults.map((e,i) => {
-                    return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"" }
-                })
+                    //The context path for the ac results version is matched according to those 3 cases:
+                    //1) there is a acContextPath: we just concatenate the acResult of that element,
+                    //2) there is no acContextPath and the acResult is the content of an imported module: the acContext is that module and we append the acResult of that element
+                    //3) there is no acContextPath and the acResult is an imported module*: the path to check is the acResult itself if that is an imported module 
+                    //4) there is no acContextPath and the acResult is not an imported module: there would not be a version so we just use an empty context
+                    //(*) which means that the module variable is either empty or "imported modules".
+                    let contextPath;
+                    if(acContextPath.length > 0){
+                        contextPath = acContextPath + "." + e.acResult;
+                    }
+                    else if(moduleDescription.modules.includes(module)){
+                        contextPath = module + "." + e.acResult;
+                    }
+                    else{
+                        contextPath = (module.length ==0 || module === (this.$i18n.t("autoCompletion.importedModules") as string))  ? e.acResult : "";
+                    }
+                    return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))}
+                });
                 lastIndex += filteredResults.length;    
             }    
 
@@ -358,7 +394,22 @@ export default Vue.extend({
         areResultsToShow(): boolean {
             return Object.values(this.resultsToShow).filter((e) => e.length>0)?.length > 0
         },
-        
+
+        getACEntryVersion(entry: any): number{
+            // The version is stored in 2 ways*: either directly as a numbered value, or as a sub property called "__value__".
+            // So we check the first and if no match, the latter.
+            // If nothing matches at all, then we return the default value: 1.
+            //(*) at the moment not used for microbit, but may be useful in future
+            if(!entry){
+                return 1;
+            }
+            else if (typeof entry === "number"){
+                return entry;
+            }
+            else {
+                return entry["__version__"];
+            }
+        },        
     }, 
 
 });

@@ -21,42 +21,39 @@ class __Button:
 button_a=__Button()
 button_b=__Button()
  
-class __PinDigitalW:
+class __PinDigital():
+  PULL_UP,PULL_DOWN, NO_PULL=0,0,0
   def write_digital(self,_value):
     return
-class __PinDigitalR:
-  def read_digital(self):
-    return 0
-class __PinDigital(__PinDigitalR,__PinDigitalW):
   def read_digital(self):
     return 0   
-class __PinAnalogW(__PinDigitalW):
+  def set_pull(self,value):
+    return
+  def get_pull(self):
+    return 0
+  def get_mode(self):
+    return ""
+ 
+class __PinAnalog(__PinDigital):
   def write_analog(self,__value__):
     return
   def set_analog_period(self,__value__):
     return
   def set_analog_period_microseconds(self,__value__):
     return
-class __PinAnalogR(__PinDigitalR):
   def read_analog(self):
     return 0
-class __PinAnalog(__PinAnalogR,__PinAnalogW):
-  pass
+    
 class __PinTouch():
+  CAPACITIVE,RESISITVE=0,0
   def is_touched(self):
     return True
-class __PinFull(__PinAnalog,__PinTouch):
-  pass
-class __PinSpeaker(__PinAnalogW):
-  def disable(self):
+  def set_touch_mode(self, value):
     return
-  def enable(self):
-    return
-  def get_analog_period_microseconds(self):
-    return 0
-pin0=__PinFull()
-pin1=__PinFull()
-pin2=__PinFull()
+
+pin0=__PinTouch()
+pin1=__PinTouch()
+pin2=__PinTouch()
 pin3=__PinAnalog()
 pin4=__PinAnalog()
 pin5=__PinDigital()
@@ -74,7 +71,7 @@ pin16=__PinDigital()
 pin19=__PinDigital()
 pin20=__PinDigital()
 pin_logo=__PinTouch()
-pin_speaker=__PinSpeaker()
+pin_speaker=__PinAnalog()
 
 class __UART:
   def init(self,_baudrate_,_bits_,_parity_,_stop_,tx=None,rx=None):
@@ -269,3 +266,58 @@ Image.XMAS=Image()
 Image.YES=Image()
 Image.ALL_CLOCKS=(Image(),Image())
 Image.ALL_ARROWS=(Image(),Image())
+
+class SoundEvent:
+  def __init__(self, value):
+    pass
+SoundEvent.LOUD = SoundEvent('loud')
+SoundEvent.QUIET = SoundEvent('quiet')
+
+class __Microphone:
+  def current_event(self):
+    return SoundEvent('quiet')
+  def was_event(self, event):
+    return True
+  def is_event(self, event):
+    return True
+  def get_events(self):
+    return (SoundEvent('quiet'), SoundEvent('quiet'))
+  def set_threshold(self, event, value):
+    return
+  def sound_level(self):
+      return 0
+microphone=__Microphone()
+
+#audio is part of microbit in v2 as well as a module of its own
+#"pin_speaker" is used here to avoid import and mess up AC
+class __Audio: #to simply working with the py files/modules, we make a fake class here
+    def play(_source_,wait=True,pin="pin_speaker",return_pin=None):
+        return
+    def is_playing():
+        return True
+    def stop():
+        return
+    class AudioFrame(list):
+        def __init__(self):
+            for i in range(32):
+                self.append(0)
+audio=__Audio()
+class Sound:
+    pass
+Sound.GIGGLE=Sound()
+Sound.HAPPY=Sound()
+Sound.HELLO=Sound()
+Sound.MYSTERIOUS=Sound()
+Sound.SAD=Sound()
+Sound.SLIDE=Sound()
+Sound.SOARING=Sound()
+Sound.SPRING=Sound()
+Sound.TWINKLE=Sound()
+Sound.YA=Sound()
+
+class __Speaker:
+  def off(self):
+    return
+  def on(self):
+    return
+speaker=__Speaker()

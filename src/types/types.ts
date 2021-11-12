@@ -116,6 +116,7 @@ export interface StyledCodeSplits {
     end: number,
     style: CodeStyle,
 }
+
 export interface NavigationPosition {
     id: number;
     // Both the following can be boolean, as if one has a value, the other one has false (e.g. caretPosition = below AND slotNumber = false)
@@ -844,12 +845,14 @@ export interface IndexedAcResult {
     acResult: string; 
     documentation: string; 
     type: string;
+    version: number;
 }
 
 export interface AcResultType {
     acResult: string; 
     documentation: string; 
     type: string;
+    version: number;
 }
 export interface IndexedAcResultWithModule {
     [module: string]: IndexedAcResult[];
@@ -866,6 +869,7 @@ export interface APICodedItem {
     name: string, //a UUID coded name that represent a single item of the API description (** do not use "." in the coded names, it messes i18n **)
     codePortion: string, //the code portion that will builds an example use in the editor (code builder)
     extraCodePortion?: string, //the optional full code portion to be shown in extra doc -- this code portion isn't used in the code builder
+    version?: number, //the version of the API for this element (for instance 2 for microbit v2) if not provided, 1 is assumed
     children?: APICodedItem[];
 }
 
@@ -877,6 +881,7 @@ export interface APIItemTextualDescription {
     extradoc: string; //the rest of the documentation for this item (visible on demand);
     codePortion: string, //the code portion that will builds an example use in the editor (code builder)
     extraCodePortion: string, //the full code portion to be shown in extra doc (or empty string if none) -- this code portion isn't used in the code builder
+    version: number, //the version of the API for this element (for instance 2 for microbit v2)
     level: number; //the level of the item in the API hierarchy
     isFinal: boolean; //indicates if that is a termination item
     immediateParentName: string; //the name of the immediate parent of this item - empty string if level 1

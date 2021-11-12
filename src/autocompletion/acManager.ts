@@ -70,7 +70,7 @@ function runPythonCode(code: string): void {
  * @param isImportModuleAC -> Are we needing AC for an import slot?
  * @param reshowResultsId -> The UIID of the hidden 'button` that would trigger the existing AC to reshow.
  */
-function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string): void{
+function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string, acContextPathSpanId: string): void{
     let inspectionCode ="";
 
     if(regenerateAC){
@@ -109,19 +109,22 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue) 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"for name in results:"
         // in case the contextAC is not empty, this is the 'module'
-         
+        // otherise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
+        // if not, the we retrieve the module name with globals().get(name).__module__
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
-
+        if(contextAC.length == 0){
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if str(globals().get(name)).startswith('<module '):";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"module = \""+i18n.t("autoCompletion.importedModules")+"\"";
+        }
+        
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if module:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\""
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\""
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"else:"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=module.capitalize()"
         // if there is no list for the specific mod, create it and append the name; otherwise just append the name
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)"
-
+        
         // Before we finish we need to have the "My Variables" on the top of the list(dictionary)
         // Get the index of "My Variables" in the dictionary
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:"
@@ -190,6 +193,19 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
         inspectionCode += "\n"+INDENT+INDENT+"document['"+typesSpanId+"'].text = types;"
 
+        // we store the context *path* obtained by checking the type of the context with Python, or leave empty if no context.
+        // it will be used in the AutoCompletion component to check versions
+        inspectionCode += "\n"+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = ''";
+        if(contextAC.length > 0){
+            // if there is a context,  we get the context path from 
+            // - self value if that's a module,
+            // - type() that returns the type as "<class 'xxx'>"
+            inspectionCode += "\n"+INDENT+INDENT+"if str(globals().get('"+contextAC+"')).startswith('<module '):";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = '"+contextAC+"'";
+            inspectionCode += "\n"+INDENT+INDENT+"elif str(type("+contextAC+")).startswith('<class \\''):";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
+        }
+
         inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass";
     }
 
@@ -207,7 +223,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
 
 // Check every time you're in a slot and see how to show the AC (for the code section)
 // the full AC content isn't recreated every time, but only do so when we detect a change of context.
-export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string, typesSpanId: string, reshowResultsId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
+export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string, typesSpanId: string, reshowResultsId: string, acContextPathSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
     //check that we are in a literal: here returns nothing
     //in a non terminated string literal
     //writing a number)
@@ -307,7 +323,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
 
     //the full AC and documentation are only recreated when a next context is notified
-    prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId);
+    prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId, acContextPathSpanId);
     currentACContext = contextAC;
 
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
@@ -317,7 +333,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
 // Depending on what part of the import frame we are at, the AC will follow a different strategy:
 // if we're on the "from" slot or the "import" slot (no "from" enabled) --> we retrieve the module name on the hard coded JSON module names list
 // if we're on the "import" slot ("from" slot enabled) --> we retrieve the module's part directly via Brython
-export function getImportCandidatesForAC(slotCode: string, frameId: number, slotIndex: number, acSpanId: string, documentationSpanId: string, typesSpanId: string, reshowResultsId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
+export function getImportCandidatesForAC(slotCode: string, frameId: number, slotIndex: number, acSpanId: string, documentationSpanId: string, typesSpanId: string, reshowResultsId: string, acContextPathSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
     //only keep the required part of the code token (for example if it's "firstMeth, secondMe" we only keep "secondMeth")
     if(slotCode.indexOf(",") > -1){
         slotCode = slotCode.substr(slotCode.lastIndexOf(",") + 1).trim();
@@ -332,12 +348,12 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
         //we look at the module part --> get the module part candidates from Brython
         contextAC = frame.contentDict[0].code;
         const userCode = "import " + contextAC;
-        prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0), userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId);
+        prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0), userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId, acContextPathSpanId);
     }
     else{
         //we look at the module --> get the module candidates from hard coded JSON
         contextAC = "['" + moduleDescription.modules.join("','") + "']";
-        prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, typesSpanId, true, reshowResultsId);
+        prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, typesSpanId, true, reshowResultsId, acContextPathSpanId);
     }
     
     currentACContext = contextAC;
