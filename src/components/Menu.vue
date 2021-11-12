@@ -42,6 +42,7 @@
                     <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(undefined)">
                         <option value="en">English</option>
                         <option value="fr">Français</option>
+                        <option value="el">Ελληνικά</option>
                     </select>
                 </div> 
             </div>   
