@@ -56,17 +56,19 @@
                         </div>
                     </div>
                 </b-tab>
-                <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
-                    <APIDiscovery  class="command-tab-content"/>
-                </b-tab>
+                /* IFTRUE_isMicrobit
+                    <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
+                        <APIDiscovery  class="command-tab-content"/>
+                    </b-tab>
+                FITRUE_isMicrobit */
             </b-tabs>
         </div>
-        <text id="editor"></text>
+        <text id="userCode"></text>
         <span id="keystrokeSpan"></span>
 
-        /* IFDEBUG
+        /* IFTRUE_isPurePython
             <python-console/>
-        FIDEBUG */
+        FITRUE_isPurePython */
     </div>
 </template>
 

@@ -828,8 +828,8 @@ export interface EditableSlotReachInfos {
 export interface StateObject {
     debugging: boolean;
     initialState: EditorFrameObjects;
-    frameMap: number[];
     showKeystroke: boolean;
+    nextAvailableId: number;
 }
 
 export interface StateObjects {

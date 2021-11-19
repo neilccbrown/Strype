@@ -47,7 +47,7 @@ function isACNeededToShow(code: string): boolean {
 
 export function runPythonCode(code: string): void {
 //evaluate the Python user code 
-    const userPythonCodeHTMLElt = document.getElementById("editor");
+    const userPythonCodeHTMLElt = document.getElementById("userCode");
 
     if(userPythonCodeHTMLElt){        
         (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;

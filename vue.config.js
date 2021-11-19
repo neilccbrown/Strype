@@ -9,7 +9,7 @@ module.exports = {
                 clean: true,
                 patterns: [
                     {
-                        from: "dist/aclib",
+                        from: "dist/pythonLib",
                         // files in `to` will be deleted
                         // unless `clean` is set to `false`
                         to: "dist/",
@@ -26,11 +26,12 @@ module.exports = {
             .use("vue-loader")
             .loader("js-conditional-compile-loader")
             .options( {
+                // the following are from the library js-conditional-compile-loader
                 //isDebug: process.env.NODE_ENV === "development", // optional, this expression is default  /* IFDEBUG  CODE  FIDEBUG */
-                isDebug: process.env.VUE_APP_PYTHON_OR_MICROBIT === "python",
+                // isDebug: process.env.VUE_APP_PYTHON_OR_MICROBIT === "python",
+                isPurePython: process.env.npm_config_python,//process.env.VUE_APP_PYTHON_OR_MICROBIT === "python",
+                isMicrobit: process.env.npm_config_microbit,//process.env.VUE_APP_PYTHON_OR_MICROBIT === "microbit",
                 // envTest: process.env.ENV_CONFIG === "test", // any prop name you want, used for /* IFTRUE_evnTest ...js code... FITRUE_evnTest */
-                // python: process.env.npm_config_python, // enabled by `npm run build --python`
-                //myFlag: process.env.npm_config_myflag, // enabled by `npm run build --myflag` /* IFTRUE_myFlag */ CODE /*FITRUE_myFlag */
             });
     },
 

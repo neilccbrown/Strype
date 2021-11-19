@@ -18,7 +18,6 @@ export default Vue.extend({
         runCodeOnPyConsole() {
             const parser = new Parser();
             const userCode = parser.getFullCode();
-            console.log(userCode);
             runPythonCode(userCode);
         },
     },
