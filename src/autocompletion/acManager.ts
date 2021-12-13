@@ -205,7 +205,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
-        inspectionCode += "\n"+INDENT+INDENT+"print('BBB-- ',document['hidden']);"
         inspectionCode += "\n"+INDENT+INDENT+"print('AA ',document['"+documentationSpanId+"']);"
         inspectionCode += "\n"+INDENT+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
         inspectionCode += "\n"+INDENT+INDENT+"document['"+typesSpanId+"'].text = types;"
