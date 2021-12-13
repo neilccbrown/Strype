@@ -52,7 +52,7 @@ const initialPythonState: EditorFrameObjects = {
         isSelected: false,
         isVisible: true,
         parentId: 0,
-        childrenIds: [2,3],
+        childrenIds: [1,2],
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
@@ -61,9 +61,9 @@ const initialPythonState: EditorFrameObjects = {
         multiDragPosition: "",
     },
 
-    2: {
+    1: {
         frameType: Definitions.VarAssignDefinition,
-        id: 2,
+        id: 1,
         isDisabled: false,
         isSelected: false,
         isVisible: true,
@@ -78,9 +78,9 @@ const initialPythonState: EditorFrameObjects = {
         multiDragPosition: "",
     },
 
-    3: {
+    2: {
         frameType: Definitions.EmptyDefinition,
-        id: 3,
+        id: 2,
         isDisabled: false,
         isSelected: false,
         isVisible: true,

@@ -2,12 +2,21 @@
 <template>
     <div>
         <button id="run" @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')" ></button>
-        <textarea id="console" autocomplete="off"></textarea>
+        <textarea 
+            id="console" 
+            autocomplete="off" 
+            @focus="onFocus()"
+            @blur="onBlur()"
+            disabled
+        >    
+        </textarea>
+        <!-- <textarea id="code" class="codearea" rows="20" cols="80"></textarea> -->
     </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
+import store from "@/store/store";
 import { runPythonCode } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 
@@ -19,6 +28,20 @@ export default Vue.extend({
             const parser = new Parser();
             const userCode = parser.getFullCode();
             runPythonCode(userCode);
+        },
+
+        onFocus(): void {
+            store.commit(
+                "setEditFlag",
+                true
+            );    
+        },
+
+        onBlur(): void {
+            store.commit(
+                "setEditFlag",
+                false
+            );    
         },
     },
 
@@ -33,7 +56,7 @@ export default Vue.extend({
     }
     #console {
         width:100%;
-        height:100%;
+        height:300px;
         font-size: 12px;
         float:none;
         background-color: #0a090c;

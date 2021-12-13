@@ -39,7 +39,7 @@ const initialStates: StateObjects = {
         debugging: false,
         initialState: initialPythonState,
         showKeystroke: true,
-        nextAvailableId: 4,
+        nextAvailableId: 3,
     },
 
 

@@ -50,11 +50,26 @@ export function runPythonCode(code: string): void {
     const userPythonCodeHTMLElt = document.getElementById("userCode");
 
     if(userPythonCodeHTMLElt){        
-        (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;
+        // (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;
+        (userPythonCodeHTMLElt as HTMLTextAreaElement).value = code;
         
-        const brythonContainer = document.getElementById("brythonContainer");
-        // run the code by "clicking" the brythonContainer
-        brythonContainer?.click();
+        const runCodeContainer = document.getElementById("runCode");
+        // run the code by "clicking" the runCode
+        runCodeContainer?.click();
+    }
+}
+
+export function loadAC(code: string): void {
+    //evaluate the Python user code for the AC
+    const userPythonCodeHTMLElt = document.getElementById("userCode");
+
+    if(userPythonCodeHTMLElt){        
+        // (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;
+        (userPythonCodeHTMLElt as HTMLTextAreaElement).value = code;
+        
+        const loadAcContainer = document.getElementById("loadAC");
+        // run the code by "clicking" the runCode
+        loadAcContainer?.click();
     }
 }
 
@@ -190,6 +205,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
+        inspectionCode += "\n"+INDENT+INDENT+"print('BBB-- ',document['hidden']);"
+        inspectionCode += "\n"+INDENT+INDENT+"print('AA ',document['"+documentationSpanId+"']);"
         inspectionCode += "\n"+INDENT+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
         inspectionCode += "\n"+INDENT+INDENT+"document['"+typesSpanId+"'].text = types;"
 
@@ -206,7 +223,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
             inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
         }
 
-        inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass";
+        inspectionCode += "\n"+INDENT+"except Exception as e:\n"+INDENT+INDENT+"print('banggg!!! ',e)";
     }
 
     // Fake a click to the hidden span to trigger the AC window to show
@@ -218,7 +235,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
-    runPythonCode((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
+    loadAC((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
 
 // Check every time you're in a slot and see how to show the AC (for the code section)

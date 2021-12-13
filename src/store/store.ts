@@ -23,7 +23,7 @@ export default new Vuex.Store({
         debugging: initialState.debugging,
 
         // Flag used to keep the AC shown for debug purposes
-        debugAC: false,
+        debugAC: true,
 
         showKeystroke: initialState.showKeystroke,
 

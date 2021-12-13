@@ -11,6 +11,7 @@ import browser.widgets.dialog as dialog
 has_ace = True
 try:
     editor = window.ace.edit("userCode")
+    print(window.ace.edit("userCode"))
     editor.setTheme("ace/theme/solarized_light")
     editor.session.setMode("ace/mode/python")
     editor.focus()
@@ -24,8 +25,8 @@ except:
     from browser import html
     editor = html.TEXTAREA(rows=20, cols=70)
     doc["userCode"] <= editor
-    def get_value(): return editor.value
-    def set_value(x): editor.value = x
+    def get_value(): return doc["userCode"].value+"\n############ Result ############\n" #editor.value
+    def set_value(x): doc["userCode"].value = x #editor.value = x
     editor.getValue = get_value
     editor.setValue = set_value
     has_ace = False
@@ -46,7 +47,7 @@ def reset_src():
         if storage is not None and "py_src" in storage:
             editor.setValue(storage["py_src"])
         else:
-            editor.setValue('for i in range(10):\n\tprint(i)')
+            editor.setValue('print("error!")')
     editor.scrollToRow(0)
     editor.gotoLine(0)
 
@@ -54,7 +55,7 @@ def reset_src_area():
     if storage and "py_src" in storage:
         editor.value = storage["py_src"]
     else:
-        editor.value = 'for i in range(10):\n\tprint(i)'
+        editor.value = 'print("error!")'
 
 
 class cOutput:
@@ -99,6 +100,7 @@ def run(*args):
     global output
     doc["console"].value = ''
     src = editor.getValue()
+    print("############ Result ##############\n")
     if storage is not None:
        storage["py_src"] = src
 
@@ -113,7 +115,7 @@ def run(*args):
     sys.stdout.flush()
     output = doc["console"].value
 
-    print('<completed in %6.2f ms>' % ((time.perf_counter() - t0) * 1000.0))
+    print("\n################################\n"+'<completed in %6.2f ms>' % ((time.perf_counter() - t0) * 1000.0))
     return state
 
 def show_js(ev):
