@@ -207,23 +207,15 @@ export default Vue.extend({
                     const resultsAC = (isImportFrame) 
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
+                    this.showAC = resultsAC.showAC;
                     this.contextAC = resultsAC.contextAC;
                     if(resultsAC.showAC){
-                        // store.commit("setTokenAC", resultsAC.tokenAC.toLowerCase());
                         this.tokenAC = resultsAC.tokenAC.toLowerCase();
-                        // Vue.set(this.$data,"tokenAC",resultsAC.tokenAC.toLowerCase());
                     }
-                    this.$nextTick(() => {
-                        this.showAC = resultsAC.showAC;
-                    });
-                    console.log("context= "+this.contextAC);
-                    console.log("token= "+this.tokenAC);
 
                     this.$nextTick(() => {
                         this.getACresultsFromBrython();
                     });
-                    
-
                 }
 
                 //if we specify a text cursor position, set it in the input field at the next tick (because code needs to be updated first)
@@ -366,9 +358,7 @@ export default Vue.extend({
                 const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));   
                 this.contextAC = resultsAC.contextAC;
                 if(resultsAC.showAC){
-                    // store.commit("setTokenAC", resultsAC.tokenAC.toLowerCase());
                     this.tokenAC = resultsAC.tokenAC.toLowerCase();
-                    // Vue.set(this.$data,"tokenAC",resultsAC.tokenAC.toLowerCase());
                 }
                 this.showAC = resultsAC.showAC;
                 this.getACresultsFromBrython();
@@ -562,14 +552,13 @@ export default Vue.extend({
             const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
 
             const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
-
-            const newCode = this.code.substr(0, currentTextCursorPos - this.$data.tokenAC)//store.getters.getTokenAC())// 
-            + selectedItem 
-            + ((isSelectedFunction)?"()":"")
-            + this.code.substr(currentTextCursorPos);
+            const newCode = this.code.substr(0, currentTextCursorPos - this.tokenAC.length)
+                + selectedItem 
+                + ((isSelectedFunction)?"()":"")
+                + this.code.substr(currentTextCursorPos);
             
             // position the text cursor just after the AC selection - in the parenthesis for functions
-            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.$data.tokenAC + ((isSelectedFunction)?1:0) ;//store.getters.getTokenAC()+ ((isSelectedFunction)?1:0) ;// 
+            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.tokenAC.length + ((isSelectedFunction)?1:0);
             
             this.code = newCode;
             this.showAC = this.debugAC;

@@ -172,11 +172,6 @@ export default Vue.extend({
             }; 
         },
 
-        // Used for filtering AC results
-        // token(): string {
-        //     return store.getters.getTokenAC();
-        // },
-
         acResults: {
             get(){
                 return store.getters.getAcResults();
@@ -304,9 +299,6 @@ export default Vue.extend({
             let lastIndex=0;
             let acContextPath = (document.getElementById(this.acContextPathSpanID) as HTMLSpanElement)?.textContent??"";
             for (const module in this.acResults) {
-                // Filter the list based on the token
-                console.log("i know context= "+this.context);
-                console.log("i know token= "+this.token);
                 // Filter the list based on the token
                 const filteredResults: AcResultType[] = this.acResults[module].filter( (element: IndexedAcResult) => 
                     element.acResult.toLowerCase().startsWith(this.token))

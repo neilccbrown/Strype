@@ -85,7 +85,7 @@ export function storeCodeToDOM(code: string): void {
  * @param reshowResultsId -> The UIID of the hidden 'button` that would trigger the existing AC to reshow.
  */
 function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string, acContextPathSpanId: string): void{
-    let inspectionCode ="";
+    let inspectionCode ="from browser import window";
 
     if(regenerateAC){
         /*
@@ -167,7 +167,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         */
 
         inspectionCode += "\n"+INDENT+"from io import StringIO";
-        inspectionCode += "\n"+INDENT+"from browser import window";
         inspectionCode += "\n"+INDENT+"import sys";
         inspectionCode += "\n"+INDENT+"documentation={}";
         inspectionCode += "\n"+INDENT+"types={}";
@@ -220,7 +219,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
             inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
         }
 
-        inspectionCode += "\n"+INDENT+"except Exception as e:\n"+INDENT+INDENT+"print('banggg!!! ',e)";
+        inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass";
     }
 
     // Fake a click to the hidden span to trigger the AC window to show

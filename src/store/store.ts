@@ -84,9 +84,6 @@ export default new Vuex.Store({
         DAPWrapper: undefined, //expected type when set: DAPWrapper
 
         previousDAPWrapper: undefined, //expected type when set:DAPWrapper
-
-        tokenAC: "" as string,
-
     },
 
     getters: {
@@ -590,10 +587,6 @@ export default new Vuex.Store({
 
         getContainerCollapsed: (state) => (frameId: number) => {
             return state.frameObjects[frameId].isCollapsed;
-        },
-
-        getTokenAC: (state) => () => {
-            return state.tokenAC;
         },
     }, 
 
@@ -1360,14 +1353,6 @@ export default new Vuex.Store({
                 state.frameObjects[payload.frameId],
                 "isCollapsed",
                 payload.isCollapsed
-            );
-        },
-
-        setTokenAC(state, token: string){
-            Vue.set(
-                state,
-                "tokenAC",
-                token
             );
         },
     },
