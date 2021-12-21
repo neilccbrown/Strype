@@ -3,7 +3,6 @@ import time
 import binascii
 
 import tb as traceback
-import javascript
 
 from browser import document as doc, window, alert, bind, html
 import browser.widgets.dialog as dialog
@@ -11,7 +10,7 @@ import browser.widgets.dialog as dialog
 has_ace = True
 try:
     editor = window.ace.edit("userCode")
-    print(window.ace.edit("userCode"))
+    # print(window.ace.edit("userCode"))
     editor.setTheme("ace/theme/solarized_light")
     editor.session.setMode("ace/mode/python")
     editor.focus()
@@ -118,42 +117,6 @@ def run(*args):
     print("\n################################\n"+'<completed in %6.2f ms>' % ((time.perf_counter() - t0) * 1000.0))
     return state
 
-def show_js(ev):
-    src = editor.getValue()
-    doc["console"].value = javascript.py2js(src, '__main__')
-
-def share_code(ev):
-    src = editor.getValue()
-    if len(src) > 2048:
-        d = dialog.InfoDialog("Copy url",
-                              f"code length is {len(src)}, must be < 2048",
-                              style={"zIndex": 10},
-                              ok=True)
-    else:
-        href = window.location.href.rsplit("?", 1)[0]
-        query = doc.query
-        query["code"] = src
-        url = f"{href}{query}"
-        url = url.replace("(", "%28").replace(")", "%29")
-        d = dialog.Dialog("Copy url")
-        area = html.TEXTAREA(rows=0, cols=0)
-        d.panel <= area
-        area.value = url
-        # copy to clipboard
-        area.focus()
-        area.select()
-        doc.execCommand("copy")
-        d.remove()
-        d = dialog.Dialog("Copy url")
-        d.panel <= html.DIV("url copied in the clipboard<br>Send it to share the code")
-        buttons = html.DIV()
-        ok = html.BUTTON("Ok")
-        buttons <= html.DIV(ok, style={"text-align": "center"})
-        d.panel <= html.BR() + buttons
-
-        @bind(ok, "click")
-        def click(evt):
-            d.remove()
 
 if has_ace:
     reset_src()

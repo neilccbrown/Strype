@@ -1,7 +1,10 @@
 import Parser from "@/parser/parser";
 import store from "@/store/store";
 import { FrameObject } from "@/types/types";
+/* IFTRUE_isMicrobit */
 import moduleDescription from "@/autocompletion/microbit.json";
+/* FITRUE_isMicrobit */
+
 import i18n from "@/i18n";
 import _ from "lodash";
 
@@ -59,17 +62,13 @@ export function runPythonCode(code: string): void {
     }
 }
 
-export function loadAC(code: string): void {
+export function storeCodeToDOM(code: string): void {
     //evaluate the Python user code for the AC
     const userPythonCodeHTMLElt = document.getElementById("userCode");
 
     if(userPythonCodeHTMLElt){        
         // (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;
         (userPythonCodeHTMLElt as HTMLTextAreaElement).value = code;
-        
-        const loadAcContainer = document.getElementById("loadAC");
-        // run the code by "clicking" the runCode
-        loadAcContainer?.click();
     }
 }
 
@@ -163,12 +162,12 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
         inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass" 
 
-
         /*
         *       STEP 2 : Get the documentation for each one of the results
         */
 
         inspectionCode += "\n"+INDENT+"from io import StringIO";
+        inspectionCode += "\n"+INDENT+"from browser import window";
         inspectionCode += "\n"+INDENT+"import sys";
         inspectionCode += "\n"+INDENT+"documentation={}";
         inspectionCode += "\n"+INDENT+"types={}";
@@ -205,7 +204,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
-        inspectionCode += "\n"+INDENT+INDENT+"print('AA ',document['"+documentationSpanId+"']);"
         inspectionCode += "\n"+INDENT+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
         inspectionCode += "\n"+INDENT+INDENT+"document['"+typesSpanId+"'].text = types;"
 
@@ -234,7 +232,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
-    loadAC((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
+    storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
 
 // Check every time you're in a slot and see how to show the AC (for the code section)
@@ -341,7 +339,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     //the full AC and documentation are only recreated when a next context is notified
     prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId, acContextPathSpanId);
     currentACContext = contextAC;
-
+    
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
 
@@ -368,7 +366,9 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
     }
     else{
         //we look at the module --> get the module candidates from hard coded JSON
+        /* IFTRUE_isMicrobit */
         contextAC = "['" + moduleDescription.modules.join("','") + "']";
+        /* FITRUE_isMicrobit */
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, typesSpanId, true, reshowResultsId, acContextPathSpanId);
     }
     

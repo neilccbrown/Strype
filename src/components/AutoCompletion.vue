@@ -108,12 +108,12 @@ export default Vue.extend({
     props: {
         list: [String],
         slotId: String,
-        token: String,
         cursorPosition: {
             type: Object,
             default: () => DefaultCursorPosition,
         },
         context: String,
+        token: String,
         isImportFrame: Boolean,
     },
 
@@ -172,6 +172,11 @@ export default Vue.extend({
             }; 
         },
 
+        // Used for filtering AC results
+        // token(): string {
+        //     return store.getters.getTokenAC();
+        // },
+
         acResults: {
             get(){
                 return store.getters.getAcResults();
@@ -220,7 +225,7 @@ export default Vue.extend({
             }
 
             // Append the Python results,docs and types to the lists IFF there is no context
-            if(this.context === "") {
+            if(this.context === "" && !this.isImportFrame) {
 
                 // The list of results might not include some the user-defined functions and variables because the user code can't compile. 
                 // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
@@ -290,7 +295,6 @@ export default Vue.extend({
         },  
 
         showSuggestionsAC(): void {
-
             // we start by reseting the results
             this.resultsToShow = {};
             this.selected = 0;
@@ -300,6 +304,9 @@ export default Vue.extend({
             let lastIndex=0;
             let acContextPath = (document.getElementById(this.acContextPathSpanID) as HTMLSpanElement)?.textContent??"";
             for (const module in this.acResults) {
+                // Filter the list based on the token
+                console.log("i know context= "+this.context);
+                console.log("i know token= "+this.token);
                 // Filter the list based on the token
                 const filteredResults: AcResultType[] = this.acResults[module].filter( (element: IndexedAcResult) => 
                     element.acResult.toLowerCase().startsWith(this.token))

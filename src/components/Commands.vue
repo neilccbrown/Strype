@@ -18,8 +18,10 @@
             </div>
         </div>
         <div @mousedown.prevent.stop @mouseup.prevent.stop>
+            /* IFTRUE_isMicrobit 
             <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
                 <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
+            FITRUE_isMicrobit */
                     <div :id="commandsContainerUUID" class="command-tab-content" >
                         <div id="addFramePanel">
                             <div class="frameCommands">
@@ -55,8 +57,8 @@
                             />
                         </div>
                     </div>
+                /* IFTRUE_isMicrobit 
                 </b-tab>
-                /* IFTRUE_isMicrobit
                     <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
                         <APIDiscovery  class="command-tab-content"/>
                     </b-tab>
@@ -85,9 +87,9 @@ import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, I
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
-/* IFDEBUG */
+/* IFTRUE_isPurePython */
 import PythonConsole from "@/components/PythonConsole.vue"
-/* FIDEBUG */
+/* FITRUE_isPurePython */
 
 
 export default Vue.extend({
@@ -98,9 +100,9 @@ export default Vue.extend({
         AddFrameCommand,
         ToggleFrameLabelCommand,
         APIDiscovery,
-        /* IFDEBUG */
+        /* IFTRUE_isPurePython */
         PythonConsole, 
-        /* FIDEBUG */
+        /* FITRUE_isPurePython */
     },
 
     data: function () {
@@ -396,7 +398,7 @@ export default Vue.extend({
         downloadPython() {
             downloadPython(); 
         },
-
+        /* IFTRUE_isMicrobit */
         getTabClasses(tabIndex: number): string[] {
             const disabledClassStr = (this.isEditing) ? " commands-tab-disabled" : "";
             if(tabIndex == this.tabIndex){
@@ -406,6 +408,7 @@ export default Vue.extend({
                 return ["commands-tab" + disabledClassStr]
             }
         },
+        /*FITRUE_isMicrobit */
     },
 });
 </script>

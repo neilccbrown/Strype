@@ -11,8 +11,8 @@
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/v4-shims.css">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
-  <!-- <script lang="JavaScript">
-    window.onload = function () {
+  <script lang="JavaScript">
+    function loadBrython() {
       var tag = document.createElement("script");
       tag.src = "./js/brython.min.js";
       tag.type = "text/javascript";
@@ -24,19 +24,19 @@
       setTimeout(function () {
         // Wait for Brython files to load before you initialise
         brython();
+        console.log("Brython Loaded");
       }, 2000);
-    } -->
+    }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js">
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js">
-  </script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script> -->
+
   <title>
     <%= htmlWebpackPlugin.options.title %>
   </title>
 </head>
 
-<body onload="brython()">
+<body onload="loadBrython()">
   <noscript>
     <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled.
         Please enable it to continue.</strong>
@@ -46,14 +46,15 @@
   <script type="text/python3">
 from browser import document
 
-def runCode(ev):
+def runCode(__ev):
     import editor
     editor.run()
 
-def loadAC(ev):
+def loadAC(__ev):
     exec(document['userCode'].value)
-
-document["runCode"].bind("click", runCode)
+    
+if document["runCode"]:
+    document["runCode"].bind("click", runCode)
 document["loadAC"].bind("click", loadAC)
 </script>
 
@@ -62,58 +63,3 @@ document["loadAC"].bind("click", loadAC)
 </body>
 
 </html>
-
-<!-- from browser import document, window
-import editor
-editor.run() -->
-
-<!-- /* IFTRUE_isMicrobit
-from browser import document, window
-import sys as __sys
-import __osMB 
-import __timeMB
-__sys.modules["os"] = __osMB
-__sys.modules["time"] = __timeMB
-exec(document['userCode'].text)
-
-  FITRUE_isMicrobit */
-
-  /* IFTRUE_isPurePython */
-
-import editor
-document['run'].bind('click',lambda *args: editor.run())
-/* FITRUE_isPurePython */ -->
-
-
-<!-- f
-  rom interpreter import Interpreter
-
-# Start an interactive interpreter in textarea with id "console"
-i = Interpreter("console")
-i.feed(document['userCode'].text)
- -->
-
-
-<!-- def run_code():
-    code = document['userCode'].text
-    code = code.split("\n")
-    for line in code:
-        print(line)
-        document['console'].text = exec("\'"+line+"\'")
-from browser import document, window
-document['run'].bind('click',run_code()) -->
-<!-- 
-https://github.com/brython-dev/brython/blob/294beab98d3de0e2b29411251b6a4ba4f02f1fff/www/src/Lib/interpreter.py
- -->
-
-
-<!-- 
-from interpreter import Interpreter
-from browser import document
-# Start an interactive interpreter in textarea with id "console"
-print(document['userCode'].text)
-
-i = Interpreter('console')
-#i.feed(document['userCode'].text)
-i.feed('print(1)') 
--->
