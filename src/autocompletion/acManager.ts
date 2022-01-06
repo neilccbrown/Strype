@@ -1,9 +1,12 @@
 import Parser from "@/parser/parser";
 import store from "@/store/store";
-import { FrameObject } from "@/types/types";
+import { CodeStyle, FrameObject } from "@/types/types";
 /* IFTRUE_isMicrobit */
-import moduleDescription from "@/autocompletion/microbit.json";
+import microbitModuleDescription from "@/autocompletion/microbit.json";
 /* FITRUE_isMicrobit */
+/* IFTRUE_isPurePython */
+import brythonModuleDescription from "@/autocompletion/brython_libs.json";
+/* FITRUE_isPurePython */
 
 import i18n from "@/i18n";
 import _ from "lodash";
@@ -230,6 +233,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\n"+INDENT+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
+    console.log((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
     // We need to put the user code before, so that the inspection can work on the code's results
     storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
@@ -364,10 +368,14 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0), userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId, acContextPathSpanId);
     }
     else{
-        //we look at the module --> get the module candidates from hard coded JSON
+        //we look at the module --> get the module candidates from hardcoded JSON
         /* IFTRUE_isMicrobit */
-        contextAC = "['" + moduleDescription.modules.join("','") + "']";
+        contextAC = "['" + microbitModuleDescription.modules.join("','") + "']";
         /* FITRUE_isMicrobit */
+        /* IFTRUE_isPurePython */
+        contextAC = "['" + brythonModuleDescription.modules.join("','") + "']";
+        /* FITRUE_isPurePython */
+        
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, typesSpanId, true, reshowResultsId, acContextPathSpanId);
     }
     

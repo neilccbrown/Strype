@@ -361,7 +361,10 @@ export default Vue.extend({
                     this.tokenAC = resultsAC.tokenAC.toLowerCase();
                 }
                 this.showAC = resultsAC.showAC;
-                this.getACresultsFromBrython();
+
+                this.$nextTick(() => {
+                    this.getACresultsFromBrython();
+                });
             }
         },
 
