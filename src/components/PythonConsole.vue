@@ -10,7 +10,6 @@
             disabled
         >    
         </textarea>
-        <!-- <textarea id="code" class="codearea" rows="20" cols="80"></textarea> -->
     </div>
 </template>
 

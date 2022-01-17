@@ -82,6 +82,7 @@
         <span 
             :id="acContextPathSpanID"
             :key="acContextPathSpanID"
+            class="hidden"
         > 
         </span>
     </div>

@@ -89,7 +89,11 @@ export function storeCodeToDOM(code: string): void {
  */
 function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string, acContextPathSpanId: string): void{
     let inspectionCode ="from browser import window";
+    let isPython = false
+    /* IFTRUE_isPurePython */
 
+    isPython = true;
+    /* FITRUE_isPurePython */   
     if(regenerateAC){
         /*
         *       STEP 1 : Run the code and get the AC results
@@ -99,7 +103,16 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\nvalidContext = True"
         inspectionCode += "\ntry:"
         if(isImportModuleAC){
-            inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
+            if(!isPython){
+                inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
+            }
+            //Else we get Brython's stdlib modules
+            else {
+                // We first get all the contents of stdlib
+                inspectionCode += "\n"+INDENT+"namesForAutocompletion = globals().get('__BRYTHON__')['stdlib']";
+                // Then we strip the ones starting with '-' and the ones that are like 'a.b.c'
+                inspectionCode += "\n"+INDENT+"namesForAutocompletion = [name for name in namesForAutocompletion if not name.startswith('_') and len(name.split('.'))<2]";    
+            }
             contextAC = "";
         }
         else{
@@ -126,10 +139,12 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue) 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"for name in results:"
         // in case the contextAC is not empty, this is the 'module'
-        // otherise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
+        // otherwise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
         // if not, the we retrieve the module name with globals().get(name).__module__
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
         if(contextAC.length == 0){
+            console.log(userCode);
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"print(str(globals()))";
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if str(globals().get(name)).startswith('<module '):";
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"module = \""+i18n.t("autoCompletion.importedModules")+"\"";
         }
@@ -233,7 +248,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\n"+INDENT+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
-    console.log((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
     // We need to put the user code before, so that the inspection can work on the code's results
     storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
@@ -361,6 +375,7 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
     const lookupModulePart = (slotIndex == 1 && frame.contentDict[0].shownLabel); //false -> we look at a module itself, true -> we look at a module part  
     let contextAC = "";
     const tokenAC = slotCode;
+
     if(lookupModulePart){
         //we look at the module part --> get the module part candidates from Brython
         contextAC = frame.contentDict[0].code;
@@ -373,7 +388,7 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
         contextAC = "['" + microbitModuleDescription.modules.join("','") + "']";
         /* FITRUE_isMicrobit */
         /* IFTRUE_isPurePython */
-        contextAC = "['" + brythonModuleDescription.modules.join("','") + "']";
+        // contextAC = "['" + brythonModuleDescription.modules.join("','") + "']";
         /* FITRUE_isPurePython */
         
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, typesSpanId, true, reshowResultsId, acContextPathSpanId);

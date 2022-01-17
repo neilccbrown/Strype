@@ -2,6 +2,7 @@
 const MoveAssetsPlugin = require("move-assets-webpack-plugin")
 
 module.exports = {
+    /* IFTRUE_isMicrobit */
     configureWebpack: {
         devtool: "source-map",
         plugins: [
@@ -18,6 +19,7 @@ module.exports = {
             }),
         ],
     },
+    /* FITRUE_isMicrobit */   
 
     chainWebpack: (config) => {
         config.module
@@ -57,7 +59,8 @@ module.exports = {
         //     });
     },
 
-    publicPath: "/",
+
+    publicPath: (process.env.npm_config_python)?"/python/":"/microbit/",
     pluginOptions: {
         i18n: {
             locale: "en",

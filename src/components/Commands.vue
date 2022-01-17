@@ -1,8 +1,10 @@
 <template>
     <div class="commands">
         <div :id="buttonsContainerUIID" class="commands-container">
+            /* IFTRUE_isMicrobit 
             <button type="button" v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
             <button type="button" @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.sendToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
+            FITRUE_isMicrobit */
             <button type="button" @click="downloadPython" v-t="'buttonLabel.downloadPython'" class="btn btn-secondary cmd-button"/>
         </div>
         <div v-if="showProgress" class="progress cmd-progress-container">
@@ -69,6 +71,7 @@
         <span id="keystrokeSpan"></span>
 
         /* IFTRUE_isPurePython
+        
             <python-console/>
         FITRUE_isPurePython */
     </div>
