@@ -160,7 +160,7 @@ export default Vue.extend({
                     ? "#97971E"
                     : (this.focused) ? "#000" : "transparent", //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
             };
-        },
+        }, 
 
         spanTextStyle(): Record<string, string> {
             //when the input has focus, we hide the spans, otherwise we show the right background colours

@@ -143,8 +143,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // if not, the we retrieve the module name with globals().get(name).__module__
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
         if(contextAC.length == 0){
-            console.log(userCode);
-            inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"print(str(globals()))";
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if str(globals().get(name)).startswith('<module '):";
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"module = \""+i18n.t("autoCompletion.importedModules")+"\"";
         }

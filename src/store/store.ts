@@ -15,7 +15,10 @@ import moduleDescription from "@/autocompletion/microbit.json";
 
 Vue.use(Vuex);
 
-const initialState: StateObject = initialStates["initialPythonState"];
+let initialState: StateObject = initialStates["initialPythonState"];
+/* IFTRUE_isMicrobit */
+initialState = initialStates["initialMicrobitState"];
+/* FITRUE_isMicrobit */
 
 export default new Vuex.Store({
     state: {
@@ -385,7 +388,7 @@ export default new Vuex.Store({
             return state.preCompileErrors.includes(id);
         },
         getIsMessageBannerOn: (state) => () => {
-            return state.currentMessage !== MessageDefinitions.NoMessage;
+            return state.currentMessage.type !== MessageDefinitions.NoMessage.type;
         },
         getCurrentMessage: (state) => () => {
             return state.currentMessage;
@@ -2102,7 +2105,10 @@ export default new Vuex.Store({
                             if(confirm){
                                 dispatch(
                                     "doSetStateFromJSONStr",
-                                    payload
+                                    {
+                                        ...payload,
+                                        showMessage: true,
+                                    }
                                 );                                
                             }                        
                         },
@@ -2111,7 +2117,10 @@ export default new Vuex.Store({
                 else{
                     dispatch(
                         "doSetStateFromJSONStr",
-                        payload
+                        {
+                            ...payload,
+                            showMessage: true,
+                        }
                     );   
                 }                
             }
@@ -2119,7 +2128,6 @@ export default new Vuex.Store({
                 const message = MessageDefinitions.UploadEditorFileError;
                 const msgObj: FormattedMessage = (message.message as FormattedMessage);
                 msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
-
                 commit(
                     "setMessageBanner",
                     message
@@ -2127,22 +2135,23 @@ export default new Vuex.Store({
             }
         },
 
-        doSetStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
+        doSetStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string; showMessage?: boolean}){
             commit(
                 "updateState",
                 JSON.parse(payload.stateJSONStr)
             )
+            if(payload.showMessage) {
+                commit(
+                    "setMessageBanner",
+                    MessageDefinitions.UploadEditorFileSuccess
+                );
 
-            commit(
-                "setMessageBanner",
-                MessageDefinitions.UploadEditorFileSuccess
-            );
-
-            //don't leave the message for ever
-            setTimeout(()=>commit(
-                "setMessageBanner",
-                MessageDefinitions.NoMessage
-            ), 5000);  
+                //don't leave the message for ever
+                setTimeout(()=>commit(
+                    "setMessageBanner",
+                    MessageDefinitions.NoMessage
+                ), 5000);  
+            }
 
         },
 

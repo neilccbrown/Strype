@@ -24,7 +24,7 @@ except:
     from browser import html
     editor = html.TEXTAREA(rows=20, cols=70)
     doc["userCode"] <= editor
-    def get_value(): return doc["userCode"].value+"\n############ Result ############\n" #editor.value
+    def get_value(): return doc["userCode"].value #+"\n############ Result ############\n" #editor.value
     def set_value(x): doc["userCode"].value = x #editor.value = x
     editor.getValue = get_value
     editor.setValue = set_value
@@ -99,11 +99,11 @@ def run(*args):
     global output
     doc["console"].value = ''
     src = editor.getValue()
-    print("############ Result ##############\n")
+    # print("############ Result ##############\n")
     if storage is not None:
        storage["py_src"] = src
 
-    t0 = time.perf_counter()
+    # t0 = time.perf_counter()
     try:
         ns = {'__name__':'__main__'}
         exec(src, ns)
@@ -114,7 +114,7 @@ def run(*args):
     sys.stdout.flush()
     output = doc["console"].value
 
-    print("\n################################\n"+'<completed in %6.2f ms>' % ((time.perf_counter() - t0) * 1000.0))
+    # print("\n################################\n"+'<completed in %6.2f ms>' % ((time.perf_counter() - t0) * 1000.0))
     return state
 
 

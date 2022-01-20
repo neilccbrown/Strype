@@ -174,6 +174,7 @@ export default Vue.extend({
                     "doSetStateFromJSONStr", 
                     {
                         stateJSONStr: savedState,
+                        showMessage: false,
                     }
                 );
             }

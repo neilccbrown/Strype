@@ -72,7 +72,7 @@
 
         /* IFTRUE_isPurePython
         
-            <python-console/>
+            <python-console id="pythonConsole"/>
         FITRUE_isPurePython */
     </div>
 </template>
@@ -454,6 +454,13 @@ export default Vue.extend({
     font-size:large;
     color:#666666;
 }
+/* IFTRUE_isPurePython */
+#pythonConsole{
+    bottom: 4px;
+    width: 95%;
+    position: absolute;
+}        
+/* FITRUE_isPurePython */
 
 .cmd-button{
     padding: 1px 6px 1px 6px !important;

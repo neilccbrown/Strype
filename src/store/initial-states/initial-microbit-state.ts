@@ -1,6 +1,6 @@
 import {CaretPosition, EditorFrameObjects, Definitions, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
 
-const initialPythonState: EditorFrameObjects = {
+const initialMicrobitState: EditorFrameObjects = {
     0: {
         id: 0,
         frameType : RootContainerFrameDefinition,
@@ -73,7 +73,7 @@ const initialPythonState: EditorFrameObjects = {
         jointFrameIds: [],
         contentDict: {
             0: {code :  "myString", focused: false, error :"", shownLabel: true},
-            1: {code :  "\"Hello from Python!\"", focused: false, error :"", shownLabel: true} },
+            1: {code :  "\"Hello micro:bit!\"", focused: false, error :"", shownLabel: true} },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -97,6 +97,6 @@ const initialPythonState: EditorFrameObjects = {
 
 };
 
-export default initialPythonState;
+export default initialMicrobitState;
 
 
