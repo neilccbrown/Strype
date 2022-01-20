@@ -488,8 +488,9 @@ export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?:
     apiCodedItems.forEach((apiItem) => {
         // documentation (simple and extra) is not always provided in the json files (for easier readablilty)
         // therefore, we check if the value can be found against the key for doc/extradoc and assign an empty string if not found
-        const shortDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_doc")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string : "";
-        const extraDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
+        // (we only need the check against the English locale as it is the reference)
+        const shortDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_doc","en")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string : "";
+        const extraDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc","en")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
 
         const apiItemChildren = (apiItem.children) ? apiItem.children : [] as APICodedItem[]; 
         const version = (apiItem.version) ? apiItem.version : 1;

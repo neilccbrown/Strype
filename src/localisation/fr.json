@@ -60,8 +60,8 @@
     "paste": "Coller ce cadre",
     "enable": "Activer ce cadre",
     "disable": "Désactiver ce cadre",
-    "undo": "Annuler ce cadre",
-    "redo": "Refaire ce cadre",
+    "undo": "Annuler",
+    "redo": "Refaire",
     "delete": "Supprimer ce cadre"
   },
   "appMenu": {
