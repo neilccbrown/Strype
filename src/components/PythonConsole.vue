@@ -16,7 +16,7 @@
 <script lang="ts">
 import Vue from "vue";
 import store from "@/store/store";
-import { runPythonCode } from "@/autocompletion/acManager";
+import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 
 export default Vue.extend({
@@ -26,7 +26,7 @@ export default Vue.extend({
         runCodeOnPyConsole() {
             const parser = new Parser();
             const userCode = parser.getFullCode();
-            runPythonCode(userCode);
+            storeCodeToDOM(userCode,true);
         },
 
         onFocus(): void {

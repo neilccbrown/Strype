@@ -51,27 +51,18 @@ function isACNeededToShow(code: string): boolean {
     return foundOperatorFlag;
 }
 
-export function runPythonCode(code: string): void {
-//evaluate the Python user code 
-    const userPythonCodeHTMLElt = document.getElementById("userCode");
-
-    if(userPythonCodeHTMLElt){        
-        // (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;
-        (userPythonCodeHTMLElt as HTMLTextAreaElement).value = code;
-        
-        const runCodeContainer = document.getElementById("runCode");
-        // run the code by "clicking" the runCode
-        runCodeContainer?.click();
-    }
-}
-
-export function storeCodeToDOM(code: string): void {
+export function storeCodeToDOM(code: string, runPythonCode: boolean): void {
     //evaluate the Python user code for the AC
     const userPythonCodeHTMLElt = document.getElementById("userCode");
 
     if(userPythonCodeHTMLElt){        
-        // (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;
         (userPythonCodeHTMLElt as HTMLTextAreaElement).value = code;
+
+        if(runPythonCode){
+            const runCodeContainer = document.getElementById("runCode");
+            // run the code by "clicking" the runCode
+            runCodeContainer?.click();
+        }
     }
 }
 
@@ -89,11 +80,18 @@ export function storeCodeToDOM(code: string): void {
  */
 function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string, acContextPathSpanId: string): void{
     let inspectionCode ="from browser import window";
-    let isPython = false
-    /* IFTRUE_isPurePython */
+    // console.log(process.argv0+" = "+process.argv.slice(2)+" = "+process.execArgv+" = "+process.env+" = "+process.env.VUE_APP_PYTHON_OR_MICROBIT);
+    
+    /* IFTRUE_isMicrobit */
+    inspectionCode += "\nfrom browser import document, window"+"\n"+
+    "import sys as __sys"+"\n"+
+    "import __osMB "+"\n"+
+    "import __timeMB"+"\n"+
+    "__sys.modules['os'] = __osMB"+"\n"+
+    "__sys.modules['time'] = __timeMB"
+    /* FITRUE_isMicrobit */
 
-    isPython = true;
-    /* FITRUE_isPurePython */   
+
     if(regenerateAC){
         /*
         *       STEP 1 : Run the code and get the AC results
@@ -103,15 +101,17 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\nvalidContext = True"
         inspectionCode += "\ntry:"
         if(isImportModuleAC){
-            if(!isPython){
+            /* IFTRUE_isMicrobit */
                 inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
-            }
+            /* FITRUE_isMicrobit */
+
             //Else we get Brython's stdlib modules
-            else {
-                // We first get all the contents of stdlib
+            /* IFTRUE_isPurePython */
+            // We first get all the contents of stdlib
                 inspectionCode += "\n"+INDENT+"namesForAutocompletion = globals().get('__BRYTHON__')['stdlib']";
-                // Then we strip the ones starting with '-' and the ones that are like 'a.b.c'
+                // Then we strip the ones starting with '_' and the ones that are like 'a.b.c'
                 inspectionCode += "\n"+INDENT+"namesForAutocompletion = [name for name in namesForAutocompletion if not name.startswith('_') and len(name.split('.'))<2]";    
+            /* FITRUE_isPurePython */    
             }
             contextAC = "";
         }
@@ -247,7 +247,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
-    storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
+    storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode, false);
 }
 
 // Check every time you're in a slot and see how to show the AC (for the code section)
@@ -385,9 +385,6 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
         /* IFTRUE_isMicrobit */
         contextAC = "['" + microbitModuleDescription.modules.join("','") + "']";
         /* FITRUE_isMicrobit */
-        /* IFTRUE_isPurePython */
-        // contextAC = "['" + brythonModuleDescription.modules.join("','") + "']";
-        /* FITRUE_isPurePython */
         
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, typesSpanId, true, reshowResultsId, acContextPathSpanId);
     }

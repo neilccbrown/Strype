@@ -1,3 +1,5 @@
+# This is a module provided by the Brython team: https://github.com/brython-dev/brython/blob/e212948fe80a3e90472604d2c613d3f0c03d05fc/www/tests/editor.py
+# It is used to implement a non-interactive console in your site that can run your code.
 import sys
 import time
 import binascii
@@ -10,7 +12,6 @@ import browser.widgets.dialog as dialog
 has_ace = True
 try:
     editor = window.ace.edit("userCode")
-    # print(window.ace.edit("userCode"))
     editor.setTheme("ace/theme/solarized_light")
     editor.session.setMode("ace/mode/python")
     editor.focus()
@@ -24,8 +25,8 @@ except:
     from browser import html
     editor = html.TEXTAREA(rows=20, cols=70)
     doc["userCode"] <= editor
-    def get_value(): return doc["userCode"].value #+"\n############ Result ############\n" #editor.value
-    def set_value(x): doc["userCode"].value = x #editor.value = x
+    def get_value(): return doc["userCode"].value 
+    def set_value(x): doc["userCode"].value = x
     editor.getValue = get_value
     editor.setValue = set_value
     has_ace = False
@@ -99,11 +100,10 @@ def run(*args):
     global output
     doc["console"].value = ''
     src = editor.getValue()
-    # print("############ Result ##############\n")
+
     if storage is not None:
        storage["py_src"] = src
 
-    # t0 = time.perf_counter()
     try:
         ns = {'__name__':'__main__'}
         exec(src, ns)
@@ -113,8 +113,6 @@ def run(*args):
         state = 0
     sys.stdout.flush()
     output = doc["console"].value
-
-    # print("\n################################\n"+'<completed in %6.2f ms>' % ((time.perf_counter() - t0) * 1000.0))
     return state
 
 
