@@ -20,7 +20,7 @@
             </div>
         </div>
         <div @mousedown.prevent.stop @mouseup.prevent.stop>
-            /* IFTRUE_isMicrobit 
+            /* IFTRUE_isMicrobit
             <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
                 <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
             FITRUE_isMicrobit */

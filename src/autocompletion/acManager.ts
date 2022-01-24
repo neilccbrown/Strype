@@ -79,8 +79,13 @@ export function storeCodeToDOM(code: string, runPythonCode: boolean): void {
  * @param reshowResultsId -> The UIID of the hidden 'button` that would trigger the existing AC to reshow.
  */
 function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string, acContextPathSpanId: string): void{
+
+    // we want to remove prints, so that when the AC runs on Brython we don't get the prints no the console or the browsers terminal
+    // we search for INDENT+print to avoid the very rare case that print is part of a string
+    // we also replace with pass# to avoid leaving a blank or commented row which is considered a mistake by python
+    userCode = userCode.replaceAll(INDENT+"print(",INDENT+"pass#");
+
     let inspectionCode ="from browser import window";
-    // console.log(process.argv0+" = "+process.argv.slice(2)+" = "+process.execArgv+" = "+process.env+" = "+process.env.VUE_APP_PYTHON_OR_MICROBIT);
     
     /* IFTRUE_isMicrobit */
     inspectionCode += "\nfrom browser import document, window"+"\n"+
@@ -102,17 +107,17 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\ntry:"
         if(isImportModuleAC){
             /* IFTRUE_isMicrobit */
-                inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
+            inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
             /* FITRUE_isMicrobit */
 
             //Else we get Brython's stdlib modules
             /* IFTRUE_isPurePython */
             // We first get all the contents of stdlib
-                inspectionCode += "\n"+INDENT+"namesForAutocompletion = globals().get('__BRYTHON__')['stdlib']";
-                // Then we strip the ones starting with '_' and the ones that are like 'a.b.c'
-                inspectionCode += "\n"+INDENT+"namesForAutocompletion = [name for name in namesForAutocompletion if not name.startswith('_') and len(name.split('.'))<2]";    
+            inspectionCode += "\n"+INDENT+"namesForAutocompletion = globals().get('__BRYTHON__')['stdlib']";
+            // Then we strip the ones starting with '_' and the ones that are like 'a.b.c'
+            inspectionCode += "\n"+INDENT+"namesForAutocompletion = [name for name in namesForAutocompletion if not name.startswith('_') and len(name.split('.'))<2]";    
             /* FITRUE_isPurePython */    
-            }
+            
             contextAC = "";
         }
         else{
@@ -393,6 +398,3 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
  
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
-
-
-
