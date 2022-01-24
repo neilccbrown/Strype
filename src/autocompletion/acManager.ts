@@ -80,7 +80,7 @@ export function storeCodeToDOM(code: string, runPythonCode: boolean): void {
  */
 function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string, acContextPathSpanId: string): void{
 
-    // we want to remove prints, so that when the AC runs on Brython we don't get the prints no the console or the browsers terminal
+    // we want to remove prints, so that when the AC runs on Brython we don't get the prints on the console or the browsers terminal
     // we search for INDENT+print to avoid the very rare case that print is part of a string
     // we also replace with pass# to avoid leaving a blank or commented row which is considered a mistake by python
     userCode = userCode.replaceAll(INDENT+"print(",INDENT+"pass#");
@@ -88,8 +88,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     let inspectionCode ="from browser import window";
     
     /* IFTRUE_isMicrobit */
-    inspectionCode += "\nfrom browser import document, window"+"\n"+
-    "import sys as __sys"+"\n"+
+    inspectionCode += "import sys as __sys"+"\n"+
     "import __osMB "+"\n"+
     "import __timeMB"+"\n"+
     "__sys.modules['os'] = __osMB"+"\n"+
