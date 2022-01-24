@@ -1,7 +1,13 @@
 import Parser from "@/parser/parser";
 import store from "@/store/store";
-import { FrameObject } from "@/types/types";
-import moduleDescription from "@/autocompletion/microbit.json";
+import { CodeStyle, FrameObject } from "@/types/types";
+/* IFTRUE_isMicrobit */
+import microbitModuleDescription from "@/autocompletion/microbit.json";
+/* FITRUE_isMicrobit */
+/* IFTRUE_isPurePython */
+import brythonModuleDescription from "@/autocompletion/brython_libs.json";
+/* FITRUE_isPurePython */
+
 import i18n from "@/i18n";
 import _ from "lodash";
 
@@ -45,16 +51,18 @@ function isACNeededToShow(code: string): boolean {
     return foundOperatorFlag;
 }
 
-function runPythonCode(code: string): void {
-//evaluate the Python user code 
+export function storeCodeToDOM(code: string, runPythonCode: boolean): void {
+    //evaluate the Python user code for the AC
     const userPythonCodeHTMLElt = document.getElementById("userCode");
 
     if(userPythonCodeHTMLElt){        
-        (userPythonCodeHTMLElt as HTMLSpanElement).textContent = code;
-        
-        const brythonContainer = document.getElementById("brythonContainer");
-        // run the code by "clicking" the brythonContainer
-        brythonContainer?.click();
+        (userPythonCodeHTMLElt as HTMLTextAreaElement).value = code;
+
+        if(runPythonCode){
+            const runCodeContainer = document.getElementById("runCode");
+            // run the code by "clicking" the runCode
+            runCodeContainer?.click();
+        }
     }
 }
 
@@ -71,7 +79,22 @@ function runPythonCode(code: string): void {
  * @param reshowResultsId -> The UIID of the hidden 'button` that would trigger the existing AC to reshow.
  */
 function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: string, acSpanId: string, documentationSpanId: string, typesSpanId: string, isImportModuleAC: boolean, reshowResultsId: string, acContextPathSpanId: string): void{
-    let inspectionCode ="";
+
+    // we want to remove prints, so that when the AC runs on Brython we don't get the prints on the console or the browsers terminal
+    // we search for INDENT+print to avoid the very rare case that print is part of a string
+    // we also replace with pass# to avoid leaving a blank or commented row which is considered a mistake by python
+    userCode = userCode.replaceAll(INDENT+"print(",INDENT+"pass#");
+
+    let inspectionCode ="from browser import window";
+    
+    /* IFTRUE_isMicrobit */
+    inspectionCode += "import sys as __sys"+"\n"+
+    "import __osMB "+"\n"+
+    "import __timeMB"+"\n"+
+    "__sys.modules['os'] = __osMB"+"\n"+
+    "__sys.modules['time'] = __timeMB"
+    /* FITRUE_isMicrobit */
+
 
     if(regenerateAC){
         /*
@@ -82,7 +105,18 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\nvalidContext = True"
         inspectionCode += "\ntry:"
         if(isImportModuleAC){
+            /* IFTRUE_isMicrobit */
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
+            /* FITRUE_isMicrobit */
+
+            //Else we get Brython's stdlib modules
+            /* IFTRUE_isPurePython */
+            // We first get all the contents of stdlib
+            inspectionCode += "\n"+INDENT+"namesForAutocompletion = globals().get('__BRYTHON__')['stdlib']";
+            // Then we strip the ones starting with '_' and the ones that are like 'a.b.c'
+            inspectionCode += "\n"+INDENT+"namesForAutocompletion = [name for name in namesForAutocompletion if not name.startswith('_') and len(name.split('.'))<2]";    
+            /* FITRUE_isPurePython */    
+            
             contextAC = "";
         }
         else{
@@ -109,7 +143,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue) 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"for name in results:"
         // in case the contextAC is not empty, this is the 'module'
-        // otherise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
+        // otherwise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
         // if not, the we retrieve the module name with globals().get(name).__module__
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
         if(contextAC.length == 0){
@@ -147,7 +181,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // We empty any previous results so that the AC won't be shown
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
         inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass" 
-
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
@@ -218,7 +251,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\nexcept:\n"+INDENT+"pass";
     
     // We need to put the user code before, so that the inspection can work on the code's results
-    runPythonCode((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
+    storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode, false);
 }
 
 // Check every time you're in a slot and see how to show the AC (for the code section)
@@ -325,7 +358,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     //the full AC and documentation are only recreated when a next context is notified
     prepareBrythonCode((currentACContext.localeCompare(contextAC) != 0),userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId, acContextPathSpanId);
     currentACContext = contextAC;
-
+    
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
 
@@ -344,6 +377,7 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
     const lookupModulePart = (slotIndex == 1 && frame.contentDict[0].shownLabel); //false -> we look at a module itself, true -> we look at a module part  
     let contextAC = "";
     const tokenAC = slotCode;
+
     if(lookupModulePart){
         //we look at the module part --> get the module part candidates from Brython
         contextAC = frame.contentDict[0].code;
@@ -351,8 +385,11 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0), userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId, acContextPathSpanId);
     }
     else{
-        //we look at the module --> get the module candidates from hard coded JSON
-        contextAC = "['" + moduleDescription.modules.join("','") + "']";
+        //we look at the module --> get the module candidates from hardcoded JSON
+        /* IFTRUE_isMicrobit */
+        contextAC = "['" + microbitModuleDescription.modules.join("','") + "']";
+        /* FITRUE_isMicrobit */
+        
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0),"", contextAC, acSpanId, documentationSpanId, typesSpanId, true, reshowResultsId, acContextPathSpanId);
     }
     
@@ -360,6 +397,3 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
  
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
-
-
-

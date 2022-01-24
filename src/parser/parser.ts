@@ -143,7 +143,7 @@ export default class Parser {
 
             lineCode = frame.frameType.allowChildren ?
                 // frame with children
-                (Object.values(FrameContainersDefinitions).includes(frame.frameType)) ? 
+                (Object.values(FrameContainersDefinitions).find((e) => e.type ===frame.frameType.type))?
                     // for containers call parseFrames again on their frames
                     this.parseFrames(store.getters.getFramesForParentId(frame.id), "") 
                     :
@@ -377,6 +377,10 @@ export default class Parser {
         });
 
         return output;
+    }
+
+    public getFullCode(): string {
+        return this.parse(undefined, undefined, false);
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {

@@ -119,6 +119,16 @@ export default Vue.extend({
             // Browsers won't display a customised message, and can detect when to prompt the user,
             // so we don't need to do anything special.
             event.returnValue = true;
+
+            let storageString = "PythonStrypeSavedState"
+            /* IFTRUE_isMicrobit */
+            storageString = "MicrobitStrypeSavedState"
+            /*FITRUE_isMicrobit */
+
+            // save the project to the localStorage before exiting
+            if (typeof(Storage) !== "undefined") {
+                localStorage.setItem(storageString,store.getters.getStateJSONStrWithCheckpoints());
+            }
         });
 
         // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
@@ -146,6 +156,29 @@ export default Vue.extend({
 
         // As the application starts up, we compile the microbit library with the appropriate language setting.
         store.commit("setAPIDescription", compileTextualAPI(moduleDescription.api))
+    },
+
+    mounted() {
+        //check the local storage to see if there is a saved project from the previous time the user entered the system
+        
+        let storageString = "PythonStrypeSavedState"
+        /* IFTRUE_isMicrobit */
+        storageString = "MicrobitStrypeSavedState"
+        /*FITRUE_isMicrobit */
+            
+        // if browser supports locastorage
+        if (typeof(Storage) !== "undefined") {
+            const savedState = localStorage.getItem(storageString);
+            if(savedState) {
+                store.dispatch(
+                    "doSetStateFromJSONStr", 
+                    {
+                        stateJSONStr: savedState,
+                        showMessage: false,
+                    }
+                );
+            }
+        }
     },
 
     methods: {

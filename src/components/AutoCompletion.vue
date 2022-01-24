@@ -82,6 +82,7 @@
         <span 
             :id="acContextPathSpanID"
             :key="acContextPathSpanID"
+            class="hidden"
         > 
         </span>
     </div>
@@ -108,12 +109,12 @@ export default Vue.extend({
     props: {
         list: [String],
         slotId: String,
-        token: String,
         cursorPosition: {
             type: Object,
             default: () => DefaultCursorPosition,
         },
         context: String,
+        token: String,
         isImportFrame: Boolean,
     },
 
@@ -220,7 +221,7 @@ export default Vue.extend({
             }
 
             // Append the Python results,docs and types to the lists IFF there is no context
-            if(this.context === "") {
+            if(this.context === "" && !this.isImportFrame) {
 
                 // The list of results might not include some the user-defined functions and variables because the user code can't compile. 
                 // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
@@ -290,7 +291,6 @@ export default Vue.extend({
         },  
 
         showSuggestionsAC(): void {
-
             // we start by reseting the results
             this.resultsToShow = {};
             this.selected = 0;

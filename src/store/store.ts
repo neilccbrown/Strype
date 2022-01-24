@@ -5,9 +5,9 @@ import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import tutorialState from "@/store/tutorial-state";
+import tutorialState from "@/store/initial-states/tutorial-state";
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, compileTextualAPI, checkCodeErrors } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, generateFrameMap, getAllSiblings, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow, getAvailableNavigationPositions} from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAllSiblings, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow, getAvailableNavigationPositions} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
@@ -15,7 +15,10 @@ import moduleDescription from "@/autocompletion/microbit.json";
 
 Vue.use(Vuex);
 
-const initialState: StateObject = initialStates["demoState"];
+let initialState: StateObject = initialStates["initialPythonState"];
+/* IFTRUE_isMicrobit */
+initialState = initialStates["initialMicrobitState"];
+/* FITRUE_isMicrobit */
 
 export default new Vuex.Store({
     state: {
@@ -29,9 +32,7 @@ export default new Vuex.Store({
 
         frameObjects: initialState.initialState,
 
-        frameMap : initialState.frameMap, // flat map of all the frames in a sequence
-
-        nextAvailableId: Math.max(...initialState.frameMap)+1, // won't work for tutorial, as it is not needed in there
+        nextAvailableId: initialState.nextAvailableId, // won't work for tutorial, as it is not needed in there
 
         importContainerId: -1,
 
@@ -86,7 +87,6 @@ export default new Vuex.Store({
         DAPWrapper: undefined, //expected type when set: DAPWrapper
 
         previousDAPWrapper: undefined, //expected type when set:DAPWrapper
-
     },
 
     getters: {
@@ -388,7 +388,7 @@ export default new Vuex.Store({
             return state.preCompileErrors.includes(id);
         },
         getIsMessageBannerOn: (state) => () => {
-            return state.currentMessage !== MessageDefinitions.NoMessage;
+            return state.currentMessage.type !== MessageDefinitions.NoMessage.type;
         },
         getCurrentMessage: (state) => () => {
             return state.currentMessage;
@@ -734,7 +734,6 @@ export default new Vuex.Store({
                     );
                 }
             }
-            generateFrameMap(state.frameObjects,state.frameMap);
         },
 
         updateFramesOrder(state, payload: {event: any; eventParentId: number}) {
@@ -778,11 +777,6 @@ export default new Vuex.Store({
                     payload.event[eventType].oldIndex,
                     1
                 ); 
-            }
-
-            // Update the frameMap
-            if(eventType !== "removed"){
-                generateFrameMap(state.frameObjects,state.frameMap);
             }
         },
 
@@ -1176,7 +1170,7 @@ export default new Vuex.Store({
                 //if we notified a change of current caret, we make sure it makes correctly displayed 
                 if(changeCaret){
                     //if the frame where the previous state of the caret was notified still exists, we set its caret to "none"
-                    if(state.frameMap.includes(oldCaretId)){
+                    if(getAvailableNavigationPositions().map((e)=>e.id).includes(oldCaretId)){
                         Vue.set(
                             state.frameObjects[oldCaretId],
                             "caretVisibility",
@@ -1695,8 +1689,6 @@ export default new Vuex.Store({
                 newFrame
             );
         
-            generateFrameMap(state.frameObjects,state.frameMap);
-
             // As the new frame isn't yet added to the DOM, we need a list to store its navigational positions,
             // which will then be merged to the existing caret positions
             const newFramesCaretPositions: NavigationPosition[] = [];
@@ -2113,7 +2105,10 @@ export default new Vuex.Store({
                             if(confirm){
                                 dispatch(
                                     "doSetStateFromJSONStr",
-                                    payload
+                                    {
+                                        ...payload,
+                                        showMessage: true,
+                                    }
                                 );                                
                             }                        
                         },
@@ -2122,7 +2117,10 @@ export default new Vuex.Store({
                 else{
                     dispatch(
                         "doSetStateFromJSONStr",
-                        payload
+                        {
+                            ...payload,
+                            showMessage: true,
+                        }
                     );   
                 }                
             }
@@ -2130,7 +2128,6 @@ export default new Vuex.Store({
                 const message = MessageDefinitions.UploadEditorFileError;
                 const msgObj: FormattedMessage = (message.message as FormattedMessage);
                 msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
-
                 commit(
                     "setMessageBanner",
                     message
@@ -2138,22 +2135,23 @@ export default new Vuex.Store({
             }
         },
 
-        doSetStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string}){
+        doSetStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string; showMessage?: boolean}){
             commit(
                 "updateState",
                 JSON.parse(payload.stateJSONStr)
             )
+            if(payload.showMessage) {
+                commit(
+                    "setMessageBanner",
+                    MessageDefinitions.UploadEditorFileSuccess
+                );
 
-            commit(
-                "setMessageBanner",
-                MessageDefinitions.UploadEditorFileSuccess
-            );
-
-            //don't leave the message for ever
-            setTimeout(()=>commit(
-                "setMessageBanner",
-                MessageDefinitions.NoMessage
-            ), 5000);  
+                //don't leave the message for ever
+                setTimeout(()=>commit(
+                    "setMessageBanner",
+                    MessageDefinitions.NoMessage
+                ), 5000);  
+            }
 
         },
 
@@ -2208,8 +2206,6 @@ export default new Vuex.Store({
                     {frameId: topFrame.id, isDisabling: state.frameObjects[payload.newParentId].isDisabled, ignoreEnableFromRoot: true}
                 );
             }
-
-            generateFrameMap(state.frameObjects,state.frameMap);
 
             //save state changes
             commit(
@@ -2300,8 +2296,6 @@ export default new Vuex.Store({
                         }
                     ))
             }
-
-            generateFrameMap(state.frameObjects,state.frameMap);
 
             //save state changes
             commit(
@@ -2457,7 +2451,7 @@ export default new Vuex.Store({
 
             // We cannot select something, so we return
             if(frameIdToBeSelected===-100){
-                return
+                return 
             }
 
             const availablePositionsOfSiblings: NavigationPosition[] = []
@@ -2487,120 +2481,43 @@ export default new Vuex.Store({
 
         },
 
-        shiftClickSelection({state, commit}, payload: {clickedFrameId: number; clickedCaretPosition: CaretPosition}) {
+        shiftClickSelection({state, commit, dispatch}, payload: {clickedFrameId: number; clickedCaretPosition: CaretPosition}) {
             // Remove current selection
             commit("unselectAllFrames");
 
-            // is the targetFrame bellow or above the origin frame
-            let direction: string;
-            if(state.frameMap.indexOf(payload.clickedFrameId) === state.frameMap.indexOf(state.currentFrame.id)) {
-                // if we clicked on current caret, then no need to select anything
-                if(payload.clickedCaretPosition === state.currentFrame.caretPosition) {
-                    return;
-                }
-                //if clicked on the same frame, but on another caret, then if the clicked is body we certainly are going up. Else, down
-                direction = (payload.clickedCaretPosition === CaretPosition.body)? "up" : "down";
-            }
-            else {
-                direction = (state.frameMap.indexOf(payload.clickedFrameId) > state.frameMap.indexOf(state.currentFrame.id))? "down" : "up" ;
-            }
+            const availablePositions = getAvailableNavigationPositions();
+            const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
 
-
-            // The frame the selection will start from
-            const originFrameId =  
-                (state.currentFrame.caretPosition === CaretPosition.body)?
-                    // Body
-                    (direction === "up")?
-                        -100 : // in the body and going up is not possible
-                        state.frameMap[state.frameMap.indexOf(state.currentFrame.id)+1] // body and going down, start from the next frame
-                    :
-                    // Below
-                    (direction === "up")?
-                        state.frameMap[state.frameMap.indexOf(state.frameObjects[state.currentFrame.id].jointParentId||state.currentFrame.id)]: // below a jointframe and going up => origin is the parent, otherwise the frame itself
-                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[state.currentFrame.id].childrenIds].pop()??state.currentFrame.id)+1]; // below and going down, start from the next after the last child
-
-            if(originFrameId === -100) {
+            const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.id === state.currentFrame.id && item.caretPosition === state.currentFrame.caretPosition);
+            const indexOfTarget: number = listOfCaretPositions.findIndex((item)=> item.id === payload.clickedFrameId && item.caretPosition === payload.clickedCaretPosition);
+            
+            if(indexOfCurrent === indexOfTarget) {
                 return;
             }
 
-            // The frame the selection will potentially end to (or as close to it as possible)
-            const targetFrameId =  
-                (payload.clickedCaretPosition === CaretPosition.body)?
-                    // Body
-                    (direction === "up")?
-                        state.frameMap[state.frameMap.indexOf(payload.clickedFrameId)+1] : // body and going up, end at the next
-                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)]// body and going down, end at the last sibling of origin
+            // is the targetFrame bellow or above the origin frame
+            const direction = (indexOfCurrent < indexOfTarget)?"ArrowDown" : "ArrowUp" ;
+
+            const stopId = (direction==="ArrowUp")?
+                listOfCaretPositions[indexOfTarget+1].id // going up we always stop on the next of the clicked
+                :
+                payload.clickedCaretPosition === CaretPosition.below ?
+                    payload.clickedFrameId // if we go down and click bellow, we go on the clicked
                     :
-                    // Below
-                    (direction === "up")?
-                        state.frameMap[state.frameMap.indexOf([...state.frameObjects[payload.clickedFrameId].childrenIds].pop()??payload.clickedFrameId)+1]: // below and going up, end at the next after the last child
-                        state.frameMap[state.frameMap.indexOf((checkIfLastJointChild(state.frameObjects, payload.clickedFrameId))? state.frameObjects[payload.clickedFrameId].jointParentId : payload.clickedFrameId)]; // going below the last jointframe => target is the parent, otherwise the frame itself 
+                    listOfCaretPositions[indexOfTarget-1].id// down and click body, we go to the previous of clicked
 
-            // All the selected frames MUST be siblings (same parent) of the frame the selection starts from.
-            const siblingsOfOrigin = getAllSiblings(state.frameObjects, originFrameId);
 
-            const indexFrom = siblingsOfOrigin.indexOf(originFrameId);
-            const indexTo = (direction === "up")? 0 : siblingsOfOrigin.length-1;
-            const indexIncr = (direction === "up")? -1 : 1;
+            let previousFramesSelection: number[] = [];
 
-            let lastSelected = undefined;
-            for(let i=indexFrom; ;i+=indexIncr) {
-                const nextSibling = siblingsOfOrigin[i];
-                // We need to check whether the target frame is in another level from the origin frame
-                // if they are at diff levels, we must not include the sibling of the origin who is the parent of the target.
-                if(!getAllChildrenAndJointFramesIds(state.frameObjects,state.frameObjects[nextSibling].id).includes(targetFrameId)) {
-                    commit("selectDeselectFrame", {frameId: nextSibling, direction: direction}) 
-                    lastSelected = nextSibling;
-
-                    // if we reach the target frame or the end of the list we stop
-                    if( nextSibling === targetFrameId || i === indexTo) {
-                        break;
-                    }
-                    continue;
-                }
-                else {
-                    break;
-                }
-            }
-
-            const newCurrentId = 
-                (!lastSelected)? 
-                    targetFrameId //if nothing was selected, then move the caret to the clicked frame
-                    :
-                    (lastSelected != targetFrameId) ? // Have we landed in another frame that the one the user selected?
-                        // landed on a different -> the were on different levels
-                        (direction === "up")?
-                            // up
-                            getPreviousIdForCaretBelow(state.frameObjects, lastSelected) // get the proper previous
-                            :
-                            // down
-                            lastSelected
-                        :
-                        // Landed on the selected
-                        (direction === "up")?
-                            // up
-                            checkIfFirstChild(state.frameObjects,lastSelected) ?
-                                // fist in parent
-                                getParentOrJointParent(state.frameObjects,lastSelected) // the parent is the current frame as we have clicked no his body
-                                :
-                                // not the first in parent, get the previous frame
-                                getPreviousIdForCaretBelow(state.frameObjects, lastSelected) // get the proper previous
-                            :
-                            // down
-                            lastSelected
-
-            // The caret calculation needs a frame to work with
-            lastSelected = lastSelected?? targetFrameId;
-
-            const newCurrentCaret = 
-                (direction === "up")?
-                    // up
-                    (newCurrentId === state.frameObjects[lastSelected].parentId??state.frameObjects[lastSelected].jointParentId)? CaretPosition.body : CaretPosition.below
-                    :
-                    // down
-                    CaretPosition.below;
-                    
-            commit("setCurrentFrame", {id: newCurrentId, caretPosition: newCurrentCaret});
+            // Instead of writing a selection function from scratch
+            do {
+                previousFramesSelection = [...state.selectedFrames]
+                dispatch("selectMultipleFrames",direction);
+            } while(
+                previousFramesSelection.length !== state.selectedFrames.length
+                &&
+                !state.selectedFrames.includes(stopId)
+            )
 
         },
 

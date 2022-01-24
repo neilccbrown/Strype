@@ -1,8 +1,10 @@
 <template>
     <div class="commands">
         <div :id="buttonsContainerUIID" class="commands-container">
+            /* IFTRUE_isMicrobit 
             <button type="button" v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
             <button type="button" @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.sendToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
+            FITRUE_isMicrobit */
             <button type="button" @click="downloadPython" v-t="'buttonLabel.downloadPython'" class="btn btn-secondary cmd-button"/>
         </div>
         <div v-if="showProgress" class="progress cmd-progress-container">
@@ -18,8 +20,10 @@
             </div>
         </div>
         <div @mousedown.prevent.stop @mouseup.prevent.stop>
+            /* IFTRUE_isMicrobit
             <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
                 <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
+            FITRUE_isMicrobit */
                     <div :id="commandsContainerUUID" class="command-tab-content" >
                         <div id="addFramePanel">
                             <div class="frameCommands">
@@ -55,14 +59,21 @@
                             />
                         </div>
                     </div>
+                /* IFTRUE_isMicrobit 
                 </b-tab>
-                <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
-                    <APIDiscovery  class="command-tab-content"/>
-                </b-tab>
+                    <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
+                        <APIDiscovery  class="command-tab-content"/>
+                    </b-tab>
+                FITRUE_isMicrobit */
             </b-tabs>
         </div>
         <text id="userCode"></text>
         <span id="keystrokeSpan"></span>
+
+        /* IFTRUE_isPurePython
+        
+            <python-console id="pythonConsole"/>
+        FITRUE_isPurePython */
     </div>
 </template>
 
@@ -79,6 +90,11 @@ import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, I
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
+/* IFTRUE_isPurePython */
+import PythonConsole from "@/components/PythonConsole.vue"
+/* FITRUE_isPurePython */
+
+
 export default Vue.extend({
     name: "Commands",
     store,
@@ -87,6 +103,9 @@ export default Vue.extend({
         AddFrameCommand,
         ToggleFrameLabelCommand,
         APIDiscovery,
+        /* IFTRUE_isPurePython */
+        PythonConsole, 
+        /* FITRUE_isPurePython */
     },
 
     data: function () {
@@ -382,7 +401,7 @@ export default Vue.extend({
         downloadPython() {
             downloadPython(); 
         },
-
+        /* IFTRUE_isMicrobit */
         getTabClasses(tabIndex: number): string[] {
             const disabledClassStr = (this.isEditing) ? " commands-tab-disabled" : "";
             if(tabIndex == this.tabIndex){
@@ -392,6 +411,7 @@ export default Vue.extend({
                 return ["commands-tab" + disabledClassStr]
             }
         },
+        /*FITRUE_isMicrobit */
     },
 });
 </script>
@@ -434,6 +454,13 @@ export default Vue.extend({
     font-size:large;
     color:#666666;
 }
+/* IFTRUE_isPurePython */
+#pythonConsole{
+    bottom: 4px;
+    width: 95%;
+    position: absolute;
+}        
+/* FITRUE_isPurePython */
 
 .cmd-button{
     padding: 1px 6px 1px 6px !important;

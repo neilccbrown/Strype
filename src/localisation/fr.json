@@ -91,5 +91,8 @@
   "commandTabs": {
       "0": "Ajoute un cadre",
       "1": "Explore micro:bit"
-  }
+  },
+    "console": {
+        "run":"Executer le code "
+    }
 }

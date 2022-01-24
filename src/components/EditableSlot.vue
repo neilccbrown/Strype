@@ -31,7 +31,7 @@
             class="editableslot-input navigationPosition"
             :style="inputTextStyle"
         />
-        <div id="editableSlotSpans" :style="spanTextStyle">
+        <div class="editableSlotSpans" :style="spanTextStyle">
             <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
             <span 
                 :key="UIID+'_'+index" 
@@ -60,11 +60,11 @@
             v-if="focused && showAC" 
             class="ac"
             :slotId="UIID"
-            :context="contextAC"
+            :context.sync="contextAC"
+            :token.sync="tokenAC"
             ref="AC"
             :key="UIID+'_Autocompletion'"
             :id="UIID+'_Autocompletion'"
-            :token="token"
             :cursorPosition="cursorPosition"
             :isImportFrame="isImportFrame()"
             @acItemClicked="acItemClicked"
@@ -120,14 +120,13 @@ export default Vue.extend({
             //so that the width is rightfully computed when displayed for the first time
             isComponentLoaded : false,
 
-            // used to filter the AC
-            token: "",
             cursorPosition: {} as CursorPosition,
             showAC: false,
             contextAC: "",
+            tokenAC: "",
             //used to force a text cursor position, for example after inserting an AC candidate
             textCursorPos: -1,    
-            //used the flags to indicate whether the user has explictly marked a pause when deleting text with backspace
+            //used the flags to indicate whether the user has explicitly marked a pause when deleting text with backspace
             //or that the slot is initially empty
             canBackspaceDeleteFrame: true,   
             stillBackSpaceDown: false,
@@ -148,7 +147,6 @@ export default Vue.extend({
         initCode(): string {
             return store.getters.getInitContentForFrameSlot();
         },
-
         
         frameType(): string{
             return store.getters.getFrameObjectFromId(this.frameId).frameType.type;
@@ -162,7 +160,7 @@ export default Vue.extend({
                     ? "#97971E"
                     : (this.focused) ? "#000" : "transparent", //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
             };
-        },
+        }, 
 
         spanTextStyle(): Record<string, string> {
             //when the input has focus, we hide the spans, otherwise we show the right background colours
@@ -203,7 +201,7 @@ export default Vue.extend({
                 if(inputField && ((frame.frameType.labels[this.slotIndex].acceptAC)??true)){
                     //get the autocompletion candidates
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
-                    
+
                     //workout the correct context if we are in a code editable slot
                     const isImportFrame = (frame.frameType.type === ImportDefinition.type || frame.frameType.type === FromImportDefinition.type)
                     const resultsAC = (isImportFrame) 
@@ -211,9 +209,13 @@ export default Vue.extend({
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
                     this.showAC = resultsAC.showAC;
                     this.contextAC = resultsAC.contextAC;
-                    if(this.showAC){
-                        this.token = resultsAC.tokenAC.toLowerCase();  
+                    if(resultsAC.showAC){
+                        this.tokenAC = resultsAC.tokenAC.toLowerCase();
                     }
+
+                    this.$nextTick(() => {
+                        this.getACresultsFromBrython();
+                    });
                 }
 
                 //if we specify a text cursor position, set it in the input field at the next tick (because code needs to be updated first)
@@ -354,11 +356,15 @@ export default Vue.extend({
             // So, for import frames (from/import slots only) we show the AC automatically
             if((this.frameType === ImportDefinition.type || this.frameType === FromImportDefinition.type) && this.slotIndex < 2 && this.code.length === 0){
                 const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));   
-                this.showAC = resultsAC.showAC;
                 this.contextAC = resultsAC.contextAC;
-                if(this.showAC){
-                    this.token = resultsAC.tokenAC.toLowerCase();  
+                if(resultsAC.showAC){
+                    this.tokenAC = resultsAC.tokenAC.toLowerCase();
                 }
+                this.showAC = resultsAC.showAC;
+
+                this.$nextTick(() => {
+                    this.getACresultsFromBrython();
+                });
             }
         },
 
@@ -492,7 +498,7 @@ export default Vue.extend({
                 event.stopPropagation();
             }
             // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
-            else if(this.frameType !== CommentDefinition.type && event.key === " "){
+            else if(event.key === " " && this.frameType !== CommentDefinition.type){
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const currentTextCursorPos = inputField.selectionStart??0;
                 if(currentTextCursorPos == 0){
@@ -507,7 +513,7 @@ export default Vue.extend({
             //  1) there is no text in the slot
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
-            this.stillBackSpaceDown = true;
+            this.stillBackSpaceDown = true; 
             if(this.isFirstVisibleInFrame && this.code.length == 0){
                 //if the user had already released the key up, no point waiting, we delete straight away
                 if(this.canBackspaceDeleteFrame){
@@ -549,14 +555,13 @@ export default Vue.extend({
             const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
 
             const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
-
-            const newCode = this.code.substr(0, currentTextCursorPos - this.token.length) 
-            + selectedItem 
-            + ((isSelectedFunction)?"()":"")
-            + this.code.substr(currentTextCursorPos);
+            const newCode = this.code.substr(0, currentTextCursorPos - this.tokenAC.length)
+                + selectedItem 
+                + ((isSelectedFunction)?"()":"")
+                + this.code.substr(currentTextCursorPos);
             
             // position the text cursor just after the AC selection - in the parenthesis for functions
-            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.token.length + ((isSelectedFunction)?1:0) ;
+            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.tokenAC.length + ((isSelectedFunction)?1:0);
             
             this.code = newCode;
             this.showAC = this.debugAC;
@@ -585,7 +590,7 @@ export default Vue.extend({
             const openBracketCharacters = ["(","{","[","\"","'"];
             const characterIndex= openBracketCharacters.indexOf(this.keyDownStr)
 
-            //check if the character we are addign is an openBracketCharacter
+            //check if the character we are adding is an openBracketCharacter
             if(characterIndex !== -1) {
 
                 //create a list with the closing bracket for each one of the opening in the same index
@@ -621,6 +626,12 @@ export default Vue.extend({
 
         isImportFrame(): boolean {
             return store.getters.isImportFrame(this.frameId)
+        },
+
+        getACresultsFromBrython(): void {
+            // run the Brython code -to get the AC results- by "clicking" the loadAC
+            const loadAcContainer = document.getElementById("loadAC");
+            loadAcContainer?.click();
         },
 
     },
@@ -662,7 +673,7 @@ export default Vue.extend({
   font-style: italic;
 }
 
-#editableSlotSpans{
+.editableSlotSpans{
     border: 1px solid transparent;
     border-radius: 5px;
     padding: 1px 2px;
@@ -672,7 +683,7 @@ export default Vue.extend({
     visibility: hidden;
 }
 
-#editableSlotSpans span{
+.editableSlotSpans span{
     outline: none;
     white-space: pre;
 }
