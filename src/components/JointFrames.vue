@@ -21,8 +21,7 @@
                 :isParentSelected="isParentSelected"
                 :allowChildren="frame.frameType.allowChildren"
                 :caretVisibility="frame.caretVisibility"
-                :class="{frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
-                class="joint-frame-child"
+                :class="{'joint-frame-child': true, frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
             />
         </Draggable>
         

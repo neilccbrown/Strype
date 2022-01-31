@@ -41,7 +41,7 @@
                                             {{getShowExtraCodeLinkLabel()}}
                                         </a>
                                         <i 
-                                            :class="{'show-more-chevron': true, fas: true, 'fa-chevron-up': showExtraDoc, 'fa-chevron-down': !showExtraDoc}"
+                                            :class="{'show-more-chevron fas': true, 'fa-chevron-up': showExtraDoc, 'fa-chevron-down': !showExtraDoc}"
                                             @click="showExtraDoc=!showExtraDoc;" 
                                         />
                                         <div v-show="showExtraDoc">                                   
@@ -59,8 +59,7 @@
                                 @click="useExampleCode()" 
                                 v-html="$t('buttonLabel.addCodeExtract')" 
                                 :disabled="disabledAPI()" 
-                                class="api-code-button btn btn-secondary" 
-                                :class="{'api-code-button-disabled': disabledAPI()}"
+                                :class="{'api-code-button btn btn-secondary': true, 'api-code-button-disabled': disabledAPI()}"
                             />
                         </div>
                     </b-card>

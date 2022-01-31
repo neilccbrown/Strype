@@ -1,0 +1,67 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+        {
+            "label": "Serve Strype micro:bit",
+            "dependsOn": [
+                "npm: clear",
+                "SUB serve strype microbit"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Strype micro:bit",
+            "dependsOn": [
+                "npm: clear",
+                "SUB build strype microbit"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Serve Strype python",
+            "dependsOn": [
+                "npm: clear",
+                "SUB serve strype python"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Strype python",
+            "dependsOn": [
+                "npm: clear",
+                "SUB build strype python"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "serve --microbit",
+            "problemMatcher": [],
+            "label": "SUB serve strype microbit",
+            "detail": "vue-cli-service serve"
+        },
+        {
+            "type": "npm",
+            "script": "serve --python",
+            "problemMatcher": [],
+            "label": "SUB serve strype python",
+            "detail": "vue-cli-service serve"
+        },
+        {
+            "type": "npm",
+            "script": "build --microbit",
+            "group": "build",
+            "problemMatcher": [],
+            "label": "SUB build strype microbit",
+            "detail": "vue-cli-service build"
+        },
+        {
+            "type": "npm",
+            "script": "build --python",
+            "group": "build",
+            "problemMatcher": [],
+            "label": "SUB build strype python",
+            "detail": "vue-cli-service build"
+        }
+    ]
+}

@@ -28,7 +28,8 @@
         "showLess": "show less"
     },
     "action": {
-        "uploadingToMicrobit": "Uploading to micro:bit ..."
+        "uploadingToMicrobit": "Uploading to micro:bit ...",
+        "feedbackLink": "Give feedback ..."
     },
     "errorMessage": {
         "wrongDataFormat": "the data format cannot be interpreted by Strype",

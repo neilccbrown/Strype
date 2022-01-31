@@ -148,9 +148,9 @@ export default Vue.extend({
         containerStyle(): Record<string, string> {
             return {
                 "display": (this.isCollapsed) ? "none" : "block",
-                "backgroundColor": `${(this.frameType === FrameContainersDefinitions.ImportsContainerDefinition) 
+                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type) 
                     ? Definitions.ImportDefinition.colour
-                    : (this.frameType === FrameContainersDefinitions.FuncDefContainerDefinition)
+                    : (this.frameType.type === FrameContainersDefinitions.FuncDefContainerDefinition.type)
                         ? Definitions.FuncDefDefinition.colour
                         : Definitions.ReturnDefinition.colour}`,
             };

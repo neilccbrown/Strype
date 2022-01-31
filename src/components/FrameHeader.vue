@@ -7,9 +7,8 @@
         >
             <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
             <div 
-                class="next-to-eachother" 
                 style="font-weight: 600;"
-                :class="{hidden: isLabelHidden(index), leftMargin: index > 0, rightMargin: true, 'frameColouredLabel': !isCommentFrame}">
+                :class="{'next-to-eachother rightMargin': true, hidden: isLabelHidden(index), leftMargin: index > 0, 'frameColouredLabel': !isCommentFrame}">
                     {{ item.label }}
             </div>
             <EditableSlot

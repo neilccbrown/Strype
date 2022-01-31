@@ -28,7 +28,8 @@
         "showLess": "Λιγότερα"
     },
     "action": {
-        "uploadingToMicrobit": "Μεταφόρτωση στο micro:bit ..."
+        "uploadingToMicrobit": "Μεταφόρτωση στο micro:bit ...",
+        "feedbackLink": "Προτάσεις Βελτίωσης ..."
     },
     "errorMessage": {
         "wrongDataFormat": "Αυτή η μορφή των δεδομένων δεν μπορει να δαβαστεί από το Strype",
