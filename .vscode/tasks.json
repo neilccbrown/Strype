@@ -68,8 +68,8 @@
             "detail": "vue-cli-service build"
         },
         {
-            "type": "npm",
-            "script": "cache clean --force",
+            "type": "shell",
+            "command": "npm cache clean --force",
             "problemMatcher": [],
             "label": "npm: clear",
         },
