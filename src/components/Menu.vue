@@ -18,17 +18,15 @@
                         @blur="onBlur()"
                         @keyup.enter.prevent.stop="blur()"
                         @keypress="validateInput($event)"
-                        class="project-name"
-                        :class="{'project-name-noborder': !nameEditing}"
+                        :class="{'project-name': true, 'project-name-noborder': !nameEditing}"
                         id="name-input-field"
                         autocomplete="off"
                         :style="inputTextStyle"
                     />                    
                     <i 
                         style="margin-left: 2px;" 
-                        class="fa"
                         @click="onProjectPenEditClick()"
-                        :class="{'fa-check': nameEditing, 'fa-pencil-alt': !nameEditing}"></i>  
+                        :class="{fa: true, 'fa-check': nameEditing, 'fa-pencil-alt': !nameEditing}"></i>  
                 </div>
             </div> 
             <div class="menu-separator-div"></div>
@@ -93,7 +91,8 @@
                     :title="this.$i18n.t('contextMenu.redo')"
                 />
             </div>
-        </div>       
+        </div> 
+        <a id="feedbackLink" href="/feedback" target="_blank"><i class="far fa-comment" :title="$t('action.feedbackLink')"></i></a>
     </div>
 </template>
 
@@ -435,6 +434,20 @@ export default Vue.extend({
     height: 24px;
     display: block;
     margin: auto;
+}
+
+#feedbackLink {
+    color: #3467FE;
+    width:24px1;
+    font-size: 22px;
+    margin:auto;
+    display: block;
+    bottom:0px;
+    position:absolute;    
+}
+
+#feedbackLink:hover {
+    color: #2648af;
 }
 
 //the following classes are overriding the default CSS for vue-burger-menu

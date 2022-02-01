@@ -1,7 +1,6 @@
 <template>
     <div
-        class="frame-body-container"
-        :class="{error: empty}"
+        :class="{'frame-body-container':true, error: empty}"
         :id="uiid"
     >
         <div>

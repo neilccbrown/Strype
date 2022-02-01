@@ -1,12 +1,9 @@
 import Parser from "@/parser/parser";
 import store from "@/store/store";
-import { CodeStyle, FrameObject } from "@/types/types";
+import { FrameObject } from "@/types/types";
 /* IFTRUE_isMicrobit */
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 /* FITRUE_isMicrobit */
-/* IFTRUE_isPurePython */
-import brythonModuleDescription from "@/autocompletion/brython_libs.json";
-/* FITRUE_isPurePython */
 
 import i18n from "@/i18n";
 import _ from "lodash";
@@ -85,7 +82,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // we also replace with pass# to avoid leaving a blank or commented row which is considered a mistake by python
     userCode = userCode.replaceAll(INDENT+"print(",INDENT+"pass#");
 
-    let inspectionCode ="from browser import window";
+    let inspectionCode ="from browser import window\n";
     
     /* IFTRUE_isMicrobit */
     inspectionCode += "import sys as __sys"+"\n"+

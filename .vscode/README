@@ -1,0 +1,11 @@
+/*** SERVE OR BUILD STRYPE EDITOR ***/
+
+In order to serve or build Strype editor (python or microbit) follow the following procedure
+
+1) make sure no service (serve/build) is running, and stop it if so
+2) in order to get the rendering properly prepare the files for python/microbit --> for EACH file containing the /*IFTRUE_xx*/ directive, add an empty line after the directive, *save* the file, and then remove the space and save the file again
+3) Launch the task for either serving or building the app for microbit/python. (Go to "Terminal > Run task..." and choose one of:
+    - Serve Strype micro:bit
+    - Serve Strype python
+    - Build Strype micro:bit
+    - Build Strype python

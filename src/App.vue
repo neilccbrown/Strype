@@ -28,7 +28,7 @@
                 <div class="row no-gutters" >
                     <Menu 
                         :id="menuUIID" 
-                        class="col-auto noselect"
+                        class="noselect"
                     />
                     <div class="col">
                         <div :id="editorUIID" class="editor-code-div noselect" >
