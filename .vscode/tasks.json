@@ -5,6 +5,7 @@
             "label": "Serve Strype micro:bit",
             "dependsOn": [
                 "npm: clear",
+                "clear cache loader",
                 "SUB serve strype microbit"
             ],
             "problemMatcher": []
@@ -13,6 +14,7 @@
             "label": "Build Strype micro:bit",
             "dependsOn": [
                 "npm: clear",
+                "clear cache loader",
                 "SUB build strype microbit"
             ],
             "problemMatcher": []
@@ -21,6 +23,7 @@
             "label": "Serve Strype python",
             "dependsOn": [
                 "npm: clear",
+                "clear cache loader",
                 "SUB serve strype python"
             ],
             "problemMatcher": []
@@ -29,6 +32,7 @@
             "label": "Build Strype python",
             "dependsOn": [
                 "npm: clear",
+                "clear cache loader",
                 "SUB build strype python"
             ],
             "problemMatcher": []
@@ -62,6 +66,20 @@
             "problemMatcher": [],
             "label": "SUB build strype python",
             "detail": "vue-cli-service build"
-        }
+        },
+        {
+            "type": "npm",
+            "script": "cache clean --force",
+            "problemMatcher": [],
+            "label": "npm: clear",
+        },
+        {
+			"type": "shell",
+			"command": "rm -rf ./node_modules/.cache",
+            "windows": {
+                "command":"remove-item -path .\\node_modules\\.cache\\ -Force -Recurse"
+            },
+			"label": "clear cache loader",
+		}
     ]
 }
