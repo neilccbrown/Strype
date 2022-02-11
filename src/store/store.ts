@@ -604,6 +604,9 @@ export default new Vuex.Store({
             //then change the UI via i18n
             i18n.locale = lang;
 
+            //set the right app name
+            document.title = i18n.t("appName") as string;
+
             //change the values of the container frames as they are not reactive
             Object.values(state.frameObjects).forEach((frame) => {
                 switch(frame.frameType.type){

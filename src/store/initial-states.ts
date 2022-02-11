@@ -39,14 +39,14 @@ const initialStates: StateObjects = {
     "initialPythonState": {
         debugging: false,
         initialState: initialPythonState,
-        showKeystroke: true,
+        showKeystroke: false,
         nextAvailableId: 3,
     },
 
     "initialMicrobitState": {
         debugging: false,
         initialState: initialMicrobitState,
-        showKeystroke: true,
+        showKeystroke: false,
         nextAvailableId: 3,
     },
 
