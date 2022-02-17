@@ -1,4 +1,5 @@
 {
+    "appName": "Strype editor",
     "messageBannerMessage": {
         "deleteLargeCode": "You just deleted a large piece of code. If you didn't mean to, you can:",
         "uploadSuccessMicrobit": "Upload to micro:bit completed.",

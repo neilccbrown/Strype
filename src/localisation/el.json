@@ -1,4 +1,5 @@
 {
+    "appName": "Επεξεργαστής Strype",
     "messageBannerMessage": {
         "deleteLargeCode": "Διαγράψατε ένα μεγάλο κομμάτι κώδικα. Έαν έγινε καταλάθος μπορείτε να:",
         "uploadSuccessMicrobit": "Κωδικας μεταφορτόφηκε στο micro:bit",
