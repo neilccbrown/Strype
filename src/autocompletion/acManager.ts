@@ -63,6 +63,69 @@ export function storeCodeToDOM(code: string, runPythonCode: boolean): void {
     }
 }
 
+// Function to replace the input function of Python, as this should not be run when the a/c is running
+function replaceInputFunction(code: string): string {
+    // the method can be preceded by white characters, operators and brackets
+    const regex = /([\s+([,?:=&|])(input *\()/g
+    // if the method is not found at all we just exit and return the code at it was
+    // otherwise, we need a bit more than just replacing the above regex: we have no guarantee the first/last closing parenthesis 
+    // MATCH the opening one of "input(". We search for the right replacement to make
+    if(code.match(regex) == null) {
+        return code;
+    }
+    
+    const regexMatchs = code.matchAll(regex);
+    for(const regexMatch of regexMatchs) {
+        // we find where to stop the replacement for one match, note that we know there will be at least a \n introduced by the a/c control code before "input("
+        const startMatchIndex = regexMatch.index??0 + 1 // because "input(" is the second group, the first group will always have something
+        let hasOpenedBracket = false, bracketCount = 0, inStrLitteral = false, strLitteralIndic = "", charIndex = 1;
+        while(!hasOpenedBracket || bracketCount > 0) {
+            const charInCode = code.charAt(startMatchIndex + charIndex);
+            const prevCharInCode = code.charAt(startMatchIndex + charIndex - 1) ;
+            switch(charInCode){
+            case "(":
+                hasOpenedBracket = true;
+                if(!inStrLitteral){
+                    bracketCount++;
+                }
+                break;
+            case ")":
+                if(!inStrLitteral){
+                    bracketCount--;
+                }
+                break;            
+            case "\"":
+                if(!inStrLitteral){
+                    strLitteralIndic = "\""
+                    inStrLitteral = true
+                }
+                else {
+                    if(prevCharInCode!= "\\" && strLitteralIndic == "\""){
+                        inStrLitteral = false;
+                    }
+                }
+                break;
+            case "'":
+                if(!inStrLitteral){
+                    strLitteralIndic = "'"
+                    inStrLitteral = true
+                }
+                else {
+                    if(prevCharInCode!= "\\" && strLitteralIndic == "'"){
+                        inStrLitteral = false;
+                    }
+                }
+                break;                
+            }        
+            charIndex++
+        }
+        //for this match, we can now replace the input() function by a string (of the same length to make sure we don't mess up indexes)
+        //note that we repeat a space charIndex-3 times because we need to account the 2 double quotes, and we started iterating charIndex at 1
+        code = code.substring(0, startMatchIndex + 1) + "\"" + " ".repeat(charIndex - 3) + "\"" + code.substring(startMatchIndex + charIndex)
+    }
+    return code;
+}
+
 // Function to be used in getCandidatesForAC() and getImportCandidatesForAC() 
 // This parts contains the logic used with Brython to retrieve the AC elements.
 /*
@@ -80,7 +143,11 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // we want to remove prints, so that when the AC runs on Brython we don't get the prints on the console or the browsers terminal
     // we search for INDENT+print to avoid the very rare case that print is part of a string
     // we also replace with pass# to avoid leaving a blank or commented row which is considered a mistake by python
+    // we also search for the input function as it would systematically trigger a prompt whenever we run the a/c (but OK for exec on console though)
+    // we replace it by an empty string
     userCode = userCode.replaceAll(INDENT+"print(",INDENT+"pass#");
+    userCode = replaceInputFunction(userCode)
+
 
     let inspectionCode ="from browser import window\n";
     
@@ -91,7 +158,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     "__sys.modules['os'] = __osMB"+"\n"+
     "__sys.modules['time'] = __timeMB"
     /* FITRUE_isMicrobit */
-
 
     if(regenerateAC){
         /*
@@ -259,6 +325,11 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     //writing a number)
 
     if((slotCode.match(/"/g) || []).length % 2 == 1 || !isNaN(parseFloat(slotCode.substr(Math.max(slotCode.lastIndexOf(" "), 0))))){
+        // the user code for the python editor should not be triggered anymore, so we "break" the editor code's content
+        const userPythonCodeHTMLElt = document.getElementById("userCode");
+        if(userPythonCodeHTMLElt){        
+            (userPythonCodeHTMLElt as HTMLTextAreaElement).value = "";
+        }
         return {tokenAC: "", contextAC: "", showAC: false};
     }
 
@@ -335,6 +406,11 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
         // after a space that doesn't separate some parts of an operator. In other words,
         // we want to avoid to show the autocompletion EVERYTIME the space key is hit.
         if(slotCode.trim().length > 0 && !isACNeededToShow(slotCode)){
+            // the user code for the python editor should not be triggered anymore, so we "break" the editor code's content
+            const userPythonCodeHTMLElt = document.getElementById("userCode");
+            if(userPythonCodeHTMLElt){        
+                (userPythonCodeHTMLElt as HTMLTextAreaElement).value = "";
+            }
             return {tokenAC: tokenAC , contextAC: contextAC, showAC: false};
         }
         // code we will give us context and token is the last piece of code after the last white space
