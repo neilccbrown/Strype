@@ -149,7 +149,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     userCode = replaceInputFunction(userCode)
 
 
-    let inspectionCode ="from browser import window\n";
+    let inspectionCode ="";
     
     /* IFTRUE_isMicrobit */
     inspectionCode += "import sys as __sys"+"\n"+
@@ -309,6 +309,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // This must be done by Brython to be sure that the AC and documentation
     // have had time to load.
     inspectionCode += "\ntry:"
+    inspectionCode += "\n"+INDENT+"from browser import window";
     inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')";
     inspectionCode += "\n"+INDENT+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
     inspectionCode += "\nexcept:\n"+INDENT+"pass";

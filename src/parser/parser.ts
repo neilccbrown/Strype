@@ -1,7 +1,7 @@
 import Compiler from "@/compiler/compiler";
 import i18n from "@/i18n";
 import store from "@/store/store";
-import { CodeStyle, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits} from "@/types/types";
+import { CodeStyle, CommentDefinition, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
@@ -84,7 +84,7 @@ export default class Parser {
         const lengths: number[] = [];
         let currSlotIndex = 0;
 
-        if(this.checkIfFrameHasError(statement)) {
+        if((statement.frameType.type === CommentDefinition.type) || this.checkIfFrameHasError(statement)) {
             return "";
         }
             
