@@ -85,8 +85,8 @@ export default Vue.extend({
         pasteAvailable(): boolean {
             return store.getters.getIsCopiedAvailable();
         },
-        pasteOption(): Record<symbol, string>[] {
-            return this.pasteAvailable? [{name: this.$i18n.t("contextMenu.paste"), method: "paste"}] : [{}];
+        pasteOption(): Record<string, string>[] {
+            return this.pasteAvailable? [{name: this.$i18n.t("contextMenu.paste") as string, method: "paste"}] : [{}];
         },
         allowContextMenu(): boolean {
             return store.getters.getContextMenuShownId() === this.uiid; 

@@ -1,7 +1,7 @@
 import Compiler from "@/compiler/compiler";
 import i18n from "@/i18n";
 import store from "@/store/store";
-import { CodeStyle, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits} from "@/types/types";
+import { CodeStyle, CommentDefinition, EmptyDefinition, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
@@ -84,7 +84,8 @@ export default class Parser {
         const lengths: number[] = [];
         let currSlotIndex = 0;
 
-        if(this.checkIfFrameHasError(statement)) {
+        if(this.checkIfFrameHasError(statement) || (statement.frameType.type === CommentDefinition.type) 
+            || (statement.frameType.type === EmptyDefinition.type && statement.contentDict[0].code.startsWith("#")) ) {
             return "";
         }
             
@@ -390,8 +391,8 @@ export default class Parser {
     private isCompoundStatement(line: string, spaces: string[]): boolean {
         // it's a compound statement if
         return line.startsWith(spaces+"elif ") ||  // it's an elif statement OR
-               line.startsWith(spaces+"else:") ||  // it's an else statement OR
-               line.startsWith(spaces+"finally:") // it's a finally statement
+               line.startsWith(spaces+"else ") ||  // it's an else statement OR
+               line.startsWith(spaces+"finally ") // it's a finally statement
         
         // We do not have to check try and except here as they are checked by getCodeWithoutErrors       
     }
