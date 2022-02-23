@@ -33,7 +33,7 @@ def runCode(__ev):
     editor.run()
 
 def loadAC(__ev):
-    exec(document['userCode'].value)
+    exec(document['userCode'].value, {'__name__':'__main__'})
       
 if document["runCode"]:
     document["runCode"].bind("click", runCode)

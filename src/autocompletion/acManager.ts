@@ -149,14 +149,17 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     userCode = replaceInputFunction(userCode)
 
 
-    let inspectionCode ="";
+    let inspectionCode ="from browser import document as __document\n";
     
     /* IFTRUE_isMicrobit */
-    inspectionCode += "import sys as __sys"+"\n"+
-    "import __osMB "+"\n"+
-    "import __timeMB"+"\n"+
-    "__sys.modules['os'] = __osMB"+"\n"+
-    "__sys.modules['time'] = __timeMB"
+    inspectionCode += "import sys as __sys\n"+
+    "import __osMB\n"+
+    "import __timeMB\n"+
+    "import __random\n"+
+    "__sys.modules['os'] = __osMB\n"+
+    "__sys.modules['time'] = __timeMB\n"+
+    "__sys.modules['random'] = __random\n"
+
     /* FITRUE_isMicrobit */
 
     if(regenerateAC){
@@ -185,6 +188,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         else{
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = dir("+contextAC+")";
         }
+        
         inspectionCode += "\nexcept:\n"+INDENT+"validContext = False"
         // if the previous lines created a problem, that means that the context or the token are not correct and we should stop
         inspectionCode += "\nif(validContext):"
@@ -234,16 +238,16 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
         // Convert back to dictionary!
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except:\n"+INDENT+INDENT+INDENT+INDENT+"pass" 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"print('exception1', e)" 
 
         
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules"
         
         // If there are no results
         inspectionCode += "\n"+INDENT+INDENT+"else:"
         // We empty any previous results so that the AC won't be shown
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
-        inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass" 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text =''"
+        inspectionCode += "\n"+INDENT+"except Exception as e2:\n"+INDENT+INDENT+"print('exception2', e2)" 
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
@@ -271,8 +275,12 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if isBuiltInType:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult.__name__ or 'No documentation available'));"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function '+result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));"
+        //We make sure for functions that we can get the arguments. If we can't we just explains it to get something, at least and not having a/c crashing
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if 'co_varnames' in dir(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__')):"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + '\\n(arguments could not be found)')"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Built-in value')"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"else:"
@@ -286,23 +294,23 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+typesSpanId+"'].text = types;"
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+documentationSpanId+"'].text = documentation;"
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+typesSpanId+"'].text = types;"
 
         // we store the context *path* obtained by checking the type of the context with Python, or leave empty if no context.
         // it will be used in the AutoCompletion component to check versions
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = ''";
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = ''";
         if(contextAC.length > 0){
             // if there is a context,  we get the context path from 
             // - self value if that's a module,
             // - type() that returns the type as "<class 'xxx'>"
             inspectionCode += "\n"+INDENT+INDENT+"if str(globals().get('"+contextAC+"')).startswith('<module '):";
-            inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = '"+contextAC+"'";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = '"+contextAC+"'";
             inspectionCode += "\n"+INDENT+INDENT+"elif str(type("+contextAC+")).startswith('<class \\''):";
-            inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
         }
 
-        inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass";
+        inspectionCode += "\n"+INDENT+"except Exception as e3:\n"+INDENT+INDENT+"print('exception3', e3)";
     }
 
     // Fake a click to the hidden span to trigger the AC window to show
@@ -311,8 +319,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\ntry:"
     inspectionCode += "\n"+INDENT+"from browser import window";
     inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')";
-    inspectionCode += "\n"+INDENT+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
-    inspectionCode += "\nexcept:\n"+INDENT+"pass";
+    inspectionCode += "\n"+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
+    inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"print('exception4', e4)";
     
     // We need to put the user code before, so that the inspection can work on the code's results
     storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode, false);
