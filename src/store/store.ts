@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, APIItemTextualDescription, ImportDefinition, CommentDefinition, EmptyDefinition} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, APIItemTextualDescription, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
@@ -205,8 +205,6 @@ export default new Vuex.Store({
             // We need the next joint of the current in order to contextualise the potential joint frames
             let nextJointChildID = -100;
 
-            const uniqueJointFrameTypes = [Definitions.FinallyDefinition.type, Definitions.ElseDefinition.type];
-
             // The RULE for the JOINTS is:
             // We allow joint addition only at the end of the body
 
@@ -247,19 +245,23 @@ export default new Vuex.Store({
                     // -100 means there is no next Joint Child => focused is the last
                     if(nextJointChildID === -100){
                         // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
-                        if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
+                        //    OR special case if we are in TRY statement: we can't show ELSE at any case
+                        // else show them all
+                        if(focusedFrame.frameType.type === TryDefinition.type){
+                            allowedJointChildren.splice(allowedJointChildren.indexOf(ElseDefinition.type), 1); 
+                        }
+                        else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
                             allowedJointChildren.splice(
                                 0,
                                 allowedJointChildren.indexOf(focusedFrame.frameType.type)+1 //delete from the beginning to the current frame type
-                            );
-                        }
-                        //else show them all
+                            );                        
+                        } 
                     }
                     // on the presence of a next child
                     else{
                         const nextJointChild = state.frameObjects[nextJointChildID];          
 
-                        // if the next is not unique, show all non-uniques
+                        // if the next is not unique, show all non-uniques ()
                         if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)) {
                             allowedJointChildren = allowedJointChildren.filter( (x) => !uniqueJointFrameTypes.includes(x)) // difference
                         }
@@ -269,11 +271,20 @@ export default new Vuex.Store({
                         }
                         // In the case where only the next is unique
                         // show all but the available up to before the existing unique (i.e. at most up to ELSE)
+                        // Special case: if we are in a TRY statement (and since we passed the condition above, next is unique (i.e. FINALLY)) --> we can't show ELSE
                         else {
-                            allowedJointChildren.splice(
-                                allowedJointChildren.indexOf(nextJointChild.frameType.type),
-                                allowedJointChildren.length - allowedJointChildren.indexOf(nextJointChild.frameType.type) //delete from the index of the nextJointChild to the end
-                            );
+                            if(focusedFrame.frameType.type === TryDefinition.type){
+                                allowedJointChildren.splice(
+                                    allowedJointChildren.indexOf(ElseDefinition.type),
+                                    1
+                                );
+                            }
+                            else{
+                                allowedJointChildren.splice(
+                                    allowedJointChildren.indexOf(nextJointChild.frameType.type),
+                                    allowedJointChildren.length - allowedJointChildren.indexOf(nextJointChild.frameType.type) //delete from the index of the nextJointChild to the end
+                                );
+                            }
                         }
                     }
                 }
