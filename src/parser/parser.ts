@@ -1,7 +1,7 @@
 import Compiler from "@/compiler/compiler";
 import i18n from "@/i18n";
 import store from "@/store/store";
-import { CodeStyle, CommentDefinition, EmptyDefinition, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits} from "@/types/types";
+import { CodeStyle, CommentDefinition, EmptyDefinition, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits, VarAssignDefinition} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
@@ -91,7 +91,8 @@ export default class Parser {
             
         statement.frameType.labels.forEach( (label) => {
             if(!label.slot || statement.contentDict[currSlotIndex].shownLabel) {
-                output += label.label;
+                //for varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
+                output += ((label.label.length > 0 && statement.frameType.type === VarAssignDefinition.type) ? " = " : label.label);
 
                 //if there is an editable slot
                 if(label.slot){

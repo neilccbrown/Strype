@@ -412,7 +412,7 @@ export const VarAssignDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.varassign,
     labels: [
         { label: "", slot: true, defaultText: "identifier", optionalSlot: false, acceptAC: false},
-        { label: " = ", slot: true, defaultText: "value", optionalSlot: false},
+        { label: " &#x21D0; ", slot: true, defaultText: "value", optionalSlot: false},
     ],
     colour: "#F6F2E9",
 };
