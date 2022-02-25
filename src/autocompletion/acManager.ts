@@ -149,7 +149,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     userCode = replaceInputFunction(userCode)
 
 
-    let inspectionCode ="from browser import document as __document\n";
+    let inspectionCode ="from browser import document as __document, console as __console\n";
     
     /* IFTRUE_isMicrobit */
     inspectionCode += "import sys as __sys\n"+
@@ -238,7 +238,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
         // Convert back to dictionary!
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"print('exception1', e)" 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)" 
 
         
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules"
@@ -247,7 +247,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+"else:"
         // We empty any previous results so that the AC won't be shown
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text =''"
-        inspectionCode += "\n"+INDENT+"except Exception as e2:\n"+INDENT+INDENT+"print('exception2', e2)" 
+        inspectionCode += "\n"+INDENT+"except Exception as e2:\n"+INDENT+INDENT+"__console.log('exception2', e2)" 
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
@@ -310,7 +310,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
             inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
         }
 
-        inspectionCode += "\n"+INDENT+"except Exception as e3:\n"+INDENT+INDENT+"print('exception3', e3)";
+        inspectionCode += "\n"+INDENT+"except Exception as e3:\n"+INDENT+INDENT+"__console.log('exception3', e3)";
     }
 
     // Fake a click to the hidden span to trigger the AC window to show
@@ -320,7 +320,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\n"+INDENT+"from browser import window";
     inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')";
     inspectionCode += "\n"+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
-    inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"print('exception4', e4)";
+    inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"__console.log('exception4', e4)";
     
     // We need to put the user code before, so that the inspection can work on the code's results
     storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode, false);
