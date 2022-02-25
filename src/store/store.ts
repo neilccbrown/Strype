@@ -2149,11 +2149,14 @@ export default new Vuex.Store({
             }
         },
 
-        doSetStateFromJSONStr({commit}, payload: {stateJSONStr: string; errorReason?: string; showMessage?: boolean}){
+        doSetStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; errorReason?: string; showMessage?: boolean}){
             commit(
                 "updateState",
                 JSON.parse(payload.stateJSONStr)
             )
+            // If the language has been updated, we need to also update the UI accordingly
+            commit("setAppLang", state.appLang);
+            
             if(payload.showMessage) {
                 commit(
                     "setMessageBanner",

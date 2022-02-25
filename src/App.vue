@@ -28,6 +28,7 @@
                 <div class="row no-gutters" >
                     <Menu 
                         :id="menuUIID" 
+                        v-on:app-showprogress="applyShowAppProgress"
                         class="noselect"
                     />
                     <div class="col">
