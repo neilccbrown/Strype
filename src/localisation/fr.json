@@ -10,7 +10,8 @@
       "uploadEditorFileNotSupported": "Ce format de fichier n'est pas supporté. Extension de fichier attendue: {list}. Votre code n'a pas été modifié.",
       "uploadEditorFileSuccess": "Le chargement de fichier pour l'éditeur a été réalisé avec succès. Votre code a été chargé.",
       "forbiddenFrameMove": "Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné.",
-      "functionFrameCantDelete": "Un cade de définition de fonction ne peut pas être supprimé à partir de son contenu."
+      "functionFrameCantDelete": "Un cade de définition de fonction ne peut pas être supprimé à partir de son contenu.",
+      "pythonInputWarning": "Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'."
   },
   "buttonLabel":{
       "undo": "Annuler",

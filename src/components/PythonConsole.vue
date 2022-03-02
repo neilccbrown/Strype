@@ -7,6 +7,7 @@
             autocomplete="off" 
             @focus="onFocus()"
             @blur="onBlur()"
+            @change="onChange"
             disabled
         >    
         </textarea>
@@ -41,6 +42,11 @@ export default Vue.extend({
                 "setEditFlag",
                 false
             );    
+        },
+
+        onChange(): void {
+            const consoleTextarea = document.getElementById("console") as HTMLTextAreaElement
+            consoleTextarea.scrollTop = consoleTextarea.scrollHeight;
         },
     },
 
