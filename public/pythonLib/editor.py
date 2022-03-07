@@ -6,8 +6,7 @@ import binascii
 
 import tb as traceback
 
-from browser import document as doc, window, alert, bind, html
-import browser.widgets.dialog as dialog
+from browser import document as doc, window, html
 
 has_ace = True
 try:
@@ -70,6 +69,7 @@ class cOutput:
 
     def flush(self):
         self.cons.value += self.buf
+        doc["console"].dispatchEvent(window.Event.new("change"))
         self.buf = ''
 
     def __len__(self):

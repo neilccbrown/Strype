@@ -1,6 +1,6 @@
 import Parser from "@/parser/parser";
 import store from "@/store/store";
-import { FrameObject } from "@/types/types";
+import { CodeMatchIterable, FrameObject } from "@/types/types";
 /* IFTRUE_isMicrobit */
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 /* FITRUE_isMicrobit */
@@ -56,72 +56,92 @@ export function storeCodeToDOM(code: string, runPythonCode: boolean): void {
         (userPythonCodeHTMLElt as HTMLTextAreaElement).value = code;
 
         if(runPythonCode){
+            /** Show message about input (cf details below)
+             * 
+             * The input function (Python) is transpiled as the prompt fonction (JS) by Brython.
+             * However, most browsers have a strange way of dealing with JS scripts containing the prompt function (e.g. Chrome):
+             * they will "wait" for the Javascript loop/script to be finishd before updated the DOM. Therefore, when we want interaction in the Python programme
+             * using the input function, the JS transcripted code will not be offering this: the prompts will show but no change of the DOM (i.e. the console textarea text)
+             * will be updated until the script has finished.
+             * This is a very serious issue but there is no solution for it at the moment using Brython.
+             */
+
             const runCodeContainer = document.getElementById("runCode");
-            // run the code by "clicking" the runCode
-            runCodeContainer?.click();
+            store.dispatch("runBrythonConsole", {containerElmt: runCodeContainer, hasInput: getMatchesForCodeInputFunction(code).hasMatches})
         }
     }
 }
 
-// Function to replace the input function of Python, as this should not be run when the a/c is running
-function replaceInputFunction(code: string): string {
+// Functions to check / replace the input function of Python, as this should not be run when the a/c is running
+function getMatchesForCodeInputFunction(code: string) : CodeMatchIterable {
     // the method can be preceded by white characters, operators and brackets
     const regex = /([\s+([,?:=&|])(input *\()/g
+    const res = {hasMatches: code.match(regex) !==null} as CodeMatchIterable
+    if(res.hasMatches){
+        res.iteratorMatches = code.matchAll(regex)
+    }
+    return res;
+}
+
+function replaceInputFunction(code: string): string {
     // if the method is not found at all we just exit and return the code at it was
     // otherwise, we need a bit more than just replacing the above regex: we have no guarantee the first/last closing parenthesis 
     // MATCH the opening one of "input(". We search for the right replacement to make
-    if(code.match(regex) == null) {
+    const regexMatchs = getMatchesForCodeInputFunction(code)
+    
+    if(!regexMatchs.hasMatches) {
         return code;
     }
     
-    const regexMatchs = code.matchAll(regex);
-    for(const regexMatch of regexMatchs) {
+    if(regexMatchs.iteratorMatches) {
+        for(const regexMatch of regexMatchs.iteratorMatches) {
         // we find where to stop the replacement for one match, note that we know there will be at least a \n introduced by the a/c control code before "input("
-        const startMatchIndex = regexMatch.index??0 + 1 // because "input(" is the second group, the first group will always have something
-        let hasOpenedBracket = false, bracketCount = 0, inStrLitteral = false, strLitteralIndic = "", charIndex = 1;
-        while(!hasOpenedBracket || bracketCount > 0) {
-            const charInCode = code.charAt(startMatchIndex + charIndex);
-            const prevCharInCode = code.charAt(startMatchIndex + charIndex - 1) ;
-            switch(charInCode){
-            case "(":
-                hasOpenedBracket = true;
-                if(!inStrLitteral){
-                    bracketCount++;
-                }
-                break;
-            case ")":
-                if(!inStrLitteral){
-                    bracketCount--;
-                }
-                break;            
-            case "\"":
-                if(!inStrLitteral){
-                    strLitteralIndic = "\""
-                    inStrLitteral = true
-                }
-                else {
-                    if(prevCharInCode!= "\\" && strLitteralIndic == "\""){
-                        inStrLitteral = false;
+            const startMatchIndex = regexMatch.index??0 + 1 // because "input(" is the second group, the first group will always have something
+            let hasOpenedBracket = false, bracketCount = 0, inStrLitteral = false, strLitteralIndic = "", charIndex = 1;
+            while(!hasOpenedBracket || bracketCount > 0) {
+                const charInCode = code.charAt(startMatchIndex + charIndex);
+                const prevCharInCode = code.charAt(startMatchIndex + charIndex - 1) ;
+                switch(charInCode){
+                case "(":
+                    hasOpenedBracket = true;
+                    if(!inStrLitteral){
+                        bracketCount++;
                     }
-                }
-                break;
-            case "'":
-                if(!inStrLitteral){
-                    strLitteralIndic = "'"
-                    inStrLitteral = true
-                }
-                else {
-                    if(prevCharInCode!= "\\" && strLitteralIndic == "'"){
-                        inStrLitteral = false;
+                    break;
+                case ")":
+                    if(!inStrLitteral){
+                        bracketCount--;
                     }
-                }
-                break;                
-            }        
-            charIndex++
+                    break;            
+                case "\"":
+                    if(!inStrLitteral){
+                        strLitteralIndic = "\""
+                        inStrLitteral = true
+                    }
+                    else {
+                        if(prevCharInCode!= "\\" && strLitteralIndic == "\""){
+                            inStrLitteral = false;
+                        }
+                    }
+                    break;
+                case "'":
+                    if(!inStrLitteral){
+                        strLitteralIndic = "'"
+                        inStrLitteral = true
+                    }
+                    else {
+                        if(prevCharInCode!= "\\" && strLitteralIndic == "'"){
+                            inStrLitteral = false;
+                        }
+                    }
+                    break;                
+                }        
+                charIndex++
+            }
+            //for this match, we can now replace the input() function by a string (of the same length to make sure we don't mess up indexes)
+            //note that we repeat a space charIndex-3 times because we need to account the 2 double quotes, and we started iterating charIndex at 1
+            code = code.substring(0, startMatchIndex + 1) + "\"" + " ".repeat(charIndex - 3) + "\"" + code.substring(startMatchIndex + charIndex)
         }
-        //for this match, we can now replace the input() function by a string (of the same length to make sure we don't mess up indexes)
-        //note that we repeat a space charIndex-3 times because we need to account the 2 double quotes, and we started iterating charIndex at 1
-        code = code.substring(0, startMatchIndex + 1) + "\"" + " ".repeat(charIndex - 3) + "\"" + code.substring(startMatchIndex + charIndex)
     }
     return code;
 }
@@ -149,14 +169,17 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     userCode = replaceInputFunction(userCode)
 
 
-    let inspectionCode ="";
+    let inspectionCode ="from browser import document as __document, console as __console\n";
     
     /* IFTRUE_isMicrobit */
-    inspectionCode += "import sys as __sys"+"\n"+
-    "import __osMB "+"\n"+
-    "import __timeMB"+"\n"+
-    "__sys.modules['os'] = __osMB"+"\n"+
-    "__sys.modules['time'] = __timeMB"
+    inspectionCode += "import sys as __sys\n"+
+    "import __osMB\n"+
+    "import __timeMB\n"+
+    "import __random\n"+
+    "__sys.modules['os'] = __osMB\n"+
+    "__sys.modules['time'] = __timeMB\n"+
+    "__sys.modules['random'] = __random\n"
+
     /* FITRUE_isMicrobit */
 
     if(regenerateAC){
@@ -185,6 +208,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         else{
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = dir("+contextAC+")";
         }
+        
         inspectionCode += "\nexcept:\n"+INDENT+"validContext = False"
         // if the previous lines created a problem, that means that the context or the token are not correct and we should stop
         inspectionCode += "\nif(validContext):"
@@ -234,16 +258,16 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
         // Convert back to dictionary!
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except:\n"+INDENT+INDENT+INDENT+INDENT+"pass" 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)" 
 
         
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text = resultsWithModules"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules"
         
         // If there are no results
         inspectionCode += "\n"+INDENT+INDENT+"else:"
         // We empty any previous results so that the AC won't be shown
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acSpanId+"'].text =''"
-        inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass" 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text =''"
+        inspectionCode += "\n"+INDENT+"except Exception as e2:\n"+INDENT+INDENT+"__console.log('exception2', e2)" 
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
@@ -271,8 +295,12 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if isBuiltInType:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult.__name__ or 'No documentation available'));"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function '+result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));"
+        //We make sure for functions that we can get the arguments. If we can't we just explains it to get something, at least and not having a/c crashing
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if 'co_varnames' in dir(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__')):"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + '\\n(arguments could not be found)')"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Built-in value')"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"else:"
@@ -286,23 +314,23 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+documentationSpanId+"'].text = documentation;"
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+typesSpanId+"'].text = types;"
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+documentationSpanId+"'].text = documentation;"
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+typesSpanId+"'].text = types;"
 
         // we store the context *path* obtained by checking the type of the context with Python, or leave empty if no context.
         // it will be used in the AutoCompletion component to check versions
-        inspectionCode += "\n"+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = ''";
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = ''";
         if(contextAC.length > 0){
             // if there is a context,  we get the context path from 
             // - self value if that's a module,
             // - type() that returns the type as "<class 'xxx'>"
             inspectionCode += "\n"+INDENT+INDENT+"if str(globals().get('"+contextAC+"')).startswith('<module '):";
-            inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = '"+contextAC+"'";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = '"+contextAC+"'";
             inspectionCode += "\n"+INDENT+INDENT+"elif str(type("+contextAC+")).startswith('<class \\''):";
-            inspectionCode += "\n"+INDENT+INDENT+INDENT+"document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
         }
 
-        inspectionCode += "\n"+INDENT+"except:\n"+INDENT+INDENT+"pass";
+        inspectionCode += "\n"+INDENT+"except Exception as e3:\n"+INDENT+INDENT+"__console.log('exception3', e3)";
     }
 
     // Fake a click to the hidden span to trigger the AC window to show
@@ -311,8 +339,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\ntry:"
     inspectionCode += "\n"+INDENT+"from browser import window";
     inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')";
-    inspectionCode += "\n"+INDENT+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
-    inspectionCode += "\nexcept:\n"+INDENT+"pass";
+    inspectionCode += "\n"+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
+    inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"__console.log('exception4', e4)";
     
     // We need to put the user code before, so that the inspection can work on the code's results
     storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode, false);
