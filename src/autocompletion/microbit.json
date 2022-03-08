@@ -123,8 +123,8 @@
                 {"name":"ImgCrop","codePortion":"crop(x, y, w, h)"},
                 {"name":"ImgFill","codePortion":"fill(value)"}]}]},
         {"name":"button","codePortion":"button_a.","children":[
-            {"name":"buttonIsPress","codePortion":"isPressed()"},
-            {"name":"buttonWasPress","codePortion":"wasPressed()"},
+            {"name":"buttonIsPress","codePortion":"is_pressed()"},
+            {"name":"buttonWasPress","codePortion":"was_pressed()"},
             {"name":"buttonGetPress","codePortion":"get_presses()"}]},
         {"name":"sounds","codePortion":"Sound.","version":2,"children":[
                 {"name":"sound01","codePortion":"GIGGLE"},
