@@ -127,7 +127,7 @@ export default Vue.extend({
             /*FITRUE_isMicrobit */
 
             // save the project to the localStorage before exiting
-            if (typeof(Storage) !== "undefined") {
+            if (!store.getters.getIsDebugging() && typeof(Storage) !== "undefined") {
                 localStorage.setItem(storageString,store.getters.getStateJSONStrWithCheckpoints());
             }
         });
