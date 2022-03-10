@@ -1807,9 +1807,9 @@ export default new Vuex.Store({
                     if (currentFrame.id > 0) {
                         if(state.currentFrame.caretPosition === CaretPosition.body ){
                             //we just make sure the frame to delete isn't a function definition frame:
-                            //we can't delete a function def frame with backspace in its body because it will result
+                            //we can't delete a function def frame with backspace in its body (unless empty) because it will result
                             //in its content put directly into the function defs container. So we just alert the users.
-                            if(currentFrame.frameType.type !== FuncDefDefinition.type){
+                            if(currentFrame.childrenIds.length === 0 || currentFrame.frameType.type !== FuncDefDefinition.type){
                                 //just move the cursor one level up
                                 commit(
                                     "changeCaretWithKeyboard",
