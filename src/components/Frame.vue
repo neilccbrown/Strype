@@ -77,7 +77,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import store from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
 import { getFrameContextMenuUIID } from "@/helpers/editor";
@@ -376,7 +376,7 @@ export default Vue.extend({
                     this.$props.frameId
                 );
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
-                store.commit("setCurrentFrame", this.$props.frameId);
+                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below} as CurrentFrame);
                 store.dispatch("deleteFrames", "Backspace");
             }                    
         },
