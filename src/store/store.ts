@@ -2730,7 +2730,6 @@ export default new Vuex.Store({
                     // run the code by "clicking" the runCode LATER to be sure the message shows first...
                     setTimeout(()=> {
                         payload.containerElmt?.click();
-                        console.log((document.getElementById("userCode") as  HTMLTextAreaElement).value)
                     },1000);
                     setTimeout(()=>commit(
                         "setMessageBanner",

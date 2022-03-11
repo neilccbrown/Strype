@@ -65,7 +65,6 @@ export default Vue.extend({
     },
 
     computed: {
-
         isEditing(): boolean {
             return store.getters.getIsEditing();
         },
@@ -98,24 +97,11 @@ export default Vue.extend({
     },
 
     mounted() {
-        window.addEventListener(
-            "keydown",
-            (event: KeyboardEvent) => {
-                if(!this.isEditing && (event.ctrlKey || event.metaKey) && (event.key === "v")) {
-                    // A paste via shortcut cannot get the verification that would be done via a click
-                    // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here
-                    const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
-                    if(currentFrame.id === this.frameId && currentFrame.caretVisibility === this.caretAssignedPosition && this.pasteAvailable && store.getters.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) { 
-                        //we need to update the context menu as if it had been shown
-                        store.commit("setContextMenuShownId",this.uiid);
-                        this.paste();
-                        event.stopImmediatePropagation();
-                    }
-                    event.preventDefault();
-                    return;
-                }
-            }
-        );
+        window.addEventListener("keyup", this.onKeyUp);
+    },
+
+    destroyed() {
+        window.removeEventListener("keyup", this.onKeyUp)
     },
 
     updated() {
@@ -133,6 +119,22 @@ export default Vue.extend({
     },
     
     methods: {
+        onKeyUp(event: KeyboardEvent) {
+            if(!this.isEditing && (event.ctrlKey || event.metaKey) && (event.key === "v")) {
+                // A paste via shortcut cannot get the verification that would be done via a click
+                // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here
+                const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
+                if(currentFrame.id === this.frameId && currentFrame.caretVisibility === this.caretAssignedPosition && this.pasteAvailable && store.getters.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) { 
+                    //we need to update the context menu as if it had been shown
+                    store.commit("setContextMenuShownId",this.uiid);
+                    this.paste();
+                    event.stopImmediatePropagation();
+                }
+                event.preventDefault();
+                return;
+            }
+        },
+
         handleClick (event: MouseEvent): void {
             store.commit("setContextMenuShownId",this.uiid);
             if(this.pasteAvailable && store.getters.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {  

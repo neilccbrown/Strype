@@ -199,28 +199,30 @@ export default Vue.extend({
     },
 
     mounted() {
-        window.addEventListener(
-            "keydown",
-            (event: KeyboardEvent) => {
-                // Cutting/copying by shortcut is only available for a frame selection*.
-                // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
-                // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
-                if(this.isPartOfSelection && (store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c" || event.key === "x")) {
-                    if(event.key === "c"){
-                        this.copy();
-                    }
-                    else{
-                        this.cut();
-                    }
-                    event.preventDefault();
-                    return;
-                }
-            }
-        );
-    
+        window.addEventListener("keydown", this.onKeyDown);
+    },
+
+    destroyed() {
+        window.removeEventListener("keydown", this.onKeyDown);
     },
 
     methods: {
+        onKeyDown(event: KeyboardEvent) {
+            // Cutting/copying by shortcut is only available for a frame selection*.
+            // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
+            // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
+            if(this.isPartOfSelection && (store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c" || event.key === "x")) {
+                if(event.key === "c"){
+                    this.copy();
+                }
+                else{
+                    this.cut();
+                }
+                event.preventDefault();
+                return;
+            }
+        },
+
         getFrameBgColor(): string {
             // In most cases, the background colour is the one defined in the frame types.
             // The exception is for comments, which will take the same colour as their container.
