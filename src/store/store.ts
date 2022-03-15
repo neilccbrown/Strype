@@ -2716,32 +2716,6 @@ export default new Vuex.Store({
             }
         
         },
-
-        runBrythonConsole({commit}, payload:{containerElmt: HTMLElement|null, hasInput: boolean}){
-            if(payload.containerElmt !==null){
-            // in case a message is shown, leave it show first and then we can trigger Brython
-                if(payload.hasInput){
-                // Show the notification for a short moment                
-                    commit(
-                        "setMessageBanner",
-                        MessageDefinitions.PythonInputWarning
-                    );
-                
-                    // run the code by "clicking" the runCode LATER to be sure the message shows first...
-                    setTimeout(()=> {
-                        payload.containerElmt?.click();
-                    },1000);
-                    setTimeout(()=>commit(
-                        "setMessageBanner",
-                        MessageDefinitions.NoMessage
-                    ), 7000);
-                }
-                else{
-                    // run the code by "clicking" the runCode
-                    payload.containerElmt.click();
-                }
-            } 
-        },
     },
     
     modules: {},
