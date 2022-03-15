@@ -12,7 +12,7 @@ function outf(text: string) {
 }
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
-// (not to clear on its role exactly, that's from their example case)
+// (this is the default behaviour that can be overwritten if needed)
 function builtinRead(x: any) {
     if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
         throw "File not found: '" + x + "'";
@@ -20,7 +20,7 @@ function builtinRead(x: any) {
     return Sk.builtinFiles["files"][x];
 }
 
-// The function used for "transpiling" the input function of Python ot some JS handled by Skupt.
+// The function used for "transpiling" the input function of Python to some JS handled by Skulpt.
 // THe function is to be registered against the Skulpt object.
 function sInput(prompt: string) {
     // the function returns a promise to give a result back later...
@@ -34,7 +34,27 @@ function sInput(prompt: string) {
             consoleTextArea.focus();
         }
 
-        const initialConsoleTextAreaCaretPos = consoleTextArea.selectionStart;
+        let initialConsoleTextAreaCaretPos = consoleTextArea.selectionStart;
+        let compositionStartSelectStart = -1, compositionStartSelectEnd = -1; // this is used for dealing with composition, cf. below
+
+        function consoleCompositionListener(event: CompositionEvent){
+            // Listened to handle the problem with IMEs: when used, they trigger text writing even if the key events prevent default behaviour.
+            // So the approach to deal with it is to keep them anywhere, but if they appear in some parts of the console that shouldn't be edited
+            // then we just update the flag of the input point of entry (initialConsoleTextAreaCaretPos)
+            if(event.type.toLocaleLowerCase() === "compositionstart"){
+                // Keep indicators of the selection when the composition occurs, in case there is a full portion of text replaced
+                compositionStartSelectStart = consoleTextArea.selectionStart;
+                compositionStartSelectEnd = consoleTextArea.selectionEnd;
+            }
+            else {
+                // Compute the new position of the input point of entry when the composition is done, if it was performed within the non editable part
+                // of the textarea (it might then overshoot the initial position if users selected, but at this stage we can't do much...)
+                if(compositionStartSelectEnd < initialConsoleTextAreaCaretPos){
+                    const addedTextFromIME = event.data;
+                    initialConsoleTextAreaCaretPos = initialConsoleTextAreaCaretPos - ( compositionStartSelectEnd - compositionStartSelectStart) + addedTextFromIME.length;
+                }               
+            }
+        }
 
         function consoleKeyListener(event: KeyboardEvent){
             const eventKeyLowerCase = event.key.toLowerCase()
@@ -42,6 +62,8 @@ function sInput(prompt: string) {
             if (eventKeyLowerCase == "enter") {
                 // remove keyup handler from #console
                 consoleTextArea.removeEventListener("keydown", consoleKeyListener)
+                consoleTextArea.removeEventListener("compositionstart", consoleCompositionListener)
+                consoleTextArea.removeEventListener("compositionend", consoleCompositionListener)
                 // resolve the promise with the value of the input field
                 const inputText = consoleTextArea.value.substring(initialConsoleTextAreaCaretPos);
                 // add a line return to the console after we have retrieved the input text from user
@@ -75,6 +97,9 @@ function sInput(prompt: string) {
         }
 
         consoleTextArea.addEventListener("keydown", consoleKeyListener)
+        consoleTextArea.addEventListener("compositionstart", consoleCompositionListener)
+        consoleTextArea.addEventListener("compositionend", consoleCompositionListener)
+
     })
 }
 
