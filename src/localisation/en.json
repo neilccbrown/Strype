@@ -10,7 +10,7 @@
         "uploadEditorFileNotSupported": "This file format is not supported. Expected file extension: {list}. Your code has not changed.",
         "uploadEditorFileSuccess": "The editor file upload is successful. Your code has been loaded.",
         "forbiddenFrameMove": "The selected frame(s) cannot be moved because it results in illegal code.",
-        "functionFrameCantDelete": "A function definition frame cannot be deleted from its body.",
+        "functionFrameCantDelete": "A function definition frame cannot be deleted from this caret position when content is not empty.",
         "pythonInputWarning": "Warning: in Chrome/Safari, the stdout console may not update between consecutive calls to 'input'"
     },
     "buttonLabel":{

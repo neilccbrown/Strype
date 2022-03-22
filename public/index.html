@@ -13,7 +13,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
-
+  <script src="<%= BASE_URL %>js/skulpt.min.js"></script>
+  <script src="<%= BASE_URL %>js/skulpt-stdlib.js"></script>
+  
   <!-- default Enlish title-->
   <title>Strype editor</title>
 </head>
@@ -23,20 +25,14 @@
     <strong>We're sorry but Strype editor doesn't work properly without JavaScript enabled.
         Please enable it to continue.</strong>
   </noscript>
-  <div id="runCode"></div>
+  
   <div id="loadAC"></div>
   <script type="text/python3">
 from browser import document
 
-def runCode(__ev):
-    import editor
-    editor.run()
-
 def loadAC(__ev):
     exec(document['userCode'].value, {'__name__':'__main__'})
       
-if document["runCode"]:
-    document["runCode"].bind("click", runCode)
 document["loadAC"].bind("click", loadAC)
     </script>
 

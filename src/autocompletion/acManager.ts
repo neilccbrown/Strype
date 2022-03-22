@@ -48,27 +48,12 @@ function isACNeededToShow(code: string): boolean {
     return foundOperatorFlag;
 }
 
-export function storeCodeToDOM(code: string, runPythonCode: boolean): void {
+export function storeCodeToDOM(code: string): void {
     //evaluate the Python user code for the AC
     const userPythonCodeHTMLElt = document.getElementById("userCode");
 
     if(userPythonCodeHTMLElt){        
         (userPythonCodeHTMLElt as HTMLTextAreaElement).value = code;
-
-        if(runPythonCode){
-            /** Show message about input (cf details below)
-             * 
-             * The input function (Python) is transpiled as the prompt fonction (JS) by Brython.
-             * However, most browsers have a strange way of dealing with JS scripts containing the prompt function (e.g. Chrome):
-             * they will "wait" for the Javascript loop/script to be finishd before updated the DOM. Therefore, when we want interaction in the Python programme
-             * using the input function, the JS transcripted code will not be offering this: the prompts will show but no change of the DOM (i.e. the console textarea text)
-             * will be updated until the script has finished.
-             * This is a very serious issue but there is no solution for it at the moment using Brython.
-             */
-
-            const runCodeContainer = document.getElementById("runCode");
-            store.dispatch("runBrythonConsole", {containerElmt: runCodeContainer, hasInput: getMatchesForCodeInputFunction(code).hasMatches})
-        }
     }
 }
 
@@ -343,7 +328,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"__console.log('exception4', e4)";
     
     // We need to put the user code before, so that the inspection can work on the code's results
-    storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode, false);
+    storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
 }
 
 // Check every time you're in a slot and see how to show the AC (for the code section)

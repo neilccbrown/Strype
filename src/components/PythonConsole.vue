@@ -3,8 +3,8 @@
     <div>
         <button id="run" @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')" ></button>
         <textarea 
-            id="console" 
-            autocomplete="off" 
+            id="strypePythonConsole"
+            ref="strypePythonConsole"
             @focus="onFocus()"
             @blur="onBlur()"
             @change="onChange"
@@ -19,15 +19,20 @@ import Vue from "vue";
 import store from "@/store/store";
 import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
+import { runPythonConsole } from "@/helpers/runPythonConsole";
 
 export default Vue.extend({
     name: "PythonConsole",
 
     methods: {
         runCodeOnPyConsole() {
+            const console = this.$refs.strypePythonConsole as HTMLTextAreaElement;
+            console.value = "";
             const parser = new Parser();
             const userCode = parser.getFullCode();
-            storeCodeToDOM(userCode,true);
+            storeCodeToDOM(userCode);
+            // Trigger the actual console launch
+            runPythonConsole(console, userCode);
         },
 
         onFocus(): void {
@@ -45,7 +50,7 @@ export default Vue.extend({
         },
 
         onChange(): void {
-            const consoleTextarea = document.getElementById("console") as HTMLTextAreaElement
+            const consoleTextarea = this.$refs.strypePythonConsole as HTMLTextAreaElement
             consoleTextarea.scrollTop = consoleTextarea.scrollHeight;
         },
     },
@@ -59,7 +64,7 @@ export default Vue.extend({
         -moz-box-sizing: border-box;    /* Firefox, other Gecko */
         box-sizing: border-box;         /* Opera/IE 8+ */
     }
-    #console {
+    #strypePythonConsole {
         width:100%;
         height:300px;
         font-size: 12px;
