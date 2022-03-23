@@ -1,4 +1,5 @@
 import Compiler from "@/compiler/compiler";
+import { hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
 import store from "@/store/store";
 import { CodeStyle, CommentDefinition, EmptyDefinition, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits, VarAssignDefinition} from "@/types/types";
@@ -13,16 +14,10 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean): Parse
     // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
     // Therefore, we expect the errors to already be found out when this method is called, and we don't need
     // to retrieve them again.
-
     const parser = new Parser();
     const out = parser.parse();
 
-    // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
-    // by an error class on a frame ("frameDiv" + "error"), a frame body ("frame-body-container" + "error") 
-    // or an editable slot ("editableslot-input" + "error").
-    const hasErrors = (document.getElementsByClassName("framDiv error").length > 0) || 
-        (document.getElementsByClassName("frame-body-container error").length > 0) || 
-        (document.getElementsByClassName("editableslot-div error").length > 0);
+    const hasErrors = hasEditorCodeErrors();
  
     const compiler = new Compiler();
     if(requireCompilation){

@@ -72,7 +72,7 @@
 
         /* IFTRUE_isPurePython
         
-            <python-console id="pythonConsole"/>
+            <python-console id="pythonConsoleComponent"/>
         FITRUE_isPurePython */
     </div>
 </template>
@@ -421,6 +421,9 @@ export default Vue.extend({
     border-left: #383b40 1px solid;
     color: #252323;
     background-color: #E2E7E0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
 }
 
 .cmd-progress-container {
@@ -455,10 +458,14 @@ export default Vue.extend({
     color:#666666;
 }
 /* IFTRUE_isPurePython */
-#pythonConsole{
-    bottom: 4px;
-    width: 95%;
-    position: absolute;
+#pythonConsoleComponent{
+    margin-bottom:4px;
+    overflow: hidden; // that is used to keep the margin https://stackoverflow.com/questions/44165725/flexbox-preventing-margins-from-being-respected
+    flex-grow: 3;
+    display: flex;
+    flex-direction: column;    
+    align-items: flex-start;
+    justify-content: flex-end;
 }        
 /* FITRUE_isPurePython */
 
@@ -474,6 +481,7 @@ export default Vue.extend({
 .list-enter-active, .list-leave-active {
   transition: all .5s;
 }
+
 .list-enter, .list-leave-to {
   opacity: 0;
   transform: translate3d(3);
@@ -492,7 +500,7 @@ export default Vue.extend({
 }
 
 .command-tab-content {
- margin-left: 5px;
+    margin-left: 5px;
 }
 
 //the following overrides the bootstrap tab generated styles

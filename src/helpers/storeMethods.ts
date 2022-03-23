@@ -515,6 +515,7 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     // This method for checking errors is called when a frame slot has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
     // we clear the errors completely for that frame/slot before we check the errors again for it.
+    const currentErrorMessage = (slotId > -1) ? store.getters.getFrameObjectFromId(frameId).contentDict[slotId].error : undefined ;
     store.commit(
         "setSlotErroneous", 
         {
@@ -530,7 +531,8 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     const errorMessage = store.getters.getErrorForSlot(frameId,slotId);
     if(code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
-        if(!optionalSlot && errorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
+        if(!optionalSlot && (errorMessage === i18n.t("errorMessage.emptyEditableSlot")
+            || (currentErrorMessage && currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot")))) {
             store.commit("removePreCompileErrors", getEditableSlotUIID(frameId, slotId));                
         }
     }
