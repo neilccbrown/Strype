@@ -1262,17 +1262,8 @@ export default new Vuex.Store({
                 } 
                 else{
                     Object.keys(state.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
-                        const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[Number.parseInt(slotIndex)].optionalSlot ?? true
-                        if(!optionalSlot && state.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)].code.trim().length == 0){
-                            Vue.set(
-                                state.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)],
-                                "error",
-                                i18n.t("errorMessage.emptyEditableSlot")
-                            );
-    
-                            const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
-                            state.preCompileErrors.push(uiid);
-                        }
+                        const slotIndexNber = Number.parseInt(slotIndex);
+                        checkCodeErrors(frameId, slotIndexNber, state.frameObjects[frameId].contentDict[slotIndexNber].code);
                     });
                 }                 
             });
