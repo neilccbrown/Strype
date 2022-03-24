@@ -1,80 +1,105 @@
 {
-  "appName": "Éditeur Strype",
+  "appName":"Éditeur Strype",
+  "frame":{
+    "funcdef_desc":"définition de fonction",
+    "varassign_desc":"affectation de variable",
+    "funccall_desc":"appel de fonction",
+    "comment_desc":"commentaire",
+    "if_detail":"Ajouter une instruction conditionnelle \uD835\uDC22\uD835\uDC1F (si) à l'emplacement du curseur de cadre.",
+    "import_detail":"Ajouter une instruction \uD835\uDC22\uD835\uDC26\uD835\uDC29\uD835\uDC28\uD835\uDC2B\uD835\uDC2D (importer) à l'emplacement du curseur de cadre.",
+    "elif_detail":"Ajouter une instruction conditionnelle \uD835\uDC1E\uD835\uDC25\uD835\uDC22\uD835\uDC1F (sinon si) à l'emplacement du curseur de cadre.",
+    "else_detail":"Ajouter une instruction conditionnelle \uD835\uDC1E\uD835\uDC25\uD835\uDC2C\uD835\uDC1E (alors) à l'emplacement du curseur de cadre.",
+    "for_detail":"Ajouter une instruction de boucle \uD835\uDC1F\uD835\uDC28\uD835\uDC2B (pour) à l'emplacement du curseur de cadre.",
+    "funcdef_detail":"Ajouter une définition de fonction à l'emplacement du curseur de cadre.",
+    "fromimport_detail":"Ajouter une instruction \uD835\uDC1F\uD835\uDC2B\uD835\uDC28\uD835\uDC26...\uD835\uDC22\uD835\uDC26\uD835\uDC29\uD835\uDC28\uD835\uDC2B\uD835\uDC2D (à partir de ... importer) à l'emplacement du curseur de cadre.",
+    "while_detail":"Ajouter une instruction de boucle \uD835\uDC30\uD835\uDC21\uD835\uDC22\uD835\uDC25\uD835\uDC1E (tant que) à l'emplacement du curseur de cadre.",
+    "break_detail":"Ajouter une instruction \uD835\uDC1B\uD835\uDC2B\uD835\uDC1E\uD835\uDC1A\uD835\uDC24 (couper) à l'emplacement du curseur de cadre",
+    "continue_detail":"Ajouter une instruction \uD835\uDC1C\uD835\uDC28\uD835\uDC27\uD835\uDC2D\uD835\uDC22\uD835\uDC27\uD835\uDC2E\uD835\uDC1E (continuer) à l'emplacement du curseur de cadre.",
+    "varassign_detail":"Ajouter une affectation de variable à l'emplacement du curseur de cadre.",
+    "funccall_detail":"Ajouter un appel de fonction à l'emplacement du curseur de cadre.",
+    "return_detail":"Ajouter une instruction \uD835\uDC2B\uD835\uDC1E\uD835\uDC2D\uD835\uDC2E\uD835\uDC2B\uD835\uDC27 (retourner) à l'emplacement du curseur de cadre.",
+    "comment_detail":"Ajouter un commentaire à l'emplacement du curseur de cadre.",
+    "try_detail":"Ajouter une instruction \uD835\uDC2D\uD835\uDC2B\uD835\uDC32 (tentative) à l'emplacement du curseur de cadre.",
+    "raise_detail":"Ajouter une instruction \uD835\uDC2B\uD835\uDC1A\uD835\uDC22\uD835\uDC2C\uD835\uDC1E (lever) à l'emplacement du curseur de cadre.",
+    "except_detail":"Ajouter une instruction \uD835\uDC1E\uD835\uDC31\uD835\uDC1C\uD835\uDC1E\uD835\uDC29\uD835\uDC2D (exception) à l'emplacement du curseur de cadre.",
+    "finally_detail":"Ajouter une instruction \uD835\uDC1F\uD835\uDC22\uD835\uDC27\uD835\uDC1A\uD835\uDC25\uD835\uDC25\uD835\uDC32 (finalement) à l'emplacement du curseur de cadre.",
+    "with_detail":"Ajouter une instruction \uD835\uDC30\uD835\uDC22\uD835\uDC2D\uD835\uDC21 (avec) à l'emplacement du curseur de cadre."
+  },
   "messageBannerMessage": {
-      "deleteLargeCode": "Vous venez de supprimer une grande portion de code. Si vous le souhaitiez pas, vous pouvez :",
-      "uploadSuccessMicrobit": "Chargement vers micro:bit terminé.",
-      "uploadFailureMicrobit": "Chargement vers micro:bit échoué avec l'error \"{errorMsg}\"",
-      "noUndo" : "Il n'y a aucune action à annuler.",
-      "noRedo": "Il n'y a aucune action à refaire.",
-      "uploadEditorFileError": "Un problème est survenu lors du chargement de fichier pour l'éditeur : {errorMsg}. Votre code n'a pas été modifié.",
-      "uploadEditorFileNotSupported": "Ce format de fichier n'est pas supporté. Extension de fichier attendue: {list}. Votre code n'a pas été modifié.",
-      "uploadEditorFileSuccess": "Le chargement de fichier pour l'éditeur a été réalisé avec succès. Votre code a été chargé.",
-      "forbiddenFrameMove": "Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné.",
-      "functionFrameCantDelete": "Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
-      "pythonInputWarning": "Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'."
+      "deleteLargeCode":"Vous venez de supprimer une grande portion de code. Si vous le souhaitiez pas, vous pouvez :",
+      "uploadSuccessMicrobit":"Chargement vers micro:bit terminé.",
+      "uploadFailureMicrobit":"Chargement vers micro:bit échoué avec l'error \"{errorMsg}\"",
+      "noUndo" :"Il n'y a aucune action à annuler.",
+      "noRedo":"Il n'y a aucune action à refaire.",
+      "uploadEditorFileError":"Un problème est survenu lors du chargement de fichier pour l'éditeur : {errorMsg}. Votre code n'a pas été modifié.",
+      "uploadEditorFileNotSupported":"Ce format de fichier n'est pas supporté. Extension de fichier attendue: {list}. Votre code n'a pas été modifié.",
+      "uploadEditorFileSuccess":"Le chargement de fichier pour l'éditeur a été réalisé avec succès. Votre code a été chargé.",
+      "forbiddenFrameMove":"Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné.",
+      "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
+      "pythonInputWarning":"Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'."
   },
   "buttonLabel":{
-      "undo": "Annuler",
-      "yes": "Oui",
-      "no": "Non",
-      "ok": "OK",
-      "uploadToMicrobit": "Envoyer vers micro:bit",
-      "sendToMicrobit": "Envoyer vers micro:bit",
-      "downloadHex": "Convertir vers Hex",
-      "downloadPython": "Convertir vers Python",
-      "startCoding": "Codez !",
-      "addCodeExtract": "Ajouter au code",
-      "showMore": "montrer plus",
-      "showLess": "montrer moins"
+      "undo":"Annuler",
+      "yes":"Oui",
+      "no":"Non",
+      "ok":"OK",
+      "uploadToMicrobit":"Envoyer vers micro:bit",
+      "sendToMicrobit":"Envoyer vers micro:bit",
+      "downloadHex":"Convertir vers Hex",
+      "downloadPython":"Convertir vers Python",
+      "startCoding":"Codez !",
+      "addCodeExtract":"Ajouter au code",
+      "showMore":"montrer plus",
+      "showLess":"montrer moins"
   },
   "action": {
-    "uploadingToMicrobit": "Envoi en cours vers micro:bit ...",
-    "feedbackLink": "Donner votre avis ..."
+    "uploadingToMicrobit":"Envoi en cours vers micro:bit ...",
+    "feedbackLink":"Donner votre avis ..."
   },
   "errorMessage": {
-    "wrongDataFormat": "le format de données ne peut pas être interprété par Strype",
-    "stateDataIntegrity" : "les données ne sont pas intègres pour être interprétées par Strype",
-    "dataNotObject" : "les données de décrivent pas un object",
-    "emptyEditableSlot": "Le champ de saisie ne peut pas être vide",
-    "emptyFrameBody": "Le contenu du cadre ne peut pas être vide",
-    "noValidChildFrameBody": "Le contenu du cadre doit avoir au moins un cadre actif / différent d'un commentaire ",
-    "errorTitle": "Erreur !",
-    "errorUserDefinedFuncMsg": "Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
-    "errorUserDefinedVarMsg": "Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs"
+    "wrongDataFormat":"le format de données ne peut pas être interprété par Strype",
+    "stateDataIntegrity" :"les données ne sont pas intègres pour être interprétées par Strype",
+    "dataNotObject" :"les données de décrivent pas un object",
+    "emptyEditableSlot":"Le champ de saisie ne peut pas être vide",
+    "emptyFrameBody":"Le contenu du cadre ne peut pas être vide",
+    "noValidChildFrameBody":"Le contenu du cadre doit avoir au moins un cadre actif / différent d'un commentaire ",
+    "errorTitle":"Erreur !",
+    "errorUserDefinedFuncMsg":"Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
+    "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs"
   },
   "appMessage": {
-    "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",
-    "editorConfirmChangeCode": "Le contenu actuel de l'éditeur sera définitivement perdu.\nSouhaitez-vous continuer ?",
-    "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
-    "enableInnerDisabledFrameConfirm": "Cette action activera le groupe entier de cadres désactivés auquel ce cadre appartient.\nSouhaitez-vous continuer ?",
-    "importsContainer": "Imports :",
-    "funcDefsContainer": "Définitions de fonctions :",
-    "mainContainer": "Mon code :",
-    "preCompiledErrorNeedFix": "Veuillez d'abord corriger les erreurs existantes.",
-    "noWebUSB": "Ce navigateur ne supporte pas les connexions webUSB. Veullez utiliser un autre navigateur (par example Google Chrome).",
-    "emptyCodeError" : "Le code ne peut pas être vide."
+    "editorFileUpload":"Chargement de votre fichier dans l'éditeur...",
+    "editorConfirmChangeCode":"Le contenu actuel de l'éditeur sera définitivement perdu.\nSouhaitez-vous continuer ?",
+    "editorFileUploadWrongVersion":"Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
+    "enableInnerDisabledFrameConfirm":"Cette action activera le groupe entier de cadres désactivés auquel ce cadre appartient.\nSouhaitez-vous continuer ?",
+    "importsContainer":"Imports :",
+    "funcDefsContainer":"Définitions de fonctions :",
+    "mainContainer":"Mon code :",
+    "preCompiledErrorNeedFix":"Veuillez d'abord corriger les erreurs existantes.",
+    "noWebUSB":"Ce navigateur ne supporte pas les connexions webUSB. Veullez utiliser un autre navigateur (par example Google Chrome).",
+    "emptyCodeError" :"Le code ne peut pas être vide."
   },
   "contextMenu": {
-    "cut": "Couper ce cadre",
-    "copy": "Copier ce cadre",
-    "duplicate": "Dupliquer ce cadre",
-    "paste": "Coller ce cadre",
-    "enable": "Activer ce cadre",
-    "disable": "Désactiver ce cadre",
-    "undo": "Annuler",
-    "redo": "Refaire",
-    "delete": "Supprimer ce cadre"
+    "cut":"Couper ce cadre",
+    "copy":"Copier ce cadre",
+    "duplicate":"Dupliquer ce cadre",
+    "paste":"Coller ce cadre",
+    "enable":"Activer ce cadre",
+    "disable":"Désactiver ce cadre",
+    "undo":"Annuler",
+    "redo":"Refaire",
+    "delete":"Supprimer ce cadre"
   },
   "appMenu": {
-    "defaultProjName": "Mon projet",
-    "loadProject": "Charger un projet",
-    "saveProject": "Sauvegarder ce projet",
-    "prefs": "Préférences",
-    "lang": "Langue: "
+    "defaultProjName":"Mon projet",
+    "loadProject":"Charger un projet",
+    "saveProject":"Sauvegarder ce projet",
+    "prefs":"Préférences",
+    "lang":"Langue: "
   },
   "autoCompletion": {
-    "myFunctions": "Mes Fonctions",
-    "myVariables": "Mes Variables"
+    "myFunctions":"Mes Fonctions",
+    "myVariables":"Mes Variables"
   },
   "apidiscovery" : {
     "microbitAPI": {
@@ -82,8 +107,8 @@
   },
 
   "commandTabs": {
-      "0": "Ajoute un cadre",
-      "1": "Explore micro:bit"
+      "0":"Ajoute un cadre",
+      "1":"Explore micro:bit"
   },
 
   "console": {

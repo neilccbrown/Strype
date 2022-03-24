@@ -1,16 +1,16 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, APIItemTextualDescription, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition} from "@/types/types";
-import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, compileTextualAPI, checkCodeErrors } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAllSiblings, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow, getAvailableNavigationPositions} from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAvailableNavigationPositions} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
 import moduleDescription from "@/autocompletion/microbit.json";
+import { getAddCommandsDefs } from "@/helpers/editor";
 
 Vue.use(Vuex);
 
@@ -321,8 +321,7 @@ export default new Vuex.Store({
                     ...[ReturnDefinition.type]
                 );
             }
-
-
+            const addCommandsDefs = getAddCommandsDefs();
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = JSON.parse(JSON.stringify(addCommandsDefs));
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {}
 

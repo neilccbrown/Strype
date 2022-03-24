@@ -39,6 +39,7 @@
                                                 : addFrameCommand[0].shortcut
                                         "
                                         :description="addFrameCommand[0].description"
+                                        :tooltip="addFrameCommand[0].tooltip"
                                         :index="
                                             addFrameCommand[0].index!==undefined
                                             ? addFrameCommand[0].index

@@ -116,10 +116,11 @@ export interface NavigationPosition {
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
-    description: string;
-    shortcut: string;
-    symbol?: string;
-    index?: number; //the index of frame type when a shortcut matches more than 1 context-distinct frames
+    description: string; // The label that shown next to the key shortcut button
+    shortcut: string; // The keyboard key shortcut to be used to add a frame (eg "i" for an if frame)
+    symbol?: string; // The symbol to show in the key shortcut button when the key it's not easily reprenstable (e.g. "⌴" for space)
+    tooltip: string; // If needed, the tooltip content that explains the role of a frame - localised
+    index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
 // This is an array with all the frame Definitions objects.
