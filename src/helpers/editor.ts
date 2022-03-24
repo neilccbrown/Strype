@@ -32,16 +32,8 @@ export function getCaretUIID(caretAssignedPosition: string, frameId: number): st
     return "caret_"+caretAssignedPosition+"_"+frameId;
 }
 
-export function getTutorialCaretUIID(): string{
-    return getCaretUIID(CaretPosition.body, store.getters.getMainCodeFrameContainerId());
-}
-
 export function getCommandsContainerUIID(): string {
     return "editorCommands";
-}
-
-export function getTutorialUIID(): string {
-    return "tutorialComponent";
 }
 
 export function getEditorMenuUIID(): string {

@@ -22,8 +22,6 @@
       "sendToMicrobit": "Envoyer vers micro:bit",
       "downloadHex": "Convertir vers Hex",
       "downloadPython": "Convertir vers Python",
-      "skipTutorial": "Passer le tutoriel",
-      "next": "Suivant",
       "startCoding": "Codez !",
       "addCodeExtract": "Ajouter au code",
       "showMore": "montrer plus",
@@ -74,18 +72,10 @@
     "prefs": "Préférences",
     "lang": "Langue: "
   },
-  "tutorialExplanation": {
-    "commands": "Vous trouverez ici tous les cadres disponibles avec leur raccourci clavier !",
-    "codeEditor": "Cet endroit sert à écrire votre code",
-    "editorCaret": "Le curseur bleu indique l'endroit où vous éditez",
-    "editorMenus": "Plus d'options pour votre projet"
-  },
-
   "autoCompletion": {
     "myFunctions": "Mes Fonctions",
     "myVariables": "Mes Variables"
   },
-
   "apidiscovery" : {
     "microbitAPI": {
     }

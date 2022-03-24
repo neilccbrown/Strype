@@ -1,7 +1,6 @@
 <template>
     <div id="app" class="container-fluid">
         <vue-confirm-dialog />
-        <tutorial/>
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
@@ -60,7 +59,6 @@ import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
-import Tutorial from "@/components/Tutorial.vue";
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
 import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID } from "./helpers/editor";
@@ -79,7 +77,6 @@ export default Vue.extend({
         FrameContainer,
         Commands,
         Menu,
-        Tutorial,
     },
 
     data() {

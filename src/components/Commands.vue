@@ -48,16 +48,6 @@
                                 </transition-group>
                             </div>
                         </div>
-                        <div class="toggleFrameLabelCommands">
-                            <ToggleFrameLabelCommand
-                                v-for="toggleFrameLabelCommand in toggleFrameLabelCommands"
-                                :key="toggleFrameLabelCommand.type"
-                                :type="toggleFrameLabelCommand.type"
-                                :modifierKeyShortcuts="toggleFrameLabelCommand.modifierKeyShortcuts"
-                                :keyShortcut="toggleFrameLabelCommand.keyShortcut"
-                                :description="toggleFrameLabelCommand.displayCommandText"
-                            />
-                        </div>
                     </div>
                 /* IFTRUE_isMicrobit 
                 </b-tab>
@@ -80,13 +70,11 @@
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import APIDiscovery from "@/components/APIDiscovery.vue";
-import ToggleFrameLabelCommand from "@/components/ToggleFrameLabelCommand.vue";
-import { KeyModifier } from "@/constants/toggleFrameLabelCommandsDefs";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID, getTutorialUIID } from "@/helpers/editor";
+import { getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { flash } from "@/helpers/webUSB";
 import store from "@/store/store";
-import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, ImportDefinition, ToggleFrameLabelCommandDef } from "@/types/types";
+import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, ImportDefinition } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -101,7 +89,6 @@ export default Vue.extend({
 
     components: {
         AddFrameCommand,
-        ToggleFrameLabelCommand,
         APIDiscovery,
         /* IFTRUE_isPurePython */
         PythonConsole, 
@@ -154,15 +141,6 @@ export default Vue.extend({
             return store.getters.generateAvailableFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
         },
 
-        toggleFrameLabelCommands(): ToggleFrameLabelCommandDef[] {
-            //We retrieve the toggle frame label commands associated with the current frame (if editable slots are focused (i.e. editing))
-            if(store.getters.getIsEditing()){
-                return store.getters.getCurrentFrameToggleFrameLabelCommands();
-            }
-            
-            return [];
-        },
-
         progressPercentWidthStyle(): string {
             return "width: " + this.$data.progressPercent + "%;";
         },
@@ -210,16 +188,6 @@ export default Vue.extend({
                     (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "["+event.key+"]";
                     //leave the message for a short moment only
                     setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);         
-                }
-
-                const tutorial = document.getElementById(getTutorialUIID());
-                if(tutorial !== null || store.getters.isAppMenuOpened()){
-                    if(store.getters.isAppMenuOpened() && store.getters.getIsEditing()){
-                        return;
-                    }
-                    //if the tutorial or the application menu are displayed, we don't do anything here
-                    event.preventDefault();
-                    return;
                 }
 
                 if((event.ctrlKey || event.metaKey) && (event.key === "z" || event.key === "y")) {
@@ -290,13 +258,6 @@ export default Vue.extend({
             "keyup",
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
-                const tutorial = document.getElementById(getTutorialUIID());
-                if(tutorial !== null || store.getters.isAppMenuOpened()){
-                    //if the tutorial or the application menu are displayed, we don't do anything here
-                    event.preventDefault();
-                    return;
-                }
-
                 const isEditing = store.getters.getIsEditing();
                 const ignoreKeyEvent: boolean = store.getters.getIgnoreKeyEvent();
 
@@ -311,58 +272,30 @@ export default Vue.extend({
                     }
                 }
                 else {
-                    if(isEditing){
-                        //find if there is a toggle frame label command triggered --> if not, do nothing special
-                        const toggleFrameCmdType = 
-                                    this.toggleFrameLabelCommands.find((toggleCmd) => {
-                                        let isModifierOn = true;
-                                        toggleCmd.modifierKeyShortcuts.forEach((modifer) => {
-                                            switch(modifer){
-                                            case KeyModifier.ctrl:
-                                                isModifierOn = isModifierOn && event.ctrlKey;
-                                                break;
-                                            case KeyModifier.shift:
-                                                isModifierOn = isModifierOn && event.shiftKey;
-                                                break;
-                                            case KeyModifier.alt:
-                                                isModifierOn = isModifierOn && event.altKey;
-                                                break;
-                                            }
-                                        });
-                                        //if the modifiers are on, and the shortcut key is the right one, return true
-                                        return isModifierOn && toggleCmd.keyShortcut === event.key.toLowerCase();
-                                    })?.type
-                                    ?? "";
-                        //if there is match with a toggle command, we run it (otherwise, do nothing)
-                        if(toggleFrameCmdType !== "") {
-                            store.dispatch(
-                                "toggleFrameLabel",
-                                toggleFrameCmdType
-                            );
-                        }
-                    }
-                    //cases when there is no editing:
-                    else if(!(event.ctrlKey || event.metaKey)){
-                        if(event.key == "Delete" || event.key == "Backspace"){
-                            if(!ignoreKeyEvent){
+                    if(!isEditing){
+                        //cases when there is no editing:
+                        if(!(event.ctrlKey || event.metaKey)){
+                            if(event.key == "Delete" || event.key == "Backspace"){
+                                if(!ignoreKeyEvent){
                                 //delete a frame or a frame selection
+                                    store.dispatch(
+                                        "deleteFrames",
+                                        event.key
+                                    );
+                                    event.stopImmediatePropagation();
+                                }
+                                else{
+                                    store.commit("setIgnoreKeyEvent", false);
+                                }
+                            }
+                            //add the frame in the editor if allowed
+                            else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
                                 store.dispatch(
-                                    "deleteFrames",
-                                    event.key
+                                    "addFrameWithCommand",
+                                    this.addFrameCommands[event.key.toLowerCase()][0].type
                                 );
-                                event.stopImmediatePropagation();
                             }
-                            else{
-                                store.commit("setIgnoreKeyEvent", false);
-                            }
-                        }
-                        //add the frame in the editor if allowed
-                        else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
-                            store.dispatch(
-                                "addFrameWithCommand",
-                                this.addFrameCommands[event.key.toLowerCase()][0].type
-                            );
-                        }
+                        }                       
                     }
                 }
             }                

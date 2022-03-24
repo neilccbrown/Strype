@@ -1,11 +1,10 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, APIItemTextualDescription, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, APIItemTextualDescription, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition} from "@/types/types";
 import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import tutorialState from "@/store/initial-states/tutorial-state";
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, compileTextualAPI, checkCodeErrors } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAllSiblings, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow, getAvailableNavigationPositions} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
@@ -22,7 +21,7 @@ initialState = initialStates["initialMicrobitState"];
 
 export default new Vuex.Store({
     state: {
-        /*these flags need checking when a build is done + toggleTutorialState()*/
+        /*these flags need checking when a build is done */
         debugging: initialState.debugging,
 
         // Flag used to keep the AC shown for debug purposes
@@ -32,7 +31,7 @@ export default new Vuex.Store({
 
         frameObjects: initialState.initialState,
 
-        nextAvailableId: initialState.nextAvailableId, // won't work for tutorial, as it is not needed in there
+        nextAvailableId: initialState.nextAvailableId,
 
         importContainerId: -1,
 
@@ -351,16 +350,7 @@ export default new Vuex.Store({
             
             return filteredCommands;
         },
-        getCurrentFrameToggleFrameLabelCommands: (state) => () => {
-            const commands: ToggleFrameLabelCommandDef[] = [];
-            state.frameObjects[state.currentFrame.id].frameType.labels.forEach((labelDef) => {
-                const command = labelDef.toggleLabelCommand;
-                if(command !== undefined){
-                    commands.push(command);
-                }
-            });
-            return commands;
-        },
+        
         getIsCurrentFrameLabelShown: (state, getters) => (frameId: number, slotIndex: number) => {
             const frame = state.frameObjects[frameId]
 
@@ -665,14 +655,6 @@ export default new Vuex.Store({
                 state,
                 "stateBeforeChanges",
                 (release) ? {} : JSON.parse(JSON.stringify(state))
-            );
-        },
-
-        toggleTutorialState(state, toggle: boolean) {
-            Vue.set(
-                state,
-                "frameObjects",
-                (toggle) ? tutorialState: initialState.initialState
             );
         },
 
@@ -1980,66 +1962,7 @@ export default new Vuex.Store({
             );
 
             
-        },
-        
-        //Toggle the current frame label that matches the type specified in the payload.
-        toggleFrameLabel({commit, state}, commandType: string) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
-
-            //Get the FrameLabel (index) matching the type
-            const frameLabeToTogglelIndex = state.frameObjects[state.currentFrame.id].frameType.labels.findIndex((frameLabel) => frameLabel?.toggleLabelCommand?.type === commandType);
-            
-            const changeShowLabelTo = !state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].shownLabel;
-            //toggle the "shownLabel" property of in the contentDict for that label
-            Vue.set(
-                state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex],
-                "shownLabel",
-                changeShowLabelTo
-            );
-
-            //update the precompiled errors based on the visibility of the label (if the label isn't shown, no error should be raised)
-            const slotUIID = getEditableSlotUIID(state.currentFrame.id, frameLabeToTogglelIndex);
-            if(changeShowLabelTo){
-                //we show the label: add the slot in precompiled error if the slot is empty
-                if(state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].code.trim().length == 0){
-                    commit(
-                        "setSlotErroneous", 
-                        {
-                            frameId: state.currentFrame.id, 
-                            slotIndex: frameLabeToTogglelIndex,  
-                            error: i18n.t("errorMessage.emptyEditableSlot"),
-                        }
-                    );
-                    commit(
-                        "addPreCompileErrors",
-                        slotUIID
-                    );
-                }
-            }
-            else{
-                //we hide the label: remove the slot in precompiled error
-                commit(
-                    "setSlotErroneous", 
-                    {
-                        frameId: state.currentFrame.id, 
-                        slotIndex: frameLabeToTogglelIndex, 
-                        error: "",
-                    }
-                );
-                commit(
-                    "removePreCompileErrors",
-                    slotUIID
-                );
-            }
-
-            //save state changes
-            commit(
-                "saveStateChanges",
-                {
-                    previousState: stateBeforeChanges,
-                }
-            );
-        },        
+        },       
         
         setMessageBanner({commit}, message: MessageDefinition){
             commit("setMessageBanner", message);

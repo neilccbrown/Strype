@@ -21,8 +21,6 @@
         "sendToMicrobit": "Αποστόλη στο micro:bit",
         "downloadHex": "Μετατροπή σε Εξαδικό αρχείο",
         "downloadPython": "Μετατροπή σε Αρχείο Python",
-        "skipTutorial": "Παράλειψη επίδειξης",
-        "next": "Επομενο",
         "startCoding": "Ξεκίνα να προγραμματίζεις!",
         "addCodeExtract": "&larr; Εισαγωγή στον κόδικα",
         "showMore": "Περισσότερα",
@@ -73,18 +71,10 @@
         "prefs": "Ρυθμίσεις",
         "lang": "Γλώσσα: "
     },
-    "tutorialExplanation": {
-        "commands": "Εδώ μπορείτε να βρείτε όλα τα πλαίσια και την συντόμευση τους!",
-        "codeEditor": "Εδώ εισαγετε τον κώδικα σας",
-        "editorCaret": "Ο μπλέ δείκτης υποδεικνύει το σημείο που επεξεργάζεστε",
-        "editorMenus": "Περισσότερες επιλογές για το πρόγραμμμα σας"
-    },
-
     "autoCompletion": {
         "myFunctions": "Συναρτήσεις μου",
         "myVariables": "Μεταβλητές μου"
     },
-
     "apidiscovery" : {
         "microbitAPI": {
             "led_label": "Οθόνη Λέντ",

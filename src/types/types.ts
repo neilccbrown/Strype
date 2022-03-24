@@ -1,5 +1,4 @@
 import i18n from "@/i18n";
-import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"; 
 import Compiler from "@/compiler/compiler";
 
 // Type Definitions
@@ -32,17 +31,9 @@ export interface FrameObject {
 
 }
 
-export interface ToggleFrameLabelCommandDef {
-    type: string;
-    modifierKeyShortcuts: KeyModifier[];
-    keyShortcut: string;
-    displayCommandText: string;
-}
-
 export interface FrameLabel {
     label: string;
     optionalLabel?: boolean;
-    toggleLabelCommand?: ToggleFrameLabelCommandDef;
     slot: boolean;
     defaultText: string;
     optionalSlot?: boolean;
@@ -750,40 +741,6 @@ export interface ChangeFramePropInfos {
     newBoolPropVal?: boolean;
     newNumberPropVal?: number;
     newStringPropVal?: string;
-}
-
-// Tutorial
-export interface TutorialHightightedElementDimension{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-export interface TutorialMargins {
-    //All margins (extra space around the highlighted element) are optional, and they are expressing pixels
-    //We use this interface for custom position of the messages too, and then they are expressing percentages
-    left?: number;
-    top?: number;
-    bottom?: number;
-    right?: number;
-}
-
-export interface TutorialArrowPos {
-    //Arrow positioning expressing percentages
-    fromX: number;
-    fromY: number;
-    toX: number;
-    toY: number; 
-}
-
-export interface TutorialStep {
-    hightLighedElementsUIIDs: string[];
-    highLightedAreaExtraMargins?: TutorialMargins[]; //pixel values
-    explanationMessage: string;
-    messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
-    messageCustomPos?: TutorialMargins; //percentage values
-    showArrows: boolean;
 }
 
 //Autocompletion

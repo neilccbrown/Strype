@@ -22,8 +22,6 @@
         "sendToMicrobit": "Send to micro:bit",
         "downloadHex": "Convert to Hex file",
         "downloadPython": "Convert to Python file",
-        "skipTutorial": "Skip Tutorial",
-        "next": "Next",
         "startCoding": "Start Coding!",
         "addCodeExtract": "&larr; Add to code",
         "showMore": "show more",
@@ -74,19 +72,11 @@
         "prefs": "Preferences",
         "lang": "Language: "
     },
-    "tutorialExplanation": {
-        "commands": "Here you can find all the frames with their keyboard shortcut!",
-        "codeEditor": "This is where you write your code",
-        "editorCaret": "The blue cursor indicates where you are editing now",
-        "editorMenus": "More options for your project"
-    },
-
     "autoCompletion": {
         "myFunctions": "My Functions",
         "myVariables": "My Variables",
         "importedModules": "Imported modules"
     },
-
     "apidiscovery" : {
         "v2InfoMsg": "This is only valid for the micro:bit board v2.",
         "microbitAPI": {
