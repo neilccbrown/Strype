@@ -62,8 +62,7 @@ import Menu from "@/components/Menu.vue";
 import store from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
 import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID } from "./helpers/editor";
-import { compileTextualAPI } from "./helpers/storeMethods";
-import moduleDescription from "@/autocompletion/microbit.json";
+import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 
 //////////////////////
 //     Component    //
@@ -152,8 +151,10 @@ export default Vue.extend({
             navigator.usb.addEventListener("disconnect", () => store.commit("setPreviousDAPWrapper", undefined));
         }
 
+        /* IFTRUE_isMicrobit */
         // As the application starts up, we compile the microbit library with the appropriate language setting.
-        store.commit("setAPIDescription", compileTextualAPI(moduleDescription.api))
+        getAPIItemTextualDescriptions(true);
+        /* FITRUE_isMicrobit */
     },
 
     mounted() {

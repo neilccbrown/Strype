@@ -1,16 +1,16 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, APIItemTextualDescription, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition} from "@/types/types";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, compileTextualAPI, checkCodeErrors } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, checkCodeErrors } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAvailableNavigationPositions} from "@/helpers/storeMethods";
 import { AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
-import moduleDescription from "@/autocompletion/microbit.json";
 import { getAddCommandsDefs } from "@/helpers/editor";
+import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 
 Vue.use(Vuex);
 
@@ -76,8 +76,6 @@ export default new Vuex.Store({
 
         isAppMenuOpened: false,
 
-        currentAPIDescription: [] as APIItemTextualDescription[],
-
         acResults: [] as AcResultsWithModule[],
 
         editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
@@ -103,11 +101,6 @@ export default new Vuex.Store({
         },
         getAppLang: (state) => () => {
             return state.appLang;
-        },
-        getAPIDescription: (state) => () => {
-            // The API description is only compiled when the app is launched (cf App.vue), or if the language had changed (in setAppLang).
-            // We only do so to avoid recompiling everything every time the API discovery UI is displayed.
-            return state.currentAPIDescription;            
         },
         isAppMenuOpened: (state) => () => {
             return state.isAppMenuOpened;
@@ -624,16 +617,10 @@ export default new Vuex.Store({
                 }
             });
 
+            /* IFTRUE_isMicrobit */
             //change the API description content here, as we don't want to construct the textual API description every time we need it
-            state.currentAPIDescription = compileTextualAPI(moduleDescription.api);
-        },
-
-        setAPIDescription(state, apiItems: APIItemTextualDescription[]){
-            Vue.set(
-                state,
-                "currentAPIDescription",
-                apiItems
-            );
+            getAPIItemTextualDescriptions(true);
+            /* FITRUE_isMicrobit */
         },
         
         setIsAppMenuOpened(state, isOpened: boolean) {
