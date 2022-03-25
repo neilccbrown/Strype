@@ -245,9 +245,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)" 
 
-        
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules"
-        
         // If there are no results
         inspectionCode += "\n"+INDENT+INDENT+"else:"
         // We empty any previous results so that the AC won't be shown
@@ -322,9 +320,10 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // This must be done by Brython to be sure that the AC and documentation
     // have had time to load.
     inspectionCode += "\ntry:"
-    inspectionCode += "\n"+INDENT+"from browser import window";
-    inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')";
-    inspectionCode += "\n"+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
+    inspectionCode += "\n"+INDENT+"if len(__document.get(id='"+((regenerateAC) ? acSpanId : reshowResultsId)+"')) > 0:";   
+    inspectionCode += "\n"+INDENT+INDENT+"from browser import window";
+    inspectionCode += "\n"+INDENT+INDENT+"event = window.MouseEvent.new('click')";
+    inspectionCode += "\n"+INDENT+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
     inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"__console.log('exception4', e4)";
     
     // We need to put the user code before, so that the inspection can work on the code's results

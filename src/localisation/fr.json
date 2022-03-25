@@ -98,8 +98,9 @@
     "lang":"Langue: "
   },
   "autoCompletion": {
-    "myFunctions":"Mes Fonctions",
-    "myVariables":"Mes Variables"
+    "myFunctions":"Mes fonctions",
+    "myVariables":"Mes variables",
+    "importedModules":"Modules importés"
   },
   "apidiscovery" : {
     "microbitAPI": {

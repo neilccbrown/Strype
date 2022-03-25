@@ -73,7 +73,8 @@
     },
     "autoCompletion": {
         "myFunctions":"Συναρτήσεις μου",
-        "myVariables":"Μεταβλητές μου"
+        "myVariables":"Μεταβλητές μου",
+        "importedModules":"Εισαχθείσες δομές"
     },
     "apidiscovery" : {
         "microbitAPI": {

@@ -98,8 +98,8 @@
         "lang":"Language: "
     },
     "autoCompletion": {
-        "myFunctions":"My Functions",
-        "myVariables":"My Variables",
+        "myFunctions":"My functions",
+        "myVariables":"My variables",
         "importedModules":"Imported modules"
     },
     "apidiscovery" : {
