@@ -1,4 +1,4 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, APICodedItem, APIItemTextualDescription } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import store from "@/store/store"
 import i18n from "@/i18n"
@@ -245,10 +245,16 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
         delete obj["checksum"];
         const foundVersion = obj["version"]
         delete obj["version"];
+        let foundPlatform = undefined
+        if(obj["platform"]){
+            foundPlatform = obj["platform"];
+            delete obj["platform"];
+        }
         //get the checksum from the object
         const expectedChecksum = getSHA1HashForObject(obj);
-        //add the read version as it is needed later
+        //add the read version and platform as they are needed later
         obj["version"] = foundVersion;
+        obj["platform"] = foundPlatform ?? StrypePlatform.standard;
         //and return if the checksum was right
         return foundChecksum === expectedChecksum;        
     }

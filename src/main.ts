@@ -8,11 +8,19 @@ import "bootstrap-vue/dist/bootstrap-vue.css";
 import "vue-simple-context-menu/dist/vue-simple-context-menu.css";
 import vBlur from "v-blur";
 import VueConfirmDialog from "vue-confirm-dialog";
+import { StrypePlatform } from "./types/types";
 
 Vue.config.productionTip = false;
 
-//version of the application to check code's import compatibility in the editor
-export const AppVersion = "1";
+// Version of the application to check code's import compatibility in the editor
+// note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
+// it MUST be kept as an integer matching value
+export const AppVersion = "2";
+let appPlatform = StrypePlatform.standard;
+/* IFTRUE_isMicrobit */
+appPlatform = StrypePlatform.microbit;
+/* FITRUE_isMicrobit */
+export const AppPlatform = appPlatform;
 
 // Install BootstrapVue
 Vue.use(BootstrapVue);

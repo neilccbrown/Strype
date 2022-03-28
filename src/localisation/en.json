@@ -60,6 +60,7 @@
         "wrongDataFormat":"the data format cannot be interpreted by Strype",
         "stateDataIntegrity" :"the data doesn't have integrity to be interpreted by Strype",
         "dataNotObject" :"the data doesn't describe an object",
+        "stateWrongPlatform":"the file was generated from a different Strype platform that the current Strype platform",
         "emptyEditableSlot":"Input slot cannot be empty",
         "emptyFrameBody":"Body cannot be empty",
         "noValidChildFrameBody":"Body needs to have at least one enabled / non-comment frame ",

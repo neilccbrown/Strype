@@ -1,12 +1,12 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition } from "@/types/types";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, checkCodeErrors } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAvailableNavigationPositions} from "@/helpers/storeMethods";
-import { AppVersion } from "@/main";
+import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
 import { getAddCommandsDefs } from "@/helpers/editor";
@@ -97,6 +97,7 @@ export default new Vuex.Store({
             const checksum =  getSHA1HashForObject(stateCopy)
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
+            stateCopy["platform"] = AppPlatform;
             return JSON.stringify(stateCopy);
         },
         getAppLang: (state) => () => {
@@ -1966,7 +1967,7 @@ export default new Vuex.Store({
                 // We need to check the JSON string is:
                 // 1) a valid JSON description of an object --> easy, we can just try to convert
                 // 2) an object that matches the state (checksum checker)
-                // 3) if the object is valid, we just verify the version is correct (and attempt loading)
+                // 3) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
                 
                 try {
                     //Check 1)
@@ -1974,38 +1975,36 @@ export default new Vuex.Store({
                     if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                         //no need to go further
                         isStateJSONStrValid=false;
-                        const error = i18n.t("errorMessage.dataNotObject");
-                        //note: the following conditional test is only for TS... the message should always be found
-                        errorDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
+                        errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
                     }
                     else{
                         // Check 2) as 1) is validated
                         if(!checkStateDataIntegrity(newStateObj)) {
                             isStateJSONStrValid = false;
-                            const error = i18n.t("errorMessage.stateDataIntegrity")
-                            //note: the following conditional test is only for TS... the message should always be found
-                            errorDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
+                            errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
                         } 
                         else {
                             // Check 3) as 2) is validated
                             isVersionCorrect = (newStateObj["version"] == AppVersion);
+                            if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
+                                isStateJSONStrValid = false;
+                                errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
+                            }
                             delete newStateObj["version"];
+                            delete newStateObj["platform"];
                         }          
                     }
                 }
                 catch(err){
                     //we cannot use the string arguemnt to retrieve a valid state --> inform the users
                     isStateJSONStrValid = false;
-                    const error = i18n.t("errorMessage.wrongDataFormat");
-                    //note: the following conditional test is only for TS... the message should always be found
-                    errorDetailMessage = (typeof error === "string") ? error : "wrong data format";
+                    errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
                 }
             }
             
             // Apply the change and indicate it to the user if we detected a valid JSON string
             // or alert the user we couldn't if we detected a faulty JSON string to represent the state
-            if(isStateJSONStrValid){
-                
+            if(isStateJSONStrValid){                
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
                     const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");

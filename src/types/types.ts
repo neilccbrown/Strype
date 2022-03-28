@@ -803,6 +803,11 @@ export interface StateObjects {
     [id: string]: StateObject;
 }
 
+export enum StrypePlatform {
+    standard = "std",
+    microbit = "mb",
+}
+
 export interface UserDefinedElement {
     name: string;
     isFunction: boolean;

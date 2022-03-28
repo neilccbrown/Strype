@@ -60,6 +60,7 @@
     "wrongDataFormat":"le format de données ne peut pas être interprété par Strype",
     "stateDataIntegrity" :"les données ne sont pas intègres pour être interprétées par Strype",
     "dataNotObject" :"les données de décrivent pas un object",
+    "stateWrongPlatform":"le fichier a été créé à partir d'une differente plateforme Strype que la plateforme Strype actuelle",
     "emptyEditableSlot":"Le champ de saisie ne peut pas être vide",
     "emptyFrameBody":"Le contenu du cadre ne peut pas être vide",
     "noValidChildFrameBody":"Le contenu du cadre doit avoir au moins un cadre actif / différent d'un commentaire ",
