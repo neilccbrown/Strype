@@ -94,6 +94,8 @@ export default new Vuex.Store({
             //we get the state's checksum and the current app version,
             //and add them to the state's copy object to return
             const stateCopy = JSON.parse(JSON.stringify(state));
+            //remove the acResults, there is no need for storing them
+            delete stateCopy["acResults"];
             const checksum =  getSHA1HashForObject(stateCopy)
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
