@@ -4,7 +4,7 @@ import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDef
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, checkCodeErrors } from "@/helpers/storeMethods";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, checkCodeErrors, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
 import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAvailableNavigationPositions} from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
@@ -94,8 +94,16 @@ export default new Vuex.Store({
             //we get the state's checksum and the current app version,
             //and add them to the state's copy object to return
             const stateCopy = JSON.parse(JSON.stringify(state));
-            //remove the acResults, there is no need for storing them
-            delete stateCopy["acResults"];
+            //clear the acResults and undo/redo related stuff as there is no need for storing them
+            stateCopy["acResults"] = [],
+            stateCopy["stateBeforeChanges"] = {};
+            stateCopy["diffToPreviousState"] = [];
+            stateCopy["diffToNextState"] = [];
+            delete stateCopy["stateBeforeChanges"];
+            //simplify the storage of frame types by their type names only
+            Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
+                stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
+            });
             const checksum =  getSHA1HashForObject(stateCopy)
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
@@ -1957,23 +1965,23 @@ export default new Vuex.Store({
             commit("setMessageBanner", message);
         },
 
-        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string}){
+        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorDetailMessage = payload.errorReason ?? "unknown reason";
             let isVersionCorrect = false;
+            let newStateObj = {} as {[id: string]: any};
 
             // If there is an error set because the file couldn't be retrieved
             // we don't check anything, just get to the error display.
             if(isStateJSONStrValid){
-
                 // We need to check the JSON string is:
                 // 1) a valid JSON description of an object --> easy, we can just try to convert
                 // 2) an object that matches the state (checksum checker)
-                // 3) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
-                
+                // 3) contains frame type names that are valid, and if so, replace the type names by the equivalent JS object (we replace the objects by the type name string to save space)    
+                // 4) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
                 try {
                     //Check 1)
-                    const newStateObj = JSON.parse(payload.stateJSONStr);
+                    newStateObj = JSON.parse(payload.stateJSONStr);
                     if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                         //no need to go further
                         isStateJSONStrValid=false;
@@ -1992,6 +2000,14 @@ export default new Vuex.Store({
                                 isStateJSONStrValid = false;
                                 errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
                             }
+                            else{
+                                // Check 4) as 3) is validated
+                                if(!restoreSavedStateFrameTypes(newStateObj)){
+                                    // There was something wrong with the type name (it should not happen, but better check anyway)
+                                    isStateJSONStrValid = false;
+                                    errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
+                                }
+                            }
                             delete newStateObj["version"];
                             delete newStateObj["platform"];
                         }          
@@ -2006,7 +2022,8 @@ export default new Vuex.Store({
             
             // Apply the change and indicate it to the user if we detected a valid JSON string
             // or alert the user we couldn't if we detected a faulty JSON string to represent the state
-            if(isStateJSONStrValid){                
+            if(isStateJSONStrValid){  
+                const newStateStr = JSON.stringify(newStateObj);     
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
                     const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
@@ -2021,8 +2038,8 @@ export default new Vuex.Store({
                                 dispatch(
                                     "doSetStateFromJSONStr",
                                     {
-                                        ...payload,
-                                        showMessage: true,
+                                        stateJSONStr: newStateStr,
+                                        showMessage: payload.showMessage ?? true,
                                     }
                                 );                                
                             }                        
@@ -2033,8 +2050,8 @@ export default new Vuex.Store({
                     dispatch(
                         "doSetStateFromJSONStr",
                         {
-                            ...payload,
-                            showMessage: true,
+                            stateJSONStr: newStateStr,
+                            showMessage: payload.showMessage ?? true,
                         }
                     );   
                 }                
@@ -2050,7 +2067,7 @@ export default new Vuex.Store({
             }
         },
 
-        doSetStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; errorReason?: string; showMessage?: boolean}){
+        doSetStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; showMessage?: boolean}){
             commit(
                 "updateState",
                 JSON.parse(payload.stateJSONStr)

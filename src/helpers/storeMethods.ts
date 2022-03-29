@@ -1,4 +1,4 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, Definitions, FrameContainersDefinitions } from "@/types/types";
 import Vue from "vue";
 import store from "@/store/store"
 import i18n from "@/i18n"
@@ -258,6 +258,38 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
         //and return if the checksum was right
         return foundChecksum === expectedChecksum;        
     }
+}
+
+export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): boolean {
+    if(state["frameObjects"] == undefined){
+        return false;
+    }
+    
+    let success = true;
+    const frameIds: string[] = Object.keys(state["frameObjects"]);
+    const allFramesTypes = {...Definitions, ...FrameContainersDefinitions};
+    frameIds.every((frameId) => {
+        const frameTypeValue = (state["frameObjects"][frameId].frameType);
+        if(typeof frameTypeValue === "string") {
+            // The frame type in the state was saved by the type name (string): we get the equivalent frame type object
+            // in the unlikely event we can't find the object we stop the restoration and notify failure
+            let foundTypeObj = false;
+            Object.values(allFramesTypes).every((frameTypeDef) => {
+                if(frameTypeDef.type ===  frameTypeValue){
+                    foundTypeObj = true;
+                    state["frameObjects"][frameId].frameType = frameTypeDef;
+                    return false;
+                }
+                return true;
+            })
+            if(!foundTypeObj){
+                success = false;
+                return false;
+            }
+            return true;
+        }
+    });
+    return success;
 }
 
 // Finds out what is the root frame Id of a "block" of disabled frames

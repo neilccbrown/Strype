@@ -170,7 +170,7 @@ export default Vue.extend({
             const savedState = localStorage.getItem(storageString);
             if(savedState) {
                 store.dispatch(
-                    "doSetStateFromJSONStr", 
+                    "setStateFromJSONStr", 
                     {
                         stateJSONStr: savedState,
                         showMessage: false,
