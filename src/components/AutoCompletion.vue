@@ -234,9 +234,9 @@ export default Vue.extend({
                     if(userDefItem.isFunction) {
                         //If module has not been created, create it
                         if(parsedResults[myFunctionsModuleLabel] === undefined) { 
-                            parsedResults = {myFunctionsModuleLabel:[], ...parsedResults};
-                            parsedDoc = {myFunctionsModuleLabel:[], ...parsedDoc};
-                            parsedTypes = {myFunctionsModuleLabel:[], ...parsedTypes};
+                            parsedResults[myFunctionsModuleLabel] = [];
+                            parsedDoc[myFunctionsModuleLabel]=[];
+                            parsedTypes[myFunctionsModuleLabel] = [];
                         }
                         if(parsedResults[myFunctionsModuleLabel].find((result) => (result === userDefItem.name)) === undefined) {
                             parsedResults[myFunctionsModuleLabel].push(userDefItem.name);
@@ -247,9 +247,9 @@ export default Vue.extend({
                     else {
                         //If module has not been created, create it
                         if(parsedResults[myVariablesModuleLabel] === undefined) { 
-                            parsedResults = {myVariablesModuleLabel:[], ...parsedResults};
-                            parsedDoc = {myVariablesModuleLabel:[], ...parsedDoc};
-                            parsedTypes = {myVariablesModuleLabel:[], ...parsedTypes};
+                            parsedResults[myVariablesModuleLabel] = [];
+                            parsedDoc[myVariablesModuleLabel]=[];
+                            parsedTypes[myVariablesModuleLabel] = [];
                         }
                         if(parsedResults[myVariablesModuleLabel].find((result) => (result === userDefItem.name)) === undefined) {
                             parsedResults[myVariablesModuleLabel].push(userDefItem.name);
