@@ -124,7 +124,7 @@ export default Vue.extend({
 
             // save the project to the localStorage before exiting
             if (!store.getters.getIsDebugging() && typeof(Storage) !== "undefined") {
-                localStorage.setItem(storageString,store.getters.getStateJSONStrWithCheckpoints());
+                localStorage.setItem(storageString, store.getters.getStateJSONStrWithCheckpoints(true))
             }
         });
 
@@ -174,6 +174,7 @@ export default Vue.extend({
                     {
                         stateJSONStr: savedState,
                         showMessage: false,
+                        readCompressed: true,
                     }
                 );
             }

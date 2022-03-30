@@ -11,6 +11,7 @@ import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
 import { getAddCommandsDefs } from "@/helpers/editor";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
+import LZString from "lz-string"
 
 Vue.use(Vuex);
 
@@ -90,16 +91,19 @@ export default new Vuex.Store({
         getIsDebugging: (state) => (): boolean => {
             return state.debugging;
         },
-        getStateJSONStrWithCheckpoints : (state) => (): string => {
+        getStateJSONStrWithCheckpoints : (state) => (compress?: boolean): string => {
             //we get the state's checksum and the current app version,
             //and add them to the state's copy object to return
             const stateCopy = JSON.parse(JSON.stringify(state));
-            //clear the acResults and undo/redo related stuff as there is no need for storing them
+            //clear the acResults, microbit DAP infos, copy frames and undo/redo related stuff as there is no need for storing them
             stateCopy["acResults"] = [],
             stateCopy["stateBeforeChanges"] = {};
             stateCopy["diffToPreviousState"] = [];
             stateCopy["diffToNextState"] = [];
-            delete stateCopy["stateBeforeChanges"];
+            stateCopy["stateBeforeChanges"] = {};
+            stateCopy["copiedFrames"] = {};
+            stateCopy["DAPWrapper"] = undefined;
+            stateCopy["previousDAPWrapper"] = undefined;
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
@@ -108,7 +112,13 @@ export default new Vuex.Store({
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
             stateCopy["platform"] = AppPlatform;
-            return JSON.stringify(stateCopy);
+            // finally, we save a compressed version of this JSON state if required (on auto-backup state saving)
+            if(!compress){
+                return JSON.stringify(stateCopy);
+            }
+            else{
+                return LZString.compress(JSON.stringify(stateCopy))
+            }            
         },
         getAppLang: (state) => () => {
             return state.appLang;
@@ -1965,7 +1975,7 @@ export default new Vuex.Store({
             commit("setMessageBanner", message);
         },
 
-        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean}){
+        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorDetailMessage = payload.errorReason ?? "unknown reason";
             let isVersionCorrect = false;
@@ -1974,6 +1984,12 @@ export default new Vuex.Store({
             // If there is an error set because the file couldn't be retrieved
             // we don't check anything, just get to the error display.
             if(isStateJSONStrValid){
+                // If the string we read was compressed, we need to uncompress it first
+                if(payload.readCompressed){
+                    dispatch("setStateFromJSONStr", {stateJSONStr: LZString.decompress(payload.stateJSONStr), showMessage: payload.showMessage});
+                    return;
+                }
+
                 // We need to check the JSON string is:
                 // 1) a valid JSON description of an object --> easy, we can just try to convert
                 // 2) an object that matches the state (checksum checker)
