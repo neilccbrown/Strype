@@ -112,21 +112,17 @@ export default Vue.extend({
     },
 
     created() {
-        window.addEventListener("beforeunload", function(event) {
+        window.addEventListener("beforeunload", (event) => {
             // Browsers won't display a customised message, and can detect when to prompt the user,
             // so we don't need to do anything special.
             event.returnValue = true;
 
-            let storageString = "PythonStrypeSavedState"
-            /* IFTRUE_isMicrobit */
-            storageString = "MicrobitStrypeSavedState"
-            /*FITRUE_isMicrobit */
-
-            // save the project to the localStorage before exiting
-            if (!store.getters.getIsDebugging() && typeof(Storage) !== "undefined") {
-                localStorage.setItem(storageString, store.getters.getStateJSONStrWithCheckpoints(true))
-            }
+            // Save the state before exiting
+            this.autoSaveState();
         });
+
+        // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 5 minutes
+        window.setInterval(() => this.autoSaveState(), 300000);
 
         // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
         window.addEventListener(
@@ -182,6 +178,18 @@ export default Vue.extend({
     },
 
     methods: {
+        autoSaveState() {
+            let storageString = "PythonStrypeSavedState"
+            /* IFTRUE_isMicrobit */
+            storageString = "MicrobitStrypeSavedState"
+            /*FITRUE_isMicrobit */
+
+            // save the project to the localStorage
+            if (!store.getters.getIsDebugging() && typeof(Storage) !== "undefined") {
+                localStorage.setItem(storageString, store.getters.getStateJSONStrWithCheckpoints(true))
+            }
+        },
+
         applyShowAppProgress(event: AppEvent) {
             // If the progress bar is shown, we block the width of the application to the viewport
             // and revert it otherwise

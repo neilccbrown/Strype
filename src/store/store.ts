@@ -95,23 +95,29 @@ export default new Vuex.Store({
             //we get the state's checksum and the current app version,
             //and add them to the state's copy object to return
             const stateCopy = JSON.parse(JSON.stringify(state));
-            //clear the acResults, microbit DAP infos, copy frames and undo/redo related stuff as there is no need for storing them
+            //clear the acResults, microbit DAP infos, copy frames, message banner and undo/redo related stuff as there is no need for storing them
             stateCopy["acResults"] = [],
             stateCopy["stateBeforeChanges"] = {};
             stateCopy["diffToPreviousState"] = [];
             stateCopy["diffToNextState"] = [];
             stateCopy["stateBeforeChanges"] = {};
             stateCopy["copiedFrames"] = {};
-            stateCopy["DAPWrapper"] = undefined;
-            stateCopy["previousDAPWrapper"] = undefined;
+            delete stateCopy["DAPWrapper"];
+            delete stateCopy["previousDAPWrapper"];
+            stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
+            
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
             });
+
             const checksum =  getSHA1HashForObject(stateCopy)
+
+            //add the checksum and other backup flags in the state object to be saved
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
             stateCopy["platform"] = AppPlatform;
+            
             // finally, we save a compressed version of this JSON state if required (on auto-backup state saving)
             if(!compress){
                 return JSON.stringify(stateCopy);
