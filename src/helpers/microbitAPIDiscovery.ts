@@ -22,7 +22,7 @@ const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?: number
         const shortDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_doc","en")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string : "";
         const extraDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc","en")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
 
-        const apiItemChildren = (apiItem.children) ? apiItem.children : [] as APICodedItem[]; 
+        const apiItemChildren = apiItem.children ?? [] as APICodedItem[]; 
         const version = (apiItem.version) ? apiItem.version : 1;
         apiDocumentedItems.push({name: apiItem.name,
             label: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_label") as string,

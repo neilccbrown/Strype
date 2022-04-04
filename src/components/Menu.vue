@@ -3,7 +3,7 @@
         <Slide 
             :isOpen="showMenu"
             :burgerIcon="false"
-            @closeMenu="toggleMenuOnOff"
+            @closeMenu="toggleMenuOnOff(null)"
             width="200"
         >
             <div style="width: 100%;">
@@ -30,15 +30,15 @@
                 </div>
             </div> 
             <div class="menu-separator-div"></div>
-                <a class="project-impexp-div" @click="importFile();toggleMenuOnOff(undefined);" v-t="'appMenu.loadProject'" />
-                <a class="project-impexp-div" @click="exportFile();toggleMenuOnOff(undefined);" v-t="'appMenu.saveProject'"/>
-                <a class="project-impexp-div" @click="resetProject();toggleMenuOnOff(undefined);" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
+                <a class="project-impexp-div" @click="importFile();toggleMenuOnOff(null);" v-t="'appMenu.loadProject'" />
+                <a class="project-impexp-div" @click="exportFile();toggleMenuOnOff(null);" v-t="'appMenu.saveProject'"/>
+                <a class="project-impexp-div" @click="resetProject();toggleMenuOnOff(null);" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(undefined)">
+                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(null)">
                         <option value="en">English</option>
                         <option value="fr">Français</option>
                         <option value="el">Ελληνικά</option>
@@ -277,7 +277,7 @@ export default Vue.extend({
         },
 
         toggleMenuOnOff(e: Event): void {
-            const isMenuOpening = (e !== undefined);
+            const isMenuOpening = (e !== null);
             if(isMenuOpening) {
                 //cf online issues about vue-burger-menu https://github.com/mbj36/vue-burger-menu/issues/33
                 e.preventDefault();

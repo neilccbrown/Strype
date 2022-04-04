@@ -268,25 +268,21 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
     let success = true;
     const frameIds: string[] = Object.keys(state["frameObjects"]);
     const allFramesTypes = {...Definitions, ...FrameContainersDefinitions};
+    // We iterate through all the given frame type names to find the matching object. If at one iteration we cannot find the corresponding object
+    // (a case where we make a mistake in the code and change the frame type name recklessly !) then we don't need to continue iterating the given
+    // state frame names. The forEach() methohd won't allow us to break, so we use every() which retunrs false if the loop shall be broken.
     frameIds.every((frameId) => {
         const frameTypeValue = (state["frameObjects"][frameId].frameType);
         if(typeof frameTypeValue === "string") {
             // The frame type in the state was saved by the type name (string): we get the equivalent frame type object
             // in the unlikely event we can't find the object we stop the restoration and notify failure
-            let foundTypeObj = false;
-            Object.values(allFramesTypes).every((frameTypeDef) => {
-                if(frameTypeDef.type ===  frameTypeValue){
-                    foundTypeObj = true;
-                    state["frameObjects"][frameId].frameType = frameTypeDef;
-                    return false;
-                }
+            const correspondingFrameObj = Object.values(allFramesTypes).find((frameTypeDef) => frameTypeDef.type == frameTypeValue);
+            if(correspondingFrameObj  !== undefined) {
+                state["frameObjects"][frameId].frameType = correspondingFrameObj;
                 return true;
-            })
-            if(!foundTypeObj){
-                success = false;
-                return false;
             }
-            return true;
+            success = false;
+            return false;
         }
     });
     return success;
@@ -540,7 +536,7 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     if(code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
         if(!optionalSlot && (errorMessage === i18n.t("errorMessage.emptyEditableSlot")
-            || (currentErrorMessage && currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot")))) {
+            || currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot"))) {
             store.commit("removePreCompileErrors", getEditableSlotUIID(frameId, slotId));                
         }
     }
