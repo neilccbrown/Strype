@@ -96,6 +96,8 @@
         "defaultProjName":"My project",
         "loadProject":"Load project",
         "saveProject":"Save project",
+        "resetProject":"Reset",
+        "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
         "lang":"Language: "
     },

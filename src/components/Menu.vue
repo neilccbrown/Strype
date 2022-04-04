@@ -30,8 +30,9 @@
                 </div>
             </div> 
             <div class="menu-separator-div"></div>
-            <a class="project-impexp-div" href="#" @click="importFile();toggleMenuOnOff(undefined);" v-t="'appMenu.loadProject'" />
-            <a class="project-impexp-div" href="#" @click="exportFile();toggleMenuOnOff(undefined);" v-t="'appMenu.saveProject'"/>
+                <a class="project-impexp-div" @click="importFile();toggleMenuOnOff(undefined);" v-t="'appMenu.loadProject'" />
+                <a class="project-impexp-div" @click="exportFile();toggleMenuOnOff(undefined);" v-t="'appMenu.saveProject'"/>
+                <a class="project-impexp-div" @click="resetProject();toggleMenuOnOff(undefined);" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
@@ -267,6 +268,12 @@ export default Vue.extend({
         exportFile(): void {
             //save the JSON file of the state 
             saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), store.getters.getProjectName()+".spy");
+        },
+
+        resetProject(): void {
+            //resetting the project means removing the WebStorage saved project and reloading the page
+            //we emit an event to the App so that handlers are done properly
+            this.$emit("app-reset-project");
         },
 
         toggleMenuOnOff(e: Event): void {

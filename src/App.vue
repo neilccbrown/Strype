@@ -27,7 +27,8 @@
                 <div class="row no-gutters" >
                     <Menu 
                         :id="menuUIID" 
-                        v-on:app-showprogress="applyShowAppProgress"
+                        @app-showprogress="applyShowAppProgress"
+                        @app-reset-project="resetStrypeProject"
                         class="noselect"
                     />
                     <div class="col">
@@ -84,6 +85,8 @@ export default Vue.extend({
             currentParentId: 0,
             showAppProgress: false,
             progressbarMessage: "",
+            autoSaveTimerId: -1,
+            resetStrypeProjectFlag:false,
         };
     },
 
@@ -109,6 +112,13 @@ export default Vue.extend({
             return getCommandsRightPaneContainerId();
         },
 
+        localStorageAutosaveKey(): string {
+            let storageString = "PythonStrypeSavedState"
+            /* IFTRUE_isMicrobit */
+            storageString = "MicrobitStrypeSavedState"
+            /*FITRUE_isMicrobit */
+            return storageString;
+        },
     },
 
     created() {
@@ -118,11 +128,23 @@ export default Vue.extend({
             event.returnValue = true;
 
             // Save the state before exiting
-            this.autoSaveState();
+            if(!this.resetStrypeProjectFlag){
+                this.autoSaveState();
+            }
+            else {
+                // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
+                // to make sure this doesn't happen right when the user validates the reload, we do it later: if the user had
+                // cancelled the reload, the timeout will occur, and if the page has been reload, it won't (most likely)
+                setTimeout(() =>  {
+                    this.resetStrypeProjectFlag = true;
+                    this.setAutoSaveState();
+                }, 10000)
+                
+            }
         });
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 5 minutes
-        window.setInterval(() => this.autoSaveState(), 300000);
+        this.setAutoSaveState();
 
         // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
         window.addEventListener(
@@ -154,16 +176,10 @@ export default Vue.extend({
     },
 
     mounted() {
-        //check the local storage to see if there is a saved project from the previous time the user entered the system
-        
-        let storageString = "PythonStrypeSavedState"
-        /* IFTRUE_isMicrobit */
-        storageString = "MicrobitStrypeSavedState"
-        /*FITRUE_isMicrobit */
-            
-        // if browser supports locastorage
+        // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
+        // if browser supports localstorage
         if (typeof(Storage) !== "undefined") {
-            const savedState = localStorage.getItem(storageString);
+            const savedState = localStorage.getItem(this.localStorageAutosaveKey);
             if(savedState) {
                 store.dispatch(
                     "setStateFromJSONStr", 
@@ -178,15 +194,16 @@ export default Vue.extend({
     },
 
     methods: {
+        setAutoSaveState() {
+            this.autoSaveTimerId = window.setInterval(() => {
+                this.autoSaveState();
+            }, 300000);
+        },
+        
         autoSaveState() {
-            let storageString = "PythonStrypeSavedState"
-            /* IFTRUE_isMicrobit */
-            storageString = "MicrobitStrypeSavedState"
-            /*FITRUE_isMicrobit */
-
-            // save the project to the localStorage
+            // save the project to the localStorage (WebStorage)
             if (!store.getters.getIsDebugging() && typeof(Storage) !== "undefined") {
-                localStorage.setItem(storageString, store.getters.getStateJSONStrWithCheckpoints(true))
+                localStorage.setItem(this.localStorageAutosaveKey, store.getters.getStateJSONStrWithCheckpoints(true))
             }
         },
 
@@ -203,6 +220,20 @@ export default Vue.extend({
             (document.getElementsByTagName("body")[0] as HTMLBodyElement).style.height = heightVal;
             (document.getElementById("app") as HTMLDivElement).style.height = heightVal;
             (document.getElementById("app") as HTMLDivElement).style.overflow = overflowVal;
+        },
+
+        resetStrypeProject(){
+            // To reset the project we:
+            // 1) stop the autosave timer
+            window.clearInterval(this.autoSaveTimerId);
+            // 2) toggle the flag to disable saving on unload
+            this.resetStrypeProjectFlag = true;
+            // 3) delete the WebStorage key that refers to the current autosaved project
+            if (typeof(Storage) !== "undefined") {
+                localStorage.removeItem(this.localStorageAutosaveKey);
+            }
+            // finally, reload the page to reload the Strype default project
+            window.location.reload();
         },
 
         getFrameContainerUIID(frameId: number){
