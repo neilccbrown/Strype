@@ -84,7 +84,7 @@ function sInput(prompt: string) {
             // so before the prompt we only allow the direction arrow keys and some key combinations
             if(consoleTextArea.selectionStart < initialConsoleTextAreaCaretPos
                 && !(eventKeyLowerCase.startsWith("arrow") 
-                    || (event.ctrlKey || event.metaKey) && (["C","Z","Y"].includes(eventKeyLowerCase)))) {
+                    || ((event.ctrlKey || event.metaKey) && (["c","z","y"].includes(eventKeyLowerCase))))) {
                 // we can't have a caret move further back, we break the event loop
                 event.stopImmediatePropagation();
                 event.preventDefault();

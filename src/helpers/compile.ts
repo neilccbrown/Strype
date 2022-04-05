@@ -2,47 +2,15 @@ import Compiler from "@/compiler/compiler";
 import Vue from "vue";
 import i18n from "@/i18n";
 
-export function compileHex(compiler: Compiler) {
-    try {
-        const hex = compiler.getUniversalHex();
-        return hex;
-    }
-    catch (error) {
-        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-        Vue.$confirm({
-            message: error.message,
-            button: {
-                yes: i18n.t("buttonLabel.ok"),
-            },
-        });    
-    }
-}
-
-export function compileBlob(compiler: Compiler) {
+export function compileBlob(compiler: Compiler): Blob | undefined {
     try {
         const blob = compiler.getBlob();
         return blob;
     }
-    catch (error) {
+    catch (error: any) {
         //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
         Vue.$confirm({
             message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-            button: {
-                yes: i18n.t("buttonLabel.ok"),
-            },
-        });    
-    }
-}
-
-export async function compileBuffer(compiler: Compiler) {
-    try {
-        const buffer = await compiler.getBuffer();
-        return buffer;
-    }
-    catch (error) {
-        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-        Vue.$confirm({
-            message: error.message,
             button: {
                 yes: i18n.t("buttonLabel.ok"),
             },
@@ -57,7 +25,7 @@ export function compileFlashAndBuffer(compiler: Compiler, boardId: number): { fl
         const hexBuffer = compiler.getIntelHexForBoardId(boardId);
         return {flash: flashBytes, buffer: hexBuffer};
     }
-    catch (error) {
+    catch (error: any) {
         //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
         Vue.$confirm({
             message: error.message,

@@ -3,7 +3,7 @@
         <Slide 
             :isOpen="showMenu"
             :burgerIcon="false"
-            @closeMenu="toggleMenuOnOff"
+            @closeMenu="toggleMenuOnOff(null)"
             width="200"
         >
             <div style="width: 100%;">
@@ -30,14 +30,15 @@
                 </div>
             </div> 
             <div class="menu-separator-div"></div>
-            <a class="project-impexp-div" href="#" @click="importFile();toggleMenuOnOff(undefined);" v-t="'appMenu.loadProject'" />
-            <a class="project-impexp-div" href="#" @click="exportFile();toggleMenuOnOff(undefined);" v-t="'appMenu.saveProject'"/>
+                <a class="project-impexp-div" @click="importFile();toggleMenuOnOff(null);" v-t="'appMenu.loadProject'" />
+                <a class="project-impexp-div" @click="exportFile();toggleMenuOnOff(null);" v-t="'appMenu.saveProject'"/>
+                <a class="project-impexp-div" @click="resetProject();toggleMenuOnOff(null);" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(undefined)">
+                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(null)">
                         <option value="en">English</option>
                         <option value="fr">Français</option>
                         <option value="el">Ελληνικά</option>
@@ -104,7 +105,7 @@ import Vue from "vue";
 import store from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { fileImportSupportedFormats, getEditorMenuUIID, getTutorialUIID } from "@/helpers/editor";
+import { fileImportSupportedFormats, getEditorMenuUIID } from "@/helpers/editor";
 import $ from "jquery";
 import { Slide } from "vue-burger-menu"
 
@@ -139,13 +140,6 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                const tutorial = document.getElementById(getTutorialUIID());
-                if(tutorial !== null){
-                    //if the tutorial is displayed, we don't do anything here
-                    event.preventDefault();
-                    return;
-                }
-
                 //handle the Ctrl/Meta + S command for saving the project
                 if(event.key === "s" && (event.metaKey || event.ctrlKey)){
                     this.exportFile();
@@ -276,8 +270,14 @@ export default Vue.extend({
             saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), store.getters.getProjectName()+".spy");
         },
 
+        resetProject(): void {
+            //resetting the project means removing the WebStorage saved project and reloading the page
+            //we emit an event to the App so that handlers are done properly
+            this.$emit("app-reset-project");
+        },
+
         toggleMenuOnOff(e: Event): void {
-            const isMenuOpening = (e !== undefined);
+            const isMenuOpening = (e !== null);
             if(isMenuOpening) {
                 //cf online issues about vue-burger-menu https://github.com/mbj36/vue-burger-menu/issues/33
                 e.preventDefault();

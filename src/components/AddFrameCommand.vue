@@ -1,5 +1,5 @@
 <template>
-    <div class="frame-cmd-container" @click="onClick">
+    <div class="frame-cmd-container" @click="onClick" :title=tooltip>
         <button class="frame-cmd-btn">{{ symbol }}</button>
         <span>{{ description }}</span>
     </div>
@@ -11,7 +11,7 @@
 //////////////////////
 import Vue from "vue";
 import store from "@/store/store";
-import {addCommandsDefs} from "@/constants/addFrameCommandsDefs";
+import { getAddCommandsDefs } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -25,6 +25,7 @@ export default Vue.extend({
         shortcut: String, //the keyboard shortcut to add the frame 
         symbol: String, //the displayed shortcut in the UI, it can be a symbolic representation
         description: String, //the description of the frame
+        tooltip:String, //the tooltip showing details of the frame
         index: Number, //when more than 1 frame is assigned to a shortcut, the index tells which frame definition should be used
     },
 
@@ -33,7 +34,7 @@ export default Vue.extend({
             //add the frame in the editor
             store.dispatch(
                 "addFrameWithCommand",
-                addCommandsDefs[this.shortcut][this.index].type
+                getAddCommandsDefs()[this.shortcut][this.index].type
             );
         },
     },

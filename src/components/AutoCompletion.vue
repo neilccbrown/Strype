@@ -98,6 +98,7 @@ import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import { getAcContextPathId, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 import _ from "lodash";
 import moduleDescription from "@/autocompletion/microbit.json";
+import i18n from "@/i18n";
 //////////////////////
 export default Vue.extend({
     name: "AutoCompletion",
@@ -227,31 +228,33 @@ export default Vue.extend({
                 // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
 
                 const userDefinedFuncVars: UserDefinedElement[] = store.getters.retrieveUserDefinedElements(); 
+                const myFunctionsModuleLabel = i18n.t("autoCompletion.myFunctions") as string;
+                const myVariablesModuleLabel = i18n.t("autoCompletion.myVariables") as string;
                 userDefinedFuncVars.forEach((userDefItem) => {
                     if(userDefItem.isFunction) {
                         //If module has not been created, create it
-                        if(parsedResults["My Functions"] === undefined) { 
-                            parsedResults = {"My Functions":[], ...parsedResults};
-                            parsedDoc = {"My Functions":[], ...parsedDoc};
-                            parsedTypes = {"My Functions":[], ...parsedTypes};
+                        if(parsedResults[myFunctionsModuleLabel] === undefined) { 
+                            parsedResults[myFunctionsModuleLabel] = [];
+                            parsedDoc[myFunctionsModuleLabel]=[];
+                            parsedTypes[myFunctionsModuleLabel] = [];
                         }
-                        if(parsedResults["My Functions"].find((result) => (result === userDefItem.name)) === undefined) {
-                            parsedResults["My Functions"].push(userDefItem.name);
-                            parsedDoc["My Functions"].push(this.$i18n.t("errorMessage.errorUserDefinedFuncMsg") as string);
-                            parsedTypes["My Functions"].push(""); 
+                        if(parsedResults[myFunctionsModuleLabel].find((result) => (result === userDefItem.name)) === undefined) {
+                            parsedResults[myFunctionsModuleLabel].push(userDefItem.name);
+                            parsedDoc[myFunctionsModuleLabel].push(this.$i18n.t("errorMessage.errorUserDefinedFuncMsg") as string);
+                            parsedTypes[myFunctionsModuleLabel].push(""); 
                         }
                     }
                     else {
                         //If module has not been created, create it
-                        if(parsedResults["My Variables"] === undefined) { 
-                            parsedResults = {"My Variables":[], ...parsedResults};
-                            parsedDoc = {"My Variables":[], ...parsedDoc};
-                            parsedTypes = {"My Variables":[], ...parsedTypes};
+                        if(parsedResults[myVariablesModuleLabel] === undefined) { 
+                            parsedResults[myVariablesModuleLabel] = [];
+                            parsedDoc[myVariablesModuleLabel]=[];
+                            parsedTypes[myVariablesModuleLabel] = [];
                         }
-                        if(parsedResults["My Variables"].find((result) => (result === userDefItem.name)) === undefined) {
-                            parsedResults["My Variables"].push(userDefItem.name);
-                            parsedDoc["My Variables"].push(this.$i18n.t("errorMessage.errorUserDefinedVarMsg") as string);
-                            parsedTypes["My Variables"].push("");
+                        if(parsedResults[myVariablesModuleLabel].find((result) => (result === userDefItem.name)) === undefined) {
+                            parsedResults[myVariablesModuleLabel].push(userDefItem.name);
+                            parsedDoc[myVariablesModuleLabel].push(this.$i18n.t("errorMessage.errorUserDefinedVarMsg") as string);
+                            parsedTypes[myVariablesModuleLabel].push("");
                         }
                     }
                 });

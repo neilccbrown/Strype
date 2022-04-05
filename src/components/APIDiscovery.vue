@@ -74,6 +74,7 @@ import Vue from "vue";
 import {APIItemTextualDescription, EmptyDefinition, FrameObject} from "@/types/types"
 import store from "@/store/store"
 import { getEditableSlotUIID } from "@/helpers/editor";
+import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 
 export default Vue.extend({
     name: "APIDiscovery",
@@ -93,9 +94,9 @@ export default Vue.extend({
     },
 
     computed:{
-        //the api description is retrieved from the store: we don't want to recompile it every single time
+        // The api description is retrieved from a stored variabled: we don't want to recompile it every single time
         flatAPIDesc(): APIItemTextualDescription[]{
-            return store.getters.getAPIDescription();
+            return getAPIItemTextualDescriptions(false);
         },
 
         isEditing(): boolean {

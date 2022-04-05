@@ -1,17 +1,17 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ToggleFrameLabelCommandDef, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, APIItemTextualDescription, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition} from "@/types/types";
-import { addCommandsDefs } from "@/constants/addFrameCommandsDefs";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition } from "@/types/types";
 import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import tutorialState from "@/store/initial-states/tutorial-state";
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, compileTextualAPI, checkCodeErrors } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAllSiblings, checkIfLastJointChild, checkIfFirstChild, getPreviousIdForCaretBelow, getAvailableNavigationPositions} from "@/helpers/storeMethods";
-import { AppVersion } from "@/main";
+import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, checkCodeErrors, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
+import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAvailableNavigationPositions} from "@/helpers/storeMethods";
+import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import {DAPWrapper} from "@/helpers/partial-flashing"
-import moduleDescription from "@/autocompletion/microbit.json";
+import { getAddCommandsDefs } from "@/helpers/editor";
+import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
+import LZString from "lz-string"
 
 Vue.use(Vuex);
 
@@ -22,7 +22,7 @@ initialState = initialStates["initialMicrobitState"];
 
 export default new Vuex.Store({
     state: {
-        /*these flags need checking when a build is done + toggleTutorialState()*/
+        /*these flags need checking when a build is done */
         debugging: initialState.debugging,
 
         // Flag used to keep the AC shown for debug purposes
@@ -32,7 +32,7 @@ export default new Vuex.Store({
 
         frameObjects: initialState.initialState,
 
-        nextAvailableId: initialState.nextAvailableId, // won't work for tutorial, as it is not needed in there
+        nextAvailableId: initialState.nextAvailableId,
 
         importContainerId: -1,
 
@@ -77,8 +77,6 @@ export default new Vuex.Store({
 
         isAppMenuOpened: false,
 
-        currentAPIDescription: [] as APIItemTextualDescription[],
-
         acResults: [] as AcResultsWithModule[],
 
         editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
@@ -93,22 +91,43 @@ export default new Vuex.Store({
         getIsDebugging: (state) => (): boolean => {
             return state.debugging;
         },
-        getStateJSONStrWithCheckpoints : (state) => (): string => {
+        getStateJSONStrWithCheckpoints : (state) => (compress?: boolean): string => {
             //we get the state's checksum and the current app version,
             //and add them to the state's copy object to return
             const stateCopy = JSON.parse(JSON.stringify(state));
+            //clear the acResults, microbit DAP infos, copy frames, message banner and undo/redo related stuff as there is no need for storing them
+            stateCopy["acResults"] = [],
+            stateCopy["stateBeforeChanges"] = {};
+            stateCopy["diffToPreviousState"] = [];
+            stateCopy["diffToNextState"] = [];
+            stateCopy["stateBeforeChanges"] = {};
+            stateCopy["copiedFrames"] = {};
+            delete stateCopy["DAPWrapper"];
+            delete stateCopy["previousDAPWrapper"];
+            stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
+            
+            //simplify the storage of frame types by their type names only
+            Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
+                stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
+            });
+
             const checksum =  getSHA1HashForObject(stateCopy)
+
+            //add the checksum and other backup flags in the state object to be saved
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
-            return JSON.stringify(stateCopy);
+            stateCopy["platform"] = AppPlatform;
+            
+            // finally, we save a compressed version of this JSON state if required (on auto-backup state saving)
+            if(!compress){
+                return JSON.stringify(stateCopy);
+            }
+            else{
+                return LZString.compress(JSON.stringify(stateCopy))
+            }            
         },
         getAppLang: (state) => () => {
             return state.appLang;
-        },
-        getAPIDescription: (state) => () => {
-            // The API description is only compiled when the app is launched (cf App.vue), or if the language had changed (in setAppLang).
-            // We only do so to avoid recompiling everything every time the API discovery UI is displayed.
-            return state.currentAPIDescription;            
         },
         isAppMenuOpened: (state) => () => {
             return state.isAppMenuOpened;
@@ -322,8 +341,7 @@ export default new Vuex.Store({
                     ...[ReturnDefinition.type]
                 );
             }
-
-
+            const addCommandsDefs = getAddCommandsDefs();
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = JSON.parse(JSON.stringify(addCommandsDefs));
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {}
 
@@ -351,16 +369,7 @@ export default new Vuex.Store({
             
             return filteredCommands;
         },
-        getCurrentFrameToggleFrameLabelCommands: (state) => () => {
-            const commands: ToggleFrameLabelCommandDef[] = [];
-            state.frameObjects[state.currentFrame.id].frameType.labels.forEach((labelDef) => {
-                const command = labelDef.toggleLabelCommand;
-                if(command !== undefined){
-                    commands.push(command);
-                }
-            });
-            return commands;
-        },
+        
         getIsCurrentFrameLabelShown: (state, getters) => (frameId: number, slotIndex: number) => {
             const frame = state.frameObjects[frameId]
 
@@ -635,16 +644,10 @@ export default new Vuex.Store({
                 }
             });
 
+            /* IFTRUE_isMicrobit */
             //change the API description content here, as we don't want to construct the textual API description every time we need it
-            state.currentAPIDescription = compileTextualAPI(moduleDescription.api);
-        },
-
-        setAPIDescription(state, apiItems: APIItemTextualDescription[]){
-            Vue.set(
-                state,
-                "currentAPIDescription",
-                apiItems
-            );
+            getAPIItemTextualDescriptions(true);
+            /* FITRUE_isMicrobit */
         },
         
         setIsAppMenuOpened(state, isOpened: boolean) {
@@ -665,14 +668,6 @@ export default new Vuex.Store({
                 state,
                 "stateBeforeChanges",
                 (release) ? {} : JSON.parse(JSON.stringify(state))
-            );
-        },
-
-        toggleTutorialState(state, toggle: boolean) {
-            Vue.set(
-                state,
-                "frameObjects",
-                (toggle) ? tutorialState: initialState.initialState
             );
         },
 
@@ -1262,17 +1257,8 @@ export default new Vuex.Store({
                 } 
                 else{
                     Object.keys(state.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
-                        const optionalSlot = state.frameObjects[payload.frameId].frameType.labels[Number.parseInt(slotIndex)].optionalSlot ?? true
-                        if(!optionalSlot && state.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)].code.trim().length == 0){
-                            Vue.set(
-                                state.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)],
-                                "error",
-                                i18n.t("errorMessage.emptyEditableSlot")
-                            );
-    
-                            const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
-                            state.preCompileErrors.push(uiid);
-                        }
+                        const slotIndexNber = Number.parseInt(slotIndex);
+                        checkCodeErrors(frameId, slotIndexNber, state.frameObjects[frameId].contentDict[slotIndexNber].code);
                     });
                 }                 
             });
@@ -1989,123 +1975,77 @@ export default new Vuex.Store({
             );
 
             
-        },
-        
-        //Toggle the current frame label that matches the type specified in the payload.
-        toggleFrameLabel({commit, state}, commandType: string) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
-
-            //Get the FrameLabel (index) matching the type
-            const frameLabeToTogglelIndex = state.frameObjects[state.currentFrame.id].frameType.labels.findIndex((frameLabel) => frameLabel?.toggleLabelCommand?.type === commandType);
-            
-            const changeShowLabelTo = !state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].shownLabel;
-            //toggle the "shownLabel" property of in the contentDict for that label
-            Vue.set(
-                state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex],
-                "shownLabel",
-                changeShowLabelTo
-            );
-
-            //update the precompiled errors based on the visibility of the label (if the label isn't shown, no error should be raised)
-            const slotUIID = getEditableSlotUIID(state.currentFrame.id, frameLabeToTogglelIndex);
-            if(changeShowLabelTo){
-                //we show the label: add the slot in precompiled error if the slot is empty
-                if(state.frameObjects[state.currentFrame.id].contentDict[frameLabeToTogglelIndex].code.trim().length == 0){
-                    commit(
-                        "setSlotErroneous", 
-                        {
-                            frameId: state.currentFrame.id, 
-                            slotIndex: frameLabeToTogglelIndex,  
-                            error: i18n.t("errorMessage.emptyEditableSlot"),
-                        }
-                    );
-                    commit(
-                        "addPreCompileErrors",
-                        slotUIID
-                    );
-                }
-            }
-            else{
-                //we hide the label: remove the slot in precompiled error
-                commit(
-                    "setSlotErroneous", 
-                    {
-                        frameId: state.currentFrame.id, 
-                        slotIndex: frameLabeToTogglelIndex, 
-                        error: "",
-                    }
-                );
-                commit(
-                    "removePreCompileErrors",
-                    slotUIID
-                );
-            }
-
-            //save state changes
-            commit(
-                "saveStateChanges",
-                {
-                    previousState: stateBeforeChanges,
-                }
-            );
-        },        
+        },       
         
         setMessageBanner({commit}, message: MessageDefinition){
             commit("setMessageBanner", message);
         },
 
-        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string}){
+        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorDetailMessage = payload.errorReason ?? "unknown reason";
             let isVersionCorrect = false;
+            let newStateObj = {} as {[id: string]: any};
 
             // If there is an error set because the file couldn't be retrieved
             // we don't check anything, just get to the error display.
             if(isStateJSONStrValid){
+                // If the string we read was compressed, we need to uncompress it first
+                if(payload.readCompressed){
+                    dispatch("setStateFromJSONStr", {stateJSONStr: LZString.decompress(payload.stateJSONStr), showMessage: payload.showMessage});
+                    return;
+                }
 
                 // We need to check the JSON string is:
                 // 1) a valid JSON description of an object --> easy, we can just try to convert
                 // 2) an object that matches the state (checksum checker)
-                // 3) if the object is valid, we just verify the version is correct (and attempt loading)
-                
+                // 3) contains frame type names that are valid, and if so, replace the type names by the equivalent JS object (we replace the objects by the type name string to save space)    
+                // 4) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
                 try {
                     //Check 1)
-                    const newStateObj = JSON.parse(payload.stateJSONStr);
+                    newStateObj = JSON.parse(payload.stateJSONStr);
                     if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                         //no need to go further
                         isStateJSONStrValid=false;
-                        const error = i18n.t("errorMessage.dataNotObject");
-                        //note: the following conditional test is only for TS... the message should always be found
-                        errorDetailMessage = (typeof error === "string") ? error : "data doesn't describe object";
+                        errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
                     }
                     else{
                         // Check 2) as 1) is validated
                         if(!checkStateDataIntegrity(newStateObj)) {
                             isStateJSONStrValid = false;
-                            const error = i18n.t("errorMessage.stateDataIntegrity")
-                            //note: the following conditional test is only for TS... the message should always be found
-                            errorDetailMessage = (typeof error === "string") ? error : "data integrity error"; 
+                            errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
                         } 
                         else {
                             // Check 3) as 2) is validated
                             isVersionCorrect = (newStateObj["version"] == AppVersion);
+                            if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
+                                isStateJSONStrValid = false;
+                                errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
+                            }
+                            else{
+                                // Check 4) as 3) is validated
+                                if(!restoreSavedStateFrameTypes(newStateObj)){
+                                    // There was something wrong with the type name (it should not happen, but better check anyway)
+                                    isStateJSONStrValid = false;
+                                    errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
+                                }
+                            }
                             delete newStateObj["version"];
+                            delete newStateObj["platform"];
                         }          
                     }
                 }
                 catch(err){
                     //we cannot use the string arguemnt to retrieve a valid state --> inform the users
                     isStateJSONStrValid = false;
-                    const error = i18n.t("errorMessage.wrongDataFormat");
-                    //note: the following conditional test is only for TS... the message should always be found
-                    errorDetailMessage = (typeof error === "string") ? error : "wrong data format";
+                    errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
                 }
             }
             
             // Apply the change and indicate it to the user if we detected a valid JSON string
             // or alert the user we couldn't if we detected a faulty JSON string to represent the state
-            if(isStateJSONStrValid){
-                
+            if(isStateJSONStrValid){  
+                const newStateStr = JSON.stringify(newStateObj);     
                 if(!isVersionCorrect) {
                     //if the version isn't correct, we ask confirmation to the user before continuing 
                     const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
@@ -2120,8 +2060,8 @@ export default new Vuex.Store({
                                 dispatch(
                                     "doSetStateFromJSONStr",
                                     {
-                                        ...payload,
-                                        showMessage: true,
+                                        stateJSONStr: newStateStr,
+                                        showMessage: payload.showMessage ?? true,
                                     }
                                 );                                
                             }                        
@@ -2132,8 +2072,8 @@ export default new Vuex.Store({
                     dispatch(
                         "doSetStateFromJSONStr",
                         {
-                            ...payload,
-                            showMessage: true,
+                            stateJSONStr: newStateStr,
+                            showMessage: payload.showMessage ?? true,
                         }
                     );   
                 }                
@@ -2149,7 +2089,7 @@ export default new Vuex.Store({
             }
         },
 
-        doSetStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; errorReason?: string; showMessage?: boolean}){
+        doSetStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; showMessage?: boolean}){
             commit(
                 "updateState",
                 JSON.parse(payload.stateJSONStr)
