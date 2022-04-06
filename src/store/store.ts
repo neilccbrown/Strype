@@ -342,7 +342,6 @@ export const useStore = defineStore("app", {
                     ...[ReturnDefinition.type]
                 );
             }
-
             const addCommandsDefs = getAddCommandsDefs();
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = JSON.parse(JSON.stringify(addCommandsDefs));
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {}

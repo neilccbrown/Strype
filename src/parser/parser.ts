@@ -18,7 +18,6 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean): Parse
     const out = parser.parse();
 
     const hasErrors = hasEditorCodeErrors();
-
     const compiler = new Compiler();
     if(requireCompilation){
         compiler.compile(out);

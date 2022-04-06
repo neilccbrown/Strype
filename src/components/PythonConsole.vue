@@ -80,7 +80,7 @@ export default Vue.extend({
         -moz-box-sizing: border-box;    /* Firefox, other Gecko */
         box-sizing: border-box;         /* Opera/IE 8+ */
     }
-
+    
     #pythonConsole {
         width:100%;
         min-height: 5vh;

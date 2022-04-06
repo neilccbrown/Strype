@@ -79,9 +79,9 @@ import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, I
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
+import { mapStores } from "pinia";
 /* IFTRUE_isPurePython */
 import PythonConsole from "@/components/PythonConsole.vue"
-import { mapStores } from "pinia";
 /* FITRUE_isPurePython */
 
 export default Vue.extend({

@@ -245,7 +245,6 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)"         
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules"
-        
         // If there are no results
         inspectionCode += "\n"+INDENT+INDENT+"else:"
         // We empty any previous results so that the AC won't be shown
