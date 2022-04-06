@@ -93,12 +93,13 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import { DefaultCursorPosition, UserDefinedElement, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
+import { DefaultCursorPosition, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
 import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import { getAcContextPathId, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 import _ from "lodash";
 import moduleDescription from "@/autocompletion/microbit.json";
 import i18n from "@/i18n";
+import { mapStores } from "pinia";
 
 //////////////////////
 export default Vue.extend({
@@ -131,7 +132,7 @@ export default Vue.extend({
     },
 
     computed: {
-        //...mapStores(useStore), --> this is not used in this component because VETUR complains on some data properties.
+        ...mapStores(useStore),
 
         UIID(): string {
             return "popupAC" + this.slotId;
@@ -179,10 +180,11 @@ export default Vue.extend({
 
         acResults: {
             get(){
+                // Problem if using this.appStore here, so we directly use useStore()
                 return useStore().acResults;
             },
             set(value: AcResultsWithModule){
-                useStore().acResults = value;
+                this.appStore.acResults = value;
             },
         },
     },
@@ -226,7 +228,7 @@ export default Vue.extend({
                 // The list of results might not include some the user-defined functions and variables because the user code can't compile. 
                 // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
 
-                const userDefinedFuncVars = useStore().retrieveUserDefinedElements; 
+                const userDefinedFuncVars = this.appStore.retrieveUserDefinedElements; 
                 const myFunctionsModuleLabel = i18n.t("autoCompletion.myFunctions") as string;
                 const myVariablesModuleLabel = i18n.t("autoCompletion.myVariables") as string;
    

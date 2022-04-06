@@ -47,7 +47,7 @@ const initialStates: StateAppObjects = {
         debugging: false,
         initialState: initialMicrobitState,
         showKeystroke: false,
-        nextAvailableId: 3,
+        nextAvailableId: 4,
     },
 
 
