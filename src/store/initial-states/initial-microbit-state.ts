@@ -22,7 +22,7 @@ const initialMicrobitState: EditorFrameObjects = {
         isSelected: false,
         isVisible: true,
         parentId: 0,
-        childrenIds: [],
+        childrenIds: [1],
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
@@ -52,7 +52,7 @@ const initialMicrobitState: EditorFrameObjects = {
         isSelected: false,
         isVisible: true,
         parentId: 0,
-        childrenIds: [1,2],
+        childrenIds: [2,3],
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {},
@@ -60,10 +60,25 @@ const initialMicrobitState: EditorFrameObjects = {
         caretVisibility: CaretPosition.body,
         multiDragPosition: "",
     },
-
     1: {
-        frameType: Definitions.VarAssignDefinition,
+        frameType: Definitions.FromImportDefinition,
         id: 1,
+        isDisabled: false,
+        isSelected: false,
+        isVisible: true,
+        parentId: -1,
+        childrenIds: [],
+        jointParentId: 0,
+        jointFrameIds: [],
+        contentDict: {
+            0: {code :  "microbit", focused: false, error :"", shownLabel: true},
+            1: {code :  "*", focused: false, error :"", shownLabel: true} },
+        caretVisibility: CaretPosition.none,
+        multiDragPosition: "",
+    },
+    2: {
+        frameType: Definitions.VarAssignDefinition,
+        id: 2,
         isDisabled: false,
         isSelected: false,
         isVisible: true,
@@ -77,10 +92,9 @@ const initialMicrobitState: EditorFrameObjects = {
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
-
-    2: {
+    3: {
         frameType: Definitions.EmptyDefinition,
-        id: 2,
+        id: 3,
         isDisabled: false,
         isSelected: false,
         isVisible: true,
@@ -89,7 +103,7 @@ const initialMicrobitState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         contentDict: {
-            0: {code :  "print(myString)", focused: false, error :"", shownLabel: true},
+            0: {code :  "display.scroll(myString)", focused: false, error :"", shownLabel: true},
         },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
