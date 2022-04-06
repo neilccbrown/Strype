@@ -232,7 +232,7 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     const shortcutCommands = Object.values(allFrameCommandsDefs).flat().filter((command) => command.shortcut === shortcut);
     if(shortcutCommands.length > 0) {
         if(index) {
-            if(shortcutCommands.length < index) {
+            if(index < shortcutCommands.length) {
                 const shortcutCommandIndexed = shortcutCommands.find((command) => command?.index == index);
                 if(shortcutCommandIndexed){
                     return shortcutCommandIndexed.type;
