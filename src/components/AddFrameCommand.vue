@@ -12,7 +12,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import { getAddCommandsDefs } from "@/helpers/editor";
+import { findAddCommandFrameType } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -36,7 +36,10 @@ export default Vue.extend({
     methods: {
         onClick(): void {
             //add the frame in the editor
-            this.appStore.addFrameWithCommand(getAddCommandsDefs()[this.shortcut][this.index].type);
+            const addFrameCommandType = findAddCommandFrameType(this.shortcut, this.index);
+            if(addFrameCommandType != null){
+                this.appStore.addFrameWithCommand(addFrameCommandType);
+            }
         },
     },
 });
