@@ -72,12 +72,13 @@
 <script lang="ts">
 import Vue from "vue";
 import {APIItemTextualDescription, EmptyDefinition, FrameObject} from "@/types/types"
-import store from "@/store/store"
+import { useStore } from "@/store/store"
 import { getEditableSlotUIID } from "@/helpers/editor";
+import { mapStores } from "pinia";
+import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 
 export default Vue.extend({
     name: "APIDiscovery",
-    store: store,
 
     data: function () {
         return {
@@ -93,17 +94,19 @@ export default Vue.extend({
     },
 
     computed:{
-        //the api description is retrieved from the store: we don't want to recompile it every single time
+        ...mapStores(useStore),
+        
+        // The api description is retrieved from a stored variabled: we don't want to recompile it every single time
         flatAPIDesc(): APIItemTextualDescription[]{
-            return store.getters.getAPIDescription();
+            return getAPIItemTextualDescriptions(false);
         },
 
         isEditing(): boolean {
-            return store.getters.getIsEditing();
+            return this.appStore.isEditing;
         },
 
         showCodeGeneratorPart(): boolean {
-            return store.getters.getCanShowAPICodeGenerator();
+            return this.appStore.canShowAPICodeGenerator;
         },
     },
 
@@ -291,18 +294,15 @@ export default Vue.extend({
             if(!this.disabledAPI()){
                 const newCode = this.mbAPIExampleCodeParts.join("");
                 if(!this.isEditing){
-                // part 1): not editing the code: we create a new method call frame, then add the code in (parts 2 & 3)
-                    store.dispatch(
-                        "addFrameWithCommand",
-                        EmptyDefinition
-                    ).then(() => {
-                    //as we added a new frame, we need to get the new current frame
-                        this.addExampleCodeInSlot(store.getters.getCurrentFrameObject().id, 0, newCode);1
+                    // part 1): not editing the code: we create a new method call frame, then add the code in (parts 2 & 3)
+                    this.appStore.addFrameWithCommand(EmptyDefinition).then(() => {
+                    // as we added a new frame, we need to get the new current frame
+                        this.addExampleCodeInSlot(this.appStore.currentFrame.id, 0, newCode);
                     });
                 }
                 else{
-                //editing mode, just add the code in the existing slot (parts 2 & 3)
-                    const currentFrame = store.getters.getCurrentFrameObject() as FrameObject;
+                    // editing mode, just add the code in the existing slot (parts 2 & 3)
+                    const currentFrame = this.appStore.getCurrentFrameObject;
                     const currentSlotIndex = parseInt(Object.entries(currentFrame.contentDict).find((entry) => entry[1].focused)?.[0]??"-1") ;
                     this.addExampleCodeInSlot(currentFrame.id, currentSlotIndex, newCode); 
                 }  
@@ -312,8 +312,7 @@ export default Vue.extend({
         // The externalised part to add the code example content in an editable slot (cf useExampleCode() parts 2 & 3) 
         addExampleCodeInSlot(frameId: number, slotIndex: number, content: string){
             this.addedAPICode = true;
-            store.dispatch(
-                "setFrameEditableSlotContent",
+            this.appStore.setFrameEditableSlotContent(
                 {
                     frameId: frameId,
                     slotId: slotIndex,

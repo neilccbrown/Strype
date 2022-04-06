@@ -1,5 +1,5 @@
 import Parser from "@/parser/parser";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import { CodeMatchIterable, FrameObject } from "@/types/types";
 /* IFTRUE_isMicrobit */
 import microbitModuleDescription from "@/autocompletion/microbit.json";
@@ -243,9 +243,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
         // Convert back to dictionary!
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)" 
-
-        
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)"         
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules"
         
         // If there are no results
@@ -322,9 +320,10 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // This must be done by Brython to be sure that the AC and documentation
     // have had time to load.
     inspectionCode += "\ntry:"
-    inspectionCode += "\n"+INDENT+"from browser import window";
-    inspectionCode += "\n"+INDENT+"event = window.MouseEvent.new('click')";
-    inspectionCode += "\n"+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
+    inspectionCode += "\n"+INDENT+"if len(__document.get(id='"+((regenerateAC) ? acSpanId : reshowResultsId)+"')) > 0:";   
+    inspectionCode += "\n"+INDENT+INDENT+"from browser import window";
+    inspectionCode += "\n"+INDENT+INDENT+"event = window.MouseEvent.new('click')";
+    inspectionCode += "\n"+INDENT+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
     inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"__console.log('exception4', e4)";
     
     // We need to put the user code before, so that the inspection can work on the code's results
@@ -460,7 +459,7 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
     }
 
     //find out how to address the AC based on that import (are we looking for a module name or for a module part?)
-    const frame: FrameObject = store.getters.getFrameObjectFromId(frameId);
+    const frame: FrameObject = useStore().frameObjects[frameId];
     const lookupModulePart = (slotIndex == 1 && frame.contentDict[0].shownLabel); //false -> we look at a module itself, true -> we look at a module part  
     let contextAC = "";
     const tokenAC = slotCode;

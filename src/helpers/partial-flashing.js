@@ -34,7 +34,7 @@
 
 "use strict";
 
-import store from "@/store/store"; 
+import { useStore } from "@/store/store"; 
 import * as DAPjs from "dapjs";
 
 let loggedBoardId = "none";
@@ -536,28 +536,28 @@ export const PartialFlashing = {
     // Returns a new DAPWrapper or reconnects a previously used one.
     // Drawn from https://github.com/microsoft/pxt-microbit/blob/dec5b8ce72d5c2b4b0b20aafefce7474a6f0c7b2/editor/extension.tsx#L161
     dapAsync: function() {
-        if (store.getters.getPreviousDAPWrapper()) {
-            if (store.getters.getPreviousDAPWrapper().device.opened) {
-                return store.getters.getPreviousDAPWrapper().reconnectAsync(false) // Always fully reconnect to handle device unplugged mid-session
-                    .then(() => store.getters.getPreviousDAPWrapper());
+        if (Object.keys(useStore().previousDAPWrapper).length > 0) {
+            if (useStore().previousDAPWrapper.device.opened) {
+                return useStore().previousDAPWrapper.reconnectAsync(false) // Always fully reconnect to handle device unplugged mid-session
+                    .then(() => useStore().previousDAPWrapper);
             }
         }
         return Promise.resolve()
             .then(() => {
-                if (store.getters.getPreviousDAPWrapper()) {
-                    return store.getters.getPreviousDAPWrapper().disconnectAsync();
+                if (Object.keys(useStore().previousDAPWrapper).length > 0) {
+                    return useStore().previousDAPWrapper.disconnectAsync();
                 }
                 return Promise.resolve();
             })
             .then(() => {
-                if (store.getters.getPreviousDAPWrapper() && store.getters.getPreviousDAPWrapper().device) {
-                    return store.getters.getPreviousDAPWrapper().device;
+                if (Object.keys(useStore().previousDAPWrapper).length > 0 && useStore().previousDAPWrapper.device) {
+                    return useStore().previousDAPWrapper.device;
                 }
                 return navigator.usb.requestDevice({ filters: [{vendorId: 0x0d28, productId: 0x0204}] });
             })
             .then((device) => {
                 const w = new DAPWrapper(device);
-                store.commit("setPreviousDAPWrapper", w);
+                useStore().previousDAPWrapper = w;
                 return w.reconnectAsync(true).then(() => w)
             });
     },
@@ -575,14 +575,14 @@ export const PartialFlashing = {
     // Does not wait for execution to halt.
     // Drawn from https://github.com/microsoft/pxt-microbit/blob/dec5b8ce72d5c2b4b0b20aafefce7474a6f0c7b2/editor/extension.tsx#L340
     runFlash: async function(page, addr) {
-        await store.getters.getDAPWrapper().cortexM.halt(true);
-        return Promise.all([store.getters.getDAPWrapper().cortexM.writeCoreRegister(PartialFlashingUtils.CoreRegister.PC, this.loadAddr + 4 + 1),
-            store.getters.getDAPWrapper().cortexM.writeCoreRegister(PartialFlashingUtils.CoreRegister.LR, this.loadAddr + 1),
-            store.getters.getDAPWrapper().cortexM.writeCoreRegister(PartialFlashingUtils.CoreRegister.SP, this.stackAddr),
-            store.getters.getDAPWrapper().cortexM.writeCoreRegister(0, page.targetAddr),
-            store.getters.getDAPWrapper().cortexM.writeCoreRegister(1, addr),
-            store.getters.getDAPWrapper().cortexM.writeCoreRegister(2, PartialFlashingUtils.pageSize >> 2)])
-            .then(() => store.getters.getDAPWrapper().cortexM.resume(false));
+        await useStore().DAPWrapper.cortexM.halt(true);
+        return Promise.all([useStore().DAPWrapper.cortexM.writeCoreRegister(PartialFlashingUtils.CoreRegister.PC, this.loadAddr + 4 + 1),
+            useStore().DAPWrapper.cortexM.writeCoreRegister(PartialFlashingUtils.CoreRegister.LR, this.loadAddr + 1),
+            useStore().DAPWrapper.cortexM.writeCoreRegister(PartialFlashingUtils.CoreRegister.SP, this.stackAddr),
+            useStore().DAPWrapper.cortexM.writeCoreRegister(0, page.targetAddr),
+            useStore().DAPWrapper.cortexM.writeCoreRegister(1, addr),
+            useStore().DAPWrapper.cortexM.writeCoreRegister(2, PartialFlashingUtils.pageSize >> 2)])
+            .then(() => useStore().DAPWrapper.cortexM.resume(false));
     },
 
     // Write a single page of data to micro:bit ROM by writing it to micro:bit RAM and copying to ROM.
@@ -709,8 +709,8 @@ export const PartialFlashing = {
     connectDapAsync: function() {
         return Promise.resolve()
             .then(() => {
-                if (store.getters.getPreviousDAPWrapper()) {
-                    store.getters.getPreviousDAPWrapper().flashing = true;
+                if (Object.keys(useStore().previousDAPWrapper).length > 0) {
+                    useStore().previousDAPWrapper.flashing = true;
                     return Promise.resolve()
                         .then(() => new Promise((resolve) => setTimeout(resolve, 1000)));
                 }
@@ -718,22 +718,22 @@ export const PartialFlashing = {
             })
             .then(this.dapAsync)
             .then((w) => {
-                store.commit("setDAPWrapper", w);
+                useStore().DAPWrapper = w;
                 PartialFlashingUtils.log("Connection Complete");
             })
             .then(() => {
-                return store.getters.getDAPWrapper().cortexM.readMem32(PartialFlashingUtils.FICR.CODEPAGESIZE);
+                return useStore().DAPWrapper.cortexM.readMem32(PartialFlashingUtils.FICR.CODEPAGESIZE);
             })
             .then((pageSize) => {
                 PartialFlashingUtils.pageSize = pageSize;
 
-                return store.getters.getDAPWrapper().cortexM.readMem32(PartialFlashingUtils.FICR.CODESIZE);
+                return useStore().DAPWrapper.cortexM.readMem32(PartialFlashingUtils.FICR.CODESIZE);
             })
             .then((numPages) => {
                 PartialFlashingUtils.numPages = numPages;
             })
             .then(() => {
-                return store.getters.getDAPWrapper().disconnectAsync();
+                return useStore().DAPWrapper.disconnectAsync();
             });
     },
 

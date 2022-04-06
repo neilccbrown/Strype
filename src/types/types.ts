@@ -1,5 +1,4 @@
 import i18n from "@/i18n";
-import {KeyModifier} from "@/constants/toggleFrameLabelCommandsDefs"; 
 import Compiler from "@/compiler/compiler";
 
 // Type Definitions
@@ -32,17 +31,9 @@ export interface FrameObject {
 
 }
 
-export interface ToggleFrameLabelCommandDef {
-    type: string;
-    modifierKeyShortcuts: KeyModifier[];
-    keyShortcut: string;
-    displayCommandText: string;
-}
-
 export interface FrameLabel {
     label: string;
     optionalLabel?: boolean;
-    toggleLabelCommand?: ToggleFrameLabelCommandDef;
     slot: boolean;
     defaultText: string;
     optionalSlot?: boolean;
@@ -125,10 +116,11 @@ export interface NavigationPosition {
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
-    description: string;
-    shortcut: string;
-    symbol?: string;
-    index?: number; //the index of frame type when a shortcut matches more than 1 context-distinct frames
+    description: string; // The label that shown next to the key shortcut button
+    shortcut: string; // The keyboard key shortcut to be used to add a frame (eg "i" for an if frame)
+    symbol?: string; // The symbol to show in the key shortcut button when the key it's not easily reprenstable (e.g. "⌴" for space)
+    tooltip: string; // If needed, the tooltip content that explains the role of a frame - localised
+    index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
 // This is an array with all the frame Definitions objects.
@@ -752,40 +744,6 @@ export interface ChangeFramePropInfos {
     newStringPropVal?: string;
 }
 
-// Tutorial
-export interface TutorialHightightedElementDimension{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-export interface TutorialMargins {
-    //All margins (extra space around the highlighted element) are optional, and they are expressing pixels
-    //We use this interface for custom position of the messages too, and then they are expressing percentages
-    left?: number;
-    top?: number;
-    bottom?: number;
-    right?: number;
-}
-
-export interface TutorialArrowPos {
-    //Arrow positioning expressing percentages
-    fromX: number;
-    fromY: number;
-    toX: number;
-    toY: number; 
-}
-
-export interface TutorialStep {
-    hightLighedElementsUIIDs: string[];
-    highLightedAreaExtraMargins?: TutorialMargins[]; //pixel values
-    explanationMessage: string;
-    messageRelativePos: "left" | "right"  | "top" | "bottom" | "custom";
-    messageCustomPos?: TutorialMargins; //percentage values
-    showArrows: boolean;
-}
-
 //Autocompletion
 export interface LanguageDef {
     builtin: ElementDef[];
@@ -834,15 +792,20 @@ export interface EditableSlotReachInfos {
     direction: -1 | 1;
 }
 
-export interface StateObject {
+export interface StateAppObject {
     debugging: boolean;
     initialState: EditorFrameObjects;
     showKeystroke: boolean;
     nextAvailableId: number;
 }
 
-export interface StateObjects {
-    [id: string]: StateObject;
+export interface StateAppObjects {
+    [id: string]: StateAppObject;
+}
+
+export enum StrypePlatform {
+    standard = "std",
+    microbit = "mb",
 }
 
 export interface UserDefinedElement {

@@ -1,6 +1,6 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, APICodedItem, APIItemTextualDescription } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, Definitions, FrameContainersDefinitions } from "@/types/types";
 import Vue from "vue";
-import store from "@/store/store"
+import { useStore } from "@/store/store"
 import i18n from "@/i18n"
 import { getSHA1HashForObject } from "@/helpers/common";
 import { getEditableSlotUIID } from "./editor";
@@ -245,13 +245,47 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
         delete obj["checksum"];
         const foundVersion = obj["version"]
         delete obj["version"];
+        let foundPlatform = undefined
+        if(obj["platform"]){
+            foundPlatform = obj["platform"];
+            delete obj["platform"];
+        }
         //get the checksum from the object
         const expectedChecksum = getSHA1HashForObject(obj);
-        //add the read version as it is needed later
+        //add the read version and platform as they are needed later
         obj["version"] = foundVersion;
+        obj["platform"] = foundPlatform ?? StrypePlatform.standard;
         //and return if the checksum was right
         return foundChecksum === expectedChecksum;        
     }
+}
+
+export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): boolean {
+    if(state["frameObjects"] == undefined){
+        return false;
+    }
+    
+    let success = true;
+    const frameIds: string[] = Object.keys(state["frameObjects"]);
+    const allFramesTypes = {...Definitions, ...FrameContainersDefinitions};
+    // We iterate through all the given frame type names to find the matching object. If at one iteration we cannot find the corresponding object
+    // (a case where we make a mistake in the code and change the frame type name recklessly !) then we don't need to continue iterating the given
+    // state frame names. The forEach() methohd won't allow us to break, so we use every() which retunrs false if the loop shall be broken.
+    frameIds.every((frameId) => {
+        const frameTypeValue = (state["frameObjects"][frameId].frameType);
+        if(typeof frameTypeValue === "string") {
+            // The frame type in the state was saved by the type name (string): we get the equivalent frame type object
+            // in the unlikely event we can't find the object we stop the restoration and notify failure
+            const correspondingFrameObj = Object.values(allFramesTypes).find((frameTypeDef) => frameTypeDef.type == frameTypeValue);
+            if(correspondingFrameObj  !== undefined) {
+                state["frameObjects"][frameId].frameType = correspondingFrameObj;
+                return true;
+            }
+            success = false;
+            return false;
+        }
+    });
+    return success;
 }
 
 // Finds out what is the root frame Id of a "block" of disabled frames
@@ -481,42 +515,12 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
     })
 };
 
-// This methods creates a flat map (array) of the API with the textual content. For localisation, the textual content is separated from the API hierarchical map (i.e. in microbit.json),
-// this methods binds the textual content of the API based on the API item keys.
-export const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?: number, immediateParentName?: string): APIItemTextualDescription[] {
-    const apiDocumentedItems = [] as APIItemTextualDescription[];
-    apiCodedItems.forEach((apiItem) => {
-        // documentation (simple and extra) is not always provided in the json files (for easier readablilty)
-        // therefore, we check if the value can be found against the key for doc/extradoc and assign an empty string if not found
-        // (we only need the check against the English locale as it is the reference)
-        const shortDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_doc","en")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string : "";
-        const extraDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc","en")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
-
-        const apiItemChildren = (apiItem.children) ? apiItem.children : [] as APICodedItem[]; 
-        const version = (apiItem.version) ? apiItem.version : 1;
-        apiDocumentedItems.push({name: apiItem.name,
-            label: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_label") as string,
-            doc: shortDoc,
-            extradoc: extraDoc,
-            version: version,
-            level: level??1,
-            codePortion: apiItem.codePortion,
-            extraCodePortion : apiItem.extraCodePortion??"",
-            isFinal: (apiItemChildren.length == 0),
-            immediateParentName: (immediateParentName??""), //if the parent's name isn't provided as argument (i.e. for level 1), an empty value is used instead
-        });
-        //add the children
-        apiDocumentedItems.push(...compileTextualAPI(apiItemChildren, (level) ? (level + 1) : 2, apiItem.name));
-    }) 
-    return apiDocumentedItems;
-};
-
 export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {
     // This method for checking errors is called when a frame slot has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
     // we clear the errors completely for that frame/slot before we check the errors again for it.
-    store.commit(
-        "setSlotErroneous", 
+    const currentErrorMessage = (slotId > -1) ? useStore().frameObjects[frameId].contentDict[slotId].error : undefined ;
+    useStore().setSlotErroneous(
         {
             frameId: frameId, 
             slotIndex: slotId, 
@@ -524,26 +528,26 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
         }
     );
 
-    const frameObject = store.getters.getFrameObjectFromId(frameId);
+    const frameObject = useStore().frameObjects[frameId];
 
     const optionalSlot = frameObject.frameType.labels[slotId].optionalSlot ?? true;
-    const errorMessage = store.getters.getErrorForSlot(frameId,slotId);
+    const errorMessage = useStore().getErrorForSlot(frameId,slotId);
     if(code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
-        if(!optionalSlot && errorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
-            store.commit("removePreCompileErrors", getEditableSlotUIID(frameId, slotId));                
+        if(!optionalSlot && (errorMessage === i18n.t("errorMessage.emptyEditableSlot")
+            || currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot"))) {
+            useStore().removePreCompileErrors(getEditableSlotUIID(frameId, slotId));                
         }
     }
     else if(!optionalSlot){
-        store.commit(
-            "setSlotErroneous", 
+        useStore().setSlotErroneous( 
             {
                 frameId: frameId, 
                 slotIndex: slotId,  
-                error: i18n.t("errorMessage.emptyEditableSlot"),
+                error: i18n.t("errorMessage.emptyEditableSlot") as string,
             }
         );
-        store.commit("addPreCompileErrors", getEditableSlotUIID(frameId, slotId));
+        useStore().addPreCompileErrors(getEditableSlotUIID(frameId, slotId));
     }
                 
     // We check Python error (with TigerPython) for this portion of code only.

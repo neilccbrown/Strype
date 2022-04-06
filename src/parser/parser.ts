@@ -1,6 +1,7 @@
 import Compiler from "@/compiler/compiler";
+import { hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import { CodeStyle, CommentDefinition, EmptyDefinition, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits, VarAssignDefinition} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
@@ -13,17 +14,11 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean): Parse
     // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
     // Therefore, we expect the errors to already be found out when this method is called, and we don't need
     // to retrieve them again.
-
     const parser = new Parser();
     const out = parser.parse();
 
-    // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
-    // by an error class on a frame ("frameDiv" + "error"), a frame body ("frame-body-container" + "error") 
-    // or an editable slot ("editableslot-input" + "error").
-    const hasErrors = (document.getElementsByClassName("framDiv error").length > 0) || 
-        (document.getElementsByClassName("frame-body-container error").length > 0) || 
-        (document.getElementsByClassName("editableslot-div error").length > 0);
- 
+    const hasErrors = hasEditorCodeErrors();
+
     const compiler = new Compiler();
     if(requireCompilation){
         compiler.compile(out);
@@ -51,7 +46,7 @@ export default class Parser {
 
     private parseBlock(block: FrameObject, indentation: string): string {
         let output = "";
-        const children = store.getters.getFramesForParentId(block.id);
+        const children = useStore().getFramesForParentId(block.id);
 
         if(this.checkIfFrameHasError(block)) {
             return "";
@@ -59,7 +54,7 @@ export default class Parser {
 
         const passBlock = this.excludeLoops && Object.values(LoopFrames).find((t) => t.type === block.frameType.type);
         // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
-        const conditionalIndent = (passBlock)? "" : INDENT
+        const conditionalIndent = (passBlock) ? "" : INDENT
 
         output += 
             ((!passBlock)? this.parseStatement(block, indentation) : "") + 
@@ -71,7 +66,7 @@ export default class Parser {
                 "") // empty bodies are added as empty lines in the code
             + 
             this.parseFrames(
-                store.getters.getJointFramesForFrameId(block.id, "all"), 
+                useStore().getJointFramesForFrameId(block.id, "all"), 
                 indentation
             );
         
@@ -147,7 +142,7 @@ export default class Parser {
                 // frame with children
                 (Object.values(FrameContainersDefinitions).find((e) => e.type ===frame.frameType.type))?
                     // for containers call parseFrames again on their frames
-                    this.parseFrames(store.getters.getFramesForParentId(frame.id), "") 
+                    this.parseFrames(useStore().getFramesForParentId(frame.id), "") 
                     :
                     // for simple block frames (i.e. if) call parseBlock
                     this.parseBlock(frame, indentation) 
@@ -175,7 +170,7 @@ export default class Parser {
         }
 
         //console.time();
-        output += this.parseFrames((this.startAtFrameId > -100) ? [store.getters.getFrameObjectFromId(this.startAtFrameId)] : store.getters.getFramesForParentId(0));
+        output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0));
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
@@ -219,7 +214,7 @@ export default class Parser {
             errors.forEach((error: ErrorInfo) => {
                 if( this.framePositionMap[error.line] !== undefined) {
                     if(this.isErrorIfInSlotBounds(error.line,error.offset)) {
-                        store.commit("setSlotErroneous", {
+                        useStore().setSlotErroneous({
                             frameId: this.framePositionMap[error.line].frameId,
                             // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
                             slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(

@@ -32,14 +32,14 @@
 
 <script lang="ts">
 import Vue from "vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, VoidFunction} from "@/types/types";
+import { mapStores } from "pinia";
 
 export default Vue.extend({
     name: "MessageBanner",
-    store,
 
-    data() {
+    data: function() {
         return {
             image: "" as string,
         };
@@ -55,8 +55,10 @@ export default Vue.extend({
     },
 
     computed: {
+        ...mapStores(useStore),
+        
         message(): MessageDefinition {
-            return store.getters.getCurrentMessage();
+            return this.appStore.currentMessage;
         },
 
         showModal(): boolean{
@@ -66,8 +68,9 @@ export default Vue.extend({
 
     methods: {
         close(): void {
-            store.dispatch("setMessageBanner", MessageDefinitions.NoMessage);
+            this.appStore.currentMessage = MessageDefinitions.NoMessage;
         },
+
         onButtonClick(payload: VoidFunction | string){
             // If the type of the action associated with this button is a function
             // we run this function. If the type is string then we run a predefined action. 
@@ -77,14 +80,11 @@ export default Vue.extend({
             else{
                 switch(payload){
                 case MessageDefinedActions.closeBanner:
-                    store.dispatch("setMessageBanner", MessageDefinitions.NoMessage);
+                    this.appStore.currentMessage = MessageDefinitions.NoMessage;
                     break;
                 case MessageDefinedActions.undo:
-                    store.commit(
-                        "applyStateUndoRedoChanges",
-                        true
-                    );
-                    store.dispatch("setMessageBanner", MessageDefinitions.NoMessage);
+                    this.appStore.applyStateUndoRedoChanges(true);
+                    this.appStore.currentMessage = MessageDefinitions.NoMessage;
                     break;
                 default:
                     break;

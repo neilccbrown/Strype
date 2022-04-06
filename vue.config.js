@@ -1,10 +1,8 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
 const MoveAssetsPlugin = require("move-assets-webpack-plugin")
 
-module.exports = {
-    /* IFTRUE_isMicrobit */
-    configureWebpack: {
-        devtool: "source-map",
+const configureWebpackExtraProps = (process.env.npm_config_microbit)
+    ? {
         plugins: [
             new MoveAssetsPlugin({
                 clean: true,
@@ -18,8 +16,24 @@ module.exports = {
                 ],
             }),
         ],
+    }
+    : {};
+
+module.exports = {
+    configureWebpack: {
+        devtool: "source-map",
+        ...configureWebpackExtraProps,
+        // allows pinia to compile fine (https://github.com/vuejs/pinia/issues/675)
+        module: {
+            rules: [
+                {
+                    test: /\.mjs$/,
+                    include: /node_modules/,
+                    type: "javascript/auto",
+                },
+            ],
+        },
     },
-    /* FITRUE_isMicrobit */   
 
     chainWebpack: (config) => {
         config.module
@@ -44,8 +58,13 @@ module.exports = {
                 isPurePython: process.env.npm_config_python,
                 isMicrobit: process.env.npm_config_microbit,
             });
+        config.plugin("copy").tap(([options]) => {
+            if(process.env.npm_config_python) {
+                options[0].ignore.push("pythonLib/**");
+            }
+            return [options];
+        });
     },
-
 
     publicPath: (process.env.npm_config_python)?"/editor/":"/microbit/",
     pluginOptions: {

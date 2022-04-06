@@ -1,7 +1,6 @@
 <template>
     <div id="app" class="container-fluid">
         <vue-confirm-dialog />
-        <tutorial/>
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
@@ -28,7 +27,8 @@
                 <div class="row no-gutters" >
                     <Menu 
                         :id="menuUIID" 
-                        v-on:app-showprogress="applyShowAppProgress"
+                        @app-showprogress="applyShowAppProgress"
+                        @app-reset-project="resetStrypeProject"
                         class="noselect"
                     />
                     <div class="col">
@@ -60,45 +60,47 @@ import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
-import Tutorial from "@/components/Tutorial.vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
 import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID } from "./helpers/editor";
-import { compileTextualAPI } from "./helpers/storeMethods";
-import moduleDescription from "@/autocompletion/microbit.json";
+import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
+import { DAPWrapper } from "./helpers/partial-flashing";
+import { mapStores } from "pinia";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "App",
-    store,
-
+    
     components: {
         MessageBanner,
         FrameContainer,
         Commands,
         Menu,
-        Tutorial,
     },
 
-    data() {
+    data: function() {
         return {
             newFrameType: "",
             currentParentId: 0,
             showAppProgress: false,
             progressbarMessage: "",
+            autoSaveTimerId: -1,
+            resetStrypeProjectFlag:false,
         };
     },
 
-    computed: {            
+    computed: {       
+        ...mapStores(useStore),
+             
         // gets the container frames objects which are in the root
         containerFrames(): FrameObject[] {
-            return store.getters.getFramesForParentId(0);
+            return this.appStore.getFramesForParentId(0);
         },
 
         showMessage(): boolean {
-            return store.getters.getIsMessageBannerOn();
+            return this.appStore.isMessageBannerOn;
         },
 
         menuUIID(): string {
@@ -113,24 +115,39 @@ export default Vue.extend({
             return getCommandsRightPaneContainerId();
         },
 
-    },
-
-    created() {
-        window.addEventListener("beforeunload", function(event) {
-            // Browsers won't display a customised message, and can detect when to prompt the user,
-            // so we don't need to do anything special.
-            event.returnValue = true;
-
+        localStorageAutosaveKey(): string {
             let storageString = "PythonStrypeSavedState"
             /* IFTRUE_isMicrobit */
             storageString = "MicrobitStrypeSavedState"
             /*FITRUE_isMicrobit */
+            return storageString;
+        },
+    },
 
-            // save the project to the localStorage before exiting
-            if (!store.getters.getIsDebugging() && typeof(Storage) !== "undefined") {
-                localStorage.setItem(storageString,store.getters.getStateJSONStrWithCheckpoints());
+    created() {
+        window.addEventListener("beforeunload", (event) => {
+            // Browsers won't display a customised message, and can detect when to prompt the user,
+            // so we don't need to do anything special.
+            event.returnValue = true;
+
+            // Save the state before exiting
+            if(!this.resetStrypeProjectFlag){
+                this.autoSaveState();
+            }
+            else {
+                // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
+                // to make sure this doesn't happen right when the user validates the reload, we do it later: if the user had
+                // cancelled the reload, the timeout will occur, and if the page has been reload, it won't (most likely)
+                setTimeout(() =>  {
+                    this.resetStrypeProjectFlag = true;
+                    this.setAutoSaveState();
+                }, 10000)
+                
             }
         });
+
+        // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 5 minutes
+        this.setAutoSaveState();
 
         // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
         window.addEventListener(
@@ -141,7 +158,7 @@ export default Vue.extend({
                     event.preventDefault();
                 }
                 else{
-                    const currentCustomMenuId: string = store.getters.getContextMenuShownId();
+                    const currentCustomMenuId: string = this.appStore.contextMenuShownId;
                     if(currentCustomMenuId.length > 0){
                         const customMenu = document.getElementById(getFrameContextMenuUIID(currentCustomMenuId));
                         customMenu?.setAttribute("hidden", "true");
@@ -152,30 +169,26 @@ export default Vue.extend({
 
         // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
         if (navigator.usb) {
-            navigator.usb.addEventListener("disconnect", () => store.commit("setPreviousDAPWrapper", undefined));
+            navigator.usb.addEventListener("disconnect", () => this.appStore.previousDAPWrapper = {} as DAPWrapper);
         }
 
+        /* IFTRUE_isMicrobit */
         // As the application starts up, we compile the microbit library with the appropriate language setting.
-        store.commit("setAPIDescription", compileTextualAPI(moduleDescription.api))
+        getAPIItemTextualDescriptions(true);
+        /* FITRUE_isMicrobit */
     },
 
     mounted() {
-        //check the local storage to see if there is a saved project from the previous time the user entered the system
-        
-        let storageString = "PythonStrypeSavedState"
-        /* IFTRUE_isMicrobit */
-        storageString = "MicrobitStrypeSavedState"
-        /*FITRUE_isMicrobit */
-            
-        // if browser supports locastorage
+        // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
+        // if browser supports localstorage
         if (typeof(Storage) !== "undefined") {
-            const savedState = localStorage.getItem(storageString);
+            const savedState = localStorage.getItem(this.localStorageAutosaveKey);
             if(savedState) {
-                store.dispatch(
-                    "doSetStateFromJSONStr", 
+                this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
                         showMessage: false,
+                        readCompressed: true,
                     }
                 );
             }
@@ -183,6 +196,19 @@ export default Vue.extend({
     },
 
     methods: {
+        setAutoSaveState() {
+            this.autoSaveTimerId = window.setInterval(() => {
+                this.autoSaveState();
+            }, 300000);
+        },
+        
+        autoSaveState() {
+            // save the project to the localStorage (WebStorage)
+            if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
+                localStorage.setItem(this.localStorageAutosaveKey, this.appStore.getStateJSONStrWithCheckpoints(true))
+            }
+        },
+
         applyShowAppProgress(event: AppEvent) {
             // If the progress bar is shown, we block the width of the application to the viewport
             // and revert it otherwise
@@ -198,19 +224,30 @@ export default Vue.extend({
             (document.getElementById("app") as HTMLDivElement).style.overflow = overflowVal;
         },
 
+        resetStrypeProject(){
+            // To reset the project we:
+            // 1) stop the autosave timer
+            window.clearInterval(this.autoSaveTimerId);
+            // 2) toggle the flag to disable saving on unload
+            this.resetStrypeProjectFlag = true;
+            // 3) delete the WebStorage key that refers to the current autosaved project
+            if (typeof(Storage) !== "undefined") {
+                localStorage.removeItem(this.localStorageAutosaveKey);
+            }
+            // finally, reload the page to reload the Strype default project
+            window.location.reload();
+        },
+
         getFrameContainerUIID(frameId: number){
             return getFrameContainerUIID(frameId);
         },
 
         toggleEdition(): void {
-            store.commit(
-                "setEditFlag",
-                false
-            );
+            this.appStore.isEditing = false;
         },
 
         messageTop(): boolean {
-            return store.getters.getCurrentMessage().type !== MessageTypes.imageDisplay;
+            return this.appStore.currentMessage.type !== MessageTypes.imageDisplay;
         },
     },
 });

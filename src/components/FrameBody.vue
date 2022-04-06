@@ -55,18 +55,18 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
 import { CaretPosition, CommentDefinition, DraggableGroupTypes, FrameObject } from "@/types/types";
+import { mapStores } from "pinia";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "FrameBody",
-    store,
 
     components: {
         Frame,
@@ -80,17 +80,19 @@ export default Vue.extend({
         caretVisibility: String, //Flag indicating this caret is visible or not
     },
 
-    data() {
+    data: function() {
         return{ 
             hasCommentsToMove: false,
         }
     },
 
     computed: {
+        ...mapStores(useStore),
+        
         frames: {
             get(): FrameObject[] {
                 // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-                return store.getters.getFramesForParentId(this.$props.frameId);
+                return this.appStore.getFramesForParentId(this.frameId);
             },
             set() {
                 return;
@@ -117,23 +119,23 @@ export default Vue.extend({
         }, 
 
         isEditing(): boolean {
-            return store.getters.getIsEditing();
+            return this.appStore.isEditing;
         },
 
         uiid(): string {
-            return "frameBodyId_" + this.$props.frameId;
+            return "frameBodyId_" + this.frameId;
         },
 
         empty(): boolean {
             let empty = false;
-            const currentFrameId = store.getters.getCurrentFrameObject().id;
+            const currentFrameId = this.appStore.currentFrame.id;
             //check if there are at least 1 frame, NOT disabled, and that we are not inside that frame body
             if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== CommentDefinition.type).length < 1 &&  !(this.caretVisibility === this.caretPosition.body && this.frameId===currentFrameId)) {
                 empty = true;
-                store.commit("addPreCompileErrors", this.uiid);                
+                this.appStore.addPreCompileErrors(this.uiid);                
             }
             else {
-                store.commit("removePreCompileErrors",this.uiid);
+                this.appStore.removePreCompileErrors(this.uiid);
             }
             return empty;
         },
@@ -147,7 +149,7 @@ export default Vue.extend({
     },
 
     beforeDestroy() {
-        store.commit("removePreCompileErrors",this.uiid);
+        this.appStore.removePreCompileErrors(this.uiid);
     },
 
     methods: {
@@ -156,22 +158,20 @@ export default Vue.extend({
             const chosenFrame = event[eventType].element;
 
             // If the frame is part of a selection
-            if(store.getters.isFrameSelected(chosenFrame.id)) {
+            if(this.appStore.isFrameSelected(chosenFrame.id)) {
                 //If the move can happen
-                store.dispatch(
-                    "moveSelectedFramesToPosition",
+                this.appStore.moveSelectedFramesToPosition(
                     {
                         event: event,
-                        parentId: this.$props.frameId,
+                        parentId: this.frameId,
                     }
                 );
             }
             else{
-                store.dispatch(
-                    "updateFramesOrder",
+                this.appStore.updateFramesOrder(
                     {
                         event: event,
-                        eventParentId: this.$props.frameId,
+                        eventParentId: this.frameId,
                     }
                 );
             }
@@ -181,24 +181,24 @@ export default Vue.extend({
             const chosenFrame = this.frames[event.oldIndex];
 
             // If the frame is part of a selection
-            if(store.getters.isFrameSelected(chosenFrame.id)) {
+            if(this.appStore.isFrameSelected(chosenFrame.id)) {
                 //update the property indicating if dragging the frames in another container is allowed: 
                 //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
-                this.$data.hasCommentsToMove = (store.getters.getSelectedFrameIds() as number[])
-                    .find((frameId) => store.getters.getFrameObjectFromId(frameId).frameType.type !== CommentDefinition.type) === undefined
+                this.hasCommentsToMove = this.appStore.selectedFrames
+                    .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== CommentDefinition.type) === undefined
                 
                 // Make it appear as the whole selection is being dragged
-                store.dispatch("prepareForMultiDrag",chosenFrame.id);
+                this.appStore.prepareForMultiDrag(chosenFrame.id);
             }
             else{
                 //update the property indicating if dragging the frame in another container is allowed: 
                 //we check that the moving frame is a comment
-                this.$data.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
+                this.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
             }
         },   
 
         multiDragEnd(event: any): void {
-            store.commit("removeMultiDragStyling");
+            this.appStore.removeMultiDragStyling();
         },   
 
 
@@ -206,7 +206,7 @@ export default Vue.extend({
         // selected frames were taken, the `change` event is not fired; hence you need to
         // catch the `unchoose` event
         showSelectedFrames(): void {
-            store.commit("makeSelectedFramesVisible");
+            this.appStore.makeSelectedFramesVisible();
         },
     },
 });

@@ -3,7 +3,7 @@ import { compileBlob } from "./compile";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
 import i18n from "@/i18n";
 import Vue from "vue";
-import store from "@/store/store"
+import { useStore } from "@/store/store"
 import { MessageDefinitions } from "@/types/types";
 
 export function downloadHex() {
@@ -21,7 +21,7 @@ export function downloadHex() {
 
     //We show the image only if the download has succeeded
     if(succeeded){
-        store.dispatch("setMessageBanner", MessageDefinitions.DownloadHex);
+        useStore().currentMessage = MessageDefinitions.DownloadHex;
     } 
     else{
         //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.

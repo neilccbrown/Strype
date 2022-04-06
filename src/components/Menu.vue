@@ -3,7 +3,7 @@
         <Slide 
             :isOpen="showMenu"
             :burgerIcon="false"
-            @closeMenu="toggleMenuOnOff"
+            @closeMenu="toggleMenuOnOff(null)"
             width="200"
         >
             <div style="width: 100%;">
@@ -30,14 +30,15 @@
                 </div>
             </div> 
             <div class="menu-separator-div"></div>
-            <a class="project-impexp-div" href="#" @click="importFile();toggleMenuOnOff(undefined);" v-t="'appMenu.loadProject'" />
-            <a class="project-impexp-div" href="#" @click="exportFile();toggleMenuOnOff(undefined);" v-t="'appMenu.saveProject'"/>
+            <a class="project-impexp-div" @click="importFile();toggleMenuOnOff(null);" v-t="'appMenu.loadProject'" />
+            <a class="project-impexp-div" @click="exportFile();toggleMenuOnOff(null);" v-t="'appMenu.saveProject'"/>
+            <a class="project-impexp-div" @click="resetProject();toggleMenuOnOff(null);" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(undefined)">
+                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(null)">
                         <option value="en">English</option>
                         <option value="fr">Français</option>
                         <option value="el">Ελληνικά</option>
@@ -101,26 +102,26 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { fileImportSupportedFormats, getEditorMenuUIID, getTutorialUIID } from "@/helpers/editor";
+import { fileImportSupportedFormats, getEditorMenuUIID } from "@/helpers/editor";
 import $ from "jquery";
 import { Slide } from "vue-burger-menu"
+import { mapStores } from "pinia";
 
 //////////////////////
 //     Component    //
 //////////////////////
 const maxProjetNameWidth = 150; //this value (in pixels) is used as a max-width value when computing the input text width dynamically
-
 export default Vue.extend({
     name: "Menu",
-    store,
+
     components: {
         Slide,
     },
 
-    data() {
+    data: function() {
         return {
             showMenu: false,
             nameEditing: false,
@@ -139,13 +140,6 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                const tutorial = document.getElementById(getTutorialUIID());
-                if(tutorial !== null){
-                    //if the tutorial is displayed, we don't do anything here
-                    event.preventDefault();
-                    return;
-                }
-
                 //handle the Ctrl/Meta + S command for saving the project
                 if(event.key === "s" && (event.metaKey || event.ctrlKey)){
                     this.exportFile();
@@ -157,14 +151,16 @@ export default Vue.extend({
     },
 
     computed: {
+        ...mapStores(useStore),
+        
         menuUIID(): string {
             return getEditorMenuUIID();
         },
         isUndoDisabled(): boolean {
-            return store.getters.getIsUndoRedoEmpty("undo");
+            return this.appStore.isUndoRedoEmpty("undo");
         },
         isRedoDisabled(): boolean {
-            return store.getters.getIsUndoRedoEmpty("redo");
+            return this.appStore.isUndoRedoEmpty("redo");
         },
         undoImagePath(): string {
             return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.svg") : require("@/assets/images/undo.svg");
@@ -183,13 +179,13 @@ export default Vue.extend({
 
         projectName: {
             get(): string {
-                return store.getters.getProjectName();
+                return this.appStore.projectName;
             },
             set(value: string) {
                 if(value.trim().length === 0){
                     value = (this.$i18n.t("appMenu.defaultProjName") as string);
                 }
-                store.commit("setProjectName",value);
+                this.appStore.projectName = value;
             },
         },
 
@@ -199,10 +195,10 @@ export default Vue.extend({
         
         appLang: {
             get(): string {
-                return store.getters.getAppLang();
+                return this.appStore.appLang;
             },
             set(lang: string) {
-                store.commit("setAppLang",lang);
+                this.appStore.setAppLang(lang);
             }, 
         },
     },
@@ -236,8 +232,7 @@ export default Vue.extend({
                     readFileContent(files[0])
                         .then(
                             (content) => {
-                                store.dispatch(
-                                    "setStateFromJSONStr", 
+                                this.appStore.setStateFromJSONStr( 
                                     {
                                         stateJSONStr: content,
                                     }
@@ -245,8 +240,7 @@ export default Vue.extend({
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
                             }, 
-                            (reason) => store.dispatch(
-                                "setStateFromJSONStr", 
+                            (reason) => this.appStore.setStateFromJSONStr( 
                                 {
                                     stateJSONStr: "",
                                     errorReason: reason,
@@ -260,10 +254,7 @@ export default Vue.extend({
                     const msgObj: FormattedMessage = (message.message as FormattedMessage);
                     msgObj.args[FormattedMessageArgKeyValuePlaceholders.list.key] = msgObj.args.list.replace(FormattedMessageArgKeyValuePlaceholders.list.placeholderName, this.acceptedInputFileFormat);
 
-                    store.commit(
-                        "setMessageBanner",
-                        message
-                    );
+                    this.appStore.currentMessage = message;
                 }
                 
                 //reset the input file element value to empty (so further changes can be notified)
@@ -273,18 +264,24 @@ export default Vue.extend({
 
         exportFile(): void {
             //save the JSON file of the state 
-            saveContentToFile(store.getters.getStateJSONStrWithCheckpoints(), store.getters.getProjectName()+".spy");
+            saveContentToFile(this.appStore.getStateJSONStrWithCheckpoints(), this.appStore.projectName+".spy");
+        },
+
+        resetProject(): void {
+            //resetting the project means removing the WebStorage saved project and reloading the page
+            //we emit an event to the App so that handlers are done properly
+            this.$emit("app-reset-project");
         },
 
         toggleMenuOnOff(e: Event): void {
-            const isMenuOpening = (e !== undefined);
+            const isMenuOpening = (e !== null);
             if(isMenuOpening) {
                 //cf online issues about vue-burger-menu https://github.com/mbj36/vue-burger-menu/issues/33
                 e.preventDefault();
                 e.stopPropagation();
             }
-            this.$data.showMenu = isMenuOpening;
-            store.commit("setIsAppMenuOpened", isMenuOpening);
+            this.showMenu = isMenuOpening;
+            this.appStore.isAppMenuOpened = isMenuOpening;
         },
 
         computeFitWidthValue(): string {
@@ -317,10 +314,7 @@ export default Vue.extend({
 
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
-            store.commit(
-                "setEditFlag",
-                true
-            );    
+            this.appStore.isEditing = true;    
         },
 
         onBlur(): void {
@@ -328,10 +322,7 @@ export default Vue.extend({
             setTimeout(() => {
                 this.nameEditing = false;
             }, 500);
-            store.commit(
-                "setEditFlag",
-                false
-            ); 
+            this.appStore.isEditing = false; 
         },
         
         // Explicit blur method for "enter" key event
@@ -341,10 +332,7 @@ export default Vue.extend({
         },
 
         performUndoRedo(isUndo: boolean): void {
-            store.dispatch(
-                "undoRedo",
-                isUndo
-            );
+            this.appStore.undoRedo(isUndo);
         },
 
         onProjectPenEditClick(): void {
@@ -355,7 +343,6 @@ export default Vue.extend({
                 (this.$refs.projectNameInput as HTMLInputElement).focus();                
             }
         },
-        
     },
 });
 </script>
