@@ -1,6 +1,6 @@
 import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, Definitions, FrameContainersDefinitions } from "@/types/types";
 import Vue from "vue";
-import store from "@/store/store"
+import { useStore } from "@/store/store"
 import i18n from "@/i18n"
 import { getSHA1HashForObject } from "@/helpers/common";
 import { getEditableSlotUIID } from "./editor";
@@ -519,9 +519,8 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     // This method for checking errors is called when a frame slot has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
     // we clear the errors completely for that frame/slot before we check the errors again for it.
-    const currentErrorMessage = (slotId > -1) ? store.getters.getFrameObjectFromId(frameId).contentDict[slotId].error : undefined ;
-    store.commit(
-        "setSlotErroneous", 
+    const currentErrorMessage = (slotId > -1) ? useStore().frameObjects[frameId].contentDict[slotId].error : undefined ;
+    useStore().setSlotErroneous(
         {
             frameId: frameId, 
             slotIndex: slotId, 
@@ -529,27 +528,26 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
         }
     );
 
-    const frameObject = store.getters.getFrameObjectFromId(frameId);
+    const frameObject = useStore().frameObjects[frameId];
 
     const optionalSlot = frameObject.frameType.labels[slotId].optionalSlot ?? true;
-    const errorMessage = store.getters.getErrorForSlot(frameId,slotId);
+    const errorMessage = useStore().getErrorForSlot(frameId,slotId);
     if(code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
         if(!optionalSlot && (errorMessage === i18n.t("errorMessage.emptyEditableSlot")
             || currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot"))) {
-            store.commit("removePreCompileErrors", getEditableSlotUIID(frameId, slotId));                
+            useStore().removePreCompileErrors(getEditableSlotUIID(frameId, slotId));                
         }
     }
     else if(!optionalSlot){
-        store.commit(
-            "setSlotErroneous", 
+        useStore().setSlotErroneous( 
             {
                 frameId: frameId, 
                 slotIndex: slotId,  
-                error: i18n.t("errorMessage.emptyEditableSlot"),
+                error: i18n.t("errorMessage.emptyEditableSlot") as string,
             }
         );
-        store.commit("addPreCompileErrors", getEditableSlotUIID(frameId, slotId));
+        useStore().addPreCompileErrors(getEditableSlotUIID(frameId, slotId));
     }
                 
     // We check Python error (with TigerPython) for this portion of code only.

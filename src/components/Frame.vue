@@ -76,19 +76,18 @@
 import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
 import { getFrameContextMenuUIID } from "@/helpers/editor";
+import { mapStores } from "pinia";
 
 //////////////////////
 //     Component    //
 //////////////////////
-
 export default Vue.extend({
     name: "Frame",
-    store,
 
     components: {
         FrameHeader,
@@ -128,15 +127,17 @@ export default Vue.extend({
     },
 
     computed: {
+        ...mapStores(useStore),
+        
         hasJointFrameObjects(): boolean {
-            return store.getters.getJointFramesForFrameId(
+            return this.appStore.getJointFramesForFrameId(
                 this.frameId,
                 "all"
             ).length >0;
         },
 
         allowsJointChildren(): boolean {
-            return store.getters.getAllowsJointChildren(this.frameId);
+            return this.appStore.getAllowedJointChildren(this.frameId);
         },
 
         frameStyle(): Record<string, string> {
@@ -168,34 +169,33 @@ export default Vue.extend({
         },
 
         uiid(): string {
-            return "frame_id_"+this.$props.frameId;
+            return "frame_id_"+this.frameId;
         },
 
         allowContextMenu(): boolean {
-            return store.getters.getContextMenuShownId() === this.uiid; 
+            return this.appStore.contextMenuShownId === this.uiid; 
         },
 
         selectedPosition(): string {
-            return store.getters.getFrameSelectionPosition(this.$props.frameId);
+            return this.appStore.getFrameSelectionPosition(this.frameId);
         },
 
         isStatementOrJointFrame(): boolean {
-            return this.$props.frameType.isJointFrame || !this.$props.frameType.allowChildren;
+            return this.frameType.isJointFrame || !this.frameType.allowChildren;
         },
 
         // Joint frames can also be "selected" if their parent is selected
         isPartOfSelection(): boolean {
-            return (this.selectedPosition !== "unselected") || (this.$props.isParentSelected);
+            return (this.selectedPosition !== "unselected") || (this.isParentSelected);
         },
 
         isVisible(): boolean {
-            return store.getters.isFrameVisible(this.$props.frameId);
+            return this.appStore.isFrameVisible(this.frameId);
         },
 
         multiDragPosition(): string {
-            return store.getters.getMultiDragPosition(this.$props.frameId);
+            return this.appStore.getMultiDragPosition(this.frameId);
         },
-
     },
 
     mounted() {
@@ -211,7 +211,7 @@ export default Vue.extend({
             // Cutting/copying by shortcut is only available for a frame selection*.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
-            if(this.isPartOfSelection && (store.getters.getFrameSelectionPosition(this.$props.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c" || event.key === "x")) {
+            if(this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key === "c" || event.key === "x")) {
                 if(event.key === "c"){
                     this.copy();
                 }
@@ -235,10 +235,10 @@ export default Vue.extend({
         },
 
         handleClick (event: MouseEvent, action: string) {
-            store.commit("setContextMenuShownId",this.uiid);
+            this.appStore.contextMenuShownId = this.uiid;
 
             // only show the frame menu if we are not editing
-            if(store.getters.getIsEditing()){
+            if(this.appStore.isEditing){
                 return;
             }
 
@@ -255,12 +255,12 @@ export default Vue.extend({
                 // Not all frames should be duplicated (e.g. Else)
                 // The target id, for a duplication, should be the same as the copied frame 
                 // except if that frame has joint frames: the target is the last joint frame.
-                const targetFrameJointFrames = store.getters.getJointFramesForFrameId(this.frameId, "all");
+                const targetFrameJointFrames = this.appStore.getJointFramesForFrameId(this.frameId, "all");
                 const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
                 // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
                 const canDuplicate = (this.isPartOfSelection) ?
-                    store.getters.getIfPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
-                    store.getters.getIfPositionAllowsFrame(targetFrameId, CaretPosition.below, this.$props.frameId); 
+                    this.appStore.isPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
+                    this.appStore.isPositionAllowsFrame(targetFrameId, CaretPosition.below, this.frameId); 
                 if(!canDuplicate){
                     const duplicateOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "duplicate");
                     //We don't need the duplication option: remove it from the menu options if not present
@@ -334,30 +334,25 @@ export default Vue.extend({
             else{
                 position = CaretPosition.below;
             }
-            store.dispatch(
-                "toggleCaret",
-                {id:this.$props.frameId, caretPosition: position}
-            );
+            this.appStore.toggleCaret({id:this.frameId, caretPosition: position});
         },
-
 
         duplicate(): void {
             if(this.isPartOfSelection){
-                store.dispatch(
-                    "copySelectedFramesToPosition",
+                this.appStore.copySelectedFramesToPosition(
                     {
-                        newParentId: (this.isJointFrame)? getParent(store.state.frameObjects, store.state.frameObjects[this.frameId]): getParentOrJointParent(store.state.frameObjects, this.frameId),
+                        newParentId: (this.isJointFrame)
+                            ? getParent(this.appStore.frameObjects, this.appStore.frameObjects[this.frameId])
+                            : getParentOrJointParent(this.appStore.frameObjects, this.frameId),
                     }
                 );
-                
             }
             else {
-                store.dispatch(
-                    "copyFrameToPosition",
+                this.appStore.copyFrameToPosition(
                     {
-                        frameId : this.$props.frameId,
-                        newParentId: getParentOrJointParent(store.state.frameObjects, this.frameId),
-                        newIndex: store.getters.getIndexInParent(this.frameId)+1,
+                        frameId : this.frameId,
+                        newParentId: getParentOrJointParent(this.appStore.frameObjects, this.frameId),
+                        newIndex: this.appStore.getIndexInParent(this.frameId)+1,
                     }
                 );
             }
@@ -366,49 +361,35 @@ export default Vue.extend({
         cut(): void {
             //cut prepares a copy, then we delete the selection / frame copied
             if(this.isPartOfSelection){
-                store.dispatch(
-                    "copySelection"
-                ); 
+                this.appStore.copySelection(); 
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
-                store.dispatch("deleteFrames", "Delete");
+                this.appStore.deleteFrames("Delete");
             }
             else{
-                store.dispatch(
-                    "copyFrame",
-                    this.$props.frameId
-                );
+                this.appStore.copyFrame(this.frameId);
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
-                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below} as CurrentFrame);
-                store.dispatch("deleteFrames", "Backspace");
+                this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below} as CurrentFrame);
+                this.appStore.deleteFrames("Backspace");
             }                    
         },
 
         copy(): void {
             if(this.isPartOfSelection){
-                store.dispatch(
-                    "copySelection"
-                ); 
+                this.appStore.copySelection(); 
             }
             else{
-                store.dispatch(
-                    "copyFrame",
-                    this.$props.frameId
-                );
+                this.appStore.copyFrame(this.frameId);
             }
         },
 
         disable(): void {
             if(this.isPartOfSelection){
-                store.dispatch(
-                    "changeDisableSelection",
-                    true
-                );
+                this.appStore.changeDisableSelection(true);
             }
             else {
-                store.dispatch(
-                    "changeDisableFrame",
+                this.appStore.changeDisableFrame(
                     {
-                        frameId: this.$props.frameId,
+                        frameId: this.frameId,
                         isDisabling: true,
                     }
                 );
@@ -417,16 +398,12 @@ export default Vue.extend({
         
         enable(): void {
             if(this.isPartOfSelection){
-                store.dispatch(
-                    "changeDisableSelection",
-                    false
-                );
+                this.appStore.changeDisableSelection(false);
             }
             else {
-                store.dispatch(
-                    "changeDisableFrame",
+                this.appStore.changeDisableFrame(
                     {
-                        frameId: this.$props.frameId,
+                        frameId: this.frameId,
                         isDisabling: false,
                     }
                 );
@@ -436,19 +413,16 @@ export default Vue.extend({
         delete(): void {
             if(this.isPartOfSelection){
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
-                store.dispatch("deleteFrames", "Delete");
+                this.appStore.deleteFrames("Delete");
             }
             else{
                 //when deleting the specific frame, we place the caret below and simulate "backspace"
-                store.commit("setCurrentFrame", {id: this.$props.frameId, caretPosition: CaretPosition.below});
-                store.dispatch("deleteFrames","Backspace");
+                this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below});
+                this.appStore.deleteFrames("Backspace");
             }       
         },
-
     },
-
 });
-
 </script>
 
 <style lang="scss">

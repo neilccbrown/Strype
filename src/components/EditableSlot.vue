@@ -74,17 +74,17 @@
 
 <script lang="ts">
 import Vue from "vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
+import { mapStores } from "pinia";
 
 export default Vue.extend({
     name: "EditableSlot",
-    store,
 
     components: {
         AutoCompletion,
@@ -99,9 +99,8 @@ export default Vue.extend({
         isHidden: Boolean,
     },
 
-
     beforeDestroy() {
-        store.commit("removePreCompileErrors",this.UIID);
+        this.appStore.removePreCompileErrors(this.UIID);
     },
 
     mounted() {
@@ -110,7 +109,7 @@ export default Vue.extend({
         this.isComponentLoaded  = true;
     },
 
-    data() {
+    data: function() {
         return {
             //this flags indicates if the content of editable slot has been already modified during a sequence of action
             //as we don't want to save each single change of the content, but the full content change itself.
@@ -140,16 +139,18 @@ export default Vue.extend({
     },
     
     computed: {
+        ...mapStores(useStore),
+        
         placeholderUIID(): string {
             return "editplaceholder_" + getEditableSlotUIID(this.frameId, this.slotIndex);
         },
 
         initCode(): string {
-            return store.getters.getInitContentForFrameSlot();
+            return this.appStore.currentInitCodeValue;
         },
         
         frameType(): string{
-            return store.getters.getFrameObjectFromId(this.frameId).frameType.type;
+            return this.appStore.frameObjects[this.frameId].frameType.type;
         },
 
         inputTextStyle(): Record<string, string> {
@@ -171,9 +172,9 @@ export default Vue.extend({
 
         code: {
             get(): string{
-                const code = store.getters.getContentForFrameSlot(
+                const code = this.appStore.getContentForFrameSlot(
                     this.$parent.$props.frameId,
-                    this.$props.slotIndex
+                    this.slotIndex
                 );
                 if(code.length > 0){
                     this.setBreakSpaceFlag(false);
@@ -182,8 +183,7 @@ export default Vue.extend({
                 return code;
             },
             set(value: string){
-                store.dispatch(
-                    "setFrameEditableSlotContent",
+                this.appStore.setFrameEditableSlotContent(
                     {
                         frameId: this.frameId,
                         slotId: this.slotIndex,
@@ -194,7 +194,7 @@ export default Vue.extend({
                 );
 
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-                const frame: FrameObject = store.getters.getFrameObjectFromId(this.frameId);
+                const frame: FrameObject = this.appStore.frameObjects[this.frameId];
 
                 // if the input field exists and it is not a "free texting" slot
                 // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
@@ -231,40 +231,40 @@ export default Vue.extend({
         },
 
         focused(): boolean {
-            return store.getters.getIsEditableFocused(
-                this.$props.frameId,
-                this.$props.slotIndex
+            return this.appStore.isEditableFocused(
+                this.frameId,
+                this.slotIndex
             );
         },
 
         UIID(): string {
-            return getEditableSlotUIID(this.$props.frameId, this.$props.slotIndex);
+            return getEditableSlotUIID(this.frameId, this.slotIndex);
         },
 
         errorMessage(): string{
-            return store.getters.getErrorForSlot(
-                this.$props.frameId,
-                this.$props.slotIndex
+            return this.appStore.getErrorForSlot(
+                this.frameId,
+                this.slotIndex
             );
         },
 
         isFirstVisibleInFrame(): boolean{
-            return store.getters.getIsSlotFirstVisibleInFrame(this.frameId, this.slotIndex);
+            return this.appStore.isSlotFirstVisibleInFrame(this.frameId, this.slotIndex);
         },
 
         debugAC(): boolean{
-            return store.getters.getDebugAC();
+            return this.appStore.debugAC;
         },
     },
 
     directives: {
+        // NOTE: it looks like in directives pinia store are not yet defined, so we don't use the mapStores() here
         focus: {
             //This is needed to set the focus when a frame with slots has just been added (i.e. when `leftRightKey` is called after `addFrameWithCommand` in Commands.vue)
             inserted: function (el,binding) {
                 if(binding.value) {
                     //when entering a new editableslot, we make sure to reset the flag informing how the slot has been reache
-                    store.commit("setEditableSlotViaKeyboard", {isKeyboard: false, direction: 1});
-
+                    useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
                     el.focus();
                 }
             },
@@ -275,14 +275,13 @@ export default Vue.extend({
                         //when a slot gains focus, we check that it was reached via keyboard: if so, depending on the reaching direction
                         //we set the text cursor to the start or the end of the text. When it's not reached via keyboard (i.e. via mouse)
                         //we don't change the cursor ourselves as it will be set where the user clicked at.
-                        const editableSlotReachingInfo: EditableSlotReachInfos = store.getters.getEditableSlotViaKeyboard();
+                        const editableSlotReachingInfo: EditableSlotReachInfos = useStore().editableSlotViaKeyboard;
                         if(editableSlotReachingInfo.isKeyboard){
                             const cursorPos = (editableSlotReachingInfo.direction === -1) ? ((el as HTMLInputElement).value.length??0) : 0;
                             (el as HTMLInputElement).setSelectionRange(cursorPos, cursorPos);
                             //reset the flag informing how the slot has been reached
-                            store.commit("setEditableSlotViaKeyboard", {isKeyboard: false, direction: 1});
+                            useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
                         }
-
                         el.focus();
                     }
                     else {
@@ -333,9 +332,9 @@ export default Vue.extend({
 
         erroneous(): boolean {
             // Only show the popup when there is an error and the code hasn't changed
-            return this.isFirstChange && store.getters.getIsErroneousSlot(
-                this.$props.frameId,
-                this.$props.slotIndex
+            return this.isFirstChange && this.appStore.isErroneousSlot(
+                this.frameId,
+                this.slotIndex
             );
         },
 
@@ -344,12 +343,11 @@ export default Vue.extend({
             this.isFirstChange = true;
             //reset the AC context
             resetCurrentContextAC();
-            store.dispatch(
-                "setFocusEditableSlot",
+            this.appStore.setFocusEditableSlot(
                 {
-                    frameId: this.$props.frameId,
-                    slotId: this.$props.slotIndex,
-                    caretPosition: (store.getters.getAllowChildren(this.$props.frameId)) ? CaretPosition.body : CaretPosition.below,
+                    frameId: this.frameId,
+                    slotId: this.slotIndex,
+                    caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
             );    
             // When there is no code, we can suppose that we are in a new frame.
@@ -371,12 +369,13 @@ export default Vue.extend({
         onBlur(): void {
             if(!this.debugAC) {
                 this.showAC = false;
-                store.dispatch(
-                    "updateErrorsOnSlotValidation",
+                this.appStore.updateErrorsOnSlotValidation(
                     {
-                        frameId: this.$props.frameId,
-                        slotId: this.$props.slotIndex,
+                        frameId: this.frameId,
+                        slotId: this.slotIndex,
                         code: this.code.trim(),
+                        initCode: this.initCode,
+                        isFirstChange: this.isFirstChange,
                     }   
                 );
                 //reset the flag for first code change
@@ -395,8 +394,7 @@ export default Vue.extend({
                 
                     // If we're trying to go off the bounds of this slot
                     if((start === 0 && event.key==="ArrowLeft") || (event.key === "Enter" || (end === input.value.length && event.key==="ArrowRight"))) {
-                        store.dispatch(
-                            "leftRightKey",
+                        this.appStore.leftRightKey(
                             {
                                 key: event.key,
                             }
@@ -430,10 +428,7 @@ export default Vue.extend({
                     this.onBlur();
                     //If the up arrow is pressed you need to move the caret as well.
                     if( event.key === "ArrowUp" ) {
-                        store.dispatch(
-                            "changeCaretPosition",
-                            event.key
-                        );
+                        this.appStore.changeCaretPosition(event.key);
                     }
                 }
             }
@@ -518,19 +513,13 @@ export default Vue.extend({
                 //if the user had already released the key up, no point waiting, we delete straight away
                 if(this.canBackspaceDeleteFrame){
                     this.onBlur();
-                    store.dispatch(
-                        "deleteFrameFromSlot",
-                        this.frameId
-                    );
+                    this.appStore.deleteFrameFromSlot(this.frameId);
                 }
                 else{        
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         if(this.stillBackSpaceDown){
                             this.onBlur();
-                            store.dispatch(
-                                "deleteFrameFromSlot",
-                                this.frameId
-                            );
+                            this.appStore.deleteFrameFromSlot(this.frameId);
                         }
                     }, 600);
                 }
@@ -585,7 +574,7 @@ export default Vue.extend({
             // get the input field and caret position
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
-            this.$data.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
+            this.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
 
             const openBracketCharacters = ["(","{","[","\"","'"];
             const characterIndex= openBracketCharacters.indexOf(this.keyDownStr)
@@ -625,7 +614,7 @@ export default Vue.extend({
         },
 
         isImportFrame(): boolean {
-            return store.getters.isImportFrame(this.frameId)
+            return this.appStore.isImportFrame(this.frameId)
         },
 
         getACresultsFromBrython(): void {

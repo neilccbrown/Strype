@@ -18,15 +18,20 @@
 
 <script lang="ts">
 import Vue from "vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
+import { mapStores } from "pinia";
 import { hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
 
 export default Vue.extend({
     name: "PythonConsole",
+
+    computed:{
+        ...mapStores(useStore),
+    },
 
     methods: {
         runCodeOnPyConsole() {
@@ -51,10 +56,7 @@ export default Vue.extend({
         },
 
         onFocus(): void {
-            store.commit(
-                "setEditFlag",
-                false
-            );    
+            this.appStore.isEditing = false;
         },
 
         onChange(): void {

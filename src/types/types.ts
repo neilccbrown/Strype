@@ -792,15 +792,15 @@ export interface EditableSlotReachInfos {
     direction: -1 | 1;
 }
 
-export interface StateObject {
+export interface StateAppObject {
     debugging: boolean;
     initialState: EditorFrameObjects;
     showKeystroke: boolean;
     nextAvailableId: number;
 }
 
-export interface StateObjects {
-    [id: string]: StateObject;
+export interface StateAppObjects {
+    [id: string]: StateAppObject;
 }
 
 export enum StrypePlatform {

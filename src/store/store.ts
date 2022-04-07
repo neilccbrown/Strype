@@ -1,99 +1,103 @@
 import Vue from "vue";
-import Vuex from "vuex";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinition, MessageDefinitions, FramesDefinitions, EditableFocusPayload, Definitions, ObjectPropertyDiff, EditableSlotPayload, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, AddFrameCommandDef, EditorFrameObjects, EmptyFrameObject, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, ImportsContainerDefinition, StateObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, NavigationPosition, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition } from "@/types/types";
-import { getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, Definitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, StateAppObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition, ImportsContainerDefinition, EditableFocusPayload, EditableSlotPayload, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkStateDataIntegrity, getAllChildrenAndJointFramesIds, getDisabledBlockRootFrameId, checkDisabledStatusOfMovingFrame, isContainedInFrame, checkCodeErrors, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
-import { removeFrameInFrameList, cloneFrameAndChildren, countRecursiveChildren, getParentOrJointParent, getAvailableNavigationPositions} from "@/helpers/storeMethods";
+import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getParentOrJointParent, isContainedInFrame, removeFrameInFrameList, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
-import {DAPWrapper} from "@/helpers/partial-flashing"
-import { getAddCommandsDefs } from "@/helpers/editor";
-import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
+import { defineStore } from "pinia";
+import { getAddCommandsDefs, getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
+import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string"
+import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 
-Vue.use(Vuex);
-
-let initialState: StateObject = initialStates["initialPythonState"];
+let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
 initialState = initialStates["initialMicrobitState"];
 /* FITRUE_isMicrobit */
 
-export default new Vuex.Store({
-    state: {
-        /*these flags need checking when a build is done */
-        debugging: initialState.debugging,
+export const useStore = defineStore("app", {
+    state: () => {
+        return {
+            /** these flags need checking when a build is done **/
+            debugging: initialState.debugging,
 
-        // Flag used to keep the AC shown for debug purposes
-        debugAC: false,
+            // Flag used to keep the AC shown for debug purposes
+            debugAC: false,
 
-        showKeystroke: initialState.showKeystroke,
+            showKeystroke: initialState.showKeystroke,
 
-        frameObjects: initialState.initialState,
+            frameObjects: initialState.initialState,
 
-        nextAvailableId: initialState.nextAvailableId,
+            nextAvailableId: initialState.nextAvailableId, 
 
-        importContainerId: -1,
+            importContainerId: -1,
 
-        functionDefContainerId: -2,
-        /*END of flags that need checking when a build is done*/
+            functionDefContainerId: -2,
+            /** END of flags that need checking when a build is done **/
 
-        currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
+            currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
-        currentInitCodeValue: "", //this is an indicator of the CURRENT editable slot's initial content being edited.
+            // This is an indicator of the CURRENT editable slot's initial content being edited.
+            currentInitCodeValue: "", 
 
-        commandsTabIndex: 0, //this is the selected tab index of the Commands' tab panel.
+            // This is the selected tab index of the Commands' tab panel.
+            commandsTabIndex: 0, 
 
-        isEditing: false,
+            isEditing: false,
 
-        ignoreKeyEvent: false, //this flag can be used anywhere a key event should be ignored within the application
+            // This flag can be used anywhere a key event should be ignored within the application
+            ignoreKeyEvent: false,
 
-        currentMessage: MessageDefinitions.NoMessage,
+            currentMessage: MessageDefinitions.NoMessage,
 
-        preCompileErrors: [] as string[],
+            preCompileErrors: [] as string[],
 
-        diffToPreviousState: [] as ObjectPropertyDiff[][],
+            diffToPreviousState: [] as ObjectPropertyDiff[][],
 
-        diffToNextState: [] as ObjectPropertyDiff[][],
+            diffToNextState: [] as ObjectPropertyDiff[][],
+            
+            // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
+            copiedFrameId: -100 as number,
+
+            // This variable holds the ids of the root copied frames.
+            copiedSelectionFrameIds: []  as number[],
+
+            copiedFrames: {} as EditorFrameObjects,
+
+            // Keeps a copy of the state when 2-steps operations are performed and we need to know the previous state (to clear after use!)
+            stateBeforeChanges : {} as  {[id: string]: any}, 
+
+            contextMenuShownId: "",
+
+            projectName: i18n.t("appMenu.defaultProjName") as string,
+
+            // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
+            ignoredDragAction: false, 
+
+            selectedFrames: [] as number[],
+
+            appLang: "en",
+
+            isAppMenuOpened: false,
+
+            acResults: {} as AcResultsWithModule,
+
+            editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
         
-        copiedFrameId: -100 as number, // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
+            /* The following wrapper is used for interacting with the microbit board via DAP*/
+            DAPWrapper: {} as DAPWrapper,
 
-        copiedSelectionFrameIds: []  as number[], //This variable holds the ids of the root copied frames.
-
-        copiedFrames: {} as EditorFrameObjects,
-
-        stateBeforeChanges : {} as  {[id: string]: any}, // Keeps a copy of the state when 2-steps operations are performed and we need to know the previous state (to clear after use!)
-
-        contextMenuShownId: "",
-
-        projectName: i18n.t("appMenu.defaultProjName") as string,
-
-        ignoredDragAction: false, // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
-
-        selectedFrames: [] as number[],
-
-        appLang: "en",
-
-        isAppMenuOpened: false,
-
-        acResults: [] as AcResultsWithModule[],
-
-        editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
-    
-        /* the following wrapper is used for interacting with the microbit board via DAP*/
-        DAPWrapper: undefined, //expected type when set: DAPWrapper
-
-        previousDAPWrapper: undefined, //expected type when set:DAPWrapper
+            previousDAPWrapper: {} as DAPWrapper,
+        }
     },
 
     getters: {
-        getIsDebugging: (state) => (): boolean => {
-            return state.debugging;
-        },
-        getStateJSONStrWithCheckpoints : (state) => (compress?: boolean): string => {
-            //we get the state's checksum and the current app version,
-            //and add them to the state's copy object to return
+        getStateJSONStrWithCheckpoints : (state) => (compress?: boolean) => {
+            // For this getter, we force an empty argument to avoid Pinia generating stack overflow when
+            // using the devtools or in some calls - stringify is making a recursion here...
+            // We get the state's checksum and the current app version,
+            // and add them to the state's copy object to return
             const stateCopy = JSON.parse(JSON.stringify(state));
             //clear the acResults, microbit DAP infos, copy frames, message banner and undo/redo related stuff as there is no need for storing them
             stateCopy["acResults"] = [],
@@ -112,7 +116,6 @@ export default new Vuex.Store({
             });
 
             const checksum =  getSHA1HashForObject(stateCopy)
-
             //add the checksum and other backup flags in the state object to be saved
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
@@ -124,34 +127,22 @@ export default new Vuex.Store({
             }
             else{
                 return LZString.compress(JSON.stringify(stateCopy))
-            }            
+            }      
         },
-        getAppLang: (state) => () => {
-            return state.appLang;
-        },
-        isAppMenuOpened: (state) => () => {
-            return state.isAppMenuOpened;
-        },
-        getCommandsTabIndex: (state) => () => {
-            return state.commandsTabIndex;
-        },
-        getFrameObjectFromId: (state) => (frameId: number) => {
-            return state.frameObjects[frameId];
-        },
+        
         getFramesForParentId: (state) => (frameId: number) => {
             //Get the childrenIds of this frame and based on these return the children objects corresponding to them
             return state.frameObjects[frameId].childrenIds
                 .map((a) => state.frameObjects[a])
                 .filter((a) => a);
         },
+        
         getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
             const retCode = state.frameObjects[frameId]?.contentDict[slotId].code;
             // return "" if it is undefined
             return retCode ?? "";
         },
-        getInitContentForFrameSlot: (state) => () => {
-            return state.currentInitCodeValue;
-        },
+        
         getJointFramesForFrameId: (state) => (frameId: number, group: string) => {
             const jointFrameIds = state.frameObjects[frameId].jointFrameIds;
             const jointFrames: FrameObject[] = [];
@@ -173,15 +164,23 @@ export default new Vuex.Store({
             });
             return jointFrames;
         },
-        getAllowsJointChildren: (state) => (frameId: number) => {
+        
+        getAllowedChildren: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].frameType.allowChildren;
+        },
+        
+        getAllowedJointChildren: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.allowJointChildren;
         },
-        getIsJointFrameById: (state) => (frameId: number) => {
+        
+        isJointFrameById: (state) => (frameId: number) => {
             return state.frameObjects[frameId].jointParentId > 0;
         },
-        getCurrentFrameObject: (state) => () => {
+        
+        getCurrentFrameObject: (state) => {
             return state.frameObjects[state.currentFrame.id];
         },
+        
         canAddFrameBelowDisabled: (state) => (frameId: number) => {
             //in this method, we check if frames can be added below the specified (disabled) frame.
             if(state.frameObjects[frameId].jointParentId > 0 ){
@@ -197,22 +196,24 @@ export default new Vuex.Store({
                 return !state.frameObjects[state.frameObjects[frameId].parentId].isDisabled;
             }
         },
-        getMainCodeFrameContainerId: (state) => () => {
+        
+        getMainCodeFrameContainerId: (state) => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === MainFramesContainerDefinition.type)[0].id;
         },
+        
         getDraggableGroupById: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.draggableGroup;
         },
+        
         getDraggableJointGroupById: (state) => (frameId: number) => {
             const frame = state.frameObjects[frameId];
             return frame.frameType.innerJointDraggableGroup;
         },
-        getIsEditing: (state) => () => {
-            return state.isEditing;
-        },
-        getIsEditableFocused: (state) => (frameId: number, slotIndex: number) => {
+        
+        isEditableFocused: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].focused;
         },
+        
         generateAvailableFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition) => {
             const currentFrame  = state.frameObjects[frameId];
             const parent = state.frameObjects[currentFrame.parentId];
@@ -370,7 +371,7 @@ export default new Vuex.Store({
             return filteredCommands;
         },
         
-        getIsCurrentFrameLabelShown: (state, getters) => (frameId: number, slotIndex: number) => {
+        isCurrentFrameLabelShown: (state) => (frameId: number, slotIndex: number) => {
             const frame = state.frameObjects[frameId]
 
             // if it is an optional Label (as there are optional slots WHITOUT optional labels [e.g. functional params[) and it is not a function call
@@ -382,17 +383,14 @@ export default new Vuex.Store({
                 // 3) We are editing this frame
                 return state.currentFrame.id === frameId || 
                         frame.contentDict[slotIndex].code !== "" || 
-                        (getters.getIsEditing() && state.currentFrame.id === frameId);
+                        (state.isEditing && state.currentFrame.id === frameId);
             }
 
             //not optional label --> it's never hidden so we don't need to check any flag
             return true;
         },
-        getAllowChildren: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].frameType.allowChildren;
-        },
-
-        getIsErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
+        
+        isErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
             return state.frameObjects[frameId].contentDict[slotIndex].error !== "";
         },
         
@@ -400,19 +398,14 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].contentDict[slotIndex].error;
         },
 
-        getPreCompileErrors: (state) => () => {
-            return state.preCompileErrors;
-        },
-
-        getPreCompileErrorExists: (state) => (id: string) => {
+        preCompileErrorExists: (state) => (id: string) => {
             return state.preCompileErrors.includes(id);
         },
-        getIsMessageBannerOn: (state) => () => {
+        
+        isMessageBannerOn: (state) => {
             return state.currentMessage.type !== MessageDefinitions.NoMessage.type;
         },
-        getCurrentMessage: (state) => () => {
-            return state.currentMessage;
-        },
+        
         // Automatically checks returns index in Parent OR JointParent
         getIndexInParent: (state) => (frameId: number) => {
             const isJointFrame = state.frameObjects[frameId].frameType.isJointFrame;
@@ -420,79 +413,74 @@ export default new Vuex.Store({
                 state.frameObjects[state.frameObjects[frameId].jointParentId].jointFrameIds.indexOf(frameId):
                 state.frameObjects[state.frameObjects[frameId].parentId].childrenIds.indexOf(frameId);
         },
-        getIsCopiedAvailable: (state) => () => {
+        
+        isCopiedAvailable: (state) => {
             return (state.copiedFrameId !== -100) || (state.copiedSelectionFrameIds.length > 0);
         },
-        isPasteAllowedAtFrame: (state, getters) => (frameId: number, caretPos: CaretPosition) => {
-            if(getters.isSelectionCopied()){
-                if(getters.getIfPositionAllowsSelectedFrames(frameId, caretPos, true)) {
-                    return true;
-                }  
-            }
-            else {
-                if(getters.getIfPositionAllowsFrame(frameId, caretPos)) {
-                    return true;
+        
+        isPasteAllowedAtFrame() { 
+            return (frameId: number, caretPos: CaretPosition) => {
+                if(this.isSelectionCopied){
+                    if(this.isPositionAllowsSelectedFrames(frameId, caretPos, true)) {
+                        return true;
+                    }  
                 }
-            }
-
-            return false;
+                else {
+                    if(this.isPositionAllowsFrame(frameId, caretPos)) {
+                        return true;
+                    }
+                }
+    
+                return false;
+            }            
         },
+        
         // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
         // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
-        getIfPositionAllowsFrame: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {
-            
-            // Where do we get the frame from --> from copiedFrames if it is a copied frame
-            // Otherwise the input frame is to be checked (e.g. for moving an else statement or duplicating an else statement -- which doesn't go anywhere).
-            const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? state.copiedFrames : state.frameObjects ;    
+        isPositionAllowsFrame() {
+            return (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {
+                // Where do we get the frame from --> from copiedFrames if it is a copied frame
+                // Otherwise the input frame is to be checked (e.g. for moving an else statement or duplicating an else statement -- which doesn't go anywhere).
+                const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? this.copiedFrames : this.frameObjects ;    
 
-            frameToBeMovedId = frameToBeMovedId ?? state.copiedFrameId;
+                frameToBeMovedId = frameToBeMovedId ?? this.copiedFrameId;
 
-            if(frameToBeMovedId < 1){
-                return false;
-            }     
-
-            const allowedFrameTypes: [AddFrameCommandDef[]] = getters.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
-            // isFrameCopied needs to be checked in the case that the original frame which was copied has been deleted.
-            const copiedType: string = sourceFrameList[frameToBeMovedId].frameType.type;
-           
-            // for..of is used instead of foreach here, as foreach does not supports return.........
-            for (const element of Object.values(allowedFrameTypes)) {
-                if (element[0].type.type === copiedType) {
-                    return true;
-                }
-            }
-
-            return false;
-        },
-
-        getIfPositionAllowsSelectedFrames: (state, getters) => (targetFrameId: number, targetCaretPosition: CaretPosition, areFramesCopied: boolean) => {
-        
-            const allowedFrameTypes: [AddFrameCommandDef[]] = getters.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
-
-            const selectedFramesIds = (areFramesCopied)?state.copiedSelectionFrameIds:state.selectedFrames;
-            const sourceList = (areFramesCopied)?state.copiedFrames:state.frameObjects;
-            
-            // for..of is used instead of foreach here, as foreach does not supports return.........
-            for (const id of selectedFramesIds) {
-                // If one of the selected frames is not found in the allowed list, then return false
-                if(!Object.values(allowedFrameTypes).find((allowed) => allowed[0].type.type === sourceList[id].frameType.type)){
+                if(frameToBeMovedId < 1){
                     return false;
+                }     
+
+                const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
+                // isFrameCopied needs to be checked in the case that the original frame which was copied has been deleted.
+                const copiedType: string = sourceFrameList[frameToBeMovedId].frameType.type;
+            
+                // for..of is used instead of foreach here, as foreach does not supports return.........
+                for (const element of Object.values(allowedFrameTypes)) {
+                    if (element[0].type.type === copiedType) {
+                        return true;
+                    }
                 }
+
+                return false;
             }
-
-            return true;
         },
 
-        getContextMenuShownId: (state) => () => {
-            return state.contextMenuShownId;
-        },
+        isPositionAllowsSelectedFrames(){
+            return (targetFrameId: number, targetCaretPosition: CaretPosition, areFramesCopied: boolean) => {   
+                const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
 
-        getProjectName: (state) => () => {
-            return state.projectName;
-        },
+                const selectedFramesIds = (areFramesCopied) ? this.copiedSelectionFrameIds : this.selectedFrames;
+                const sourceList = (areFramesCopied) ? this.copiedFrames : this.frameObjects;
+                
+                // for..of is used instead of foreach here, as foreach does not supports return.........
+                for (const id of selectedFramesIds) {
+                    // If one of the selected frames is not found in the allowed list, then return false
+                    if(!Object.values(allowedFrameTypes).find((allowed) => allowed[0].type.type === sourceList[id].frameType.type)){
+                        return false;
+                    }
+                }
 
-        getSelectedFrameIds: (state) => () => {
-            return state.selectedFrames;
+                return true;
+            }
         },
 
         isFrameSelected: (state) => (frameId: number) => {
@@ -519,15 +507,15 @@ export default new Vuex.Store({
             }
         },
 
-        areAnyFramesSelected: (state) => () => {
-            return state.selectedFrames.length>0;
+        areAnyFramesSelected: (state) => {
+            return state.selectedFrames.length > 0;
         },
         
-        getIsUndoRedoEmpty: (state) => (action: string) => {
+        isUndoRedoEmpty: (state) => (action: string) => {
             return (action === "undo") ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
         },
 
-        isSelectionCopied: (state) => () => {
+        isSelectionCopied: (state) => {
             return state.copiedSelectionFrameIds.length > 0;
         },
 
@@ -539,15 +527,7 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].multiDragPosition;
         },
 
-        getAcResults: (state) => () => {
-            return state.acResults;
-        },
-        
-        getEditableSlotViaKeyboard:(state) => () => {
-            return state.editableSlotViaKeyboard;
-        },
-
-        retrieveUserDefinedElements:(state) => () => {
+        retrieveUserDefinedElements:(state) => {
             // Retrieve the user defined functions and variables.
             // We make sure we don't look up the variable/function in the current frame
             // (for example, if we are in a variable assignment, we shouldn't pick up on that variable being written)
@@ -557,30 +537,14 @@ export default new Vuex.Store({
                 .map((frame: FrameObject) => ({name: frame.contentDict[0].code, isFunction: frame.frameType.type === FuncDefDefinition.type}) as UserDefinedElement);
         },
 
-        getIsSlotFirstVisibleInFrame:(state) => (frameId: number, slotIndex: number) => {
+        isSlotFirstVisibleInFrame:(state) => (frameId: number, slotIndex: number) => {
             // This getter checks if the given slot of a given frame is *visually* the first shown to the user
             const contentDict = Object.values(state.frameObjects[frameId].contentDict);
             return (contentDict.find((content: FrameSlotContent, index) => (index < slotIndex && content.shownLabel)) === undefined);
         },
 
-        getIgnoreKeyEvent: (state) => () => {
-            return state.ignoreKeyEvent;
-        },
-
-        getDAPWrapper: (state) => () => {
-            return state.DAPWrapper;
-        },
-
-        getPreviousDAPWrapper: (state) => () => {
-            return state.previousDAPWrapper;
-        },
-
-        getDebugAC: (state) => () => {
-            return state.debugAC;
-        },
-
         // Check up if the API generator can be shown, depending on the current position in the code editor (cf. details in method)
-        getCanShowAPICodeGenerator: (state) => () => {
+        canShowAPICodeGenerator: (state) => {
             // first check if we are in an editoble slot or at a position where the caret is shown
             const currentFrame = state.frameObjects[state.currentFrame.id];
             const slotContent = Object.entries(currentFrame.contentDict).find((entry) => entry[1].focused);
@@ -600,7 +564,7 @@ export default new Vuex.Store({
                 // - imports container
                 // - function definition container
                 return (state.currentFrame.caretPosition == CaretPosition.body && currentFrame.id != state.importContainerId && currentFrame.id != state.functionDefContainerId) 
-                    || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId && currentFrame.parentId != state.importContainerId && currentFrame.parentId != state.functionDefContainerId);        
+                    || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId !== undefined && currentFrame.parentId != state.importContainerId && currentFrame.parentId != state.functionDefContainerId);        
             }
         },
 
@@ -608,19 +572,16 @@ export default new Vuex.Store({
             return state.frameObjects[frameId].frameType.isImportFrame;
         },
 
-        getContainerCollapsed: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].isCollapsed;
+        isContainerCollapsed: (state) => (frameId: number) => {
+            return state.frameObjects[frameId].isCollapsed ?? false;
         },
-    }, 
-
-    mutations: {
-        setAppLang(state, lang: string) {
+    },
+    
+    actions:{
+        setAppLang(lang: string) {
             //set the language in the store first
-            Vue.set(
-                state,
-                "appLang",
-                lang
-            );
+            this.appLang = lang;
+
             //then change the UI via i18n
             i18n.locale = lang;
 
@@ -628,16 +589,16 @@ export default new Vuex.Store({
             document.title = i18n.t("appName") as string;
 
             //change the values of the container frames as they are not reactive
-            Object.values(state.frameObjects).forEach((frame) => {
+            Object.values(this.frameObjects).forEach((frame) => {
                 switch(frame.frameType.type){
                 case ImportsContainerDefinition.type:
-                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.importsContainer") as string)
+                    Vue.set(this.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.importsContainer") as string)
                     break;
                 case FuncDefContainerDefinition.type:
-                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.funcDefsContainer") as string)
+                    Vue.set(this.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.funcDefsContainer") as string)
                     break;
                 case MainFramesContainerDefinition.type:
-                    Vue.set(state.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.mainContainer") as string)
+                    Vue.set(this.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.mainContainer") as string)
                     break;
                 default:
                     break;
@@ -649,29 +610,17 @@ export default new Vuex.Store({
             getAPIItemTextualDescriptions(true);
             /* FITRUE_isMicrobit */
         },
-        
-        setIsAppMenuOpened(state, isOpened: boolean) {
-            Vue.set(
-                state,
-                "isAppMenuOpened",
-                isOpened
-            );
-        },
 
-        setCommandsTabIndex(state, index: number) {
-            Vue.set(state, "commandsTabIndex", index);
-        },
-
-        updateStateBeforeChanges(state, release: boolean) {
+        updateStateBeforeChanges(release: boolean) {
             //if the flag release is true, we clear the current stateBeforeChanges value
             Vue.set(
-                state,
+                this,
                 "stateBeforeChanges",
-                (release) ? {} : JSON.parse(JSON.stringify(state))
+                (release) ? {} : JSON.parse(JSON.stringify(this.$state))
             );
         },
 
-        deleteFrame(state, payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
+        deleteFrame(payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
             //if delete is pressed
             //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
             //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
@@ -684,7 +633,7 @@ export default new Vuex.Store({
             if(payload.key=== "Delete"){
                 //delete the frame and all children
                 removeFrameInFrameList(
-                    state.frameObjects,
+                    this.frameObjects,
                     payload.frameToDeleteId
                 );
             }
@@ -692,37 +641,37 @@ export default new Vuex.Store({
                 //delete the frame entirely with sub levels
                 if(payload.deleteChildren === true){
                     removeFrameInFrameList(
-                        state.frameObjects,
+                        this.frameObjects,
                         payload.frameToDeleteId
                     );
                 }
                 else{
                     //we "replace" the frame to delete by its content in its parent's location
                     //note: the content is its children and the children of its potential joint frames
-                    const frameToDelete = state.frameObjects[payload.frameToDeleteId];
+                    const frameToDelete = this.frameObjects[payload.frameToDeleteId];
                     const isFrameToDeleteJointFrame = (frameToDelete.jointParentId > 0);
                     const isFrameToDeleteRootJointFrame = (frameToDelete.jointParentId === 0 && frameToDelete.frameType.jointFrameTypes.length > 0);
                     let parentIdOfFrameToDelete = frameToDelete.parentId; 
                     //if the current frame is a joint frame, we find the "parent": the root of the structure if it's the first joint, the joint before otherwise
                     if (isFrameToDeleteJointFrame) {
-                        const indexOfJointFrame = state.frameObjects[frameToDelete.jointParentId].jointFrameIds.indexOf(payload.frameToDeleteId);
+                        const indexOfJointFrame = this.frameObjects[frameToDelete.jointParentId].jointFrameIds.indexOf(payload.frameToDeleteId);
                         parentIdOfFrameToDelete = (indexOfJointFrame > 0) ?
-                            state.frameObjects[frameToDelete.jointParentId].jointFrameIds[indexOfJointFrame - 1] :
-                            state.frameObjects[payload.frameToDeleteId].jointParentId     
+                            this.frameObjects[frameToDelete.jointParentId].jointFrameIds[indexOfJointFrame - 1] :
+                            this.frameObjects[payload.frameToDeleteId].jointParentId     
                     }
 
-                    const listOfChildrenToMove = state.frameObjects[payload.frameToDeleteId].childrenIds
+                    const listOfChildrenToMove = this.frameObjects[payload.frameToDeleteId].childrenIds
                     //if the frame to remove is the root of a joint frames structure, we include all the joint frames' children in the list of children to remove
                     if(isFrameToDeleteRootJointFrame){
-                        state.frameObjects[payload.frameToDeleteId]
+                        this.frameObjects[payload.frameToDeleteId]
                             .jointFrameIds
-                            .forEach((jointFrameId) => listOfChildrenToMove.push(...state.frameObjects[jointFrameId].childrenIds));
+                            .forEach((jointFrameId) => listOfChildrenToMove.push(...this.frameObjects[jointFrameId].childrenIds));
                     }
 
                     //update the new parent Id of all the children to their new parent
-                    listOfChildrenToMove.forEach((childId) => state.frameObjects[childId].parentId = parentIdOfFrameToDelete);
+                    listOfChildrenToMove.forEach((childId) => this.frameObjects[childId].parentId = parentIdOfFrameToDelete);
                     //replace the frame to delete by the children in the parent frame or append them at the end (for joint frames)
-                    const parentChildrenIds = state.frameObjects[parentIdOfFrameToDelete].childrenIds;
+                    const parentChildrenIds = this.frameObjects[parentIdOfFrameToDelete].childrenIds;
                     const indexOfFrameToReplace = (isFrameToDeleteJointFrame) ? parentChildrenIds.length : parentChildrenIds.lastIndexOf(payload.frameToDeleteId);
                     parentChildrenIds.splice(
                         indexOfFrameToReplace,
@@ -731,26 +680,26 @@ export default new Vuex.Store({
                     );
                     //if the frame to delete is a joint frame, we remove it from its parent
                     if(isFrameToDeleteJointFrame){
-                        state.frameObjects[state.frameObjects[payload.frameToDeleteId].jointParentId].jointFrameIds.splice(
-                            state.frameObjects[state.frameObjects[payload.frameToDeleteId].jointParentId].jointFrameIds.indexOf(payload.frameToDeleteId),
+                        this.frameObjects[this.frameObjects[payload.frameToDeleteId].jointParentId].jointFrameIds.splice(
+                            this.frameObjects[this.frameObjects[payload.frameToDeleteId].jointParentId].jointFrameIds.indexOf(payload.frameToDeleteId),
                             1
                         );
                     }
                     //and finally, delete the frame
                     Vue.delete(
-                        state.frameObjects,
+                        this.frameObjects,
                         payload.frameToDeleteId
                     );
                 }
             }
         },
 
-        updateFramesOrder(state, payload: {event: any; eventParentId: number}) {
+        doUpdateFramesOrder(payload: {event: any; eventParentId: number}) {
             const eventType = Object.keys(payload.event)[0];
             //If we are moving a joint frame the list to be updated is it's parents jointFrameIds list.
             const listToUpdate = (payload.event[eventType].element.jointParentId > 0 ) ?
-                state.frameObjects[payload.eventParentId].jointFrameIds : 
-                state.frameObjects[payload.eventParentId].childrenIds;
+                this.frameObjects[payload.eventParentId].jointFrameIds : 
+                this.frameObjects[payload.eventParentId].childrenIds;
 
             if (eventType === "added") {
                 // Add the id to the parent's childrenId list
@@ -762,7 +711,7 @@ export default new Vuex.Store({
 
                 // Set the new parentId/jointParentId to the added frame
                 Vue.set(
-                    state.frameObjects[payload.event[eventType].element.id],
+                    this.frameObjects[payload.event[eventType].element.id],
                     (payload.event[eventType].element.jointParentId === 0) ? "parentId" : "jointParentId" ,
                     payload.eventParentId
                 );
@@ -789,31 +738,21 @@ export default new Vuex.Store({
             }
         },
 
-        // It may be called more than once from the same place and thus requires the editing value
-        setEditFlag(state, editing) {
+        setEditableFocus(payload: EditableFocusPayload) {
             Vue.set(
-                state,
-                "isEditing", 
-                editing
-            );
-        },
-
-        setEditableFocus(state, payload: EditableFocusPayload) {
-            Vue.set(
-                state.frameObjects[payload.frameId].contentDict[payload.slotId],
+                this.frameObjects[payload.frameId].contentDict[payload.slotId],
                 "focused",
                 payload.focused
             );
         },
 
-        changeCaretWithKeyboard(state, key: string) {
-            
-            const currId = state.currentFrame.id;
-            const currPosition = state.currentFrame.caretPosition;
+        changeCaretWithKeyboard(key: string) {            
+            const currId = this.currentFrame.id;
+            const currPosition = this.currentFrame.caretPosition;
 
             //Turn off previous caret 
             Vue.set(
-                state.frameObjects[currId],
+                this.frameObjects[currId],
                 "caretVisibility",
                 CaretPosition.none
             );
@@ -825,27 +764,18 @@ export default new Vuex.Store({
             const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
 
             const delta = (key === "ArrowDown")?1:-1;
-            const nextCaret = listOfCaretPositions[currentCaretIndex + delta]??currentCaret;
+            const nextCaret = (listOfCaretPositions[currentCaretIndex + delta]??currentCaret) as CurrentFrame;
+
+            this.currentFrame.id = nextCaret.id;
+            this.currentFrame.caretPosition = nextCaret.caretPosition;
 
             Vue.set(
-                state.currentFrame,
-                "id",
-                nextCaret.id
-            );
-
-            Vue.set(
-                state.currentFrame,
-                "caretPosition",
-                nextCaret.caretPosition
-            );
-
-            Vue.set(
-                state.frameObjects[nextCaret.id],
+                this.frameObjects[nextCaret.id],
                 "caretVisibility",
                 nextCaret.caretPosition
             );
 
-            const nextFrameObject = state.frameObjects[nextCaret.id];
+            const nextFrameObject = this.frameObjects[nextCaret.id];
             if( "isCollapsed" in nextFrameObject ) {
                 Vue.set(
                     nextFrameObject,
@@ -853,75 +783,63 @@ export default new Vuex.Store({
                     false
                 );
             }
-            else if("isCollapsed" in state.frameObjects[nextFrameObject.parentId]){
+            else if("isCollapsed" in this.frameObjects[nextFrameObject.parentId]){
                 Vue.set(
-                    state.frameObjects[nextFrameObject.parentId],
+                    this.frameObjects[nextFrameObject.parentId],
                     "isCollapsed",
                     false
                 );
             }
         },
 
-        setCurrentFrame(state, newCurrentFrame: CurrentFrame) {
+        setCurrentFrame(newCurrentFrame: CurrentFrame) {
             Vue.set(
-                state.frameObjects[state.currentFrame.id],
+                this.frameObjects[this.currentFrame.id],
                 "caretVisibility",
                 CaretPosition.none
             );
-            Vue.set(
-                state.currentFrame,
-                "id",
-                newCurrentFrame.id
-            );
+
+            this.currentFrame.id = newCurrentFrame.id
+            this.currentFrame.caretPosition = newCurrentFrame.caretPosition;
 
             Vue.set(
-                state.currentFrame,
-                "caretPosition",
-                newCurrentFrame.caretPosition
-            );
-
-            Vue.set(
-                state.frameObjects[newCurrentFrame.id],
+                this.frameObjects[newCurrentFrame.id],
                 "caretVisibility",
                 newCurrentFrame.caretPosition
             );
         },
 
-        setCurrentInitCodeValue(state, payload: {frameId: number; slotId: number}){
-            Vue.set(
-                state,
-                "currentInitCodeValue",
-                state.frameObjects[payload.frameId].contentDict[payload.slotId].code
-            )
+        setCurrentInitCodeValue(payload: {frameId: number; slotId: number}){
+            this.currentInitCodeValue = this.frameObjects[payload.frameId].contentDict[payload.slotId].code;
         },
 
-        setFrameEditableSlotContent(state, payload: EditableSlotPayload){
+        doSetFrameEditableSlotContent(payload: EditableSlotPayload){
             Vue.set(
-                state.frameObjects[payload.frameId].contentDict[payload.slotId],
+                this.frameObjects[payload.frameId].contentDict[payload.slotId],
                 "code",
                 payload.code
             );
         },
 
-        setSlotErroneous(state, payload: {frameId: number; slotIndex: number; error: string}) {
-            const existingError =  state.frameObjects[payload.frameId].contentDict[payload.slotIndex].error;
+        setSlotErroneous(payload: {frameId: number; slotIndex: number; error: string}) {
+            const existingError =  this.frameObjects[payload.frameId].contentDict[payload.slotIndex].error;
             const existingErrorBits = existingError.split("\n");
             // Sometimes we need to extend the error, if more than one different errors are on the same slot
             if(!existingErrorBits.includes(payload.error)){
                 const newError = (existingError === "" || payload.error === "") ? payload.error: (existingError +"\n" + payload.error);
                 Vue.set(
-                    state.frameObjects[payload.frameId].contentDict[payload.slotIndex],
+                    this.frameObjects[payload.frameId].contentDict[payload.slotIndex],
                     "error",
                     newError
                 );
             }           
         },
 
-        clearAllErrors(state) {
-            Object.keys(state.frameObjects).forEach((id: any) => {
-                Object.keys(state.frameObjects[id].contentDict).forEach((slot: any) => {
+        clearAllErrors() {
+            Object.keys(this.frameObjects).forEach((id: any) => {
+                Object.keys(this.frameObjects[id].contentDict).forEach((slot: any) => {
                     Vue.set(
-                        state.frameObjects[id].contentDict[slot],
+                        this.frameObjects[id].contentDict[slot],
                         "error",
                         ""
                     );
@@ -929,124 +847,98 @@ export default new Vuex.Store({
             });  
         },
 
-        addPreCompileErrors(state, id: string) {
-            //if it exists remove it else add it
-            if(!state.preCompileErrors.includes(id)) {
-                state.preCompileErrors.push(id);
+        addPreCompileErrors(id: string) {
+            if(!this.preCompileErrors.includes(id)) {
+                this.preCompileErrors.push(id);
             }
         },
 
-        removePreCompileErrors(state, id: string ) {
-            //if it exists remove it else add it
-            if(state.preCompileErrors.includes(id)) {
-                state.preCompileErrors.splice(state.preCompileErrors.indexOf(id),1);
+        removePreCompileErrors(id: string ) {
+            if(this.preCompileErrors.includes(id)) {
+                this.preCompileErrors.splice(this.preCompileErrors.indexOf(id),1);
             }
         },
-        
-        setMessageBanner(state, messageType: MessageDefinition) {
-            Vue.set(
-                state,
-                "currentMessage",
-                messageType
-            );
-        },
 
-        updateNextAvailableId(state) {
-            Vue.set( 
-                state,
-                "nextAvailableId",  
-                Math.max.apply({},(Object.keys(state.frameObjects).concat(Object.keys(state.copiedFrames))).map(Number))+1
-            );
+        updateNextAvailableId() {
+            this.nextAvailableId = Math.max.apply({},(Object.keys(this.frameObjects).concat(Object.keys(this.copiedFrames))).map(Number))+1;
         },
         
-        copyFrame(state, frameId: number) {
-            Vue.set( 
-                state,
-                "copiedFrameId",  
-                state.nextAvailableId
-            );
-            // If it has a JointParent, we're talking about a JointFrame
-            const isJointFrame = state.frameObjects[frameId].frameType.isJointFrame;
-            
-            const parent = (isJointFrame)? state.frameObjects[frameId].jointParentId : state.frameObjects[frameId].parentId;
+        doCopyFrame(frameId: number) {
+            this.copiedFrameId = this.nextAvailableId;
 
-            cloneFrameAndChildren(state.frameObjects, frameId, parent, {id: state.nextAvailableId}, state.copiedFrames);             
+            // If it has a JointParent, we're talking about a JointFrame
+            const isJointFrame = this.frameObjects[frameId].frameType.isJointFrame;
+            
+            const parent = (isJointFrame) ? this.frameObjects[frameId].jointParentId : this.frameObjects[frameId].parentId;
+
+            cloneFrameAndChildren(this.frameObjects, frameId, parent, {id: this.nextAvailableId}, this.copiedFrames);             
         },
 
-        copySelection(state) {
-
+        doCopySelection() {
             // If it has a JointParent, we're talking about a JointFrame
-            const isJointFrame = state.frameObjects[state.selectedFrames[0]].frameType.isJointFrame;
+            const isJointFrame = this.frameObjects[this.selectedFrames[0]].frameType.isJointFrame;
             
-            const parent = (isJointFrame)? state.frameObjects[state.selectedFrames[0]].jointParentId : state.frameObjects[state.selectedFrames[0]].parentId;
+            const parent = (isJointFrame) ? this.frameObjects[this.selectedFrames[0]].jointParentId : this.frameObjects[this.selectedFrames[0]].parentId;
 
             // We generate the list of frames from the selectedFrames ids
             const sourceFrameList: EditorFrameObjects = {};
-            state.selectedFrames.forEach((id) => sourceFrameList[id] = state.frameObjects[id])
+            this.selectedFrames.forEach((id) => sourceFrameList[id] = this.frameObjects[id])
             
             // All the top level cloned frames need to be stored in order to then added to their new parent's list
             const topLevelCopiedFrames: number[] = [];
-            let nextAvailableId = state.nextAvailableId;
+            let nextAvailableId = this.nextAvailableId;
 
             Object.values(sourceFrameList).forEach( (frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
                 topLevelCopiedFrames.push(nextAvailableId)
-                cloneFrameAndChildren(state.frameObjects, frame.id, parent, {id: nextAvailableId}, state.copiedFrames); 
+                cloneFrameAndChildren(this.frameObjects, frame.id, parent, {id: nextAvailableId}, this.copiedFrames); 
                 // Find the largest id form the copied and increase it by 1
-                nextAvailableId = Math.max.apply({},(Object.keys(state.copiedFrames).concat(Object.keys(state.copiedFrames))).map(Number)) + 1;
+                nextAvailableId = Math.max.apply({},(Object.keys(this.copiedFrames).concat(Object.keys(this.copiedFrames))).map(Number)) + 1;
             });
 
             Vue.set( 
-                state,
+                this,
                 "copiedSelectionFrameIds",  
                 topLevelCopiedFrames
             );
 
         },
 
-        setCaretVisibility(state, payload: {frameId: number; caretVisibility: CaretPosition}) {
+        setCaretVisibility(payload: {frameId: number; caretVisibility: CaretPosition}) {
             Vue.set(
-                state.frameObjects[payload.frameId],
+                this.frameObjects[payload.frameId],
                 "caretVisibility",
                 payload.caretVisibility
             );
         },
 
-        updateState(state, newState){
+        updateState(newState: Record<string, unknown>){
             //this method complete changes the state with a new state object
-            Object.keys(state).forEach((property) => {
+            Object.keys(this.$state).forEach((property) => {
                 Vue.set(
-                    state,
+                    this,
                     property,
                     newState[property]
                 );
             } );
 
             //undo redo is cleared
-            state.diffToPreviousState.splice(0,state.diffToPreviousState.length);
-            state.diffToNextState.splice(0,state.diffToNextState.length);
+            this.diffToPreviousState.splice(0,this.diffToPreviousState.length);
+            this.diffToNextState.splice(0,this.diffToNextState.length);
             
             //copied frames are cleared
+            this.copiedFrameId = -100;
             Vue.set(
-                state,
-                "copiedFrameId",
-                -100
-            );
-            Vue.set(
-                state,
+                this,
                 "copiedFrames",
                 {}
             )
 
             //context menu indicator is cleared
-            Vue.set(
-                state,
-                "contextMenuShownId",
-                ""
-            )
+            this.contextMenuShownId = "";
         },
 
-        saveStateChanges(state, payload: {previousState: Record<string, unknown>; mockCurrentCursorFocus?: EditableFocusPayload}) {
+        saveStateChanges(payload: {previousState: Record<string, unknown>; mockCurrentCursorFocus?: EditableFocusPayload}) {
             //Saves the state changes in diffPreviousState.
             //However it is not just doing it without checking up things: because of the caret issues we need to generate a mock change of currentFrame.Id etc 
             //if there is no difference and the action may rely on the cursor position.
@@ -1059,53 +951,53 @@ export default new Vuex.Store({
                 //before saving the state, we "mock" a change of current state ID to a dummy value
                 //so that a difference is raised --> if users change the cursor, before doing undo,
                 //the cursor will correctly be at the right location. Same with focused.
-                backupCurrentFrame = state.currentFrame;
-                backupCurrentFocus = state.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused;
-                backupCurrentFrameVisibility = state.frameObjects[state.currentFrame.id].caretVisibility;
-                state.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused = false;
-                state.currentFrame = {id: 0, caretPosition: CaretPosition.none};
-                state.frameObjects[payload.mockCurrentCursorFocus.frameId].caretVisibility = CaretPosition.none;
+                backupCurrentFrame = this.currentFrame;
+                backupCurrentFocus = this.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused;
+                backupCurrentFrameVisibility = this.frameObjects[this.currentFrame.id].caretVisibility;
+                this.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused = false;
+                this.currentFrame = {id: 0, caretPosition: CaretPosition.none};
+                this.frameObjects[payload.mockCurrentCursorFocus.frameId].caretVisibility = CaretPosition.none;
             }
            
 
-            state.diffToPreviousState.push(getObjectPropertiesDifferences(state, payload.previousState));
+            this.diffToPreviousState.push(getObjectPropertiesDifferences(this.$state, payload.previousState));
             //don't exceed the maximum of undo steps allowed
-            if(state.diffToPreviousState.length > undoMaxSteps) {
-                state.diffToPreviousState.splice(
+            if(this.diffToPreviousState.length > undoMaxSteps) {
+                this.diffToPreviousState.splice(
                     0,
                     1
                 );
             }
             //we clear the diffToNextState content as we are now starting a new sequence of actions
-            state.diffToNextState.splice(
+            this.diffToNextState.splice(
                 0,
-                state.diffToNextState.length
+                this.diffToNextState.length
             );
 
             if(payload.mockCurrentCursorFocus !== undefined){
                 //revert the mock changes in the state
-                state.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused = backupCurrentFocus;
-                state.currentFrame = backupCurrentFrame;
-                state.frameObjects[backupCurrentFrame.id].caretVisibility = backupCurrentFrameVisibility;
+                this.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused = backupCurrentFocus;
+                this.currentFrame = backupCurrentFrame;
+                this.frameObjects[backupCurrentFrame.id].caretVisibility = backupCurrentFrameVisibility;
             }
         },
 
-        applyStateUndoRedoChanges(state, isUndo: boolean){
+        applyStateUndoRedoChanges(isUndo: boolean){
             //flags for performing a change of current caret
             let changeCaret = false;
             let newCaretId = 0;
-            const oldCaretId = state.currentFrame.id;
+            const oldCaretId = this.currentFrame.id;
 
             //performing the change if there is any change recorded in the state
             let changeList = [] as ObjectPropertyDiff[];
             if(isUndo) {
-                changeList = state.diffToPreviousState.pop()??[];
+                changeList = this.diffToPreviousState.pop()??[];
             }
             else {
-                changeList = state.diffToNextState.pop()??[];
+                changeList = this.diffToNextState.pop()??[];
             }
 
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             if(changeList.length > 0){
                 //this flag stores the arrays that need to be "cleaned" (i.e., removing the null elements)
                 const arraysToClean = [] as {[id: string]: any}[];                
@@ -1116,7 +1008,7 @@ export default new Vuex.Store({
                     const stateParts = changeEntry.propertyPathWithArrayFlag.split(".");
                     const property = stateParts[stateParts.length -1];
                     stateParts.pop();
-                    let statePartToChange = state as {[id: string]: any};
+                    let statePartToChange = this as {[id: string]: any};
                     let lastPartIsArray;
                     stateParts.forEach((partWithArrayFlag) => {
                         //intermediate parts have a flag suffix indicating if the part is an array or not
@@ -1146,7 +1038,7 @@ export default new Vuex.Store({
                         );
 
                         //if we update a current frame cursor, we make sure it is properly set
-                        if(statePartToChange === state.currentFrame && property==="id"){
+                        if(statePartToChange === this.currentFrame && property==="id"){
                             changeCaret = true;
                             newCaretId = changeEntry.value;
                         }
@@ -1179,19 +1071,15 @@ export default new Vuex.Store({
                 //if we notified a change of current caret, we make sure it makes correctly displayed 
                 if(changeCaret){
                     //if the frame where the previous state of the caret was notified still exists, we set its caret to "none"
-                    if(getAvailableNavigationPositions().map((e)=>e.id).includes(oldCaretId)){
+                    if(getAvailableNavigationPositions().map((e)=>e.id).includes(oldCaretId) && this.frameObjects[oldCaretId]){
                         Vue.set(
-                            state.frameObjects[oldCaretId],
+                            this.frameObjects[oldCaretId],
                             "caretVisibility",
                             CaretPosition.none
                         );
                     }
         
-                    Vue.set(
-                        state.currentFrame,
-                        "caretPosition",
-                        state.frameObjects[newCaretId].caretVisibility
-                    );
+                    this.currentFrame.caretPosition = this.frameObjects[newCaretId].caretVisibility;
                 }
 
                 //finally, if there is a change on an editable slot, we trigger an error check for that slot/slot context
@@ -1211,181 +1099,133 @@ export default new Vuex.Store({
                 }
 
                 //keep the arrays of changes in sync with undo/redo sequences
-                const stateDifferences = getObjectPropertiesDifferences(state, stateBeforeChanges);
+                const stateDifferences = getObjectPropertiesDifferences(this.$state, stateBeforeChanges);
                 if(isUndo){
-                    state.diffToNextState.push(stateDifferences);
+                    this.diffToNextState.push(stateDifferences);
                 }
                 else{
-                    state.diffToPreviousState.push(stateDifferences);        
+                    this.diffToPreviousState.push(stateDifferences);        
                 }
             }
-        },
-
-        setContextMenuShownId(state, id: string) {
-            Vue.set(state, "contextMenuShownId", id);
         },  
         
-        changeDisableFrame(state, payload: {frameId: number; isDisabling: boolean; ignoreEnableFromRoot?: boolean}) {
+        doChangeDisableFrame(payload: {frameId: number; isDisabling: boolean; ignoreEnableFromRoot?: boolean}) {
             //if we enable, we may need to use the root frame ID instead of the frame ID where the menu has been invocked
             //because enabling a frame enables all the frames for that disabled "block" (i.e. the top disabled frame and its children/joint frames)
-            const rootFrameID = (payload.isDisabling || (payload.ignoreEnableFromRoot??false)) ? payload.frameId : getDisabledBlockRootFrameId(state.frameObjects, payload.frameId);
+            const rootFrameID = (payload.isDisabling || (payload.ignoreEnableFromRoot??false)) ? payload.frameId : getDisabledBlockRootFrameId(this.frameObjects, payload.frameId);
 
             //When we disable or enable a frame, we also disable/enable all the sublevels (children and joint frames)
             const allFrameIds = [rootFrameID];
-            allFrameIds.push(...getAllChildrenAndJointFramesIds(state.frameObjects, rootFrameID));
+            allFrameIds.push(...getAllChildrenAndJointFramesIds(this.frameObjects, rootFrameID));
             allFrameIds.forEach((frameId) => {
                 Vue.set(
-                    state.frameObjects[frameId],
+                    this.frameObjects[frameId],
                     "isDisabled",
                     payload.isDisabling
                 );
 
                 //if disabling [resp. enabling], we also need to remove [resp. add] potential errors of empty editable slots
                 if(payload.isDisabling){
-                    Object.keys(state.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
+                    Object.keys(this.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
                         Vue.set(
-                            state.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)],
+                            this.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)],
                             "error",
                             ""
                         );
 
                         const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
-                        if(state.preCompileErrors.includes(uiid)) {
-                            state.preCompileErrors.splice(state.preCompileErrors.indexOf(uiid),1);
+                        if(this.preCompileErrors.includes(uiid)) {
+                            this.preCompileErrors.splice(this.preCompileErrors.indexOf(uiid),1);
                         }
                     });
                 } 
                 else{
-                    Object.keys(state.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
+                    Object.keys(this.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
                         const slotIndexNber = Number.parseInt(slotIndex);
-                        checkCodeErrors(frameId, slotIndexNber, state.frameObjects[frameId].contentDict[slotIndexNber].code);
+                        checkCodeErrors(frameId, slotIndexNber, this.frameObjects[frameId].contentDict[slotIndexNber].code);
                     });
                 }                 
             });
         },
 
-        setProjectName(state, newName) {
-            Vue.set(state, "projectName", newName);
-        },
-
-        setIgnoredDragAction(state, value: boolean){
-            Vue.set(state, "ignoredDragAction", value);
-        },
-
-        selectDeselectFrame(state, payload: {frameId: number; direction: string}) {
-            const indexOfFrame = state.selectedFrames.indexOf(payload.frameId)
+        selectDeselectFrame(payload: {frameId: number; direction: string}) {
+            const indexOfFrame = this.selectedFrames.indexOf(payload.frameId)
             // if it exists remove it
             if(indexOfFrame > -1) {
-                state.selectedFrames.splice(indexOfFrame,1);
+                this.selectedFrames.splice(indexOfFrame,1);
             }
             // else it may be added
             else { 
-                state.selectedFrames.splice((payload.direction === "up") ? 0 : state.selectedFrames.length, 0, payload.frameId);
+                this.selectedFrames.splice((payload.direction === "up") ? 0 : this.selectedFrames.length, 0, payload.frameId);
             }
         },
 
-        unselectAllFrames(state) {
-            state.selectedFrames.splice(0,state.selectedFrames.length);
+        unselectAllFrames() {
+            this.selectedFrames.splice(0,this.selectedFrames.length);
         },
 
-        flushCopiedFrames(state){
+        flushCopiedFrames(){
             Vue.set(
-                state,
+                this,
                 "copiedFrames",
                 {}
             );
 
-            Vue.set(
-                state,
-                "copiedFrameId",
-                -100
-            );
+            this.copiedFrameId = -100;
 
             Vue.set(
-                state,
+                this,
                 "copiedSelectionFrameIds",
                 []
             );
         },
 
-        makeSelectedFramesVisible(state){
-            state.selectedFrames.forEach( (id) =>
+        makeSelectedFramesVisible(){
+            this.selectedFrames.forEach((id) =>
                 Vue.set(
-                    state.frameObjects[id],
+                    this.frameObjects[id],
                     "isVisible",
                     true
                 ));
         },
 
-        removeMultiDragStyling(state) {
-            state.selectedFrames.forEach( (id) => {
+        removeMultiDragStyling() {
+            this.selectedFrames.forEach((id) => {
                 Vue.set(
-                    state.frameObjects[id],
+                    this.frameObjects[id],
                     "multiDragPosition",
                     ""
                 );
             });
         },
-
-        setAcResults(state, value: AcResultsWithModule){
-            Vue.set(
-                state,
-                "acResults",
-                value
-            );
-        },
         
-        setEditableSlotViaKeyboard(state, payload: EditableSlotReachInfos) {
-            Vue.set(state, "editableSlotViaKeyboard", payload);
-        },
-
-        setIgnoreKeyEvent(state, value: boolean){
-            Vue.set(state, "ignoreKeyEvent", value);
-        },
-
-        setDAPWrapper(state, wrapper: DAPWrapper){
-            Vue.set(state, "DAPWrapper", wrapper);
-        },
-
-        setPreviousDAPWrapper(state, wrapper: DAPWrapper){
-            Vue.set(state, "previousDAPWrapper", wrapper);
-        },
-
-        setCollapseStatusContainer(state, payload: {frameId: number; isCollapsed: boolean}) {
+        setCollapseStatusContainer(payload: {frameId: number; isCollapsed: boolean}) {
             Vue.set(
-                state.frameObjects[payload.frameId],
+                this.frameObjects[payload.frameId],
                 "isCollapsed",
                 payload.isCollapsed
             );
         },
-    },
 
-    actions: {
-        updateFramesOrder({getters, commit, state }, payload: {event: any; eventParentId: number}) {
-            if(state.ignoredDragAction){
+
+        /******************** OLD ACTIONS ********** */
+        updateFramesOrder(payload: {event: any; eventParentId: number}) {
+            if(this.ignoredDragAction){
                 //if the action should be ignore, just return and reset the flag
-                commit(
-                    "setIgnoredDragAction",
-                    false
-                );
-
+                this.ignoredDragAction = false;
                 return;
             }
 
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
 
             const eventType = Object.keys(payload.event)[0];
 
             //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
             if(eventType !== "removed"){
-                commit(
-                    "updateStateBeforeChanges",
-                    false
-                );
+                this.updateStateBeforeChanges(false);
             }
             
-            
-            const isJointFrame = getters.getIsJointFrameById(payload.event[eventType].element.id);
+            const isJointFrame = this.isJointFrameById(payload.event[eventType].element.id);
 
             const position: CaretPosition = (isJointFrame)?
                 CaretPosition.below:
@@ -1396,8 +1236,8 @@ export default new Vuex.Store({
             // valid, as the if accepts else there, but the elif cannot go below the else.
             // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
             // succeedingFrame is the next frame (if it exists) above which we are adding
-            const succeedingFrame = state.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];   
-            const jointFrameIds = state.frameObjects[payload.eventParentId].jointFrameIds;
+            const succeedingFrame = this.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];   
+            const jointFrameIds = this.frameObjects[payload.eventParentId].jointFrameIds;
             if(eventType !== "removed") {
                 // EXAMPLE: Moving frame `A` above Frame `B`
                 // IF `A` cannot be moved on this position 
@@ -1407,111 +1247,80 @@ export default new Vuex.Store({
                 //     on FALSE ==> We don't care about this situation
                 const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
                     ? (succeedingFrame !== undefined)
-                        ? !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, succeedingFrame)
-                        : !getters.getIfPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, jointFrameIds[jointFrameIds.length - 1])
+                        ? !this.isPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, succeedingFrame)
+                        : !this.isPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, jointFrameIds[jointFrameIds.length - 1])
                     : false;
 
-                if((!isJointFrame && !getters.getIfPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
+                if((!isJointFrame && !this.isPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
                     //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
                     if(eventType === "added"){
-                        commit(
-                            "setIgnoredDragAction",
-                            true
-                        );
+                        this.ignoredDragAction = true;
                     }
 
                     //alert the user about a forbidden move
-                    commit(
-                        "setMessageBanner",
-                        MessageDefinitions.ForbiddenFrameMove
-                    );
+                    this.currentMessage = MessageDefinitions.ForbiddenFrameMove;
     
                     //don't leave the message for ever
-                    setTimeout(()=>commit(
-                        "setMessageBanner",
-                        MessageDefinitions.NoMessage
-                    ), 3000);         
+                    setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 3000);         
                     return;
                 }
             }
 
-            commit(
-                "updateFramesOrder",
-                payload
-            );
+            this.doUpdateFramesOrder(payload);
 
             //after the removing or at the moving step, we use the backup of the state for setting "isDisabled", prepare for undo/redo and clear the backup off
             if(eventType !== "added"){
                 // Set the right value for "isDisabled"
                 const srcFrameId = payload.event[eventType].element.id as number;
-                const destContainerId = (state.frameObjects[srcFrameId].jointParentId > 0)
-                    ? state.frameObjects[srcFrameId].jointParentId
-                    : state.frameObjects[srcFrameId].parentId;
-                const changeDisableInfo = checkDisabledStatusOfMovingFrame(state.stateBeforeChanges.frameObjects, srcFrameId, destContainerId);
-                if(changeDisableInfo.changeDisableProp){
-                    this.commit(
-                        "changeDisableFrame",
-                        {frameId: srcFrameId, isDisabling: changeDisableInfo.newBoolPropVal, ignoreEnableFromRoot: true}
-                    );
+                const destContainerId = (this.frameObjects[srcFrameId].jointParentId > 0)
+                    ? this.frameObjects[srcFrameId].jointParentId
+                    : this.frameObjects[srcFrameId].parentId;
+                const changeDisableInfo = checkDisabledStatusOfMovingFrame(this.stateBeforeChanges.frameObjects, srcFrameId, destContainerId);
+                if(changeDisableInfo.changeDisableProp && changeDisableInfo.newBoolPropVal !== undefined){
+                    this.doChangeDisableFrame({frameId: srcFrameId, isDisabling: changeDisableInfo.newBoolPropVal, ignoreEnableFromRoot: true});
                 }    
 
                 //save the state changes for undo/redo
-                commit(
-                    "saveStateChanges",
-                    {                   
-                        previousState: state.stateBeforeChanges,
-                    }
-                );
+                this.saveStateChanges({                   
+                    previousState: this.stateBeforeChanges,
+                });
 
                 //clear the stateBeforeChanges flag off
-                commit(
-                    "updateStateBeforeChanges",
-                    true
-                );
+                this.updateStateBeforeChanges(true);
             }
         },
 
-        setFrameEditableSlotContent({state, commit}, payload: EditableSlotPayload) {
+        async setFrameEditableSlotContent(payload: EditableSlotPayload) {
             //This action is called EVERY time a unitary change is made on the editable slot.
             //We save changes at the entire slot level: therefore, we need to remove the last
             //previous state to replace it with the difference between the state even before and now;            
             let stateBeforeChanges = {};
             if(!payload.isFirstChange){
-                state.diffToPreviousState.pop();
-                state.frameObjects[payload.frameId].contentDict[payload.slotId].code = payload.initCode;  
+                this.diffToPreviousState.pop();
+                this.frameObjects[payload.frameId].contentDict[payload.slotId].code = payload.initCode;  
             }
 
             //save the previous state
-            stateBeforeChanges = JSON.parse(JSON.stringify(state));
+            stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
-            commit(
-                "setFrameEditableSlotContent",
-                payload
-            );
+            this.doSetFrameEditableSlotContent(payload);
 
             //save state changes
-            commit(
-                "saveStateChanges",
-                {
-                    previousState: stateBeforeChanges,
-                    mockCurrentCursorFocus: {
-                        frameId: payload.frameId,
-                        slotId: payload.slotId,
-                        focused: true,
-                    },
-                }
-            );
+            this.saveStateChanges({
+                previousState: stateBeforeChanges,
+                mockCurrentCursorFocus: {
+                    frameId: payload.frameId,
+                    slotId: payload.slotId,
+                    focused: true,
+                },
+            });
         },
 
-        updateErrorsOnSlotValidation({state, commit}, payload: EditableSlotPayload) {  
-            commit(
-                "setEditFlag",
-                false
-            );
+        updateErrorsOnSlotValidation(payload: EditableSlotPayload) {  
+            this.isEditing = false;
 
-            if(state.frameObjects[payload.frameId]){
-                commit(
-                    "setEditableFocus",
+            if(this.frameObjects[payload.frameId]){
+                this.setEditableFocus(
                     {
                         frameId: payload.frameId,
                         slotId: payload.slotId,
@@ -1520,46 +1329,39 @@ export default new Vuex.Store({
                 );
                 
                 // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
-                commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
+                this.commandsTabIndex = 0; //0 is the index of the add frame tab
 
-                commit(
-                    "setCurrentInitCodeValue",
+                this.setCurrentInitCodeValue(
                     {
                         frameId: payload.frameId,
                         slotId: payload.slotId,
                     }
-                )       
+                );       
                 
                 // Now we check errors in relation with this code update
                 checkCodeErrors(payload.frameId, payload.slotId, payload.code);
             }
         },
 
-        setFocusEditableSlot({commit}, payload: {frameId: number; slotId: number; caretPosition: CaretPosition}){            
-            commit(
-                "setCurrentInitCodeValue",
+        setFocusEditableSlot(payload: {frameId: number; slotId: number; caretPosition: CaretPosition}){            
+            this.setCurrentInitCodeValue(
                 {
                     frameId: payload.frameId,
                     slotId: payload.slotId,
                 }
-            )
-            
-            commit(
-                "setEditFlag",
-                true
             );
+            
+            this.isEditing = true;
 
             //First set the curretFrame to this frame
-            commit(
-                "setCurrentFrame",
+            this.setCurrentFrame(
                 {
                     id: payload.frameId,
                     caretPosition: payload.caretPosition,
                 }
             );
             //Then store which editable has the focus
-            commit(
-                "setEditableFocus",
+            this.setEditableFocus(
                 {
                     frameId: payload.frameId,
                     slotId: payload.slotId,
@@ -1568,55 +1370,42 @@ export default new Vuex.Store({
             );   
 
             // When we enter an editable slot, we explicitely select the API discovery tab in the Commands panel
-            commit("setCommandsTabIndex", 1); //1 is the index of the API discovery tab
+            this.commandsTabIndex = 1; //1 is the index of the API discovery tab
         
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
-        undoRedo({ state, commit }, isUndo: boolean) {
+        undoRedo(isUndo: boolean) {
             //check if the undo/redo list is empty BEFORE doing any action
-            const isEmptyList = (isUndo) ? state.diffToPreviousState.length == 0 : state.diffToNextState.length == 0;
+            const isEmptyList = (isUndo) ? this.diffToPreviousState.length == 0 : this.diffToNextState.length == 0;
             
             if(isEmptyList){
                 //no undo or redo can performed: inform the user on a temporary message
-                commit(
-                    "setMessageBanner",
-                    (isUndo) ? MessageDefinitions.NoUndo : MessageDefinitions.NoRedo
-                );
+                this.currentMessage = (isUndo) ? MessageDefinitions.NoUndo : MessageDefinitions.NoRedo;
 
                 //don't leave the message for ever
-                setTimeout(()=>commit(
-                    "setMessageBanner",
-                    MessageDefinitions.NoMessage
-                ), 2000);
+                setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 2000);
             }
             else{
                 //a undo/redo can be performed: do the action
-                commit(
-                    "applyStateUndoRedoChanges",
-                    isUndo 
-                );
+                this.applyStateUndoRedoChanges(isUndo);
             }
 
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
-        changeCaretPosition({ commit }, key: string) {
+        changeCaretPosition(key: string) {
             // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
-            commit("setCommandsTabIndex", 0); //0 is the index of the add frame tab
+            this.commandsTabIndex = 0; //0 is the index of the add frame tab
 
-            commit(
-                "changeCaretWithKeyboard",
-                key
-            );
+            this.changeCaretWithKeyboard(key);
             
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
-        addFrameWithCommand({ commit, state, dispatch }, frame: FramesDefinitions) {
-
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
-            const currentFrame = state.frameObjects[state.currentFrame.id];
+        async addFrameWithCommand(frame: FramesDefinitions) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
 
             // find parent id 
@@ -1628,8 +1417,8 @@ export default new Vuex.Store({
             // current frame by default (on caret==body)
             let  focusedFrame: FrameObject = currentFrame
 
-            if(state.currentFrame.caretPosition === CaretPosition.below) {
-                focusedFrame = state.frameObjects[currentFrame.parentId]
+            if(this.currentFrame.caretPosition === CaretPosition.below) {
+                focusedFrame = this.frameObjects[currentFrame.parentId]
             }
 
             if(addingJointFrame){
@@ -1644,7 +1433,7 @@ export default new Vuex.Store({
                 // put the frame below our focusedFrame joint frame
                 else {
                     parentId = focusedFrame.jointParentId
-                    listToUpdate = state.frameObjects[focusedFrame.jointParentId].jointFrameIds
+                    listToUpdate = this.frameObjects[focusedFrame.jointParentId].jointFrameIds
                     indexToAdd = listToUpdate.indexOf(focusedFrame.id) +1 //id
                 }
             }
@@ -1659,7 +1448,7 @@ export default new Vuex.Store({
             const newFrame: FrameObject = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: frame,
-                id: state.nextAvailableId++,
+                id: this.nextAvailableId++,
                 parentId: addingJointFrame ? 0 : parentId, // Despite we calculated parentID earlier, it may not be used
                 jointParentId: addingJointFrame ? parentId : 0,
                 contentDict:
@@ -1684,7 +1473,7 @@ export default new Vuex.Store({
             // Add the new frame to the list
             // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
             Vue.set(
-                state.frameObjects,
+                this.frameObjects,
                 newFrame.id,
                 newFrame
             );
@@ -1709,15 +1498,14 @@ export default new Vuex.Store({
                 newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.below, slotNumber: false});
             }
             const availablePositions = getAvailableNavigationPositions();
-            const indexOfCurrent = availablePositions.findIndex((e) => e.id===state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositions.findIndex((e) => e.id===this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition)
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
             availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions)
 
             //"move" the caret along, using the newly computed positions
-            dispatch(
-                "leftRightKey",
+            await this.leftRightKey(
                 {
                     key: "ArrowRight",
                     availablePositions: availablePositions,
@@ -1725,19 +1513,18 @@ export default new Vuex.Store({
             ).then(
                 () => 
                     //save state changes
-                    commit(
-                        "saveStateChanges",
+                    this.saveStateChanges(
                         {                 
                             previousState: stateBeforeChanges,
                         }
                     )
             );
             
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
-        deleteFrames({commit, state}, key: string){
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+        deleteFrames(key: string){
+            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
             // we remove the editable slots from the available positions
             let availablePositions = getAvailableNavigationPositions();
@@ -1746,19 +1533,24 @@ export default new Vuex.Store({
             let showDeleteMessage = false;
 
             //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
-            let framesIdToDelete = [state.currentFrame.id];
+            let framesIdToDelete = [this.currentFrame.id];
 
             //If a selection is deleted, we don't distinguish between "del" and "backspace": 
             //We move the caret at the last element of the selection, and perform "backspace" for each element of the selection
-            if(state.selectedFrames.length > 0){
-                if(state.selectedFrames[state.selectedFrames.length-1] !== state.currentFrame.id){
-                    commit("setCurrentFrame", {id: state.selectedFrames[state.selectedFrames.length-1], caretPosition: CaretPosition.below});
+            if(this.selectedFrames.length > 0){
+                if(this.selectedFrames[this.selectedFrames.length-1] !== this.currentFrame.id){
+                    this.setCurrentFrame(
+                        {
+                            id: this.selectedFrames[this.selectedFrames.length-1], 
+                            caretPosition: CaretPosition.below,
+                        }
+                    );
                 }
                 key = "Backspace";
-                framesIdToDelete = state.selectedFrames.reverse();
+                framesIdToDelete = this.selectedFrames.reverse();
                 //this flag to show the delete message is set on a per frame deletion basis,
                 //but here we could have 3+ single frames delete, so we need to also check to selection length.
-                showDeleteMessage = state.selectedFrames.length > 3;
+                showDeleteMessage = this.selectedFrames.length > 3;
             }
             
             framesIdToDelete.forEach((currentFrameId) => {
@@ -1771,7 +1563,7 @@ export default new Vuex.Store({
                 //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
                 //(*) with all sub levels children
 
-                const currentFrame = state.frameObjects[currentFrameId];
+                const currentFrame = this.frameObjects[currentFrameId];
 
                 let frameToDelete: NavigationPosition = {id:-100};
                 let deleteChildren = false;
@@ -1779,50 +1571,38 @@ export default new Vuex.Store({
                 if(key === "Delete"){
                     
                     // Where the current sits in the available positions
-                    const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === state.currentFrame.caretPosition);
+                    const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                     // the "next" position of the current
                     frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100}
                     
                     // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration bellow
-                    if( (state.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || state.frameObjects[frameToDelete.id]?.frameType.type === FuncDefDefinition.type)
+                    if((this.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.id]?.frameType.type === FuncDefDefinition.type)
                          && frameToDelete.caretPosition === CaretPosition.below){
                         frameToDelete.id = -100
                     }
                 }
                 else {
                     if (currentFrame.id > 0) {
-                        if(state.currentFrame.caretPosition === CaretPosition.body ){
+                        if(this.currentFrame.caretPosition === CaretPosition.body ){
                             //we just make sure the frame to delete isn't a function definition frame:
                             //we can't delete a function def frame with backspace in its body (unless empty) because it will result
                             //in its content put directly into the function defs container. So we just alert the users.
                             if(currentFrame.childrenIds.length === 0 || currentFrame.frameType.type !== FuncDefDefinition.type){
                                 //just move the cursor one level up
-                                commit(
-                                    "changeCaretWithKeyboard",
-                                    key
-                                );
+                                this.changeCaretWithKeyboard(key);
                             }
                             else{
                                 //just show the user a message and do nothing else
-                                commit(
-                                    "setMessageBanner",
-                                    MessageDefinitions.FunctionFrameCantDelete
-                                );
+                                this.currentMessage = MessageDefinitions.FunctionFrameCantDelete;
                 
                                 //don't leave the message for ever
-                                setTimeout(()=>commit(
-                                    "setMessageBanner",
-                                    MessageDefinitions.NoMessage
-                                ), 7000);
+                                setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 7000);
                                 return;
                             }
                         }
                         else{
-                            const newCurrent = availablePositions[availablePositions.findIndex((e)=> e.id===currentFrame.id)-1]??state.currentFrame
-                            commit(
-                                "setCurrentFrame",
-                                {id: newCurrent.id, caretPosition: newCurrent.caretPosition}
-                            );
+                            const newCurrent = (availablePositions[availablePositions.findIndex((e)=> e.id===currentFrame.id)-1]??this.currentFrame) as CurrentFrame
+                            this.setCurrentFrame({id: newCurrent.id, caretPosition: newCurrent.caretPosition});
                             deleteChildren = true;
                         }
                         frameToDelete.id = currentFrame.id;
@@ -1832,16 +1612,11 @@ export default new Vuex.Store({
                 //Delete the frame if a frame to delete has been found
                 if(frameToDelete.id > 0){
                     //before actually deleting the frame(s), we check if the user should be notified of a large deletion
-                    if(countRecursiveChildren(
-                        state.frameObjects,
-                        frameToDelete.id,
-                        3
-                    ) >= 3){
+                    if(countRecursiveChildren(this.frameObjects, frameToDelete.id, 3) >= 3){
                         showDeleteMessage = true;
                     }
 
-                    commit(
-                        "deleteFrame",
+                    this.deleteFrame(
                         {
                             key:key,
                             frameToDeleteId: frameToDelete.id,  
@@ -1852,11 +1627,10 @@ export default new Vuex.Store({
             });
 
             //clear the selection of frames
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
                        
             //save state changes
-            commit(
-                "saveStateChanges",
+            this.saveStateChanges(
                 {
                     previousState: stateBeforeChanges,
                 }
@@ -1864,45 +1638,33 @@ export default new Vuex.Store({
 
             //we show the message of large deletion after saving state changes as this is not to be notified.
             if(showDeleteMessage){
-                commit(
-                    "setMessageBanner",
-                    MessageDefinitions.LargeDeletion
-                );
+                this.currentMessage = MessageDefinitions.LargeDeletion;
 
                 //don't leave the message for ever
-                setTimeout(()=>commit(
-                    "setMessageBanner",
-                    MessageDefinitions.NoMessage
-                ), 7000);
+                setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 7000);
             }
         },
         
-        deleteFrameFromSlot({commit, dispatch, state}, frameId: number){            
+        deleteFrameFromSlot(frameId: number){            
             // Before we delete the frame, we need to "invalidate" the key events: as this action (deleteFrameFromSlot) is triggered on a key down event, 
             // when the key (backspace) is released, the key up event is fired, but since the frame is deleted, 
             // the event is caught at the window level (and since we are no more in editing mode, the deletion method is called again). So we invalidate the 
             // key event momently so that this window key up event is ignored.
             // Furthermore, we make sure that the frame hasn't been already deleted: in case a long press, we don't want to have many deletion
             // triggered from "stacked" calls to this method
-            if(state.frameObjects[frameId]){
-                commit("setIgnoreKeyEvent", true);
-                dispatch(
-                    "deleteFrames",
-                    "Backspace"
-                );  
+            if(this.frameObjects[frameId]){
+                this.ignoreKeyEvent = true;
+                this.deleteFrames("Backspace");  
             }
         },
 
-        toggleCaret({ commit }, newCurrent) {
-            commit(
-                "setCurrentFrame",
-                newCurrent
-            );
+        toggleCaret(newCurrent: CurrentFrame) {
+            this.setCurrentFrame(newCurrent);
             
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
-        leftRightKey({commit, state} , payload: {key: string, availablePositions?: NavigationPosition[]}) {
+        async leftRightKey(payload: {key: string, availablePositions?: NavigationPosition[]}) {
 
             //  used for moving index up (+1) or down (-1)
             const directionDown = payload.key === "ArrowRight" || payload.key === "Enter";
@@ -1911,77 +1673,55 @@ export default new Vuex.Store({
             const availablePositions = payload.availablePositions??getAvailableNavigationPositions();
             let currentFramePosition;
 
-            if (state.isEditing){ 
-                const posOfCurSlot = Object.entries(state.frameObjects[state.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
-                currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === state.currentFrame.id); 
+            if (this.isEditing){ 
+                const posOfCurSlot = Object.entries(this.frameObjects[this.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
+                currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === this.currentFrame.id); 
             }
             else {
-                currentFramePosition = availablePositions.findIndex( (e) => e.caretPosition === state.currentFrame.caretPosition && e.id === state.currentFrame.id); 
+                currentFramePosition = availablePositions.findIndex( (e) => e.caretPosition === this.currentFrame.caretPosition && e.id === this.currentFrame.id); 
             }
             
             const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition])                        
 
             // irrespective to where we are going to, we need to make sure to hide current caret
             Vue.set(
-                state.frameObjects[state.currentFrame.id],
+                this.frameObjects[this.currentFrame.id],
                 "caretVisibility",
                 CaretPosition.none
             );
 
             // If next position is an editable slot
             if( nextPosition.slotNumber !== false) {
-                commit(
-                    "setEditFlag",
-                    true
-                );
+                this.isEditing = true;
                 const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: directionDelta};
-                commit("setEditableSlotViaKeyboard", slotReachInfos);
+                this.editableSlotViaKeyboard = slotReachInfos;
 
-                commit(
-                    "setEditableFocus",
+                this.setEditableFocus(
                     {
                         frameId: nextPosition.id,
-                        slotId: nextPosition.slotNumber,
+                        slotId: (nextPosition.slotNumber ?? -1),
                         focused: true,
                     }
                 );
-                
             }
             else {
                 // else we set editFlag to false as we are moving to a caret position
-                commit(
-                    "setEditFlag",
-                    false
-                );
+                this.isEditing = false;
 
                 Vue.set(
-                    state.frameObjects[nextPosition.id],
+                    this.frameObjects[nextPosition.id],
                     "caretVisibility",
                     nextPosition.caretPosition
                 );
        
-                Vue.set(
-                    state.currentFrame,
-                    "caretPosition",
-                    nextPosition.caretPosition
-                );
+                this.currentFrame.caretPosition = nextPosition.caretPosition as CaretPosition;
             }
 
             //In any case change the current frame
-            Vue.set(
-                state.currentFrame,
-                "id",
-                nextPosition.id
-            );
-
-            
-        },       
-        
-        setMessageBanner({commit}, message: MessageDefinition){
-            commit("setMessageBanner", message);
+            this.currentFrame.id = nextPosition.id;            
         },
-
-        setStateFromJSONStr({dispatch, commit}, payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}){
+        
+        setStateFromJSONStr(payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorDetailMessage = payload.errorReason ?? "unknown reason";
             let isVersionCorrect = false;
@@ -1992,7 +1732,7 @@ export default new Vuex.Store({
             if(isStateJSONStrValid){
                 // If the string we read was compressed, we need to uncompress it first
                 if(payload.readCompressed){
-                    dispatch("setStateFromJSONStr", {stateJSONStr: LZString.decompress(payload.stateJSONStr), showMessage: payload.showMessage});
+                    this.setStateFromJSONStr({stateJSONStr: LZString.decompress(payload.stateJSONStr) as string, showMessage: payload.showMessage});
                     return;
                 }
 
@@ -2057,8 +1797,7 @@ export default new Vuex.Store({
                         },
                         callback: (confirm: boolean) => {
                             if(confirm){
-                                dispatch(
-                                    "doSetStateFromJSONStr",
+                                this.doSetStateFromJSONStr(
                                     {
                                         stateJSONStr: newStateStr,
                                         showMessage: payload.showMessage ?? true,
@@ -2069,8 +1808,7 @@ export default new Vuex.Store({
                     })
                 }
                 else{
-                    dispatch(
-                        "doSetStateFromJSONStr",
+                    this.doSetStateFromJSONStr(
                         {
                             stateJSONStr: newStateStr,
                             showMessage: payload.showMessage ?? true,
@@ -2082,54 +1820,43 @@ export default new Vuex.Store({
                 const message = MessageDefinitions.UploadEditorFileError;
                 const msgObj: FormattedMessage = (message.message as FormattedMessage);
                 msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
-                commit(
-                    "setMessageBanner",
-                    message
-                );
+                this.currentMessage = message;
             }
         },
 
-        doSetStateFromJSONStr({state, commit}, payload: {stateJSONStr: string; showMessage?: boolean}){
-            commit(
-                "updateState",
+        doSetStateFromJSONStr(payload: {stateJSONStr: string; showMessage?: boolean}){
+            this.updateState(
                 JSON.parse(payload.stateJSONStr)
             )
             // If the language has been updated, we need to also update the UI accordingly
-            commit("setAppLang", state.appLang);
+            this.setAppLang(this.appLang);
             
             if(payload.showMessage) {
-                commit(
-                    "setMessageBanner",
-                    MessageDefinitions.UploadEditorFileSuccess
-                );
+                this.currentMessage = MessageDefinitions.UploadEditorFileSuccess;
 
                 //don't leave the message for ever
-                setTimeout(()=>commit(
-                    "setMessageBanner",
-                    MessageDefinitions.NoMessage
-                ), 5000);  
+                setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 5000);  
             }
-
         },
 
         // This method can be used to copy a frame to a position.
         // This can be a paste event or a duplicate event.
-        copyFrameToPosition({commit, state}, payload: {frameId?: number; newParentId: number; newIndex: number}) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+        copyFrameToPosition(payload: {frameId?: number; newParentId: number; newIndex: number}) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             
             const isPasteOperation: boolean = (payload.frameId === undefined);
-            payload.frameId = payload.frameId ?? state.copiedFrameId;
+            payload.frameId = payload.frameId ?? this.copiedFrameId;
 
             // If it is not a paste operation, it is a duplication of the frame.
-            const sourceFrameList: EditorFrameObjects = (isPasteOperation) ? state.copiedFrames : state.frameObjects;            
+            const sourceFrameList: EditorFrameObjects = (isPasteOperation) ? this.copiedFrames : this.frameObjects;            
             const copiedFrames: EditorFrameObjects = {};
-            cloneFrameAndChildren(sourceFrameList, payload.frameId, payload.newParentId, {id: state.nextAvailableId}, copiedFrames); 
+            cloneFrameAndChildren(sourceFrameList, payload.frameId, payload.newParentId, {id: this.nextAvailableId}, copiedFrames); 
 
 
             // Add the copied objects to the FrameObjects
             Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
                 Vue.set(
-                    state.frameObjects,
+                    this.frameObjects,
                     id,
                     copiedFrames[id]
                 )
@@ -2139,7 +1866,7 @@ export default new Vuex.Store({
 
             // It will be added either as a Child or as a JointChild
             const isJointFrame = sourceFrameList[payload.frameId].frameType.isJointFrame;
-            const childrenListToBeAdded = (isJointFrame)? state.frameObjects[payload.newParentId].jointFrameIds : state.frameObjects[payload.newParentId].childrenIds;
+            const childrenListToBeAdded = (isJointFrame) ? this.frameObjects[payload.newParentId].jointFrameIds : this.frameObjects[payload.newParentId].childrenIds;
 
             // Add the top frame to the its new parents children list
             childrenListToBeAdded.splice(
@@ -2149,36 +1876,36 @@ export default new Vuex.Store({
             );
 
             //Make the top new frame the current frame
-            commit( "setCurrentFrame", { 
-                id: topFrame.id,
-                caretPosition: (topFrame.frameType.allowChildren) ? CaretPosition.body : CaretPosition.below,
-            });
+            this.setCurrentFrame(
+                { 
+                    id: topFrame.id,
+                    caretPosition: (topFrame.frameType.allowChildren) ? CaretPosition.body : CaretPosition.below,
+                }
+            );
 
-            commit( "updateNextAvailableId" );
+            this.updateNextAvailableId();
 
             //if we do a paste, update the pasted frames' "isDisabled" property solely based on the parent's property
             if(isPasteOperation){
-                this.commit(
-                    "changeDisableFrame",
-                    {frameId: topFrame.id, isDisabling: state.frameObjects[payload.newParentId].isDisabled, ignoreEnableFromRoot: true}
+                this.doChangeDisableFrame(
+                    {frameId: topFrame.id, isDisabling: this.frameObjects[payload.newParentId].isDisabled, ignoreEnableFromRoot: true}
                 );
             }
 
             //save state changes
-            commit(
-                "saveStateChanges",
+            this.saveStateChanges(
                 {
                     previousState: stateBeforeChanges,
                 }
             );
         
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
         // This method can be used to copy the selected frames to a position.
         // This can be a paste event or a duplicate event.
-        copySelectedFramesToPosition({commit, state, getters}, payload: {newParentId: number; newIndex?: number}) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             // -100 is chosen so that TS won't complain for non-initialised variable
             let newIndex = payload.newIndex??-100;
             const areWeDuplicating = newIndex === -100;
@@ -2186,18 +1913,18 @@ export default new Vuex.Store({
             // If newIndex does not exist, we are talking about a duplication
             if(areWeDuplicating){
                 // In that case, the duplicated selection goes below the last selected item
-                newIndex = getters.getIndexInParent(state.selectedFrames[state.selectedFrames.length-1])+1;
+                newIndex = this.getIndexInParent(this.selectedFrames[this.selectedFrames.length-1])+1;
             }
 
             // We generate the list of frames from the selectedFrames ids
-            const sourceFrameList: EditorFrameObjects = (areWeDuplicating)?state.frameObjects:state.copiedFrames;
-            const sourceFrameIds: number[] = (areWeDuplicating)?state.selectedFrames:state.copiedSelectionFrameIds;
+            const sourceFrameList: EditorFrameObjects = (areWeDuplicating) ? this.frameObjects : this.copiedFrames;
+            const sourceFrameIds: number[] = (areWeDuplicating) ? this.selectedFrames : this.copiedSelectionFrameIds;
 
             const copiedFrames: EditorFrameObjects = {};
 
             // All the top level cloned frames need to be stored in order to then added to their new parent's list
             const topLevelCopiedFrames: number[] = [];
-            let nextAvailableId = state.nextAvailableId;
+            let nextAvailableId = this.nextAvailableId;
 
             Object.values(sourceFrameIds).forEach( (frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
@@ -2211,17 +1938,16 @@ export default new Vuex.Store({
             // Add the copied objects to the FrameObjects
             Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
                 Vue.set(
-                    state.frameObjects,
+                    this.frameObjects,
                     id,
                     copiedFrames[id]
                 )
             });
-            commit( "updateNextAvailableId" );
-            
+            this.updateNextAvailableId();            
 
             // It will be added either as a Child or as a JointChild
             const areSelectedJointFrames = sourceFrameList[sourceFrameIds[0]].frameType.isJointFrame;
-            const childrenListToBeAdded = (areSelectedJointFrames)? state.frameObjects[payload.newParentId].jointFrameIds : state.frameObjects[payload.newParentId].childrenIds;
+            const childrenListToBeAdded = (areSelectedJointFrames) ? this.frameObjects[payload.newParentId].jointFrameIds : this.frameObjects[payload.newParentId].childrenIds;
 
             // Add each one of the copied frames in their new parent's list
             topLevelCopiedFrames.forEach( (id) => {
@@ -2231,52 +1957,51 @@ export default new Vuex.Store({
                     id
                 );
             });
-            
 
             //Make the top new frame the current frame
-            commit( "setCurrentFrame", { 
-                id: topLevelCopiedFrames[topLevelCopiedFrames.length-1],
-                caretPosition: CaretPosition.below,
-            });
+            this.setCurrentFrame(
+                { 
+                    id: topLevelCopiedFrames[topLevelCopiedFrames.length-1],
+                    caretPosition: CaretPosition.below,
+                }
+            );
 
-            commit( "updateNextAvailableId" );
+            this.updateNextAvailableId();
 
             //if we do a paste, update the pasted frames' "isDisabled" property solely based on the parent's property
             if(!areWeDuplicating){
                 topLevelCopiedFrames.forEach( (id) =>
-                    this.commit(
-                        "changeDisableFrame",
+                    this.doChangeDisableFrame(
                         {
                             frameId: id, 
-                            isDisabling: state.frameObjects[payload.newParentId].isDisabled, 
+                            isDisabling: this.frameObjects[payload.newParentId].isDisabled, 
                             ignoreEnableFromRoot: true,
                         }
-                    ))
+                    ));
             }
 
             //save state changes
-            commit(
-                "saveStateChanges",
+            this.saveStateChanges(
                 {
                     previousState: stateBeforeChanges,
                 }
             );
         
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
-        pasteFrame({dispatch, getters, state}, payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
+        pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
-            const isCopiedJointFrame = state.copiedFrames[state.copiedFrameId].frameType.isJointFrame;
-            const isClickedJointFrame = state.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
+            const isCopiedJointFrame = this.copiedFrames[this.copiedFrameId].frameType.isJointFrame;
+            const isClickedJointFrame = this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
 
             // Clicked is joint ? parent of clicked is its joint parent ELSE clicked is the real parent
-            const clickedParentId = (isClickedJointFrame)? state.frameObjects[payload.clickedFrameId].jointParentId: state.frameObjects[payload.clickedFrameId].parentId;
+            const clickedParentId = (isClickedJointFrame) ? this.frameObjects[payload.clickedFrameId].jointParentId : this.frameObjects[payload.clickedFrameId].parentId;
 
             // Index is 0 if we paste in the body OR we paste a JointFrame Below JointParent
             const index = (payload.caretPosition === CaretPosition.body || ( payload.caretPosition === CaretPosition.below && isCopiedJointFrame && !isClickedJointFrame)) ? 
                 0 : 
-                getters.getIndexInParent(payload.clickedFrameId)+1;
+                this.getIndexInParent(payload.clickedFrameId)+1;
 
             // If the caret is below and it is not a joint frame, parent is the clicked's parent 
             const pasteToParentId = (payload.caretPosition === CaretPosition.body || (isCopiedJointFrame && !isClickedJointFrame) ) ?
@@ -2284,8 +2009,7 @@ export default new Vuex.Store({
                 clickedParentId;
                 
             // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
-            dispatch(
-                "copyFrameToPosition",
+            this.copyFrameToPosition(
                 {
                     newParentId: pasteToParentId,
                     newIndex: index,
@@ -2293,18 +2017,18 @@ export default new Vuex.Store({
             );
         },
 
-        pasteSelection({dispatch, getters, state}, payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
+        pasteSelection(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
-            const areCopiedJointFrames = state.copiedFrames[state.copiedSelectionFrameIds[0]].frameType.isJointFrame;
-            const isClickedJointFrame = state.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
+            const areCopiedJointFrames = this.copiedFrames[this.copiedSelectionFrameIds[0]].frameType.isJointFrame;
+            const isClickedJointFrame = this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
 
             // Clicked is joint ? parent of clicked is its joint parent ELSE clicked is the real parent
-            const clickedParentId = (isClickedJointFrame)? state.frameObjects[payload.clickedFrameId].jointParentId: state.frameObjects[payload.clickedFrameId].parentId;
+            const clickedParentId = (isClickedJointFrame) ? this.frameObjects[payload.clickedFrameId].jointParentId : this.frameObjects[payload.clickedFrameId].parentId;
 
             // Index is 0 if we paste in the body OR we paste a JointFrame Below JointParent
             const index = (payload.caretPosition === CaretPosition.body || ( payload.caretPosition === CaretPosition.below && areCopiedJointFrames && !isClickedJointFrame)) ? 
                 0 : 
-                getters.getIndexInParent(payload.clickedFrameId)+1;
+                this.getIndexInParent(payload.clickedFrameId)+1;
 
             // If the caret is below and it is not a joint frame, parent is the clicked's parent 
             const pasteToParentId = (payload.caretPosition === CaretPosition.body || (areCopiedJointFrames && !isClickedJointFrame) ) ?
@@ -2312,8 +2036,7 @@ export default new Vuex.Store({
                 clickedParentId;
                 
             // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
-            dispatch(
-                "copySelectedFramesToPosition",
+            this.copySelectedFramesToPosition(
                 {
                     newParentId: pasteToParentId,
                     newIndex: index,
@@ -2321,46 +2044,38 @@ export default new Vuex.Store({
             );
         },
 
-        copyFrame({commit}, frameId: number) {
-            commit("flushCopiedFrames");
-            commit(
-                "copyFrame",
-                frameId
-            );
-            commit( "updateNextAvailableId" );
+        copyFrame(frameId: number) {
+            this.flushCopiedFrames();
+            this.doCopyFrame(frameId);
+            this.updateNextAvailableId();
         },
 
-        copySelection({commit}) {
-            commit("flushCopiedFrames");
-            commit("copySelection");
-            commit( "updateNextAvailableId" );
+        copySelection() {
+            this.flushCopiedFrames();
+            this.doCopySelection();
+            this.updateNextAvailableId();
         },
 
-        changeDisableFrame({state, commit}, payload: {frameId: number; isDisabling: boolean}) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+        changeDisableFrame(payload: {frameId: number; isDisabling: boolean}) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
-            commit(
-                "changeDisableFrame",
-                payload
-            );
+            this.doChangeDisableFrame(payload);
             
             //save state changes
-            commit(
-                "saveStateChanges",
+            this.saveStateChanges(
                 {
                     previousState: stateBeforeChanges,
                 }
             );
         
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
-        changeDisableSelection({state, commit}, isDisabling: boolean) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(state));
+        changeDisableSelection(isDisabling: boolean) {
+            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
-            state.selectedFrames.forEach( (id) =>
-                commit(
-                    "changeDisableFrame",
+            this.selectedFrames.forEach( (id) =>
+                this.doChangeDisableFrame(
                     {
                         frameId: id,
                         isDisabling: isDisabling,
@@ -2368,21 +2083,19 @@ export default new Vuex.Store({
                 ));
             
             //save state changes
-            commit(
-                "saveStateChanges",
+            this.saveStateChanges(
                 {
                     previousState: stateBeforeChanges,
                 }
             );
         
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
         },
 
-        selectMultipleFrames({state, commit}, key: string) {
-            
+        selectMultipleFrames(key: string) {
             const directionUp = key==="ArrowUp"
             const delta = directionUp? -1 : +1;
-            const currentFrame = state.frameObjects[state.currentFrame.id];
+            const currentFrame = this.frameObjects[this.currentFrame.id];
 
             // we filter the payload to remove the slot positions
             let availablePositions:NavigationPosition[]  = getAvailableNavigationPositions();
@@ -2391,8 +2104,8 @@ export default new Vuex.Store({
             let siblingsOrChildren: number[] = []
             let index = 0;
             
-            if(state.currentFrame.caretPosition === CaretPosition.below) {
-                siblingsOrChildren = state.frameObjects[currentFrame.parentId].childrenIds
+            if(this.currentFrame.caretPosition === CaretPosition.below) {
+                siblingsOrChildren = this.frameObjects[currentFrame.parentId].childrenIds
                 index = siblingsOrChildren.indexOf(currentFrame.id) + (directionUp?+1:0);
             }
             else {
@@ -2426,26 +2139,24 @@ export default new Vuex.Store({
             })
             
             // In the new list with the available positions that we could go to, we first find the index of the current
-            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.id === state.currentFrame.id && e.caretPosition === state.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.id === this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition)
             // and then we find the new current
             // NOTE here that the one to be selected and the new current can be different. i.e. I am below the first child of an if and going up
             // the one to be selected is the one I am bellow, and the current is the body of the if! (i.e. the parent)
             const newCurrent = availablePositionsOfSiblings[indexOfCurrent+delta]
           
-
-            commit("selectDeselectFrame", {frameId: frameIdToBeSelected, direction: key.replace("Arrow","").toLowerCase()}) 
-            commit("setCurrentFrame", newCurrent);
-
+            this.selectDeselectFrame({frameId: frameIdToBeSelected, direction: key.replace("Arrow","").toLowerCase()}); 
+            this.setCurrentFrame(newCurrent as CurrentFrame);
         },
 
-        shiftClickSelection({state, commit, dispatch}, payload: {clickedFrameId: number; clickedCaretPosition: CaretPosition}) {
+        shiftClickSelection(payload: {clickedFrameId: number; clickedCaretPosition: CaretPosition}) {
             // Remove current selection
-            commit("unselectAllFrames");
+            this.unselectAllFrames();
 
             const availablePositions = getAvailableNavigationPositions();
             const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
 
-            const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.id === state.currentFrame.id && item.caretPosition === state.currentFrame.caretPosition);
+            const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.id === this.currentFrame.id && item.caretPosition === this.currentFrame.caretPosition);
             const indexOfTarget: number = listOfCaretPositions.findIndex((item)=> item.id === payload.clickedFrameId && item.caretPosition === payload.clickedCaretPosition);
             
             if(indexOfCurrent === indexOfTarget) {
@@ -2455,114 +2166,88 @@ export default new Vuex.Store({
             // is the targetFrame bellow or above the origin frame
             const direction = (indexOfCurrent < indexOfTarget)?"ArrowDown" : "ArrowUp" ;
 
-            const stopId = (direction==="ArrowUp")?
-                listOfCaretPositions[indexOfTarget+1].id // going up we always stop on the next of the clicked
-                :
-                payload.clickedCaretPosition === CaretPosition.below ?
-                    payload.clickedFrameId // if we go down and click bellow, we go on the clicked
-                    :
-                    listOfCaretPositions[indexOfTarget-1].id// down and click body, we go to the previous of clicked
+            const stopId = (direction==="ArrowUp")
+                ? listOfCaretPositions[indexOfTarget+1].id // going up we always stop on the next of the clicked
+                : payload.clickedCaretPosition === CaretPosition.below 
+                    ? payload.clickedFrameId // if we go down and click bellow, we go on the clicked
+                    : listOfCaretPositions[indexOfTarget-1].id// down and click body, we go to the previous of clicked
 
 
             let previousFramesSelection: number[] = [];
 
             // Instead of writing a selection function from scratch
             do {
-                previousFramesSelection = [...state.selectedFrames]
-                dispatch("selectMultipleFrames",direction);
-            } while(
-                previousFramesSelection.length !== state.selectedFrames.length
-                &&
-                !state.selectedFrames.includes(stopId)
-            )
+                previousFramesSelection = [...this.selectedFrames]
+                this.selectMultipleFrames(direction);
+            } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId))
 
         },
 
-        prepareForMultiDrag({state, getters, commit}, draggedFrameId: number) {
-            const position = getters.getFrameSelectionPosition(draggedFrameId);
+        prepareForMultiDrag(draggedFrameId: number) {
+            const position = this.getFrameSelectionPosition(draggedFrameId);
            
-            const otherFrames = state.selectedFrames.filter( (id) => id!==draggedFrameId);
-            commit(
-                "updateStateBeforeChanges",
-                false
-            );
+            const otherFrames = this.selectedFrames.filter((id) => id!==draggedFrameId);
+            this.updateStateBeforeChanges(false);
 
             otherFrames.forEach( (frameId) => {
                 Vue.set(
-                    state.frameObjects[frameId],
+                    this.frameObjects[frameId],
                     "isVisible",
                     false
                 );
             });
 
             Vue.set(
-                state.frameObjects[draggedFrameId],
+                this.frameObjects[draggedFrameId],
                 "multiDragPosition",
                 position
-            );
-        
+            );        
         },
 
         // This method can be used to move the selected frames to a position through Drag & Drop
-        moveSelectedFramesToPosition({commit, state, getters}, payload: {event: any; parentId: number}) {
-            
+        moveSelectedFramesToPosition(payload: {event: any; parentId: number}) { 
             // First remove the visual aspect
-            commit("removeMultiDragStyling");
+            this.removeMultiDragStyling();
             
-
-            if(state.ignoredDragAction){
+            if(this.ignoredDragAction){
                 //if the action should be ignore, just return and reset the flag
-                commit(
-                    "setIgnoredDragAction",
-                    false
-                );
-
+                this.ignoredDragAction = false;
                 return;
             }
 
             const eventType = Object.keys(payload.event)[0];
-
-            //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
-            // if(eventType !== "removed"){
-                
-            // }
-
-            const isJointFrame = getters.getIsJointFrameById(state.selectedFrames[0]);
-
-            const position: CaretPosition = (isJointFrame)?
-                CaretPosition.below:
-                CaretPosition.body;
+            const isJointFrame = this.isJointFrameById(this.selectedFrames[0]);
+            const position: CaretPosition = (isJointFrame) ? CaretPosition.below : CaretPosition.body;
 
             // Even in the same draggable group, some JointFrames cannot be moved (i.e. an elif below an else)
             // That should be checked both ways as for example if you move an `else` above an elif, it may be
             // valid, as the if accepts else there, but the elif cannot go below the else.
             // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
             // succeedingFrame is the next frame (if it exists) above which we are adding
-            
-            let indexOfFirstSelected = (isJointFrame)?
-                state.frameObjects[payload.parentId].jointFrameIds.indexOf(state.selectedFrames[0]):
-                state.frameObjects[payload.parentId].childrenIds.indexOf(state.selectedFrames[0]);
+            let indexOfFirstSelected = (isJointFrame)
+                ? this.frameObjects[payload.parentId].jointFrameIds.indexOf(this.selectedFrames[0])
+                : this.frameObjects[payload.parentId].childrenIds.indexOf(this.selectedFrames[0]);
 
-            const indexOfLastSelected = (isJointFrame)?
-                state.frameObjects[payload.parentId].jointFrameIds.indexOf(state.selectedFrames[state.selectedFrames.length-1]):
-                state.frameObjects[payload.parentId].childrenIds.indexOf(state.selectedFrames[state.selectedFrames.length-1]);
+            const indexOfLastSelected = (isJointFrame)
+                ? this.frameObjects[payload.parentId].jointFrameIds.indexOf(this.selectedFrames[this.selectedFrames.length-1])
+                : this.frameObjects[payload.parentId].childrenIds.indexOf(this.selectedFrames[this.selectedFrames.length-1]);
 
             // If we are moving it to the same parent, we need to check whether
             // we are moving it to the same place (between first and last index of the selected ones); 
             // If that's the case we don't do anything as it may cause a problem (e.g. if selected indexes are 0...3
             // it may move it to 1 instead of 0.
-            const parentIdOfSelected = getParentOrJointParent(state.frameObjects,state.frameObjects[state.selectedFrames[0]].id)
+            const parentIdOfSelected = getParentOrJointParent(this.frameObjects,this.frameObjects[this.selectedFrames[0]].id)
             let newIndex = payload.event[eventType].newIndex;
 
             if(eventType === "moved" && payload.parentId === parentIdOfSelected) {
                 if(newIndex >= indexOfFirstSelected && newIndex <= indexOfLastSelected) {
-                    commit("makeSelectedFramesVisible");
+                    this.makeSelectedFramesVisible();
                     return;
                 }
             }
 
-            const succeedingFrame = state.frameObjects[payload.parentId].jointFrameIds[payload.event[eventType].newIndex + (eventType === "moved")];   
-            const jointFrameIds = state.frameObjects[payload.parentId].jointFrameIds;
+            const succeedingFrame = this.frameObjects[payload.parentId].jointFrameIds[payload.event[eventType].newIndex + (eventType === "moved")];   
+            const jointFrameIds = this.frameObjects[payload.parentId].jointFrameIds;
             if(eventType !== "removed") {
                 // EXAMPLE: Moving frame `A` above Frame `B`
                 // IF `A` cannot be moved on this position 
@@ -2572,38 +2257,28 @@ export default new Vuex.Store({
                 //     on FALSE ==> We don't care about this situation
                 const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
                     ? (succeedingFrame !== undefined)
-                        ? !getters.getIfPositionAllowsSelectedFrames(payload.event[eventType].element.id, CaretPosition.below, false)
-                        : !getters.getIfPositionAllowsSelectedFrames(jointFrameIds[jointFrameIds.length - 1], CaretPosition.below, false)
+                        ? !this.isPositionAllowsSelectedFrames(payload.event[eventType].element.id, CaretPosition.below, false)
+                        : !this.isPositionAllowsSelectedFrames(jointFrameIds[jointFrameIds.length - 1], CaretPosition.below, false)
                     : false;
 
-                if((!isJointFrame && !getters.getIfPositionAllowsSelectedFrames(payload.parentId, position, false)) || jointFrameCase) {       
+                if((!isJointFrame && !this.isPositionAllowsSelectedFrames(payload.parentId, position, false)) || jointFrameCase) {       
                     //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
                     if(eventType === "added"){
-                        commit(
-                            "setIgnoredDragAction",
-                            true
-                        );
+                        this.ignoredDragAction = true;
                     }
 
                     //alert the user about a forbidden move
-                    commit(
-                        "setMessageBanner",
-                        MessageDefinitions.ForbiddenFrameMove
-                    );
+                    this.currentMessage = MessageDefinitions.ForbiddenFrameMove;
     
                     //don't leave the message for ever
-                    setTimeout(()=>commit(
-                        "setMessageBanner",
-                        MessageDefinitions.NoMessage
-                    ), 3000);         
-                    commit("makeSelectedFramesVisible");
+                    setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 3000);         
+                    this.makeSelectedFramesVisible();
                     return;
                 }
             }
 
-
             // The top level cloned frames need to be stored in order to then be added to their new parent's list
-            const sourceFrameIds: number[] = state.selectedFrames;
+            const sourceFrameIds: number[] = this.selectedFrames;
 
             // In the case of moving in the same parent in some spaces below,
             // because at the same time we are removing and adding the newIndex
@@ -2616,12 +2291,11 @@ export default new Vuex.Store({
                 // For each frame in the list, we are calling the `updateFramesOrder`
                 // and for each frame we are creating a `fake` event, as the event really
                 // occurs for only the dragged frame.
-                commit(
-                    "updateFramesOrder",
+                this.doUpdateFramesOrder(
                     {
                         event: {
                             [eventType]: { // the [] are needed for JS to understand that we're talking about the variable and not the string 'eventType'
-                                element: state.frameObjects[id],
+                                element: this.frameObjects[id],
                                 newIndex: newIndex,
                                 oldIndex: indexOfFirstSelected,
                                 eventType : eventType,
@@ -2637,27 +2311,19 @@ export default new Vuex.Store({
 
             // In the end, unselect all frames
             if(eventType !== "added") {
-                commit("makeSelectedFramesVisible");
-                commit("unselectAllFrames");
+                this.makeSelectedFramesVisible();
+                this.unselectAllFrames();
                 //save state changes
                 //save the state changes for undo/redo
-                commit(
-                    "saveStateChanges",
+                this.saveStateChanges(
                     {                   
-                        previousState: state.stateBeforeChanges,
+                        previousState: this.stateBeforeChanges,
                     }
                 );
 
                 //clear the stateBeforeChanges flag off
-                commit(
-                    "updateStateBeforeChanges",
-                    true
-                );
+                this.updateStateBeforeChanges(true);
             }
-        
         },
     },
-    
-    modules: {},
 });
-

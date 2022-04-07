@@ -1,6 +1,6 @@
 import {firmwareV1, firmwareV2} from "./firmware";
 import { MicropythonFsHex, microbitBoardId } from "@microbit/microbit-fs";
-import { readFileAsync } from "@/helpers/readFileAsync";
+import { readFileAsync } from "@/helpers/common";
 
 export default class Compiler {
   micropythonFs: MicropythonFsHex;

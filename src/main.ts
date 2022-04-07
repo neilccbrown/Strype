@@ -1,6 +1,6 @@
 import Vue from "vue";
 import App from "@/App.vue";
-import store from "@/store/store";
+import {createPinia, PiniaVuePlugin} from "pinia"
 import i18n from "@/i18n"
 import { BootstrapVue } from "bootstrap-vue";
 import "bootstrap/dist/css/bootstrap.css";
@@ -31,10 +31,13 @@ Vue.use(vBlur);
 // Use vue-confirm-dialog
 Vue.use(VueConfirmDialog);
 
+// Use a Pinia store (instead of Vuex store, because it handles type inferrence better)
+Vue.use(PiniaVuePlugin);
+const pinia = createPinia();
 Vue.config.productionTip = false;
 
 new Vue({
-    store,
+    pinia,
     i18n,
     render: (h) => h(App),
 }).$mount("#app");

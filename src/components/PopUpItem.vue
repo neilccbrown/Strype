@@ -30,7 +30,7 @@ export default Vue.extend({
         version: Number,
     },
 
-    data() {
+    data: function() {
         return {
             hoveredOver: false,
         }
@@ -50,11 +50,11 @@ export default Vue.extend({
 
     methods: {
         hoverOver(): void {
-            this.$data.hoveredOver = true && this.isSelectable
+            this.hoveredOver = true && this.isSelectable
         },
 
         hoverOut(): void {
-            this.$data.hoveredOver = false
+            this.hoveredOver = false
         },
     },
 

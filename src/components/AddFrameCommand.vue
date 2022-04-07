@@ -10,15 +10,15 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import store from "@/store/store";
-import { getAddCommandsDefs } from "@/helpers/editor";
+import { useStore } from "@/store/store";
+import { mapStores } from "pinia";
+import { findAddCommandFrameType } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "AddFrameCommand",
-    store,
 
     props: {
         type: String, //Type of the Frame Command
@@ -29,13 +29,17 @@ export default Vue.extend({
         index: Number, //when more than 1 frame is assigned to a shortcut, the index tells which frame definition should be used
     },
 
+    computed: {
+        ...mapStores(useStore),
+    },
+
     methods: {
         onClick(): void {
             //add the frame in the editor
-            store.dispatch(
-                "addFrameWithCommand",
-                getAddCommandsDefs()[this.shortcut][this.index].type
-            );
+            const addFrameCommandType = findAddCommandFrameType(this.shortcut, this.index);
+            if(addFrameCommandType != null){
+                this.appStore.addFrameWithCommand(addFrameCommandType);
+            }
         },
     },
 });

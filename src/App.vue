@@ -60,18 +60,19 @@ import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
 import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID } from "./helpers/editor";
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
+import { DAPWrapper } from "./helpers/partial-flashing";
+import { mapStores } from "pinia";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "App",
-    store,
-
+    
     components: {
         MessageBanner,
         FrameContainer,
@@ -79,7 +80,7 @@ export default Vue.extend({
         Menu,
     },
 
-    data() {
+    data: function() {
         return {
             newFrameType: "",
             currentParentId: 0,
@@ -90,14 +91,16 @@ export default Vue.extend({
         };
     },
 
-    computed: {            
+    computed: {       
+        ...mapStores(useStore),
+             
         // gets the container frames objects which are in the root
         containerFrames(): FrameObject[] {
-            return store.getters.getFramesForParentId(0);
+            return this.appStore.getFramesForParentId(0);
         },
 
         showMessage(): boolean {
-            return store.getters.getIsMessageBannerOn();
+            return this.appStore.isMessageBannerOn;
         },
 
         menuUIID(): string {
@@ -155,7 +158,7 @@ export default Vue.extend({
                     event.preventDefault();
                 }
                 else{
-                    const currentCustomMenuId: string = store.getters.getContextMenuShownId();
+                    const currentCustomMenuId: string = this.appStore.contextMenuShownId;
                     if(currentCustomMenuId.length > 0){
                         const customMenu = document.getElementById(getFrameContextMenuUIID(currentCustomMenuId));
                         customMenu?.setAttribute("hidden", "true");
@@ -166,7 +169,7 @@ export default Vue.extend({
 
         // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
         if (navigator.usb) {
-            navigator.usb.addEventListener("disconnect", () => store.commit("setPreviousDAPWrapper", undefined));
+            navigator.usb.addEventListener("disconnect", () => this.appStore.previousDAPWrapper = {} as DAPWrapper);
         }
 
         /* IFTRUE_isMicrobit */
@@ -181,8 +184,7 @@ export default Vue.extend({
         if (typeof(Storage) !== "undefined") {
             const savedState = localStorage.getItem(this.localStorageAutosaveKey);
             if(savedState) {
-                store.dispatch(
-                    "setStateFromJSONStr", 
+                this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
                         showMessage: false,
@@ -202,8 +204,8 @@ export default Vue.extend({
         
         autoSaveState() {
             // save the project to the localStorage (WebStorage)
-            if (!store.getters.getIsDebugging() && typeof(Storage) !== "undefined") {
-                localStorage.setItem(this.localStorageAutosaveKey, store.getters.getStateJSONStrWithCheckpoints(true))
+            if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
+                localStorage.setItem(this.localStorageAutosaveKey, this.appStore.getStateJSONStrWithCheckpoints(true))
             }
         },
 
@@ -241,14 +243,11 @@ export default Vue.extend({
         },
 
         toggleEdition(): void {
-            store.commit(
-                "setEditFlag",
-                false
-            );
+            this.appStore.isEditing = false;
         },
 
         messageTop(): boolean {
-            return store.getters.getCurrentMessage().type !== MessageTypes.imageDisplay;
+            return this.appStore.currentMessage.type !== MessageTypes.imageDisplay;
         },
     },
 });

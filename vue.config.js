@@ -23,6 +23,16 @@ module.exports = {
     configureWebpack: {
         devtool: "source-map",
         ...configureWebpackExtraProps,
+        // allows pinia to compile fine (https://github.com/vuejs/pinia/issues/675)
+        module: {
+            rules: [
+                {
+                    test: /\.mjs$/,
+                    include: /node_modules/,
+                    type: "javascript/auto",
+                },
+            ],
+        },
     },
 
     chainWebpack: (config) => {

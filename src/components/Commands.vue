@@ -74,19 +74,18 @@ import APIDiscovery from "@/components/APIDiscovery.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { flash } from "@/helpers/webUSB";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, ImportDefinition } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
+import { mapStores } from "pinia";
 /* IFTRUE_isPurePython */
 import PythonConsole from "@/components/PythonConsole.vue"
 /* FITRUE_isPurePython */
 
-
 export default Vue.extend({
     name: "Commands",
-    store,
 
     components: {
         AddFrameCommand,
@@ -110,12 +109,14 @@ export default Vue.extend({
     },
 
     computed: {
+        ...mapStores(useStore),
+        
         tabIndex: {
             get(): number{
-                return store.getters.getCommandsTabIndex();
+                return this.appStore.commandsTabIndex;
             },
             set(index: number){
-                store.commit("setCommandsTabIndex", index);
+                this.appStore.commandsTabIndex = index;
             },
         },
 
@@ -128,27 +129,27 @@ export default Vue.extend({
         },
 
         isEditing(): boolean {
-            return store.getters.getIsEditing();
+            return this.appStore.isEditing;
         },
 
         addFrameCommands(): Record<string, AddFrameCommandDef[]> {
             //We retrieve the add frame commands associated with the current frame 
             //if the frame is enabled, we always check, if it is disabled we return no frame when caret is body, and check when caret is below
-            const currentFrame: FrameObject = store.getters.getCurrentFrameObject();
-            if(currentFrame.isDisabled && ((currentFrame.caretVisibility === CaretPosition.body) ? true : !store.getters.canAddFrameBelowDisabled(currentFrame.id))){
+            const currentFrame: FrameObject = this.appStore.getCurrentFrameObject;
+            if(currentFrame.isDisabled && ((currentFrame.caretVisibility === CaretPosition.body) ? true : !this.appStore.canAddFrameBelowDisabled(currentFrame.id))){
                 return {};
             }
             
-            return store.getters.generateAvailableFrameCommands(store.state.currentFrame.id, store.state.currentFrame.caretPosition);
+            return this.appStore.generateAvailableFrameCommands(this.appStore.currentFrame.id, this.appStore.currentFrame.caretPosition);
         },
 
         progressPercentWidthStyle(): string {
-            return "width: " + this.$data.progressPercent + "%;";
+            return "width: " + this.progressPercent + "%;";
         },
     },
 
     created() {
-        if(store.state.showKeystroke){
+        if(this.appStore.showKeystroke){
             window.addEventListener(
                 "dblclick",
                 () => {
@@ -185,7 +186,7 @@ export default Vue.extend({
             (event: KeyboardEvent) => {
                 //if we requested to log keystroke, display the keystroke event in an unobtrusive location
                 //when editing, we don't show the keystroke for basic keys (like [a-zA-Z0-1]), only those whose key value is longer than 1
-                if(store.state.showKeystroke && (!store.state.isEditing || event.key.match(/^.{2,}$/))){
+                if(this.appStore.showKeystroke && (!this.appStore.isEditing || event.key.match(/^.{2,}$/))){
                     (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "["+event.key+"]";
                     //leave the message for a short moment only
                     setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);         
@@ -193,15 +194,12 @@ export default Vue.extend({
 
                 if((event.ctrlKey || event.metaKey) && (event.key === "z" || event.key === "y")) {
                     //undo-redo
-                    store.dispatch(
-                        "undoRedo",
-                        (event.key === "z")
-                    );
+                    this.appStore.undoRedo((event.key === "z"));
                     event.preventDefault();
                     return;
                 }
 
-                const isEditing = store.getters.getIsEditing();
+                const isEditing = this.appStore.isEditing;
 
                 //prevent default scrolling and navigation
                 if (!isEditing && (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight")) {
@@ -210,27 +208,16 @@ export default Vue.extend({
                         (document.activeElement as HTMLElement).blur();
 
                         if(event.shiftKey){
-                            store.dispatch( 
-                                "selectMultipleFrames",
-                                event.key
-                            );
+                            this.appStore.selectMultipleFrames(event.key);
                         }
                         else {
-                            store.dispatch(
-                                "changeCaretPosition",
-                                event.key
-                            );
+                            this.appStore.changeCaretPosition(event.key);
                         }
                     }
                     else{
                         //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by EditableSlots.
                         // We start by getting from the DOM all the available caret and editable slot positions
-                        store.dispatch(
-                            "leftRightKey",
-                            {
-                                key:event.key,
-                            }
-                        );
+                        this.appStore.leftRightKey({ key:event.key });
                         event.stopImmediatePropagation();
                         event.preventDefault();
                     }
@@ -245,7 +232,7 @@ export default Vue.extend({
 
                 //prevent specific characters in specific frames (cf details)
                 if(isEditing){
-                    const frameType = store.getters.getCurrentFrameObject().frameType.type;
+                    const frameType = this.appStore.getCurrentFrameObject.frameType.type;
                     //space in import frame's editable slots
                     if((frameType === ImportDefinition.type || frameType === FromImportDefinition.type) && event.key === " "){
                         event.preventDefault();
@@ -259,17 +246,17 @@ export default Vue.extend({
             "keyup",
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
-                const isEditing = store.getters.getIsEditing();
-                const ignoreKeyEvent: boolean = store.getters.getIgnoreKeyEvent();
+                const isEditing = this.appStore.isEditing;
+                const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
 
                 if(event.key == "Escape"){
-                    if(store.getters.areAnyFramesSelected()){
-                        store.commit("unselectAllFrames");
-                        store.commit("makeSelectedFramesVisible");
+                    if(this.appStore.areAnyFramesSelected){
+                        this.appStore.unselectAllFrames();
+                        this.appStore.makeSelectedFramesVisible();
                     }
                     if(isEditing){
                         (document.activeElement as HTMLElement).blur();
-                        store.commit("setEditFlag",false);
+                        this.appStore.isEditing = false;
                     }
                 }
                 else {
@@ -278,25 +265,21 @@ export default Vue.extend({
                         if(!(event.ctrlKey || event.metaKey)){
                             if(event.key == "Delete" || event.key == "Backspace"){
                                 if(!ignoreKeyEvent){
-                                //delete a frame or a frame selection
-                                    store.dispatch(
-                                        "deleteFrames",
-                                        event.key
-                                    );
+                                    //delete a frame or a frame selection
+                                    this.appStore.deleteFrames(event.key);
                                     event.stopImmediatePropagation();
                                 }
                                 else{
-                                    store.commit("setIgnoreKeyEvent", false);
+                                    this.appStore.ignoreKeyEvent = false;
                                 }
                             }
                             //add the frame in the editor if allowed
                             else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
-                                store.dispatch(
-                                    "addFrameWithCommand",
+                                this.appStore.addFrameWithCommand(
                                     this.addFrameCommands[event.key.toLowerCase()][0].type
                                 );
                             }
-                        }                       
+                        }
                     }
                 }
             }                

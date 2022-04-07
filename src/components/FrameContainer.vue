@@ -50,16 +50,16 @@
 import Vue from "vue";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions, CommentDefinition } from "@/types/types";
+import { mapStores } from "pinia";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "FrameContainer",
-    store,
 
     components: {
         Frame,
@@ -67,7 +67,7 @@ export default Vue.extend({
         CaretContainer,
     },
 
-    data() {
+    data: function() {
         return {
             overCaret: false,
             hasCommentsToMove: false,
@@ -85,10 +85,12 @@ export default Vue.extend({
     },
 
     computed: {
+        ...mapStores(useStore),
+        
         frames: {
             get(): FrameObject[] {
                 // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-                return store.getters.getFramesForParentId(this.$props.frameId);
+                return this.appStore.getFramesForParentId(this.frameId);
             },
             set() {
                 return;
@@ -97,7 +99,7 @@ export default Vue.extend({
 
         draggableGroup(): Record<string, any> {
             return {
-                name: store.getters.getDraggableGroupById(this.$props.frameId),
+                name: this.appStore.getDraggableGroupById(this.frameId),
                 put: function(to: any, from: any){
                     //Frames can be added if they are of the same group and/or only comments are being move
                     return from.options.hasCommentsToMove || to.options.group.name === from.options.group.name;
@@ -111,7 +113,7 @@ export default Vue.extend({
         },
 
         isEditing(): boolean {
-            return store.getters.getIsEditing();
+            return this.appStore.isEditing;
         },
 
         frameStyle(): Record<string, string> {
@@ -123,16 +125,15 @@ export default Vue.extend({
         },
 
         id(): string {
-            return "frameContainerId_" + this.$props.frameId;
+            return "frameContainerId_" + this.frameId;
         },
 
         isCollapsed: {
             get(): boolean {
-                return store.getters.getContainerCollapsed(this.frameId);
+                return this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
-                store.commit(
-                    "setCollapseStatusContainer",
+                this.appStore.setCollapseStatusContainer(
                     {
                         frameId: this.frameId,
                         isCollapsed: value,
@@ -166,22 +167,20 @@ export default Vue.extend({
             const eventType = Object.keys(event)[0];
             const chosenFrame = event[eventType].element;
             // If the frame is part of a selection
-            if(store.getters.isFrameSelected(chosenFrame.id)) {
+            if(this.appStore.isFrameSelected(chosenFrame.id)) {
                 //If the move can happen
-                store.dispatch(
-                    "moveSelectedFramesToPosition",
+                this.appStore.moveSelectedFramesToPosition(
                     {
                         event: event,
-                        parentId: this.$props.frameId,
+                        parentId: this.frameId,
                     }
                 );
             }
             else{
-                store.dispatch(
-                    "updateFramesOrder",
+                this.appStore.updateFramesOrder(
                     {
                         event: event,
-                        eventParentId: this.$props.frameId,
+                        eventParentId: this.frameId,
                     }
                 );
             }
@@ -191,33 +190,32 @@ export default Vue.extend({
             const chosenFrame = this.frames[event.oldIndex];
 
             // If the frame is part of a selection
-            if(store.getters.isFrameSelected(chosenFrame.id)) {
+            if(this.appStore.isFrameSelected(chosenFrame.id)) {
                 //update the property indicating if dragging the frames in another container is allowed: 
                 //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
-                this.$data.hasCommentsToMove = (store.getters.getSelectedFrameIds() as number[])
-                    .find((frameId) => store.getters.getFrameObjectFromId(frameId).frameType.type !== CommentDefinition.type) === undefined
+                this.hasCommentsToMove = this.appStore.selectedFrames
+                    .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== CommentDefinition.type) === undefined
                 
                 // Make it appear as the whole selection is being dragged
-                store.dispatch("prepareForMultiDrag",chosenFrame.id);
+                this.appStore.prepareForMultiDrag(chosenFrame.id);
             }
             else{
                 //update the property indicating if dragging the frame in another container is allowed: 
                 //we check that the moving frame is a comment
-                this.$data.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
+                this.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
             }
         },   
 
         multiDragEnd(): void {
-            store.commit("removeMultiDragStyling");
+            this.appStore.removeMultiDragStyling();
         },   
 
         // Some times, when draging and droping in the original position of where the
         // selected frames were taken, the `change` event is not fired; hence you need to
         // catch the `unchoose` event
         showSelectedFrames(): void {
-            store.commit("makeSelectedFramesVisible");
+            this.appStore.makeSelectedFramesVisible();
         },
-
     },
 });
 

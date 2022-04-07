@@ -33,10 +33,11 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import Draggable from "vuedraggable";
 import { FrameObject, DraggableGroupTypes } from "@/types/types";
+import { mapStores } from "pinia";
 
 
 //////////////////////
@@ -44,7 +45,6 @@ import { FrameObject, DraggableGroupTypes } from "@/types/types";
 //////////////////////
 export default Vue.extend({
     name: "JointFrames",
-    store,
 
     components: {
         Frame,
@@ -59,11 +59,12 @@ export default Vue.extend({
     },
 
     computed: {
-    
+        ...mapStores(useStore),
+        
         jointFrames: {
             get(): FrameObject[]  {
-                return store.getters.getJointFramesForFrameId(
-                    this.$props.jointParentId,
+                return this.appStore.getJointFramesForFrameId(
+                    this.jointParentId,
                     "all"
                 );
             },
@@ -73,37 +74,33 @@ export default Vue.extend({
         },
 
         jointDraggableGroup(): DraggableGroupTypes {
-            return store.getters.getDraggableJointGroupById(this.$props.jointParentId); 
+            return this.appStore.getDraggableJointGroupById(this.jointParentId); 
         },
 
         isEditing(): boolean {
-            return store.getters.getIsEditing();
+            return this.appStore.isEditing;
         },
     },
 
     methods: {
-
         handleDragAndDrop(event: any): void {
             const eventType = Object.keys(event)[0];
             const chosenFrame = event[eventType].element;
 
             // If the frame is part of a selection
-            if(store.getters.isFrameSelected(chosenFrame.id)) {
-
-                store.dispatch(
-                    "moveSelectedFramesToPosition",
+            if(this.appStore.isFrameSelected(chosenFrame.id)) {
+                this.appStore.moveSelectedFramesToPosition(
                     {
                         event: event,
-                        parentId: this.$props.jointParentId,
+                        parentId: this.jointParentId,
                     }
                 );
             }
             else{
-                store.dispatch(
-                    "updateFramesOrder",
+                this.appStore.updateFramesOrder(
                     {
                         event: event,
-                        eventParentId: this.$props.jointParentId,
+                        eventParentId: this.jointParentId,
                     }
                 );
             }
@@ -112,18 +109,16 @@ export default Vue.extend({
         handleMultiDrag(event: any): void {
             const chosenFrame = this.jointFrames[event.oldIndex];
             // If the frame is part of a selection
-            if(store.getters.isFrameSelected(chosenFrame.id)) {
+            if(this.appStore.isFrameSelected(chosenFrame.id)) {
                 // Make it appear as the whole selection is being dragged
-                store.dispatch("prepareForMultiDrag",chosenFrame.id);
+                this.appStore.prepareForMultiDrag(chosenFrame.id);
             }
         },   
 
         multiDragEnd(): void {
-            store.commit("removeMultiDragStyling");
+            this.appStore.removeMultiDragStyling();
         },   
-
     },
-
 });
 </script>
 

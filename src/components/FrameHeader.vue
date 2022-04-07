@@ -31,15 +31,15 @@
 //////////////////////
 import Vue from "vue";
 import EditableSlot from "@/components/EditableSlot.vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import {CommentDefinition} from "@/types/types";
+import { mapStores } from "pinia";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "FrameHeader",
-    store,
 
     components: {
         EditableSlot,
@@ -56,6 +56,8 @@ export default Vue.extend({
     },
 
     computed:{
+        ...mapStores(useStore),
+        
         isCommentFrame(): boolean{
             return this.frameType===CommentDefinition.type;
         },
@@ -63,7 +65,7 @@ export default Vue.extend({
 
     methods: {
         isLabelHidden(slotIndex: number): boolean { 
-            return !store.getters.getIsCurrentFrameLabelShown(this.$props.frameId, slotIndex);
+            return !this.appStore.isCurrentFrameLabelShown(this.frameId, slotIndex);
         },
     },
 });

@@ -91,14 +91,16 @@
 <script lang="ts">
 //////////////////////
 import Vue from "vue";
-import store from "@/store/store";
+import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import { DefaultCursorPosition, UserDefinedElement, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
+import { DefaultCursorPosition, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
 import { brythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import { getAcContextPathId, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 import _ from "lodash";
 import moduleDescription from "@/autocompletion/microbit.json";
 import i18n from "@/i18n";
+import { mapStores } from "pinia";
+
 //////////////////////
 export default Vue.extend({
     name: "AutoCompletion",
@@ -119,7 +121,7 @@ export default Vue.extend({
         isImportFrame: Boolean,
     },
 
-    data() {
+    data: function() {
         return {
             resultsToShow: {} as IndexedAcResultWithModule,
             documentation: [] as string[],
@@ -130,6 +132,8 @@ export default Vue.extend({
     },
 
     computed: {
+        ...mapStores(useStore),
+
         UIID(): string {
             return "popupAC" + this.slotId;
         },
@@ -176,16 +180,13 @@ export default Vue.extend({
 
         acResults: {
             get(){
-                return store.getters.getAcResults();
+                // Problem if using this.appStore here, so we directly use useStore()
+                return useStore().acResults;
             },
             set(value: AcResultsWithModule){
-                store.commit(
-                    "setAcResults",
-                    value
-                )
+                this.appStore.acResults = value;
             },
         },
-
     },
 
     methods: {  
@@ -227,9 +228,10 @@ export default Vue.extend({
                 // The list of results might not include some the user-defined functions and variables because the user code can't compile. 
                 // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
 
-                const userDefinedFuncVars: UserDefinedElement[] = store.getters.retrieveUserDefinedElements(); 
+                const userDefinedFuncVars = this.appStore.retrieveUserDefinedElements; 
                 const myFunctionsModuleLabel = i18n.t("autoCompletion.myFunctions") as string;
                 const myVariablesModuleLabel = i18n.t("autoCompletion.myVariables") as string;
+   
                 userDefinedFuncVars.forEach((userDefItem) => {
                     if(userDefItem.isFunction) {
                         //If module has not been created, create it
@@ -284,7 +286,7 @@ export default Vue.extend({
                         return a.acResult.toLowerCase().localeCompare(b.acResult.toLowerCase())
                     });
                     
-                    acResults[this.isImportFrame?"":module] = listOfElements;
+                    acResults[this.isImportFrame ? "" : module] = listOfElements;
                 }
             });
 
@@ -304,7 +306,7 @@ export default Vue.extend({
             let acContextPath = (document.getElementById(this.acContextPathSpanID) as HTMLSpanElement)?.textContent??"";
             for (const module in this.acResults) {
                 // Filter the list based on the token
-                const filteredResults: AcResultType[] = this.acResults[module].filter( (element: IndexedAcResult) => 
+                const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
                     element.acResult.toLowerCase().startsWith(this.token))
 
                 // Add the indices and the versions
