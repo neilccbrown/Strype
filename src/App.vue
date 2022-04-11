@@ -205,7 +205,7 @@ export default Vue.extend({
         autoSaveState() {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
-                localStorage.setItem(this.localStorageAutosaveKey, this.appStore.getStateJSONStrWithCheckpoints(true))
+                localStorage.setItem(this.localStorageAutosaveKey, this.appStore.genereateStateJSONStrWithCheckpoint(true))
             }
         },
 

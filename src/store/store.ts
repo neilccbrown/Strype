@@ -92,44 +92,7 @@ export const useStore = defineStore("app", {
         }
     },
 
-    getters: {
-        getStateJSONStrWithCheckpoints : (state) => (compress?: boolean) => {
-            // For this getter, we force an empty argument to avoid Pinia generating stack overflow when
-            // using the devtools or in some calls - stringify is making a recursion here...
-            // We get the state's checksum and the current app version,
-            // and add them to the state's copy object to return
-            const stateCopy = JSON.parse(JSON.stringify(state));
-            //clear the acResults, microbit DAP infos, copy frames, message banner and undo/redo related stuff as there is no need for storing them
-            stateCopy["acResults"] = [],
-            stateCopy["stateBeforeChanges"] = {};
-            stateCopy["diffToPreviousState"] = [];
-            stateCopy["diffToNextState"] = [];
-            stateCopy["stateBeforeChanges"] = {};
-            stateCopy["copiedFrames"] = {};
-            delete stateCopy["DAPWrapper"];
-            delete stateCopy["previousDAPWrapper"];
-            stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
-            
-            //simplify the storage of frame types by their type names only
-            Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
-                stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
-            });
-
-            const checksum =  getSHA1HashForObject(stateCopy)
-            //add the checksum and other backup flags in the state object to be saved
-            stateCopy["checksum"] = checksum;
-            stateCopy["version"] = AppVersion;
-            stateCopy["platform"] = AppPlatform;
-            
-            // finally, we save a compressed version of this JSON state if required (on auto-backup state saving)
-            if(!compress){
-                return JSON.stringify(stateCopy);
-            }
-            else{
-                return LZString.compress(JSON.stringify(stateCopy))
-            }      
-        },
-        
+    getters: { 
         getFramesForParentId: (state) => (frameId: number) => {
             //Get the childrenIds of this frame and based on these return the children objects corresponding to them
             return state.frameObjects[frameId].childrenIds
@@ -1720,6 +1683,43 @@ export const useStore = defineStore("app", {
             //In any case change the current frame
             this.currentFrame.id = nextPosition.id;            
         },
+
+        genereateStateJSONStrWithCheckpoint(compress?: boolean) {
+            // (This method was defined as a getter before, however we need to retrieve the "raw" state object and therefore, action allows that)
+            // We get the state's checksum and the current app version,
+            // and add them to the state's copy object to return
+            const stateCopy = JSON.parse(JSON.stringify(this.$state));
+            //clear the acResults, microbit DAP infos, copy frames, message banner and undo/redo related stuff as there is no need for storing them
+            stateCopy["acResults"] = [],
+            stateCopy["stateBeforeChanges"] = {};
+            stateCopy["diffToPreviousState"] = [];
+            stateCopy["diffToNextState"] = [];
+            stateCopy["stateBeforeChanges"] = {};
+            stateCopy["copiedFrames"] = {};
+            delete stateCopy["DAPWrapper"];
+            delete stateCopy["previousDAPWrapper"];
+            stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
+            
+            //simplify the storage of frame types by their type names only
+            Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
+                stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
+            });
+
+            const checksum =  getSHA1HashForObject(stateCopy)
+            //add the checksum and other backup flags in the state object to be saved
+            stateCopy["checksum"] = checksum;
+            stateCopy["version"] = AppVersion;
+            stateCopy["platform"] = AppPlatform;
+            
+            // finally, we save a compressed version of this JSON state if required (on auto-backup state saving)
+            if(!compress){
+                return JSON.stringify(stateCopy);
+            }
+            else{
+                return LZString.compress(JSON.stringify(stateCopy))
+            }      
+        },
+       
         
         setStateFromJSONStr(payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
