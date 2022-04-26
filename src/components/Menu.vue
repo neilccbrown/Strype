@@ -264,7 +264,7 @@ export default Vue.extend({
 
         exportFile(): void {
             //save the JSON file of the state 
-            saveContentToFile(this.appStore.getStateJSONStrWithCheckpoints(), this.appStore.projectName+".spy");
+            saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), this.appStore.projectName+".spy");
         },
 
         resetProject(): void {
