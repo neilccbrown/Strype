@@ -1684,10 +1684,14 @@ export const useStore = defineStore("app", {
             this.currentFrame.id = nextPosition.id;            
         },
 
-        genereateStateJSONStrWithCheckpoint(compress?: boolean) {
-            // (This method was defined as a getter before, however we need to retrieve the "raw" state object and therefore, action allows that)
-            // We get the state's checksum and the current app version,
-            // and add them to the state's copy object to return
+        generateStateJSONStrWithCheckpoint(compress?: boolean) {
+            /** This function was defined as a getter before, check details as to why it needs to be an action:
+             *  the goal of this function is to make a "copy" of the state in a JSON format, with a few extra bits like the checkpoint.
+                However, if defined as a getter, the state object we get in a getter is not exactly "just" the state object as we write it: 
+                pinia adds a few extra bits that are used internally. So things like checksum later don't work well later when we need to use it.
+                To avoid that situation, we should move the function in the actions, because in there, the access to the state object is really 
+                "just" the state object as we defined it in the store. No extra bit are addede there by pinia.
+             */
             const stateCopy = JSON.parse(JSON.stringify(this.$state));
             //clear the acResults, microbit DAP infos, copy frames, message banner and undo/redo related stuff as there is no need for storing them
             stateCopy["acResults"] = [],
