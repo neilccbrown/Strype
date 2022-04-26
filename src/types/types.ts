@@ -182,6 +182,7 @@ const StandardFrameTypesIdentifiers = {
     with: "with",
     return: "return",
     varassign: "varassign",
+    global: "global",
     ...JointFrameIdentifiers,
 }
 
@@ -399,6 +400,13 @@ export const ReturnDefinition: FramesDefinitions = {
     colour: "#F6F2E9",
 };
 
+export const GlobalDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: StandardFrameTypesIdentifiers.global,
+    labels: [{ label: "global ", slot: true, defaultText: "variable", optionalSlot: false}],
+    colour: "#F6F2E9",
+};
+
 export const VarAssignDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.varassign,
@@ -499,6 +507,7 @@ export const Definitions = {
     ImportDefinition,
     FromImportDefinition,
     CommentDefinition,
+    GlobalDefinition,
 };
 
 export const LoopFrames = {

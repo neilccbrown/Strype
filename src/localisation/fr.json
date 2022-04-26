@@ -23,7 +23,8 @@
     "raise_detail":"Ajouter une instruction \uD835\uDC2B\uD835\uDC1A\uD835\uDC22\uD835\uDC2C\uD835\uDC1E (lever) à l'emplacement du curseur de cadre.",
     "except_detail":"Ajouter une instruction \uD835\uDC1E\uD835\uDC31\uD835\uDC1C\uD835\uDC1E\uD835\uDC29\uD835\uDC2D (exception) à l'emplacement du curseur de cadre.",
     "finally_detail":"Ajouter une instruction \uD835\uDC1F\uD835\uDC22\uD835\uDC27\uD835\uDC1A\uD835\uDC25\uD835\uDC25\uD835\uDC32 (finalement) à l'emplacement du curseur de cadre.",
-    "with_detail":"Ajouter une instruction \uD835\uDC30\uD835\uDC22\uD835\uDC2D\uD835\uDC21 (avec) à l'emplacement du curseur de cadre."
+    "with_detail":"Ajouter une instruction \uD835\uDC30\uD835\uDC22\uD835\uDC2D\uD835\uDC21 (avec) à l'emplacement du curseur de cadre.",
+    "global_detail":"Ajouter une instruction \uD835\uDC20\uD835\uDC25\uD835\uDC28\uD835\uDC1B\uD835\uDC1A\uD835\uDC25 à l'emplacement du curseur de cadre. Ce mot-clé permet de modifier une variable ayant une portée \uD835\uDC54\uD835\uDC59\uD835\uDC5C\uD835\uDC4F\uD835\uDC4E\uD835\uDC59\uD835\uDC59\uD835\uDC52\uD835\uDC5A\uD835\uDC52\uD835\uDC5B\uD835\uDC61, du sein d'une fonction."
   },
   "messageBannerMessage": {
       "deleteLargeCode":"Vous venez de supprimer une grande portion de code. Si vous le souhaitiez pas, vous pouvez :",
@@ -107,8 +108,7 @@
     "importedModules":"Modules importés"
   },
   "apidiscovery" : {
-    "microbitAPI": {
-    }
+    "microbitAPI": {}
   },
 
   "commandTabs": {

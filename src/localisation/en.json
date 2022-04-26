@@ -23,7 +23,8 @@
         "raise_detail":"Add a \uD835\uDC2B\uD835\uDC1A\uD835\uDC22\uD835\uDC2C\uD835\uDC1E statement at the frame cursor.",
         "except_detail":"Add an \uD835\uDC1E\uD835\uDC31\uD835\uDC1C\uD835\uDC1E\uD835\uDC29\uD835\uDC2D statement at the frame cursor.",
         "finally_detail":"Add a \uD835\uDC1F\uD835\uDC22\uD835\uDC27\uD835\uDC1A\uD835\uDC25\uD835\uDC25\uD835\uDC32 statement at the frame cursor.",
-        "with_detail":"Add a \uD835\uDC30\uD835\uDC22\uD835\uDC2D\uD835\uDC21 statement at the frame cursor."
+        "with_detail":"Add a \uD835\uDC30\uD835\uDC22\uD835\uDC2D\uD835\uDC21 statement at the frame cursor.",
+        "global_detail":"Add a \uD835\uDC20\uD835\uDC25\uD835\uDC28\uD835\uDC1B\uD835\uDC1A\uD835\uDC25 statement at the frame cursor. This keyword allows to modify a variable \uD835\uDC54\uD835\uDC59\uD835\uDC5C\uD835\uDC4F\uD835\uDC4E\uD835\uDC59\uD835\uDC59\uD835\uDC66, from inside a function."
     },
     "messageBannerMessage": {
         "deleteLargeCode":"You just deleted a large piece of code. If you didn't mean to, you can:",
