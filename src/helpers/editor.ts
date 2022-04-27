@@ -96,140 +96,163 @@ export function hasEditorCodeErrors(): boolean {
     return false; 
 }
 
+// Helper function to generate the frame commands on demand. 
+// Calls will happen when the frames are created the first time, and whenever the language is changed
+export function generateAllFrameCommandsDefs():void {
+    allFrameCommandsDefs = {
+        "i": [
+            {
+                type: Definitions.IfDefinition,
+                description: "if",
+                shortcut: "i",
+                tooltip:i18n.t("frame.if_detail") as string,
+                index: 0,
+            },
+            {
+                type: Definitions.ImportDefinition,
+                description: "import",
+                shortcut: "i",
+                tooltip:i18n.t("frame.import_detail") as string,
+                index:1,
+            },
+        ],
+        "l": [{
+            type: Definitions.ElifDefinition,
+            description: "elif",
+            tooltip:i18n.t("frame.elif_detail") as string,
+            shortcut: "l",
+        }],
+        "e": [{
+            type: Definitions.ElseDefinition,
+            description: "else",
+            tooltip:i18n.t("frame.else_detail") as string,
+            shortcut: "e",
+        }],
+        "f": [
+            {
+                type: Definitions.ForDefinition,
+                description: "for",
+                shortcut: "f",
+                tooltip:i18n.t("frame.for_detail") as string,
+                index: 0,
+            },
+            {
+                type: Definitions.FuncDefDefinition,
+                description: i18n.t("frame.funcdef_desc") as string,
+                shortcut: "f",
+                tooltip:i18n.t("frame.funcdef_detail") as string,
+                index: 1,
+            },
+            {
+                type: Definitions.FromImportDefinition,
+                description: "from...import",
+                tooltip:i18n.t("frame.fromimport_detail") as string,
+                shortcut: "f",
+                index:2,
+            },
+        ],
+        "w": [{
+            type: Definitions.WhileDefinition,
+            description: "while",
+            tooltip:i18n.t("frame.while_detail") as string,
+            shortcut: "w",
+        }],
+        "b" : [{
+            type: Definitions.BreakDefinition,
+            description: "break",
+            tooltip:i18n.t("frame.break_detail") as string,
+            shortcut: "b",
+        }],
+        "u" : [{
+            type: Definitions.ContinueDefinition,
+            description: "continue",
+            tooltip:i18n.t("frame.continue_detail") as string,
+            shortcut: "u",
+        }],
+        "=": [{
+            type: Definitions.VarAssignDefinition,
+            description: i18n.t("frame.varassign_desc") as string,
+            tooltip:i18n.t("frame.varassign_detail") as string,
+            shortcut: "=",
+        }],
+        " ": [{
+            type: Definitions.EmptyDefinition,
+            description: i18n.t("frame.funccall_desc") as string,
+            shortcut: " ",
+            tooltip:i18n.t("frame.funccall_detail") as string,
+            symbol: "⌴",//"␣"
+        }],
+        "r": [{
+            type: Definitions.ReturnDefinition,
+            description: "return",
+            tooltip:i18n.t("frame.return_detail") as string,
+            shortcut: "r",
+        }],
+        "c": [{
+            type: Definitions.CommentDefinition,
+            description: i18n.t("frame.comment_desc") as string,
+            tooltip:i18n.t("frame.comment_detail") as string,
+            shortcut: "c",
+        }],
+        "t": [{
+            type: Definitions.TryDefinition,
+            description: "try",
+            tooltip:i18n.t("frame.try_detail") as string,
+            shortcut: "t",
+        }],
+        "a" : [{
+            type: Definitions.RaiseDefinition,
+            description: "raise",
+            tooltip:i18n.t("frame.raise_detail") as string,
+            shortcut: "a",
+        }],
+        "x": [{
+            type: Definitions.ExceptDefinition,
+            description: "except",
+            tooltip:i18n.t("frame.except_detail") as string,
+            shortcut: "x",
+        }],
+        "n": [{
+            type: Definitions.FinallyDefinition,
+            description: "finally",
+            tooltip:i18n.t("frame.finally_detail") as string,
+            shortcut: "n",
+        }],
+        "h": [{
+            type: Definitions.WithDefinition,
+            description: "with",
+            tooltip:i18n.t("frame.with_detail") as string,
+            shortcut: "h",
+        }],
+        "g": [{
+            type:Definitions.GlobalDefinition,
+            description: "global",
+            tooltip: i18n.t("frame.global_detail") as string,
+            shortcut: "g",
+        }],
+    };
+
+    // We need to "tell" the Vue component that hosts the frame commands (Commands.vue) to refresh as there is no reactivity
+    // between the frame definitions here and the component's computed property.
+    // We can do it via a custom event Commands.vue will be listening to.
+    document.dispatchEvent(new Event("frame-commands-updated"));
+}
+
 //Commands for Frame insertion, one command can match more than 1 frame ONLY when there is a TOTAL distinct context between the two
-const allFrameCommandsDefs: {[id: string]: AddFrameCommandDef[]} = {
-    "i": [
-        {
-            type: Definitions.IfDefinition,
-            description: "if",
-            shortcut: "i",
-            tooltip:i18n.t("frame.if_detail") as string,
-            index: 0,
-        },
-        {
-            type: Definitions.ImportDefinition,
-            description: "import",
-            shortcut: "i",
-            tooltip:i18n.t("frame.import_detail") as string,
-            index:1,
-        },
-    ],
-    "l": [{
-        type: Definitions.ElifDefinition,
-        description: "elif",
-        tooltip:i18n.t("frame.elif_detail") as string,
-        shortcut: "l",
-    }],
-    "e": [{
-        type: Definitions.ElseDefinition,
-        description: "else",
-        tooltip:i18n.t("frame.else_detail") as string,
-        shortcut: "e",
-    }],
-    "f": [
-        {
-            type: Definitions.ForDefinition,
-            description: "for",
-            shortcut: "f",
-            tooltip:i18n.t("frame.for_detail") as string,
-            index: 0,
-        },
-        {
-            type: Definitions.FuncDefDefinition,
-            description: i18n.t("frame.funcdef_desc") as string,
-            shortcut: "f",
-            tooltip:i18n.t("frame.funcdef_detail") as string,
-            index: 1,
-        },
-        {
-            type: Definitions.FromImportDefinition,
-            description: "from...import",
-            tooltip:i18n.t("frame.fromimport_detail") as string,
-            shortcut: "f",
-            index:2,
-        },
-    ],
-    "w": [{
-        type: Definitions.WhileDefinition,
-        description: "while",
-        tooltip:i18n.t("frame.while_detail") as string,
-        shortcut: "w",
-    }],
-    "b" : [{
-        type: Definitions.BreakDefinition,
-        description: "break",
-        tooltip:i18n.t("frame.break_detail") as string,
-        shortcut: "b",
-    }],
-    "u" : [{
-        type: Definitions.ContinueDefinition,
-        description: "continue",
-        tooltip:i18n.t("frame.continue_detail") as string,
-        shortcut: "u",
-    }],
-    "=": [{
-        type: Definitions.VarAssignDefinition,
-        description: i18n.t("frame.varassign_desc") as string,
-        tooltip:i18n.t("frame.varassign_detail") as string,
-        shortcut: "=",
-    }],
-    " ": [{
-        type: Definitions.EmptyDefinition,
-        description: i18n.t("frame.funccall_desc") as string,
-        shortcut: " ",
-        tooltip:i18n.t("frame.funccall_detail") as string,
-        symbol: "⌴",//"␣"
-    }],
-    "r": [{
-        type: Definitions.ReturnDefinition,
-        description: "return",
-        tooltip:i18n.t("frame.return_detail") as string,
-        shortcut: "r",
-    }],
-    "c": [{
-        type: Definitions.CommentDefinition,
-        description: i18n.t("frame.comment_desc") as string,
-        tooltip:i18n.t("frame.comment_detail") as string,
-        shortcut: "c",
-    }],
-    "t": [{
-        type: Definitions.TryDefinition,
-        description: "try",
-        tooltip:i18n.t("frame.try_detail") as string,
-        shortcut: "t",
-    }],
-    "a" : [{
-        type: Definitions.RaiseDefinition,
-        description: "raise",
-        tooltip:i18n.t("frame.raise_detail") as string,
-        shortcut: "a",
-    }],
-    "x": [{
-        type: Definitions.ExceptDefinition,
-        description: "except",
-        tooltip:i18n.t("frame.except_detail") as string,
-        shortcut: "x",
-    }],
-    "n": [{
-        type: Definitions.FinallyDefinition,
-        description: "finally",
-        tooltip:i18n.t("frame.finally_detail") as string,
-        shortcut: "n",
-    }],
-    "h": [{
-        type: Definitions.WithDefinition,
-        description: "with",
-        tooltip:i18n.t("frame.with_detail") as string,
-        shortcut: "h",
-    }],
-};
+let allFrameCommandsDefs: {[id: string]: AddFrameCommandDef[]} | undefined = undefined;
 
 export function getAddCommandsDefs(): {[id: string]: AddFrameCommandDef[]} { 
-    return allFrameCommandsDefs;
+    if(allFrameCommandsDefs === undefined){
+        generateAllFrameCommandsDefs();
+    }
+    return allFrameCommandsDefs as {[id: string]: AddFrameCommandDef[]};
 }
 
 export function findAddCommandFrameType(shortcut: string, index?: number): FramesDefinitions | null { 
-    const shortcutCommands = Object.values(allFrameCommandsDefs).flat().filter((command) => command.shortcut === shortcut);
+    if(allFrameCommandsDefs === undefined){
+        generateAllFrameCommandsDefs();
+    }
+    const shortcutCommands = Object.values(allFrameCommandsDefs as {[id: string]: AddFrameCommandDef[]}).flat().filter((command) => command.shortcut === shortcut);
     if(shortcutCommands.length > 0) {
         if(index) {
             if(index < shortcutCommands.length) {

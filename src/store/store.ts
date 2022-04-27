@@ -1,12 +1,12 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, Definitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, StateAppObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition, ImportsContainerDefinition, EditableFocusPayload, EditableSlotPayload, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, Definitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, StateAppObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition, ImportsContainerDefinition, EditableFocusPayload, EditableSlotPayload, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, GlobalDefinition} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getParentOrJointParent, isContainedInFrame, removeFrameInFrameList, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { getAddCommandsDefs, getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
+import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string"
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -292,7 +292,7 @@ export const useStore = defineStore("app", {
                 );
             }
 
-            //"return" statements can't be added when in the main container frame
+            //"return" and "global" statements can't be added when in the main container frame
             //We don't forbid them to be in the main container, but we don't provide a way to add them directly.
             //They can be added when in the function definition container though.
             const canShowReturnStatement = isContainedInFrame(state. frameObjects, frameId,caretPosition, [FuncDefContainerDefinition.type]);
@@ -302,7 +302,7 @@ export const useStore = defineStore("app", {
                 forbiddenTypes.splice(
                     0,
                     0,
-                    ...[ReturnDefinition.type]
+                    ...[ReturnDefinition.type, GlobalDefinition.type]
                 );
             }
             const addCommandsDefs = getAddCommandsDefs();
@@ -567,6 +567,9 @@ export const useStore = defineStore("app", {
                     break;
                 }
             });
+
+            // Change the frame command labels / details 
+            generateAllFrameCommandsDefs();
 
             /* IFTRUE_isMicrobit */
             //change the API description content here, as we don't want to construct the textual API description every time we need it

@@ -100,6 +100,7 @@ export default Vue.extend({
             showProgress: false,
             progressPercent: 0,
             uploadThroughUSB: false,
+            frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language)
         }
     },
 
@@ -133,6 +134,9 @@ export default Vue.extend({
         },
 
         addFrameCommands(): Record<string, AddFrameCommandDef[]> {
+            // Just use the flag data to bind this computed property to the flag, so that when the frame commands are changed, we can update the UI
+            this.frameCommandsReactiveFlag;
+
             //We retrieve the add frame commands associated with the current frame 
             //if the frame is enabled, we always check, if it is disabled we return no frame when caret is body, and check when caret is below
             const currentFrame: FrameObject = this.appStore.getCurrentFrameObject;
@@ -284,6 +288,12 @@ export default Vue.extend({
                 }
             }                
         );
+    
+        document.addEventListener("frame-commands-updated", () => {
+            // When the frame commands have been updated (i.e. language changed), we need to get this component to be re-rendered:
+            // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
+            this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
+        });
     },
 
     mounted() {
