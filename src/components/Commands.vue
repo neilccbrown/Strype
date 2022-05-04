@@ -62,8 +62,7 @@
         <span id="keystrokeSpan"></span>
 
         /* IFTRUE_isPurePython
-        
-            <python-console id="pythonConsoleComponent"/>
+        <python-console id="pythonConsoleComponent"/>
         FITRUE_isPurePython */
     </div>
 </template>
@@ -72,7 +71,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
-import { getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
+import { CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { flash } from "@/helpers/webUSB";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, ImportDefinition } from "@/types/types";
@@ -289,7 +288,7 @@ export default Vue.extend({
             }                
         );
     
-        document.addEventListener("frame-commands-updated", () => {
+        document.addEventListener(CustomEventTypes.editorAddFrameCommandsUpdated, () => {
             // When the frame commands have been updated (i.e. language changed), we need to get this component to be re-rendered:
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;

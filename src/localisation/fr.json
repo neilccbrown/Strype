@@ -117,6 +117,12 @@
   },
 
   "console": {
-      "run":"Exécuter le code "
+      "run":"Exécuter le code ",
+      "showError": "Montrer l'erreur d'exécution",
+      "runtimeErrorConsolePreamble": "Erreur d'exécution",
+      "runtimeErrorConsoleSuffix": "cliquer le bouton ci-dessus pour montrer l'erreur",
+       "runtimeErrorEditableSlotPreamble": "Erreur d'exécution pour ce cadre",
+      "expand":"Agrandir",
+      "collapse":"Réduire"
   }
 }

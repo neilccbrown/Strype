@@ -76,12 +76,13 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 import { mapStores } from "pinia";
+import i18n from "@/i18n";
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -368,6 +369,13 @@ export default Vue.extend({
 
         onBlur(): void {
             if(!this.debugAC) {
+                /* IFTRUE_isPurePython */
+                // A particular case for runtime errors: when an error is dismissed, we need to notify the UI for the console to update
+                if(this.errorMessage.includes(i18n.t("console.runtimeErrorEditableSlotPreamble") as string)){
+                    document.dispatchEvent(new Event(CustomEventTypes.pythonConsoleRuntimeErrorDismissed));
+                }
+                /* FITRUE_isPurePython */
+
                 this.showAC = false;
                 this.appStore.updateErrorsOnSlotValidation(
                     {

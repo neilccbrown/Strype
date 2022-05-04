@@ -451,6 +451,12 @@
         "1":"Explore micro:bit"
     },
     "console": {
-        "run":"Run Code"
+        "run":"Run Code",
+        "showError":"Show runtime error",
+        "runtimeErrorConsolePreamble": "Runtime error",
+        "runtimeErrorConsoleSuffix": "click button above to show error",
+        "runtimeErrorEditableSlotPreamble": "Runtime error for this frame",
+        "expand":"Expand",
+        "collapse":"Collapse"
     }
 }

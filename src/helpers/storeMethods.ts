@@ -528,6 +528,22 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
         }
     );
 
+    /* IFTRUE_isPurePython */
+    // One particular case: if the error is a runtime error, other editable slots of that frame will also show the error,
+    // therefore, we invalidate the errors for all these other slots.
+    Object.entries(useStore().frameObjects[frameId].contentDict).forEach((contentDictEntry) => {
+        if(parseInt(contentDictEntry[0]) != slotId && contentDictEntry[1].error.includes(i18n.t("console.runtimeErrorEditableSlotPreamble") as string)) {
+            useStore().setSlotErroneous(
+                {
+                    frameId: frameId, 
+                    slotIndex: parseInt(contentDictEntry[0]), 
+                    error: "",
+                }
+            );
+        }        
+    });
+    /* FITRUE_isPurePython */
+
     const frameObject = useStore().frameObjects[frameId];
 
     const optionalSlot = frameObject.frameType.labels[slotId].optionalSlot ?? true;
@@ -561,7 +577,7 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===frameId && e.caretPosition === caretPosition);
     const nextCaretId =  (isJoinFrame) 
         ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.id===frameObject.jointParentId && e.caretPosition === CaretPosition.below) + 1]?.id??-100
-        : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.below) ? 1 : 2)]?.id??-100);
+        : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.body && frameObject.childrenIds.length == 0) ? 2 : 1)]?.id??-100);
     const startFrameId = (isJoinFrame) ? frameObject.jointParentId : frameId;
     const parser = new Parser(true);
     const portionOutput = parser.parse(startFrameId, nextCaretId);
