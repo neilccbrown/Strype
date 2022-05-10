@@ -8,8 +8,6 @@ export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
-    pythonConsoleRuntimeErrorRaised = "consoleRuntimeErrRaised",
-    pythonConsoleRuntimeErrorDismissed = "runtimeErrDismissed",
     /* FITRUE_isPurePython */
 }
 

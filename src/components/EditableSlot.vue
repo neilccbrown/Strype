@@ -43,7 +43,7 @@
         <b-popover
             v-if="erroneous()"
             :target="UIID"
-            :title="this.$i18n.t('errorMessage.errorTitle')"
+            :title="errorHeader"
             triggers="hover focus"
             :content="errorMessage"
             custom-class="error-popover"
@@ -82,8 +82,6 @@ import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } f
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 import { mapStores } from "pinia";
-import i18n from "@/i18n";
-
 export default Vue.extend({
     name: "EditableSlot",
 
@@ -249,6 +247,13 @@ export default Vue.extend({
             );
         },
 
+        errorHeader(): string{
+            return this.appStore.getErrorHeaderForSlot(
+                this.frameId,
+                this.slotIndex
+            );
+        },
+
         isFirstVisibleInFrame(): boolean{
             return this.appStore.isSlotFirstVisibleInFrame(this.frameId, this.slotIndex);
         },
@@ -369,13 +374,6 @@ export default Vue.extend({
 
         onBlur(): void {
             if(!this.debugAC) {
-                /* IFTRUE_isPurePython */
-                // A particular case for runtime errors: when an error is dismissed, we need to notify the UI for the console to update
-                if(this.errorMessage.includes(i18n.t("console.runtimeErrorEditableSlotPreamble") as string)){
-                    document.dispatchEvent(new Event(CustomEventTypes.pythonConsoleRuntimeErrorDismissed));
-                }
-                /* FITRUE_isPurePython */
-
                 this.showAC = false;
                 this.appStore.updateErrorsOnSlotValidation(
                     {

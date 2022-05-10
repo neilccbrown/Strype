@@ -1,12 +1,8 @@
 
 <template>
     <div :class="{largeConsoleDiv: isLargeConsole}">
-        <div id="consoleControlsDiv">
-            <button v-if="hasRunTimeError" @click="reachError">
-                <i :class="{'fa show-error-icon': true, 'fa-arrow-left':!isLargeConsole, 'fa-arrow-up':isLargeConsole}"></i>
-                {{' '+ $t('console.showError')}}
-            </button>
-            <button v-else @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')"></button>
+        <div id="consoleControlsDiv">           
+            <button @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')"></button>
             <button @click="toggleConsoleDisplay">
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
                 {{this.consoleDisplayCtrlLabel}}
@@ -33,17 +29,14 @@ import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
-import { CustomEventTypes, getEditableSlotUIID, getFrameUIID, hasEditorCodeErrors } from "@/helpers/editor";
+import { CustomEventTypes, hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
-import { RuntimeErrorData } from "@/types/types";
 
 export default Vue.extend({
     name: "PythonConsole",
 
     data: function() {
         return {
-            hasRunTimeError: false,
-            runTimeErrorData: {frameId: -1, errorMsg: "" } as RuntimeErrorData,
             isLargeConsole: false,
         }
     },
@@ -54,17 +47,6 @@ export default Vue.extend({
         consoleDisplayCtrlLabel(): string {
             return " " + ((this.isLargeConsole) ? i18n.t("console.collapse") as string : i18n.t("console.expand") as string)           
         },
-    },
-
-
-    created(){
-        document.addEventListener(CustomEventTypes.pythonConsoleRuntimeErrorRaised, (event) => {
-            // When an error has been raised from Skulpt running the user code, we update the UI accordingly via the component data.
-            this.runTimeErrorData = (event as CustomEvent).detail as RuntimeErrorData;
-            this.hasRunTimeError = true;
-        });
-
-        document.addEventListener(CustomEventTypes.pythonConsoleRuntimeErrorDismissed, () => this.hasRunTimeError = false);
     },
 
     methods: {
@@ -88,17 +70,6 @@ export default Vue.extend({
             storeCodeToDOM(userCode);
             // Trigger the actual console launch
             runPythonConsole(console, userCode, parser.getFramePositionMap());
-        },
-
-        reachError() {
-            // When the button is clicked, we we ensure the frame is visible in the editor (i.e. in the page viewport)
-            document.querySelector("#" + getFrameUIID(this.runTimeErrorData.frameId))?.scrollIntoView();
-            // finally, get focus into the first available slot (and make sure text caret is at first position)
-            const editableSlot =  document.getElementById(getEditableSlotUIID(this.runTimeErrorData.frameId, 0));
-            if(editableSlot){
-                editableSlot.focus();
-                (editableSlot as HTMLInputElement).setSelectionRange(0, 0);
-            }
         },
 
         onFocus(): void {

@@ -527,12 +527,13 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
             error: "",
         }
     );
+    Vue.delete(useStore().frameObjects[frameId].contentDict[slotId],"errorTitle");
 
     /* IFTRUE_isPurePython */
     // One particular case: if the error is a runtime error, other editable slots of that frame will also show the error,
     // therefore, we invalidate the errors for all these other slots.
     Object.entries(useStore().frameObjects[frameId].contentDict).forEach((contentDictEntry) => {
-        if(parseInt(contentDictEntry[0]) != slotId && contentDictEntry[1].error.includes(i18n.t("console.runtimeErrorEditableSlotPreamble") as string)) {
+        if(parseInt(contentDictEntry[0]) != slotId && contentDictEntry[1].errorTitle?.includes(i18n.t("console.runtimeErrorEditableSlotHeader") as string)) {
             useStore().setSlotErroneous(
                 {
                     frameId: frameId, 
@@ -540,6 +541,7 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
                     error: "",
                 }
             );
+            Vue.delete(useStore().frameObjects[frameId].contentDict[parseInt(contentDictEntry[0])],"errorTitle");
         }        
     });
     /* FITRUE_isPurePython */

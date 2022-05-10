@@ -452,10 +452,8 @@
     },
     "console": {
         "run":"Run Code",
-        "showError":"Show runtime error",
-        "runtimeErrorConsolePreamble": "Runtime error",
-        "runtimeErrorConsoleSuffix": "click button above to show error",
-        "runtimeErrorEditableSlotPreamble": "Runtime error for this frame",
+        "runtimeErrorConsole": "Runtime error",
+        "runtimeErrorEditableSlotHeader": "Frame runtime error!",
         "expand":"Expand",
         "collapse":"Collapse"
     }

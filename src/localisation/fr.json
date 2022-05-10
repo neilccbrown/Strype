@@ -118,10 +118,8 @@
 
   "console": {
       "run":"Exécuter le code ",
-      "showError": "Montrer l'erreur d'exécution",
-      "runtimeErrorConsolePreamble": "Erreur d'exécution",
-      "runtimeErrorConsoleSuffix": "cliquer le bouton ci-dessus pour montrer l'erreur",
-       "runtimeErrorEditableSlotPreamble": "Erreur d'exécution pour ce cadre",
+      "runtimeErrorConsole": "Erreur d'exécution",
+       "runtimeErrorEditableSlotHeader": "Erreur d'exécution de cadre!",
       "expand":"Agrandir",
       "collapse":"Réduire"
   }

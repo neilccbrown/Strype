@@ -11,6 +11,7 @@ export interface FrameSlotContent{
     code: string;
     focused: boolean;
     error: string;
+    errorTitle?: string,
     shownLabel: boolean;
 }
 
@@ -877,16 +878,8 @@ export interface ParserElements {
     compiler: Compiler, //the compiler associated with this parser, that allow access to more complex objects generated after parsing code (i.e. blob, hex...)
 }
 
-/* IFTRUE_isPurePython */
-// types for the Python console
-export interface RuntimeErrorData {
-    frameId: number,
-    errorMsg: string,
-}
-
 // utility types
 export interface CodeMatchIterable {
     hasMatches: boolean,
     iteratorMatches?: IterableIterator<RegExpMatchArray>
 }
-/* FITRUE_isPurePython */

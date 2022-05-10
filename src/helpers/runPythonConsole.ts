@@ -1,9 +1,9 @@
 // refs: http://skulpt.org/using.html#html and for the input/event part https://stackoverflow.com/questions/43733896/wait-for-an-event-to-occur-within-a-function-in-javascript-for-skulpt
 
-import { LineAndSlotPositions, RuntimeErrorData } from "@/types/types";
+import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
-import { CustomEventTypes } from "./editor";
+import { getEditableSlotUIID, getFrameUIID } from "./editor";
 
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
@@ -141,8 +141,7 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             const noLineSkulptErrStr = skulptErrStr.replaceAll(/ on line \d+/g,"");
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
-            consoleTextArea.value += ("<"+ i18n.t("console.runtimeErrorConsolePreamble") + " (" + noLineSkulptErrStr +
-                ") - " + i18n.t("console.runtimeErrorConsoleSuffix") +">");
+            consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") +" >");
 
             // Set the error on the editable slots of the target frame
             Object.keys(useStore().frameObjects[frameId].contentDict).forEach((slotIndex) => {
@@ -150,18 +149,28 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
                     {
                         frameId: frameId, 
                         slotIndex: parseInt(slotIndex), 
-                        error: i18n.t("console.runtimeErrorEditableSlotPreamble") + " (" + noLineSkulptErrStr + ")",
+                        error: noLineSkulptErrStr,
+                        errorTitle: i18n.t("console.runtimeErrorEditableSlotHeader") as string,
                     }
                 );
             });
 
-            // Notify the UI about the error
-            const eventData: RuntimeErrorData = { frameId: frameId, errorMsg: noLineSkulptErrStr};
-            document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonConsoleRuntimeErrorRaised, {detail: eventData}));
+            // Show the error in the UI: we ensure the frame is visible in the editor (i.e. in the page viewport)
+            // and we get focus into the last available slot (and make sure text caret is at first position)
+            // We need to slightly delay the focus events so that the UI has been regenerated and the error popup shows.
+            setTimeout(() => {
+                document.querySelector("#" + getFrameUIID(frameId))?.scrollIntoView();
+                const lastSlotIndex = Math.max(...Object.keys(useStore().frameObjects[frameId].contentDict).map((slotIndexStr) => parseInt(slotIndexStr)));
+                const editableSlot =  document.getElementById(getEditableSlotUIID(frameId, lastSlotIndex));
+                if(editableSlot){
+                    editableSlot.focus();
+                    (editableSlot as HTMLInputElement).setSelectionRange(0, 0);                    
+                }
+            }, 300);            
         }
         else{
             // In case we couldn't get the line and the frame correctly, we just display a simple message
-            consoleTextArea.value += ("<" + i18n.t("console.runtimeErrorConsolePreamble")+": " + skulptErrStr + ">");
+            consoleTextArea.value += ("< " + skulptErrStr + " >");
         }       
     });
 }
