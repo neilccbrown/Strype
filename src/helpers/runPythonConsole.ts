@@ -128,16 +128,12 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
         // We need to extract the line from the error message sent by Skulpt.
         const skulptErrStr: string = err.toString();
         let frameId = -1;
-        if(skulptErrStr.includes(" on line ")){
-            const errLineMatchArray = skulptErrStr.match(/( on line )(\d+)/);
-            if(errLineMatchArray !== null){
-                const errorLine = parseInt(errLineMatchArray[2]);
-                // Skuplt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
-                frameId = lineFrameMapping[errorLine - 1].frameId;
-            }
-        }
+        const errLineMatchArray = skulptErrStr.match(/( on line )(\d+)/);
+        if(errLineMatchArray !== null){
+            const errorLine = parseInt(errLineMatchArray[2]);
+            // Skuplt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
+            frameId = lineFrameMapping[errorLine - 1].frameId;
 
-        if(frameId > -1){
             const noLineSkulptErrStr = skulptErrStr.replaceAll(/ on line \d+/g,"");
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
@@ -171,6 +167,6 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
         else{
             // In case we couldn't get the line and the frame correctly, we just display a simple message
             consoleTextArea.value += ("< " + skulptErrStr + " >");
-        }       
+        }
     });
 }
