@@ -80,7 +80,7 @@ import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
-import { getFrameContextMenuUIID } from "@/helpers/editor";
+import { getFrameContextMenuUIID, getFrameUIID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -169,7 +169,7 @@ export default Vue.extend({
         },
 
         uiid(): string {
-            return "frame_id_"+this.frameId;
+            return getFrameUIID(this.frameId);
         },
 
         allowContextMenu(): boolean {

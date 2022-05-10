@@ -1,5 +1,10 @@
 // refs: http://skulpt.org/using.html#html and for the input/event part https://stackoverflow.com/questions/43733896/wait-for-an-event-to-occur-within-a-function-in-javascript-for-skulpt
 
+import { LineAndSlotPositions } from "@/types/types";
+import { useStore } from "@/store/store";
+import i18n from "@/i18n";
+import { getEditableSlotUIID, getFrameUIID } from "./editor";
+
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
 // a Sk object that is FROM THE SKULPT LIBRARY, it is the main entry point of Skulpt
@@ -105,19 +110,63 @@ function sInput(prompt: string) {
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
-export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode: string){
+export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode: string, lineFrameMapping: LineAndSlotPositions): void{
     consoleTextArea = aConsoleTextArea;
-    consoleTextArea.innerHTML = ""; 
+    consoleTextArea.value = ""; 
     Sk.pre = consoleTextArea.id;
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true});
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);
     });
-    // Show error in console (for debugging) if error happens
+    // Show error in Python console if error happens
     myPromise.then(() => {
-        return
+        return;
     },
     (err: any) => {
-        console.log("Error from Skulpt " + err.toString());
+        // We can use the mechanism in place in the Parser for the TigerPython errors mapping to find 
+        // what line of code maps with what frame in case of an execution error.
+        // We need to extract the line from the error message sent by Skulpt.
+        const skulptErrStr: string = err.toString();
+        let frameId = -1;
+        const errLineMatchArray = skulptErrStr.match(/( on line )(\d+)/);
+        if(errLineMatchArray !== null){
+            const errorLine = parseInt(errLineMatchArray[2]);
+            // Skuplt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
+            frameId = lineFrameMapping[errorLine - 1].frameId;
+
+            const noLineSkulptErrStr = skulptErrStr.replaceAll(/ on line \d+/g,"");
+            // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
+            // our current error related code implementation and clarity for the user.
+            consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") +" >");
+
+            // Set the error on the editable slots of the target frame
+            Object.keys(useStore().frameObjects[frameId].contentDict).forEach((slotIndex) => {
+                useStore().setSlotErroneous(
+                    {
+                        frameId: frameId, 
+                        slotIndex: parseInt(slotIndex), 
+                        error: noLineSkulptErrStr,
+                        errorTitle: i18n.t("console.runtimeErrorEditableSlotHeader") as string,
+                    }
+                );
+            });
+
+            // Show the error in the UI: we ensure the frame is visible in the editor (i.e. in the page viewport)
+            // and we get focus into the last available slot (and make sure text caret is at first position)
+            // We need to slightly delay the focus events so that the UI has been regenerated and the error popup shows.
+            setTimeout(() => {
+                document.querySelector("#" + getFrameUIID(frameId))?.scrollIntoView();
+                const lastSlotIndex = Math.max(...Object.keys(useStore().frameObjects[frameId].contentDict).map((slotIndexStr) => parseInt(slotIndexStr)));
+                const editableSlot =  document.getElementById(getEditableSlotUIID(frameId, lastSlotIndex));
+                if(editableSlot){
+                    editableSlot.focus();
+                    (editableSlot as HTMLInputElement).setSelectionRange(0, 0);                    
+                }
+            }, 300);            
+        }
+        else{
+            // In case we couldn't get the line and the frame correctly, we just display a simple message
+            consoleTextArea.value += ("< " + skulptErrStr + " >");
+        }
     });
 }

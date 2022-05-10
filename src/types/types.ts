@@ -11,6 +11,7 @@ export interface FrameSlotContent{
     code: string;
     focused: boolean;
     error: string;
+    errorTitle?: string,
     shownLabel: boolean;
 }
 
@@ -846,6 +847,7 @@ export interface VoidFunction {
 }
 
 //Representation of an item of the (microbit) API using a coded identifier with its potential children
+/* IFTRUE_isMicrobit */
 export interface APICodedItem {
     name: string, //a UUID coded name that represent a single item of the API description (** do not use "." in the coded names, it messes i18n **)
     codePortion: string, //the code portion that will builds an example use in the editor (code builder)
@@ -867,6 +869,7 @@ export interface APIItemTextualDescription {
     isFinal: boolean; //indicates if that is a termination item
     immediateParentName: string; //the name of the immediate parent of this item - empty string if level 1
 }
+/* FITRUE_isMicrobit */
 
 //Object containing the different elements produced when parsing the code, to be used by parsing callers
 export interface ParserElements {

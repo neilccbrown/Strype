@@ -117,6 +117,10 @@
   },
 
   "console": {
-      "run":"Exécuter le code "
+      "run":"Exécuter le code ",
+      "runtimeErrorConsole": "Erreur d'exécution",
+       "runtimeErrorEditableSlotHeader": "Erreur d'exécution de cadre!",
+      "expand":"Agrandir",
+      "collapse":"Réduire"
   }
 }

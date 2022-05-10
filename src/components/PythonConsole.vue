@@ -1,7 +1,13 @@
 
 <template>
-    <div>
-        <button id="runPythonConsoleButton" @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')"></button>
+    <div :class="{largeConsoleDiv: isLargeConsole}">
+        <div id="consoleControlsDiv">           
+            <button @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')"></button>
+            <button @click="toggleConsoleDisplay">
+                <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
+                {{this.consoleDisplayCtrlLabel}}
+            </button>
+        </div>
         <textarea 
             id="pythonConsole"
             ref="pythonConsole"
@@ -23,14 +29,24 @@ import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
-import { hasEditorCodeErrors } from "@/helpers/editor";
+import { CustomEventTypes, hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
 
 export default Vue.extend({
     name: "PythonConsole",
 
+    data: function() {
+        return {
+            isLargeConsole: false,
+        }
+    },
+
     computed:{
         ...mapStores(useStore),
+
+        consoleDisplayCtrlLabel(): string {
+            return " " + ((this.isLargeConsole) ? i18n.t("console.collapse") as string : i18n.t("console.expand") as string)           
+        },
     },
 
     methods: {
@@ -50,9 +66,10 @@ export default Vue.extend({
             console.value = "";
             const parser = new Parser();
             const userCode = parser.getFullCode();
+            parser.getErrorsFormatted(userCode)
             storeCodeToDOM(userCode);
             // Trigger the actual console launch
-            runPythonConsole(console, userCode);
+            runPythonConsole(console, userCode, parser.getFramePositionMap());
         },
 
         onFocus(): void {
@@ -69,12 +86,40 @@ export default Vue.extend({
             // Key events are captured by the UI to navigate the blue cursor -- for the console, we don't want to propagate the event
             event.stopPropagation();
         },
+
+        toggleConsoleDisplay(){
+            this.isLargeConsole = !this.isLargeConsole;
+            // Other parts of the UI need to be updated when the console default size is changed, so we emit an event
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonConsoleDisplayChanged, {detail: this.isLargeConsole}));
+        },
     },
 
 })
 </script>
 
 <style lang="scss">
+    .largeConsoleDiv {
+        width: 100vw;
+        top:50vh;
+        bottom:0px;
+        left:0px;
+        position:fixed;
+    }
+
+    .largeConsoleDiv #pythonConsole {
+        max-height: 50vh;
+    }
+
+    #consoleControlsDiv {
+        display: flex;
+        column-gap: 5px;
+    }
+
+    .show-error-icon {
+        padding: 0px 2px; 
+        border: 2px solid #d66;
+    }
+    
     textarea {
         -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
         -moz-box-sizing: border-box;    /* Firefox, other Gecko */
@@ -87,7 +132,12 @@ export default Vue.extend({
         max-height: 30vh;
         font-size: 12px;
         background-color: #0a090c;
-        color: #f0edee;
+        color: white;
         flex-grow: 2;
+        font-size: 17px;
+    }
+
+    #pythonConsole:disabled {
+        color: white;
     }
 </style>

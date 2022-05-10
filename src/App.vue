@@ -32,7 +32,7 @@
                         class="noselect"
                     />
                     <div class="col">
-                        <div :id="editorUIID" class="editor-code-div noselect" >
+                        <div :id="editorUIID" :class="{'editor-code-div noselect':true, 'small-editor-code-div': isLargePythonConsole}" >
                             <FrameContainer
                                 v-for="container in containerFrames"
                                 :key="container.frameType.type + '-id:' + container.id"
@@ -62,7 +62,7 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID, CustomEventTypes } from "./helpers/editor";
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
@@ -88,6 +88,7 @@ export default Vue.extend({
             progressbarMessage: "",
             autoSaveTimerId: -1,
             resetStrypeProjectFlag:false,
+            isLargePythonConsole: false,
         };
     },
 
@@ -167,12 +168,19 @@ export default Vue.extend({
             }
         );
 
+        /* IFTRUE_isPurePython */
+        // Listen to the Python console display change events (as the editor needs to be resized too)
+        document.addEventListener(CustomEventTypes.pythonConsoleDisplayChanged, (event) => {
+            this.isLargePythonConsole = (event as CustomEvent).detail;
+        })
+        /* IFTRUE_isPurePython */
+
+        /* IFTRUE_isMicrobit */
         // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
         if (navigator.usb) {
             navigator.usb.addEventListener("disconnect", () => this.appStore.previousDAPWrapper = {} as DAPWrapper);
         }
-
-        /* IFTRUE_isMicrobit */
+        
         // As the application starts up, we compile the microbit library with the appropriate language setting.
         getAPIItemTextualDescriptions(true);
         /* FITRUE_isMicrobit */
@@ -298,6 +306,10 @@ html,body {
     overflow-y: auto;
     height: 100vh;
     max-height: 100vh;
+}
+
+.small-editor-code-div {
+    max-height: 50vh;
 }
 
 .top {

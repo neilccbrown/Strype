@@ -361,6 +361,12 @@ export const useStore = defineStore("app", {
             return state.frameObjects[frameId].contentDict[slotIndex].error;
         },
 
+        getErrorHeaderForSlot: (state) => (frameId: number, slotIndex: number) => {
+            return (state.frameObjects[frameId].contentDict[slotIndex].errorTitle) 
+                ? state.frameObjects[frameId].contentDict[slotIndex].errorTitle as string
+                : i18n.t("errorMessage.errorTitle") as string; 
+        },
+
         preCompileErrorExists: (state) => (id: string) => {
             return state.preCompileErrors.includes(id);
         },
@@ -787,7 +793,7 @@ export const useStore = defineStore("app", {
             );
         },
 
-        setSlotErroneous(payload: {frameId: number; slotIndex: number; error: string}) {
+        setSlotErroneous(payload: {frameId: number; slotIndex: number; error: string, errorTitle?: string}) {
             const existingError =  this.frameObjects[payload.frameId].contentDict[payload.slotIndex].error;
             const existingErrorBits = existingError.split("\n");
             // Sometimes we need to extend the error, if more than one different errors are on the same slot
@@ -798,6 +804,14 @@ export const useStore = defineStore("app", {
                     "error",
                     newError
                 );
+
+                if(payload.errorTitle){
+                    Vue.set(
+                        this.frameObjects[payload.frameId].contentDict[payload.slotIndex],
+                        "errorTitle",
+                        payload.errorTitle
+                    );
+                }
             }           
         },
 
@@ -809,6 +823,7 @@ export const useStore = defineStore("app", {
                         "error",
                         ""
                     );
+                    Vue.delete(this.frameObjects[id].contentDict[slot], "errorTitle");
                 });
             });  
         },
@@ -1094,10 +1109,11 @@ export const useStore = defineStore("app", {
                 if(payload.isDisabling){
                     Object.keys(this.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
                         Vue.set(
-                            this.frameObjects[frameId].contentDict[Number.parseInt(slotIndex)],
+                            this.frameObjects[frameId].contentDict[parseInt(slotIndex)],
                             "error",
                             ""
                         );
+                        Vue.delete(this.frameObjects[frameId].contentDict[parseInt(slotIndex)], "errorTitle");
 
                         const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
                         if(this.preCompileErrors.includes(uiid)) {

@@ -135,6 +135,9 @@ export default class Parser {
                     this.disabledBlockIndent = indentation;
                 }
                 disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG +"\n";
+                //and also increment the line number that we use for mapping frames and code lines (even if the disabled frames don't map exactly, 
+                //it doesn't matter since we will not have errors to show in those anyway)
+                this.line += 1;
             }
 
             lineCode = frame.frameType.allowChildren ?
@@ -190,8 +193,6 @@ export default class Parser {
             code = this.parse();
         }
 
-        //const parsedCode = TPyParser.parse(code);
-
         return TPyParser.findAllErrors(code);
     }
 
@@ -233,7 +234,6 @@ export default class Parser {
     }
 
     private isErrorIfInSlotBounds(errorLine: number, errorOffset: number) {
-
         for (let index = 0; index < this.framePositionMap[errorLine].slotLengths.length; index++) {
             const slot = this.framePositionMap[errorLine];
             // if the error's offset is within the bounds of any slot, return true
@@ -407,6 +407,10 @@ export default class Parser {
     private isFunctionDef(line: string, spaces: string[]): boolean {
         // it's not a function definition  if
         return line.startsWith(spaces+"def ")  // it starts with a def
+    }
+
+    public getFramePositionMap(): LineAndSlotPositions {
+        return this.framePositionMap;
     }
 }
 

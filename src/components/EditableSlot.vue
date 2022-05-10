@@ -43,7 +43,7 @@
         <b-popover
             v-if="erroneous()"
             :target="UIID"
-            :title="this.$i18n.t('errorMessage.errorTitle')"
+            :title="errorHeader"
             triggers="hover focus"
             :content="errorMessage"
             custom-class="error-popover"
@@ -76,13 +76,12 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 import { mapStores } from "pinia";
-
 export default Vue.extend({
     name: "EditableSlot",
 
@@ -243,6 +242,13 @@ export default Vue.extend({
 
         errorMessage(): string{
             return this.appStore.getErrorForSlot(
+                this.frameId,
+                this.slotIndex
+            );
+        },
+
+        errorHeader(): string{
+            return this.appStore.getErrorHeaderForSlot(
                 this.frameId,
                 this.slotIndex
             );

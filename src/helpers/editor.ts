@@ -4,6 +4,20 @@ import { AddFrameCommandDef, Definitions, FramesDefinitions } from "@/types/type
 
 export const undoMaxSteps = 50;
 
+export enum CustomEventTypes {
+    editorAddFrameCommandsUpdated = "frameCommandsUpdated",
+    /* IFTRUE_isPurePython */
+    pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
+    /* FITRUE_isPurePython */
+}
+
+export function getFrameContainerUIID(frameId: number): string {
+    return "FrameContainer_" + frameId;
+}
+
+export function getFrameUIID(frameId: number): string{
+    return "frame_id_" + frameId;
+}
 export function getEditableSlotUIID(frameId: number, slotIndex: number): string  {
     //if a change is done in this method, also update isElementEditableSlotInput()
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
@@ -19,10 +33,6 @@ export function isElementEditableSlotInput(element: EventTarget | null): boolean
 
 export function getFrameContextMenuUIID(frameUIID: string): string{
     return frameUIID + "frameContextMenu"
-}
-
-export function getFrameContainerUIID(frameIndex: number): string {
-    return "FrameContainer_" + frameIndex;
 }
 
 export function getCodeEditorUIID(): string {
@@ -235,7 +245,7 @@ export function generateAllFrameCommandsDefs():void {
     // We need to "tell" the Vue component that hosts the frame commands (Commands.vue) to refresh as there is no reactivity
     // between the frame definitions here and the component's computed property.
     // We can do it via a custom event Commands.vue will be listening to.
-    document.dispatchEvent(new Event("frame-commands-updated"));
+    document.dispatchEvent(new Event(CustomEventTypes.editorAddFrameCommandsUpdated));
 }
 
 //Commands for Frame insertion, one command can match more than 1 frame ONLY when there is a TOTAL distinct context between the two

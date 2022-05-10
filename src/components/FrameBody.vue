@@ -226,7 +226,7 @@ export default Vue.extend({
 }
 
 .error {
-    border: 1px solid #d66 !important;
+    border: 2px solid #d66 !important;
 }
 
 </style>
