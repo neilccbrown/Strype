@@ -397,8 +397,8 @@ export default Vue.extend({
         },
 
         onLRKeyDown(event: KeyboardEvent) {
-            //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special (browser handles it)
-            if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
+            //if a key modifier (ctrl, shift, alt or meta) is pressed, we don't do anything special (browser handles it)
+            if(!(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey)){
                 //get the input field
                 const input: HTMLInputElement = this.$el.firstElementChild as HTMLInputElement;
                 if(input !== undefined){
