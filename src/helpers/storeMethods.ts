@@ -504,6 +504,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
     // We start by getting from the DOM all the available caret and editable slot positions
     const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
     // We create a list that hold objects of {id,caretPosition,slotNumber) for each available navigation positions
+    // and discard the locations that correspond to the editable slots of disable frames
     return Object.values(allCaretDOMpositions).map((e)=> {
         return {
             id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
@@ -512,7 +513,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
             caretPosition: (e.id.startsWith("caret"))? e.id.replace("caret_","").replace(/_*-*\d/g,"") : false,
             slotNumber: (e.id.startsWith("input"))? parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")) : false,
         }
-    })
+    }).filter((navigationPosition) => !(navigationPosition.caretPosition === false && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[];
 };
 
 export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {
