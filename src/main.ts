@@ -15,7 +15,7 @@ Vue.config.productionTip = false;
 // Version of the application to check code's import compatibility in the editor
 // note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
 // it MUST be kept as an integer matching value
-export const AppVersion = "2";
+export const AppVersion = "3";
 let appPlatform = StrypePlatform.standard;
 /* IFTRUE_isMicrobit */
 appPlatform = StrypePlatform.microbit;
