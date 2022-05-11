@@ -304,10 +304,10 @@ export default Vue.extend({
         },
 
         generateStyledCodeParts(code: string){
-            //In order to show the code literals for string, number and boolean tokens, we use an overlay
-            //of <span> elements when the editable slot is not being edited.
-            //Therefore, we parse the code to retrieve the literals and apply styling for each "bits" of code
-            //to generate the <span> elements.
+            // In order to show the code literals for string, number and boolean tokens, we use an overlay
+            // of <span> elements when the editable slot is not being edited.
+            // Therefore, we parse the code to retrieve the literals and apply styling for each "bits" of code
+            // to generate the <span> elements.
             this.styledCodeParts.splice(0, this.styledCodeParts.length);
             if(code.trim().length === 0){
                 //if there is nothing in the slot, we use the style "empty" that looks like an input placeholder
@@ -323,17 +323,24 @@ export default Vue.extend({
                     //so that we end up with the *full* code.
                     if(codeSplit.start > codePos){                        
                         //check if there is a "normal" code section before that literal
-                        this.styledCodeParts.push({code: code.substring(codePos, codeSplit.start), style: CodeStyle.none});
-                    } 
+                        //and check here for replacing the varassign symbol if detected
+                        const noEqualVarAssignCode = this.replaceVarAssignEqual(code.substring(codePos, codeSplit.start));
+                        this.styledCodeParts.push({code: noEqualVarAssignCode, style: CodeStyle.none});
+                    } 1
                     //add the literal
                     this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
                     codePos=codeSplit.end;
                 })
                 //check for a potential trailing "normal" part
                 if(codePos < code.length){
-                    this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
+                    const noEqualVarAssignCode = this.replaceVarAssignEqual(code.substring(codePos));
+                    this.styledCodeParts.push({code: noEqualVarAssignCode, style: CodeStyle.none});
                 }
             }
+        },
+
+        replaceVarAssignEqual(code: string): string{
+            return code.replaceAll(/(.*[^+\-*/%^!=<>&|\s])(\s*)(=)([^=].*)/g,"$1 ⇐ $4")
         },
 
         erroneous(): boolean {
