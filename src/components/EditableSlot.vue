@@ -76,12 +76,14 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle, EmptyDefinition} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 import { mapStores } from "pinia";
+import { checkAndtransformFuncCallFrameToVarAssignFrame } from "@/helpers/storeMethods";
+
 export default Vue.extend({
     name: "EditableSlot",
 
@@ -304,32 +306,32 @@ export default Vue.extend({
         },
 
         generateStyledCodeParts(code: string){
-            //In order to show the code literals for string, number and boolean tokens, we use an overlay
-            //of <span> elements when the editable slot is not being edited.
-            //Therefore, we parse the code to retrieve the literals and apply styling for each "bits" of code
-            //to generate the <span> elements.
+            // In order to show the code literals for string, number and boolean tokens, we use an overlay
+            // of <span> elements when the editable slot is not being edited.
+            // Therefore, we parse the code to retrieve the literals and apply styling for each "bits" of code
+            // to generate the <span> elements.
             this.styledCodeParts.splice(0, this.styledCodeParts.length);
             if(code.trim().length === 0){
-                //if there is nothing in the slot, we use the style "empty" that looks like an input placeholder
+                // If there is nothing in the slot, we use the style "empty" that looks like an input placeholder
                 this.styledCodeParts[0] = {code: "", style: CodeStyle.empty}
             }
             else{
-                //get the "bits" of code that are literals
+                // Get the "bits" of code that are literals
                 const styledCodeSplits = getStyledCodeLiteralsSplits(code);
                 let codePos = 0;
                 styledCodeSplits.forEach((codeSplit) => {
-                    //While iterating through the code splits that are *only* for the literals,
-                    //we reconstruct the missing bits of code (parts which are not literals) 
-                    //so that we end up with the *full* code.
-                    if(codeSplit.start > codePos){                        
-                        //check if there is a "normal" code section before that literal
+                    // While iterating through the code splits that are *only* for the literals,
+                    // we reconstruct the missing bits of code (parts which are not literals) 
+                    // so that we end up with the *full* code.
+                    if(codeSplit.start > codePos){  
+                        // Check if there is a "normal" code section before that literal
                         this.styledCodeParts.push({code: code.substring(codePos, codeSplit.start), style: CodeStyle.none});
-                    } 
-                    //add the literal
+                    }
+                    // Add the literal
                     this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
                     codePos=codeSplit.end;
                 })
-                //check for a potential trailing "normal" part
+                // Check for a potential trailing "normal" part
                 if(codePos < code.length){
                     this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
                 }
@@ -386,12 +388,20 @@ export default Vue.extend({
                 );
                 //reset the flag for first code change
                 this.isFirstChange = true;
+
+                // In the case of a function call frame, we check if a transformation to a varassign frame 
+                // is needed (the code splits of editable slots will be done automatically when re-rendering the frame/slots)
+                // for a simple pre-flight test, we just check if "=" appears in the slot
+                if(this.frameType === EmptyDefinition.type && this.code.includes("=")){
+                    // replace the frame at the next tick
+                    this.$nextTick(() => checkAndtransformFuncCallFrameToVarAssignFrame(this.frameId, this.code.trim()));
+                }
             }
         },
 
         onLRKeyDown(event: KeyboardEvent) {
-            //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special (browser handles it)
-            if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
+            //if a key modifier (ctrl, shift, alt or meta) is pressed, we don't do anything special (browser handles it)
+            if(!(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey)){
                 //get the input field
                 const input: HTMLInputElement = this.$el.firstElementChild as HTMLInputElement;
                 if(input !== undefined){

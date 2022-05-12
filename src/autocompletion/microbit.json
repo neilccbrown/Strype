@@ -40,7 +40,7 @@
             {"name":"ledIsOn","codePortion":"display.is_on()"},
             {"name":"ledReadLight","codePortion":"display.read_light_level()"}]},
         {"name":"Img","codePortion":"","children": [
-            {"name":"ImgBuiltin","codePortion":"Img.", "children":[
+            {"name":"ImgBuiltin","codePortion":"Image.", "children":[
                 {"name":"Img01","codePortion":"HEART"},
                 {"name":"Img02","codePortion":"HEART_SMALL"},
                 {"name":"Img03","codePortion":"HAPPY"},

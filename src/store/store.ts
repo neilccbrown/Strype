@@ -1719,8 +1719,8 @@ export const useStore = defineStore("app", {
             stateCopy["diffToNextState"] = [];
             stateCopy["stateBeforeChanges"] = {};
             stateCopy["copiedFrames"] = {};
-            delete stateCopy["DAPWrapper"];
-            delete stateCopy["previousDAPWrapper"];
+            stateCopy["DAPWrapper"] = {};
+            stateCopy["previousDAPWrapper"] = {};
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
             
             //simplify the storage of frame types by their type names only
@@ -1740,7 +1740,7 @@ export const useStore = defineStore("app", {
             }
             else{
                 return LZString.compress(JSON.stringify(stateCopy))
-            }      
+            }  
         },
        
         

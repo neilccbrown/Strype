@@ -1,4 +1,4 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, Definitions, FrameContainersDefinitions } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, Definitions, FrameContainersDefinitions, VarAssignDefinition, FrameSlotContent } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store"
 import i18n from "@/i18n"
@@ -504,6 +504,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
     // We start by getting from the DOM all the available caret and editable slot positions
     const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
     // We create a list that hold objects of {id,caretPosition,slotNumber) for each available navigation positions
+    // and discard the locations that correspond to the editable slots of disable frames
     return Object.values(allCaretDOMpositions).map((e)=> {
         return {
             id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
@@ -512,7 +513,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
             caretPosition: (e.id.startsWith("caret"))? e.id.replace("caret_","").replace(/_*-*\d/g,"") : false,
             slotNumber: (e.id.startsWith("input"))? parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")) : false,
         }
-    })
+    }).filter((navigationPosition) => !(navigationPosition.caretPosition === false && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[];
 };
 
 export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {
@@ -585,3 +586,28 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     const portionOutput = parser.parse(startFrameId, nextCaretId);
     parser.getErrorsFormatted(portionOutput);
 };
+
+export function checkAndtransformFuncCallFrameToVarAssignFrame(frameId: number, code: string): void{
+    // We check if the code (from a function call frame) is actually a variable assignment,
+    // and if needed, transform the function call frame to a var assign frame by adapting 
+    // the existing frame object -- we do nothing special if there is no variable assignment detected.
+    const codeVarAssignRegexMatch = code.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=([^=].*)$/);
+    if(codeVarAssignRegexMatch != null){
+        // We should always end up here since we have already checked the code against the regex
+        Vue.set(useStore().frameObjects[frameId],"frameType", VarAssignDefinition);
+        const newContent: { [index: number]: FrameSlotContent} = {
+            0: {
+                code: codeVarAssignRegexMatch[1],
+                error: "",
+                focused: false,
+                shownLabel: true,
+            },
+            1: {
+                code: codeVarAssignRegexMatch[3],
+                error: "",
+                focused: false,
+                shownLabel: true,
+            } }
+        Vue.set(useStore().frameObjects[frameId], "contentDict", newContent);
+    }
+}
