@@ -82,7 +82,7 @@ import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } f
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 import { mapStores } from "pinia";
-import { transformFuncCallFrameToVarAssignFrame } from "@/helpers/storeMethods";
+import { checkAndtransformFuncCallFrameToVarAssignFrame } from "@/helpers/storeMethods";
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -389,12 +389,12 @@ export default Vue.extend({
                 //reset the flag for first code change
                 this.isFirstChange = true;
 
-                // If we detect a variable assignment in a function call:
-                // in that case, we transform the function call frame to a varassign frame, the code bits will 
-                // be done later when the frame is rerendered.
-                if(this.frameType === EmptyDefinition.type && (this.code.trim().search(/^[^+\-*/%^!=<>&|\s]*\s*=[^=].*$/) > -1)){
+                // In the case of a function call frame, we check if a transformation to a varassign frame 
+                // is needed (the code splits of editable slots will be done automatically when re-rendering the frame/slots)
+                // for a simple pre-flight test, we just check if "=" appears in the slot
+                if(this.frameType === EmptyDefinition.type && this.code.includes("=")){
                     // replace the frame at the next tick
-                    this.$nextTick(() => transformFuncCallFrameToVarAssignFrame(this.frameId, this.code.trim()));
+                    this.$nextTick(() => checkAndtransformFuncCallFrameToVarAssignFrame(this.frameId, this.code.trim()));
                 }
             }
         },

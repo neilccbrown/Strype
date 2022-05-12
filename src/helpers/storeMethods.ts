@@ -587,9 +587,11 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     parser.getErrorsFormatted(portionOutput);
 };
 
-export function transformFuncCallFrameToVarAssignFrame(frameId: number, code: string): void{
-    // We transform the function call frame to a var assign frame by adapting the existing frame object representing a function call 
-    const codeVarAssignRegexMatch = code.match(/([^+\-*/%^!=<>&|\s]*)(\s*)(=)([^=].*)/);
+export function checkAndtransformFuncCallFrameToVarAssignFrame(frameId: number, code: string): void{
+    // We check if the code (from a function call frame) is actually a variable assignment,
+    // and if needed, transform the function call frame to a var assign frame by adapting 
+    // the existing frame object -- we do nothing special if there is no variable assignment detected.
+    const codeVarAssignRegexMatch = code.match(/^([^+\-*/%^!=<>&|\s]*)(\s*)=([^=].*)$/);
     if(codeVarAssignRegexMatch != null){
         // We should always end up here since we have already checked the code against the regex
         Vue.set(useStore().frameObjects[frameId],"frameType", VarAssignDefinition);
@@ -601,7 +603,7 @@ export function transformFuncCallFrameToVarAssignFrame(frameId: number, code: st
                 shownLabel: true,
             },
             1: {
-                code: codeVarAssignRegexMatch[4],
+                code: codeVarAssignRegexMatch[3],
                 error: "",
                 focused: false,
                 shownLabel: true,
