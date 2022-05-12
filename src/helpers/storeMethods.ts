@@ -591,7 +591,7 @@ export function checkAndtransformFuncCallFrameToVarAssignFrame(frameId: number, 
     // We check if the code (from a function call frame) is actually a variable assignment,
     // and if needed, transform the function call frame to a var assign frame by adapting 
     // the existing frame object -- we do nothing special if there is no variable assignment detected.
-    const codeVarAssignRegexMatch = code.match(/^([^+\-*/%^!=<>&|\s]*)(\s*)=([^=].*)$/);
+    const codeVarAssignRegexMatch = code.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=([^=].*)$/);
     if(codeVarAssignRegexMatch != null){
         // We should always end up here since we have already checked the code against the regex
         Vue.set(useStore().frameObjects[frameId],"frameType", VarAssignDefinition);
