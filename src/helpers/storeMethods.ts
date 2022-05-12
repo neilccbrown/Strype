@@ -1,4 +1,4 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, Definitions, FrameContainersDefinitions } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, Definitions, FrameContainersDefinitions, VarAssignDefinition, FrameSlotContent } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store"
 import i18n from "@/i18n"
@@ -586,3 +586,26 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     const portionOutput = parser.parse(startFrameId, nextCaretId);
     parser.getErrorsFormatted(portionOutput);
 };
+
+export function transformFuncCallFrameToVarAssignFrame(frameId: number, code: string): void{
+    // We transform the function call frame to a var assign frame by adapting the existing frame object representing a function call 
+    const codeVarAssignRegexMatch = code.match(/([^+\-*/%^!=<>&|\s]*)(\s*)(=)([^=].*)/);
+    if(codeVarAssignRegexMatch != null){
+        // We should always end up here since we have already checked the code against the regex
+        Vue.set(useStore().frameObjects[frameId],"frameType", VarAssignDefinition);
+        const newContent: { [index: number]: FrameSlotContent} = {
+            0: {
+                code: codeVarAssignRegexMatch[1],
+                error: "",
+                focused: false,
+                shownLabel: true,
+            },
+            1: {
+                code: codeVarAssignRegexMatch[4],
+                error: "",
+                focused: false,
+                shownLabel: true,
+            } }
+        Vue.set(useStore().frameObjects[frameId], "contentDict", newContent);
+    }
+}

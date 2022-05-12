@@ -76,12 +76,14 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle} from "@/types/types";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle, EmptyDefinition} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 import { mapStores } from "pinia";
+import { transformFuncCallFrameToVarAssignFrame } from "@/helpers/storeMethods";
+
 export default Vue.extend({
     name: "EditableSlot",
 
@@ -310,37 +312,30 @@ export default Vue.extend({
             // to generate the <span> elements.
             this.styledCodeParts.splice(0, this.styledCodeParts.length);
             if(code.trim().length === 0){
-                //if there is nothing in the slot, we use the style "empty" that looks like an input placeholder
+                // If there is nothing in the slot, we use the style "empty" that looks like an input placeholder
                 this.styledCodeParts[0] = {code: "", style: CodeStyle.empty}
             }
             else{
-                //get the "bits" of code that are literals
+                // Get the "bits" of code that are literals
                 const styledCodeSplits = getStyledCodeLiteralsSplits(code);
                 let codePos = 0;
                 styledCodeSplits.forEach((codeSplit) => {
-                    //While iterating through the code splits that are *only* for the literals,
-                    //we reconstruct the missing bits of code (parts which are not literals) 
-                    //so that we end up with the *full* code.
-                    if(codeSplit.start > codePos){                        
-                        //check if there is a "normal" code section before that literal
-                        //and check here for replacing the varassign symbol if detected
-                        const noEqualVarAssignCode = this.replaceVarAssignEqual(code.substring(codePos, codeSplit.start));
-                        this.styledCodeParts.push({code: noEqualVarAssignCode, style: CodeStyle.none});
-                    } 1
-                    //add the literal
+                    // While iterating through the code splits that are *only* for the literals,
+                    // we reconstruct the missing bits of code (parts which are not literals) 
+                    // so that we end up with the *full* code.
+                    if(codeSplit.start > codePos){  
+                        // Check if there is a "normal" code section before that literal
+                        this.styledCodeParts.push({code: code.substring(codePos, codeSplit.start), style: CodeStyle.none});
+                    }
+                    // Add the literal
                     this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
                     codePos=codeSplit.end;
                 })
-                //check for a potential trailing "normal" part
+                // Check for a potential trailing "normal" part
                 if(codePos < code.length){
-                    const noEqualVarAssignCode = this.replaceVarAssignEqual(code.substring(codePos));
-                    this.styledCodeParts.push({code: noEqualVarAssignCode, style: CodeStyle.none});
+                    this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
                 }
             }
-        },
-
-        replaceVarAssignEqual(code: string): string{
-            return code.replaceAll(/(.*[^+\-*/%^!=<>&|\s])(\s*)(=)([^=].*)/g,"$1 ⇐ $4")
         },
 
         erroneous(): boolean {
@@ -393,6 +388,14 @@ export default Vue.extend({
                 );
                 //reset the flag for first code change
                 this.isFirstChange = true;
+
+                // If we detect a variable assignment in a function call:
+                // in that case, we transform the function call frame to a varassign frame, the code bits will 
+                // be done later when the frame is rerendered.
+                if(this.frameType === EmptyDefinition.type && (this.code.trim().search(/^[^+\-*/%^!=<>&|\s]*\s*=[^=].*$/) > -1)){
+                    // replace the frame at the next tick
+                    this.$nextTick(() => transformFuncCallFrameToVarAssignFrame(this.frameId, this.code.trim()));
+                }
             }
         },
 
