@@ -445,17 +445,6 @@ export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame
     
 };
 
-
-export const generateFrameMap = function(listOfFrames: EditorFrameObjects, frameMap: number[]): void {
-    frameMap.splice(
-        0,
-        frameMap.length,
-        ...[-1,...getAllChildrenAndJointFramesIds(listOfFrames,-1),-2,...getAllChildrenAndJointFramesIds(listOfFrames,-2),-3,...getAllChildrenAndJointFramesIds(listOfFrames,-3)]
-    );
-};
-
-
-
 export const checkIfLastJointChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
     const parent: FrameObject = listOfFrames[listOfFrames[frameId].jointParentId];
     return [...parent.jointFrameIds].pop() === frameId;

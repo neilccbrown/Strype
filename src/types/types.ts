@@ -273,8 +273,8 @@ export const IfDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.if,
     labels: [
-        { label: "if (", slot: true, defaultText: "condition" , optionalSlot: false},
-        { label: ") :", slot: false, defaultText: ""},
+        { label: "if ", slot: true, defaultText: "condition" , optionalSlot: false},
+        { label: " :", slot: false, defaultText: ""},
     ],
     allowJointChildren: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
@@ -289,8 +289,8 @@ export const ElifDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.elif,
     labels: [
-        { label: "elif (", slot: true, defaultText: "condition", optionalSlot: false},
-        { label: ") :", slot: false, defaultText: ""},
+        { label: "elif ", slot: true, defaultText: "condition", optionalSlot: false},
+        { label: " :", slot: false, defaultText: ""},
     ],
     draggableGroup: DraggableGroupTypes.ifCompound,
     isJointFrame: true,
@@ -323,8 +323,8 @@ export const WhileDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.while,
     labels: [
-        { label: "while (", slot: true, defaultText: "condition", optionalSlot: false},
-        { label: ") :", slot: false, defaultText: ""},
+        { label: "while ", slot: true, defaultText: "condition", optionalSlot: false},
+        { label: " :", slot: false, defaultText: ""},
     ],
     colour: "#E4D5D5",
 };
