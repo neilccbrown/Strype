@@ -150,8 +150,8 @@ export default Vue.extend({
         },
 
         frameMarginStyle(): Record<string, Record<string, string>> {
-            return {"header": (this.isJointFrame)? {"margin-left": "13px"} : {"margin-left": "14px"},
-                    "body": (this.isJointFrame)? {"margin-left": "11px"} : {"margin-left": "12px"}}
+            return {"header": (this.isJointFrame)? {"margin-left": "5px"} : {"margin-left": "6px"},
+                    "body": {...(this.isJointFrame)? {"margin-left": "28px"} : {"margin-left": "30px"}, "margin-right": "28px"}}
         },
 
         frameSelectedCssClass(): string {

@@ -8,7 +8,7 @@
             <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
             <div 
                 style="font-weight: 600;"
-                :class="{'next-to-eachother rightMargin': true, hidden: isLabelHidden(index), leftMargin: index > 0, 'frameColouredLabel': !isCommentFrame}"
+                :class="{'next-to-eachother': true, hidden: isLabelHidden(index), leftMargin: index > 0, rightMargin: (item.label.length > 0),'frameColouredLabel': !isCommentFrame}"
                 v-html="item.label"
             >
             </div>
