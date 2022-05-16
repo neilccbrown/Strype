@@ -658,14 +658,6 @@ export default Vue.extend({
     outline: none;
 }
 
-.editableslot-input:hover {
-    border: 1px solid #615f5f;
-}
-
-.editableslot-input:focus {
-    border: 1px solid #615f5f;
-}
-
 .editableslot-input::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
   font-style: italic;
 }
