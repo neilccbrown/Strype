@@ -11,7 +11,7 @@
         >
             <div 
                 :style="frameStyle" 
-                :class="{'block frameDiv': true, statementOrJoint: isStatementOrJointFrame}"
+                :class="{'frameDiv': true, blockFrameDiv: isBlockFrame, statementFrameDiv: !isBlockFrame}"
                 :id="uiid"
                 @click="toggleCaret($event)"
                 @contextmenu="handleClick($event,'frame-context-menu')"
@@ -180,8 +180,8 @@ export default Vue.extend({
             return this.appStore.getFrameSelectionPosition(this.frameId);
         },
 
-        isStatementOrJointFrame(): boolean {
-            return this.frameType.isJointFrame || !this.frameType.allowChildren;
+        isBlockFrame(): boolean {
+            return this.frameType.allowChildren;
         },
 
         // Joint frames can also be "selected" if their parent is selected
@@ -426,24 +426,27 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.block {    
+.frameDiv {    
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
     border: 1px solid transparent;
 }
 
-.statementOrJoint {
-    border: 1px solid transparent;
-}
-
-.block:hover{
-    border-color: #B4B4B4;
+.frameDiv:hover{
     cursor: grab;
 }
 
-.block:active{
+.frameDiv:active{
     cursor: grabbing;
+}
+
+.blockFrameDiv {
+    border-color: #8e8e8e;
+}
+
+.statementFrameDiv:hover {
+    border-color: #d6d6d6;
 }
 
 .selected {
