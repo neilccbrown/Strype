@@ -11,7 +11,7 @@
         >
             <div 
                 :style="frameStyle" 
-                :class="{'frameDiv': true, blockFrameDiv: isBlockFrame, statementFrameDiv: !isBlockFrame}"
+                :class="{'frameDiv': true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
                 :id="uiid"
                 @click="toggleCaret($event)"
                 @contextmenu="handleClick($event,'frame-context-menu')"
