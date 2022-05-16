@@ -31,7 +31,7 @@
             class="editableslot-input navigationPosition"
             :style="inputTextStyle"
         />
-        <div class="editableSlotSpans" :style="spanTextStyle">
+        <div :class="{editableSlotSpans: true, error: erroneous()}" :style="spanTextStyle">
             <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
             <span 
                 :key="UIID+'_'+index" 
@@ -723,7 +723,7 @@ export default Vue.extend({
 
 .empty-token {
     font-style: italic;
-    color: grey;
+    color: transparent !important;
 }
 
 .empty-token:empty::before {
