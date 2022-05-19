@@ -156,19 +156,23 @@ export default Vue.extend({
 
         inputTextStyle(): Record<string, string> {
             return {
-                "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important", //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
+                //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
+                "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important",
                 "width" : this.computeFitWidthValue(),
                 "color" : (this.frameType === CommentDefinition.type)
                     ? "#97971E"
-                    : (this.focused) ? "#000" : "transparent", //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
+                    //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
+                    : (this.focused) ? "#000" : "transparent", 
             };
         }, 
 
         spanTextStyle(): Record<string, string> {
-            //when the input has focus, we hide the spans, otherwise we show the right background colours
+            //when the input has focus, we hide the spans, otherwise, we set a white background when the content is empty
             return (this.focused) 
                 ? {"visibility": "hidden"} 
-                : {"background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important"};
+                : (this.code.trim().length == 0)
+                    ? {"background-color": "#FFFFFF !important"}
+                    : {};
         },
 
         code: {
@@ -644,10 +648,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.error {
-    border: 1px solid #FF0000 !important;
-}
-
 .editableslot-input {
     border-radius: 5px;
     border: 1px solid transparent;
