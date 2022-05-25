@@ -1,6 +1,8 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, Definitions, FramesDefinitions } from "@/types/types";
+import { AddFrameCommandDef, CaretPosition, Definitions, FramesDefinitions } from "@/types/types";
+import Vue from "vue";
+import { getAboveFrameCaretPosition } from "./storeMethods";
 
 export const undoMaxSteps = 50;
 
@@ -18,6 +20,15 @@ export function getFrameContainerUIID(frameId: number): string {
 export function getFrameUIID(frameId: number): string{
     return "frame_id_" + frameId;
 }
+
+function retrieveFrameIDfromUIID(uiid: string): number {
+    return parseInt(uiid.substring("frame_id_".length));
+}
+
+export function isIdAFrameId(id: string): boolean {
+    return id.match(/^frame_id_\d+$/) !== null;
+}
+
 export function getEditableSlotUIID(frameId: number, slotIndex: number): string  {
     //if a change is done in this method, also update isElementEditableSlotInput()
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
@@ -279,4 +290,50 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
 
     // If we are here, it means the call to this method has been misused...
     return null;
+}
+
+// Used for easing handling events for drag & drop of frames
+let currentDraggedSingleFrameId = 0;
+export function getDraggedSingleFrameId(): number {
+    return currentDraggedSingleFrameId;
+}
+
+export function notifyDragStarted(frameId?: number):void {
+    // If the argument "frameId" is set, the drag and drop is done on a single frame
+    // so we set currentDraggedSingleFrameId
+    if(frameId){
+        currentDraggedSingleFrameId = frameId;
+    }
+
+    // Update the store about dragging started
+    useStore().isDraggingFrame = true;
+} 
+export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
+    // Regardless we moved 1 or several frames at once, we reset currentDraggedSingleFrameId
+    currentDraggedSingleFrameId = 0;
+
+    // Retrieve the id of the frame dragged or of the top frame from the frames dragged.
+    // We find it by retrieving the first frame div id of dragged HTML object given as argument of this function
+    const subHTMLElementIdsMatches = draggedHTMLElement.innerHTML.matchAll(/ id="([^"]*)"/g);
+    let topFrameId = 0, foundFrameID = false;
+    if(subHTMLElementIdsMatches != null){    
+        [...subHTMLElementIdsMatches].forEach((matchBit) => {
+            if(!foundFrameID && isIdAFrameId(matchBit[1])){
+                topFrameId = retrieveFrameIDfromUIID(matchBit[1]);
+                foundFrameID = true;
+            }
+        })
+    }
+    
+    // Update the store about dragging ended 
+    useStore().isDraggingFrame = false;
+
+    // Position the blue caret where *visually* the fake caret was positionned.
+    // NOTE: at this stage, the UI hasn't yet updated the frame order -- so we do this caret selection at the next Vue tick
+    Vue.nextTick(() => {
+        const newCaretPosition = getAboveFrameCaretPosition(topFrameId);
+        
+        // Set the caret properly in the store which will update the editor UI
+        useStore().toggleCaret({id:newCaretPosition.id, caretPosition: newCaretPosition.caretPosition as CaretPosition});
+    });
 }

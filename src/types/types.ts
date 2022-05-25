@@ -57,7 +57,6 @@ export enum DraggableGroupTypes {
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
-    both = "both",
     none = "none",
 }
 

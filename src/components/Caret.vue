@@ -1,7 +1,5 @@
 <template>
-    <div 
-        :class="{'caret navigationPosition':true, blurred: isBlurred, invisible: isInvisible}">
-    </div>
+    <div :class="{invisible: isInvisible}"></div>
 </template>
 
 <script lang="ts">
@@ -19,27 +17,28 @@ export default Vue.extend({
     name: "Caret",
 
     props: {
-        isBlurred: Boolean,
         isInvisible: Boolean,
     },
-
 });
 </script>
 
 <style lang="scss">
 .caret {
-    margin-top: 3px;
     width: 120px;
     background-color: #3467FE;
     border-radius: 6px;
     height: 6px;
 }
 
-.invisible {
-    background-color: transparent !important;
+.caret-drop {
+    background-color: #BB33FF !important;
+    width: 120px;
+    border-radius: 6px;
+    height: 6px;
 }
 
-.blurred {
-    background-color: #3467fe8a !important;
+.invisible {
+    background-color: transparent !important;
+    height: 0px;
 }
 </style>

@@ -1,5 +1,10 @@
 <template>
     <div>
+        <!-- this "fake" caret is only used to show something valid while doing drag and drop -->
+        <Caret
+            :class="{'caret-drop': isDragTop}"
+            v-blur="false"
+        />
         <div 
             v-if="multiDragPosition === 'middle' || multiDragPosition === 'last'"
             class="draggedWithOtherFramesAbove"
@@ -9,10 +14,12 @@
             v-show="isVisible"
             :class="frameSelectedCssClass"
         >
+            <!-- keep both mousedown & click events: we need mousedown to manage the caret rendering during drag & drop -->
             <div 
                 :style="frameStyle" 
                 :class="{'frameDiv': true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
                 :id="uiid"
+                @mousedown.left="hideCaretAtClick"
                 @click="toggleCaret($event)"
                 @contextmenu="handleClick($event,'frame-context-menu')"
             >
@@ -44,7 +51,7 @@
                     :style="frameMarginStyle['body']"
                 />
                 <JointFrames 
-                    v-if="allowsJointChildren && hasJointFrameObjects"
+                    v-if="allowsJointChildren"
                     :jointParentId="frameId"
                     :isDisabled="isDisabled"
                     :isParentSelected="isPartOfSelection"
@@ -76,11 +83,12 @@
 import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
+import Caret from "@/components/Caret.vue"
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
-import { getFrameContextMenuUIID, getFrameUIID } from "@/helpers/editor";
+import { getAboveFrameCaretPosition, getNextSibling, getParent, getParentOrJointParent, isLastInParent } from "@/helpers/storeMethods";
+import { getDraggedSingleFrameId, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -93,6 +101,7 @@ export default Vue.extend({
         FrameHeader,
         VueSimpleContextMenu,
         CaretContainer,
+        Caret,
     },
 
     beforeCreate() {
@@ -128,13 +137,6 @@ export default Vue.extend({
 
     computed: {
         ...mapStores(useStore),
-        
-        hasJointFrameObjects(): boolean {
-            return this.appStore.getJointFramesForFrameId(
-                this.frameId,
-                "all"
-            ).length >0;
-        },
 
         allowsJointChildren(): boolean {
             return this.appStore.getAllowedJointChildren(this.frameId);
@@ -195,6 +197,15 @@ export default Vue.extend({
 
         multiDragPosition(): string {
             return this.appStore.getMultiDragPosition(this.frameId);
+        },
+
+        isDragTop(): boolean {
+            // We show a "fake" positional caret when dragging frames. 
+            // Either for the very first frame of a selection, or the one being dragged if there is only one.
+            return this.appStore.isDraggingFrame && 
+                (((this.appStore.selectedFrames.length > 0) 
+                    ? this.appStore.selectedFrames[0] 
+                    : getDraggedSingleFrameId()) === this.frameId);
         },
     },
 
@@ -312,29 +323,94 @@ export default Vue.extend({
             }
         },
 
-        toggleCaret(event: MouseEvent): void {
-            const frame: HTMLDivElement = event.srcElement as HTMLDivElement;
+        hideCaretAtClick(): void {
+            // Force the caret to become invisible at click. That is required for being able to show a drag and drop "image" that 
+            // doesn't contain the blue caret if we drag the frame which currently holds the caret. The caret visibility will be restored
+            // either when the drop of a drag and drop happens or when click is notified (cf. toggleCaret()) if the drag and drop had not be performed.
+            // Note: we do it directly in JS as reactive change via store is too late for the rendering.
+            for(const navigationCaret of document.getElementsByClassName("caret")){
+                if(!navigationCaret.classList.contains("invisible")){
+                    navigationCaret.classList.add("invisible");
+                }
+            }
 
-            // This checks the propagated click events, and prevents the parent event to handle the event as well. 
+            // But to keep things clean in the store, we still need to do the necessary amendments
+            Vue.set(
+                this.appStore.frameObjects[this.appStore.currentFrame.id],
+                "caretVisibility",
+                CaretPosition.none
+            );
+        },
+
+        toggleCaret(event: MouseEvent): void {
+            const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
+
+            // This checks the propagated click events, and prevents the parent frame to handle the event as well. 
             // Stop and Prevent do not work in this case, as the event needs to be propagated 
             // (for the context menu to close) but it does not need to trigger always a caret change.
-            if(frame.id !== this.uiid ){
+            // Note: previous version checked the id, but that's not reliable as the div triggering the click may not have an id (or as formatted for the frame div)
+            // therefore, another approach is to check that the clicked object is either the frame object (as done before) or find what it's nearest parent and get its ID.
+            let frameDivParent = clickedDiv;
+            while(!isIdAFrameId(frameDivParent.id)){
+                frameDivParent = frameDivParent.parentElement as HTMLDivElement
+            }            
+            if(frameDivParent.id !== this.uiid ){
                 return;
             }
 
             // get the rectangle of the div with its coordinates
-            const rect = frame.getBoundingClientRect();
+            const rect = frameDivParent.getBoundingClientRect();
+            const clickedFrame = this.appStore.frameObjects[this.frameId];
             
-            let position: CaretPosition = CaretPosition.none;
-            // if clicked above the middle, or if I click on the label show the body caret
-            if((frame.className === "frame-header" || event.y <= rect.top + rect.height/2) && this.allowChildren) {
-                position = CaretPosition.body;
+            let positionCaret: CaretPosition = CaretPosition.none;
+            let positionFrameId = this.frameId;
+            // The following logic applies to select a caret position based on the frame and the location of the click:
+            // if the frame is a block frame (e.g. an if frame), a click in:
+            //  - the first 15px or header will position the caret "above" the frame (which can be the last body position in case of a joint frame that's not the root)
+            //  - between 15px and mid frame will position the caret inside the body, at the first position available
+            //  - between the mid frame and 5px above bottom will position the caret inside the body, at the last position available
+            //  - between the lower 5px and the bottom will position the caret below the frame 
+            //      EXCEPT for joint frames: if not last joint, will position the caret in next joint's first body (because there is no below for joint frame having a sibling below)
+            //                               if last joint, will position the caret at the bottom of the root parent (which visually looks like the frame's below)   
+            // if the frame is a statement frame, the click above mid frame (+ header) will position the caret "above" the frame, and below otherwise
+            if(this.isBlockFrame){
+                // For a block frame:
+                if(frameDivParent.className === "frame-header" || event.y <= rect.top + 15){
+                    const newPos = getAboveFrameCaretPosition(this.frameId);
+                    positionFrameId = newPos.id;
+                    positionCaret = newPos.caretPosition as CaretPosition;
+                }
+                else if(event.y <= rect.top + rect.height /2){
+                    positionCaret = CaretPosition.body
+                }
+                else if(event.y < rect.bottom - 5){
+                    positionCaret = (clickedFrame.childrenIds.length > 0) ? CaretPosition.below : CaretPosition.body;
+                    positionFrameId = [...clickedFrame.childrenIds].pop() ?? positionFrameId;
+                }
+                else{
+                    positionCaret = (this.isJointFrame && !isLastInParent(this.appStore.frameObjects, this.frameId)) ? CaretPosition.body : CaretPosition.below;
+                    if(this.isJointFrame){
+                        positionFrameId = (isLastInParent(this.appStore.frameObjects, this.frameId)) 
+                            ? this.appStore.frameObjects[this.frameId].jointParentId
+                            : getNextSibling(this.appStore.frameObjects, this.frameId);
+                    }
+                    else if(this.appStore.frameObjects[this.frameId].jointFrameIds.length > 0){
+                        positionFrameId = [...this.appStore.frameObjects[this.frameId].jointFrameIds].pop()??-100; //to keep TS happy
+                    }
+                }
             }
-            //else show caret below
             else{
-                position = CaretPosition.below;
+                // For a statement frame:
+                if(frameDivParent.className === "frame-header" || event.y <= rect.top + rect.height/2){
+                    const newPos = getAboveFrameCaretPosition(this.frameId);
+                    positionFrameId = newPos.id;
+                    positionCaret = newPos.caretPosition as CaretPosition;
+                }
+                else{
+                    positionCaret = CaretPosition.below;
+                }
             }
-            this.appStore.toggleCaret({id:this.frameId, caretPosition: position});
+            this.appStore.toggleCaret({id: positionFrameId, caretPosition: positionCaret});
         },
 
         duplicate(): void {

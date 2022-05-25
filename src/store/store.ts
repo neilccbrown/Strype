@@ -38,6 +38,8 @@ export const useStore = defineStore("app", {
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
+            isDraggingFrame: false, // Indicates whether drag and drop of frames is in process
+
             // This is an indicator of the CURRENT editable slot's initial content being edited.
             currentInitCodeValue: "", 
 
@@ -189,12 +191,14 @@ export const useStore = defineStore("app", {
             let nextJointChildID = -100;
 
             // The RULE for the JOINTS is:
-            // We allow joint addition only at the end of the body
+            // We allow joint addition only at the end of the body 
+            // however, *programmatically* with might have something to check upon the BELOW position of a joint frame (for example when moving frames)
+            // in that case, we do as if we were *inside* the joint frame 
 
             // Two possible cases:
-            // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame
-            // (b) and (a)
-            if ( caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0 ){
+            // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame; OR if we are in a moving condition as explained above (M)
+            // (b) and (a) or (M)
+            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0) || (caretPosition == CaretPosition.below && (currentFrame.jointParentId > 0 || currentFrame.jointFrameIds.length > 0)) ){
                 focusedFrame = currentFrame;
             }
             // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame
@@ -410,13 +414,9 @@ export const useStore = defineStore("app", {
             return (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {
                 // Where do we get the frame from --> from copiedFrames if it is a copied frame
                 // Otherwise the input frame is to be checked (e.g. for moving an else statement or duplicating an else statement -- which doesn't go anywhere).
-                const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? this.copiedFrames : this.frameObjects ;    
+                const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? this.copiedFrames : this.frameObjects;    
 
                 frameToBeMovedId = frameToBeMovedId ?? this.copiedFrameId;
-
-                if(frameToBeMovedId < 1){
-                    return false;
-                }     
 
                 const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
                 // isFrameCopied needs to be checked in the case that the original frame which was copied has been deleted.
@@ -1217,8 +1217,8 @@ export const useStore = defineStore("app", {
             // That should be checked both ways as for example if you move an `else` above an elif, it may be
             // valid, as the if accepts else there, but the elif cannot go below the else.
             // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
-            // succeedingFrame is the next frame (if it exists) above which we are adding
-            const succeedingFrame = this.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];   
+            const newIndex = payload.event[eventType].newIndex;
+            const oldIndex = payload.event[eventType].oldIndex;
             const jointFrameIds = this.frameObjects[payload.eventParentId].jointFrameIds;
             if(eventType !== "removed") {
                 // EXAMPLE: Moving frame `A` above Frame `B`
@@ -1227,10 +1227,20 @@ export const useStore = defineStore("app", {
                 // IF `A` is jointFrame and there IS a frame `B` where I am moving `A` at
                 //     on TRUE ==> Check if `B` CANNOT be placed below `A` / CANNOT be the trailing joint frame
                 //     on FALSE ==> We don't care about this situation
+                //
+                // The target position for joint frames needs to be found out according to this rule:
+                // - if we are moving a frame within the SAME group:
+                //   - if we move the frame upwards, the target is the element *before* the newIndex position of the joint frames 
+                //     so if newIndex is 0, then we look at the joint parent of the structure
+                //   - if we move the frame downwards, the target is at the newIndex position of the joint frames 
+                // - if we are moving a frame within a DIFFERENT group:
+                //   - the target is the element *before* the newIndex position of the destination joint frames 
+                //     (so same check as above is newIndex is 0)
+                const jointFrameTargetIndex = (eventType==="moved" && oldIndex < newIndex) ? newIndex + 1 : newIndex;
                 const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
-                    ? (succeedingFrame !== undefined)
-                        ? !this.isPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, succeedingFrame)
-                        : !this.isPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, jointFrameIds[jointFrameIds.length - 1])
+                    ? !this.isPositionAllowsFrame((jointFrameTargetIndex > 0) ? this.frameObjects[payload.eventParentId].jointFrameIds[jointFrameTargetIndex - 1] : payload.eventParentId,
+                        CaretPosition.below,
+                        payload.event[eventType].element.id)
                     : false;
 
                 if((!isJointFrame && !this.isPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       

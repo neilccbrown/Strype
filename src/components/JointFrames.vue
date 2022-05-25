@@ -8,8 +8,8 @@
             swapThreshold = "0.2"
             :disabled="isEditing"
             :key="'Draggagle-Joint-'+this.jointParentId"
-            @start="handleMultiDrag($event)"
-            @end="multiDragEnd()"
+            @start="handleMultiDrag"
+            @end="multiDragEnd"
         >
             <Frame
                 v-for="frame in jointFrames"
@@ -38,6 +38,7 @@ import Frame from "@/components/Frame.vue";
 import Draggable from "vuedraggable";
 import { FrameObject, DraggableGroupTypes } from "@/types/types";
 import { mapStores } from "pinia";
+import { notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 
 //////////////////////
@@ -108,15 +109,26 @@ export default Vue.extend({
         
         handleMultiDrag(event: any): void {
             const chosenFrame = this.jointFrames[event.oldIndex];
+
             // If the frame is part of a selection
             if(this.appStore.isFrameSelected(chosenFrame.id)) {
                 // Make it appear as the whole selection is being dragged
                 this.appStore.prepareForMultiDrag(chosenFrame.id);
+
+                // Notify the start of a drag and drop
+                notifyDragStarted();
             }
+            else{
+                // Notify the start of a drag and drop
+                notifyDragStarted(this.jointFrames[event.oldIndex].id);  
+            }                          
         },   
 
-        multiDragEnd(): void {
+        multiDragEnd(event: any): void {
             this.appStore.removeMultiDragStyling();
+             
+            // Notify the end of a drag and drop
+            notifyDragEnded(event.clone);
         },   
     },
 });

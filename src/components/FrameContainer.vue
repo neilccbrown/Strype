@@ -5,7 +5,7 @@
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
-        <div :style="containerStyle" class="container-frames">
+        <div :style="containerStyle" class="container-frames" @click="onFrameContainerClick">
             <CaretContainer
                 :frameId="this.frameId"
                 :caretVisibility="this.caretVisibility"
@@ -22,8 +22,8 @@
                 :disabled="isEditing"
                 :key="'Draggagle-Container-'+this.frameId"
                 :id="'Draggagle-Container-'+this.frameId"
-                @start ="handleMultiDrag($event)"
-                @end="multiDragEnd()"
+                @start ="handleMultiDrag"
+                @end="multiDragEnd"
                 :hasCommentsToMove="this.hasCommentsToMove"
                 filter="input"
                 :preventOnFilter="false"
@@ -54,6 +54,7 @@ import { useStore } from "@/store/store";
 import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions, CommentDefinition } from "@/types/types";
 import { mapStores } from "pinia";
+import { notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -69,7 +70,6 @@ export default Vue.extend({
 
     data: function() {
         return {
-            overCaret: false,
             hasCommentsToMove: false,
         }
     },
@@ -196,6 +196,9 @@ export default Vue.extend({
                 this.hasCommentsToMove = this.appStore.selectedFrames
                     .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== CommentDefinition.type) === undefined
                 
+                // Notify the start of a drag and drop
+                notifyDragStarted();
+                
                 // Make it appear as the whole selection is being dragged
                 this.appStore.prepareForMultiDrag(chosenFrame.id);
             }
@@ -203,11 +206,17 @@ export default Vue.extend({
                 //update the property indicating if dragging the frame in another container is allowed: 
                 //we check that the moving frame is a comment
                 this.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
+
+                // Notify the start of a drag and drop for a particular frame
+                notifyDragStarted(chosenFrame.id);
             }
         },   
 
-        multiDragEnd(): void {
+        multiDragEnd(event: any): void {
             this.appStore.removeMultiDragStyling();
+
+            // Notify the end of a drag and drop
+            notifyDragEnded(event.clone);
         },   
 
         // Some times, when draging and droping in the original position of where the
@@ -215,6 +224,13 @@ export default Vue.extend({
         // catch the `unchoose` event
         showSelectedFrames(): void {
             this.appStore.makeSelectedFramesVisible();
+        },
+
+        onFrameContainerClick(): void  {
+            // If there are no frames in this container, a click should toggle the caret of this container
+            if(this.frames.length == 0){
+                this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.body});
+            }
         },
     },
 });
@@ -245,11 +261,12 @@ export default Vue.extend({
 }
 
 .container-frames {
-    margin-left: 15px;
+    margin-left: 14px; // 1px less than for the right margin to wake the rendering neat
     margin-right: 15px;  
     margin-bottom: 15px;
     border-radius: 8px;
     border: 1px solid #B4B4B4;
+    min-height: 30px;
 }
 
 </style>

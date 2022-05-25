@@ -47,14 +47,14 @@ export const getParent = (listOfFrames: EditorFrameObjects, currentFrame: FrameO
 };
 
 // Checks if it is a joint Frame or not and returns JointParent OR Parent respectively
-export const getParentOrJointParent = (listOfFrames: EditorFrameObjects, frameId: number)  => {
+export const getParentOrJointParent = (listOfFrames: EditorFrameObjects, frameId: number): number  => {
     const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
     return (isJointFrame)? 
         listOfFrames[frameId].jointParentId:
         listOfFrames[frameId].parentId;
 };
 
-const isLastInParent = (listOfFrames: EditorFrameObjects, frameId: number) => {
+export const isLastInParent = (listOfFrames: EditorFrameObjects, frameId: number): boolean => {
     const frame = listOfFrames[frameId];
     const parent = listOfFrames[getParentOrJointParent(listOfFrames,frameId)];
 
@@ -471,6 +471,26 @@ export const getPreviousIdForCaretBelow = function (listOfFrames: EditorFrameObj
     
 };
 
+// This method checks the available positions for a caret (i.e. no positions for editable slots) and find what
+// position of a caret would be "above" a frame. For example, if the given frame is the first child of a if frame
+// the position return is the body of the containing if frame.
+export const getAboveFrameCaretPosition = function (frameId: number): NavigationPosition {
+    // step 1 --> get all the caret position (meaning all navigation positions minus the editable slot ones)   
+    const availablePositions = getAvailableNavigationPositions().filter((navigationPosition) => navigationPosition.slotNumber===false);
+   
+    // step 2 --> find the index of the dragged top frame caret based on this logic:
+    // if we had moved an block frame, we look for the caret position before the that block frame "body" position (which is the first position for that block frames)
+    // if we had moved a statement frame, we look for the caret position before the statement frame "below" position (which is the first position for that statemen frame)
+    const referenceFramePosIndex = availablePositions.findIndex((navPos) => navPos.id == frameId
+        && navPos.caretPosition == ((useStore().frameObjects[frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below));
+    
+    // step 3 --> get the position before that (a frame is at least contained in a frame container, so position index can't be 0)
+    const prevCaretPos = availablePositions[referenceFramePosIndex - 1];
+    
+    // step 4 --> return the position
+    return prevCaretPos;
+}
+
 // This method returns a boolean value indicating whether the caret (current position) is contained
 // within one of the frame types specified in "containerTypes"
 export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, currFrameId: number, caretPosition: CaretPosition, containerTypes: string[]): boolean {
@@ -502,7 +522,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
             caretPosition: (e.id.startsWith("caret"))? e.id.replace("caret_","").replace(/_*-*\d/g,"") : false,
             slotNumber: (e.id.startsWith("input"))? parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")) : false,
         }
-    }).filter((navigationPosition) => !(navigationPosition.caretPosition === false && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[];
+    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.id] && !(navigationPosition.caretPosition === false && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[]; 
 };
 
 export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {

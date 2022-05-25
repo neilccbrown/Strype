@@ -1,6 +1,6 @@
 <template>
     <div
-        :class="{'frame-body-container':true, error: empty}"
+        :class="{'frame-body-container frame-body-container-minheight':true, error: empty}"
         :id="uiid"
     >
         <div>
@@ -20,11 +20,12 @@
                 swapThreshold = "0.2"
                 :disabled="isEditing"
                 :key="'Draggagle-Body-'+this.frameId"
-                @start="handleMultiDrag($event)"
-                @end="multiDragEnd($event)"
+                @start="handleMultiDrag"
+                @end="multiDragEnd"
                 :hasCommentsToMove="this.hasCommentsToMove"
                 filter="input"
                 :preventOnFilter="false"
+                class="frame-body-container-minheight"
             >
                 <Frame
                     v-for="frame in frames"
@@ -61,6 +62,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
 import { CaretPosition, CommentDefinition, DraggableGroupTypes, FrameObject } from "@/types/types";
 import { mapStores } from "pinia";
+import { notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -187,6 +189,9 @@ export default Vue.extend({
                 this.hasCommentsToMove = this.appStore.selectedFrames
                     .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== CommentDefinition.type) === undefined
                 
+                // Notify the start of a drag and drop
+                notifyDragStarted();
+
                 // Make it appear as the whole selection is being dragged
                 this.appStore.prepareForMultiDrag(chosenFrame.id);
             }
@@ -194,11 +199,17 @@ export default Vue.extend({
                 //update the property indicating if dragging the frame in another container is allowed: 
                 //we check that the moving frame is a comment
                 this.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
+                 
+                // Notify the start of a drag and drop for a particular frame
+                notifyDragStarted(chosenFrame.id);
             }
         },   
 
         multiDragEnd(event: any): void {
             this.appStore.removeMultiDragStyling();
+
+            // Notify the end of a drag and drop
+            notifyDragEnded(event.clone);
         },   
 
 
@@ -220,9 +231,14 @@ export default Vue.extend({
 .frame-body-container {
     background-color: #F6F2E9;
     margin-bottom: 4px;
+    margin-top: 4px;
     margin-right: 4px;
     border-color: #000 !important;
     border-radius: 8px;
+}
+
+.frame-body-container-minheight {
+    min-height: 30px;
 }
 
 .error {
