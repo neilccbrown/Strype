@@ -51,6 +51,7 @@ export enum DraggableGroupTypes {
     functionSignatures = "functionSignatures",
     ifCompound = "ifCompound",
     tryCompound = "tryCompound",
+    shadowEditorContainer = "editor", // This draggable is used for cursor management - a root of all other draggables (cf. handleDraggingCursor())
     none = "none",
 }
 

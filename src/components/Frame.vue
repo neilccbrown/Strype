@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div :class="{dragging: isDragTop}">
         <!-- this "fake" caret is only used to show something valid while doing drag and drop -->
         <Caret
             :class="{'caret-drop': isDragTop}"
@@ -17,7 +17,7 @@
             <!-- keep both mousedown & click events: we need mousedown to manage the caret rendering during drag & drop -->
             <div 
                 :style="frameStyle" 
-                :class="{'frameDiv': true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
+                :class="{frameDiv: true, frameDivHover: !isDragging, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
                 :id="uiid"
                 @mousedown.left="hideCaretAtClick"
                 @click="toggleCaret($event)"
@@ -143,11 +143,9 @@ export default Vue.extend({
         },
 
         frameStyle(): Record<string, string> {
-            return this.isJointFrame === true
-                ? {"color":"#000 !important"}
-                : {
-                    "background-color": `${this.getFrameBgColor()} !important`,
-                    "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
+            return {
+                "background-color": `${this.getFrameBgColor()} !important`,
+                 "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
         },
 
@@ -207,6 +205,12 @@ export default Vue.extend({
                     ? this.appStore.selectedFrames[0] 
                     : getDraggedSingleFrameId()) === this.frameId);
         },
+        
+        isDragging(): boolean{
+            // Contrary to isDragTop, this property is set whenever dragging is happening, not just for the 
+            // dragged elements. We need that to control some CSS rendering of the cursors.
+            return this.appStore.isDraggingFrame;
+        }   
     },
 
     mounted() {
@@ -236,8 +240,12 @@ export default Vue.extend({
 
         getFrameBgColor(): string {
             // In most cases, the background colour is the one defined in the frame types.
-            // The exception is for comments, which will take the same colour as their container.
+            // The exception is for comments and joint frames, which will take the same colour as their container.
+            // For comments, we keep them transparent, for joints, we retrieve the parent's colour, so that it shows up when dragging them.
             if(this.frameType.type !== CommentDefinition.type){
+                if(this.isJointFrame){
+                    return this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].jointParentId].frameType.colour;
+                }
                 return this.frameType.colour;
             }
             else{
@@ -375,7 +383,7 @@ export default Vue.extend({
             // if the frame is a statement frame, the click above mid frame (+ header) will position the caret "above" the frame, and below otherwise
             if(this.isBlockFrame){
                 // For a block frame:
-                if(frameDivParent.className === "frame-header" || event.y <= rect.top + 15){
+                if(event.y <= rect.top + 15){
                     const newPos = getAboveFrameCaretPosition(this.frameId);
                     positionFrameId = newPos.id;
                     positionCaret = newPos.caretPosition as CaretPosition;
@@ -401,7 +409,7 @@ export default Vue.extend({
             }
             else{
                 // For a statement frame:
-                if(frameDivParent.className === "frame-header" || event.y <= rect.top + rect.height/2){
+                if(event.y <= rect.top + rect.height/2){
                     const newPos = getAboveFrameCaretPosition(this.frameId);
                     positionFrameId = newPos.id;
                     positionCaret = newPos.caretPosition as CaretPosition;
@@ -509,12 +517,21 @@ export default Vue.extend({
     border: 1px solid transparent;
 }
 
-.frameDiv:hover{
-    cursor: grab;
+// This should be ".frameDiv:hover" but drag and drop is messing things up
+// so we use another class to only be used when drag and drop doesn't occur
+.frameDivHover:hover{
+    cursor: pointer;
 }
 
-.frameDiv:active{
-    cursor: grabbing;
+.dragging-frame-allowed {
+    // This cursor will be shown when dragging occurs and we are within a draggable component 
+    // regardless dropping is allowed or not (because we won't want a constant flicker of cursor)
+    cursor: grabbing !important;
+}
+
+.dragging-frame-not-allowed {
+     //  This cursor will be shown when dragging occurs and we are oustide the editor's containers
+    cursor: url(~@/assets/images/forbidden-cursor.png), auto;
 }
 
 .blockFrameDiv {

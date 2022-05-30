@@ -1,5 +1,5 @@
 <template>
-    <div class="next-to-eachother editable-slot">
+    <div :class="{'next-to-eachother editable-slot': true, nohover: isDraggingFrame}">
           <input
             type="text"
             autocomplete="off"
@@ -266,6 +266,10 @@ export default Vue.extend({
 
         debugAC(): boolean{
             return this.appStore.debugAC;
+        },
+
+        isDraggingFrame(): boolean{
+            return this.appStore.isDraggingFrame;
         },
     },
 

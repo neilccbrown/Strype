@@ -298,12 +298,39 @@ export function getDraggedSingleFrameId(): number {
     return currentDraggedSingleFrameId;
 }
 
+export function handleDraggingCursor(showDraggingCursor: boolean, isTargetGroupAllowed: boolean):void {
+    // This function assign the cursor we want to be shown while dragging.
+    // It is set to the html element as mentioned here https://github.com/SortableJS/Sortable/issues/246
+    // We use a "shadow" draggable root element at the editor's level so we can handle the cursor when
+    // the dragging is getting outside the code's draggable zones (e.g. frame body). The drawback of that
+    // is that we show a cursor suggesting we can drop somewhere even if the draggable zone isn't able to
+    // receive the frame(s). However, the purple cursor and snapped frame at destination will still not be
+    // be shown if the frame(s) cannot be dropped. That's the best compromise if we cant to override the 
+    // default browser's drag&drop cursors.
+    const htmlElementClassList = document.getElementsByTagName("html")[0].classList;
+    if(!showDraggingCursor){
+        htmlElementClassList.remove("dragging-frame-allowed");
+        htmlElementClassList.remove("dragging-frame-not-allowed");
+    }
+    else if(isTargetGroupAllowed&& !htmlElementClassList.contains("dragging-frame-allowed")){
+        htmlElementClassList.add("dragging-frame-allowed");
+        htmlElementClassList.remove("dragging-frame-not-allowed");
+    }
+    else if(!isTargetGroupAllowed && !htmlElementClassList.contains("dragging-frame-not-allowed")){
+        htmlElementClassList.remove("dragging-frame-allowed");
+        htmlElementClassList.add("dragging-frame-not-allowed");
+    }
+}
+
 export function notifyDragStarted(frameId?: number):void {
     // If the argument "frameId" is set, the drag and drop is done on a single frame
     // so we set currentDraggedSingleFrameId
     if(frameId){
         currentDraggedSingleFrameId = frameId;
     }
+
+    //Update the handling of the cursor during drag and drop
+    handleDraggingCursor(true, true)
 
     // Update the store about dragging started
     useStore().isDraggingFrame = true;
@@ -324,6 +351,9 @@ export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
             }
         })
     }
+
+    //Update the handling of the cursor during drag and drop
+    handleDraggingCursor(false, false);
     
     // Update the store about dragging ended 
     useStore().isDraggingFrame = false;

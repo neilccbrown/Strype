@@ -17,16 +17,18 @@
                 :group="draggableGroup"
                 @change.self="handleDragAndDrop($event)"
                 @unchoose="showSelectedFrames()"
+                forceFallback="true"
                 :animation="300"
                 swapThreshold = "0.2"
                 :disabled="isEditing"
-                :key="'Draggagle-Container-'+this.frameId"
-                :id="'Draggagle-Container-'+this.frameId"
+                :key="'Draggable-Container-'+this.frameId"
+                :id="'Draggable-Container-'+this.frameId"
                 @start ="handleMultiDrag"
                 @end="multiDragEnd"
                 :hasCommentsToMove="this.hasCommentsToMove"
                 filter="input"
                 :preventOnFilter="false"
+                class="frame-container-minheight"
             >
                 <Frame 
                     v-for="frame in frames" 
@@ -54,7 +56,7 @@ import { useStore } from "@/store/store";
 import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions, CommentDefinition } from "@/types/types";
 import { mapStores } from "pinia";
-import { notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -101,6 +103,9 @@ export default Vue.extend({
             return {
                 name: this.appStore.getDraggableGroupById(this.frameId),
                 put: function(to: any, from: any){
+                    //Handle drag cursor
+                    handleDraggingCursor(true, true);
+                   
                     //Frames can be added if they are of the same group and/or only comments are being move
                     return from.options.hasCommentsToMove || to.options.group.name === from.options.group.name;
                 },
@@ -266,6 +271,9 @@ export default Vue.extend({
     margin-bottom: 15px;
     border-radius: 8px;
     border: 1px solid #B4B4B4;
+}
+
+.frame-container-minheight {
     min-height: 30px;
 }
 

@@ -4,10 +4,11 @@
             v-model="jointFrames"
             :group="jointDraggableGroup"
             @change.self="handleDragAndDrop($event)"
+            forceFallback="true"
             animation="200"
             swapThreshold = "0.2"
             :disabled="isEditing"
-            :key="'Draggagle-Joint-'+this.jointParentId"
+            :key="'Draggable-Joint-'+this.jointParentId"
             @start="handleMultiDrag"
             @end="multiDragEnd"
         >
@@ -21,7 +22,7 @@
                 :isParentSelected="isParentSelected"
                 :allowChildren="frame.frameType.allowChildren"
                 :caretVisibility="frame.caretVisibility"
-                :class="{'joint-frame-child': true, frame: (frame.frameType.draggableGroup===jointDraggableGroup)}"
+                :class="{'joint-frame-child': true, frame: (frame.frameType.draggableGroup===jointDraggableGroup.name)}"
             />
         </Draggable>
         
@@ -36,9 +37,9 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import Draggable from "vuedraggable";
-import { FrameObject, DraggableGroupTypes } from "@/types/types";
+import { FrameObject } from "@/types/types";
 import { mapStores } from "pinia";
-import { notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 
 //////////////////////
@@ -74,8 +75,19 @@ export default Vue.extend({
             },    
         },
 
-        jointDraggableGroup(): DraggableGroupTypes {
-            return this.appStore.getDraggableJointGroupById(this.jointParentId); 
+        jointDraggableGroup(): Record<string, any> {
+            // The groups could be only used by a name, but we still want to make
+            // a control in the put method for managing what cursor to show when dragging
+            return {
+                name: this.appStore.getDraggableJointGroupById(this.jointParentId),
+                put: function(to: any, from: any){
+                    //Handle drag cursor
+                    handleDraggingCursor(true, true);
+                   
+                    //Frames can be added if they are of the same group 
+                    return to.options.group.name === from.options.group.name;
+                },
+            };     
         },
 
         isEditing(): boolean {
@@ -129,7 +141,7 @@ export default Vue.extend({
              
             // Notify the end of a drag and drop
             notifyDragEnded(event.clone);
-        },   
+        },
     },
 });
 </script>
