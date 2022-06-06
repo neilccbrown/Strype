@@ -111,9 +111,9 @@ export interface StyledCodeSplits {
 
 export interface NavigationPosition {
     id: number;
-    // Both the following can be boolean, as if one has a value, the other one has false (e.g. caretPosition = below AND slotNumber = false)
-    caretPosition?: string|false;
-    slotNumber?: number|false;
+    isSlotNavigationPosition: boolean, // flag to indicate if we are working with a slot position (change from previous version that used composite types)
+    caretPosition?: string;
+    slotNumber?: number;
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;

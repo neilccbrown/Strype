@@ -476,7 +476,7 @@ export const getPreviousIdForCaretBelow = function (listOfFrames: EditorFrameObj
 // the position return is the body of the containing if frame.
 export const getAboveFrameCaretPosition = function (frameId: number): NavigationPosition {
     // step 1 --> get all the caret position (meaning all navigation positions minus the editable slot ones)   
-    const availablePositions = getAvailableNavigationPositions().filter((navigationPosition) => navigationPosition.slotNumber===false);
+    const availablePositions = getAvailableNavigationPositions().filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition);
    
     // step 2 --> find the index of the dragged top frame caret based on this logic:
     // if we had moved an block frame, we look for the caret position before the that block frame "body" position (which is the first position for that block frames)
@@ -512,17 +512,22 @@ export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, cu
 export const getAvailableNavigationPositions = function(): NavigationPosition[] {
     // We start by getting from the DOM all the available caret and editable slot positions
     const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
-    // We create a list that hold objects of {id,caretPosition,slotNumber) for each available navigation positions
+    // We create a list that hold objects of {id,isSlotNavigationPosition,caretPosition,slotNumber) for each available navigation positions
     // and discard the locations that correspond to the editable slots of disable frames
     return Object.values(allCaretDOMpositions).map((e)=> {
+        const isSlotNavigationPosition = e.id.startsWith("input");
+        // Retrieves the identifier for the navigation position: the UUID for a caret, the index for a slot
+        const positionObjIdentifier = (isSlotNavigationPosition) 
+            ? {slotNumber: parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_",""))}
+            : {caretPosition: e.id.replace("caret_","").replace(/_*-*\d/g,"")}; 
         return {
-            id: (parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_",""))
-            ||
-            parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))), 
-            caretPosition: (e.id.startsWith("caret"))? e.id.replace("caret_","").replace(/_*-*\d/g,"") : false,
-            slotNumber: (e.id.startsWith("input"))? parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_","")) : false,
+            id: (isSlotNavigationPosition) 
+                ? parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))
+                : parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_","")), 
+            isSlotNavigationPosition: isSlotNavigationPosition,
+            ...positionObjIdentifier,            
         }
-    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.id] && !(navigationPosition.caretPosition === false && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[]; 
+    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.id] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[]; 
 };
 
 export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {
@@ -584,11 +589,11 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     const isJoinFrame = (frameObject.jointParentId > 0);
     //we need to find out what is the next frame to provide a stop value
     const availablePositions = getAvailableNavigationPositions();
-    const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
+    const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
     const caretPosition = (frameObject.frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
-    const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===frameId && e.caretPosition === caretPosition);
+    const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===frameId && e.isSlotNavigationPosition && e.caretPosition === caretPosition);
     const nextCaretId =  (isJoinFrame) 
-        ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.id===frameObject.jointParentId && e.caretPosition === CaretPosition.below) + 1]?.id??-100
+        ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.id===frameObject.jointParentId && !e.isSlotNavigationPosition && e.caretPosition === CaretPosition.below) + 1]?.id??-100
         : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.body && frameObject.childrenIds.length == 0) ? 2 : 1)]?.id??-100);
     const startFrameId = (isJoinFrame) ? frameObject.jointParentId : frameId;
     const parser = new Parser(true);
