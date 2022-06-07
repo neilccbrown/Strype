@@ -6,7 +6,7 @@ import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegr
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
+import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string"
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -1192,6 +1192,9 @@ export const useStore = defineStore("app", {
 
         /******************** OLD ACTIONS ********** */
         updateFramesOrder(payload: {event: any; eventParentId: number}) {
+            // Notify the helper that the drag and drop resulted in a change (i.e. not be "cancelled")
+            setIsDraggedChangingOrder(true);
+
             if(this.ignoredDragAction){
                 //if the action should be ignore, just return and reset the flag
                 this.ignoredDragAction = false;
