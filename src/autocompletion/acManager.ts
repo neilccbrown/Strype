@@ -437,6 +437,12 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
               Need to add try/except on dir
     */
 
+    // In order to make the a/c a bit less "aggressive", we want to only trigger it when the input has reached a given length.
+    // So we will only continue with the a/c when a code unit has reached at least 3 characters
+    if(tokenAC.length < 3){
+        return  {tokenAC: tokenAC , contextAC: contextAC, showAC: false};
+    }
+    
     const parser = new Parser();
     const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
 
@@ -462,6 +468,12 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
     const lookupModulePart = (slotIndex == 1 && frame.contentDict[0].shownLabel); //false -> we look at a module itself, true -> we look at a module part  
     let contextAC = "";
     const tokenAC = slotCode;
+
+    // In order to make the a/c a bit less "aggressive", we want to only trigger it when the input has reached a given length.
+    // So we will only continue with the a/c when a code unit has reached at least 3 characters
+    if(tokenAC.length < 3){
+        return  {tokenAC: tokenAC , contextAC: contextAC, showAC: false};
+    }
 
     if(lookupModulePart){
         //we look at the module part --> get the module part candidates from Brython
