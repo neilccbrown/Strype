@@ -1,6 +1,6 @@
 <template>
     <div :class="{'next-to-eachother editable-slot': true, nohover: isDraggingFrame}">
-          <input
+        <input
             type="text"
             autocomplete="off"
             spellcheck="false"
@@ -25,13 +25,12 @@
             @keyup.backspace="onBackSpaceKeyUp()"
             @keydown="onKeyDown($event)"
             @keyup="logCursorPositionAndCheckBracket()"
-            :class="{editableSlot: focused, error: erroneous(), hidden: isHidden}"
+            :class="{'editableslot-base editableslot-input navigationPosition': true, editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
             :key="UIID"
-            class="editableslot-input navigationPosition"
             :style="inputTextStyle"
         />
-        <div :class="{editableSlotSpans: true, error: erroneous()}" :style="spanTextStyle">
+        <div :class="{'editableSlotSpans editableslot-base': true, error: erroneous()}" :style="spanTextStyle">
             <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
             <span 
                 :key="UIID+'_'+index" 
@@ -51,7 +50,7 @@
         </b-popover>
 
         <div 
-            class="editableslot-placeholder"
+            class="editableslot-base editableslot-placeholder"
             :id="placeholderUIID"
             :value="code"
         />
@@ -637,12 +636,12 @@ export default Vue.extend({
         computeFitWidthValue(): string {
             const placeholder = document.getElementById(this.placeholderUIID);
             let computedWidth = "150px"; //default value if cannot be computed
-            const offset = 8;
             if (placeholder) {
                 placeholder.textContent = (this.code.length > 0) ? this.code : this.defaultText;
-                //the width is computed from the placeholder's width from which
-                //we add extra space for the cursor.
-                computedWidth = (placeholder.offsetWidth + offset) + "px";
+                //the width is computed from the placeholder's width
+                //our default left border is 1px, but error borders are 2px, therefore, we need to add   2px to the width to compensate it
+                const offset = (this.erroneous()) ? 2 : 0;
+                computedWidth = (placeholder.getBoundingClientRect().width + offset) + "px";
             }
             return computedWidth;
         },
@@ -662,14 +661,17 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.editableslot-input {
+.editableslot-base {
     border-radius: 5px;
     border: 1px solid transparent;
     padding: 1px 2px;
+    outline: none;
+}
+
+.editableslot-input {  
     position:absolute;
     top: 0%;
     left: 0%;
-    outline: none;
 }
 
 .editableslot-input::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
@@ -684,18 +686,11 @@ export default Vue.extend({
   font-style: italic;
 }
 
-.editableSlotSpans{
-    border: 1px solid transparent;
-    border-radius: 5px;
-    padding: 1px 2px;
-}
-
 .editableSlotSpansHidden {
     visibility: hidden;
 }
 
 .editableSlotSpans span{
-    outline: none;
     white-space: pre;
 }
 
