@@ -432,10 +432,6 @@ export default Vue.extend({
     cursor: default;
 }
 
-.hidden{
-    display: "none";
-}
-
 .popupContainer {
     display: flex;
 }

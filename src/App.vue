@@ -33,13 +33,14 @@
                     />
                     <div class="col">
                         <div :id="editorUIID" :class="{'editor-code-div noselect':true, 'small-editor-code-div': isLargePythonConsole}" >
-                            <!-- cf. draggableGroup property for details -->
+                            <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
                             <Draggable
                                 :list="[1,2]"
                                 :move="onMoveFrameContainer"
                                 :group="draggableGroup"
                                 key="draggable-shadow-editor"
                                 forceFallback="true"
+                                delay="5000"
                             >
                                 <FrameContainer
                                     v-for="container in containerFrames"

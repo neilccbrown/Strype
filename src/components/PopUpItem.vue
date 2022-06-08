@@ -1,4 +1,5 @@
 <template>
+    <!-- @mousedown must be kept to avoid the click to move the focus from input text field -->
     <li
         v-show="this.item"
         :class="selectedItem"
@@ -6,7 +7,7 @@
         @mouseover="hoverOver()"
         @mouseout="hoverOut()"
         @mousedown.prevent.stop
-        @mouseup.prevent.stop="$emit('acItemClicked',id)"
+        @mouseup.self="$emit('acItemClicked',id)"
     >
         {{item}}
         <span v-if="version > 1" class="api-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>

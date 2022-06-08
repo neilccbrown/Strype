@@ -57,8 +57,8 @@
         />
 
         <AutoCompletion
-            v-if="focused && showAC" 
-            class="ac"
+            v-if="focused && showAC"
+            :class="{ac: true, hidden: !acRequested}"
             :slotId="UIID"
             :context.sync="contextAC"
             :token.sync="tokenAC"
@@ -122,6 +122,7 @@ export default Vue.extend({
 
             cursorPosition: {} as CursorPosition,
             showAC: false,
+            acRequested: false,
             contextAC: "",
             tokenAC: "",
             //used to force a text cursor position, for example after inserting an AC candidate
@@ -385,6 +386,7 @@ export default Vue.extend({
         onBlur(): void {
             if(!this.debugAC) {
                 this.showAC = false;
+                this.acRequested = false;
                 this.appStore.updateErrorsOnSlotValidation(
                     {
                         frameId: this.frameId,
@@ -464,6 +466,7 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
                 this.showAC = this.debugAC;
+                this.acRequested = false;
             }
             // If AC is not loaded, we want to take the focus from the slot
             // when we reach at here, the "esc" key event is just propagated and acts as normal
@@ -500,6 +503,7 @@ export default Vue.extend({
                 }
             }
             this.showAC = this.debugAC;
+            this.acRequested = false;
             this.tabDownTriggered = false;
         },
 
@@ -515,6 +519,10 @@ export default Vue.extend({
                 this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
+            }
+            // We capture the key shortcut for opening the a/c
+            else if((event.metaKey || event.ctrlKey) && event.key == " "){
+                this.acRequested = true;
             }
             // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
             else if(event.key === " " && this.frameType !== CommentDefinition.type){
@@ -578,6 +586,7 @@ export default Vue.extend({
             
             this.code = newCode;
             this.showAC = this.debugAC;
+            this.acRequested = false;
         },
 
         // store the cursor position to give it as input to AutoCompletionPopUp
@@ -615,6 +624,7 @@ export default Vue.extend({
                 + this.code.substr(currentTextCursorPos);
 
                 this.showAC = false;
+                this.acRequested = false;
                 // set the text in the input field and move the cursor inside the brackets
                 this.textCursorPos  = currentTextCursorPos;
                 this.code = newCode;
