@@ -141,7 +141,7 @@ export default Vue.extend({
             "keydown",
             (event: KeyboardEvent) => {
                 //handle the Ctrl/Meta + S command for saving the project
-                if(event.key === "s" && (event.metaKey || event.ctrlKey)){
+                if(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey)){
                     this.exportFile();
                     event.stopImmediatePropagation();
                     event.preventDefault();

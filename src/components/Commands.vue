@@ -195,9 +195,9 @@ export default Vue.extend({
                     setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);         
                 }
 
-                if((event.ctrlKey || event.metaKey) && (event.key === "z" || event.key === "y")) {
+                if((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
                     //undo-redo
-                    this.appStore.undoRedo((event.key === "z"));
+                    this.appStore.undoRedo((event.key.toLowerCase() === "z"));
                     event.preventDefault();
                     return;
                 }

@@ -118,7 +118,7 @@ export default Vue.extend({
     
     methods: {
         onKeyUp(event: KeyboardEvent) {
-            if(!this.isEditing && (event.ctrlKey || event.metaKey) && (event.key === "v")) {
+            if(!this.isEditing && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "v")) {
                 // A paste via shortcut cannot get the verification that would be done via a click
                 // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here
                 const currentFrame: FrameObject = this.appStore.getCurrentFrameObject;
