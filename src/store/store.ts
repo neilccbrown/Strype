@@ -6,7 +6,7 @@ import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegr
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
+import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string"
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -731,7 +731,7 @@ export const useStore = defineStore("app", {
 
             const currentCaret: CurrentFrame = {id: currId, caretPosition: currPosition};
             const availablePositions = getAvailableNavigationPositions();
-            const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
+            const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
             // Where is the current in the list
             const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
 
@@ -1192,6 +1192,9 @@ export const useStore = defineStore("app", {
 
         /******************** OLD ACTIONS ********** */
         updateFramesOrder(payload: {event: any; eventParentId: number}) {
+            // Notify the helper that the drag and drop resulted in a change (i.e. not be "cancelled")
+            setIsDraggedChangingOrder(true);
+
             if(this.ignoredDragAction){
                 //if the action should be ignore, just return and reset the flag
                 this.ignoredDragAction = false;
@@ -1477,20 +1480,20 @@ export const useStore = defineStore("app", {
             //first add the slot numbers
             Object.values(newFrame.contentDict).forEach( (element,index) => {
                 if(element.shownLabel){
-                    newFramesCaretPositions.push({id: newFrame.id, caretPosition:false, slotNumber: index})
+                    newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition:true, slotNumber: index});
                 }
             });
       
       
             //now add the caret positions
-            if( newFrame.frameType.allowChildren ){
-                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.body, slotNumber: false});
+            if(newFrame.frameType.allowChildren){
+                newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.body});
             }
-            if( !addingJointFrame ){
-                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.below, slotNumber: false});
+            if(!addingJointFrame){
+                newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.below});
             }
             const availablePositions = getAvailableNavigationPositions();
-            const indexOfCurrent = availablePositions.findIndex((e) => e.id===this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositions.findIndex((e) => e.id===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition)
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
@@ -1520,7 +1523,7 @@ export const useStore = defineStore("app", {
 
             // we remove the editable slots from the available positions
             let availablePositions = getAvailableNavigationPositions();
-            availablePositions = availablePositions.filter((e) => e.slotNumber === false);
+            availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
 
             let showDeleteMessage = false;
 
@@ -1557,7 +1560,7 @@ export const useStore = defineStore("app", {
 
                 const currentFrame = this.frameObjects[currentFrameId];
 
-                let frameToDelete: NavigationPosition = {id:-100};
+                let frameToDelete: NavigationPosition = {id:-100, isSlotNavigationPosition: false};
                 let deleteChildren = false;
 
                 if(key === "Delete"){
@@ -1565,11 +1568,11 @@ export const useStore = defineStore("app", {
                     // Where the current sits in the available positions
                     const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                     // the "next" position of the current
-                    frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100}
+                    frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false}
                     
-                    // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration bellow
+                    // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration below
                     if((this.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.id]?.frameType.type === FuncDefDefinition.type)
-                         && frameToDelete.caretPosition === CaretPosition.below){
+                         && (frameToDelete.caretPosition??"") === CaretPosition.below){
                         frameToDelete.id = -100
                     }
                 }
@@ -1667,10 +1670,10 @@ export const useStore = defineStore("app", {
 
             if (this.isEditing){ 
                 const posOfCurSlot = Object.entries(this.frameObjects[this.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
-                currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === this.currentFrame.id); 
+                currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.slotNumber === posOfCurSlot && e.id === this.currentFrame.id); 
             }
             else {
-                currentFramePosition = availablePositions.findIndex( (e) => e.caretPosition === this.currentFrame.caretPosition && e.id === this.currentFrame.id); 
+                currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.id === this.currentFrame.id); 
             }
             
             const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition])                        
@@ -1683,7 +1686,7 @@ export const useStore = defineStore("app", {
             );
 
             // If next position is an editable slot
-            if( nextPosition.slotNumber !== false) {
+            if(nextPosition.isSlotNavigationPosition){
                 this.isEditing = true;
                 const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: directionDelta};
                 this.editableSlotViaKeyboard = slotReachInfos;
@@ -1696,7 +1699,7 @@ export const useStore = defineStore("app", {
                     }
                 );
             }
-            else {
+            else{
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
 
@@ -2132,7 +2135,7 @@ export const useStore = defineStore("app", {
 
             // we filter the payload to remove the slot positions
             let availablePositions:NavigationPosition[]  = getAvailableNavigationPositions();
-            availablePositions = availablePositions.filter((e) => e.slotNumber === false);
+            availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
             
             let siblingsOrChildren: number[] = []
             let index = 0;
@@ -2160,14 +2163,16 @@ export const useStore = defineStore("app", {
             const availablePositionsOfSiblings: NavigationPosition[] = []
             availablePositions.forEach((element) => {
                 // we need to keep the elements which correspond to the siblingsOrChildren list
-                // we only include bellows
-                if(siblingsOrChildren.includes(element.id) && element.caretPosition === CaretPosition.below) {
+                if(!element.isSlotNavigationPosition){
+                    // we only include belows
+                    if(siblingsOrChildren.includes(element.id) &&  element.caretPosition === CaretPosition.below) {
                     // going down, we cannot select a body position
-                    availablePositionsOfSiblings.push(element)
-                }
-                // except when going upwards we may need the our parent's body to be added
-                else if(directionUp && currentFrame.parentId === element.id && element.caretPosition == CaretPosition.body){
-                    availablePositionsOfSiblings.push(element)
+                        availablePositionsOfSiblings.push(element)
+                    }
+                    // except when going upwards we may need the our parent's body to be added
+                    else if(directionUp && currentFrame.parentId === element.id && element.caretPosition == CaretPosition.body){
+                        availablePositionsOfSiblings.push(element)
+                    }
                 }
             })
             
@@ -2187,7 +2192,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
 
             const availablePositions = getAvailableNavigationPositions();
-            const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
+            const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
 
             const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.id === this.currentFrame.id && item.caretPosition === this.currentFrame.caretPosition);
             const indexOfTarget: number = listOfCaretPositions.findIndex((item)=> item.id === payload.clickedFrameId && item.caretPosition === payload.clickedCaretPosition);

@@ -85,10 +85,10 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import Caret from "@/components/Caret.vue"
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame, NavigationPosition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import { getAboveFrameCaretPosition, getNextSibling, getParent, getParentOrJointParent, isLastInParent } from "@/helpers/storeMethods";
-import { getDraggedSingleFrameId, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
+import { getAboveFrameCaretPosition, getParent, getParentOrJointParent } from "@/helpers/storeMethods";
+import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -362,63 +362,91 @@ export default Vue.extend({
             while(!isIdAFrameId(frameDivParent.id)){
                 frameDivParent = frameDivParent.parentElement as HTMLDivElement
             }            
-            if(frameDivParent.id !== this.uiid ){
+            if(frameDivParent.id !== this.uiid){
                 return;
             }
 
-            // get the rectangle of the div with its coordinates
-            const rect = frameDivParent.getBoundingClientRect();
-            const clickedFrame = this.appStore.frameObjects[this.frameId];
-            
-            let positionCaret: CaretPosition = CaretPosition.none;
-            let positionFrameId = this.frameId;
-            // The following logic applies to select a caret position based on the frame and the location of the click:
-            // if the frame is a block frame (e.g. an if frame), a click in:
-            //  - the first 15px or header will position the caret "above" the frame (which can be the last body position in case of a joint frame that's not the root)
-            //  - between 15px and mid frame will position the caret inside the body, at the first position available
-            //  - between the mid frame and 5px above bottom will position the caret inside the body, at the last position available
-            //  - between the lower 5px and the bottom will position the caret below the frame 
-            //      EXCEPT for joint frames: if not last joint, will position the caret in next joint's first body (because there is no below for joint frame having a sibling below)
-            //                               if last joint, will position the caret at the bottom of the root parent (which visually looks like the frame's below)   
-            // if the frame is a statement frame, the click above mid frame (+ header) will position the caret "above" the frame, and below otherwise
-            if(this.isBlockFrame){
-                // For a block frame:
-                if(event.y <= rect.top + 15){
-                    const newPos = getAboveFrameCaretPosition(this.frameId);
-                    positionFrameId = newPos.id;
-                    positionCaret = newPos.caretPosition as CaretPosition;
-                }
-                else if(event.y <= rect.top + rect.height /2){
-                    positionCaret = CaretPosition.body
-                }
-                else if(event.y < rect.bottom - 5){
-                    positionCaret = (clickedFrame.childrenIds.length > 0) ? CaretPosition.below : CaretPosition.body;
-                    positionFrameId = [...clickedFrame.childrenIds].pop() ?? positionFrameId;
+            this.changeToggledCaretPosition(event.clientY, frameDivParent);
+        },
+
+        changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement): void{
+            const frameRect = frameClickedDiv.getBoundingClientRect();
+            const headerRect = document.querySelector("#"+this.uiid+ " .frame-header")?.getBoundingClientRect();
+            if(headerRect){            
+                let newCaretPosition: NavigationPosition = {id: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
+                // The following logic applies to select a caret position based on the frame and the location of the click:
+                // if a click occurs between the top of a frame and its header top mid half
+                //    --> get the cursor visually above the frame
+                // if a click occurs within the frame header bottom mid half
+                //    --> get the cursor below the frame (if statement) or top of body (if block)
+                // if a click occurs below the header mid half
+                //    --> get the cursor below the frame (if statement) or at the nearest above/below position (if block)
+                //Note: joint frames overlap their root parent, they get the click as a standalone frame
+                if(clickY <= (frameRect.top + headerRect.height/2)){
+                    newCaretPosition = getAboveFrameCaretPosition(this.frameId);
                 }
                 else{
-                    positionCaret = (this.isJointFrame && !isLastInParent(this.appStore.frameObjects, this.frameId)) ? CaretPosition.body : CaretPosition.below;
-                    if(this.isJointFrame){
-                        positionFrameId = (isLastInParent(this.appStore.frameObjects, this.frameId)) 
-                            ? this.appStore.frameObjects[this.frameId].jointParentId
-                            : getNextSibling(this.appStore.frameObjects, this.frameId);
+                    if(this.isBlockFrame){
+                        // When we are here, we try to find the nearest above or below position of the block's child (if any)
+                        // We get all the mid frame positions that will decided whether we are targetting above or below a frame.
+                        // We traverse each positions until we found where the click (vertically) occured, if nothing is found, we
+                        // then assume the click is vertically beyond the children and therefore toggle the caret below the current frame
+                        const midFramePositions = this.getBodyMidFramePositions();
+                        let hasPassedPosition = false;
+                        let previousThreshold = 0;
+                        for(const midFrameThresholdPos of midFramePositions){
+                            hasPassedPosition = (clickY >= previousThreshold && clickY < midFrameThresholdPos.midYThreshold);
+                            previousThreshold = midFrameThresholdPos.midYThreshold;
+                            if(hasPassedPosition){
+                                newCaretPosition.id = midFrameThresholdPos.caretPos.id;
+                                newCaretPosition.caretPosition = midFrameThresholdPos.caretPos.caretPosition;
+                                break;
+                            }
+                        }
+                        if(!hasPassedPosition){
+                            newCaretPosition.caretPosition = CaretPosition.below;
+                        }
                     }
-                    else if(this.appStore.frameObjects[this.frameId].jointFrameIds.length > 0){
-                        positionFrameId = [...this.appStore.frameObjects[this.frameId].jointFrameIds].pop()??-100; //to keep TS happy
+                    else{
+                        newCaretPosition.caretPosition = CaretPosition.below;
                     }
                 }
+               
+                this.appStore.toggleCaret({id: newCaretPosition.id, caretPosition: newCaretPosition.caretPosition as CaretPosition});
             }
+        },
+
+        getBodyMidFramePositions(): {caretPos: CurrentFrame, midYThreshold: number}[] {
+            // The mid frame positions for the "body" part of a block frames have at least 1 entity:
+            // - A) the parent's body position (top of the body) that would be selected 
+            //    when the click vertical position is above the middle of the first child (when there are children) or above the middle of the empty body space (if no children)
+            // For that, if there are frames, we have B) all the mid frame positions of the children
+            const midFramePosArray: {caretPos: CurrentFrame, midYThreshold: number}[] = [];
+            const frameBodyRect = document.getElementById(getFrameBodyUIID(this.frameId))?.getBoundingClientRect() as DOMRect;
+                        
+            const bodyFrameIds = this.appStore.frameObjects[this.frameId].childrenIds;
+            if(bodyFrameIds.length > 0){
+                // Start with adding B)
+                bodyFrameIds.forEach((childFrameId) => {
+                    const childFrameDivRect = document.getElementById(getFrameUIID(childFrameId))?.getBoundingClientRect() as DOMRect;
+                    const prevPos = getAboveFrameCaretPosition(childFrameId);
+                    midFramePosArray.push({caretPos: {id: prevPos.id, caretPosition: prevPos.caretPosition as CaretPosition},
+                        midYThreshold: childFrameDivRect.top + childFrameDivRect.height/2 });
+                });
+
+                // Add the last part, A)
+                const lastChildFrameId = bodyFrameIds[bodyFrameIds.length - 1];
+                const lastChildFrameDivRect = document.getElementById(getFrameUIID(lastChildFrameId))?.getBoundingClientRect() as DOMRect;
+                midFramePosArray.push({caretPos: {id: lastChildFrameId, caretPosition: CaretPosition.below},
+                    midYThreshold: lastChildFrameDivRect.bottom + (frameBodyRect.bottom - lastChildFrameDivRect.bottom)/2});
+            } 
             else{
-                // For a statement frame:
-                if(event.y <= rect.top + rect.height/2){
-                    const newPos = getAboveFrameCaretPosition(this.frameId);
-                    positionFrameId = newPos.id;
-                    positionCaret = newPos.caretPosition as CaretPosition;
-                }
-                else{
-                    positionCaret = CaretPosition.below;
-                }
+                // Add A) for no children body: the mid frame position is then taken as the mid frame of the containing frame
+                midFramePosArray.push({caretPos: {id: this.frameId, caretPosition: CaretPosition.body},
+                    midYThreshold: frameBodyRect.top + frameBodyRect.height/2});
             }
-            this.appStore.toggleCaret({id: positionFrameId, caretPosition: positionCaret});
+
+            return midFramePosArray;
         },
 
         duplicate(): void {

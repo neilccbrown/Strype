@@ -63,7 +63,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
 import { CaretPosition, CommentDefinition, DraggableGroupTypes, FrameObject } from "@/types/types";
 import { mapStores } from "pinia";
-import { handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { getFrameBodyUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -129,7 +129,7 @@ export default Vue.extend({
         },
 
         uiid(): string {
-            return "frameBodyId_" + this.frameId;
+            return getFrameBodyUIID(this.frameId);
         },
 
         empty(): boolean {

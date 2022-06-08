@@ -17,6 +17,10 @@ export function getFrameContainerUIID(frameId: number): string {
     return "FrameContainer_" + frameId;
 }
 
+export function getFrameBodyUIID(frameId: number): string {
+    return "frameBodyId_" + frameId;
+}
+
 export function getFrameUIID(frameId: number): string{
     return "frame_id_" + frameId;
 }
@@ -292,10 +296,20 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     return null;
 }
 
-// Used for easing handling events for drag & drop of frames
+/**
+ * Used for easing handling events for drag & drop of frames
+ **/
 let currentDraggedSingleFrameId = 0;
 export function getDraggedSingleFrameId(): number {
     return currentDraggedSingleFrameId;
+}
+
+// This flag informs if a drag resulted in a change in the frames order
+// (i.e. a drop occured somewhere else, or as if the action had been "cancelled")
+// We need to know that to show the caret as it was if the frames order didn't change
+let isDragChangingOrder = false; 
+export function setIsDraggedChangingOrder(changedOrder: boolean): void{
+    isDragChangingOrder = changedOrder;
 }
 
 export function handleDraggingCursor(showDraggingCursor: boolean, isTargetGroupAllowed: boolean):void {
@@ -358,12 +372,16 @@ export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
     // Update the store about dragging ended 
     useStore().isDraggingFrame = false;
 
-    // Position the blue caret where *visually* the fake caret was positionned.
+    // If the frames order has changed because of the drag & drop, position the blue caret where *visually* the fake caret was positionned.
+    // If the frames order hasn't changed, we restore the current frame caret saved in the store.
     // NOTE: at this stage, the UI hasn't yet updated the frame order -- so we do this caret selection at the next Vue tick
     Vue.nextTick(() => {
-        const newCaretPosition = getAboveFrameCaretPosition(topFrameId);
+        const newCaretPosition = (isDragChangingOrder) ? getAboveFrameCaretPosition(topFrameId) : {id: useStore().currentFrame.id, caretPosition: useStore().currentFrame.caretPosition};
         
         // Set the caret properly in the store which will update the editor UI
         useStore().toggleCaret({id:newCaretPosition.id, caretPosition: newCaretPosition.caretPosition as CaretPosition});
+
+        // reset the flag informing if frames have changed order
+        isDragChangingOrder = false;
     });
 }
