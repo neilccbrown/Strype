@@ -67,6 +67,12 @@ export const useStore = defineStore("app", {
 
             copiedFrames: {} as EditorFrameObjects,
 
+            // Flag array to indicate the frames that could be deleted when hovering the
+            // delete context menu entries (simple delete or delete outer)
+            potentialDeleteFrameIds:[] as number[],
+
+            potentialDeleteIsOuter: false,
+
             // Keeps a copy of the state when 2-steps operations are performed and we need to know the previous state (to clear after use!)
             stateBeforeChanges : {} as  {[id: string]: any}, 
 
@@ -1518,7 +1524,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        deleteFrames(key: string){
+        deleteFrames(key: string, ignoreBackState?: boolean){
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
             // we remove the editable slots from the available positions
@@ -1625,11 +1631,13 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
                        
             //save state changes
-            this.saveStateChanges(
-                {
-                    previousState: stateBeforeChanges,
-                }
-            );
+            if(!ignoreBackState){
+                this.saveStateChanges(
+                    {
+                        previousState: stateBeforeChanges,
+                    }
+                );
+            }
 
             //we show the message of large deletion after saving state changes as this is not to be notified.
             if(showDeleteMessage){
@@ -1651,6 +1659,42 @@ export const useStore = defineStore("app", {
                 this.ignoreKeyEvent = true;
                 this.deleteFrames("Backspace");  
             }
+        },
+
+        deleteOuterFrames(frameId: number){
+            // Delete the outer frame(s), the frameId argument only makes sense for deletion without multi-selection
+            // We delete outer frame(s) by getting inside each body, and performing a standard "backspace" delete
+           
+            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+
+            // Prepare a list of ids for the frame to delete (reversed order)
+            const framesToDelete: number[] = [];
+            if(this.selectedFrames.length > 0){
+                framesToDelete.push(...this.selectedFrames.reverse());
+            }
+            else{
+                framesToDelete.push(frameId);
+            }
+            framesToDelete.reverse();
+
+            // Now perform the deletion for each top level frames to delete
+            framesToDelete.forEach((topLevelFrameId) => {
+                //first position the caret at the right place: within the top of that frame's body
+                this.toggleCaret({id: topLevelFrameId, caretPosition: CaretPosition.body});
+
+                //then send a delete command
+                this.deleteFrames("Backspace", true);
+            })
+
+            //clear the selection of frames
+            this.unselectAllFrames();
+                                
+            //save state changes
+            this.saveStateChanges(
+                {
+                    previousState: stateBeforeChanges,
+                }
+            );
         },
 
         toggleCaret(newCurrent: CurrentFrame) {

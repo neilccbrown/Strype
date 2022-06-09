@@ -64,7 +64,7 @@ export const isLastInParent = (listOfFrames: EditorFrameObjects, frameId: number
 };
 
 //Returns a list with all the previous frames (of the same level) and next frames (including first level children) used for navigating the caret
-export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, currentFrameId: number, caretPosition: CaretPosition, direction: string) => {
+export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, currentFrameId: number, caretPosition: CaretPosition, direction: "up"|"down"): number[] => {
     const currentFrame = listOfFrames[currentFrameId];
             
     // Create the list of children + joints with which the caret will work with
@@ -349,7 +349,7 @@ export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameOb
     return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
 };
 
-export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[]) => {
+export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: "up"|"down", selectedFrames: number[]): {frameForSelection: number, newCurrentFrame: CurrentFrame}|null => {
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.

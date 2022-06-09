@@ -85,9 +85,9 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import Caret from "@/components/Caret.vue"
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame, NavigationPosition } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame, NavigationPosition, FuncDefDefinition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import { getAboveFrameCaretPosition, getParent, getParentOrJointParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent } from "@/helpers/storeMethods";
 import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
@@ -145,8 +145,8 @@ export default Vue.extend({
         frameStyle(): Record<string, string> {
             return {
                 "background-color": `${this.getFrameBgColor()} !important`,
-                 "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
-                };
+                "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
+            };
         },
 
         frameMarginStyle(): Record<string, Record<string, string>> {
@@ -161,6 +161,10 @@ export default Vue.extend({
             frameClass += (this.selectedPosition === "last")? "selectedBottom " : ""; 
             frameClass += (this.selectedPosition === "first-and-last")? "selectedTopBottom " : "";  
             return frameClass;
+        },
+
+        deletableFrame(): boolean{
+            return (this.appStore.potentialDeleteFrameIds?.includes(this.frameId)) ?? false;
         },
 
         // Needed in order to use the `CaretPosition` type in the v-show
@@ -239,6 +243,14 @@ export default Vue.extend({
         },
 
         getFrameBgColor(): string {
+            // If we show the indicator background that a frame can be delete (hovering the delete / delete outer entry menus)
+            // then we have a specific colour - to avoid colours to add up together when going deeper in the frames,
+            // we only apply that colour to the frames that have not a parent set to deletable         
+            if(this.deletableFrame && this.appStore.potentialDeleteFrameIds){
+                const isParentDeletable = this.appStore.potentialDeleteFrameIds.includes(getParentOrJointParent(this.appStore.frameObjects, this.frameId));
+                return (!isParentDeletable) ? "rgba(255,0,0,0.6)" : "transparent"; 
+            }
+
             // In most cases, the background colour is the one defined in the frame types.
             // The exception is for comments and joint frames, which will take the same colour as their container.
             // For comments, we keep them transparent, for joints, we retrieve the parent's colour, so that it shows up when dragging them.
@@ -262,6 +274,8 @@ export default Vue.extend({
             }
 
             if(action === "frame-context-menu") {
+                const deleteOptionName = this.$i18n.t("contextMenu.delete") as string;
+                const deleteOuterOptionName = this.$i18n.t("contextMenu.deleteOuter") as string;
                 this.frameContextMenuOptions = [
                     {name: this.$i18n.t("contextMenu.cut") as string, method: "cut"},
                     {name: this.$i18n.t("contextMenu.copy") as string, method: "copy"},
@@ -269,7 +283,8 @@ export default Vue.extend({
                     {name: "", method: "", type: "divider"},
                     {name: this.$i18n.t("contextMenu.disable") as string, method: "disable"},
                     {name: "", method: "", type: "divider"},
-                    {name: this.$i18n.t("contextMenu.delete") as string, method: "delete"}];
+                    {name: deleteOptionName, method: "delete"},
+                    {name: deleteOuterOptionName, method: "deleteOuter"}];
 
                 // Not all frames should be duplicated (e.g. Else)
                 // The target id, for a duplication, should be the same as the copied frame 
@@ -291,6 +306,24 @@ export default Vue.extend({
                     }
                 }
 
+                // We only show "delete outer" if the top level frame(s) to delete are all block frames and not function definitions
+                const canDeleteOuter = (this.isPartOfSelection) 
+                    ? !this.appStore
+                        .selectedFrames
+                        .map((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != FuncDefDefinition.type)
+                        .includes(false)
+                    : this.isBlockFrame && this.frameType.type != FuncDefDefinition.type;
+                if(!canDeleteOuter){
+                    const deleteOuterOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "deleteOuter");
+                    // We don't need the delete outer option: remove it from the menu options if not present
+                    if(deleteOuterOptionContextMenuPos > -1){
+                        this.frameContextMenuOptions.splice(
+                            deleteOuterOptionContextMenuPos,
+                            1
+                        );
+                    }
+                }
+                
                 //if a frame is disabled [respectively, enabled], show the enable [resp. disable] option
                 const disableOrEnableOption = (this.isDisabled) 
                     ?  {name: this.$i18n.t("contextMenu.enable"), method: "enable"}
@@ -314,14 +347,64 @@ export default Vue.extend({
                 const contextMenu = document.getElementById(getFrameContextMenuUIID(this.uiid));  
                 contextMenu?.removeAttribute("hidden");
 
+                // We add a hover event on the menu entries for delete to show cue in the UI
+                // need to be done in the next tick to make sure the menu has been generated.
+                this.$nextTick(() => {
+                    //We prepare the indexes of the entries to add events on. "Delete" will always be added.
+                    const deleteEntriesIndexes = [this.frameContextMenuOptions.findIndex((option) => option.name==deleteOptionName)];
+                    if(canDeleteOuter){
+                        deleteEntriesIndexes.push(this.frameContextMenuOptions.findIndex((option) => option.name==deleteOuterOptionName))
+                    }
+                    // Add the listeners
+                    if(contextMenu){
+                        deleteEntriesIndexes.forEach((indexValue, index) => {
+                            const isDeleteOuter = (index > 0);
+                            const menuEntryElement = contextMenu.childNodes[indexValue];
+                            menuEntryElement.addEventListener("mouseenter", () => this.onDeleteContextMenuHover(true, isDeleteOuter));
+                            menuEntryElement.addEventListener("mouseleave", () => this.onDeleteContextMenuHover(false, isDeleteOuter));
+                        });                       
+                    }
+                });                   
+
                 //prevent default menu to show
                 event.preventDefault();
                 event.stopPropagation();
             }
         },
 
+        onDeleteContextMenuHover(entering: boolean, isOuterDelete: boolean): void {
+            // For compatibility with the tool previous versions, set the property in the store if not existing before
+            if(!this.appStore.potentialDeleteFrameIds){
+                this.appStore.potentialDeleteFrameIds = [];
+                this.appStore.potentialDeleteIsOuter = false;
+            }
+
+            // Set the frame flag indicating we want to show in the UI that a frame could be deleted
+            if(!entering){
+                this.appStore.potentialDeleteFrameIds.splice(0);
+            }
+            else{
+                // Add the target frames Ids in the flag array - they will always be shown no matter it's a single or outer delete
+                const potentialDeleteFrameIDs = (this.appStore.selectedFrames.length > 0) ? [...this.appStore.selectedFrames] : [this.frameId];
+                [...potentialDeleteFrameIDs].forEach((targetFrameId) => {
+                    if(isOuterDelete){
+                        // Add the joint frames (if any) in the flag array if we are in an outer delete
+                        potentialDeleteFrameIDs.push(...this.appStore.frameObjects[targetFrameId].jointFrameIds);
+                    }
+                    else{
+                        // Add all the children and joints of the targets in the flag array if we are in a single delete
+                        potentialDeleteFrameIDs.push(...getAllChildrenAndJointFramesIds(this.appStore.frameObjects, targetFrameId));
+                    }
+                });
+                this.appStore.potentialDeleteFrameIds.push(...potentialDeleteFrameIDs);
+                this.appStore.potentialDeleteIsOuter = isOuterDelete;
+            }
+        },
+
         // Item is passed anyway in the event, in case the menu is attached to a list
         optionClicked (event: {item: any; option: {name: string; method: string}}) {
+            // Remove all the potential deletable frames
+            this.appStore.potentialDeleteFrameIds.splice(0);
             // `event.option.method` holds the name of the method to be called.
             // In case the menu gets more complex this can clear up the code. However, it is a bit unsafe - in the case you
             // misstype a method's name.
@@ -331,7 +414,12 @@ export default Vue.extend({
             }
         },
 
-        hideCaretAtClick(): void {
+        hideCaretAtClick(event: MouseEvent): void {
+            // First check if we are not clicking on the context menu: if so, we don't hide the caret.
+            if(event.composedPath().map((target) => (target as HTMLElement).id).includes(this.uiid+"frameContextMenu")){
+                return;
+            }
+
             // Force the caret to become invisible at click. That is required for being able to show a drag and drop "image" that 
             // doesn't contain the blue caret if we drag the frame which currently holds the caret. The caret visibility will be restored
             // either when the drop of a drag and drop happens or when click is notified (cf. toggleCaret()) if the drag and drop had not be performed.
@@ -533,6 +621,10 @@ export default Vue.extend({
                 this.appStore.deleteFrames("Backspace");
             }       
         },
+
+        deleteOuter(): void {
+            this.appStore.deleteOuterFrames(this.frameId);
+        }
     },
 });
 </script>
