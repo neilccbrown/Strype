@@ -107,6 +107,17 @@ export default Vue.extend({
         //when the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
         //because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
         this.isComponentLoaded  = true;
+        // Something still seem to update the placeholder after the editable slot component is mounted, 
+        // so we observe its resize event to make sure the input field are set up properly.
+        const placeholder = document.getElementById(this.placeholderUIID);
+        if(placeholder){
+            new ResizeObserver(() => {
+                const inputElement = document.getElementById(this.UIID);
+                if(inputElement){
+                    inputElement.style.width = this.computeFitWidthValue();
+                }
+            }).observe(placeholder);
+        } 
     },
 
     data: function() {
