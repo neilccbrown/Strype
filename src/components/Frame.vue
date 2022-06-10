@@ -530,9 +530,10 @@ export default Vue.extend({
                     midYThreshold: lastChildFrameDivRect.bottom + (frameBodyRect.bottom - lastChildFrameDivRect.bottom)/2});
             } 
             else{
-                // Add A) for no children body: the mid frame position is then taken as the mid frame of the containing frame
+                // Add A) for no children body: the mid frame position is then taken as the 3/4 frame of the containing frame
+                // because we want to have a bit more space for clicking within the empty body to get the caret inside the body
                 midFramePosArray.push({caretPos: {id: this.frameId, caretPosition: CaretPosition.body},
-                    midYThreshold: frameBodyRect.top + frameBodyRect.height/2});
+                    midYThreshold: frameBodyRect.top + frameBodyRect.height*0.75});
             }
 
             return midFramePosArray;
@@ -651,8 +652,8 @@ export default Vue.extend({
 }
 
 .dragging-frame-not-allowed {
-     //  This cursor will be shown when dragging occurs and we are oustide the editor's containers
-    cursor: url(~@/assets/images/forbidden-cursor.png), auto;
+     // This cursor will be shown when dragging occurs and we are oustide the editor's containers
+    cursor: url(~@/assets/images/forbidden-cursor.png), auto !important;
 }
 
 .blockFrameDiv {

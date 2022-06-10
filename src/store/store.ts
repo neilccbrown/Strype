@@ -171,6 +171,14 @@ export const useStore = defineStore("app", {
         getMainCodeFrameContainerId: (state) => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === MainFramesContainerDefinition.type)[0].id;
         },
+
+        getImportsFrameContainerId:(state) => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === ImportsContainerDefinition.type)[0].id;
+        },
+
+        getFuncDefsFrameContainerId:(state) => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === FuncDefContainerDefinition.type)[0].id;
+        },
         
         getDraggableGroupById: (state) => (frameId: number) => {
             return state.frameObjects[frameId].frameType.draggableGroup;

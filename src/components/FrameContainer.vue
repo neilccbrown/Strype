@@ -274,7 +274,7 @@ export default Vue.extend({
 }
 
 .frame-container-minheight {
-    min-height: 30px;
+    min-height: $frame-container-min-height;
 }
 
 </style>

@@ -32,7 +32,11 @@
                         class="noselect"
                     />
                     <div class="col">
-                        <div :id="editorUIID" :class="{'editor-code-div noselect':true, 'small-editor-code-div': isLargePythonConsole}" >
+                        <div 
+                            :id="editorUIID" 
+                            :class="{'editor-code-div noselect':true, 'small-editor-code-div': isLargePythonConsole}" 
+                            @click.self="onEditorClick"
+                        >
                             <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
                             <Draggable
                                 :list="[1,2]"
@@ -71,12 +75,13 @@ import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
-import { AppEvent, DraggableGroupTypes, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor } from "./helpers/editor";
+import { AppEvent, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID } from "./helpers/editor";
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import Draggable from "vuedraggable";
+import scssVars  from "@/assets/style/exports.scss";
 
 //////////////////////
 //     Component    //
@@ -288,6 +293,38 @@ export default Vue.extend({
         onMoveFrameContainer() {
             // We need that to avoid the frame containers to be even temporary swapping
             return false;
+        },
+
+        onEditorClick(event: MouseEvent) {
+            // In most cases, we don't need to do anything about a click in the editor.
+            // However, there is a small particular case that we should consider: 
+            // if we click on the very bottom of the last frame of a frame container,
+            // because the caret will hide on mousedown event for drag and drop management,
+            // it might be seen as the browser as a click in the editor instead. Therefore, 
+            // we check if we clicked near the end of a container that contains frames and 
+            // if we did, we select the last frame of this container instead.
+            if(document.getElementsByClassName("caret").length > 0){
+                // Retrieve the size of the caret (https://dev.to/pecus/how-to-share-sass-variables-with-javascript-code-in-vuejs-55p3)
+                const caretHeight = parseInt((scssVars.caretHeight as string).replace("px",""));
+                const containersFrameIds = [this.appStore.getImportsFrameContainerId, this.appStore.getFuncDefsFrameContainerId, this.appStore.getMainCodeFrameContainerId];
+                containersFrameIds.forEach((containerFrameId) => {
+                    // If the container has no children we skip
+                    if(this.appStore.frameObjects[containerFrameId].childrenIds.length > 0){
+                        // Get the last child frame ID
+                        const lastFrameId = [...this.appStore.frameObjects[containerFrameId].childrenIds].pop();
+                        if(lastFrameId){
+                            // Will be there... but keeping TS happy
+                            // We retrieve the rect of the HTML element for that frame and check if the click is within 
+                            // the band below that frame of the height of a caret
+                            const frameDivRect = document.getElementById(getFrameUIID(lastFrameId))?.getBoundingClientRect();
+                            if(frameDivRect && event.x >= frameDivRect.left && event.x <= frameDivRect.right
+                                && event.y >= frameDivRect.bottom && event.y <= (frameDivRect.bottom + caretHeight)){
+                                this.appStore.toggleCaret({id: lastFrameId, caretPosition: CaretPosition.below});
+                            }
+                        }
+                    }
+                })
+            }
         },
     },
 });
