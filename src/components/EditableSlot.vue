@@ -455,7 +455,7 @@ export default Vue.extend({
                 // If the AutoCompletion is on we just browse through it's contents
                 // The `results` check, prevents `changeSelection()` when there are no results matching this token
                 // And instead, since there is no AC list to show, moves to the next slot
-                if(this.showAC && (this.$refs.AC as any)?.areResultsToShow()) {
+                if(this.showAC && this.acRequested && (this.$refs.AC as any)?.areResultsToShow()) {
                     (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
                 }
                 // Else we move the caret
@@ -472,7 +472,7 @@ export default Vue.extend({
         
         onEscKeyUp(event: KeyboardEvent) {
             // If the AC is loaded we want to close it with an ESC and stay focused on the editableSlot
-            if(this.showAC) {
+            if(this.showAC && this.acRequested) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.showAC = this.debugAC;
@@ -485,7 +485,7 @@ export default Vue.extend({
         onTabKeyDown(event: KeyboardEvent){
             // We keep the default browser behaviour when tab is pressed AND we're not having AC on, and we don't use the Shift modifier key
             // As browsers would use the "keydown" event, we have to intercept the event at this stage.
-            if(!event.shiftKey && this.showAC && document.querySelector(".selectedAcItem")) {
+            if(!event.shiftKey && this.showAC && this.acRequested && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.tabDownTriggered = true;
