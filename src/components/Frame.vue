@@ -416,7 +416,8 @@ export default Vue.extend({
 
         hideCaretAtClick(event: MouseEvent): void {
             // First check if we are not clicking on the context menu: if so, we don't hide the caret.
-            if(event.composedPath().map((target) => (target as HTMLElement).id).includes(this.uiid+"frameContextMenu")){
+            // (don't use the ids to check things because the event bubbles through the frames)
+            if(event.composedPath().find((target) => (target as HTMLElement).tagName?.toLowerCase()=="ul" && (target as HTMLElement).classList.contains("vue-simple-context-menu"))){
                 return;
             }
 
