@@ -432,6 +432,11 @@ export const useStore = defineStore("app", {
 
                 frameToBeMovedId = frameToBeMovedId ?? this.copiedFrameId;
 
+                if(frameToBeMovedId===-100){
+                    // If there is nothing to copy, we return false
+                    return false;
+                }
+
                 const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
                 // isFrameCopied needs to be checked in the case that the original frame which was copied has been deleted.
                 const copiedType: string = sourceFrameList[frameToBeMovedId].frameType.type;
@@ -2081,21 +2086,41 @@ export const useStore = defineStore("app", {
         pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const isCopiedJointFrame = this.copiedFrames[this.copiedFrameId].frameType.isJointFrame;
-            const isClickedJointFrame = this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
 
-            // Clicked is joint ? parent of clicked is its joint parent ELSE clicked is the real parent
-            const clickedParentId = (isClickedJointFrame) ? this.frameObjects[payload.clickedFrameId].jointParentId : this.frameObjects[payload.clickedFrameId].parentId;
+            // Are we pasting into a joint frame: that depends what we copied. If we copied a joint frame
+            // then we need to check if we are in a joint frame body (because of previous checks, we know we'd be at the end of that body).
+            // If we copied something else then we just check the locattion we want to paste to.
+            const isClickedJointFrame = (isCopiedJointFrame && payload.caretPosition === CaretPosition.below)
+                ? true
+                : this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
 
-            // Index is 0 if we paste in the body OR we paste a JointFrame Below JointParent
-            const index = (payload.caretPosition === CaretPosition.body || ( payload.caretPosition === CaretPosition.below && isCopiedJointFrame && !isClickedJointFrame)) ? 
-                0 : 
-                this.getIndexInParent(payload.clickedFrameId)+1;
+            // When pasting a joint frame, the clicked frame might not be the right one to use: if we are pasting in below a joint frame's child
+            // then we are actually wanting to paste after that child's parent (the joint frame after which we want to paste)
+            const jointFrameAsClickedId = (payload.caretPosition == CaretPosition.below) 
+                ? this.frameObjects[payload.clickedFrameId].parentId
+                : payload.clickedFrameId;
 
-            // If the caret is below and it is not a joint frame, parent is the clicked's parent 
-            const pasteToParentId = (payload.caretPosition === CaretPosition.body || (isCopiedJointFrame && !isClickedJointFrame) ) ?
-                payload.clickedFrameId:   
-                clickedParentId;
-                
+            // Clicked is joint ? parent of clicked(*) is its joint parent ELSE clicked is the real parent
+            // (*) unless we wanted to paste into the root of this joint structure, then the parent is joint we clicked into
+            const clickedParentId = (isClickedJointFrame) 
+                ? (this.frameObjects[jointFrameAsClickedId].jointParentId > 0) ? this.frameObjects[jointFrameAsClickedId].jointParentId : jointFrameAsClickedId
+                : this.frameObjects[payload.clickedFrameId].parentId;
+
+            // Flag indicating if we are either in a normal body not in a context of joint frames or in a the root parent in a context of joint frames
+            const inBodyContext = (payload.caretPosition === CaretPosition.body && (!isCopiedJointFrame || (isCopiedJointFrame && !isClickedJointFrame)));
+
+            // Index is 0 if we paste in the body and we are not dealing with a joint frame (i.e. pasting in the empty body of a joint frame)
+            // or we are dealing with a joint frame and the frame we paste in is not a joint frame (i.e. it's the root parent)
+            const index = (inBodyContext || (isClickedJointFrame && !this.frameObjects[jointFrameAsClickedId].frameType.isJointFrame))
+                ? 0 
+                : this.getIndexInParent((isCopiedJointFrame) ? jointFrameAsClickedId : payload.clickedFrameId)+1;
+
+            // If the caret is below and it is not a joint frame, or caret is body and we deal with a joint frame(*), parent is the clicked's parent
+            // (*) only if we are copying in another joint frame: if we are copying in the root then the parent is the root itself
+            const pasteToParentId = inBodyContext
+                ? (isClickedJointFrame) ? jointFrameAsClickedId : payload.clickedFrameId
+                : clickedParentId;
+
             // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
             this.copyFrameToPosition(
                 {

@@ -134,6 +134,12 @@ export default Vue.extend({
         },
 
         handleClick (event: MouseEvent): void {
+            // For a weird reason I don't understand, the menu can still be shown in a specifc context, despite the test 
+            // done further in this function: if you had a valid copy, right click to show the menu, didn't paste and then
+            // do the same for an invalid copy at the same caret container, the menu would still show (but paste wouldn't work)
+            // -- hiding the menu here sort that issue.
+            ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).hideContextMenu();
+            
             this.appStore.contextMenuShownId = this.uiid;
             if(this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {  
                 ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
