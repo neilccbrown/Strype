@@ -87,7 +87,7 @@ import Caret from "@/components/Caret.vue"
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame, NavigationPosition, FuncDefDefinition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isLastInParent } from "@/helpers/storeMethods";
 import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
@@ -493,7 +493,32 @@ export default Vue.extend({
                             }
                         }
                         if(!hasPassedPosition){
-                            newCaretPosition.caretPosition = CaretPosition.below;
+                            // If we have passed the mid frame vertical threshold of the last body's child
+                            // the caret position would be the bottom of that containing frame, except in
+                            // the case of a joint structure when in between joints: since the below positions
+                            // in between joints are disabled, the caret will be still be at the last child's bottom.
+                            // If that joint has no children, we keep in its body.
+                            // If the joint frame is the last of the structure, then we need to show the caret below for the root parent.
+                            if(this.appStore.frameObjects[this.frameId].jointFrameIds.length > 0 || this.appStore.frameObjects[this.frameId].jointParentId > 0){
+                                if(this.appStore.frameObjects[this.frameId].jointParentId > 0 && isLastInParent(this.appStore.frameObjects, this.frameId)){
+                                    // Case of a joint frame which is last of of the joint structure
+                                    newCaretPosition.id = this.appStore.frameObjects[this.frameId].jointParentId;
+                                    newCaretPosition.caretPosition = CaretPosition.below;
+                                }
+                                else{
+                                    // Case of root joint frame or  joint frame which is not last of the joint structure
+                                    if(this.appStore.frameObjects[this.frameId].childrenIds.length > 0){
+                                        newCaretPosition.id = [...this.appStore.frameObjects[this.frameId].childrenIds].pop() as number;// get the last joint child frame id
+                                        newCaretPosition.caretPosition = CaretPosition.below;
+                                    }
+                                    else{
+                                        newCaretPosition.caretPosition = CaretPosition.body;
+                                    }    
+                                }                                                
+                            } 
+                            else{
+                                newCaretPosition.caretPosition = CaretPosition.below;   
+                            }
                         }
                     }
                     else{
@@ -509,13 +534,13 @@ export default Vue.extend({
             // The mid frame positions for the "body" part of a block frames have at least 1 entity:
             // - A) the parent's body position (top of the body) that would be selected 
             //    when the click vertical position is above the middle of the first child (when there are children) or above the middle of the empty body space (if no children)
-            // For that, if there are frames, we have B) all the mid frame positions of the children
+            // If there are frames in the body, we have B) all the mid frame positions of the children
             const midFramePosArray: {caretPos: CurrentFrame, midYThreshold: number}[] = [];
             const frameBodyRect = document.getElementById(getFrameBodyUIID(this.frameId))?.getBoundingClientRect() as DOMRect;
                         
             const bodyFrameIds = this.appStore.frameObjects[this.frameId].childrenIds;
             if(bodyFrameIds.length > 0){
-                // Start with adding B)
+                // A) + B)
                 bodyFrameIds.forEach((childFrameId) => {
                     const childFrameDivRect = document.getElementById(getFrameUIID(childFrameId))?.getBoundingClientRect() as DOMRect;
                     const prevPos = getAboveFrameCaretPosition(childFrameId);
@@ -523,7 +548,7 @@ export default Vue.extend({
                         midYThreshold: childFrameDivRect.top + childFrameDivRect.height/2 });
                 });
 
-                // Add the last part, A)
+                // Add the last part (after the last frame) of B)
                 const lastChildFrameId = bodyFrameIds[bodyFrameIds.length - 1];
                 const lastChildFrameDivRect = document.getElementById(getFrameUIID(lastChildFrameId))?.getBoundingClientRect() as DOMRect;
                 midFramePosArray.push({caretPos: {id: lastChildFrameId, caretPosition: CaretPosition.below},
