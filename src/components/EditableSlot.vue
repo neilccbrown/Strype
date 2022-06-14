@@ -499,7 +499,7 @@ export default Vue.extend({
             }
 
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
-            if(this.showAC && document.querySelector(".selectedAcItem")) {
+            if(this.showAC && this.acRequested && document.querySelector(".selectedAcItem")) {
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
