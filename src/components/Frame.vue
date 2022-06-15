@@ -273,6 +273,11 @@ export default Vue.extend({
                 return;
             }
 
+            // deselect frames UNLESS we are clicking on the selected frames
+            if(!this.isPartOfSelection){
+                this.appStore.unselectAllFrames();
+            }
+
             if(action === "frame-context-menu") {
                 const deleteOptionName = this.$i18n.t("contextMenu.delete") as string;
                 const deleteOuterOptionName = this.$i18n.t("contextMenu.deleteOuter") as string;
