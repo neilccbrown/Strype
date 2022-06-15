@@ -29,6 +29,7 @@
                     :options="this.frameContextMenuOptions"
                     :ref="'frameContextMenu'"
                     @option-clicked="optionClicked"
+                    @menu-closed="onContextMenuClosed"
                 />
 
                 <FrameHeader
@@ -87,7 +88,7 @@ import Caret from "@/components/Caret.vue"
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame, NavigationPosition, FuncDefDefinition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isLastInParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
@@ -130,8 +131,13 @@ export default Vue.extend({
 
     data: function () {
         return {
-            //prepare an empty version of the menu: it will be updated as required in handleClick()
+            // Prepare an empty version of the menu: it will be updated as required in handleClick()
             frameContextMenuOptions: [] as {name: string; method: string; type?: "divider"}[],
+            // Flag to indicate a frame is selected via the context menu (differs from a user selection)
+            contextMenuEnforcedSelect: false,
+            // And an associated observer used to check when the menu made hidden to change the flag above
+            // we only set the observer later as we need to access other data within the observer
+            contextMenuObserver: new MutationObserver(() => {return}), 
         }
     },
 
@@ -156,10 +162,10 @@ export default Vue.extend({
 
         frameSelectedCssClass(): string {
             let frameClass = "";
-            frameClass += (this.selectedPosition !== "unselected")? "selected " : ""; 
+            frameClass += (this.selectedPosition !== "unselected" || this.contextMenuEnforcedSelect)? "selected " : ""; 
             frameClass += (this.selectedPosition === "first")? "selectedTop " : ""; 
             frameClass += (this.selectedPosition === "last")? "selectedBottom " : ""; 
-            frameClass += (this.selectedPosition === "first-and-last")? "selectedTopBottom " : "";  
+            frameClass += (this.selectedPosition === "first-and-last" || this.contextMenuEnforcedSelect)? "selectedTopBottom " : "";  
             return frameClass;
         },
 
@@ -219,14 +225,38 @@ export default Vue.extend({
 
     mounted() {
         window.addEventListener("keydown", this.onKeyDown);
+
+        // Observe when the context menu when the context menu is closed
+        // in order to reset the enforced selection flag
+        // (we cannot solely use the menu-closed event of the component because it doesn't trigger between menu openings)
+        const contextMenuContainer = document.getElementById(getFrameContextMenuUIID(this.uiid))?.parentElement;
+        if(contextMenuContainer){
+            this.contextMenuObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutationRecord) => {
+                    if((mutationRecord.target as HTMLElement).style.display == "none"){
+                        this.contextMenuEnforcedSelect = false;
+                    }
+                });
+            });
+            this.contextMenuObserver.observe(contextMenuContainer,{attributes: true, attributeFilter: ['style']});
+        }
     },
 
     destroyed() {
         window.removeEventListener("keydown", this.onKeyDown);
+
+        // Probably not required but for safety, remove the observer set up in mounted()
+        this.contextMenuObserver.disconnect();
     },
 
     methods: {
         onKeyDown(event: KeyboardEvent) {
+            // When a up/down arrow is hit, we don't want to keep the menu open and potential menu enforced selection
+            if(event.key == "ArrowUp" || event.key == "ArrowDown"){
+                document.querySelector(".vue-simple-context-menu--active")?.classList.remove("vue-simple-context-menu--active");
+                this.contextMenuEnforcedSelect = false;
+            }
+            
             // Cutting/copying by shortcut is only available for a frame selection*.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
@@ -273,23 +303,21 @@ export default Vue.extend({
                 return;
             }
 
-            // deselect frames UNLESS we are clicking on the selected frames
-            if(!this.isPartOfSelection){
-                this.appStore.unselectAllFrames();
-            }
-
             if(action === "frame-context-menu") {
-                const deleteOptionName = this.$i18n.t("contextMenu.delete") as string;
-                const deleteOuterOptionName = this.$i18n.t("contextMenu.deleteOuter") as string;
+                const deleteMethod = "delete";
+                const deleteOuterMethod = "deleteOuter";
                 this.frameContextMenuOptions = [
                     {name: this.$i18n.t("contextMenu.cut") as string, method: "cut"},
                     {name: this.$i18n.t("contextMenu.copy") as string, method: "copy"},
                     {name: this.$i18n.t("contextMenu.duplicate") as string, method: "duplicate"},
                     {name: "", method: "", type: "divider"},
+                    {name: this.$i18n.t("contextMenu.pasteAbove") as string, method: "pasteAbove"},
+                    {name: this.$i18n.t("contextMenu.pasteBelow") as string, method: "pasteBelow"},
+                    {name: "", method: "", type: "divider"},
                     {name: this.$i18n.t("contextMenu.disable") as string, method: "disable"},
                     {name: "", method: "", type: "divider"},
-                    {name: deleteOptionName, method: "delete"},
-                    {name: deleteOuterOptionName, method: "deleteOuter"}];
+                    {name: this.$i18n.t("contextMenu.delete") as string, method: deleteMethod},
+                    {name: this.$i18n.t("contextMenu.deleteOuter") as string, method: deleteOuterMethod}];
 
                 // Not all frames should be duplicated (e.g. Else)
                 // The target id, for a duplication, should be the same as the copied frame 
@@ -308,6 +336,58 @@ export default Vue.extend({
                             duplicateOptionContextMenuPos,
                             1
                         );
+                    }
+                }
+
+                // Similarly to duplication, not all frames can be pasted at a specifc location.
+                // We show the paste entries depending on the possiblity to paste the clipboard. 
+                let canPasteAboveFrame: boolean, canPasteBelowFrame: boolean;
+                if(!this.appStore.isCopiedAvailable || this.isPartOfSelection){
+                    // If there are no frame to copy, of the click is part of a selection of frames
+                    // we just remove all paste menu entries (and the divider following them)
+                    const pasteOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "pasteAbove");
+                    this.frameContextMenuOptions.splice(
+                            pasteOptionContextMenuPos,
+                            3 //2 paste menu entries + divider
+                        );
+                    canPasteAboveFrame = false;
+                    canPasteBelowFrame = false;
+                }
+                else{
+                    // Check each paste menu entry potential
+                    // We need to deal with joint frames (*).. the rules are, when we have a joint frames structure:
+                    // for the parent root joint frame: allow pasting any allowed frames above and below (joint will be pasted below the root)
+                    // for intermediate joint frames: only allow (tentative) joint frames above and below
+                    // for the last joint frame: only allow (tentative) joint frame above, and any allowed frames below 
+                    // (*) joint frames cannot be copied within a selection, it can only be one joint frame.
+                    const isCopyJointFrame = (this.appStore.copiedFrames[this.appStore.copiedFrameId]?.frameType.isJointFrame) ?? false;
+                    const isAllowedForJointAbove = (!this.isJointFrame) || (this.isJointFrame && isCopyJointFrame);
+                    const isAllowedForJointBelow = !this.isJointFrame
+                        || (this.isJointFrame && isCopyJointFrame && !isLastInParent(this.appStore.frameObjects, this.frameId))
+                        || (this.isJointFrame && isLastInParent(this.appStore.frameObjects, this.frameId));
+                    const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
+                    const targetPasteBelow = this.getTargetPasteBelow();
+                    canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.id, caretNavigationPositionAbove.caretPosition as CaretPosition));
+                    canPasteBelowFrame = isAllowedForJointBelow && (this.appStore.isPasteAllowedAtFrame(targetPasteBelow.id, targetPasteBelow.caretPosition));
+                    const sliceNumber = (!canPasteAboveFrame && !canPasteBelowFrame)
+                        ? 3 // both paste menu entries and divider
+                        : 1; // one of the paste menu entries
+                    const pasteBelowOptionIndex = this.frameContextMenuOptions.findIndex((entry) => entry.method === "pasteBelow");
+                    const pasteOptionContextMenuPos = (!canPasteAboveFrame)
+                        ? this.frameContextMenuOptions.findIndex((entry) => entry.method === "pasteAbove") // position of first paste entry menu 
+                        : pasteBelowOptionIndex; // position of second paste entry menu
+                    if(!canPasteAboveFrame || ! canPasteBelowFrame){
+                        this.frameContextMenuOptions.splice(
+                            pasteOptionContextMenuPos,
+                            sliceNumber
+                        );
+                    }
+                    // For paste below, one exception can happen: when we want to paste a joint frame below the joint frame root (if it has already joint children)
+                    // the selection may be showing the whole structure paste will be below the root: so we change the menu label when this happens
+                    // Note: joint frames cannot be part of a selection, so we know there would only be 1 frame
+                    if(canPasteBelowFrame && isCopyJointFrame && this.appStore.frameObjects[targetPasteBelow.id].jointFrameIds.length > 0){
+                        // offset the index by 1: a joint frame can never be pasted above a root, we know "paste above" won't be shown...
+                        this.frameContextMenuOptions[pasteBelowOptionIndex - 1].name = this.$i18n.t("contextMenu.pasteBelowJointRoot") as string;
                     }
                 }
 
@@ -352,22 +432,32 @@ export default Vue.extend({
                 const contextMenu = document.getElementById(getFrameContextMenuUIID(this.uiid));  
                 contextMenu?.removeAttribute("hidden");
 
-                // We add a hover event on the menu entries for delete to show cue in the UI
+                // We add a hover event on the delete menu entries to show cue in the UI on what the entry will act upon
                 // need to be done in the next tick to make sure the menu has been generated.
+                // The other entries are all ignored, as we will show a selection when the menu opens (if there is no selection already for that frame)
                 this.$nextTick(() => {
-                    //We prepare the indexes of the entries to add events on. "Delete" will always be added.
-                    const deleteEntriesIndexes = [this.frameContextMenuOptions.findIndex((option) => option.name==deleteOptionName)];
-                    if(canDeleteOuter){
-                        deleteEntriesIndexes.push(this.frameContextMenuOptions.findIndex((option) => option.name==deleteOuterOptionName))
-                    }
-                    // Add the listeners
                     if(contextMenu){
+                        //We prepare the indexes of the "delete" entries to add events on. "Delete" will always be added.
+                        const deleteEntriesIndexes = [this.frameContextMenuOptions.findIndex((option) => option.method == deleteMethod)];
+                        if(canDeleteOuter){
+                            deleteEntriesIndexes.push(this.frameContextMenuOptions.findIndex((option) => option.method == deleteOuterMethod));
+                        }
+                        // Add the listeners for delete entries
                         deleteEntriesIndexes.forEach((indexValue, index) => {
                             const isDeleteOuter = (index > 0);
                             const menuEntryElement = contextMenu.childNodes[indexValue];
-                            menuEntryElement.addEventListener("mouseenter", () => this.onDeleteContextMenuHover(true, isDeleteOuter));
-                            menuEntryElement.addEventListener("mouseleave", () => this.onDeleteContextMenuHover(false, isDeleteOuter));
-                        });                       
+                            menuEntryElement.addEventListener("mouseenter", () => this.onDeleteEntryContextMenuHover(true, isDeleteOuter));
+                            menuEntryElement.addEventListener("mouseleave", () => this.onDeleteEntryContextMenuHover(false, isDeleteOuter));
+                        });
+
+                        // If there are no frame(s) selected by the user already in a multi selection
+                        // then we select this frame when the context menu opens.
+                        // Since it is only for presentation, we don't actually register the selected frame as a selection
+                        if(!this.isPartOfSelection){
+                            this.contextMenuEnforcedSelect = true;
+                            // Other items may however be selected so we deselect them
+                            this.appStore.unselectAllFrames();
+                        }
                     }
                 });                   
 
@@ -377,7 +467,11 @@ export default Vue.extend({
             }
         },
 
-        onDeleteContextMenuHover(entering: boolean, isOuterDelete: boolean): void {
+        onContextMenuClosed() {
+            this.contextMenuEnforcedSelect = false;
+        },
+
+        onDeleteEntryContextMenuHover(entering: boolean, isOuterDelete: boolean): void {
             // For compatibility with the tool previous versions, set the property in the store if not existing before
             if(!this.appStore.potentialDeleteFrameIds){
                 this.appStore.potentialDeleteFrameIds = [];
@@ -504,7 +598,7 @@ export default Vue.extend({
                             // in between joints are disabled, the caret will be still be at the last child's bottom.
                             // If that joint has no children, we keep in its body.
                             // If the joint frame is the last of the structure, then we need to show the caret below for the root parent.
-                            if(this.appStore.frameObjects[this.frameId].jointFrameIds.length > 0 || this.appStore.frameObjects[this.frameId].jointParentId > 0){
+                            if(isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId)){
                                 if(this.appStore.frameObjects[this.frameId].jointParentId > 0 && isLastInParent(this.appStore.frameObjects, this.frameId)){
                                     // Case of a joint frame which is last of of the joint structure
                                     newCaretPosition.id = this.appStore.frameObjects[this.frameId].jointParentId;
@@ -612,6 +706,67 @@ export default Vue.extend({
             else{
                 this.appStore.copyFrame(this.frameId);
             }
+        },
+
+        pasteAbove(): void {
+            // Perform a paste above this frame
+            const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
+            if(this.appStore.isSelectionCopied){
+                    this.appStore.pasteSelection(
+                        {
+                            clickedFrameId: caretNavigationPositionAbove.id,
+                            caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
+                        }
+                    );
+                }
+                else {
+                    this.appStore.pasteFrame(
+                        {
+                            clickedFrameId: caretNavigationPositionAbove.id,
+                            caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
+                        }
+                    );
+                }
+        },
+
+        pasteBelow(): void {
+            // Perform a paste below this frame
+            const targetPasteBelow = this.getTargetPasteBelow();
+            if(this.appStore.isSelectionCopied){
+                this.appStore.pasteSelection(
+                    {
+                        clickedFrameId: targetPasteBelow.id,
+                        caretPosition: targetPasteBelow.caretPosition,
+                    }
+                );
+            }
+            else {
+                this.appStore.pasteFrame(
+                    {
+                        clickedFrameId: targetPasteBelow.id,
+                        caretPosition: targetPasteBelow.caretPosition,
+                    }
+                );
+            }
+        },
+
+        getTargetPasteBelow(): CurrentFrame {
+            // Because of joint frames, pasting below isn't as straight forward as using the clicked (target) frame and caret below position:
+            // if we are pasting a non joint frame below the last joint child, then we need to paste as if it was the joint root parent below,
+            // if we are pasting a joint frame below another joint frame, then we need to paste as if it was below the last child of target joint
+            //    or in the target joint frame body if there are no children.
+            const isCopyJointFrame = (this.appStore.copiedFrames[this.appStore.copiedFrameId]?.frameType.isJointFrame) ?? false;
+            const targetFrameId = (this.isJointFrame && isLastInParent(this.appStore.frameObjects, this.frameId) && !isCopyJointFrame) 
+                ? this.appStore.frameObjects[this.frameId].jointParentId
+                : (isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId) && isCopyJointFrame) 
+                    ? ([...this.appStore.frameObjects[this.frameId].childrenIds].pop())??this.frameId 
+                    : this.frameId;
+            const caretPosition = (isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId) && isCopyJointFrame 
+                && this.appStore.frameObjects[this.frameId].childrenIds.length == 0)
+                ? CaretPosition.body
+                : CaretPosition.below;
+            return  {id: targetFrameId, caretPosition: caretPosition};
+         
         },
 
         disable(): void {

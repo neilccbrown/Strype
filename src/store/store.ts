@@ -2,7 +2,7 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, Definitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, StateAppObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition, ImportsContainerDefinition, EditableFocusPayload, EditableSlotPayload, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, GlobalDefinition} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getParentOrJointParent, isContainedInFrame, removeFrameInFrameList, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getParentOrJointParent, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -212,7 +212,7 @@ export const useStore = defineStore("app", {
             // Two possible cases:
             // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame; OR if we are in a moving condition as explained above (M)
             // (b) and (a) or (M)
-            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0) || (caretPosition == CaretPosition.below && (currentFrame.jointParentId > 0 || currentFrame.jointFrameIds.length > 0)) ){
+            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0) || (caretPosition == CaretPosition.below && isFramePartOfJointStructure(state.frameObjects, currentFrame.id)) ){
                 focusedFrame = currentFrame;
             }
             // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame
@@ -1789,6 +1789,8 @@ export const useStore = defineStore("app", {
             stateCopy["diffToNextState"] = [];
             stateCopy["stateBeforeChanges"] = {};
             stateCopy["copiedFrames"] = {};
+            stateCopy.copiedFrameId = -100;
+            stateCopy.copiedSelectionFrameIds = [];
             stateCopy["DAPWrapper"] = {};
             stateCopy["previousDAPWrapper"] = {};
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
@@ -2089,7 +2091,7 @@ export const useStore = defineStore("app", {
 
             // Are we pasting into a joint frame: that depends what we copied. If we copied a joint frame
             // then we need to check if we are in a joint frame body (because of previous checks, we know we'd be at the end of that body).
-            // If we copied something else then we just check the locattion we want to paste to.
+            // If we copied something else then we just check the location we want to paste to.
             const isClickedJointFrame = (isCopiedJointFrame && payload.caretPosition === CaretPosition.below)
                 ? true
                 : this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;

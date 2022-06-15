@@ -74,7 +74,7 @@ export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, cu
     childrenAndJointFramesIds = [...listOfFrames[parentId].childrenIds];    
     
     // Joint frames are added to a temp list and caret works with this list instead.
-    if (currentFrame.jointFrameIds.length > 0 || currentFrame.jointParentId > 0) {
+    if (isFramePartOfJointStructure(listOfFrames, currentFrame.id)) {
 
         const jointParentId = (currentFrame.jointParentId > 0) ? currentFrame.jointParentId : currentFrame.id;
         const indexOfJointParent = childrenAndJointFramesIds.indexOf(jointParentId);
@@ -449,6 +449,11 @@ export const checkIfLastJointChild = function (listOfFrames: EditorFrameObjects,
     const parent: FrameObject = listOfFrames[listOfFrames[frameId].jointParentId];
     return [...parent.jointFrameIds].pop() === frameId;
 };
+
+export const isFramePartOfJointStructure = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
+    const frame = listOfFrames[frameId];
+    return (frame.frameType.isJointFrame || frame.jointFrameIds.length > 0);
+}
 
 
 export const checkIfFirstChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
