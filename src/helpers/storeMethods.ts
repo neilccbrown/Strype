@@ -521,15 +521,18 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
     // and discard the locations that correspond to the editable slots of disable frames
     return Object.values(allCaretDOMpositions).map((e)=> {
         const isSlotNavigationPosition = e.id.startsWith("input");
-        // Retrieves the identifier for the navigation position: the UUID for a caret, the index for a slot
+        // Retrieves the identifier for the navigation position: the type of caret position for a caret (e.g. "caretBody"), the index for a slot
+        // we extract it from the id of the elements, they are of that form:
+        // slots --> "input_frameId_<frameId>_slot_<slotIndex>" where <frameId> and <slotIndex> are numbers (we want <slotIndex>)
+        // carets --> "caret_<type>_<frameId>" where <type> is one of caretBelow or caretBody, and <frameId> as mentioned above (we want <type>)
         const positionObjIdentifier = (isSlotNavigationPosition) 
-            ? {slotNumber: parseInt(e.id.replace("input_frameId_","").replace(/\d+/,"").replace("_slot_",""))}
-            : {caretPosition: e.id.replace("caret_","").replace(/_*-*\d/g,"")}; 
+            ? {slotNumber: parseInt(e.id.replace(/input_frameId_\d+_slot_/,""))}
+            : {caretPosition: e.id.includes(CaretPosition.below) ? CaretPosition.below : CaretPosition.body}; 
+        // We retrieve also the frameId from the identifier of the element (format is mentioned above)
+        const frameIdMatch = e.id.match(/-?\d+/);
         return {
-            id: (isSlotNavigationPosition) 
-                ? parseInt(e.id.replace("input_frameId_","").replace("_slot"+/_*-*\d+/g,"").replace("caretBody_",""))
-                : parseInt(e.id.replace("caret_","").replace("caretBelow_","").replace("caretBody_","")), 
-            isSlotNavigationPosition: isSlotNavigationPosition,
+            id: (frameIdMatch != null) ? parseInt(frameIdMatch[0]) : -100, // need to check the match isn't null for TS, but it should NOT be.
+            isSlotNavigationPosition: isSlotNavigationPosition, 
             ...positionObjIdentifier,            
         }
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.id] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[]; 
