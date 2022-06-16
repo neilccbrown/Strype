@@ -25,6 +25,7 @@
             @keyup.backspace="onBackSpaceKeyUp()"
             @keydown="onKeyDown($event)"
             @keyup="logCursorPositionAndCheckBracket()"
+            @select="onCodeSelected"
             :class="{'editableslot-base editableslot-input navigationPosition': true, editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
             :key="UIID"
@@ -146,7 +147,9 @@ export default Vue.extend({
             //an array of code "parts" associated with styles (to emphasis the literal types i.e. numbers, strings and booleans)
             styledCodeParts: [] as StyledCodePart[],
             //we need to track the key.down events for the bracket/quote closing method (cf details there)
-            keyDownStr: "" as string,
+            keyDownStr: "",
+            //currently highlighted text (used for bracket matching, cf logCursorPositionAndCheckBracket())
+            highlightedCode: "",
         };
     },
     
@@ -599,6 +602,15 @@ export default Vue.extend({
             this.acRequested = false;
         },
 
+        onCodeSelected(event: UIEvent){
+            // For a weird reason, the event fires when the arrow keys are hit, not just when a selection occurs. 
+            // (may it is a way to be able to know a selection has been "cancelled")           
+            const inputField = event.target as HTMLInputElement;            
+            const start = inputField.selectionStart as number, end = inputField.selectionEnd as number;
+            const hasSelection = (start != end);
+            this.highlightedCode = (hasSelection) ? this.code.substr(start, end-start) : "";
+        },
+
         // store the cursor position to give it as input to AutoCompletionPopUp
         // Also checks if s bracket is opened, so it closes it
         // Note: the method is called on the key.up event BUT some issues on key.up are found with Windows/different keyboard layouts (i.e. French)
@@ -620,7 +632,7 @@ export default Vue.extend({
             this.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
 
             const openBracketCharacters = ["(","{","[","\"","'"];
-            const characterIndex= openBracketCharacters.indexOf(this.keyDownStr)
+            const characterIndex = openBracketCharacters.indexOf(this.keyDownStr)
 
             //check if the character we are adding is an openBracketCharacter
             if(characterIndex !== -1) {
@@ -628,10 +640,22 @@ export default Vue.extend({
                 //create a list with the closing bracket for each one of the opening in the same index
                 const closeBracketCharacters = [")","}","]","\"","'"];
 
-                // add the closing bracket to the text
-                const newCode = this.code.substr(0, currentTextCursorPos) 
+                // add the closing bracket to the text, either right after the opening one if no text is highlighted, 
+                // or at the end of the selection otherwise.
+                const newCode = this.code.substr(0, currentTextCursorPos)
+                + (this.highlightedCode) // add the hightlighted code if we are "wrapping" something with the brackets
                 + closeBracketCharacters[characterIndex] // the needed closing bracket or punctuation mark
                 + this.code.substr(currentTextCursorPos);
+
+                // In the context of "wrapping" some text with the brackets, we want to keep the selection
+                // at it was before the insertion of the brackets
+                // note: it looks like setSelectionRange() can't be applied right away - 2 next clicks are necessary to get it working
+                if(this.highlightedCode.length > 0) {
+                    this.$nextTick(() =>
+                        this.$nextTick(() => {
+                            inputField.setSelectionRange(currentTextCursorPos, (currentTextCursorPos  + this.highlightedCode.length));
+                        }));                    
+                }
 
                 this.showAC = false;
                 this.acRequested = false;
