@@ -9,8 +9,8 @@
             v-model="code"
             :placeholder="defaultText"
             v-focus="focused"
-            @focus="onFocus()"
-            @blur="onBlur()"
+            @focus="onFocus"
+            @blur="onBlur"
             @keydown.left="onLRKeyDown($event)"
             @keydown.right="onLRKeyDown($event)"
             @keydown.up.prevent.stop="onUDKeyDown($event)"
@@ -21,10 +21,10 @@
             @keyup.enter.prevent.stop="onEnterOrTabKeyUp($event)"
             @keydown.tab="onTabKeyDown($event)"
             @keyup.tab="onEnterOrTabKeyUp($event)"
-            @keydown.backspace="onBackSpaceKeyDown()"
-            @keyup.backspace="onBackSpaceKeyUp()"
+            @keydown.backspace="onBackSpaceKeyDown"
+            @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
-            @keyup="logCursorPositionAndCheckBracket()"
+            @keyup="logCursorPositionAndCheckBracket"
             @select="onCodeSelected"
             :class="{'editableslot-base editableslot-input navigationPosition': true, editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
@@ -83,6 +83,10 @@ import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 import { mapStores } from "pinia";
 import { checkAndtransformFuncCallFrameToVarAssignFrame } from "@/helpers/storeMethods";
+
+// Tokens that can be autoinserted (close matching) in code 
+// The order inside each array is important, keep matching opening and closing tokens
+const openBracketCharacters = ["(","{","[","\"","'"], closeBracketCharacters = [")","}","]","\"","'"];
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -548,7 +552,7 @@ export default Vue.extend({
             }
         },
 
-        onBackSpaceKeyDown(){
+        onBackSpaceKeyDown(event: KeyboardEvent){
             // When the backspace key is hit we delete the container frame when:
             //  1) there is no text in the slot
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
@@ -568,6 +572,19 @@ export default Vue.extend({
                         }
                     }, 600);
                 }
+                return;
+            }
+
+            // If we detect a deletion in *strictly* between and opening and closing bracket, we want to delete the closing one too
+            // for exammple code is (| is the text caret): "method(|)", user pressed backspace, we end up with "method|".
+            // Note: we know there is at least a caracter available in the slot, and we prevent doing anything if a text was selected
+            const inputField = (event.target as HTMLInputElement);
+            const start = (inputField.selectionStart as number), end = (inputField.selectionEnd as number);
+            const leftChar = inputField.value.charAt(start - 1);        
+            const rightChar = (inputField.value.length > start && (end == start)) ? inputField.value.charAt(start) : "";
+            if(openBracketCharacters.includes(leftChar) && closeBracketCharacters.includes(rightChar) 
+                && (openBracketCharacters.indexOf(leftChar) == closeBracketCharacters.indexOf(rightChar))){
+                inputField.value = inputField.value.substring(0, start) + inputField.value.substring(start + 1);
             }
         },
 
@@ -631,15 +648,10 @@ export default Vue.extend({
             const currentTextCursorPos = inputField.selectionStart??0;
             this.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
 
-            const openBracketCharacters = ["(","{","[","\"","'"];
             const characterIndex = openBracketCharacters.indexOf(this.keyDownStr)
 
             //check if the character we are adding is an openBracketCharacter
             if(characterIndex !== -1) {
-
-                //create a list with the closing bracket for each one of the opening in the same index
-                const closeBracketCharacters = [")","}","]","\"","'"];
-
                 // add the closing bracket to the text, either right after the opening one if no text is highlighted, 
                 // or at the end of the selection otherwise.
                 const newCode = this.code.substr(0, currentTextCursorPos)
