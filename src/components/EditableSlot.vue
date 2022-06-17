@@ -26,6 +26,7 @@
             @keydown="onKeyDown($event)"
             @keyup="logCursorPositionAndCheckBracket"
             @select="onCodeSelected"
+            @click="resetHighlightedTextFlag"
             :class="{'editableslot-base editableslot-input navigationPosition': true, editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
             :key="UIID"
@@ -577,6 +578,8 @@ export default Vue.extend({
 
             // If we detect a deletion in *strictly* between and opening and closing bracket, we want to delete the closing one too
             // for exammple code is (| is the text caret): "method(|)", user pressed backspace, we end up with "method|".
+            // Changing the value will push the caret to the end of the field and mess up the deletion
+            // so here, we do the deletion ourselves and stop the even to propagate             
             // Note: we know there is at least a caracter available in the slot, and we prevent doing anything if a text was selected
             const inputField = (event.target as HTMLInputElement);
             const start = (inputField.selectionStart as number), end = (inputField.selectionEnd as number);
@@ -584,7 +587,11 @@ export default Vue.extend({
             const rightChar = (inputField.value.length > start && (end == start)) ? inputField.value.charAt(start) : "";
             if(openBracketCharacters.includes(leftChar) && closeBracketCharacters.includes(rightChar) 
                 && (openBracketCharacters.indexOf(leftChar) == closeBracketCharacters.indexOf(rightChar))){
-                inputField.value = inputField.value.substring(0, start) + inputField.value.substring(start + 1);
+                inputField.value = inputField.value.substring(0, start - 1) + inputField.value.substring(start + 1);
+                this.code = inputField.value; // we need to update the code as well...
+                event.stopImmediatePropagation();
+                event.preventDefault();   
+                inputField.setSelectionRange(start - 1, start - 1); // avoid the caret to be pushed at the end of the text             
             }
         },
 
@@ -628,6 +635,10 @@ export default Vue.extend({
             this.highlightedCode = (hasSelection) ? this.code.substr(start, end-start) : "";
         },
 
+        resetHighlightedTextFlag(){
+            this.highlightedCode = "";
+        },
+
         // store the cursor position to give it as input to AutoCompletionPopUp
         // Also checks if s bracket is opened, so it closes it
         // Note: the method is called on the key.up event BUT some issues on key.up are found with Windows/different keyboard layouts (i.e. French)
@@ -648,8 +659,7 @@ export default Vue.extend({
             const currentTextCursorPos = inputField.selectionStart??0;
             this.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
 
-            const characterIndex = openBracketCharacters.indexOf(this.keyDownStr)
-
+            const characterIndex = openBracketCharacters.indexOf(this.keyDownStr);
             //check if the character we are adding is an openBracketCharacter
             if(characterIndex !== -1) {
                 // add the closing bracket to the text, either right after the opening one if no text is highlighted, 
@@ -674,6 +684,10 @@ export default Vue.extend({
                 // set the text in the input field and move the cursor inside the brackets
                 this.textCursorPos  = currentTextCursorPos;
                 this.code = newCode;
+            }
+            else{
+                // Something different than an opening bracket has been typed: we need to reset the selection flag.
+                this.highlightedCode = "";
             }
 
             //we reset the key.down value here, to avoid over-doing the method on all key.up called on the modifier keys
