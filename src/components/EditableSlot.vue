@@ -686,8 +686,11 @@ export default Vue.extend({
                 this.code = newCode;
             }
             else{
-                // Something different than an opening bracket has been typed: we need to reset the selection flag.
-                this.highlightedCode = "";
+                // Something different than an opening bracket has been typed: we need to reset the selection flag
+                // if there is no selection still ongoing.
+                if(inputField.selectionStart == inputField.selectionEnd){
+                    this.highlightedCode = "";
+                }
             }
 
             //we reset the key.down value here, to avoid over-doing the method on all key.up called on the modifier keys
