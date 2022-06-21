@@ -17,6 +17,7 @@
             @keydown.self.stop="stopPropateEvent"
             @keyup.self.stop="stopPropateEvent"
             disabled
+            spellcheck="false"
         >    
         </textarea>
     </div>
