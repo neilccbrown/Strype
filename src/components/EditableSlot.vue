@@ -530,10 +530,10 @@ export default Vue.extend({
             this.keyDownStr = event.key;
 
             // If the frame is a variable assignment frame and we are in the left hand side editable slot,
-            // pressing "=" or space keys move to RHS editable slot
+            // pressing "=" or space keys move to RHS editable slot (but we allow the a/c to be activated)
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
-            if((event.key === "=" || event.key === " ") && this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
+            if(((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
                 this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
