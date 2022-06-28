@@ -1,6 +1,21 @@
 {
     "appName":"Éditeur Strype",
     "frame":{
+        "defaultText":{
+            "condition":"condition ",
+            "list":"liste ",
+            "identifier":"identifiant ",
+            "expression":"expression ",
+            "value":"valeur ",
+            "variable":"variable ",
+            "funcCall":"appel de fonction ",
+            "exception":"exception ",
+            "name":"nom ",
+            "parameters":"paramètres ",
+            "module":"module ",
+            "modulePart":"fonction/classe ",
+            "comment":"ton commentaire "
+        },
       "funcdef_desc":"définition de fonction",
       "varassign_desc":"affectation de variable",
       "funccall_desc":"appel de fonction",

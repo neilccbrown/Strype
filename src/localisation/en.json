@@ -1,6 +1,21 @@
 {
     "appName":"Strype editor",
     "frame":{
+        "defaultText":{
+            "condition":"condition ",
+            "list":"list ",
+            "identifier":"identifier ",
+            "expression":"expression ",
+            "value":"value ",
+            "variable":"variable ",
+            "funcCall":"function call ",
+            "exception":"exception ",
+            "name":"name ",
+            "parameters":"parameters ",
+            "module":"module ",
+            "modulePart":"function/class ",
+            "comment":"your comment "
+        },
         "funcdef_desc":"function definition",
         "varassign_desc":"variable assignment",
         "funccall_desc":"function call",

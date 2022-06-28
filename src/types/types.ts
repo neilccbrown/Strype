@@ -273,7 +273,7 @@ export const IfDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.if,
     labels: [
-        { label: "if ", slot: true, defaultText: "condition" , optionalSlot: false},
+        { label: "if ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
     allowJointChildren: true,
@@ -289,7 +289,7 @@ export const ElifDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.elif,
     labels: [
-        { label: "elif ", slot: true, defaultText: "condition", optionalSlot: false},
+        { label: "elif ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
     draggableGroup: DraggableGroupTypes.ifCompound,
@@ -310,8 +310,8 @@ export const ForDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.for,
     labels: [
-        { label: "for ", slot: true, defaultText: "identifier", optionalSlot: false, acceptAC: false},
-        { label: " in ", slot: true, defaultText: "list", optionalSlot: false},
+        { label: "for ", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false, acceptAC: false},
+        { label: " in ", slot: true, defaultText: i18n.t("frame.defaultText.list") as string, optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
     allowJointChildren: true,
@@ -323,7 +323,7 @@ export const WhileDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.while,
     labels: [
-        { label: "while ", slot: true, defaultText: "condition", optionalSlot: false},
+        { label: "while ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
     colour: "#E4D5D5",
@@ -343,7 +343,7 @@ export const ExceptDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.except,
     labels: [
-        { label: "except ", slot: true, defaultText: "exception", optionalSlot: true},
+        { label: "except ", slot: true, defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true},
         { label: " :", slot: false, defaultText: ""},
     ],
     jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
@@ -367,8 +367,8 @@ export const FuncDefDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: FuncDefIdentifiers.funcdef,
     labels: [
-        { label: "def ", slot: true, defaultText: "name", optionalSlot: false, acceptAC: false},
-        { label: "(", slot: true, defaultText: "parameters", optionalSlot: true, acceptAC: false},
+        { label: "def ", slot: true, defaultText: i18n.t("frame.defaultText.name") as string, optionalSlot: false, acceptAC: false},
+        { label: "(", slot: true, defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false},
         { label: ") :", slot: false, defaultText: ""},
     ],
     colour: "#ECECC8",
@@ -379,8 +379,8 @@ export const WithDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.with,
     labels: [
-        { label: "with ", slot: true, defaultText: "expression", optionalSlot: false},
-        { label: " as ", slot: true, defaultText: "identifier", optionalSlot: false},
+        { label: "with ", slot: true, defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: false},
+        { label: " as ", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false},
         { label: " :", slot: false, defaultText: ""},
     ],
     colour: "#ede8f2",
@@ -390,21 +390,21 @@ export const WithDefinition: FramesDefinitions = {
 export const EmptyDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.empty,
-    labels: [{ label: "", slot: true, defaultText: "function call", optionalSlot: true}],
+    labels: [{ label: "", slot: true, defaultText: i18n.t("frame.defaultText.funcCall") as string, optionalSlot: true}],
     colour: "#F6F2E9",
 };
 
 export const ReturnDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.return,
-    labels: [{ label: "return ", slot: true, defaultText: "expression", optionalSlot: true}],
+    labels: [{ label: "return ", slot: true, defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
     colour: "#F6F2E9",
 };
 
 export const GlobalDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.global,
-    labels: [{ label: "global ", slot: true, defaultText: "variable", optionalSlot: false}],
+    labels: [{ label: "global ", slot: true, defaultText: i18n.t("frame.defaultText.variable") as string, optionalSlot: false}],
     colour: "#F6F2E9",
 };
 
@@ -412,8 +412,8 @@ export const VarAssignDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.varassign,
     labels: [
-        { label: "", slot: true, defaultText: "identifier", optionalSlot: false},
-        { label: " &#x21D0; ", slot: true, defaultText: "value", optionalSlot: false},
+        { label: "", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false},
+        { label: " &#x21D0; ", slot: true, defaultText: i18n.t("frame.defaultText.value") as string, optionalSlot: false},
     ],
     colour: "#F6F2E9",
 };
@@ -440,7 +440,7 @@ export const RaiseDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.raise,
     labels: [
-        { label: "raise", slot: true, defaultText: "exception", optionalSlot: true },
+        { label: "raise", slot: true, defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
     ],
     colour: "#F6F2E9",
 };
@@ -449,7 +449,7 @@ export const ImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.import,
     labels: [
-        { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
+        { label: "import ", slot: true, defaultText: i18n.t("frame.defaultText.modulePart") as string, optionalSlot: false},
         // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
         // and thus not giving us back any AC results on the shortcut
         //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
@@ -463,8 +463,8 @@ export const FromImportDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: ImportFrameTypesIdentifiers.fromimport,
     labels: [
-        { label: "from ", slot: true, defaultText: "module", optionalSlot: false},
-        { label: "import ", slot: true, defaultText: "function/class", optionalSlot: false},
+        { label: "from ", slot: true, defaultText: i18n.t("frame.defaultText.module") as string, optionalSlot: false},
+        { label: "import ", slot: true, defaultText: i18n.t("frame.defaultText.modulePart") as string, optionalSlot: false},
         // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
         // and thus not giving us back any AC results on the shortcut
         //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
@@ -477,7 +477,7 @@ export const FromImportDefinition: FramesDefinitions = {
 export const CommentDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: StandardFrameTypesIdentifiers.comment,
-    labels: [{ label: "# ", slot: true, defaultText: "your comment", optionalSlot: true, acceptAC: false}],
+    labels: [{ label: "# ", slot: true, defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
     colour: "#F6F2E9",
 };
 
