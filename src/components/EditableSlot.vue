@@ -78,7 +78,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle, EmptyDefinition} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, StyledCodePart, CodeStyle, AllFrameTypesIdentifier} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
@@ -178,7 +178,7 @@ export default Vue.extend({
                 //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
                 "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : (this.frameType === CommentDefinition.type)
+                "color" : (this.frameType === AllFrameTypesIdentifier.comment)
                     ? "#97971E"
                     //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
                     : (this.focused) ? "#000" : "transparent", 
@@ -227,7 +227,7 @@ export default Vue.extend({
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
 
                     //workout the correct context if we are in a code editable slot
-                    const isImportFrame = (frame.frameType.type === ImportDefinition.type || frame.frameType.type === FromImportDefinition.type)
+                    const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport)
                     const resultsAC = (isImportFrame) 
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
@@ -387,7 +387,7 @@ export default Vue.extend({
             );    
             // When there is no code, we can suppose that we are in a new frame.
             // So, for import frames (from/import slots only) we show the AC automatically
-            if((this.frameType === ImportDefinition.type || this.frameType === FromImportDefinition.type) && this.slotIndex < 2 && this.code.length === 0){
+            if((this.frameType === AllFrameTypesIdentifier.import || this.frameType === AllFrameTypesIdentifier.fromimport) && this.slotIndex < 2 && this.code.length === 0){
                 const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));   
                 this.contextAC = resultsAC.contextAC;
                 if(resultsAC.showAC){
@@ -420,7 +420,7 @@ export default Vue.extend({
                 // In the case of a function call frame, we check if a transformation to a varassign frame 
                 // is needed (the code splits of editable slots will be done automatically when re-rendering the frame/slots)
                 // for a simple pre-flight test, we just check if "=" appears in the slot
-                if(this.frameType === EmptyDefinition.type && this.code.includes("=")){
+                if(this.frameType === AllFrameTypesIdentifier.empty && this.code.includes("=")){
                     // replace the frame at the next tick
                     this.$nextTick(() => checkAndtransformFuncCallFrameToVarAssignFrame(this.frameId, this.code.trim()));
                 }
@@ -533,7 +533,7 @@ export default Vue.extend({
             // pressing "=" or space keys move to RHS editable slot (but we allow the a/c to be activated)
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
-            if(((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
+            if(((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.varassign && this.slotIndex === 0){
                 this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
@@ -543,7 +543,7 @@ export default Vue.extend({
                 this.acRequested = true;
             }
             // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
-            else if(event.key === " " && this.frameType !== CommentDefinition.type){
+            else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment){
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const currentTextCursorPos = inputField.selectionStart??0;
                 if(currentTextCursorPos == 0){

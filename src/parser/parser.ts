@@ -2,7 +2,7 @@ import Compiler from "@/compiler/compiler";
 import { hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { CodeStyle, CommentDefinition, EmptyDefinition, FrameContainersDefinitions, FrameObject, LineAndSlotPositions, LoopFrames, ParserElements, StyledCodeSplits, VarAssignDefinition} from "@/types/types";
+import { AllFrameTypesIdentifier, CodeStyle, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, LineAndSlotPositions, ParserElements, StyledCodeSplits} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
@@ -51,7 +51,7 @@ export default class Parser {
             return "";
         }
 
-        const passBlock = this.excludeLoops && Object.values(LoopFrames).find((t) => t.type === block.frameType.type);
+        const passBlock = this.excludeLoops && getLoopFramesTypeIdentifiers().includes(block.frameType.type);
         // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
         const conditionalIndent = (passBlock) ? "" : INDENT
 
@@ -78,15 +78,15 @@ export default class Parser {
         const lengths: number[] = [];
         let currSlotIndex = 0;
 
-        if(this.checkIfFrameHasError(statement) || (statement.frameType.type === CommentDefinition.type) 
-            || (statement.frameType.type === EmptyDefinition.type && statement.contentDict[0].code.startsWith("#")) ) {
+        if(this.checkIfFrameHasError(statement) || (statement.frameType.type === AllFrameTypesIdentifier.comment) 
+            || (statement.frameType.type === AllFrameTypesIdentifier.empty && statement.contentDict[0].code.startsWith("#")) ) {
             return "";
         }
             
         statement.frameType.labels.forEach( (label) => {
             if(!label.slot || statement.contentDict[currSlotIndex].shownLabel) {
                 //for varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
-                output += ((label.label.length > 0 && statement.frameType.type === VarAssignDefinition.type) ? " = " : label.label);
+                output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
 
                 //if there is an editable slot
                 if(label.slot){

@@ -1,5 +1,6 @@
 import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
+import { useStore } from "@/store/store";
 
 // Type Definitions
 
@@ -268,218 +269,6 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     colour: "#BBC6B6",
 }
 
-// Blocks
-export const IfDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.if,
-    labels: [
-        { label: "if ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
-        { label: " :", slot: false, defaultText: ""},
-    ],
-    allowJointChildren: true,
-    jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
-    colour: "#E0DFE4",
-    innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
-    forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-        .concat(Object.values(FuncDefIdentifiers))
-        .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
-};
-
-export const ElifDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.elif,
-    labels: [
-        { label: "elif ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
-        { label: " :", slot: false, defaultText: ""},
-    ],
-    draggableGroup: DraggableGroupTypes.ifCompound,
-    isJointFrame: true,
-    jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
-};
-
-export const ElseDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.else,
-    labels: [{ label: "else :", slot: false, defaultText: ""}],
-    draggableGroup: DraggableGroupTypes.ifCompound,
-    isJointFrame: true,
-    jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
-};
-
-export const ForDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.for,
-    labels: [
-        { label: "for ", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false, acceptAC: false},
-        { label: " in ", slot: true, defaultText: i18n.t("frame.defaultText.list") as string, optionalSlot: false},
-        { label: " :", slot: false, defaultText: ""},
-    ],
-    allowJointChildren: true,
-    jointFrameTypes:[StandardFrameTypesIdentifiers.else],
-    colour: "#E4D6CE",
-};
-
-export const WhileDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.while,
-    labels: [
-        { label: "while ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
-        { label: " :", slot: false, defaultText: ""},
-    ],
-    colour: "#E4D5D5",
-};
-
-export const TryDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.try,
-    labels: [{ label: "try :", slot: false, defaultText: ""}],
-    allowJointChildren: true,
-    jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
-    colour: "#C7D9DC",
-    innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
-};
-
-export const ExceptDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.except,
-    labels: [
-        { label: "except ", slot: true, defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true},
-        { label: " :", slot: false, defaultText: ""},
-    ],
-    jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
-    colour: "",
-    isJointFrame: true,
-    draggableGroup: DraggableGroupTypes.tryCompound,
-};
-
-export const FinallyDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.finally,
-    labels: [
-        { label: "finally :", slot: false, defaultText: ""},
-    ],
-    colour: "",
-    isJointFrame: true,
-    draggableGroup: DraggableGroupTypes.none,
-};
-
-export const FuncDefDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: FuncDefIdentifiers.funcdef,
-    labels: [
-        { label: "def ", slot: true, defaultText: i18n.t("frame.defaultText.name") as string, optionalSlot: false, acceptAC: false},
-        { label: "(", slot: true, defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false},
-        { label: ") :", slot: false, defaultText: ""},
-    ],
-    colour: "#ECECC8",
-    draggableGroup: DraggableGroupTypes.functionSignatures,
-};
-
-export const WithDefinition: FramesDefinitions = {
-    ...BlockDefinition,
-    type: StandardFrameTypesIdentifiers.with,
-    labels: [
-        { label: "with ", slot: true, defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: false},
-        { label: " as ", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false},
-        { label: " :", slot: false, defaultText: ""},
-    ],
-    colour: "#ede8f2",
-};
-
-// Statements
-export const EmptyDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: StandardFrameTypesIdentifiers.empty,
-    labels: [{ label: "", slot: true, defaultText: i18n.t("frame.defaultText.funcCall") as string, optionalSlot: true}],
-    colour: "#F6F2E9",
-};
-
-export const ReturnDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: StandardFrameTypesIdentifiers.return,
-    labels: [{ label: "return ", slot: true, defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
-    colour: "#F6F2E9",
-};
-
-export const GlobalDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: StandardFrameTypesIdentifiers.global,
-    labels: [{ label: "global ", slot: true, defaultText: i18n.t("frame.defaultText.variable") as string, optionalSlot: false}],
-    colour: "#F6F2E9",
-};
-
-export const VarAssignDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: StandardFrameTypesIdentifiers.varassign,
-    labels: [
-        { label: "", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false},
-        { label: " &#x21D0; ", slot: true, defaultText: i18n.t("frame.defaultText.value") as string, optionalSlot: false},
-    ],
-    colour: "#F6F2E9",
-};
-
-export const BreakDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: StandardFrameTypesIdentifiers.break,
-    labels: [
-        { label: "break", slot: false, defaultText: "" },
-    ],
-    colour: "#F6F2E9",
-};
-
-export const ContinueDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: StandardFrameTypesIdentifiers.continue,
-    labels: [
-        { label: "continue", slot: false, defaultText: "" },
-    ],
-    colour: "#F6F2E9",
-};
-
-export const RaiseDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: StandardFrameTypesIdentifiers.raise,
-    labels: [
-        { label: "raise", slot: true, defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
-    ],
-    colour: "#F6F2E9",
-};
-
-export const ImportDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: ImportFrameTypesIdentifiers.import,
-    labels: [
-        { label: "import ", slot: true, defaultText: i18n.t("frame.defaultText.modulePart") as string, optionalSlot: false},
-        // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
-        // and thus not giving us back any AC results on the shortcut
-        //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
-    ],    
-    colour: "#CBD4C8",
-    draggableGroup: DraggableGroupTypes.imports,
-    isImportFrame: true,
-};
-
-export const FromImportDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: ImportFrameTypesIdentifiers.fromimport,
-    labels: [
-        { label: "from ", slot: true, defaultText: i18n.t("frame.defaultText.module") as string, optionalSlot: false},
-        { label: "import ", slot: true, defaultText: i18n.t("frame.defaultText.modulePart") as string, optionalSlot: false},
-        // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
-        // and thus not giving us back any AC results on the shortcut
-        //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
-    ],    
-    colour: "#CBD4C8",
-    draggableGroup: DraggableGroupTypes.imports,
-    isImportFrame: true,
-};
-
-export const CommentDefinition: FramesDefinitions = {
-    ...StatementDefinition,
-    type: StandardFrameTypesIdentifiers.comment,
-    labels: [{ label: "# ", slot: true, defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
-    colour: "#F6F2E9",
-};
 
 export const FrameContainersDefinitions = {
     RootContainerFrameDefinition,
@@ -488,33 +277,287 @@ export const FrameContainersDefinitions = {
     MainFramesContainerDefinition,
 }
 
-export const Definitions = {
-    IfDefinition,
-    ElifDefinition,
-    ElseDefinition,
-    ForDefinition,
-    WhileDefinition,
-    BreakDefinition,
-    ContinueDefinition,
-    RaiseDefinition,
-    TryDefinition,
-    ExceptDefinition,
-    FinallyDefinition,
-    FuncDefDefinition,
-    WithDefinition,
-    EmptyDefinition,
-    ReturnDefinition,
-    VarAssignDefinition,
-    ImportDefinition,
-    FromImportDefinition,
-    CommentDefinition,
-    GlobalDefinition,
-};
+let Definitions = {};
 
-export const LoopFrames = {
-    ForDefinition,
-    WhileDefinition,
-};
+// Entry point for generating the frame definition types -- only doing so to allow dynamic localisation bits...
+export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boolean): void{
+    /*1) prepare all the frame definition types */
+    // Blocks
+    const IfDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.if,
+        labels: [
+            { label: "if ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
+            { label: " :", slot: false, defaultText: ""},
+        ],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
+        colour: "#E0DFE4",
+        innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
+        forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+            .concat(Object.values(FuncDefIdentifiers))
+            .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
+    };
+
+    const ElifDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.elif,
+        labels: [
+            { label: "elif ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
+            { label: " :", slot: false, defaultText: ""},
+        ],
+        draggableGroup: DraggableGroupTypes.ifCompound,
+        isJointFrame: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
+    };
+
+    const ElseDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.else,
+        labels: [{ label: "else :", slot: false, defaultText: ""}],
+        draggableGroup: DraggableGroupTypes.ifCompound,
+        isJointFrame: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
+    };
+
+    const ForDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.for,
+        labels: [
+            { label: "for ", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false, acceptAC: false},
+            { label: " in ", slot: true, defaultText: i18n.t("frame.defaultText.list") as string, optionalSlot: false},
+            { label: " :", slot: false, defaultText: ""},
+        ],
+        allowJointChildren: true,
+        jointFrameTypes:[StandardFrameTypesIdentifiers.else],
+        colour: "#E4D6CE",
+    };
+
+    const WhileDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.while,
+        labels: [
+            { label: "while ", slot: true, defaultText: i18n.t("frame.defaultText.condition") as string, optionalSlot: false},
+            { label: " :", slot: false, defaultText: ""},
+        ],
+        colour: "#E4D5D5",
+    };
+
+    const TryDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.try,
+        labels: [{ label: "try :", slot: false, defaultText: ""}],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
+        colour: "#C7D9DC",
+        innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
+    };
+
+    const ExceptDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.except,
+        labels: [
+            { label: "except ", slot: true, defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true},
+            { label: " :", slot: false, defaultText: ""},
+        ],
+        jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
+        colour: "",
+        isJointFrame: true,
+        draggableGroup: DraggableGroupTypes.tryCompound,
+    };
+
+    const FinallyDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.finally,
+        labels: [
+            { label: "finally :", slot: false, defaultText: ""},
+        ],
+        colour: "",
+        isJointFrame: true,
+        draggableGroup: DraggableGroupTypes.none,
+    };
+
+    const FuncDefDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: FuncDefIdentifiers.funcdef,
+        labels: [
+            { label: "def ", slot: true, defaultText: i18n.t("frame.defaultText.name") as string, optionalSlot: false, acceptAC: false},
+            { label: "(", slot: true, defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false},
+            { label: ") :", slot: false, defaultText: ""},
+        ],
+        colour: "#ECECC8",
+        draggableGroup: DraggableGroupTypes.functionSignatures,
+    };
+
+    const WithDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.with,
+        labels: [
+            { label: "with ", slot: true, defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: false},
+            { label: " as ", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false},
+            { label: " :", slot: false, defaultText: ""},
+        ],
+        colour: "#ede8f2",
+    };
+
+    // Statements
+    const EmptyDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.empty,
+        labels: [{ label: "", slot: true, defaultText: i18n.t("frame.defaultText.funcCall") as string, optionalSlot: true}],
+        colour: "#F6F2E9",
+    };
+
+    const ReturnDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.return,
+        labels: [{ label: "return ", slot: true, defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
+        colour: "#F6F2E9",
+    };
+
+    const GlobalDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.global,
+        labels: [{ label: "global ", slot: true, defaultText: i18n.t("frame.defaultText.variable") as string, optionalSlot: false}],
+        colour: "#F6F2E9",
+    };
+
+    const VarAssignDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.varassign,
+        labels: [
+            { label: "", slot: true, defaultText: i18n.t("frame.defaultText.identifier") as string, optionalSlot: false},
+            { label: " &#x21D0; ", slot: true, defaultText: i18n.t("frame.defaultText.value") as string, optionalSlot: false},
+        ],
+        colour: "#F6F2E9",
+    };
+
+    const BreakDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.break,
+        labels: [
+            { label: "break", slot: false, defaultText: "" },
+        ],
+        colour: "#F6F2E9",
+    };
+
+    const ContinueDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.continue,
+        labels: [
+            { label: "continue", slot: false, defaultText: "" },
+        ],
+        colour: "#F6F2E9",
+    };
+
+    const RaiseDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.raise,
+        labels: [
+            { label: "raise", slot: true, defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
+        ],
+        colour: "#F6F2E9",
+    };
+
+    const ImportDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: ImportFrameTypesIdentifiers.import,
+        labels: [
+            { label: "import ", slot: true, defaultText: i18n.t("frame.defaultText.modulePart") as string, optionalSlot: false},
+        // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
+        // and thus not giving us back any AC results on the shortcut
+        //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
+        ],    
+        colour: "#CBD4C8",
+        draggableGroup: DraggableGroupTypes.imports,
+        isImportFrame: true,
+    };
+
+    const FromImportDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: ImportFrameTypesIdentifiers.fromimport,
+        labels: [
+            { label: "from ", slot: true, defaultText: i18n.t("frame.defaultText.module") as string, optionalSlot: false},
+            { label: "import ", slot: true, defaultText: i18n.t("frame.defaultText.modulePart") as string, optionalSlot: false},
+        // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
+        // and thus not giving us back any AC results on the shortcut
+        //{ label: "as ", slot: true, optionalLabel: true, defaultText: "shortcut", optionalSlot: true, acceptAC: false},
+        ],    
+        colour: "#CBD4C8",
+        draggableGroup: DraggableGroupTypes.imports,
+        isImportFrame: true,
+    };
+
+    const CommentDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.comment,
+        labels: [{ label: "# ", slot: true, defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
+        colour: "#F6F2E9",
+    };
+
+    /*2) update the Defintions variable holding all the definitions */
+    Definitions = {
+        IfDefinition,
+        ElifDefinition,
+        ElseDefinition,
+        ForDefinition,
+        WhileDefinition,
+        BreakDefinition,
+        ContinueDefinition,
+        RaiseDefinition,
+        TryDefinition,
+        ExceptDefinition,
+        FinallyDefinition,
+        FuncDefDefinition,
+        WithDefinition,
+        EmptyDefinition,
+        ReturnDefinition,
+        VarAssignDefinition,
+        ImportDefinition,
+        FromImportDefinition,
+        CommentDefinition,
+        GlobalDefinition,
+        // also add the frame containers as we might need to retrieve them too
+        ...FrameContainersDefinitions,
+    }
+
+    /*3) if required, update the types in all the frames existing in the editor (needed to update default texts and frame container labels) */
+    if(regenerateExistingFrames??false){
+        Object.values(useStore().frameObjects).forEach((frameObject) => {
+            // For containers, we just assign the label manually again here
+            switch(frameObject.frameType.type){
+            case ImportsContainerDefinition.type:
+                frameObject.frameType.labels[0].label = i18n.t("appMessage.importsContainer") as string;
+                break;
+            case FuncDefContainerDefinition.type:
+                frameObject.frameType.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
+                break;
+            case MainFramesContainerDefinition.type:
+                frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
+                break;
+            default:
+                // For all normal frames, we rely on the frame definition type
+                frameObject.frameType.labels.forEach((labelDef, index) => {
+                    labelDef.defaultText = getFrameDefType(frameObject.frameType.type).labels[index].defaultText;
+                });
+                break;
+            }
+        });
+    }
+}
+
+// Methods to access the dynamic frame definition types
+export function getFrameDefType(key: string): FramesDefinitions{
+    if(Object.values(Definitions).length == 0){
+        generateAllFrameDefinitionTypes();
+    }
+
+    return Object.values(Definitions).find((frameDefinition) => ((frameDefinition as FramesDefinitions).type === key)) as FramesDefinitions
+}
+
+export function getLoopFramesTypeIdentifiers(): string[] {
+    return [StandardFrameTypesIdentifiers.for, StandardFrameTypesIdentifiers.while];
+}
 
 export const EmptyFrameObject: FrameObject = {
     frameType: DefaultFramesDefinition,

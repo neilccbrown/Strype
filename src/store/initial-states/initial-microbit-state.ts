@@ -1,4 +1,4 @@
-import {CaretPosition, EditorFrameObjects, Definitions, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
+import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, getFrameDefType, AllFrameTypesIdentifier} from "@/types/types";
 
 const initialMicrobitState: EditorFrameObjects = {
     0: {
@@ -61,7 +61,7 @@ const initialMicrobitState: EditorFrameObjects = {
         multiDragPosition: "",
     },
     1: {
-        frameType: Definitions.FromImportDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.fromimport),
         id: 1,
         isDisabled: false,
         isSelected: false,
@@ -77,7 +77,7 @@ const initialMicrobitState: EditorFrameObjects = {
         multiDragPosition: "",
     },
     2: {
-        frameType: Definitions.VarAssignDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
         id: 2,
         isDisabled: false,
         isSelected: false,
@@ -93,7 +93,7 @@ const initialMicrobitState: EditorFrameObjects = {
         multiDragPosition: "",
     },
     3: {
-        frameType: Definitions.EmptyDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
         id: 3,
         isDisabled: false,
         isSelected: false,

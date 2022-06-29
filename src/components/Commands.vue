@@ -74,7 +74,7 @@ import { downloadHex, downloadPython } from "@/helpers/download";
 import { CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { flash } from "@/helpers/webUSB";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, CaretPosition, FrameObject, FromImportDefinition, ImportDefinition } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -237,7 +237,7 @@ export default Vue.extend({
                 if(isEditing){
                     const frameType = this.appStore.getCurrentFrameObject.frameType.type;
                     //space in import frame's editable slots
-                    if((frameType === ImportDefinition.type || frameType === FromImportDefinition.type) && event.key === " "){
+                    if((frameType === AllFrameTypesIdentifier.import || frameType === AllFrameTypesIdentifier.fromimport) && event.key === " "){
                         event.preventDefault();
                         return;
                     }

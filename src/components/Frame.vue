@@ -86,7 +86,7 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
 import Caret from "@/components/Caret.vue"
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame, NavigationPosition, FuncDefDefinition } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
@@ -151,7 +151,7 @@ export default Vue.extend({
         frameStyle(): Record<string, string> {
             return {
                 "background-color": `${this.getFrameBgColor()} !important`,
-                "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
+                "color": (this.frameType.type === AllFrameTypesIdentifier.comment) ? "#97971E !important" : "#000 !important",
             };
         },
 
@@ -284,7 +284,7 @@ export default Vue.extend({
             // In most cases, the background colour is the one defined in the frame types.
             // The exception is for comments and joint frames, which will take the same colour as their container.
             // For comments, we keep them transparent, for joints, we retrieve the parent's colour, so that it shows up when dragging them.
-            if(this.frameType.type !== CommentDefinition.type){
+            if(this.frameType.type !== AllFrameTypesIdentifier.comment){
                 if(this.isJointFrame){
                     return this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].jointParentId].frameType.colour;
                 }
@@ -395,9 +395,9 @@ export default Vue.extend({
                 const canDeleteOuter = (this.isPartOfSelection) 
                     ? !this.appStore
                         .selectedFrames
-                        .map((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != FuncDefDefinition.type)
+                        .map((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef)
                         .includes(false)
-                    : this.isBlockFrame && this.frameType.type != FuncDefDefinition.type;
+                    : this.isBlockFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef;
                 if(!canDeleteOuter){
                     const deleteOuterOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "deleteOuter");
                     // We don't need the delete outer option: remove it from the menu options if not present

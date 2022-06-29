@@ -32,7 +32,7 @@
 import Vue from "vue";
 import EditableSlot from "@/components/EditableSlot.vue";
 import { useStore } from "@/store/store";
-import {CommentDefinition} from "@/types/types";
+import {AllFrameTypesIdentifier} from "@/types/types";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -59,7 +59,7 @@ export default Vue.extend({
         ...mapStores(useStore),
         
         isCommentFrame(): boolean{
-            return this.frameType===CommentDefinition.type;
+            return this.frameType===AllFrameTypesIdentifier.comment;
         },
     },
 
