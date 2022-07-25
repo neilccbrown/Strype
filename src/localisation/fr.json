@@ -83,7 +83,8 @@
       "noValidChildFrameBody":"Le contenu du cadre doit avoir au moins un cadre actif / différent d'un commentaire ",
       "errorTitle":"Erreur !",
       "errorUserDefinedFuncMsg":"Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
-      "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs"
+      "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
+      "EOFError": "Ce cadre ne peut pas être vide."
     },
     "appMessage": {
       "editorFileUpload":"Chargement de votre fichier dans l'éditeur...",

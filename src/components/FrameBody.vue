@@ -136,7 +136,8 @@ export default Vue.extend({
             let empty = false;
             const currentFrameId = this.appStore.currentFrame.id;
             //check if there are at least 1 frame, NOT disabled, and that we are not inside that frame body
-            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== AllFrameTypesIdentifier.comment).length < 1 &&  !(this.caretVisibility === this.caretPosition.body && this.frameId===currentFrameId)) {
+            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== AllFrameTypesIdentifier.comment).length < 1 
+                && (this.appStore.forceShowEmptyBodyErrorCurrentFrame || !(this.caretVisibility === this.caretPosition.body && this.frameId===currentFrameId))) {
                 empty = true;
                 this.appStore.addPreCompileErrors(this.uiid);                
             }

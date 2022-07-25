@@ -53,6 +53,8 @@ export const useStore = defineStore("app", {
 
             currentMessage: MessageDefinitions.NoMessage,
 
+            forceShowEmptyBodyErrorCurrentFrame: false,
+
             preCompileErrors: [] as string[],
 
             diffToPreviousState: [] as ObjectPropertyDiff[][],
@@ -1520,6 +1522,9 @@ export const useStore = defineStore("app", {
                     )
             );
             
+            // In case an empty body error was forced to be shown, we release the flag
+            this.forceShowEmptyBodyErrorCurrentFrame = false;
+
             this.unselectAllFrames();
         },
 

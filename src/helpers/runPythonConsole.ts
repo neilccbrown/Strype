@@ -132,9 +132,15 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
         if(errLineMatchArray !== null){
             const errorLine = parseInt(errLineMatchArray[2]);
             // Skuplt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
-            frameId = lineFrameMapping[errorLine - 1].frameId;
+            const locatableError = lineFrameMapping[errorLine - 1] !== undefined;
+            
+            // We assume that if we cannot find a frame assiocated with an error, it must be a Python line that shows as extra 
+            // when the user code generates non well formated code --> e.g. adding an empty method call frame within an if frame
+            // that doesn't contain any other children and is at the bottom of the code. The code generated in Python will be as an EOF error.
+            // We then show the error on the last frame available in the list (that is, before the EOF, 2 lines ahead)
+            frameId = (locatableError) ? lineFrameMapping[errorLine - 1].frameId : lineFrameMapping[errorLine - 3].frameId;
 
-            const noLineSkulptErrStr = skulptErrStr.replaceAll(/ on line \d+/g,"");
+            const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.t("errorMessage.EOFError") as string;
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
             consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") +" >");
