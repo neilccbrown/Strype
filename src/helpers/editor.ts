@@ -8,6 +8,7 @@ export const undoMaxSteps = 50;
 
 export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
+    frameContentEdited = "frameContentEdited",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
@@ -23,6 +24,10 @@ export function getFrameBodyUIID(frameId: number): string {
 
 export function getFrameUIID(frameId: number): string{
     return "frame_id_" + frameId;
+}
+
+export function getFrameHeaderUIID(frameId: number): string{
+    return "frameHeader_" + frameId;
 }
 
 function retrieveFrameIDfromUIID(uiid: string): number {

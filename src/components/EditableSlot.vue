@@ -77,7 +77,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
+import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, StyledCodePart, CodeStyle, AllFrameTypesIdentifier} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
@@ -186,7 +186,7 @@ export default Vue.extend({
         }, 
 
         spanTextStyle(): Record<string, string> {
-            //when the input has focus, we hide the spans, otherwise, we set a white background when the content is empty
+            // When the input has focus, we hide the spans, otherwise, we set a white background when the content is empty.
             return (this.focused) 
                 ? {"visibility": "hidden"} 
                 : (this.code.trim().length == 0)
@@ -207,6 +207,9 @@ export default Vue.extend({
                 return code;
             },
             set(value: string){
+                // Send an event to the frame that need to know that an editable slot got focus (no extra information needed as args for the moment)
+                document.getElementById(getFrameHeaderUIID(this.frameId))?.dispatchEvent(new Event(CustomEventTypes.frameContentEdited));
+            
                 this.appStore.setFrameEditableSlotContent(
                     {
                         frameId: this.frameId,

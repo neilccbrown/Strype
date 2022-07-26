@@ -4,6 +4,7 @@ import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import { getEditableSlotUIID, getFrameUIID } from "./editor";
+import Vue from "vue";
 
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
@@ -145,17 +146,8 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             // our current error related code implementation and clarity for the user.
             consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") +" >");
 
-            // Set the error on the editable slots of the target frame
-            Object.keys(useStore().frameObjects[frameId].contentDict).forEach((slotIndex) => {
-                useStore().setSlotErroneous(
-                    {
-                        frameId: frameId, 
-                        slotIndex: parseInt(slotIndex), 
-                        error: noLineSkulptErrStr,
-                        errorTitle: i18n.t("console.runtimeErrorEditableSlotHeader") as string,
-                    }
-                );
-            });
+            // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
+            Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);
 
             // Show the error in the UI: we ensure the frame is visible in the editor (i.e. in the page viewport)
             // and we get focus into the last available slot (and make sure text caret is at first position)

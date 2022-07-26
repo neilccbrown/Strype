@@ -34,15 +34,26 @@
 
                 <FrameHeader
                     v-if="frameType.labels !== null"
+                    :id="frameHeaderId"
                     :isDisabled="isDisabled"
                     v-blur="isDisabled"
                     :frameId="frameId"
                     :frameType="frameType.type"
                     :labels="frameType.labels"
-                    class="frame-header"
+                    :class="{'frame-header': true, error: hasRuntimeError}"
                     :style="frameMarginStyle['header']"
                     :frameAllowChildren="allowChildren"
                 />
+                <b-popover
+                    v-if="hasRuntimeError"
+                    :target="frameHeaderId"
+                    :title="$t('console.runtimeErrorEditableSlotHeader')"
+                    triggers="hover focus"
+                    :content="runTimeErrorMessage"
+                    custom-class="error-popover"
+                    placement="left"
+                >
+                </b-popover>
                 <FrameBody
                     v-if="allowChildren"
                     :frameId="frameId"
@@ -89,7 +100,7 @@ import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
+import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -144,6 +155,10 @@ export default Vue.extend({
     computed: {
         ...mapStores(useStore),
 
+        frameHeaderId(): string {
+            return getFrameHeaderUIID(this.frameId);
+        },
+
         allowsJointChildren(): boolean {
             return this.appStore.getAllowedJointChildren(this.frameId);
         },
@@ -167,6 +182,14 @@ export default Vue.extend({
             frameClass += (this.selectedPosition === "last")? "selectedBottom " : ""; 
             frameClass += (this.selectedPosition === "first-and-last" || this.contextMenuEnforcedSelect)? "selectedTopBottom " : "";  
             return frameClass;
+        },
+
+        runTimeErrorMessage(): string {
+            return this.appStore.frameObjects[this.frameId].runTimeError ?? "";
+        },
+
+        hasRuntimeError(): boolean {
+            return this.runTimeErrorMessage.length > 0;
         },
 
         deletableFrame(): boolean{
@@ -240,6 +263,9 @@ export default Vue.extend({
             });
             this.contextMenuObserver.observe(contextMenuContainer,{attributes: true, attributeFilter: ['style']});
         }
+
+        // The frame header can listen for events from the editable slots focus to manage header level error messages
+        document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
     },
 
     destroyed() {
@@ -247,6 +273,10 @@ export default Vue.extend({
 
         // Probably not required but for safety, remove the observer set up in mounted()
         this.contextMenuObserver.disconnect();
+
+        // Same as above, not sure it is required to remove the event since anyway the event loop won't be raised
+        // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
+        document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
     },
 
     methods: {
@@ -293,6 +323,12 @@ export default Vue.extend({
             else{
                 return "transparent";
             }
+        },
+
+        onFrameContentEdited() {
+            // When the frame content has been changed, we clear the potential runtime error
+            // needs a Vue.set() to keep reactivity
+            Vue.set(this.appStore.frameObjects[this.frameId],"runTimeError", "");
         },
 
         handleClick (event: MouseEvent, action: string) {
@@ -624,7 +660,7 @@ export default Vue.extend({
                         newCaretPosition.caretPosition = CaretPosition.below;
                     }
                 }
-               
+                
                 this.appStore.toggleCaret({id: newCaretPosition.id, caretPosition: newCaretPosition.caretPosition as CaretPosition});
             }
         },
@@ -822,6 +858,10 @@ export default Vue.extend({
     padding-bottom: 1px;
     border-radius: 8px;
     border: 1px solid transparent;
+}
+
+.frame-header {
+    border-radius: 5px;
 }
 
 // This should be ".frameDiv:hover" but drag and drop is messing things up

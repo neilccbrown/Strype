@@ -30,7 +30,7 @@ export interface FrameObject {
     caretVisibility: CaretPosition;
     contentDict: { [index: number]: FrameSlotContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
     multiDragPosition: string;
-
+    runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
 }
 
 export interface FrameLabel {
