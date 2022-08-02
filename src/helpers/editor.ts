@@ -1,6 +1,8 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, Definitions, FramesDefinitions } from "@/types/types";
+import { AddFrameCommandDef, CaretPosition, Definitions, FramesDefinitions } from "@/types/types";
+import Vue from "vue";
+import { getAboveFrameCaretPosition } from "./storeMethods";
 
 export const undoMaxSteps = 50;
 
@@ -15,9 +17,22 @@ export function getFrameContainerUIID(frameId: number): string {
     return "FrameContainer_" + frameId;
 }
 
+export function getFrameBodyUIID(frameId: number): string {
+    return "frameBodyId_" + frameId;
+}
+
 export function getFrameUIID(frameId: number): string{
     return "frame_id_" + frameId;
 }
+
+function retrieveFrameIDfromUIID(uiid: string): number {
+    return parseInt(uiid.substring("frame_id_".length));
+}
+
+export function isIdAFrameId(id: string): boolean {
+    return id.match(/^frame_id_\d+$/) !== null;
+}
+
 export function getEditableSlotUIID(frameId: number, slotIndex: number): string  {
     //if a change is done in this method, also update isElementEditableSlotInput()
     return "input_frameId_" + frameId + "_slot_" + slotIndex;
@@ -279,4 +294,94 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
 
     // If we are here, it means the call to this method has been misused...
     return null;
+}
+
+/**
+ * Used for easing handling events for drag & drop of frames
+ **/
+let currentDraggedSingleFrameId = 0;
+export function getDraggedSingleFrameId(): number {
+    return currentDraggedSingleFrameId;
+}
+
+// This flag informs if a drag resulted in a change in the frames order
+// (i.e. a drop occured somewhere else, or as if the action had been "cancelled")
+// We need to know that to show the caret as it was if the frames order didn't change
+let isDragChangingOrder = false; 
+export function setIsDraggedChangingOrder(changedOrder: boolean): void{
+    isDragChangingOrder = changedOrder;
+}
+
+export function handleDraggingCursor(showDraggingCursor: boolean, isTargetGroupAllowed: boolean):void {
+    // This function assign the cursor we want to be shown while dragging.
+    // It is set to the html element as mentioned here https://github.com/SortableJS/Sortable/issues/246
+    // We use a "shadow" draggable root element at the editor's level so we can handle the cursor when
+    // the dragging is getting outside the code's draggable zones (e.g. frame body). The drawback of that
+    // is that we show a cursor suggesting we can drop somewhere even if the draggable zone isn't able to
+    // receive the frame(s). However, the purple cursor and snapped frame at destination will still not be
+    // be shown if the frame(s) cannot be dropped. That's the best compromise if we cant to override the 
+    // default browser's drag&drop cursors.
+    const htmlElementClassList = document.getElementsByTagName("html")[0].classList;
+    if(!showDraggingCursor){
+        htmlElementClassList.remove("dragging-frame-allowed");
+        htmlElementClassList.remove("dragging-frame-not-allowed");
+    }
+    else if(isTargetGroupAllowed&& !htmlElementClassList.contains("dragging-frame-allowed")){
+        htmlElementClassList.add("dragging-frame-allowed");
+        htmlElementClassList.remove("dragging-frame-not-allowed");
+    }
+    else if(!isTargetGroupAllowed && !htmlElementClassList.contains("dragging-frame-not-allowed")){
+        htmlElementClassList.remove("dragging-frame-allowed");
+        htmlElementClassList.add("dragging-frame-not-allowed");
+    }
+}
+
+export function notifyDragStarted(frameId?: number):void {
+    // If the argument "frameId" is set, the drag and drop is done on a single frame
+    // so we set currentDraggedSingleFrameId
+    if(frameId){
+        currentDraggedSingleFrameId = frameId;
+    }
+
+    //Update the handling of the cursor during drag and drop
+    handleDraggingCursor(true, true)
+
+    // Update the store about dragging started
+    useStore().isDraggingFrame = true;
+} 
+export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
+    // Regardless we moved 1 or several frames at once, we reset currentDraggedSingleFrameId
+    currentDraggedSingleFrameId = 0;
+
+    // Retrieve the id of the frame dragged or of the top frame from the frames dragged.
+    // We find it by retrieving the first frame div id of dragged HTML object given as argument of this function
+    const subHTMLElementIdsMatches = draggedHTMLElement.innerHTML.matchAll(/ id="([^"]*)"/g);
+    let topFrameId = 0, foundFrameID = false;
+    if(subHTMLElementIdsMatches != null){    
+        [...subHTMLElementIdsMatches].forEach((matchBit) => {
+            if(!foundFrameID && isIdAFrameId(matchBit[1])){
+                topFrameId = retrieveFrameIDfromUIID(matchBit[1]);
+                foundFrameID = true;
+            }
+        })
+    }
+
+    //Update the handling of the cursor during drag and drop
+    handleDraggingCursor(false, false);
+    
+    // Update the store about dragging ended 
+    useStore().isDraggingFrame = false;
+
+    // If the frames order has changed because of the drag & drop, position the blue caret where *visually* the fake caret was positionned.
+    // If the frames order hasn't changed, we restore the current frame caret saved in the store.
+    // NOTE: at this stage, the UI hasn't yet updated the frame order -- so we do this caret selection at the next Vue tick
+    Vue.nextTick(() => {
+        const newCaretPosition = (isDragChangingOrder) ? getAboveFrameCaretPosition(topFrameId) : {id: useStore().currentFrame.id, caretPosition: useStore().currentFrame.caretPosition};
+        
+        // Set the caret properly in the store which will update the editor UI
+        useStore().toggleCaret({id:newCaretPosition.id, caretPosition: newCaretPosition.caretPosition as CaretPosition});
+
+        // reset the flag informing if frames have changed order
+        isDragChangingOrder = false;
+    });
 }

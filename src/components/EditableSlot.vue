@@ -1,5 +1,5 @@
 <template>
-    <div class="next-to-eachother editable-slot">
+    <div :class="{'next-to-eachother editable-slot': true, nohover: isDraggingFrame}">
           <input
             type="text"
             autocomplete="off"
@@ -31,7 +31,7 @@
             class="editableslot-input navigationPosition"
             :style="inputTextStyle"
         />
-        <div class="editableSlotSpans" :style="spanTextStyle">
+        <div :class="{editableSlotSpans: true, error: erroneous()}" :style="spanTextStyle">
             <!--Span for the code parts, DO NOT CHANGE THE INDENTATION, we don't want spaces to be added here -->
             <span 
                 :key="UIID+'_'+index" 
@@ -156,19 +156,23 @@ export default Vue.extend({
 
         inputTextStyle(): Record<string, string> {
             return {
-                "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important", //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
+                //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
+                "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important",
                 "width" : this.computeFitWidthValue(),
                 "color" : (this.frameType === CommentDefinition.type)
                     ? "#97971E"
-                    : (this.focused) ? "#000" : "transparent", //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
+                    //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
+                    : (this.focused) ? "#000" : "transparent", 
             };
         }, 
 
         spanTextStyle(): Record<string, string> {
-            //when the input has focus, we hide the spans, otherwise we show the right background colours
+            //when the input has focus, we hide the spans, otherwise, we set a white background when the content is empty
             return (this.focused) 
                 ? {"visibility": "hidden"} 
-                : {"background-color": ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") + " !important"};
+                : (this.code.trim().length == 0)
+                    ? {"background-color": "#FFFFFF !important"}
+                    : {};
         },
 
         code: {
@@ -262,6 +266,10 @@ export default Vue.extend({
 
         debugAC(): boolean{
             return this.appStore.debugAC;
+        },
+
+        isDraggingFrame(): boolean{
+            return this.appStore.isDraggingFrame;
         },
     },
 
@@ -644,10 +652,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.error {
-    border: 1px solid #FF0000 !important;
-}
-
 .editableslot-input {
     border-radius: 5px;
     border: 1px solid transparent;
@@ -656,14 +660,6 @@ export default Vue.extend({
     top: 0%;
     left: 0%;
     outline: none;
-}
-
-.editableslot-input:hover {
-    border: 1px solid #615f5f;
-}
-
-.editableslot-input:focus {
-    border: 1px solid #615f5f;
 }
 
 .editableslot-input::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
@@ -731,7 +727,7 @@ export default Vue.extend({
 
 .empty-token {
     font-style: italic;
-    color: grey;
+    color: transparent !important;
 }
 
 .empty-token:empty::before {

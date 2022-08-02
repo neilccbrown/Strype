@@ -33,15 +33,24 @@
                     />
                     <div class="col">
                         <div :id="editorUIID" :class="{'editor-code-div noselect':true, 'small-editor-code-div': isLargePythonConsole}" >
-                            <FrameContainer
-                                v-for="container in containerFrames"
-                                :key="container.frameType.type + '-id:' + container.id"
-                                :id="getFrameContainerUIID(container.id)"
-                                :frameId="container.id"
-                                :containerLabel="container.frameType.labels[0].label"
-                                :caretVisibility="container.caretVisibility"
-                                :frameType="container.frameType"
-                            />
+                            <!-- cf. draggableGroup property for details -->
+                            <Draggable
+                                :list="[1,2]"
+                                :move="onMoveFrameContainer"
+                                :group="draggableGroup"
+                                key="draggable-shadow-editor"
+                                forceFallback="true"
+                            >
+                                <FrameContainer
+                                    v-for="container in containerFrames"
+                                    :key="container.frameType.type + '-id:' + container.id"
+                                    :id="getFrameContainerUIID(container.id)"
+                                    :frameId="container.id"
+                                    :containerLabel="container.frameType.labels[0].label"
+                                    :caretVisibility="container.caretVisibility"
+                                    :frameType="container.frameType"
+                                />
+                            </Draggable>
                         </div>
                     </div>
                 </div>
@@ -61,11 +70,12 @@ import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
-import { AppEvent, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID, CustomEventTypes } from "./helpers/editor";
+import { AppEvent, DraggableGroupTypes, FrameObject, MessageTypes } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor } from "./helpers/editor";
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
+import Draggable from "vuedraggable";
 
 //////////////////////
 //     Component    //
@@ -78,6 +88,7 @@ export default Vue.extend({
         FrameContainer,
         Commands,
         Menu,
+        Draggable,
     },
 
     data: function() {
@@ -122,6 +133,21 @@ export default Vue.extend({
             storageString = "MicrobitStrypeSavedState"
             /*FITRUE_isMicrobit */
             return storageString;
+        },
+
+        draggableGroup(): Record<string, any> {
+            // This is a showed draggable to allow management of the cursor (cf. handleDraggingCursor() for details)
+            // Note: the component use a dummy list to not interfer with anything of the UI beyond just the ghost
+            // image of the dragged frame container (it will never be dropped anywhere).
+            return {
+                name: DraggableGroupTypes.shadowEditorContainer,
+                pull: false,
+                put: function() {
+                    // Handle the drag cursor
+                    handleDraggingCursor(true, false);
+                    return false;
+                },
+            };
         },
     },
 
@@ -257,6 +283,11 @@ export default Vue.extend({
         messageTop(): boolean {
             return this.appStore.currentMessage.type !== MessageTypes.imageDisplay;
         },
+
+        onMoveFrameContainer() {
+            // We need that to avoid the frame containers to be even temporary swapping
+            return false;
+        },
     },
 });
 </script>
@@ -325,5 +356,9 @@ html,body {
         -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome, Edge, Opera and Firefox */
+}
+
+.nohover{
+    pointer-events: none;
 }
 </style>

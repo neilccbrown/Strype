@@ -51,13 +51,13 @@ export enum DraggableGroupTypes {
     functionSignatures = "functionSignatures",
     ifCompound = "ifCompound",
     tryCompound = "tryCompound",
+    shadowEditorContainer = "editor", // This draggable is used for cursor management - a root of all other draggables (cf. handleDraggingCursor())
     none = "none",
 }
 
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
-    both = "both",
     none = "none",
 }
 
@@ -111,9 +111,9 @@ export interface StyledCodeSplits {
 
 export interface NavigationPosition {
     id: number;
-    // Both the following can be boolean, as if one has a value, the other one has false (e.g. caretPosition = below AND slotNumber = false)
-    caretPosition?: string|false;
-    slotNumber?: number|false;
+    isSlotNavigationPosition: boolean, // flag to indicate if we are working with a slot position (change from previous version that used composite types)
+    caretPosition?: string;
+    slotNumber?: number;
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
@@ -273,8 +273,8 @@ export const IfDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.if,
     labels: [
-        { label: "if (", slot: true, defaultText: "condition" , optionalSlot: false},
-        { label: ") :", slot: false, defaultText: ""},
+        { label: "if ", slot: true, defaultText: "condition" , optionalSlot: false},
+        { label: " :", slot: false, defaultText: ""},
     ],
     allowJointChildren: true,
     jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
@@ -289,8 +289,8 @@ export const ElifDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.elif,
     labels: [
-        { label: "elif (", slot: true, defaultText: "condition", optionalSlot: false},
-        { label: ") :", slot: false, defaultText: ""},
+        { label: "elif ", slot: true, defaultText: "condition", optionalSlot: false},
+        { label: " :", slot: false, defaultText: ""},
     ],
     draggableGroup: DraggableGroupTypes.ifCompound,
     isJointFrame: true,
@@ -323,8 +323,8 @@ export const WhileDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: StandardFrameTypesIdentifiers.while,
     labels: [
-        { label: "while (", slot: true, defaultText: "condition", optionalSlot: false},
-        { label: ") :", slot: false, defaultText: ""},
+        { label: "while ", slot: true, defaultText: "condition", optionalSlot: false},
+        { label: " :", slot: false, defaultText: ""},
     ],
     colour: "#E4D5D5",
 };

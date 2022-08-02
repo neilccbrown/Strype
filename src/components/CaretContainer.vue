@@ -3,8 +3,6 @@
         class="caret-container"
         @click.exact.prevent.stop="toggleCaret()"
         @click.shift.exact.prevent.stop="frameSelection()"
-        @mouseover.prevent.stop="mouseOverCaret(true)"
-        @mouseleave.prevent.stop="mouseOverCaret(false)"
         @contextmenu.prevent.stop="handleClick($event, 'paste')"
         :key="uiid"
         :id="uiid"
@@ -17,9 +15,8 @@
             @option-clicked="optionClicked"
         />
         <Caret
-            class="caret navigationPosition"
+            :class="{navigationPosition: true, caret:!this.appStore.isDraggingFrame}"
             :id="caretUIID"
-            :isBlurred="overCaret"
             :isInvisible="isInvisible"
             v-blur="isCaretBlurred"
         />
@@ -60,12 +57,6 @@ export default Vue.extend({
         isFrameDisabled: Boolean,
     },
 
-    data: function () {
-        return {
-            overCaret: false,
-        }
-    },
-
     computed: {
         ...mapStores(useStore),
         
@@ -73,7 +64,10 @@ export default Vue.extend({
             return this.appStore.isEditing;
         },
         isInvisible(): boolean {
-            return  !((this.caretVisibility === this.caretAssignedPosition || this.caretVisibility === this.caretPosition.both) && !this.isEditing); 
+            // The caret is only visible when editing is off, 
+            // and either one frame is currently selected 
+            // OR a frame is hovered during drag & drop of frames
+            return !(!this.isEditing && (this.caretVisibility === this.caretAssignedPosition || this.appStore.isDraggingFrame) ); 
         },
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
@@ -110,7 +104,7 @@ export default Vue.extend({
 
     updated() {
         // Ensure the caret (during navigation) is visible in the page viewport
-        if(!this.overCaret && this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
+        if(this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
             const caretContainerEltRect = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId)?.getBoundingClientRect();
             //is caret outside the viewport?
             if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
@@ -158,57 +152,14 @@ export default Vue.extend({
         },
 
         toggleCaret(): void {
-            this.overCaret = false;
             this.appStore.toggleCaret(
                 {id:this.frameId, caretPosition: this.caretAssignedPosition}
             );
         },
 
         frameSelection(): void {
-            this.overCaret = false;
             this.appStore.shiftClickSelection(
                 {clickedFrameId:this.frameId, clickedCaretPosition: this.caretAssignedPosition}
-            );
-        },
-
-        mouseOverCaret(mouseovercaret: boolean): void {
-
-            const currentFrame: FrameObject = this.appStore.getCurrentFrameObject;
-            let newVisibility = CaretPosition.none;
-            
-            // The other caret than the one I am
-            const opositeCaret: CaretPosition = (this.caretAssignedPosition === CaretPosition.below)? CaretPosition.body : CaretPosition.below;
-
-            // If this isn't the current frame, then just turn on this caret
-            if(currentFrame.id !== this.frameId) {
-                newVisibility = ((mouseovercaret) ? this.caretAssignedPosition : CaretPosition.none)
-            }
-            else {
-                // If visibility == 'both', that means that in the frame that I am in both my caret AND
-                // the other caret (i.e. the opposite caret) are switched on. Hence, when the mouse moves
-                // out of my caret, I want to keep the other caret on.
-                if(currentFrame.caretVisibility === CaretPosition.both && mouseovercaret == false) {
-                    newVisibility = opositeCaret;
-                }
-                // If visibility == [my oposite caret], that means that in the frame that I am in 
-                // only the other caret (i.e. the opposite caret) is switched on. Hence, when the mouse enters
-                // my caret, I want to turn visible 'both' carets
-                else if(currentFrame.caretVisibility === opositeCaret && mouseovercaret == true) {
-                    newVisibility = CaretPosition.both;
-                }
-                // The else refers to the case where we are over the actual visual caret
-                // in that case we do not need to do anything.
-                else {
-                    return;
-                }
-            }
-        
-            this.overCaret = mouseovercaret; 
-            this.appStore.setCaretVisibility(
-                {
-                    frameId : this.frameId,
-                    caretVisibility : newVisibility,
-                }
             );
         },
 

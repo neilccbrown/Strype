@@ -6,7 +6,7 @@ import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegr
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, undoMaxSteps } from "@/helpers/editor";
+import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string"
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -37,6 +37,8 @@ export const useStore = defineStore("app", {
             /** END of flags that need checking when a build is done **/
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
+
+            isDraggingFrame: false, // Indicates whether drag and drop of frames is in process
 
             // This is an indicator of the CURRENT editable slot's initial content being edited.
             currentInitCodeValue: "", 
@@ -189,12 +191,14 @@ export const useStore = defineStore("app", {
             let nextJointChildID = -100;
 
             // The RULE for the JOINTS is:
-            // We allow joint addition only at the end of the body
+            // We allow joint addition only at the end of the body 
+            // however, *programmatically* with might have something to check upon the BELOW position of a joint frame (for example when moving frames)
+            // in that case, we do as if we were *inside* the joint frame 
 
             // Two possible cases:
-            // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame
-            // (b) and (a)
-            if ( caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0 ){
+            // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame; OR if we are in a moving condition as explained above (M)
+            // (b) and (a) or (M)
+            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0) || (caretPosition == CaretPosition.below && (currentFrame.jointParentId > 0 || currentFrame.jointFrameIds.length > 0)) ){
                 focusedFrame = currentFrame;
             }
             // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame
@@ -410,13 +414,9 @@ export const useStore = defineStore("app", {
             return (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {
                 // Where do we get the frame from --> from copiedFrames if it is a copied frame
                 // Otherwise the input frame is to be checked (e.g. for moving an else statement or duplicating an else statement -- which doesn't go anywhere).
-                const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? this.copiedFrames : this.frameObjects ;    
+                const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? this.copiedFrames : this.frameObjects;    
 
                 frameToBeMovedId = frameToBeMovedId ?? this.copiedFrameId;
-
-                if(frameToBeMovedId < 1){
-                    return false;
-                }     
 
                 const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
                 // isFrameCopied needs to be checked in the case that the original frame which was copied has been deleted.
@@ -731,7 +731,7 @@ export const useStore = defineStore("app", {
 
             const currentCaret: CurrentFrame = {id: currId, caretPosition: currPosition};
             const availablePositions = getAvailableNavigationPositions();
-            const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
+            const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
             // Where is the current in the list
             const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
 
@@ -1192,6 +1192,9 @@ export const useStore = defineStore("app", {
 
         /******************** OLD ACTIONS ********** */
         updateFramesOrder(payload: {event: any; eventParentId: number}) {
+            // Notify the helper that the drag and drop resulted in a change (i.e. not be "cancelled")
+            setIsDraggedChangingOrder(true);
+
             if(this.ignoredDragAction){
                 //if the action should be ignore, just return and reset the flag
                 this.ignoredDragAction = false;
@@ -1217,8 +1220,8 @@ export const useStore = defineStore("app", {
             // That should be checked both ways as for example if you move an `else` above an elif, it may be
             // valid, as the if accepts else there, but the elif cannot go below the else.
             // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
-            // succeedingFrame is the next frame (if it exists) above which we are adding
-            const succeedingFrame = this.frameObjects[payload.eventParentId].jointFrameIds[payload.event[eventType].newIndex];   
+            const newIndex = payload.event[eventType].newIndex;
+            const oldIndex = payload.event[eventType].oldIndex;
             const jointFrameIds = this.frameObjects[payload.eventParentId].jointFrameIds;
             if(eventType !== "removed") {
                 // EXAMPLE: Moving frame `A` above Frame `B`
@@ -1227,10 +1230,20 @@ export const useStore = defineStore("app", {
                 // IF `A` is jointFrame and there IS a frame `B` where I am moving `A` at
                 //     on TRUE ==> Check if `B` CANNOT be placed below `A` / CANNOT be the trailing joint frame
                 //     on FALSE ==> We don't care about this situation
+                //
+                // The target position for joint frames needs to be found out according to this rule:
+                // - if we are moving a frame within the SAME group:
+                //   - if we move the frame upwards, the target is the element *before* the newIndex position of the joint frames 
+                //     so if newIndex is 0, then we look at the joint parent of the structure
+                //   - if we move the frame downwards, the target is at the newIndex position of the joint frames 
+                // - if we are moving a frame within a DIFFERENT group:
+                //   - the target is the element *before* the newIndex position of the destination joint frames 
+                //     (so same check as above is newIndex is 0)
+                const jointFrameTargetIndex = (eventType==="moved" && oldIndex < newIndex) ? newIndex + 1 : newIndex;
                 const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
-                    ? (succeedingFrame !== undefined)
-                        ? !this.isPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, succeedingFrame)
-                        : !this.isPositionAllowsFrame(payload.event[eventType].element.id, CaretPosition.below, jointFrameIds[jointFrameIds.length - 1])
+                    ? !this.isPositionAllowsFrame((jointFrameTargetIndex > 0) ? this.frameObjects[payload.eventParentId].jointFrameIds[jointFrameTargetIndex - 1] : payload.eventParentId,
+                        CaretPosition.below,
+                        payload.event[eventType].element.id)
                     : false;
 
                 if((!isJointFrame && !this.isPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
@@ -1467,20 +1480,20 @@ export const useStore = defineStore("app", {
             //first add the slot numbers
             Object.values(newFrame.contentDict).forEach( (element,index) => {
                 if(element.shownLabel){
-                    newFramesCaretPositions.push({id: newFrame.id, caretPosition:false, slotNumber: index})
+                    newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition:true, slotNumber: index});
                 }
             });
       
       
             //now add the caret positions
-            if( newFrame.frameType.allowChildren ){
-                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.body, slotNumber: false});
+            if(newFrame.frameType.allowChildren){
+                newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.body});
             }
-            if( !addingJointFrame ){
-                newFramesCaretPositions.push({ id: newFrame.id, caretPosition: CaretPosition.below, slotNumber: false});
+            if(!addingJointFrame){
+                newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.below});
             }
             const availablePositions = getAvailableNavigationPositions();
-            const indexOfCurrent = availablePositions.findIndex((e) => e.id===this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositions.findIndex((e) => e.id===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition)
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
@@ -1510,7 +1523,7 @@ export const useStore = defineStore("app", {
 
             // we remove the editable slots from the available positions
             let availablePositions = getAvailableNavigationPositions();
-            availablePositions = availablePositions.filter((e) => e.slotNumber === false);
+            availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
 
             let showDeleteMessage = false;
 
@@ -1547,7 +1560,7 @@ export const useStore = defineStore("app", {
 
                 const currentFrame = this.frameObjects[currentFrameId];
 
-                let frameToDelete: NavigationPosition = {id:-100};
+                let frameToDelete: NavigationPosition = {id:-100, isSlotNavigationPosition: false};
                 let deleteChildren = false;
 
                 if(key === "Delete"){
@@ -1555,11 +1568,11 @@ export const useStore = defineStore("app", {
                     // Where the current sits in the available positions
                     const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                     // the "next" position of the current
-                    frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100}
+                    frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false}
                     
-                    // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration bellow
+                    // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration below
                     if((this.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.id]?.frameType.type === FuncDefDefinition.type)
-                         && frameToDelete.caretPosition === CaretPosition.below){
+                         && (frameToDelete.caretPosition??"") === CaretPosition.below){
                         frameToDelete.id = -100
                     }
                 }
@@ -1657,10 +1670,10 @@ export const useStore = defineStore("app", {
 
             if (this.isEditing){ 
                 const posOfCurSlot = Object.entries(this.frameObjects[this.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
-                currentFramePosition = availablePositions.findIndex( (e) => e.slotNumber === posOfCurSlot && e.id === this.currentFrame.id); 
+                currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.slotNumber === posOfCurSlot && e.id === this.currentFrame.id); 
             }
             else {
-                currentFramePosition = availablePositions.findIndex( (e) => e.caretPosition === this.currentFrame.caretPosition && e.id === this.currentFrame.id); 
+                currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.id === this.currentFrame.id); 
             }
             
             const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition])                        
@@ -1673,7 +1686,7 @@ export const useStore = defineStore("app", {
             );
 
             // If next position is an editable slot
-            if( nextPosition.slotNumber !== false) {
+            if(nextPosition.isSlotNavigationPosition){
                 this.isEditing = true;
                 const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: directionDelta};
                 this.editableSlotViaKeyboard = slotReachInfos;
@@ -1686,7 +1699,7 @@ export const useStore = defineStore("app", {
                     }
                 );
             }
-            else {
+            else{
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
 
@@ -2122,7 +2135,7 @@ export const useStore = defineStore("app", {
 
             // we filter the payload to remove the slot positions
             let availablePositions:NavigationPosition[]  = getAvailableNavigationPositions();
-            availablePositions = availablePositions.filter((e) => e.slotNumber === false);
+            availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
             
             let siblingsOrChildren: number[] = []
             let index = 0;
@@ -2150,14 +2163,16 @@ export const useStore = defineStore("app", {
             const availablePositionsOfSiblings: NavigationPosition[] = []
             availablePositions.forEach((element) => {
                 // we need to keep the elements which correspond to the siblingsOrChildren list
-                // we only include bellows
-                if(siblingsOrChildren.includes(element.id) && element.caretPosition === CaretPosition.below) {
+                if(!element.isSlotNavigationPosition){
+                    // we only include belows
+                    if(siblingsOrChildren.includes(element.id) &&  element.caretPosition === CaretPosition.below) {
                     // going down, we cannot select a body position
-                    availablePositionsOfSiblings.push(element)
-                }
-                // except when going upwards we may need the our parent's body to be added
-                else if(directionUp && currentFrame.parentId === element.id && element.caretPosition == CaretPosition.body){
-                    availablePositionsOfSiblings.push(element)
+                        availablePositionsOfSiblings.push(element)
+                    }
+                    // except when going upwards we may need the our parent's body to be added
+                    else if(directionUp && currentFrame.parentId === element.id && element.caretPosition == CaretPosition.body){
+                        availablePositionsOfSiblings.push(element)
+                    }
                 }
             })
             
@@ -2177,7 +2192,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
 
             const availablePositions = getAvailableNavigationPositions();
-            const listOfCaretPositions = availablePositions.filter(((e)=> e.slotNumber === false));
+            const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
 
             const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.id === this.currentFrame.id && item.caretPosition === this.currentFrame.caretPosition);
             const indexOfTarget: number = listOfCaretPositions.findIndex((item)=> item.id === payload.clickedFrameId && item.caretPosition === payload.clickedCaretPosition);

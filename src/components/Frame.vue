@@ -1,5 +1,10 @@
 <template>
-    <div>
+    <div :class="{dragging: isDragTop}">
+        <!-- this "fake" caret is only used to show something valid while doing drag and drop -->
+        <Caret
+            :class="{'caret-drop': isDragTop}"
+            v-blur="false"
+        />
         <div 
             v-if="multiDragPosition === 'middle' || multiDragPosition === 'last'"
             class="draggedWithOtherFramesAbove"
@@ -9,10 +14,12 @@
             v-show="isVisible"
             :class="frameSelectedCssClass"
         >
+            <!-- keep both mousedown & click events: we need mousedown to manage the caret rendering during drag & drop -->
             <div 
                 :style="frameStyle" 
-                :class="{'block frameDiv': true, statementOrJoint: isStatementOrJointFrame}"
+                :class="{frameDiv: true, frameDivHover: !isDragging, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
                 :id="uiid"
+                @mousedown.left="hideCaretAtClick"
                 @click="toggleCaret($event)"
                 @contextmenu="handleClick($event,'frame-context-menu')"
             >
@@ -44,7 +51,7 @@
                     :style="frameMarginStyle['body']"
                 />
                 <JointFrames 
-                    v-if="allowsJointChildren && hasJointFrameObjects"
+                    v-if="allowsJointChildren"
                     :jointParentId="frameId"
                     :isDisabled="isDisabled"
                     :isParentSelected="isPartOfSelection"
@@ -76,11 +83,12 @@
 import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue"
+import Caret from "@/components/Caret.vue"
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, Definitions, CommentDefinition, CurrentFrame, NavigationPosition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import { getParent, getParentOrJointParent } from "@/helpers/storeMethods";
-import { getFrameContextMenuUIID, getFrameUIID } from "@/helpers/editor";
+import { getAboveFrameCaretPosition, getParent, getParentOrJointParent } from "@/helpers/storeMethods";
+import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -93,6 +101,7 @@ export default Vue.extend({
         FrameHeader,
         VueSimpleContextMenu,
         CaretContainer,
+        Caret,
     },
 
     beforeCreate() {
@@ -128,30 +137,21 @@ export default Vue.extend({
 
     computed: {
         ...mapStores(useStore),
-        
-        hasJointFrameObjects(): boolean {
-            return this.appStore.getJointFramesForFrameId(
-                this.frameId,
-                "all"
-            ).length >0;
-        },
 
         allowsJointChildren(): boolean {
             return this.appStore.getAllowedJointChildren(this.frameId);
         },
 
         frameStyle(): Record<string, string> {
-            return this.isJointFrame === true
-                ? {"color":"#000 !important"}
-                : {
-                    "background-color": `${this.getFrameBgColor()} !important`,
-                    "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
+            return {
+                "background-color": `${this.getFrameBgColor()} !important`,
+                 "color": (this.frameType.type === Definitions.CommentDefinition.type) ? "#97971E !important" : "#000 !important",
                 };
         },
 
         frameMarginStyle(): Record<string, Record<string, string>> {
-            return {"header": (this.isJointFrame)? {"margin-left": "13px"} : {"margin-left": "14px"},
-                    "body": (this.isJointFrame)? {"margin-left": "11px"} : {"margin-left": "12px"}}
+            return {"header": (this.isJointFrame)? {"margin-left": "5px"} : {"margin-left": "6px"},
+                    "body": {...(this.isJointFrame)? {"margin-left": "28px"} : {"margin-left": "30px"}, "margin-right": "28px"}}
         },
 
         frameSelectedCssClass(): string {
@@ -180,8 +180,8 @@ export default Vue.extend({
             return this.appStore.getFrameSelectionPosition(this.frameId);
         },
 
-        isStatementOrJointFrame(): boolean {
-            return this.frameType.isJointFrame || !this.frameType.allowChildren;
+        isBlockFrame(): boolean {
+            return this.frameType.allowChildren;
         },
 
         // Joint frames can also be "selected" if their parent is selected
@@ -196,6 +196,21 @@ export default Vue.extend({
         multiDragPosition(): string {
             return this.appStore.getMultiDragPosition(this.frameId);
         },
+
+        isDragTop(): boolean {
+            // We show a "fake" positional caret when dragging frames. 
+            // Either for the very first frame of a selection, or the one being dragged if there is only one.
+            return this.appStore.isDraggingFrame && 
+                (((this.appStore.selectedFrames.length > 0) 
+                    ? this.appStore.selectedFrames[0] 
+                    : getDraggedSingleFrameId()) === this.frameId);
+        },
+        
+        isDragging(): boolean{
+            // Contrary to isDragTop, this property is set whenever dragging is happening, not just for the 
+            // dragged elements. We need that to control some CSS rendering of the cursors.
+            return this.appStore.isDraggingFrame;
+        }   
     },
 
     mounted() {
@@ -225,8 +240,12 @@ export default Vue.extend({
 
         getFrameBgColor(): string {
             // In most cases, the background colour is the one defined in the frame types.
-            // The exception is for comments, which will take the same colour as their container.
+            // The exception is for comments and joint frames, which will take the same colour as their container.
+            // For comments, we keep them transparent, for joints, we retrieve the parent's colour, so that it shows up when dragging them.
             if(this.frameType.type !== CommentDefinition.type){
+                if(this.isJointFrame){
+                    return this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].jointParentId].frameType.colour;
+                }
                 return this.frameType.colour;
             }
             else{
@@ -312,29 +331,122 @@ export default Vue.extend({
             }
         },
 
-        toggleCaret(event: MouseEvent): void {
-            const frame: HTMLDivElement = event.srcElement as HTMLDivElement;
+        hideCaretAtClick(): void {
+            // Force the caret to become invisible at click. That is required for being able to show a drag and drop "image" that 
+            // doesn't contain the blue caret if we drag the frame which currently holds the caret. The caret visibility will be restored
+            // either when the drop of a drag and drop happens or when click is notified (cf. toggleCaret()) if the drag and drop had not be performed.
+            // Note: we do it directly in JS as reactive change via store is too late for the rendering.
+            for(const navigationCaret of document.getElementsByClassName("caret")){
+                if(!navigationCaret.classList.contains("invisible")){
+                    navigationCaret.classList.add("invisible");
+                }
+            }
 
-            // This checks the propagated click events, and prevents the parent event to handle the event as well. 
+            // But to keep things clean in the store, we still need to do the necessary amendments
+            Vue.set(
+                this.appStore.frameObjects[this.appStore.currentFrame.id],
+                "caretVisibility",
+                CaretPosition.none
+            );
+        },
+
+        toggleCaret(event: MouseEvent): void {
+            const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
+
+            // This checks the propagated click events, and prevents the parent frame to handle the event as well. 
             // Stop and Prevent do not work in this case, as the event needs to be propagated 
             // (for the context menu to close) but it does not need to trigger always a caret change.
-            if(frame.id !== this.uiid ){
+            // Note: previous version checked the id, but that's not reliable as the div triggering the click may not have an id (or as formatted for the frame div)
+            // therefore, another approach is to check that the clicked object is either the frame object (as done before) or find what it's nearest parent and get its ID.
+            let frameDivParent = clickedDiv;
+            while(!isIdAFrameId(frameDivParent.id)){
+                frameDivParent = frameDivParent.parentElement as HTMLDivElement
+            }            
+            if(frameDivParent.id !== this.uiid){
                 return;
             }
 
-            // get the rectangle of the div with its coordinates
-            const rect = frame.getBoundingClientRect();
-            
-            let position: CaretPosition = CaretPosition.none;
-            // if clicked above the middle, or if I click on the label show the body caret
-            if((frame.className === "frame-header" || event.y <= rect.top + rect.height/2) && this.allowChildren) {
-                position = CaretPosition.body;
+            this.changeToggledCaretPosition(event.clientY, frameDivParent);
+        },
+
+        changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement): void{
+            const frameRect = frameClickedDiv.getBoundingClientRect();
+            const headerRect = document.querySelector("#"+this.uiid+ " .frame-header")?.getBoundingClientRect();
+            if(headerRect){            
+                let newCaretPosition: NavigationPosition = {id: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
+                // The following logic applies to select a caret position based on the frame and the location of the click:
+                // if a click occurs between the top of a frame and its header top mid half
+                //    --> get the cursor visually above the frame
+                // if a click occurs within the frame header bottom mid half
+                //    --> get the cursor below the frame (if statement) or top of body (if block)
+                // if a click occurs below the header mid half
+                //    --> get the cursor below the frame (if statement) or at the nearest above/below position (if block)
+                //Note: joint frames overlap their root parent, they get the click as a standalone frame
+                if(clickY <= (frameRect.top + headerRect.height/2)){
+                    newCaretPosition = getAboveFrameCaretPosition(this.frameId);
+                }
+                else{
+                    if(this.isBlockFrame){
+                        // When we are here, we try to find the nearest above or below position of the block's child (if any)
+                        // We get all the mid frame positions that will decided whether we are targetting above or below a frame.
+                        // We traverse each positions until we found where the click (vertically) occured, if nothing is found, we
+                        // then assume the click is vertically beyond the children and therefore toggle the caret below the current frame
+                        const midFramePositions = this.getBodyMidFramePositions();
+                        let hasPassedPosition = false;
+                        let previousThreshold = 0;
+                        for(const midFrameThresholdPos of midFramePositions){
+                            hasPassedPosition = (clickY >= previousThreshold && clickY < midFrameThresholdPos.midYThreshold);
+                            previousThreshold = midFrameThresholdPos.midYThreshold;
+                            if(hasPassedPosition){
+                                newCaretPosition.id = midFrameThresholdPos.caretPos.id;
+                                newCaretPosition.caretPosition = midFrameThresholdPos.caretPos.caretPosition;
+                                break;
+                            }
+                        }
+                        if(!hasPassedPosition){
+                            newCaretPosition.caretPosition = CaretPosition.below;
+                        }
+                    }
+                    else{
+                        newCaretPosition.caretPosition = CaretPosition.below;
+                    }
+                }
+               
+                this.appStore.toggleCaret({id: newCaretPosition.id, caretPosition: newCaretPosition.caretPosition as CaretPosition});
             }
-            //else show caret below
+        },
+
+        getBodyMidFramePositions(): {caretPos: CurrentFrame, midYThreshold: number}[] {
+            // The mid frame positions for the "body" part of a block frames have at least 1 entity:
+            // - A) the parent's body position (top of the body) that would be selected 
+            //    when the click vertical position is above the middle of the first child (when there are children) or above the middle of the empty body space (if no children)
+            // For that, if there are frames, we have B) all the mid frame positions of the children
+            const midFramePosArray: {caretPos: CurrentFrame, midYThreshold: number}[] = [];
+            const frameBodyRect = document.getElementById(getFrameBodyUIID(this.frameId))?.getBoundingClientRect() as DOMRect;
+                        
+            const bodyFrameIds = this.appStore.frameObjects[this.frameId].childrenIds;
+            if(bodyFrameIds.length > 0){
+                // Start with adding B)
+                bodyFrameIds.forEach((childFrameId) => {
+                    const childFrameDivRect = document.getElementById(getFrameUIID(childFrameId))?.getBoundingClientRect() as DOMRect;
+                    const prevPos = getAboveFrameCaretPosition(childFrameId);
+                    midFramePosArray.push({caretPos: {id: prevPos.id, caretPosition: prevPos.caretPosition as CaretPosition},
+                        midYThreshold: childFrameDivRect.top + childFrameDivRect.height/2 });
+                });
+
+                // Add the last part, A)
+                const lastChildFrameId = bodyFrameIds[bodyFrameIds.length - 1];
+                const lastChildFrameDivRect = document.getElementById(getFrameUIID(lastChildFrameId))?.getBoundingClientRect() as DOMRect;
+                midFramePosArray.push({caretPos: {id: lastChildFrameId, caretPosition: CaretPosition.below},
+                    midYThreshold: lastChildFrameDivRect.bottom + (frameBodyRect.bottom - lastChildFrameDivRect.bottom)/2});
+            } 
             else{
-                position = CaretPosition.below;
+                // Add A) for no children body: the mid frame position is then taken as the mid frame of the containing frame
+                midFramePosArray.push({caretPos: {id: this.frameId, caretPosition: CaretPosition.body},
+                    midYThreshold: frameBodyRect.top + frameBodyRect.height/2});
             }
-            this.appStore.toggleCaret({id:this.frameId, caretPosition: position});
+
+            return midFramePosArray;
         },
 
         duplicate(): void {
@@ -426,24 +538,36 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.block {    
+.frameDiv {    
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
     border: 1px solid transparent;
 }
 
-.statementOrJoint {
-    border: 1px solid transparent;
+// This should be ".frameDiv:hover" but drag and drop is messing things up
+// so we use another class to only be used when drag and drop doesn't occur
+.frameDivHover:hover{
+    cursor: pointer;
 }
 
-.block:hover{
-    border-color: #B4B4B4;
-    cursor: grab;
+.dragging-frame-allowed {
+    // This cursor will be shown when dragging occurs and we are within a draggable component 
+    // regardless dropping is allowed or not (because we won't want a constant flicker of cursor)
+    cursor: grabbing !important;
 }
 
-.block:active{
-    cursor: grabbing;
+.dragging-frame-not-allowed {
+     //  This cursor will be shown when dragging occurs and we are oustide the editor's containers
+    cursor: url(~@/assets/images/forbidden-cursor.png), auto;
+}
+
+.blockFrameDiv {
+    border-color: #8e8e8e;
+}
+
+.statementFrameDiv:hover {
+    border-color: #d6d6d6;
 }
 
 .selected {
