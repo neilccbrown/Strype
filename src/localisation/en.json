@@ -83,15 +83,19 @@
         "emptyCodeError" :"The code cannot be empty."
     },
     "contextMenu": {
-        "cut":"Cut",
-        "copy":"Copy",
-        "duplicate":"Duplicate Frame",
-        "paste":"Paste Frame",
-        "enable":"Enable Frame",
-        "disable":"Disable Frame",
+        "cut":"Cut Frame(s)",
+        "copy":"Copy Frame(s)",
+        "duplicate":"Duplicate Frame(s)",
+        "paste":"Paste Frame(s)",
+        "pasteAbove": "Paste Frame(s) above",
+        "pasteBelow": "Paste Frame(s) below",
+        "pasteBelowJointRoot": "Paste Frame under root",
+        "enable":"Enable Frame(s)",
+        "disable":"Disable Frame(s)",
         "undo":"Undo",
         "redo":"Redo",
-        "delete":"Delete Frame"
+        "delete":"Delete Frame(s)",
+        "deleteOuter":"Delete Outer Frame(s)"
     },
     "appMenu": {
         "defaultProjName":"My project",

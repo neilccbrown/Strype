@@ -75,4 +75,14 @@ module.exports = {
             enableInSFC: false,
         },
     },
+
+    css: {
+        loaderOptions: {
+            scss: {
+                additionalData: `
+                    @import "@/assets/style/variables.scss";
+                `,
+            },
+        },
+    },
 }

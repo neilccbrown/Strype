@@ -24,17 +24,17 @@ export default Vue.extend({
 
 <style lang="scss">
 .caret {
-    width: 120px;
+    width: $caret-width;
     background-color: #3467FE;
     border-radius: 6px;
-    height: 6px;
+    height: $caret-height;
 }
 
 .caret-drop {
     background-color: #BB33FF !important;
-    width: 120px;
+    width: $caret-width;
     border-radius: 6px;
-    height: 6px;
+    height: $caret-height;
 }
 
 .invisible {

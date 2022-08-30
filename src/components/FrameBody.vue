@@ -1,6 +1,6 @@
 <template>
     <div
-        :class="{'frame-body-container frame-container-minheight':true, error: empty}"
+        :class="{'frame-body-container frame-container-minheight':true, error: empty, 'body-deletable': bodyDeletable}"
         :id="uiid"
     >
         <div>
@@ -155,6 +155,17 @@ export default Vue.extend({
         isDraggingFrame(): boolean{
             return this.appStore.isDraggingFrame;
         },
+
+        bodyDeletable(): boolean{
+            // We need to get the body background at the deletable colour only if this frame is deletable
+            // and we are not deleting the outer frames
+            if(this.appStore.potentialDeleteFrameIds){
+                return this.appStore.potentialDeleteFrameIds.includes(this.frameId) 
+                    && !this.appStore.potentialDeleteIsOuter; 
+            }
+            // For compatibility with previous versions of the store
+            return false;                       
+        },
     },
 
     beforeDestroy() {
@@ -247,4 +258,7 @@ export default Vue.extend({
     border: 2px solid #d66 !important;
 }
 
+.body-deletable {
+    background-color: transparent !important;
+}
 </style>

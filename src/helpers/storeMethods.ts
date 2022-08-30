@@ -64,7 +64,7 @@ export const isLastInParent = (listOfFrames: EditorFrameObjects, frameId: number
 };
 
 //Returns a list with all the previous frames (of the same level) and next frames (including first level children) used for navigating the caret
-export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, currentFrameId: number, caretPosition: CaretPosition, direction: string) => {
+export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, currentFrameId: number, caretPosition: CaretPosition, direction: "up"|"down"): number[] => {
     const currentFrame = listOfFrames[currentFrameId];
             
     // Create the list of children + joints with which the caret will work with
@@ -74,7 +74,7 @@ export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, cu
     childrenAndJointFramesIds = [...listOfFrames[parentId].childrenIds];    
     
     // Joint frames are added to a temp list and caret works with this list instead.
-    if (currentFrame.jointFrameIds.length > 0 || currentFrame.jointParentId > 0) {
+    if (isFramePartOfJointStructure(listOfFrames, currentFrame.id)) {
 
         const jointParentId = (currentFrame.jointParentId > 0) ? currentFrame.jointParentId : currentFrame.id;
         const indexOfJointParent = childrenAndJointFramesIds.indexOf(jointParentId);
@@ -349,7 +349,7 @@ export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameOb
     return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
 };
 
-export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: string, selectedFrames: number[]) => {
+export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: "up"|"down", selectedFrames: number[]): {frameForSelection: number, newCurrentFrame: CurrentFrame}|null => {
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.
@@ -449,6 +449,11 @@ export const checkIfLastJointChild = function (listOfFrames: EditorFrameObjects,
     const parent: FrameObject = listOfFrames[listOfFrames[frameId].jointParentId];
     return [...parent.jointFrameIds].pop() === frameId;
 };
+
+export const isFramePartOfJointStructure = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
+    const frame = listOfFrames[frameId];
+    return (frame.frameType.isJointFrame || frame.jointFrameIds.length > 0);
+}
 
 
 export const checkIfFirstChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {

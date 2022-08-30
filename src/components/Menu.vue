@@ -30,9 +30,9 @@
                 </div>
             </div> 
             <div class="menu-separator-div"></div>
-            <a class="project-impexp-div" @click="importFile();toggleMenuOnOff(null);" v-t="'appMenu.loadProject'" />
-            <a class="project-impexp-div" @click="exportFile();toggleMenuOnOff(null);" v-t="'appMenu.saveProject'"/>
-            <a class="project-impexp-div" @click="resetProject();toggleMenuOnOff(null);" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
+            <a v-if="showMenu" class="project-impexp-div" @click="importFile();toggleMenuOnOff(null);" v-t="'appMenu.loadProject'" />
+            <a v-if="showMenu" class="project-impexp-div" @click="exportFile();toggleMenuOnOff(null);" v-t="'appMenu.saveProject'"/>
+            <a v-if="showMenu" class="project-impexp-div" @click="resetProject();toggleMenuOnOff(null);" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
@@ -141,7 +141,7 @@ export default Vue.extend({
             "keydown",
             (event: KeyboardEvent) => {
                 //handle the Ctrl/Meta + S command for saving the project
-                if(event.key === "s" && (event.metaKey || event.ctrlKey)){
+                if(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey)){
                     this.exportFile();
                     event.stopImmediatePropagation();
                     event.preventDefault();
