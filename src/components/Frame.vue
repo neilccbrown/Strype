@@ -393,10 +393,9 @@ export default Vue.extend({
 
                 // We only show "delete outer" if the top level frame(s) to delete are all block frames and not function definitions
                 const canDeleteOuter = (this.isPartOfSelection) 
-                    ? !this.appStore
+                    ? this.appStore
                         .selectedFrames
-                        .map((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != FuncDefDefinition.type)
-                        .includes(false)
+                        .every((frameId) => (this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != FuncDefDefinition.type))
                     : this.isBlockFrame && this.frameType.type != FuncDefDefinition.type;
                 if(!canDeleteOuter){
                     const deleteOuterOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "deleteOuter");
@@ -484,6 +483,7 @@ export default Vue.extend({
             }
             else{
                 // Add the target frames Ids in the flag array - they will always be shown no matter it's a single or outer delete
+                // As we are modifying the potentialDeleteFrameIds while iterating through it, we need to make a copy on which we iterate
                 const potentialDeleteFrameIDs = (this.appStore.selectedFrames.length > 0) ? [...this.appStore.selectedFrames] : [this.frameId];
                 [...potentialDeleteFrameIDs].forEach((targetFrameId) => {
                     if(isOuterDelete){
