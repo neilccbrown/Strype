@@ -1671,15 +1671,14 @@ export const useStore = defineStore("app", {
            
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
-            // Prepare a list of ids for the frame to delete (reversed order)
+            // Prepare a list of ids for the frame to delete
             const framesToDelete: number[] = [];
             if(this.selectedFrames.length > 0){
-                framesToDelete.push(...this.selectedFrames.reverse());
+                framesToDelete.push(...this.selectedFrames);
             }
             else{
                 framesToDelete.push(frameId);
             }
-            framesToDelete.reverse();
 
             // Now perform the deletion for each top level frames to delete
             framesToDelete.forEach((topLevelFrameId) => {
@@ -2083,9 +2082,8 @@ export const useStore = defineStore("app", {
             // Are we pasting into a joint frame: that depends what we copied. If we copied a joint frame
             // then we need to check if we are in a joint frame body (because of previous checks, we know we'd be at the end of that body).
             // If we copied something else then we just check the location we want to paste to.
-            const isClickedJointFrame = (isCopiedJointFrame && payload.caretPosition === CaretPosition.below)
-                ? true
-                : this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
+            const isClickedJointFrame = (isCopiedJointFrame && payload.caretPosition === CaretPosition.below) 
+                || this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
 
             // When pasting a joint frame, the clicked frame might not be the right one to use: if we are pasting in below a joint frame's child
             // then we are actually wanting to paste after that child's parent (the joint frame after which we want to paste)
@@ -2096,7 +2094,7 @@ export const useStore = defineStore("app", {
             // Clicked is joint ? parent of clicked(*) is its joint parent ELSE clicked is the real parent
             // (*) unless we wanted to paste into the root of this joint structure, then the parent is joint we clicked into
             const clickedParentId = (isClickedJointFrame) 
-                ? (this.frameObjects[jointFrameAsClickedId].jointParentId > 0) ? this.frameObjects[jointFrameAsClickedId].jointParentId : jointFrameAsClickedId
+                ? ((this.frameObjects[jointFrameAsClickedId].jointParentId > 0) ? this.frameObjects[jointFrameAsClickedId].jointParentId : jointFrameAsClickedId)
                 : this.frameObjects[payload.clickedFrameId].parentId;
 
             // Flag indicating if we are either in a normal body not in a context of joint frames or in a the root parent in a context of joint frames
@@ -2111,7 +2109,7 @@ export const useStore = defineStore("app", {
             // If the caret is below and it is not a joint frame, or caret is body and we deal with a joint frame(*), parent is the clicked's parent
             // (*) only if we are copying in another joint frame: if we are copying in the root then the parent is the root itself
             const pasteToParentId = inBodyContext
-                ? (isClickedJointFrame) ? jointFrameAsClickedId : payload.clickedFrameId
+                ? ((isClickedJointFrame) ? jointFrameAsClickedId : payload.clickedFrameId)
                 : clickedParentId;
 
             // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
