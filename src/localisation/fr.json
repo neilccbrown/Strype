@@ -1,6 +1,21 @@
 {
     "appName":"Éditeur Strype",
     "frame":{
+        "defaultText":{
+            "condition":"condition ",
+            "list":"liste ",
+            "identifier":"identifiant ",
+            "expression":"expression ",
+            "value":"valeur ",
+            "variable":"variable ",
+            "funcCall":"appel de fonction ",
+            "exception":"exception ",
+            "name":"nom ",
+            "parameters":"paramètres ",
+            "module":"module ",
+            "modulePart":"fonction/classe ",
+            "comment":"ton commentaire "
+        },
       "funcdef_desc":"définition de fonction",
       "varassign_desc":"affectation de variable",
       "funccall_desc":"appel de fonction",
@@ -68,7 +83,8 @@
       "noValidChildFrameBody":"Le contenu du cadre doit avoir au moins un cadre actif / différent d'un commentaire ",
       "errorTitle":"Erreur !",
       "errorUserDefinedFuncMsg":"Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
-      "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs"
+      "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
+      "EOFError": "Ce cadre ne peut pas être vide."
     },
     "appMessage": {
       "editorFileUpload":"Chargement de votre fichier dans l'éditeur...",

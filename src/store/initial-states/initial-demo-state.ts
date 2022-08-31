@@ -1,4 +1,4 @@
-import {CaretPosition, EditorFrameObjects, Definitions, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
+import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, getFrameDefType, AllFrameTypesIdentifier} from "@/types/types";
 
 const initialDemoState: EditorFrameObjects = {
     0: {
@@ -62,7 +62,7 @@ const initialDemoState: EditorFrameObjects = {
     },
 
     1: {
-        frameType: Definitions.FromImportDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.fromimport),
         id: 1,
         isDisabled: false,
         isSelected: false,
@@ -79,7 +79,7 @@ const initialDemoState: EditorFrameObjects = {
     },
 
     2: {
-        frameType: Definitions.VarAssignDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
         id: 2,
         isDisabled: false,
         isSelected: false,
@@ -96,7 +96,7 @@ const initialDemoState: EditorFrameObjects = {
     },
 
     3: {
-        frameType: Definitions.WhileDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.while),
         id: 3,
         isDisabled: false,
         isSelected: false,
@@ -113,7 +113,7 @@ const initialDemoState: EditorFrameObjects = {
     },
 
     4: {
-        frameType: Definitions.EmptyDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
         id: 4,
         isDisabled: false,
         isSelected: false,

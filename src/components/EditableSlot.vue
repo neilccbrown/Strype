@@ -9,8 +9,8 @@
             v-model="code"
             :placeholder="defaultText"
             v-focus="focused"
-            @focus="onFocus()"
-            @blur="onBlur()"
+            @focus="onFocus"
+            @blur="onBlur"
             @keydown.left="onLRKeyDown($event)"
             @keydown.right="onLRKeyDown($event)"
             @keydown.up.prevent.stop="onUDKeyDown($event)"
@@ -21,10 +21,12 @@
             @keyup.enter.prevent.stop="onEnterOrTabKeyUp($event)"
             @keydown.tab="onTabKeyDown($event)"
             @keyup.tab="onEnterOrTabKeyUp($event)"
-            @keydown.backspace="onBackSpaceKeyDown()"
-            @keyup.backspace="onBackSpaceKeyUp()"
+            @keydown.backspace="onBackSpaceKeyDown"
+            @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
-            @keyup="logCursorPositionAndCheckBracket()"
+            @keyup="logCursorPositionAndCheckBracket"
+            @select="onCodeSelected"
+            @click="resetHighlightedTextFlag"
             :class="{'editableslot-base editableslot-input navigationPosition': true, editableSlot: focused, error: erroneous(), hidden: isHidden}"
             :id="UIID"
             :key="UIID"
@@ -76,12 +78,16 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getEditableSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, VarAssignDefinition, ImportDefinition, FromImportDefinition, CommentDefinition, StyledCodePart, CodeStyle, EmptyDefinition} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, StyledCodePart, CodeStyle, AllFrameTypesIdentifier} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import getCaretCoordinates from "textarea-caret";
 import { getStyledCodeLiteralsSplits } from "@/parser/parser";
 import { mapStores } from "pinia";
 import { checkAndtransformFuncCallFrameToVarAssignFrame } from "@/helpers/storeMethods";
+
+// Tokens that can be autoinserted (close matching) in code 
+// The order inside each array is important, keep matching opening and closing tokens
+const openBracketCharacters = ["(","{","[","\"","'"], closeBracketCharacters = [")","}","]","\"","'"];
 
 export default Vue.extend({
     name: "EditableSlot",
@@ -146,7 +152,9 @@ export default Vue.extend({
             //an array of code "parts" associated with styles (to emphasis the literal types i.e. numbers, strings and booleans)
             styledCodeParts: [] as StyledCodePart[],
             //we need to track the key.down events for the bracket/quote closing method (cf details there)
-            keyDownStr: "" as string,
+            keyDownStr: "",
+            //currently highlighted text (used for bracket matching, cf logCursorPositionAndCheckBracket())
+            highlightedCode: "",
         };
     },
     
@@ -170,7 +178,7 @@ export default Vue.extend({
                 //when the input doesn't have focus, we set the background to fully transparent to allow the spans to be seen underneath
                 "background-color": ((this.focused) ? ((this.code.trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") : "rgba(255, 255, 255, 0)") + " !important",
                 "width" : this.computeFitWidthValue(),
-                "color" : (this.frameType === CommentDefinition.type)
+                "color" : (this.frameType === AllFrameTypesIdentifier.comment)
                     ? "#97971E"
                     //when the input doesn't have focus, we set the colour to transparent to allow the spans to be seen underneath
                     : (this.focused) ? "#000" : "transparent", 
@@ -219,7 +227,7 @@ export default Vue.extend({
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
 
                     //workout the correct context if we are in a code editable slot
-                    const isImportFrame = (frame.frameType.type === ImportDefinition.type || frame.frameType.type === FromImportDefinition.type)
+                    const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport)
                     const resultsAC = (isImportFrame) 
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
@@ -379,7 +387,7 @@ export default Vue.extend({
             );    
             // When there is no code, we can suppose that we are in a new frame.
             // So, for import frames (from/import slots only) we show the AC automatically
-            if((this.frameType === ImportDefinition.type || this.frameType === FromImportDefinition.type) && this.slotIndex < 2 && this.code.length === 0){
+            if((this.frameType === AllFrameTypesIdentifier.import || this.frameType === AllFrameTypesIdentifier.fromimport) && this.slotIndex < 2 && this.code.length === 0){
                 const resultsAC = getImportCandidatesForAC("", this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));   
                 this.contextAC = resultsAC.contextAC;
                 if(resultsAC.showAC){
@@ -412,7 +420,7 @@ export default Vue.extend({
                 // In the case of a function call frame, we check if a transformation to a varassign frame 
                 // is needed (the code splits of editable slots will be done automatically when re-rendering the frame/slots)
                 // for a simple pre-flight test, we just check if "=" appears in the slot
-                if(this.frameType === EmptyDefinition.type && this.code.includes("=")){
+                if(this.frameType === AllFrameTypesIdentifier.empty && this.code.includes("=")){
                     // replace the frame at the next tick
                     this.$nextTick(() => checkAndtransformFuncCallFrameToVarAssignFrame(this.frameId, this.code.trim()));
                 }
@@ -522,10 +530,10 @@ export default Vue.extend({
             this.keyDownStr = event.key;
 
             // If the frame is a variable assignment frame and we are in the left hand side editable slot,
-            // pressing "=" or space keys move to RHS editable slot
+            // pressing "=" or space keys move to RHS editable slot (but we allow the a/c to be activated)
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
-            if((event.key === "=" || event.key === " ") && this.frameType === VarAssignDefinition.type && this.slotIndex === 0){
+            if(((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.varassign && this.slotIndex === 0){
                 this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
                 event.preventDefault();
                 event.stopPropagation();
@@ -535,7 +543,7 @@ export default Vue.extend({
                 this.acRequested = true;
             }
             // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
-            else if(event.key === " " && this.frameType !== CommentDefinition.type){
+            else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment){
                 const inputField = document.getElementById(this.UIID) as HTMLInputElement;
                 const currentTextCursorPos = inputField.selectionStart??0;
                 if(currentTextCursorPos == 0){
@@ -545,7 +553,7 @@ export default Vue.extend({
             }
         },
 
-        onBackSpaceKeyDown(){
+        onBackSpaceKeyDown(event: KeyboardEvent){
             // When the backspace key is hit we delete the container frame when:
             //  1) there is no text in the slot
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
@@ -565,6 +573,25 @@ export default Vue.extend({
                         }
                     }, 600);
                 }
+                return;
+            }
+
+            // If we detect a deletion in *strictly* between and opening and closing bracket, we want to delete the closing one too
+            // for exammple code is (| is the text caret): "method(|)", user pressed backspace, we end up with "method|".
+            // Changing the value will push the caret to the end of the field and mess up the deletion
+            // so here, we do the deletion ourselves and stop the even to propagate             
+            // Note: we know there is at least a caracter available in the slot, and we prevent doing anything if a text was selected
+            const inputField = (event.target as HTMLInputElement);
+            const start = (inputField.selectionStart as number), end = (inputField.selectionEnd as number);
+            const leftChar = inputField.value.charAt(start - 1);        
+            const rightChar = (inputField.value.length > start && (end == start)) ? inputField.value.charAt(start) : "";
+            if(openBracketCharacters.includes(leftChar) && closeBracketCharacters.includes(rightChar) 
+                && (openBracketCharacters.indexOf(leftChar) == closeBracketCharacters.indexOf(rightChar))){
+                inputField.value = inputField.value.substring(0, start - 1) + inputField.value.substring(start + 1);
+                this.code = inputField.value; // we need to update the code as well...
+                event.stopImmediatePropagation();
+                event.preventDefault();   
+                inputField.setSelectionRange(start - 1, start - 1); // avoid the caret to be pushed at the end of the text             
             }
         },
 
@@ -599,6 +626,17 @@ export default Vue.extend({
             this.acRequested = false;
         },
 
+        onCodeSelected(event: UIEvent){
+            const inputField = event.target as HTMLInputElement;            
+            const start = inputField.selectionStart as number, end = inputField.selectionEnd as number;
+            const hasSelection = (start != end);
+            this.highlightedCode = (hasSelection) ? this.code.substr(start, end-start) : "";
+        },
+
+        resetHighlightedTextFlag(){
+            this.highlightedCode = "";
+        },
+
         // store the cursor position to give it as input to AutoCompletionPopUp
         // Also checks if s bracket is opened, so it closes it
         // Note: the method is called on the key.up event BUT some issues on key.up are found with Windows/different keyboard layouts (i.e. French)
@@ -619,25 +657,38 @@ export default Vue.extend({
             const currentTextCursorPos = inputField.selectionStart??0;
             this.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
 
-            const openBracketCharacters = ["(","{","[","\"","'"];
-            const characterIndex= openBracketCharacters.indexOf(this.keyDownStr)
-
+            const characterIndex = openBracketCharacters.indexOf(this.keyDownStr);
             //check if the character we are adding is an openBracketCharacter
             if(characterIndex !== -1) {
-
-                //create a list with the closing bracket for each one of the opening in the same index
-                const closeBracketCharacters = [")","}","]","\"","'"];
-
-                // add the closing bracket to the text
-                const newCode = this.code.substr(0, currentTextCursorPos) 
+                // add the closing bracket to the text, either right after the opening one if no text is highlighted, 
+                // or at the end of the selection otherwise.
+                const newCode = this.code.substr(0, currentTextCursorPos)
+                + (this.highlightedCode) // add the hightlighted code if we are "wrapping" something with the brackets
                 + closeBracketCharacters[characterIndex] // the needed closing bracket or punctuation mark
                 + this.code.substr(currentTextCursorPos);
+
+                // In the context of "wrapping" some text with the brackets, we want to keep the selection
+                // at it was before the insertion of the brackets
+                // note: it looks like setSelectionRange() can't be applied right away - 2 next clicks are necessary to get it working
+                if(this.highlightedCode.length > 0) {
+                    this.$nextTick(() =>
+                        this.$nextTick(() => {
+                            inputField.setSelectionRange(currentTextCursorPos, (currentTextCursorPos  + this.highlightedCode.length));
+                        }));                    
+                }
 
                 this.showAC = false;
                 this.acRequested = false;
                 // set the text in the input field and move the cursor inside the brackets
                 this.textCursorPos  = currentTextCursorPos;
                 this.code = newCode;
+            }
+            else{
+                // Something different than an opening bracket has been typed: we need to reset the selection flag
+                // if there is no selection still ongoing.
+                if(inputField.selectionStart == inputField.selectionEnd){
+                    this.highlightedCode = "";
+                }
             }
 
             //we reset the key.down value here, to avoid over-doing the method on all key.up called on the modifier keys

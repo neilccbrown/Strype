@@ -54,7 +54,7 @@ import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, Definitions, FrameContainersDefinitions, CommentDefinition } from "@/types/types";
+import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier } from "@/types/types";
 import { mapStores } from "pinia";
 import { handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
@@ -155,10 +155,10 @@ export default Vue.extend({
             return {
                 "display": (this.isCollapsed) ? "none" : "block",
                 "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type) 
-                    ? Definitions.ImportDefinition.colour
+                    ? getFrameDefType(AllFrameTypesIdentifier.import).colour
                     : (this.frameType.type === FrameContainersDefinitions.FuncDefContainerDefinition.type)
-                        ? Definitions.FuncDefDefinition.colour
-                        : Definitions.ReturnDefinition.colour}`,
+                        ? getFrameDefType(AllFrameTypesIdentifier.funcdef).colour
+                        : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
             };
         },
     },
@@ -199,7 +199,7 @@ export default Vue.extend({
                 //update the property indicating if dragging the frames in another container is allowed: 
                 //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
                 this.hasCommentsToMove = this.appStore.selectedFrames
-                    .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== CommentDefinition.type) === undefined
+                    .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== AllFrameTypesIdentifier.comment) === undefined
                 
                 // Notify the start of a drag and drop
                 notifyDragStarted();
@@ -210,7 +210,7 @@ export default Vue.extend({
             else{
                 //update the property indicating if dragging the frame in another container is allowed: 
                 //we check that the moving frame is a comment
-                this.hasCommentsToMove = (chosenFrame.frameType.type === CommentDefinition.type);
+                this.hasCommentsToMove = (chosenFrame.frameType.type === AllFrameTypesIdentifier.comment);
 
                 // Notify the start of a drag and drop for a particular frame
                 notifyDragStarted(chosenFrame.id);

@@ -1,6 +1,21 @@
 {
     "appName":"Strype editor",
     "frame":{
+        "defaultText":{
+            "condition":"condition ",
+            "list":"list ",
+            "identifier":"identifier ",
+            "expression":"expression ",
+            "value":"value ",
+            "variable":"variable ",
+            "funcCall":"function call ",
+            "exception":"exception ",
+            "name":"name ",
+            "parameters":"parameters ",
+            "module":"module ",
+            "modulePart":"function/class ",
+            "comment":"your comment "
+        },
         "funcdef_desc":"function definition",
         "varassign_desc":"variable assignment",
         "funccall_desc":"function call",
@@ -68,7 +83,8 @@
         "noValidChildFrameBody":"Body needs to have at least one enabled / non-comment frame ",
         "errorTitle":"Error!",
         "errorUserDefinedFuncMsg":"User-defined function\nthis function definition contains errors",
-        "errorUserDefinedVarMsg":"User-defined variable\none of this variable assignment contains errors"
+        "errorUserDefinedVarMsg":"User-defined variable\none of the assigments for this variable contains errors",
+        "EOFError": "This frame cannot be empty."
     },
     "appMessage": {
         "editorFileUpload":"Uploading your file to the editor...",

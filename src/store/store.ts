@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, Definitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, ForDefinition, WhileDefinition, ReturnDefinition, FuncDefContainerDefinition, BreakDefinition, ContinueDefinition, EditableSlotReachInfos, StateAppObject, FuncDefDefinition, VarAssignDefinition, UserDefinedElement, FrameSlotContent, AcResultsWithModule, ImportDefinition, CommentDefinition, EmptyDefinition, TryDefinition, ElseDefinition, ImportsContainerDefinition, EditableFocusPayload, EditableSlotPayload, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, GlobalDefinition} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, FrameSlotContent, AcResultsWithModule, ImportsContainerDefinition, EditableFocusPayload, EditableSlotPayload, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getParentOrJointParent, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
@@ -52,6 +52,8 @@ export const useStore = defineStore("app", {
             ignoreKeyEvent: false,
 
             currentMessage: MessageDefinitions.NoMessage,
+
+            forceShowEmptyBodyErrorCurrentFrame: false,
 
             preCompileErrors: [] as string[],
 
@@ -241,15 +243,15 @@ export const useStore = defineStore("app", {
                 // If (c) was true
                 if(allowedJointChildren.length>0) {
 
-                    const uniqueJointFrameTypes = [Definitions.ElseDefinition.type,Definitions.FinallyDefinition.type];
+                    const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
 
                     // -100 means there is no next Joint Child => focused is the last
                     if(nextJointChildID === -100){
                         // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
                         //    OR special case if we are in TRY statement: we can't show ELSE at any case
                         // else show them all
-                        if(focusedFrame.frameType.type === TryDefinition.type){
-                            allowedJointChildren.splice(allowedJointChildren.indexOf(ElseDefinition.type), 1); 
+                        if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
+                            allowedJointChildren.splice(allowedJointChildren.indexOf(AllFrameTypesIdentifier.else), 1); 
                         }
                         else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
                             allowedJointChildren.splice(
@@ -274,9 +276,9 @@ export const useStore = defineStore("app", {
                         // show all but the available up to before the existing unique (i.e. at most up to ELSE)
                         // Special case: if we are in a TRY statement (and since we passed the condition above, next is unique (i.e. FINALLY)) --> we can't show ELSE
                         else {
-                            if(focusedFrame.frameType.type === TryDefinition.type){
+                            if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
                                 allowedJointChildren.splice(
-                                    allowedJointChildren.indexOf(ElseDefinition.type),
+                                    allowedJointChildren.indexOf(AllFrameTypesIdentifier.else),
                                     1
                                 );
                             }
@@ -299,14 +301,14 @@ export const useStore = defineStore("app", {
             //as there is no static rule for showing the "break" or "continue" statements,
             //we need to check if the current frame is within a "for" or a "while" loop.
             //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
-            const canShowLoopBreakers = isContainedInFrame(state. frameObjects, frameId,caretPosition, [ForDefinition.type, WhileDefinition.type]);
+            const canShowLoopBreakers = isContainedInFrame(state. frameObjects, frameId,caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
             if(!canShowLoopBreakers){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
                 forbiddenTypes.splice(
                     0,
                     0,
-                    ...[BreakDefinition.type, ContinueDefinition.type]
+                    ...[AllFrameTypesIdentifier.break, AllFrameTypesIdentifier.continue]
                 );
             }
 
@@ -320,7 +322,7 @@ export const useStore = defineStore("app", {
                 forbiddenTypes.splice(
                     0,
                     0,
-                    ...[ReturnDefinition.type, GlobalDefinition.type]
+                    ...[AllFrameTypesIdentifier.return, AllFrameTypesIdentifier.global]
                 );
             }
             const addCommandsDefs = getAddCommandsDefs();
@@ -356,7 +358,7 @@ export const useStore = defineStore("app", {
             const frame = state.frameObjects[frameId]
 
             // if it is an optional Label (as there are optional slots WHITOUT optional labels [e.g. functional params[) and it is not a function call
-            if(frame.frameType.labels[slotIndex]?.optionalLabel === true && frame.frameType.type !== EmptyDefinition.type){
+            if(frame.frameType.labels[slotIndex]?.optionalLabel === true && frame.frameType.type !== AllFrameTypesIdentifier.empty){
 
                 // show the label IFF:
                 // 1) we are focused on this frame
@@ -521,8 +523,8 @@ export const useStore = defineStore("app", {
             // (for example, if we are in a variable assignment, we shouldn't pick up on that variable being written)
             // the returned value is an array of UserDefinedElement objects.
             return Object.values(state.frameObjects).filter((frame: FrameObject) => (frame.id !== state.currentFrame.id 
-                && (frame.frameType.type === FuncDefDefinition.type || frame.frameType.type === VarAssignDefinition.type)))
-                .map((frame: FrameObject) => ({name: frame.contentDict[0].code, isFunction: frame.frameType.type === FuncDefDefinition.type}) as UserDefinedElement);
+                && (frame.frameType.type === AllFrameTypesIdentifier.funcdef || frame.frameType.type === AllFrameTypesIdentifier.varassign)))
+                .map((frame: FrameObject) => ({name: frame.contentDict[0].code, isFunction: frame.frameType.type === AllFrameTypesIdentifier.funcdef}) as UserDefinedElement);
         },
 
         isSlotFirstVisibleInFrame:(state) => (frameId: number, slotIndex: number) => {
@@ -542,10 +544,10 @@ export const useStore = defineStore("app", {
                 // - imports
                 // - function definition
                 // - comment
-                return slotContent[1].code.length == 0 && !((currentFrame.frameType.type === VarAssignDefinition.type && slotContent[0] === "0")
-                    || currentFrame.frameType.type === ImportDefinition.type 
-                    || currentFrame.frameType.type === FuncDefDefinition.type 
-                    || currentFrame.frameType.type === CommentDefinition.type);
+                return slotContent[1].code.length == 0 && !((currentFrame.frameType.type === AllFrameTypesIdentifier.varassign && slotContent[0] === "0")
+                    || currentFrame.frameType.type === AllFrameTypesIdentifier.import 
+                    || currentFrame.frameType.type === AllFrameTypesIdentifier.funcdef 
+                    || currentFrame.frameType.type === AllFrameTypesIdentifier.comment);
             }
             else{
                 // we are at a caret position. We can always add a new method call frame as long as we're not in one of the following:
@@ -576,22 +578,8 @@ export const useStore = defineStore("app", {
             //set the right app name
             document.title = i18n.t("appName") as string;
 
-            //change the values of the container frames as they are not reactive
-            Object.values(this.frameObjects).forEach((frame) => {
-                switch(frame.frameType.type){
-                case ImportsContainerDefinition.type:
-                    Vue.set(this.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.importsContainer") as string)
-                    break;
-                case FuncDefContainerDefinition.type:
-                    Vue.set(this.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.funcDefsContainer") as string)
-                    break;
-                case MainFramesContainerDefinition.type:
-                    Vue.set(this.frameObjects[frame.id].frameType.labels[0],"label", i18n.t("appMessage.mainContainer") as string)
-                    break;
-                default:
-                    break;
-                }
-            });
+            // Change all frame definition types to update the localised bits
+            generateAllFrameDefinitionTypes(true);
 
             // Change the frame command labels / details 
             generateAllFrameCommandsDefs();
@@ -1534,6 +1522,9 @@ export const useStore = defineStore("app", {
                     )
             );
             
+            // In case an empty body error was forced to be shown, we release the flag
+            this.forceShowEmptyBodyErrorCurrentFrame = false;
+
             this.unselectAllFrames();
         },
 
@@ -1590,7 +1581,7 @@ export const useStore = defineStore("app", {
                     frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false}
                     
                     // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration below
-                    if((this.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.id]?.frameType.type === FuncDefDefinition.type)
+                    if((this.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.id]?.frameType.type === AllFrameTypesIdentifier.funcdef)
                          && (frameToDelete.caretPosition??"") === CaretPosition.below){
                         frameToDelete.id = -100
                     }
@@ -1601,7 +1592,7 @@ export const useStore = defineStore("app", {
                             //we just make sure the frame to delete isn't a function definition frame:
                             //we can't delete a function def frame with backspace in its body (unless empty) because it will result
                             //in its content put directly into the function defs container. So we just alert the users.
-                            if(currentFrame.childrenIds.length === 0 || currentFrame.frameType.type !== FuncDefDefinition.type){
+                            if(currentFrame.childrenIds.length === 0 || currentFrame.frameType.type !== AllFrameTypesIdentifier.funcdef){
                                 //just move the cursor one level up
                                 this.changeCaretWithKeyboard(key);
                             }

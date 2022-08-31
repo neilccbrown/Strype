@@ -1,4 +1,4 @@
-import {CaretPosition, EditorFrameObjects, Definitions, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
+import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, getFrameDefType, AllFrameTypesIdentifier} from "@/types/types";
 
 const initialPythonState: EditorFrameObjects = {
     0: {
@@ -62,7 +62,7 @@ const initialPythonState: EditorFrameObjects = {
     },
 
     1: {
-        frameType: Definitions.VarAssignDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
         id: 1,
         isDisabled: false,
         isSelected: false,
@@ -79,7 +79,7 @@ const initialPythonState: EditorFrameObjects = {
     },
 
     2: {
-        frameType: Definitions.EmptyDefinition,
+        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
         id: 2,
         isDisabled: false,
         isSelected: false,

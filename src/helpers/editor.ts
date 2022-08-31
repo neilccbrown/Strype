@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, CaretPosition, Definitions, FramesDefinitions } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FramesDefinitions, getFrameDefType } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition } from "./storeMethods";
 
@@ -127,14 +127,14 @@ export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
         "i": [
             {
-                type: Definitions.IfDefinition,
+                type: getFrameDefType(AllFrameTypesIdentifier.if),
                 description: "if",
                 shortcut: "i",
                 tooltip:i18n.t("frame.if_detail") as string,
                 index: 0,
             },
             {
-                type: Definitions.ImportDefinition,
+                type: getFrameDefType(AllFrameTypesIdentifier.import),
                 description: "import",
                 shortcut: "i",
                 tooltip:i18n.t("frame.import_detail") as string,
@@ -142,34 +142,34 @@ export function generateAllFrameCommandsDefs():void {
             },
         ],
         "l": [{
-            type: Definitions.ElifDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.elif),
             description: "elif",
             tooltip:i18n.t("frame.elif_detail") as string,
             shortcut: "l",
         }],
         "e": [{
-            type: Definitions.ElseDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.else),
             description: "else",
             tooltip:i18n.t("frame.else_detail") as string,
             shortcut: "e",
         }],
         "f": [
             {
-                type: Definitions.ForDefinition,
+                type: getFrameDefType(AllFrameTypesIdentifier.for),
                 description: "for",
                 shortcut: "f",
                 tooltip:i18n.t("frame.for_detail") as string,
                 index: 0,
             },
             {
-                type: Definitions.FuncDefDefinition,
+                type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
                 description: i18n.t("frame.funcdef_desc") as string,
                 shortcut: "f",
                 tooltip:i18n.t("frame.funcdef_detail") as string,
                 index: 1,
             },
             {
-                type: Definitions.FromImportDefinition,
+                type: getFrameDefType(AllFrameTypesIdentifier.fromimport),
                 description: "from...import",
                 tooltip:i18n.t("frame.fromimport_detail") as string,
                 shortcut: "f",
@@ -177,80 +177,80 @@ export function generateAllFrameCommandsDefs():void {
             },
         ],
         "w": [{
-            type: Definitions.WhileDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.while),
             description: "while",
             tooltip:i18n.t("frame.while_detail") as string,
             shortcut: "w",
         }],
         "b" : [{
-            type: Definitions.BreakDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.break),
             description: "break",
             tooltip:i18n.t("frame.break_detail") as string,
             shortcut: "b",
         }],
         "u" : [{
-            type: Definitions.ContinueDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.continue),
             description: "continue",
             tooltip:i18n.t("frame.continue_detail") as string,
             shortcut: "u",
         }],
         "=": [{
-            type: Definitions.VarAssignDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.varassign),
             description: i18n.t("frame.varassign_desc") as string,
             tooltip:i18n.t("frame.varassign_detail") as string,
             shortcut: "=",
         }],
         " ": [{
-            type: Definitions.EmptyDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.empty),
             description: i18n.t("frame.funccall_desc") as string,
             shortcut: " ",
             tooltip:i18n.t("frame.funccall_detail") as string,
             symbol: "⌴",//"␣"
         }],
         "r": [{
-            type: Definitions.ReturnDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.return),
             description: "return",
             tooltip:i18n.t("frame.return_detail") as string,
             shortcut: "r",
         }],
         "c": [{
-            type: Definitions.CommentDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.comment),
             description: i18n.t("frame.comment_desc") as string,
             tooltip:i18n.t("frame.comment_detail") as string,
             shortcut: "c",
         }],
         "t": [{
-            type: Definitions.TryDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.try),
             description: "try",
             tooltip:i18n.t("frame.try_detail") as string,
             shortcut: "t",
         }],
         "a" : [{
-            type: Definitions.RaiseDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.raise),
             description: "raise",
             tooltip:i18n.t("frame.raise_detail") as string,
             shortcut: "a",
         }],
         "x": [{
-            type: Definitions.ExceptDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.except),
             description: "except",
             tooltip:i18n.t("frame.except_detail") as string,
             shortcut: "x",
         }],
         "n": [{
-            type: Definitions.FinallyDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.finally),
             description: "finally",
             tooltip:i18n.t("frame.finally_detail") as string,
             shortcut: "n",
         }],
         "h": [{
-            type: Definitions.WithDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
             tooltip:i18n.t("frame.with_detail") as string,
             shortcut: "h",
         }],
         "g": [{
-            type:Definitions.GlobalDefinition,
+            type: getFrameDefType(AllFrameTypesIdentifier.global),
             description: "global",
             tooltip: i18n.t("frame.global_detail") as string,
             shortcut: "g",

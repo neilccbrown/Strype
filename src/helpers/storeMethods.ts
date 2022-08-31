@@ -1,4 +1,4 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, Definitions, FrameContainersDefinitions, VarAssignDefinition, FrameSlotContent } from "@/types/types";
+import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, FrameSlotContent, AllFrameTypesIdentifier, getFrameDefType } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store"
 import i18n from "@/i18n"
@@ -267,7 +267,6 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
     
     let success = true;
     const frameIds: string[] = Object.keys(state["frameObjects"]);
-    const allFramesTypes = {...Definitions, ...FrameContainersDefinitions};
     // We iterate through all the given frame type names to find the matching object. If at one iteration we cannot find the corresponding object
     // (a case where we make a mistake in the code and change the frame type name recklessly !) then we don't need to continue iterating the given
     // state frame names. The forEach() methohd won't allow us to break, so we use every() which retunrs false if the loop shall be broken.
@@ -276,7 +275,7 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
         if(typeof frameTypeValue === "string") {
             // The frame type in the state was saved by the type name (string): we get the equivalent frame type object
             // in the unlikely event we can't find the object we stop the restoration and notify failure
-            const correspondingFrameObj = Object.values(allFramesTypes).find((frameTypeDef) => frameTypeDef.type == frameTypeValue);
+            const correspondingFrameObj = getFrameDefType(frameTypeValue);
             if(correspondingFrameObj  !== undefined) {
                 state["frameObjects"][frameId].frameType = correspondingFrameObj;
                 return true;
@@ -616,7 +615,7 @@ export function checkAndtransformFuncCallFrameToVarAssignFrame(frameId: number, 
     const codeVarAssignRegexMatch = code.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=([^=].*)$/);
     if(codeVarAssignRegexMatch != null){
         // We should always end up here since we have already checked the code against the regex
-        Vue.set(useStore().frameObjects[frameId],"frameType", VarAssignDefinition);
+        Vue.set(useStore().frameObjects[frameId],"frameType", getFrameDefType(AllFrameTypesIdentifier.varassign));
         const newContent: { [index: number]: FrameSlotContent} = {
             0: {
                 code: codeVarAssignRegexMatch[1],

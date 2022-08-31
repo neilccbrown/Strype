@@ -71,7 +71,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import {APIItemTextualDescription, EmptyDefinition, FrameObject} from "@/types/types"
+import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType} from "@/types/types"
 import { useStore } from "@/store/store"
 import { getEditableSlotUIID } from "@/helpers/editor";
 import { mapStores } from "pinia";
@@ -295,7 +295,7 @@ export default Vue.extend({
                 const newCode = this.mbAPIExampleCodeParts.join("");
                 if(!this.isEditing){
                     // part 1): not editing the code: we create a new method call frame, then add the code in (parts 2 & 3)
-                    this.appStore.addFrameWithCommand(EmptyDefinition).then(() => {
+                    this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.empty)).then(() => {
                     // as we added a new frame, we need to get the new current frame
                         this.addExampleCodeInSlot(this.appStore.currentFrame.id, 0, newCode);
                     });

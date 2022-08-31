@@ -17,6 +17,7 @@
             @keydown.self.stop="stopPropateEvent"
             @keyup.self.stop="stopPropateEvent"
             disabled
+            spellcheck="false"
         >    
         </textarea>
     </div>
@@ -52,24 +53,28 @@ export default Vue.extend({
     methods: {
         runCodeOnPyConsole() {
             // Before doing anything, we make sure there are no errors found in the in code
-            if(hasEditorCodeErrors()) {
-                Vue.$confirm({
-                    message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                    button: {
-                        yes: i18n.t("buttonLabel.ok"),
-                    },
-                });    
-                return;
-            }
+            this.appStore.forceShowEmptyBodyErrorCurrentFrame = true; // We want to show the error at the current frame
+            this.$nextTick(() => {
+                // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
+                if(hasEditorCodeErrors()) {
+                    Vue.$confirm({
+                        message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
+                        button: {
+                            yes: i18n.t("buttonLabel.ok"),
+                        },
+                    });    
+                    return;
+                }
 
-            const console = this.$refs.pythonConsole as HTMLTextAreaElement;
-            console.value = "";
-            const parser = new Parser();
-            const userCode = parser.getFullCode();
-            parser.getErrorsFormatted(userCode)
-            storeCodeToDOM(userCode);
-            // Trigger the actual console launch
-            runPythonConsole(console, userCode, parser.getFramePositionMap());
+                const console = this.$refs.pythonConsole as HTMLTextAreaElement;
+                console.value = "";
+                const parser = new Parser();
+                const userCode = parser.getFullCode();
+                parser.getErrorsFormatted(userCode)
+                storeCodeToDOM(userCode);
+                // Trigger the actual console launch
+                runPythonConsole(console, userCode, parser.getFramePositionMap());
+            });           
         },
 
         onFocus(): void {
