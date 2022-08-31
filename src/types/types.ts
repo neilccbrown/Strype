@@ -522,7 +522,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     }
 
     /*3) if required, update the types in all the frames existing in the editor (needed to update default texts and frame container labels) */
-    if(regenerateExistingFrames??false){
+    if(regenerateExistingFrames){
         Object.values(useStore().frameObjects).forEach((frameObject) => {
             // For containers, we just assign the label manually again here
             switch(frameObject.frameType.type){

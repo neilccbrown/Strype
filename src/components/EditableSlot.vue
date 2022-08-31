@@ -627,8 +627,6 @@ export default Vue.extend({
         },
 
         onCodeSelected(event: UIEvent){
-            // For a weird reason, the event fires when the arrow keys are hit, not just when a selection occurs. 
-            // (may it is a way to be able to know a selection has been "cancelled")           
             const inputField = event.target as HTMLInputElement;            
             const start = inputField.selectionStart as number, end = inputField.selectionEnd as number;
             const hasSelection = (start != end);
