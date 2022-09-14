@@ -13,4 +13,4 @@ npmbuild:
 npmtest:
   stage: test
   script:
-    - npm run unit:test
+    - npm run test:unit
