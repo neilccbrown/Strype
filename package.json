@@ -46,8 +46,6 @@
         "vue-confirm-dialog": "^1.0.2",
         "vue-i18n": "^8.27.1",
         "vue-input-autowidth": "^1.0.10",
-        "vue-recaptcha": "^2.0.1",
-        "vue-recaptcha-v3": "^1.9.0",
         "vue-simple-context-menu": "^3.4.2",
         "vuedraggable": "^2.24.3"
     },
