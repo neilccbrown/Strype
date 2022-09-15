@@ -3,6 +3,7 @@ import { createLocalVue, mount, Wrapper, WrapperArray } from "@vue/test-utils"
 import App from "../App.vue"
 import i18n from "../i18n"
 import { expect } from "chai"
+import {parseCodeAndGetParseElements} from "@/parser/parser";
 
 function testApp() {
     const localVue = createLocalVue()
@@ -27,7 +28,7 @@ function checkTextIs(ws: WrapperArray<any>, expecteds : string[]) {
  * it together into one string.
  * @param w A wrapper representing a .frameDiv element
  */
-function getFrameText(w : Wrapper<any, any>) {
+function getFrameText(w : Wrapper<any, any>) : string {
     const parts = w.findAll("input,.frameColouredLabel")
     let s = ""
     for (let i = 0; i < parts.length; i++) {
@@ -40,6 +41,35 @@ function getFrameText(w : Wrapper<any, any>) {
         }
     }
     return s
+}
+
+/**
+ * Apply getFrameText to a WrapperArray
+ */
+function getFramesText(ws : WrapperArray<any>) : string[] {
+    return ws.wrappers.map(getFrameText)
+}
+
+/**
+ * Sanity check the state of the editor (e.g. only one caret visible)
+ */
+function sanityCheck(root : Wrapper<any>) {
+    // Check exactly one caret visible:
+    expect(root.findAll(".caret").filter((w) => !w.classes().includes("invisible"))).to.length(1)
+}
+
+/**
+ * Check that the code is equal to the given lines, by checking the visuals and the underlying Python
+ * conversion.  codeLines should be a list of lines of code, how they appear *visually*
+ * (so equality should be ⇐, not =).
+ */
+function checkCodeIs(root: Wrapper<any>, codeLines : string[]) {
+    sanityCheck(root)
+    // We must use eql to compare lists, not equal:
+    expect(getFramesText(root.findAll(".frameDiv"))).to.eql(codeLines)
+    expect(parseCodeAndGetParseElements(false).parsedOutput.
+        split("\n").map((l) => l.replace(/\s+/, " ").trim())).
+        to.eql(codeLines.map((l) => l.replace("⇐", "=")).concat(""))
 }
 
 describe("App.vue Basic Test", () => {
@@ -68,6 +98,11 @@ describe("App.vue Basic Test", () => {
     it("has correct default state", async () => {
         const wrapper = testApp()
 
-        expect(getFrameText(wrapper.get("#frame_id_1"))).to.equal("myString ⇐ \"Hello from Python!\"")
+        await wrapper.vm.$nextTick()
+
+        checkCodeIs(wrapper, [
+            "myString ⇐ \"Hello from Python!\"",
+            "print(myString)",
+        ])
     })
 })
