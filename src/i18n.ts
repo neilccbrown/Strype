@@ -4,8 +4,6 @@ import VueI18n, { LocaleMessages } from "vue-i18n"
 Vue.use(VueI18n)
 
 function loadLocaleMessages (): LocaleMessages {
-    // We don't use require.context because it interferes with jest (for unit testing)
-    // as per https://stackoverflow.com/questions/38332094/how-can-i-mock-webpacks-require-context-in-jest
     return {
         "el": require("./localisation/el.json"),
         "en": require("./localisation/en.json"),

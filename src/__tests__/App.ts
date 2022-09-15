@@ -1,8 +1,8 @@
-import { PiniaVuePlugin } from 'pinia'
+import { PiniaVuePlugin, createPinia } from "pinia"
 import { createLocalVue, mount, WrapperArray } from "@vue/test-utils"
-import { createTestingPinia } from '@pinia/testing'
 import App from "../App.vue"
 import i18n from "../i18n"
+import { expect } from "chai"
 
 function testApp() {
     const localVue = createLocalVue()
@@ -10,15 +10,15 @@ function testApp() {
     const wrapper = mount(App, {
         localVue,
         i18n,
-        pinia: createTestingPinia({ stubActions: false }),
+        pinia: createPinia(),
     })
     return wrapper
 }
 
 function checkTextIs(ws: WrapperArray<any>, expecteds : string[]) {
-    expect(ws.length).toBe(expecteds.length)
+    expect(ws.length).to.equal(expecteds.length)
     for (let i = 0; i < ws.length; i++) {
-        expect(ws.at(i).text()).toBe(expecteds[i])
+        expect(ws.at(i).text()).to.equal(expecteds[i])
     }
 }
 
@@ -27,22 +27,22 @@ describe("App.vue Basic Test", () => {
         const wrapper = testApp()
 
         // check that the sections are present and correct:
-        let headers = wrapper.findAll(".frame-container-label-span")
+        const headers = wrapper.findAll(".frame-container-label-span")
         checkTextIs(headers, ["Imports:", "Function definitions:", "My code:"])
     })
     it("translate correctly", async () => {
         const wrapper = testApp()
 
         // Starts as English:
-        expect((wrapper.get('select#appLangSelect').element as HTMLSelectElement).value).toBe('en')
+        expect((wrapper.get("select#appLangSelect").element as HTMLSelectElement).value).to.equal("en")
 
         // Swap to French and check it worked:
         await wrapper.get("button#showHideMenu").trigger("click")
         await wrapper.get("select#appLangSelect").setValue("fr")
-        expect((wrapper.get("select#appLangSelect").element as HTMLSelectElement).value).toBe('fr')
+        expect((wrapper.get("select#appLangSelect").element as HTMLSelectElement).value).to.equal("fr")
 
         // check that the sections are present and translated:
-        let headers = wrapper.findAll(".frame-container-label-span")
+        const headers = wrapper.findAll(".frame-container-label-span")
         checkTextIs(headers, ["Imports :", "Définitions de fonctions :", "Mon code :"])
     })
 })
