@@ -1,5 +1,5 @@
 import { PiniaVuePlugin, createPinia } from "pinia"
-import { createLocalVue, mount, WrapperArray } from "@vue/test-utils"
+import { createLocalVue, mount, Wrapper, WrapperArray } from "@vue/test-utils"
 import App from "../App.vue"
 import i18n from "../i18n"
 import { expect } from "chai"
@@ -22,6 +22,26 @@ function checkTextIs(ws: WrapperArray<any>, expecteds : string[]) {
     }
 }
 
+/**
+ * Gets all the text from the labels and fields in a frame and glues
+ * it together into one string.
+ * @param w A wrapper representing a .frameDiv element
+ */
+function getFrameText(w : Wrapper<any, any>) {
+    const parts = w.findAll("input,.frameColouredLabel")
+    let s = ""
+    for (let i = 0; i < parts.length; i++) {
+        const p = parts.at(i)
+        if (p.element instanceof HTMLInputElement) {
+            s += (p.element as HTMLInputElement).value
+        }
+        else {
+            s += p.element.textContent
+        }
+    }
+    return s
+}
+
 describe("App.vue Basic Test", () => {
     it("has correct frame containers", () => {
         const wrapper = testApp()
@@ -30,7 +50,7 @@ describe("App.vue Basic Test", () => {
         const headers = wrapper.findAll(".frame-container-label-span")
         checkTextIs(headers, ["Imports:", "Function definitions:", "My code:"])
     })
-    it("translate correctly", async () => {
+    it("translates correctly", async () => {
         const wrapper = testApp()
 
         // Starts as English:
@@ -44,5 +64,10 @@ describe("App.vue Basic Test", () => {
         // check that the sections are present and translated:
         const headers = wrapper.findAll(".frame-container-label-span")
         checkTextIs(headers, ["Imports :", "Définitions de fonctions :", "Mon code :"])
+    })
+    it("has correct default state", async () => {
+        const wrapper = testApp()
+
+        expect(getFrameText(wrapper.get("#frame_id_1"))).to.equal("myString ⇐ \"Hello from Python!\"")
     })
 })
