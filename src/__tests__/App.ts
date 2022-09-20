@@ -81,6 +81,7 @@ describe("App.vue Basic Test", () => {
         // check that the sections are present and correct:
         const headers = wrapper.findAll(".frame-container-label-span")
         checkTextIs(headers, ["Imports:", "Function definitions:", "My code:"])
+        wrapper.destroy()
     })
     it("translates correctly", async () => {
         const wrapper = testApp()
@@ -96,6 +97,7 @@ describe("App.vue Basic Test", () => {
         // check that the sections are present and translated:
         const headers = wrapper.findAll(".frame-container-label-span")
         checkTextIs(headers, ["Imports :", "Définitions de fonctions :", "Mon code :"])
+        wrapper.destroy()
     })
     it("has correct default state", async () => {
         const wrapper = testApp()
@@ -106,5 +108,6 @@ describe("App.vue Basic Test", () => {
             "myString ⇐ \"Hello from Python!\"",
             "print(myString)",
         ])
+        wrapper.destroy()
     })
 })
