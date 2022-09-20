@@ -4,3 +4,8 @@ global.MutationObserver = class {
     disconnect() {}
     observe(element, initObject) {}
 };
+global.ResizeObserver = class {
+    constructor(callback) {}
+    disconnect() {}
+    observe(element, initObject) {}
+}
