@@ -34,13 +34,13 @@ function getFrameText(w : Wrapper<any, any>) : string {
     for (let i = 0; i < parts.length; i++) {
         const p = parts.at(i)
         if (p.element instanceof HTMLInputElement) {
-            s += (p.element as HTMLInputElement).value
+            s = s.trim() + " " + (p.element as HTMLInputElement).value
         }
         else {
             s += p.element.textContent
         }
     }
-    return s
+    return s.trim()
 }
 
 /**
