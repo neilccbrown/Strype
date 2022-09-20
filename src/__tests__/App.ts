@@ -12,6 +12,7 @@ function testApp() {
         localVue,
         i18n,
         pinia: createPinia(),
+        attachTo: document.body,
     })
     return wrapper
 }
@@ -54,8 +55,9 @@ function getFramesText(ws : WrapperArray<any>) : string[] {
  * Sanity check the state of the editor (e.g. only one caret visible)
  */
 function sanityCheck(root : Wrapper<any>) {
-    // Check exactly one caret visible:
-    expect(root.findAll(".caret").filter((w) => !w.classes().includes("invisible"))).to.length(1)
+    // Check exactly one caret visible when not editing, zero when editing:
+    expect(root.findAll(".caret").filter((w) => !w.classes().includes("invisible"))).to.
+        length(document.activeElement instanceof HTMLInputElement ? 0 : 1)
 }
 
 /**
@@ -105,6 +107,19 @@ describe("App.vue Basic Test", () => {
         await wrapper.vm.$nextTick()
 
         checkCodeIs(wrapper, [
+            "myString ⇐ \"Hello from Python!\"",
+            "print(myString)",
+        ])
+        wrapper.destroy()
+    })
+    it("lets you enter a raise frame", async () => {
+        const wrapper = testApp()
+        await wrapper.vm.$nextTick()
+        await wrapper.trigger("keydown", {key: "a"})
+        await wrapper.trigger("keyup", {key: "a"})
+
+        checkCodeIs(wrapper, [
+            "raise",
             "myString ⇐ \"Hello from Python!\"",
             "print(myString)",
         ])
