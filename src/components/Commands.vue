@@ -244,9 +244,8 @@ export default Vue.extend({
                 }
             }
         );
-        
-        window.addEventListener(
-            "keyup",
+
+        const onKeyUp =
             //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
             (event: KeyboardEvent) => {
                 const isEditing = this.appStore.isEditing;
@@ -285,9 +284,10 @@ export default Vue.extend({
                         }
                     }
                 }
-            }                
-        );
-    
+            }
+        window.addEventListener("keyup", onKeyUp);
+        this.$once("hook:beforeDestroy", () => window.removeEventListener("keyup", onKeyUp))
+
         document.addEventListener(CustomEventTypes.editorAddFrameCommandsUpdated, () => {
             // When the frame commands have been updated (i.e. language changed), we need to get this component to be re-rendered:
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
