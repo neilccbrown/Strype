@@ -67,7 +67,9 @@ function checkCodeIs(root: Wrapper<any>, codeLines : string[]) {
     sanityCheck(root)
     // We must use eql to compare lists, not equal:
     expect(getFramesText(root.findAll(".frameDiv"))).to.eql(codeLines)
-    expect(parseCodeAndGetParseElements(false).parsedOutput.
+    const p = parseCodeAndGetParseElements(false)
+    expect(p.hasErrors).to.equal(false)
+    expect(p.parsedOutput.
         split("\n").map((l) => l.replace(/\s+/, " ").trim())).
         to.eql(codeLines.map((l) => l.replace("⇐", "=")).concat(""))
 }
