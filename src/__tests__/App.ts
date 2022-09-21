@@ -112,23 +112,6 @@ function checkCodeEquals(root: Wrapper<any>, codeLines : (string | RegExp)[]) : 
         codeLines.concat(/\s*/))
 }
 
-const defaultImports : (string | RegExp)[] = [
-    /* IFTRUE_isMicrobit */
-    "from microbit import *",
-    /* FITRUE_isMicrobit */
-]
-
-const defaultMyCode : (string | RegExp)[] = [
-    /* IFTRUE_isMicrobit */
-    /myString\s+[⇐=]\s+"Hello micro:bit!"/,
-    "display.scroll(myString)",
-    /* FITRUE_isMicrobit */
-    /* IFTRUE_isPurePython */
-    /myString\s+[⇐=]\s+"Hello from Python!"/,
-    "print(myString)",
-    /* FITRUE_isPurePython */
-]
-
 describe("App.vue Basic Test", () => {
     it("has correct frame containers", () => {
         const wrapper = testApp()
