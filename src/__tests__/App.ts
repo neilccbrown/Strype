@@ -44,13 +44,18 @@ function getFrameText(w : Wrapper<any, any>) : string {
     for (let i = 0; i < parts.length; i++) {
         const p = parts.at(i)
         if (p.element instanceof HTMLInputElement) {
-            s = s.trim() + " " + (p.element as HTMLInputElement).value
+            if (s.length == 0) {
+                s = (p.element as HTMLInputElement).value
+            }
+            else {
+                s = s.trimEnd() + " " + (p.element as HTMLInputElement).value
+            }
         }
         else {
             s += p.element.textContent
         }
     }
-    return s.trim()
+    return s.trimEnd()
 }
 
 /**
@@ -70,19 +75,34 @@ function sanityCheck(root : Wrapper<any>) : void {
 }
 
 /**
+ * Check if a list of actual strings matches a list of expected strings or regexes.
+ */
+function expectMatchRegex(actual: string[], expected: (string | RegExp)[]) {
+    expect(actual.length).to.equal(expected.length)
+    for (let i = 0; i < actual.length; i++) {
+        if (expected[i] instanceof RegExp) {
+            expect(actual[i]).to.match(expected[i] as RegExp)
+        }
+        else {
+            expect(actual[i]).to.equal(expected[i])
+        }
+    }
+}
+
+
+/**
  * Check that the code is equal to the given lines, by checking the visuals and the underlying Python
  * conversion.  codeLines should be a list of lines of code, how they appear *visually*
  * (so equality should be ⇐, not =).
  */
-function checkCodeIs(root: Wrapper<any>, codeLines : string[]) : void {
+function checkCodeEquals(root: Wrapper<any>, codeLines : (string | RegExp)[]) : void {
     sanityCheck(root)
     // We must use eql to compare lists, not equal:
-    expect(getFramesText(root.findAll(".frameDiv"))).to.eql(codeLines)
+    expectMatchRegex(getFramesText(root.findAll(".frameDiv")), codeLines)
     const p = parseCodeAndGetParseElements(false)
     expect(p.hasErrors).to.equal(false)
-    expect(p.parsedOutput.
-        split("\n").map((l) => l.replace(/\s+/, " ").trim())).
-        to.eql(codeLines.map((l) => l.replace("⇐", "=")).concat(""))
+    expectMatchRegex(p.parsedOutput.split("\n").map((l) => l.trimEnd()),
+        codeLines.concat(/\s*/))
 }
 
 describe("App.vue Basic Test", () => {
@@ -115,8 +135,8 @@ describe("App.vue Basic Test", () => {
 
         await wrapper.vm.$nextTick()
 
-        checkCodeIs(wrapper, [
-            "myString ⇐ \"Hello from Python!\"",
+        checkCodeEquals(wrapper, [
+            /myString\s+[⇐=]\s+"Hello from Python!"/,
             "print(myString)",
         ])
         wrapper.destroy()
@@ -127,9 +147,9 @@ describe("App.vue Basic Test", () => {
         await wrapper.trigger("keydown", {key: "a"})
         await wrapper.trigger("keyup", {key: "a"})
 
-        checkCodeIs(wrapper, [
+        checkCodeEquals(wrapper, [
             "raise",
-            "myString ⇐ \"Hello from Python!\"",
+            /myString\s+[⇐=]\s+"Hello from Python!"/,
             "print(myString)",
         ])
         wrapper.destroy()
