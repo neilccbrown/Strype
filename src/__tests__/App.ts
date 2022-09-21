@@ -6,6 +6,9 @@ import { expect } from "chai"
 import {parseCodeAndGetParseElements} from "@/parser/parser";
 import Vue from "vue";
 
+declare const defaultImports: (string | RegExp)[];
+declare const defaultMyCode: (string | RegExp)[];
+
 /**
  * Initialises the application (for testing) and returns the wrapper object for dealing with it
  */
