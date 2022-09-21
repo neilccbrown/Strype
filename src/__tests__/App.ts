@@ -4,8 +4,12 @@ import App from "../App.vue"
 import i18n from "../i18n"
 import { expect } from "chai"
 import {parseCodeAndGetParseElements} from "@/parser/parser";
+import Vue from "vue";
 
-function testApp() {
+/**
+ * Initialises the application (for testing) and returns the wrapper object for dealing with it
+ */
+function testApp() : Wrapper<Vue> {
     const localVue = createLocalVue()
     localVue.use(PiniaVuePlugin)
     const wrapper = mount(App, {
@@ -17,7 +21,12 @@ function testApp() {
     return wrapper
 }
 
-function checkTextIs(ws: WrapperArray<any>, expecteds : string[]) {
+/**
+ * Given an array of wrappers and an array of expected string content,
+ * checks that the arrays are the same size and that the text() of each wrapper matches the
+ * corresponding expected string content.
+ */
+function checkTextEquals(ws: WrapperArray<any>, expecteds : string[]) : void {
     expect(ws.length).to.equal(expecteds.length)
     for (let i = 0; i < ws.length; i++) {
         expect(ws.at(i).text()).to.equal(expecteds[i])
@@ -54,7 +63,7 @@ function getFramesText(ws : WrapperArray<any>) : string[] {
 /**
  * Sanity check the state of the editor (e.g. only one caret visible)
  */
-function sanityCheck(root : Wrapper<any>) {
+function sanityCheck(root : Wrapper<any>) : void {
     // Check exactly one caret visible when not editing, zero when editing:
     expect(root.findAll(".caret").filter((w) => !w.classes().includes("invisible"))).to.
         length(document.activeElement instanceof HTMLInputElement ? 0 : 1)
@@ -65,7 +74,7 @@ function sanityCheck(root : Wrapper<any>) {
  * conversion.  codeLines should be a list of lines of code, how they appear *visually*
  * (so equality should be ⇐, not =).
  */
-function checkCodeIs(root: Wrapper<any>, codeLines : string[]) {
+function checkCodeIs(root: Wrapper<any>, codeLines : string[]) : void {
     sanityCheck(root)
     // We must use eql to compare lists, not equal:
     expect(getFramesText(root.findAll(".frameDiv"))).to.eql(codeLines)
@@ -82,7 +91,7 @@ describe("App.vue Basic Test", () => {
 
         // check that the sections are present and correct:
         const headers = wrapper.findAll(".frame-container-label-span")
-        checkTextIs(headers, ["Imports:", "Function definitions:", "My code:"])
+        checkTextEquals(headers, ["Imports:", "Function definitions:", "My code:"])
         wrapper.destroy()
     })
     it("translates correctly", async () => {
@@ -98,7 +107,7 @@ describe("App.vue Basic Test", () => {
 
         // check that the sections are present and translated:
         const headers = wrapper.findAll(".frame-container-label-span")
-        checkTextIs(headers, ["Imports :", "Définitions de fonctions :", "Mon code :"])
+        checkTextEquals(headers, ["Imports :", "Définitions de fonctions :", "Mon code :"])
         wrapper.destroy()
     })
     it("has correct default state", async () => {
