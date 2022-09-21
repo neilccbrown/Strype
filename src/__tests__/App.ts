@@ -43,16 +43,19 @@ function getFrameText(w : Wrapper<any, any>) : string {
     let s = ""
     for (let i = 0; i < parts.length; i++) {
         const p = parts.at(i)
+        
+        let text = ""
         if (p.element instanceof HTMLInputElement) {
-            if (s.length == 0) {
-                s = (p.element as HTMLInputElement).value
-            }
-            else {
-                s = s.trimEnd() + " " + (p.element as HTMLInputElement).value
-            }
+            text = (p.element as HTMLInputElement).value
         }
         else {
-            s += p.element.textContent
+            text = p.element.textContent ?? ""
+        }
+        if (s.length == 0) {
+            s = text
+        }
+        else {
+            s = s.trimEnd() + " " + text
         }
     }
     return s.trimEnd()
