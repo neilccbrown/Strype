@@ -244,55 +244,18 @@ export default Vue.extend({
                 }
             }
         );
-        
-        window.addEventListener(
-            "keyup",
-            //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
-            (event: KeyboardEvent) => {
-                const isEditing = this.appStore.isEditing;
-                const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
 
-                if(event.key == "Escape"){
-                    if(this.appStore.areAnyFramesSelected){
-                        this.appStore.unselectAllFrames();
-                        this.appStore.makeSelectedFramesVisible();
-                    }
-                    if(isEditing){
-                        (document.activeElement as HTMLElement).blur();
-                        this.appStore.isEditing = false;
-                    }
-                }
-                else {
-                    if(!isEditing){
-                        //cases when there is no editing:
-                        if(!(event.ctrlKey || event.metaKey)){
-                            if(event.key == "Delete" || event.key == "Backspace"){
-                                if(!ignoreKeyEvent){
-                                    //delete a frame or a frame selection
-                                    this.appStore.deleteFrames(event.key);
-                                    event.stopImmediatePropagation();
-                                }
-                                else{
-                                    this.appStore.ignoreKeyEvent = false;
-                                }
-                            }
-                            //add the frame in the editor if allowed
-                            else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
-                                this.appStore.addFrameWithCommand(
-                                    this.addFrameCommands[event.key.toLowerCase()][0].type
-                                );
-                            }
-                        }
-                    }
-                }
-            }                
-        );
-    
+        window.addEventListener("keyup", this.onKeyUp);
+        
         document.addEventListener(CustomEventTypes.editorAddFrameCommandsUpdated, () => {
             // When the frame commands have been updated (i.e. language changed), we need to get this component to be re-rendered:
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
+    },
+    
+    beforeDestroy() {
+        window.removeEventListener("keyup", this.onKeyUp)
     },
 
     mounted() {
@@ -311,6 +274,45 @@ export default Vue.extend({
     },
 
     methods: {
+        onKeyUp(event: KeyboardEvent) {
+            const isEditing = this.appStore.isEditing;
+            const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
+        
+            if(event.key == "Escape"){
+                if(this.appStore.areAnyFramesSelected){
+                    this.appStore.unselectAllFrames();
+                    this.appStore.makeSelectedFramesVisible();
+                }
+                if(isEditing){
+                    (document.activeElement as HTMLElement).blur();
+                    this.appStore.isEditing = false;
+                }
+            }
+            else {
+                if(!isEditing){
+                    //cases when there is no editing:
+                    if(!(event.ctrlKey || event.metaKey)){
+                        if(event.key == "Delete" || event.key == "Backspace"){
+                            if(!ignoreKeyEvent){
+                                //delete a frame or a frame selection
+                                this.appStore.deleteFrames(event.key);
+                                event.stopImmediatePropagation();
+                            }
+                            else{
+                                this.appStore.ignoreKeyEvent = false;
+                            }
+                        }
+                        //add the frame in the editor if allowed
+                        else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
+                            this.appStore.addFrameWithCommand(
+                                this.addFrameCommands[event.key.toLowerCase()][0].type
+                            );
+                        }
+                    }
+                }
+            }
+        },
+        
         handleAppScroll(event: WheelEvent) {
             const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
             $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);

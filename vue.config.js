@@ -64,6 +64,12 @@ module.exports = {
             }
             return [options];
         });
+        // From https://stackoverflow.com/questions/61031121/vue-js-with-mocha-and-styles-resources-loader-cant-load-dependency-sass
+        if (process.env.NODE_ENV === "test") {
+            const scssRule = config.module.rule("scss");
+            scssRule.uses.clear();
+            scssRule.use("null-loader").loader("null-loader");
+        }
     },
 
     publicPath: (process.env.npm_config_python)?"/editor/":"/microbit/",

@@ -17,7 +17,8 @@
       "webpack-env",
       "webpack",
       "jquery",
-      "jest"
+      "mocha",
+      "chai"
     ],
     "paths": {
       "@/*": [
