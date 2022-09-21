@@ -81,7 +81,8 @@ function sanityCheck(root : Wrapper<any>) : void {
  * Check if a list of actual strings matches a list of expected strings or regexes.
  */
 function expectMatchRegex(actual: string[], expected: (string | RegExp)[]) {
-    expect(actual.length).to.equal(expected.length)
+    // Deliberate double escape, use \n to separate lines but have it all appear on one line:
+    expect(actual.length, "Actual: " + actual.join("\\n")).to.equal(expected.length)
     for (let i = 0; i < actual.length; i++) {
         if (expected[i] instanceof RegExp) {
             expect(actual[i]).to.match(expected[i] as RegExp)
