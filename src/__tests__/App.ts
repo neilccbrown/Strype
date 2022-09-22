@@ -3,8 +3,9 @@ import { createLocalVue, mount, Wrapper, WrapperArray } from "@vue/test-utils"
 import App from "../App.vue"
 import i18n from "../i18n"
 import { expect } from "chai"
-import {parseCodeAndGetParseElements} from "@/parser/parser";
+import { parseCodeAndGetParseElements } from "@/parser/parser";
 import Vue from "vue";
+import { useStore } from "@/store/store";
 
 declare const defaultImports: (string | RegExp)[];
 declare const defaultMyCode: (string | RegExp)[];
@@ -13,6 +14,10 @@ declare const defaultMyCode: (string | RegExp)[];
  * Initialises the application (for testing) and returns the wrapper object for dealing with it
  */
 function testApp() : Wrapper<Vue> {
+    // Must reset the state before each test:
+    useStore().$reset()
+    checkBlankState()
+    
     const localVue = createLocalVue()
     localVue.use(PiniaVuePlugin)
     const wrapper = mount(App, {
@@ -112,6 +117,28 @@ function checkCodeEquals(root: Wrapper<any>, codeLines : (string | RegExp)[]) : 
         codeLines.concat(/\s*/))
 }
 
+/**
+ * Helper function that gets an array with -m to +n converted to strings.
+ * Very niche, but needed to check the expected keys of useStore().frameObjects
+ */
+function minusMToPlusNAsString(m : number, n : number) : string[] {
+    // We need a total of m + n + 1 consecutive integers.  This gives that, starting at zero
+    const fromZero = Array.from(Array(m + n + 1).keys())
+    // Then we have to subtract m from each and convert to string:
+    return fromZero.map((x) => String(x - m))
+}
+
+/**
+ * Checks that the state of the store is back to the blank (initial) state
+ */
+function checkBlankState() : void {
+    const builtInFrames = 4 // Root plus imports/functions/my-code
+    // Check expected IDs are present:
+    expect(Object.keys(useStore().frameObjects).sort()).to.eql(minusMToPlusNAsString(builtInFrames - 1, defaultImports.length + defaultMyCode.length).sort())
+    // Check nextAvailableId is correct:
+    expect(useStore().nextAvailableId).to.equal(defaultImports.length + defaultMyCode.length + 1)
+}
+
 describe("App.vue Basic Test", () => {
     it("has correct frame containers", () => {
         const wrapper = testApp()
@@ -148,12 +175,28 @@ describe("App.vue Basic Test", () => {
     it("lets you enter a raise frame", async () => {
         const wrapper = testApp()
         await wrapper.vm.$nextTick()
+        // Check nextAvailableId is at the default: 1 more than the built-in-frames:
+        expect(useStore().nextAvailableId).to.equal(defaultImports.length + defaultMyCode.length + 1);
+        
         await wrapper.trigger("keydown", {key: "a"})
         await wrapper.trigger("keyup", {key: "a"})
 
         checkCodeEquals(wrapper, defaultImports.concat([
             "raise",
         ] as (string | RegExp)[]).concat(defaultMyCode))
+        // Check nextAvailableId has been updated accordingly (1 higher than before we added the frame):
+        expect(useStore().nextAvailableId).to.equal(defaultImports.length + defaultMyCode.length + 1 + 1)
+        // And check the expected frame keys:
+        expect(Object.keys(useStore().frameObjects).sort()).to.eql(minusMToPlusNAsString(3, defaultImports.length + defaultMyCode.length + 1).sort())
+        wrapper.destroy()
+    })
+    it("has reset to basic state", async () => {
+        const wrapper = testApp()
+        await wrapper.vm.$nextTick()
+        checkBlankState()
+        checkCodeEquals(wrapper, defaultImports.concat(defaultMyCode))
+        // Check nextAvailableId is back to default:
+        expect(useStore().nextAvailableId).to.equal(defaultImports.length + defaultMyCode.length + 1);
         wrapper.destroy()
     })
 })
