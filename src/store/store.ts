@@ -10,6 +10,7 @@ import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, 
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string"
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
+import {cloneDeep} from "lodash";
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -27,7 +28,7 @@ export const useStore = defineStore("app", {
 
             showKeystroke: initialState.showKeystroke,
 
-            frameObjects: initialState.initialState,
+            frameObjects: cloneDeep(initialState.initialState),
 
             nextAvailableId: initialState.nextAvailableId, 
 
