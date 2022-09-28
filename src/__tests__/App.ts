@@ -16,7 +16,7 @@ declare const defaultMyCode: (string | RegExp)[];
 function testApp() : Wrapper<Vue> {
     // Must reset the state before each test:
     useStore().$reset()
-    checkBlankState()
+    checkInitialState()
     
     const localVue = createLocalVue()
     localVue.use(PiniaVuePlugin)
@@ -131,7 +131,7 @@ function minusMToPlusNAsString(m : number, n : number) : string[] {
 /**
  * Checks that the state of the store is back to the blank (initial) state
  */
-function checkBlankState() : void {
+function checkInitialState() : void {
     const builtInFrames = 4 // Root plus imports/functions/my-code
     // Check expected IDs are present:
     expect(Object.keys(useStore().frameObjects).sort()).to.eql(minusMToPlusNAsString(builtInFrames - 1, defaultImports.length + defaultMyCode.length).sort())
@@ -193,7 +193,7 @@ describe("App.vue Basic Test", () => {
     it("has reset to basic state", async () => {
         const wrapper = testApp()
         await wrapper.vm.$nextTick()
-        checkBlankState()
+        checkInitialState()
         checkCodeEquals(wrapper, defaultImports.concat(defaultMyCode))
         // Check nextAvailableId is back to default:
         expect(useStore().nextAvailableId).to.equal(defaultImports.length + defaultMyCode.length + 1);
