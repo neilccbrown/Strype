@@ -6,9 +6,15 @@ import { expect } from "chai"
 import { parseCodeAndGetParseElements } from "@/parser/parser";
 import Vue from "vue";
 import { useStore } from "@/store/store";
+import { StateAppObject } from "@/types/types";
+import initialStates from "@/store/initial-states";
+import { cloneDeep } from "lodash";
 
+// All declared in test-setup-{microbit,python}.js
 declare const defaultImports: (string | RegExp)[];
 declare const defaultMyCode: (string | RegExp)[];
+declare const initialStateName : string;
+const initialState: StateAppObject = cloneDeep(initialStates[initialStateName]);
 
 /**
  * Initialises the application (for testing) and returns the wrapper object for dealing with it
@@ -135,6 +141,7 @@ function checkInitialState() : void {
     const builtInFrames = 4 // Root plus imports/functions/my-code
     // Check expected IDs are present:
     expect(Object.keys(useStore().frameObjects).sort()).to.eql(minusMToPlusNAsString(builtInFrames - 1, defaultImports.length + defaultMyCode.length).sort())
+    expect(JSON.stringify(useStore().frameObjects)).to.equal(JSON.stringify(initialState.initialState))
     // Check nextAvailableId is correct:
     expect(useStore().nextAvailableId).to.equal(defaultImports.length + defaultMyCode.length + 1)
 }
@@ -175,8 +182,6 @@ describe("App.vue Basic Test", () => {
     it("lets you enter a raise frame", async () => {
         const wrapper = testApp()
         await wrapper.vm.$nextTick()
-        // Check nextAvailableId is at the default: 1 more than the built-in-frames:
-        expect(useStore().nextAvailableId).to.equal(defaultImports.length + defaultMyCode.length + 1);
         
         await wrapper.trigger("keydown", {key: "a"})
         await wrapper.trigger("keyup", {key: "a"})
@@ -195,8 +200,6 @@ describe("App.vue Basic Test", () => {
         await wrapper.vm.$nextTick()
         checkInitialState()
         checkCodeEquals(wrapper, defaultImports.concat(defaultMyCode))
-        // Check nextAvailableId is back to default:
-        expect(useStore().nextAvailableId).to.equal(defaultImports.length + defaultMyCode.length + 1);
         wrapper.destroy()
     })
 })

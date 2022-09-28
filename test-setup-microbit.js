@@ -7,3 +7,4 @@ global.defaultMyCode /*: (string | RegExp)[] */ = [
     /myString\s+[⇐=]\s+"Hello micro:bit!"/,
     "display.scroll(myString)",
 ]
+global.initialStateName = "initialMicrobitState"

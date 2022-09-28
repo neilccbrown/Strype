@@ -6,3 +6,4 @@ global.defaultMyCode /*: (string | RegExp)[] */ = [
     /myString\s+[⇐=]\s+"Hello from Python!"/,
     "print(myString)",
 ]
+global.initialStateName = "initialPythonState"
