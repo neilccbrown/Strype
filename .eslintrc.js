@@ -67,5 +67,12 @@ module.exports = {
                 mocha: true,
             },
         },
+        /* As per https://typescript-eslint.io/docs/linting/troubleshooting/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors */
+        {
+            files: ['*.ts', '*.mts', '*.cts', '*.tsx', '*.vue'],
+            rules: {
+                'no-undef': 'off',
+            },
+        },
     ],
 };
