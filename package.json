@@ -10,7 +10,10 @@
         "test:unit": "vue-cli-service test:unit --require test-setup.js --require test-setup-python.js src/__tests__/*.ts && vue-cli-service test:unit --require test-setup.js --require test-setup-microbit.js src/__tests__/*.ts",
         "lint": "vue-cli-service lint",
         "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/localisation/**/*.json'",
-        "serve:https": "HTTPS=true vue-cli-service serve"
+        "serve:https": "HTTPS=true vue-cli-service serve",
+        "cy:run:microbit": "cypress run --env mode=microbit",
+        "cy:run:python": "cypress run --env mode=python",
+        "test:cypress": "cross-env WAIT_ON_TIMEOUT=60000 start-server-and-test serve:python http://localhost:8081/editor/ cy:run:python && cross-env WAIT_ON_TIMEOUT=60000 start-server-and-test serve:microbit http://localhost:8081/microbit/ cy:run:microbit"
     },
     "dependencies": {
         "@fortawesome/free-solid-svg-icons": "^5.15.4",
@@ -72,6 +75,7 @@
         "arkit": "^1.6.4",
         "chai": "^4.1.2",
         "cross-env": "^7.0.3",
+        "cypress": "^10.9.0",
         "eslint": "^6.0.0",
         "eslint-plugin-vue": "^7.20.0",
         "husky": "^7.0.4",
@@ -84,6 +88,7 @@
         "null-loader": "^4.0.1",
         "sass": "^1.49.9",
         "sass-loader": "^10.2.1",
+        "start-server-and-test": "^1.14.0",
         "typescript": "^4.6.3",
         "vue-cli-plugin-i18n": "2.1.1",
         "vue-template-compiler": "^2.6.12",
