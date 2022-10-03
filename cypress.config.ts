@@ -2,7 +2,12 @@ import { defineConfig } from "cypress"
 import {rm} from "fs";
 
 export default defineConfig({
+    downloadsFolder: "tests/cypress/downloads",
+    fixturesFolder:	false,
+    screenshotsFolder: "tests/cypress/screenshots",
+    videosFolder: "tests/cypress/videos",
     e2e: {
+        specPattern: "tests/cypress/e2e/**/*.cy.{js,jsx,ts,tsx}",
         supportFile: false,
         // Inspired by https://docs.cypress.io/api/plugins/configuration-api#Usage
         setupNodeEvents(on: Cypress.PluginEvents, config: Cypress.PluginConfigOptions) {

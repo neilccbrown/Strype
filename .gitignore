@@ -24,3 +24,8 @@ pnpm-debug.log*
 *.sw?
 yarn.lock
 src/debug.log
+
+# Cypress outputs
+tests/cypress/downloads/*
+tests/cypress/screenshots/*
+tests/cypress/videos/*
