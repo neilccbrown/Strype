@@ -1,7 +1,7 @@
 import * as path from "path";
 /**
- * Given an array of wrappers and an array of expected string content,
- * checks that the arrays are the same size and that the text() of each wrapper matches the
+ * Given a JQuery with multiple results and an array of expected string content,
+ * checks that the two are the same size and that the text() of each JQuery result matches the
  * corresponding expected string content.
  */
 function checkTextEquals(ws: JQuery, expecteds : string[]) : void {
