@@ -18,7 +18,9 @@
       "webpack",
       "jquery",
       "mocha",
-      "chai"
+      "chai",
+      "cypress",
+      "node"
     ],
     "paths": {
       "@/*": [
