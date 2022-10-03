@@ -64,7 +64,7 @@ function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
         for (let i = 0; i < parts.length; i++) {
             const p : any = parts[i]
 
-            const text = p.value || p.textContent || "" //String(typeof p) + String(p) + "#" + () + ":"
+            const text = p.value || p.textContent || ""
             
             if (s.length == 0) {
                 s = text
@@ -233,7 +233,9 @@ beforeEach(() => {
         win.sessionStorage.clear();
     }})
 })
-describe("Translation", () => {
+
+// Test that the translation is working properly
+describe("Translation tests", () => {
     it("Translates correctly", () => {
         // Starts as English:
         cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, ["Imports:", "Function definitions:", "My code:"]))
@@ -253,6 +255,8 @@ describe("Translation", () => {
         cy.get("select#appLangSelect").should("have.value", "en")
     })
 })
+
+// Test that adding frames by typing keys works properly:
 describe("Adding frames", () => {
     it("Lets you add a frame", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode))
@@ -271,9 +275,13 @@ describe("Adding frames", () => {
     })
     it("Lets you add nested frames", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode))
+        // i adds an if; add an if True with an if False inside:
         cy.get("body").type("iTrue{rightArrow}iFalse{rightArrow}")
+        // Put a foo() in the inner body:
         cy.get("body").type(" foo({rightArrow}{rightArrow}")
+        // Put a bar(3) in the outer if, just after the inner if:
         cy.get("body").type("{downArrow} bar(3{rightArrow}{rightArrow}")
+        // And add baz(5) after the ifs:
         cy.get("body").type("{downArrow} baz(5")
         checkCodeEquals(defaultImports.concat([
             {h: /if True\s+:/, b:[
