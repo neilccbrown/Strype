@@ -35,6 +35,9 @@ module.exports = {
         ],
         "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
         "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
+        // As per https://typescript-eslint.io/rules/semi turn off base rule and apply Typescript one:
+        semi: "off",
+        "@typescript-eslint/semi": ["error", "always"],
 
         "@typescript-eslint/array-type": ["error", {default: "array"}],
         "@typescript-eslint/ban-ts-comment": "error",

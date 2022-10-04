@@ -227,7 +227,7 @@ export default Vue.extend({
                     const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
 
                     //workout the correct context if we are in a code editable slot
-                    const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport)
+                    const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
                     const resultsAC = (isImportFrame) 
                         ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.slotIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
                         : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
@@ -340,7 +340,7 @@ export default Vue.extend({
             this.styledCodeParts.splice(0, this.styledCodeParts.length);
             if(code.trim().length === 0){
                 // If there is nothing in the slot, we use the style "empty" that looks like an input placeholder
-                this.styledCodeParts[0] = {code: "", style: CodeStyle.empty}
+                this.styledCodeParts[0] = {code: "", style: CodeStyle.empty};
             }
             else{
                 // Get the "bits" of code that are literals
@@ -357,7 +357,7 @@ export default Vue.extend({
                     // Add the literal
                     this.styledCodeParts.push({code: code.substring(codeSplit.start, codeSplit.end), style: codeSplit.style});
                     codePos=codeSplit.end;
-                })
+                });
                 // Check for a potential trailing "normal" part
                 if(codePos < code.length){
                     this.styledCodeParts.push({code: code.substring(codePos), style: CodeStyle.none});
@@ -648,14 +648,14 @@ export default Vue.extend({
                 // closing character rather than an opening. [ *Bear in mind that it is even because the
                 // character has already been added to this stage, as we are on a keyup event* ]
                 if((this.code.match(new RegExp(this.keyDownStr, "g")) || []).length % 2 === 0) {
-                    return
+                    return;
                 }
             }
 
             // get the input field and caret position
             const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const currentTextCursorPos = inputField.selectionStart??0;
-            this.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0)
+            this.cursorPosition = getCaretCoordinates(inputField, inputField.selectionEnd??0);
 
             const characterIndex = openBracketCharacters.indexOf(this.keyDownStr);
             //check if the character we are adding is an openBracketCharacter
@@ -709,7 +709,7 @@ export default Vue.extend({
         },
 
         isImportFrame(): boolean {
-            return this.appStore.isImportFrame(this.frameId)
+            return this.appStore.isImportFrame(this.frameId);
         },
 
         getACresultsFromBrython(): void {

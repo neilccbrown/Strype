@@ -62,7 +62,7 @@ export default Vue.extend({
         },
 
         showModal(): boolean{
-            return this.message.type === MessageTypes.imageDisplay
+            return this.message.type === MessageTypes.imageDisplay;
         },
     },
 

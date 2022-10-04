@@ -37,7 +37,7 @@ const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?: number
         });
         // add the children
         apiDocumentedItems.push(...compileTextualAPI(apiItemChildren, (level) ? (level + 1) : 2, apiItem.name));
-    }) 
+    }); 
     return apiDocumentedItems;
 };
 
@@ -48,4 +48,4 @@ export const getAPIItemTextualDescriptions =  (needToRegenerate: boolean): APIIt
     else{
         return APIStuff;
     }
-}
+};

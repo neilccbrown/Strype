@@ -8,4 +8,4 @@ global.ResizeObserver = class {
     constructor(callback) {}
     disconnect() {}
     observe(element, initObject) {}
-}
+};

@@ -3,7 +3,7 @@ import { compileBlob } from "./compile";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
 import i18n from "@/i18n";
 import Vue from "vue";
-import { useStore } from "@/store/store"
+import { useStore } from "@/store/store";
 import { MessageDefinitions } from "@/types/types";
 
 export function downloadHex() : void {

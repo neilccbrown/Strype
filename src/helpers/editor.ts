@@ -47,7 +47,7 @@ export function isElementEditableSlotInput(element: EventTarget | null): boolean
 }
 
 export function getFrameContextMenuUIID(frameUIID: string): string{
-    return frameUIID + "frameContextMenu"
+    return frameUIID + "frameContextMenu";
 }
 
 export function getCodeEditorUIID(): string {
@@ -67,7 +67,7 @@ export function getEditorMenuUIID(): string {
 } 
 
 export function getEditorButtonsContainerUIID(): string {
-    return "editorButtonsContainer"
+    return "editorButtonsContainer";
 }
 
 export function getMenuLeftPaneUIID(): string {
@@ -116,7 +116,7 @@ export function hasEditorCodeErrors(): boolean {
                 || erroneousHTMLElement.className.includes("frame-body-container") 
                 || erroneousHTMLElement.className.includes("editableslot-input");
         }
-        return hasErrors
+        return hasErrors;
     }
     return false; 
 }
@@ -344,7 +344,7 @@ export function notifyDragStarted(frameId?: number):void {
     }
 
     //Update the handling of the cursor during drag and drop
-    handleDraggingCursor(true, true)
+    handleDraggingCursor(true, true);
 
     // Update the store about dragging started
     useStore().isDraggingFrame = true;
@@ -363,7 +363,7 @@ export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
                 topFrameId = retrieveFrameIDfromUIID(matchBit[1]);
                 foundFrameID = true;
             }
-        })
+        });
     }
 
     //Update the handling of the cursor during drag and drop

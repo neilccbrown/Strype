@@ -1,5 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-const MoveAssetsPlugin = require("move-assets-webpack-plugin")
+const MoveAssetsPlugin = require("move-assets-webpack-plugin");
 
 const configureWebpackExtraProps = (process.env.npm_config_microbit)
     ? {
@@ -91,4 +91,4 @@ module.exports = {
             },
         },
     },
-}
+};

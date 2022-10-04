@@ -53,7 +53,7 @@ export default class Parser {
 
         const passBlock = this.excludeLoops && getLoopFramesTypeIdentifiers().includes(block.frameType.type);
         // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
-        const conditionalIndent = (passBlock) ? "" : INDENT
+        const conditionalIndent = (passBlock) ? "" : INDENT;
 
         output += 
             ((!passBlock)? this.parseStatement(block, indentation) : "") + 
@@ -220,7 +220,7 @@ export default class Parser {
                             slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
                                 (element, index, array) => {
                                     return element<=error.offset && 
-                                            ((index<array.length-1)? (array[index+1] > error.offset) : true)
+                                            ((index<array.length-1)? (array[index+1] > error.offset) : true);
                                 }
                             ), 
                             error: error.msg,
@@ -341,7 +341,7 @@ export default class Parser {
                 const tryIndentation = INDENT.repeat(openedTryMap.length);
                 
                 if ( this.isTry(line,spaces) ) {
-                    tryFromTheUser = true
+                    tryFromTheUser = true;
                 }
 
                 // Add the try only if it's not a compound nor func def nor an except nor a try
@@ -360,12 +360,12 @@ export default class Parser {
 
                 // Add the except if the line is not a compound AND not a func def AND not the starting of a block nor an except
                 if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !line.endsWith(":") && !this.isTryOrExcept(line,spaces) && !tryFromTheUser){
-                    output += spaces + tryIndentation + "except:\n" + spaces + tryIndentation + INDENT + "pass" + "\n"
+                    output += spaces + tryIndentation + "except:\n" + spaces + tryIndentation + INDENT + "pass" + "\n";
                     openedTryMap.pop();
                 }
                 
                 if( tryFromTheUser && !this.isTry(line,spaces) ) {
-                    tryFromTheUser = false
+                    tryFromTheUser = false;
                 }
             }
             // Before going to the new line, we need to store the indentation of this lines
@@ -387,26 +387,26 @@ export default class Parser {
         // it's a compound statement if
         return line.startsWith(spaces+"elif ") ||  // it's an elif statement OR
                line.startsWith(spaces+"else ") ||  // it's an else statement OR
-               line.startsWith(spaces+"finally ") // it's a finally statement
+               line.startsWith(spaces+"finally "); // it's a finally statement
         
         // We do not have to check try and except here as they are checked by getCodeWithoutErrors       
     }
 
     private isTryOrExcept(line: string, spaces: string[]): boolean {
-        return this.isTry(line,spaces) || this.isExcept(line,spaces)
+        return this.isTry(line,spaces) || this.isExcept(line,spaces);
     }
 
     private isTry(line: string, spaces: string[]): boolean {
-        return line.startsWith(spaces+"try:")  // it's a try statement
+        return line.startsWith(spaces+"try:");  // it's a try statement
     }
 
     private isExcept(line: string, spaces: string[]): boolean {
-        return line.startsWith(spaces+"except ") || line.startsWith(spaces+"except:") // it's an except statement
+        return line.startsWith(spaces+"except ") || line.startsWith(spaces+"except:"); // it's an except statement
     }
 
     private isFunctionDef(line: string, spaces: string[]): boolean {
         // it's not a function definition  if
-        return line.startsWith(spaces+"def ")  // it starts with a def
+        return line.startsWith(spaces+"def ");  // it starts with a def
     }
 
     public getFramePositionMap(): LineAndSlotPositions {
@@ -426,10 +426,10 @@ export function getStyledCodeLiteralsSplits(code: string): StyledCodeSplits[]{
     const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1/g;
     let matchesArray = [...tempCode.matchAll(strRegEx)];
     matchesArray.forEach((matchBit) => {
-        styledCodeSplits.push({start:matchBit.index??0, end: (matchBit.index??0) + matchBit[0].length,style: CodeStyle.string})
+        styledCodeSplits.push({start:matchBit.index??0, end: (matchBit.index??0) + matchBit[0].length,style: CodeStyle.string});
         //and we transform the temp string for masking the string contents
         tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
-    })      
+    });      
 
     //then we look for numbers (format examples: 9, 9+1j, 0x9, 0o11, 0b1001, 0.9e1)
     const numberRegEx = /(^| +|[,+\-()/*%&|~^><=])(-?(0b[01]+)|(0x[0-9A-Fa-f]+)|(\d+(\.\d+|)[eE]-?\d+)|((\d+(\.\d+|)[+-]\d+(\.\d+|)j)|(\d+(\.\d+|)j)|(\d+(\.\d+|))))($| +|[,+\-()/*%&|~^><=])/g;
@@ -439,10 +439,10 @@ export function getStyledCodeLiteralsSplits(code: string): StyledCodeSplits[]{
             //the number that we found is located in the group 2 of the match, we save it
             const startOfNumber = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
             const lengthOfNumber = matchBit[2].length;
-            styledCodeSplits.push({start:startOfNumber, end: startOfNumber + lengthOfNumber,style: CodeStyle.number})
+            styledCodeSplits.push({start:startOfNumber, end: startOfNumber + lengthOfNumber,style: CodeStyle.number});
             //and we transform the temp string for another iteration of the number checks
             tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
-        })               
+        });               
                    
         //prepare for next iteration:
         matchesArray = [...tempCode.matchAll(numberRegEx)];
@@ -456,10 +456,10 @@ export function getStyledCodeLiteralsSplits(code: string): StyledCodeSplits[]{
             //the boolean value that we found is located in the group 2 of the match, we save it
             const startOfBool = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
             const lengthOfBool = matchBit[2].length;
-            styledCodeSplits.push({start:startOfBool, end: startOfBool + lengthOfBool,style: CodeStyle.bool})
+            styledCodeSplits.push({start:startOfBool, end: startOfBool + lengthOfBool,style: CodeStyle.bool});
             //and we transform the temp string for another iteration of the boolean checks
             tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
-        })               
+        });               
                    
         //prepare for next iteration:
         matchesArray = [...tempCode.matchAll(boolRegEx)];

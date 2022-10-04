@@ -99,7 +99,7 @@ export default Vue.extend({
     },
 
     destroyed() {
-        window.removeEventListener("keyup", this.onKeyUp)
+        window.removeEventListener("keyup", this.onKeyUp);
     },
 
     updated() {

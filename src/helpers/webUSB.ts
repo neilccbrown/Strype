@@ -1,7 +1,7 @@
 import * as DAPjs from "dapjs";
 import { compileFlashAndBuffer } from "./compile";
-import {FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, WebUSBListener} from "@/types/types"
-import * as PartialFlashingJS from "./partial-flashing"
+import {FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, WebUSBListener} from "@/types/types";
+import * as PartialFlashingJS from "./partial-flashing";
 import { useStore } from "@/store/store"; 
 import Compiler from "@/compiler/compiler";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
@@ -110,7 +110,7 @@ export async function flashData(listener: WebUSBListener, compiler: Compiler) : 
             if(flashAndBufferArray){
                 const flashBytes = flashAndBufferArray.flash;
                 const hexBuffer = flashAndBufferArray.buffer;
-                return PartialFlashingJS.PartialFlashing.flashAsync(dapWrapper, flashBytes, hexBuffer, updateProgress)
+                return PartialFlashingJS.PartialFlashing.flashAsync(dapWrapper, flashBytes, hexBuffer, updateProgress);
             }        
         }).then(()=>listener.onUploadSuccessHandler(), (error) => listener.onUploadFailureHandler(error.message));
 }

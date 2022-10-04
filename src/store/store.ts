@@ -8,7 +8,7 @@ import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
 import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
-import LZString from "lz-string"
+import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep} from "lodash";
 
@@ -100,7 +100,7 @@ export const useStore = defineStore("app", {
             DAPWrapper: {} as DAPWrapper,
 
             previousDAPWrapper: {} as DAPWrapper,
-        }
+        };
     },
 
     getters: { 
@@ -221,7 +221,7 @@ export const useStore = defineStore("app", {
             // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame
             // (a) and (b)
             else if ( caretPosition === CaretPosition.below && [...parent.childrenIds].pop() === currentFrame.id) {
-                focusedFrame = parent
+                focusedFrame = parent;
             }
 
             //if we are in the joint context
@@ -267,7 +267,7 @@ export const useStore = defineStore("app", {
 
                         // if the next is not unique, show all non-uniques ()
                         if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)) {
-                            allowedJointChildren = allowedJointChildren.filter( (x) => !uniqueJointFrameTypes.includes(x)) // difference
+                            allowedJointChildren = allowedJointChildren.filter( (x) => !uniqueJointFrameTypes.includes(x)); // difference
                         }
                         // else if the next AND the current are uniques (i.e. I am in an ELSE and there is a FINALLY after me)
                         else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)) {
@@ -328,20 +328,20 @@ export const useStore = defineStore("app", {
             }
             const addCommandsDefs = getAddCommandsDefs();
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = JSON.parse(JSON.stringify(addCommandsDefs));
-            const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {}
+            const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {};
 
             // for each shortcut we get a list of the corresponding commands
             for (const frameShortcut in addCommandsDefs) {
 
                 // keep all the allowedJointChildren with their commands (as they may be deleted in the next step
-                allowedJointCommand[frameShortcut] = filteredCommands[frameShortcut].filter( (x) => allowedJointChildren.includes(x.type.type))
+                allowedJointCommand[frameShortcut] = filteredCommands[frameShortcut].filter( (x) => allowedJointChildren.includes(x.type.type));
                 
                 // filtered = filtered - forbidden - allJoints
                 // all joints need to be removed here as they may overlap with the forbiden and the allowed ones. Allowed will be added on the next step
-                filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter( (x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame)
+                filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter( (x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame);
 
                 // filtered = filtered + allowed
-                filteredCommands[frameShortcut].push(...allowedJointCommand[frameShortcut])
+                filteredCommands[frameShortcut].push(...allowedJointCommand[frameShortcut]);
                 
                 // remove any empty commands (forbidden) for this shortcut
                 if( filteredCommands[frameShortcut].length === 0){
@@ -356,7 +356,7 @@ export const useStore = defineStore("app", {
         },
         
         isCurrentFrameLabelShown: (state) => (frameId: number, slotIndex: number) => {
-            const frame = state.frameObjects[frameId]
+            const frame = state.frameObjects[frameId];
 
             // if it is an optional Label (as there are optional slots WHITOUT optional labels [e.g. functional params[) and it is not a function call
             if(frame.frameType.labels[slotIndex]?.optionalLabel === true && frame.frameType.type !== AllFrameTypesIdentifier.empty){
@@ -422,7 +422,7 @@ export const useStore = defineStore("app", {
                 }
     
                 return false;
-            }            
+            };            
         },
         
         // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
@@ -452,7 +452,7 @@ export const useStore = defineStore("app", {
                 }
 
                 return false;
-            }
+            };
         },
 
         isPositionAllowsSelectedFrames(){
@@ -471,7 +471,7 @@ export const useStore = defineStore("app", {
                 }
 
                 return true;
-            }
+            };
         },
 
         isFrameSelected: (state) => (frameId: number) => {
@@ -637,10 +637,10 @@ export const useStore = defineStore("app", {
                         const indexOfJointFrame = this.frameObjects[frameToDelete.jointParentId].jointFrameIds.indexOf(payload.frameToDeleteId);
                         parentIdOfFrameToDelete = (indexOfJointFrame > 0) ?
                             this.frameObjects[frameToDelete.jointParentId].jointFrameIds[indexOfJointFrame - 1] :
-                            this.frameObjects[payload.frameToDeleteId].jointParentId     
+                            this.frameObjects[payload.frameToDeleteId].jointParentId;     
                     }
 
-                    const listOfChildrenToMove = this.frameObjects[payload.frameToDeleteId].childrenIds
+                    const listOfChildrenToMove = this.frameObjects[payload.frameToDeleteId].childrenIds;
                     //if the frame to remove is the root of a joint frames structure, we include all the joint frames' children in the list of children to remove
                     if(isFrameToDeleteRootJointFrame){
                         this.frameObjects[payload.frameToDeleteId]
@@ -741,7 +741,7 @@ export const useStore = defineStore("app", {
             const availablePositions = getAvailableNavigationPositions();
             const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
             // Where is the current in the list
-            const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
+            const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition);
 
             const delta = (key === "ArrowDown")?1:-1;
             const nextCaret = (listOfCaretPositions[currentCaretIndex + delta]??currentCaret) as CurrentFrame;
@@ -779,7 +779,7 @@ export const useStore = defineStore("app", {
                 CaretPosition.none
             );
 
-            this.currentFrame.id = newCurrentFrame.id
+            this.currentFrame.id = newCurrentFrame.id;
             this.currentFrame.caretPosition = newCurrentFrame.caretPosition;
 
             Vue.set(
@@ -871,7 +871,7 @@ export const useStore = defineStore("app", {
 
             // We generate the list of frames from the selectedFrames ids
             const sourceFrameList: EditorFrameObjects = {};
-            this.selectedFrames.forEach((id) => sourceFrameList[id] = this.frameObjects[id])
+            this.selectedFrames.forEach((id) => sourceFrameList[id] = this.frameObjects[id]);
             
             // All the top level cloned frames need to be stored in order to then added to their new parent's list
             const topLevelCopiedFrames: number[] = [];
@@ -879,7 +879,7 @@ export const useStore = defineStore("app", {
 
             Object.values(sourceFrameList).forEach( (frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
-                topLevelCopiedFrames.push(nextAvailableId)
+                topLevelCopiedFrames.push(nextAvailableId);
                 cloneFrameAndChildren(this.frameObjects, frame.id, parent, {id: nextAvailableId}, this.copiedFrames); 
                 // Find the largest id form the copied and increase it by 1
                 nextAvailableId = Math.max.apply({},(Object.keys(this.copiedFrames).concat(Object.keys(this.copiedFrames))).map(Number)) + 1;
@@ -921,7 +921,7 @@ export const useStore = defineStore("app", {
                 this,
                 "copiedFrames",
                 {}
-            )
+            );
 
             //context menu indicator is cleared
             this.contextMenuShownId = "";
@@ -1139,7 +1139,7 @@ export const useStore = defineStore("app", {
         },
 
         selectDeselectFrame(payload: {frameId: number; direction: string}) {
-            const indexOfFrame = this.selectedFrames.indexOf(payload.frameId)
+            const indexOfFrame = this.selectedFrames.indexOf(payload.frameId);
             // if it exists remove it
             if(indexOfFrame > -1) {
                 this.selectedFrames.splice(indexOfFrame,1);
@@ -1412,39 +1412,39 @@ export const useStore = defineStore("app", {
             const addingJointFrame = frame.isJointFrame;
 
             // find parent id 
-            let parentId = 0
+            let parentId = 0;
             let listToUpdate: number[] = [];
             let indexToAdd = 0;
 
             // The frame by which we have to contextualise the addition
             // current frame by default (on caret==body)
-            let  focusedFrame: FrameObject = currentFrame
+            let  focusedFrame: FrameObject = currentFrame;
 
             if(this.currentFrame.caretPosition === CaretPosition.below) {
-                focusedFrame = this.frameObjects[currentFrame.parentId]
+                focusedFrame = this.frameObjects[currentFrame.parentId];
             }
 
             if(addingJointFrame){
                 // if the focusedFrame allows for joint children
                 // Add it in index 0 on the focusedFrame's joint list
                 if(focusedFrame.frameType.allowJointChildren) {
-                    parentId = focusedFrame.id
-                    listToUpdate = focusedFrame.jointFrameIds
+                    parentId = focusedFrame.id;
+                    listToUpdate = focusedFrame.jointFrameIds;
                 }
                 // else the focusedFrame is a joint child (e.g. elif)
                 // thus we need to take the the focusedFrame's joint parent (e.g. if) and
                 // put the frame below our focusedFrame joint frame
                 else {
-                    parentId = focusedFrame.jointParentId
-                    listToUpdate = this.frameObjects[focusedFrame.jointParentId].jointFrameIds
-                    indexToAdd = listToUpdate.indexOf(focusedFrame.id) +1 //id
+                    parentId = focusedFrame.jointParentId;
+                    listToUpdate = this.frameObjects[focusedFrame.jointParentId].jointFrameIds;
+                    indexToAdd = listToUpdate.indexOf(focusedFrame.id) +1; //id
                 }
             }
             // else -not joint- simply add it to the focusedFrame's parent, below the focusedFrame
             else {
-                parentId = focusedFrame.id
-                listToUpdate = focusedFrame.childrenIds
-                indexToAdd = listToUpdate.indexOf(currentFrame.id) +1 // for the case that we are on the body, indexOf is -1 so result = 0
+                parentId = focusedFrame.id;
+                listToUpdate = focusedFrame.childrenIds;
+                indexToAdd = listToUpdate.indexOf(currentFrame.id) +1; // for the case that we are on the body, indexOf is -1 so result = 0
             } 
 
             // construct the new Frame object to be added
@@ -1501,11 +1501,11 @@ export const useStore = defineStore("app", {
                 newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.below});
             }
             const availablePositions = getAvailableNavigationPositions();
-            const indexOfCurrent = availablePositions.findIndex((e) => e.id===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositions.findIndex((e) => e.id===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition);
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
-            availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions)
+            availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions);
 
             //"move" the caret along, using the newly computed positions
             await this.leftRightKey(
@@ -1579,12 +1579,12 @@ export const useStore = defineStore("app", {
                     // Where the current sits in the available positions
                     const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                     // the "next" position of the current
-                    frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false}
+                    frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false};
                     
                     // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration below
                     if((this.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.id]?.frameType.type === AllFrameTypesIdentifier.funcdef)
                          && (frameToDelete.caretPosition??"") === CaretPosition.below){
-                        frameToDelete.id = -100
+                        frameToDelete.id = -100;
                     }
                 }
                 else {
@@ -1607,7 +1607,7 @@ export const useStore = defineStore("app", {
                             }
                         }
                         else{
-                            const newCurrent = (availablePositions[availablePositions.findIndex((e)=> e.id===currentFrame.id)-1]??this.currentFrame) as CurrentFrame
+                            const newCurrent = (availablePositions[availablePositions.findIndex((e)=> e.id===currentFrame.id)-1]??this.currentFrame) as CurrentFrame;
                             this.setCurrentFrame({id: newCurrent.id, caretPosition: newCurrent.caretPosition});
                             deleteChildren = true;
                         }
@@ -1688,7 +1688,7 @@ export const useStore = defineStore("app", {
 
                 //then send a delete command
                 this.deleteFrames("Backspace", true);
-            })
+            });
 
             //clear the selection of frames
             this.unselectAllFrames();
@@ -1724,7 +1724,7 @@ export const useStore = defineStore("app", {
                 currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.id === this.currentFrame.id); 
             }
             
-            const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition])                        
+            const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);                        
 
             // irrespective to where we are going to, we need to make sure to hide current caret
             Vue.set(
@@ -1791,7 +1791,7 @@ export const useStore = defineStore("app", {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
             });
 
-            const checksum =  getSHA1HashForObject(stateCopy)
+            const checksum =  getSHA1HashForObject(stateCopy);
             //add the checksum and other backup flags in the state object to be saved
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
@@ -1802,7 +1802,7 @@ export const useStore = defineStore("app", {
                 return JSON.stringify(stateCopy);
             }
             else{
-                return LZString.compress(JSON.stringify(stateCopy))
+                return LZString.compress(JSON.stringify(stateCopy));
             }  
         },
        
@@ -1891,7 +1891,7 @@ export const useStore = defineStore("app", {
                                 );                                
                             }                        
                         },
-                    })
+                    });
                 }
                 else{
                     this.doSetStateFromJSONStr(
@@ -1913,7 +1913,7 @@ export const useStore = defineStore("app", {
         doSetStateFromJSONStr(payload: {stateJSONStr: string; showMessage?: boolean}){
             this.updateState(
                 JSON.parse(payload.stateJSONStr)
-            )
+            );
             // If the language has been updated, we need to also update the UI accordingly
             this.setAppLang(this.appLang);
             
@@ -1945,7 +1945,7 @@ export const useStore = defineStore("app", {
                     this.frameObjects,
                     id,
                     copiedFrames[id]
-                )
+                );
             });
             
             const topFrame = copiedFrames[Object.keys(copiedFrames).map(Number)[0]];
@@ -2014,7 +2014,7 @@ export const useStore = defineStore("app", {
 
             Object.values(sourceFrameIds).forEach( (frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
-                topLevelCopiedFrames.push(nextAvailableId)
+                topLevelCopiedFrames.push(nextAvailableId);
                 cloneFrameAndChildren(sourceFrameList, frame, payload.newParentId, {id: nextAvailableId}, copiedFrames); 
                 // Find the largest id form the copied and increase it by 1
                 nextAvailableId = Math.max.apply({},(Object.keys(copiedFrames).concat(Object.keys(copiedFrames))).map(Number)) + 1;
@@ -2027,7 +2027,7 @@ export const useStore = defineStore("app", {
                     this.frameObjects,
                     id,
                     copiedFrames[id]
-                )
+                );
             });
             this.updateNextAvailableId();            
 
@@ -2198,7 +2198,7 @@ export const useStore = defineStore("app", {
         },
 
         selectMultipleFrames(key: string) {
-            const directionUp = key==="ArrowUp"
+            const directionUp = key==="ArrowUp";
             const delta = directionUp? -1 : +1;
             const currentFrame = this.frameObjects[this.currentFrame.id];
 
@@ -2206,51 +2206,51 @@ export const useStore = defineStore("app", {
             let availablePositions:NavigationPosition[]  = getAvailableNavigationPositions();
             availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
             
-            let siblingsOrChildren: number[] = []
+            let siblingsOrChildren: number[] = [];
             let index = 0;
             
             if(this.currentFrame.caretPosition === CaretPosition.below) {
-                siblingsOrChildren = this.frameObjects[currentFrame.parentId].childrenIds
+                siblingsOrChildren = this.frameObjects[currentFrame.parentId].childrenIds;
                 index = siblingsOrChildren.indexOf(currentFrame.id) + (directionUp?+1:0);
             }
             else {
-                siblingsOrChildren = currentFrame.childrenIds
+                siblingsOrChildren = currentFrame.childrenIds;
                 // we need to get -1 if we are not going up, so that we can select the frame we are above
                 // i.e. if we are above the first child frame, we need index of current to be -1 so that when
                 // adding the delta (+1) to get
-                index += (!directionUp)?-1:0
+                index += (!directionUp)?-1:0;
             }
 
             // the frame to be selected is the next towards the direction
-            const frameIdToBeSelected = siblingsOrChildren[index+delta]??-100
+            const frameIdToBeSelected = siblingsOrChildren[index+delta]??-100;
 
             // We cannot select something, so we return
             if(frameIdToBeSelected===-100){
-                return 
+                return; 
             }
 
-            const availablePositionsOfSiblings: NavigationPosition[] = []
+            const availablePositionsOfSiblings: NavigationPosition[] = [];
             availablePositions.forEach((element) => {
                 // we need to keep the elements which correspond to the siblingsOrChildren list
                 if(!element.isSlotNavigationPosition){
                     // we only include belows
                     if(siblingsOrChildren.includes(element.id) &&  element.caretPosition === CaretPosition.below) {
                     // going down, we cannot select a body position
-                        availablePositionsOfSiblings.push(element)
+                        availablePositionsOfSiblings.push(element);
                     }
                     // except when going upwards we may need the our parent's body to be added
                     else if(directionUp && currentFrame.parentId === element.id && element.caretPosition == CaretPosition.body){
-                        availablePositionsOfSiblings.push(element)
+                        availablePositionsOfSiblings.push(element);
                     }
                 }
-            })
+            });
             
             // In the new list with the available positions that we could go to, we first find the index of the current
-            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.id === this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.id === this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
             // and then we find the new current
             // NOTE here that the one to be selected and the new current can be different. i.e. I am below the first child of an if and going up
             // the one to be selected is the one I am bellow, and the current is the body of the if! (i.e. the parent)
-            const newCurrent = availablePositionsOfSiblings[indexOfCurrent+delta]
+            const newCurrent = availablePositionsOfSiblings[indexOfCurrent+delta];
           
             this.selectDeselectFrame({frameId: frameIdToBeSelected, direction: key.replace("Arrow","").toLowerCase()}); 
             this.setCurrentFrame(newCurrent as CurrentFrame);
@@ -2277,16 +2277,16 @@ export const useStore = defineStore("app", {
                 ? listOfCaretPositions[indexOfTarget+1].id // going up we always stop on the next of the clicked
                 : payload.clickedCaretPosition === CaretPosition.below 
                     ? payload.clickedFrameId // if we go down and click bellow, we go on the clicked
-                    : listOfCaretPositions[indexOfTarget-1].id// down and click body, we go to the previous of clicked
+                    : listOfCaretPositions[indexOfTarget-1].id;// down and click body, we go to the previous of clicked
 
 
             let previousFramesSelection: number[] = [];
 
             // Instead of writing a selection function from scratch
             do {
-                previousFramesSelection = [...this.selectedFrames]
+                previousFramesSelection = [...this.selectedFrames];
                 this.selectMultipleFrames(direction);
-            } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId))
+            } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId));
 
         },
 
@@ -2343,7 +2343,7 @@ export const useStore = defineStore("app", {
             // we are moving it to the same place (between first and last index of the selected ones); 
             // If that's the case we don't do anything as it may cause a problem (e.g. if selected indexes are 0...3
             // it may move it to 1 instead of 0.
-            const parentIdOfSelected = getParentOrJointParent(this.frameObjects,this.frameObjects[this.selectedFrames[0]].id)
+            const parentIdOfSelected = getParentOrJointParent(this.frameObjects,this.frameObjects[this.selectedFrames[0]].id);
             let newIndex = payload.event[eventType].newIndex;
 
             if(eventType === "moved" && payload.parentId === parentIdOfSelected) {
