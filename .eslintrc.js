@@ -35,6 +35,11 @@ module.exports = {
         ],
         "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
         "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
+
+        "@typescript-eslint/no-empty-function": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        // Don't mind if function arguments are unused:
+        "@typescript-eslint/no-unused-vars": ["error", {args: "none"}],
     },
 
     overrides: [
