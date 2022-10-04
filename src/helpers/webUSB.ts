@@ -76,7 +76,7 @@ async function getUSBAccess() {
     return device;
 }
 
-export async function connectUSB() : DAPjs.DAPLink {
+export async function connectUSB() : Promise<DAPjs.DAPLink> {
     const device = await getUSBAccess();
 
     const transport = new DAPjs.WebUSB(device);
