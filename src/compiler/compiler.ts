@@ -9,7 +9,7 @@ export default class Compiler {
           { hex: firmwareV2, boardId: microbitBoardId.V2 }]);
       this.micropythonFs.setStorageSize(20 * 1024);
   }
-  public compile(inputPython: string) {
+  public compile(inputPython: string) : void {
       this.micropythonFs.write(
           "main.py",
           inputPython

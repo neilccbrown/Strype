@@ -88,7 +88,7 @@ import Caret from "@/components/Caret.vue"
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
@@ -668,7 +668,7 @@ export default Vue.extend({
                 this.appStore.copySelectedFramesToPosition(
                     {
                         newParentId: (this.isJointFrame)
-                            ? getParent(this.appStore.frameObjects, this.appStore.frameObjects[this.frameId])
+                            ? getParentId(this.appStore.frameObjects, this.appStore.frameObjects[this.frameId])
                             : getParentOrJointParent(this.appStore.frameObjects, this.frameId),
                     }
                 );

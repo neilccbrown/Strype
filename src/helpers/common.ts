@@ -94,7 +94,7 @@ export const getObjectPropertiesDifferences = (obj1: {[id: string]: any}, obj2: 
     return result;
 }
 
-export const saveContentToFile = (content: string, fileName: string) => {
+export const saveContentToFile = (content: string, fileName: string) : void => {
     // from https://blog.logrocket.com/programmatic-file-downloads-in-the-browser-9a5186298d5c/
 
     const url = URL.createObjectURL(new Blob([content], {type: "text/plain"}));

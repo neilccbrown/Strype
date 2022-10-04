@@ -9,6 +9,7 @@ npmbuild:
   stage: build
   script:
     - npm run build
+    - npm run lint:check
 
 npmtest:
   stage: test

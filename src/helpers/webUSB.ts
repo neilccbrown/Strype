@@ -8,7 +8,7 @@ import { parseCodeAndGetParseElements } from "@/parser/parser";
 import Vue from "vue";
 import i18n from "@/i18n";
 
-export function flash(callerData: Record<string, any>) {
+export function flash(callerData: Record<string, any>) : void {
     let proceed = true;
             
     //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
@@ -76,7 +76,7 @@ async function getUSBAccess() {
     return device;
 }
 
-export async function connectUSB() {
+export async function connectUSB() : Promise<DAPjs.DAPLink> {
     const device = await getUSBAccess();
 
     const transport = new DAPjs.WebUSB(device);
@@ -85,7 +85,7 @@ export async function connectUSB() {
     return daplink;
 }
 
-export async function flashData(listener: WebUSBListener, compiler: Compiler) {
+export async function flashData(listener: WebUSBListener, compiler: Compiler) : Promise<void> {
     let progressValue = 0;
 
     const updateProgress = function(progress: number) {
