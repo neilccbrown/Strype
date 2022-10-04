@@ -107,7 +107,7 @@ import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
 import { fileImportSupportedFormats, getEditorMenuUIID } from "@/helpers/editor";
 import $ from "jquery";
-import { Slide } from "vue-burger-menu"
+import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -289,7 +289,7 @@ export default Vue.extend({
             let width = 5;
             const offset = 8; //2+2*padding value + border
             if (placeholder) {
-                placeholder.textContent = this.projectName 
+                placeholder.textContent = this.projectName; 
                 //the width is computed from the placeholder's width from which
                 //we add extra space for the cursor.
                 const calculatedWidth = (placeholder.offsetWidth + offset);

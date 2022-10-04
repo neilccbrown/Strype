@@ -39,14 +39,14 @@ export default Vue.extend({
     data: function() {
         return {
             isLargeConsole: false,
-        }
+        };
     },
 
     computed:{
         ...mapStores(useStore),
 
         consoleDisplayCtrlLabel(): string {
-            return " " + ((this.isLargeConsole) ? i18n.t("console.collapse") as string : i18n.t("console.expand") as string)           
+            return " " + ((this.isLargeConsole) ? i18n.t("console.collapse") as string : i18n.t("console.expand") as string);           
         },
     },
 
@@ -70,7 +70,7 @@ export default Vue.extend({
                 console.value = "";
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
-                parser.getErrorsFormatted(userCode)
+                parser.getErrorsFormatted(userCode);
                 storeCodeToDOM(userCode);
                 // Trigger the actual console launch
                 runPythonConsole(console, userCode, parser.getFramePositionMap());
@@ -82,7 +82,7 @@ export default Vue.extend({
         },
 
         onChange(): void {
-            const consoleTextarea = this.$refs.pythonConsole as HTMLTextAreaElement
+            const consoleTextarea = this.$refs.pythonConsole as HTMLTextAreaElement;
             consoleTextarea.scrollTop = consoleTextarea.scrollHeight;
         },
 
@@ -99,7 +99,7 @@ export default Vue.extend({
         },
     },
 
-})
+});
 </script>
 
 <style lang="scss">

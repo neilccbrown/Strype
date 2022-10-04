@@ -83,8 +83,8 @@
 //////////////////////
 import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
-import CaretContainer from "@/components/CaretContainer.vue"
-import Caret from "@/components/Caret.vue"
+import CaretContainer from "@/components/CaretContainer.vue";
+import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";

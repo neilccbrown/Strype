@@ -33,6 +33,6 @@ export function compileFlashAndBuffer(compiler: Compiler, boardId: number): { fl
                 yes: i18n.t("buttonLabel.ok"),
             },
         });    
-        return undefined
+        return undefined;
     }
 }

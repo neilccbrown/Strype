@@ -1,7 +1,7 @@
 import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, FrameSlotContent, AllFrameTypesIdentifier, getFrameDefType } from "@/types/types";
 import Vue from "vue";
-import { useStore } from "@/store/store"
-import i18n from "@/i18n"
+import { useStore } from "@/store/store";
+import i18n from "@/i18n";
 import { getSHA1HashForObject } from "@/helpers/common";
 import { getEditableSlotUIID } from "./editor";
 import Parser from "@/parser/parser";
@@ -164,7 +164,7 @@ export const countRecursiveChildren = function(listOfFrames: EditorFrameObjects,
     }
 
     return childrenCount;
-}
+};
 
 export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, currentFrameId: number, parentId: number,  nextAvailableId: { id: number}, framesToReturn: EditorFrameObjects): void {
     // This method recursively clones a frame and all its children.
@@ -213,7 +213,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
         );
     });
     
-}
+};
 
 //Search all children/joint frames ids for a specific frame
 export const getAllChildrenAndJointFramesIds = function(listOfFrames: EditorFrameObjects, frameId: number): number[]  {
@@ -232,7 +232,7 @@ export const getAllChildrenAndJointFramesIds = function(listOfFrames: EditorFram
     });
 
     return childrenJointsIdsList;
-}
+};
 
 export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boolean {
     //check the checksum and version properties are present and checksum is as expected, if not, the document doesn't have integrity
@@ -243,9 +243,9 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
         //take the checkpoints out the object to check the checksum
         const foundChecksum = obj["checksum"];
         delete obj["checksum"];
-        const foundVersion = obj["version"]
+        const foundVersion = obj["version"];
         delete obj["version"];
-        let foundPlatform = undefined
+        let foundPlatform = undefined;
         if(obj["platform"]){
             foundPlatform = obj["platform"];
             delete obj["platform"];
@@ -258,7 +258,7 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
         //and return if the checksum was right
         return foundChecksum === expectedChecksum;        
     }
-}
+};
 
 export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): boolean {
     if(state["frameObjects"] == undefined){
@@ -285,7 +285,7 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
         }
     });
     return success;
-}
+};
 
 // Finds out what is the root frame Id of a "block" of disabled frames
 export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObjects, frameId: number): number {
@@ -296,7 +296,7 @@ export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObj
     else{
         return frameId;
     }
-}
+};
 
 export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
     // Change the disable property to destination parent state if the source's parent and destination's parent are different
@@ -313,7 +313,7 @@ export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFra
 
     // The source need to be changed to the destination's parent 
     return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
-}
+};
 
 export const getLastSibling= function (listOfFrames: EditorFrameObjects, frameId: number): number {
     
@@ -452,7 +452,7 @@ export const checkIfLastJointChild = function (listOfFrames: EditorFrameObjects,
 export const isFramePartOfJointStructure = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
     const frame = listOfFrames[frameId];
     return (frame.frameType.isJointFrame || frame.jointFrameIds.length > 0);
-}
+};
 
 
 export const checkIfFirstChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
@@ -493,7 +493,7 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     
     // step 4 --> return the position
     return prevCaretPos;
-}
+};
 
 // This method returns a boolean value indicating whether the caret (current position) is contained
 // within one of the frame types specified in "containerTypes"
@@ -533,7 +533,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
             id: (frameIdMatch != null) ? parseInt(frameIdMatch[0]) : -100, // need to check the match isn't null for TS, but it should NOT be.
             isSlotNavigationPosition: isSlotNavigationPosition, 
             ...positionObjIdentifier,            
-        }
+        };
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.id] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[]; 
 };
 
@@ -628,7 +628,7 @@ export function checkAndtransformFuncCallFrameToVarAssignFrame(frameId: number, 
                 error: "",
                 focused: false,
                 shownLabel: true,
-            } }
+            } };
         Vue.set(useStore().frameObjects[frameId], "contentDict", newContent);
     }
 }

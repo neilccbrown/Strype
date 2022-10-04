@@ -149,27 +149,27 @@ export const ContainerTypesIdentifiers = {
     importsContainer: "importsContainer",
     funcDefsContainer: "funcDefsContainer",
     framesMainContainer: "mainContainer",
-}
+};
 
 const CommentFrameTypesIdentifier = {
     comment: "comment",
-}
+};
 // Identifiers of the frame types
 const ImportFrameTypesIdentifiers = {
     import: "import",
     fromimport: "from-import",
-}
+};
 
 const FuncDefIdentifiers = {
     funcdef: "funcdef",
-}
+};
 
 export const JointFrameIdentifiers = {
     elif: "elif",
     else: "else",
     except: "except",
     finally: "finally",
-}
+};
 
 const StandardFrameTypesIdentifiers = {
     ...CommentFrameTypesIdentifier,
@@ -186,13 +186,13 @@ const StandardFrameTypesIdentifiers = {
     varassign: "varassign",
     global: "global",
     ...JointFrameIdentifiers,
-}
+};
 
 export const AllFrameTypesIdentifier = {
     ...ImportFrameTypesIdentifiers,
     ...FuncDefIdentifiers,
     ...StandardFrameTypesIdentifiers,
-}
+};
 
 export const DefaultFramesDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.empty,
@@ -228,7 +228,7 @@ export const RootContainerFrameDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.root,
     draggableGroup: DraggableGroupTypes.none,
-}
+};
 
 export const ImportsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
@@ -241,7 +241,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
     draggableGroup: DraggableGroupTypes.imports,
-}
+};
 
 export const FuncDefContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
@@ -255,7 +255,7 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     colour: "#BBC6B6",
     draggableGroup: DraggableGroupTypes.functionSignatures,
 
-}
+};
 
 export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
@@ -267,7 +267,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
     colour: "#BBC6B6",
-}
+};
 
 
 export const FrameContainersDefinitions = {
@@ -275,7 +275,7 @@ export const FrameContainersDefinitions = {
     ImportsContainerDefinition,
     FuncDefContainerDefinition,
     MainFramesContainerDefinition,
-}
+};
 
 let Definitions = {};
 
@@ -519,7 +519,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         GlobalDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
-    }
+    };
 
     /*3) if required, update the types in all the frames existing in the editor (needed to update default texts and frame container labels) */
     if(regenerateExistingFrames){
@@ -552,7 +552,7 @@ export function getFrameDefType(key: string): FramesDefinitions{
         generateAllFrameDefinitionTypes();
     }
 
-    return Object.values(Definitions).find((frameDefinition) => ((frameDefinition as FramesDefinitions).type === key)) as FramesDefinitions
+    return Object.values(Definitions).find((frameDefinition) => ((frameDefinition as FramesDefinitions).type === key)) as FramesDefinitions;
 }
 
 export function getLoopFramesTypeIdentifiers(): string[] {
@@ -572,7 +572,7 @@ export const EmptyFrameObject: FrameObject = {
     caretVisibility: CaretPosition.none,
     contentDict: { },
     multiDragPosition: "",
-}
+};
 
 /**
  *  Types for the messages banner
@@ -591,7 +591,7 @@ export interface FormattedMessageArgKeyValuePlaceholder {
 export const FormattedMessageArgKeyValuePlaceholders: {[id: string]: FormattedMessageArgKeyValuePlaceholder} = {
     error: {key:"errorMsg", placeholderName : "{error_placeholder}"},
     list: {key:"list", placeholderName : "{list_placeholder}"},
-}
+};
 
 export interface FormattedMessage {
     path: string;
@@ -601,12 +601,12 @@ export interface FormattedMessage {
 export const DefaultFormattedMessage: FormattedMessage = {
     path: "",
     args: {},
-}
+};
 
 export const MessageDefinedActions = {
     closeBanner: "close",
     undo: "undo",
-}
+};
 
 export enum imagePaths {
     empty = "",
@@ -633,7 +633,7 @@ export const MessageTypes = {
     forbiddenFrameMove: "forbiddenFrameMove",
     functionFrameCantDelete: "functionFrameCantDelete",
     pythonInputWarning: "pythonInputWarning",
-}
+};
 
 //empty message
 const NoMessage: MessageDefinition = {
@@ -732,21 +732,21 @@ const ForbiddenFrameMove: MessageDefinition = {
     message: "messageBannerMessage.forbiddenFrameMove",
     buttons: [],
     path: imagePaths.empty,
-}
+};
 
 const FunctionFrameCantDelete: MessageDefinition = {
     type: MessageTypes.functionFrameCantDelete,
     message: "messageBannerMessage.functionFrameCantDelete",
     buttons: [],
     path: imagePaths.empty,
-}
+};
 
 const PythonInputWarning: MessageDefinition = {
     type: MessageTypes.pythonInputWarning,
     message: "messageBannerMessage.pythonInputWarning",
     buttons: [],
     path: imagePaths.empty,
-}
+};
 
 export const MessageDefinitions = {
     NoMessage,

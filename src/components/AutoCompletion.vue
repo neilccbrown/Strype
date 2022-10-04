@@ -128,7 +128,7 @@ export default Vue.extend({
             selected: 0,
             currentModule: "",
             currentDocumentation: "",
-        }
+        };
     },
 
     computed: {
@@ -278,12 +278,12 @@ export default Vue.extend({
                     const listOfElements: AcResultType[] = parsedResults[module].filter((e) => e!=="").map( (element,i) => {
                         // We are not assigning the indexes at that stage as we will need to sort first
                         // the version is retrieved from the version json object (for microbit), if no version is found, we set 1
-                        return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i], version:(_.get(this.acVersions, acContextPath+"."+element) as number)??1}
+                        return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i], version:(_.get(this.acVersions, acContextPath+"."+element) as number)??1};
                     });
                     // Sort is done as a seperate step, as it is more efficient to join the lists (parsedResults, parsedDoc and parsedTypes) first
                     // and then sort, instead of sorting first, as this would require to sort one list and based on this sorting, sort the others as well
                     listOfElements.sort( (a, b) => {
-                        return a.acResult.toLowerCase().localeCompare(b.acResult.toLowerCase())
+                        return a.acResult.toLowerCase().localeCompare(b.acResult.toLowerCase());
                     });
                     
                     acResults[this.isImportFrame ? "" : module] = listOfElements;
@@ -307,7 +307,7 @@ export default Vue.extend({
             for (const module in this.acResults) {
                 // Filter the list based on the token
                 const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
-                    element.acResult.toLowerCase().startsWith(this.token))
+                    element.acResult.toLowerCase().startsWith(this.token));
 
                 // Add the indices and the versions
                 // (the version is retrieved from the version json object (for microbit), if no version is found, we set 1)
@@ -328,7 +328,7 @@ export default Vue.extend({
                     else{
                         contextPath = (module.length ==0 || module === (this.$i18n.t("autoCompletion.importedModules") as string))  ? e.acResult : "";
                     }
-                    return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))}
+                    return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
                 });
                 lastIndex += filteredResults.length;    
             }    
@@ -349,7 +349,7 @@ export default Vue.extend({
             
             // We need to calculate how many elements in total. Each module has a `subList` which we need to take into account
             let resultsLength = 0;
-            Object.values(this.resultsToShow).forEach((subList) => resultsLength+=subList.length)
+            Object.values(this.resultsToShow).forEach((subList) => resultsLength+=subList.length);
             
             // The following frames the newSelectionIndex to the results array (it's like a modulo that works for negative numbers as well)
             // It frames ANY number (negative or positive) to the bounds of [0 ... resultsLength]
@@ -397,7 +397,7 @@ export default Vue.extend({
         },
 
         areResultsToShow(): boolean {
-            return Object.values(this.resultsToShow).filter((e) => e.length>0)?.length > 0
+            return Object.values(this.resultsToShow).filter((e) => e.length>0)?.length > 0;
         },
 
         getACEntryVersion(entry: any): number{

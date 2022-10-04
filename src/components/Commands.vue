@@ -80,7 +80,7 @@ import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 /* IFTRUE_isPurePython */
-import PythonConsole from "@/components/PythonConsole.vue"
+import PythonConsole from "@/components/PythonConsole.vue";
 /* FITRUE_isPurePython */
 
 export default Vue.extend({
@@ -100,7 +100,7 @@ export default Vue.extend({
             progressPercent: 0,
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language)
-        }
+        };
     },
 
     beforeMount() {
@@ -255,7 +255,7 @@ export default Vue.extend({
     },
     
     beforeDestroy() {
-        window.removeEventListener("keyup", this.onKeyUp)
+        window.removeEventListener("keyup", this.onKeyUp);
     },
 
     mounted() {
@@ -333,10 +333,10 @@ export default Vue.extend({
         getTabClasses(tabIndex: number): string[] {
             const disabledClassStr = (this.isEditing) ? " commands-tab-disabled" : "";
             if(tabIndex == this.tabIndex){
-                return ["commands-tab commands-tab-active"]
+                return ["commands-tab commands-tab-active"];
             }
             else {
-                return ["commands-tab" + disabledClassStr]
+                return ["commands-tab" + disabledClassStr];
             }
         },
         /*FITRUE_isMicrobit */
