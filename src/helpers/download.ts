@@ -6,7 +6,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store"
 import { MessageDefinitions } from "@/types/types";
 
-export function downloadHex() {
+export function downloadHex() : void {
     const parserElements = parseCodeAndGetParseElements(true);
     let succeeded = !parserElements.hasErrors;
     if(succeeded){
@@ -34,7 +34,7 @@ export function downloadHex() {
     }
 }
 
-export function downloadPython() {
+export function downloadPython() : void {
     const parserElements = parseCodeAndGetParseElements(false);
     if (parserElements.hasErrors) {
         //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.

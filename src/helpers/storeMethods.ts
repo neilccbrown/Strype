@@ -6,7 +6,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import { getEditableSlotUIID } from "./editor";
 import Parser from "@/parser/parser";
 
-export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId: number) => {
+export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId: number) : void => {
     // When removing a frame in the list, we remove all its sub levels,
     // then update its parent and then delete the frame itself
     const frameObject = listOfFrames[frameId];
@@ -38,7 +38,7 @@ export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
-export const getParent = (listOfFrames: EditorFrameObjects, currentFrame: FrameObject) => {
+export const getParent = (listOfFrames: EditorFrameObjects, currentFrame: FrameObject) : number => {
     let parentId = 0;
     if(currentFrame.id !== 0){
         parentId = (currentFrame.jointParentId > 0) ? listOfFrames[currentFrame.jointParentId].parentId : currentFrame.parentId;
