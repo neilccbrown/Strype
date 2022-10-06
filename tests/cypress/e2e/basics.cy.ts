@@ -296,3 +296,31 @@ describe("Adding frames", () => {
         ]).concat(defaultMyCode));
     });
 });
+
+// Test that selecting and deleting frames using keyboard works properly:
+describe("Deleting frames", () => {
+    it("Lets you delete a frame with delete", () => {
+        // Add three frames:
+        cy.get("body").type(" foo({rightArrow}{rightArrow} bar({rightArrow}{rightArrow} baz({rightArrow}{rightArrow}");
+        // Delete two:
+        cy.get("body").type("{shift}", {release: false});
+        cy.get("body").type("{upArrow}{upArrow}");
+        cy.get("body").type("{shift}");
+        cy.get("body").type("{del}");
+        checkCodeEquals(defaultImports.concat([
+            "foo()",
+        ]).concat(defaultMyCode));
+    });
+    it("Lets you delete a frame with backspace", () => {
+        // Add three frames:
+        cy.get("body").type(" foo({rightArrow}{rightArrow} bar({rightArrow}{rightArrow} baz({rightArrow}{rightArrow}");
+        // Delete two:
+        cy.get("body").type("{shift}", {release: false});
+        cy.get("body").type("{upArrow}{upArrow}");
+        cy.get("body").type("{shift}");
+        cy.get("body").type("{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            "foo()",
+        ]).concat(defaultMyCode));
+    });
+});
