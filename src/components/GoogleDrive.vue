@@ -3,11 +3,13 @@
         <button v-if="!signedIn" type="button" @click="signIn();" class="btn btn-secondary cmd-button">
             Sign-in with Google
         </button>
-        <button v-if="signedIn" type="button" @click="saveToGoogleDrive" v-t="'buttonLabel.saveToGoogleDrive'" class="btn btn-secondary cmd-button"/>
+        <button v-if="signedIn" type="button" @click="saveToGoogleDrive();" v-t="'buttonLabel.saveToGoogleDrive'" class="btn btn-secondary cmd-button"/>
     </div>
 </template>
 <script lang="ts">
 import Vue from "vue";
+import {mapStores} from "pinia";
+import {useStore} from "@/store/store";
 
 export default Vue.extend({
     name: "GoogleDrive",
@@ -16,7 +18,7 @@ export default Vue.extend({
         return {
             signedIn : false as boolean,
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
-        }
+        };
     },
 
     created() {
@@ -42,7 +44,7 @@ export default Vue.extend({
     methods: {
         // Load up general Google API:
         onGAPILoad() {
-            gapi.load("client", this.gapiStart)
+            gapi.load("client", this.gapiStart);
         },
         // After Google API loaded, initialise and load Sheets API:
         gapiStart() {
@@ -56,11 +58,10 @@ export default Vue.extend({
         },
 
         // Load Google Identity services API:
-        // Note: uses a client_id assigned to Neil's acccount that is in testing mode (max 100 users) as that's all we need.
         onGSILoad() {
             this.client = google.accounts.oauth2.initTokenClient({
-                client_id: "TODO",
-                scope: "https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/drive.readonly",
+                client_id: "802295052786-h65netp8r9961pekqnhnt3oapcb9o8ji.apps.googleusercontent.com",
+                scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
                 // Note: this callback is after *sign-in* (happens on button press), NOT on simply loading the client:
                 callback: (response: google.accounts.oauth2.TokenResponse) => {
                     if (response) {
@@ -80,6 +81,28 @@ export default Vue.extend({
         updateSignInStatus() {
             // Do nothing?  Enable button?
         },
+
+        saveFile(name: string, content: string) {
+            gapi.client.request({
+                path: "https://www.googleapis.com/upload/drive/v3/files",
+                method: "POST",
+                params: "uploadType=media",
+                headers: {
+                    "Content-Type": "text/plain",
+                },
+                body: content,
+            }).execute((resp) => {
+                console.log("Save response: " + resp);
+            });
+        },
+
+        saveToGoogleDrive() : void {
+            console.log("Saving to drive");
+            this.saveFile("", this.appStore.generateStateJSONStrWithCheckpoint());
+        },
+    },
+    computed: {
+        ...mapStores(useStore),
     },
 });
 </script>
