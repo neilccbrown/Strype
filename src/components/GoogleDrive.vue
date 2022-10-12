@@ -120,7 +120,18 @@ export default Vue.extend({
         },
         
         loadPickedId(id : string) : void {
-            // TODO actually load the code from the file
+            gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files/" + id,
+                method: "GET",
+                params: {"alt": "media"},
+            }).execute((resp) => {
+                console.log("Loading content from Google Drive: " + JSON.stringify(resp));
+                this.appStore.setStateFromJSONStr(
+                    {
+                        stateJSONStr: JSON.stringify(resp),
+                    }
+                );
+            });
         },
     },
     computed: {

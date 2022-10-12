@@ -41,7 +41,7 @@ export default Vue.extend({
 
         async pickerCallback(data : google.picker.ResponseObject) {
             if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
-                this.$emit("picked", data[google.picker.Response.DOCUMENTS]);
+                this.$emit("picked", data[google.picker.Response.DOCUMENTS][0][google.picker.Document.ID]);
             }
         },
     },
