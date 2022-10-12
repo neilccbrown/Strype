@@ -1,0 +1,49 @@
+<template>
+    <button type="button" @click="startPicking();" v-t="'buttonLabel.pickFromGoogleDrive'" class="btn btn-secondary cmd-button"/>
+</template>
+<script lang="ts">
+import Vue from "vue";
+import {useStore} from "@/store/store";
+
+// Derived from https://medium.com/timeless/google-picker-with-vue-2a39de7f36e
+
+export default Vue.extend({
+    name: "GoogleDriveFilePicker",
+    
+    props: {
+        devKey : String,
+        oauthToken : {
+            type: [String],
+            required: false,
+        },
+    },
+        
+    // We don't import the Google scripts in this component because we rely on the parent GoogleDrive component having done it.
+
+    methods: {
+        startPicking() {
+            gapi.load("picker", () => this.createPicker());
+        },
+        
+        createPicker() {
+            const docsView = new google.picker.DocsView();
+            docsView.setMimeTypes("text/plain");
+            const picker = new google.picker.PickerBuilder()
+                .disableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                .addView(docsView)
+                .setLocale(useStore().appLang)
+                .setOAuthToken(this.oauthToken)
+                .setDeveloperKey(this.devKey)
+                .setCallback(this.pickerCallback)
+                .build();
+            picker.setVisible(true);
+        },
+
+        async pickerCallback(data : google.picker.ResponseObject) {
+            if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+                this.$emit("picked", data[google.picker.Response.DOCUMENTS]);
+            }
+        },
+    },
+});
+</script>

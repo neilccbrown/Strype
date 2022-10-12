@@ -4,20 +4,27 @@
             Sign-in with Google
         </button>
         <button v-if="signedIn" type="button" @click="saveToGoogleDrive();" v-t="'buttonLabel.saveToGoogleDrive'" class="btn btn-secondary cmd-button"/>
+        <GoogleDriveFilePicker v-if="signedIn" @picked="loadPickedId" :dev-key="'AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E'" :oauth-token="oauthToken" />
     </div>
 </template>
 <script lang="ts">
 import Vue from "vue";
 import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
+import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 
 export default Vue.extend({
     name: "GoogleDrive",
+    
+    components: {
+        GoogleDriveFilePicker,
+    },
 
     data(){
         return {
             signedIn : false as boolean,
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
+            oauthToken : null as string | null,
         };
     },
 
@@ -67,6 +74,7 @@ export default Vue.extend({
                     if (response) {
                         console.log("Token received: " + response);
                         this.signedIn = true;
+                        this.oauthToken = response.access_token;
                         this.updateSignInStatus();
                     }
                 },
@@ -109,6 +117,10 @@ export default Vue.extend({
         saveToGoogleDrive() : void {
             console.log("Saving to drive");
             this.saveFile("", this.appStore.generateStateJSONStrWithCheckpoint());
+        },
+        
+        loadPickedId(id : string) : void {
+            // TODO actually load the code from the file
         },
     },
     computed: {
