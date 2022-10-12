@@ -83,14 +83,24 @@ export default Vue.extend({
         },
 
         saveFile(name: string, content: string) {
+            // Using this example: https://stackoverflow.com/a/38475303/412908
+            // Arbitrary long string:
+            const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
+            const body : string[] = [];
+            body.push("Content-Type: application/json; charset=UTF-8\n\n" + JSON.stringify({
+                "name": "Example Strype File",
+                "mimeType": "text/plain",
+            }) + "\n");
+            body.push("Content-Type: text/plain; charset=UTF-8\n\n" + content + "\n");
+            const fullBody = body.map((s) => "--" + boundary + "\n" + s).join("") + "--" + boundary + "--\n";
             gapi.client.request({
                 path: "https://www.googleapis.com/upload/drive/v3/files",
                 method: "POST",
-                params: "uploadType=media",
+                params: {"uploadType": "multipart"},
                 headers: {
-                    "Content-Type": "text/plain",
+                    "Content-Type" : "multipart/related; boundary=\"" + boundary + "\"",
                 },
-                body: content,
+                body: fullBody,
             }).execute((resp) => {
                 console.log("Save response: " + resp);
             });
