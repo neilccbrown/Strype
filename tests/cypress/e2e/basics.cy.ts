@@ -324,3 +324,23 @@ describe("Deleting frames", () => {
         ]).concat(defaultMyCode));
     });
 });
+
+// Test that selecting and wrapping frames using keyboard works properly:
+describe("Wrapping frames", () => {
+    it("Lets you wrap a frame with an if", () => {
+        // Add three frames:
+        cy.get("body").type(" foo({rightArrow}{rightArrow} bar({rightArrow}{rightArrow} baz({rightArrow}{rightArrow}");
+        // Delete two:
+        cy.get("body").type("{shift}", {release: false});
+        cy.get("body").type("{upArrow}{upArrow}");
+        cy.get("body").type("{shift}");
+        cy.get("body").type("iTrue");
+        checkCodeEquals(defaultImports.concat([
+            "foo()",
+            {h: /if True\s+:/, b:[
+                "bar()",
+                "baz()",
+            ]},
+        ]).concat(defaultMyCode));
+    });
+});
