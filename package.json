@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "serve": "vue-cli-service serve -- --port 8081",
+        "serve": "vue-cli-service serve --port 8081",
         "serve:microbit": "cross-env npm_config_microbit=true vue-cli-service serve --port 8081",
         "serve:python": "cross-env npm_config_python=true vue-cli-service serve --port 8081",
         "build": "vue-cli-service build",
