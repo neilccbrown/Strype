@@ -53,10 +53,9 @@ export default Vue.extend({
         onGAPILoad() {
             gapi.load("client", this.gapiStart);
         },
-        // After Google API loaded, initialise and load Sheets API:
+        // After Google API loaded, initialise client:
         gapiStart() {
-            gapi.client.init({}).then(function () {
-                //gapi.client.load('sheets', 'v4');
+            gapi.client.init({
             }).then(function (response) {
                 console.log("GAPI loaded");
             }, function (reason) {
@@ -96,8 +95,8 @@ export default Vue.extend({
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const body : string[] = [];
             body.push("Content-Type: application/json; charset=UTF-8\n\n" + JSON.stringify({
-                "name": "Example Strype File",
-                "mimeType": "text/plain",
+                "name": "Example Strype File", // TODO allow user to specify name
+                "mimeType": "text/plain", // TODO change mime type to something sensible
             }) + "\n");
             body.push("Content-Type: text/plain; charset=UTF-8\n\n" + content + "\n");
             const fullBody = body.map((s) => "--" + boundary + "\n" + s).join("") + "--" + boundary + "--\n";
