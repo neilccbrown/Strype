@@ -1,6 +1,6 @@
 <template>
     <div>
-        <button v-if="!signedIn" type="button" @click="signIn();" class="btn btn-secondary cmd-button">
+        <button v-if="!signedIn" type="button" @click="signIn" class="btn btn-secondary cmd-button">
             Sign-in with Google
         </button>
         <button v-if="signedIn" type="button" @click="saveToGoogleDrive();" v-t="'buttonLabel.saveToGoogleDrive'" class="btn btn-secondary cmd-button"/>
@@ -22,7 +22,7 @@ export default Vue.extend({
 
     data(){
         return {
-            signedIn : false as boolean,
+            signedIn : false,
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
         };
@@ -33,7 +33,7 @@ export default Vue.extend({
         // but we also need to load Google Identity in order to be able to sign in.
 
         // From https://stackoverflow.com/a/60257961/412908 and https://stackoverflow.com/a/70772647/412908
-        var scripts : { [key: string]: () => void } = {
+        const scripts : { [key: string]: () => void } = {
             "https://accounts.google.com/gsi/client": () => this.onGSILoad(),
             "https://apis.google.com/js/api.js" : () => this.onGAPILoad(),
         };
