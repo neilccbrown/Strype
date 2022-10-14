@@ -6,6 +6,7 @@
             <button type="button" @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.sendToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
             FITRUE_isMicrobit */
             <button type="button" @click="downloadPython" v-t="'buttonLabel.downloadPython'" class="btn btn-secondary cmd-button"/>
+            <GoogleDrive/>
         </div>
         <div v-if="showProgress" class="progress cmd-progress-container">
             <div 
@@ -70,6 +71,7 @@
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import APIDiscovery from "@/components/APIDiscovery.vue";
+import GoogleDrive from "@/components/GoogleDrive.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { flash } from "@/helpers/webUSB";
@@ -89,6 +91,7 @@ export default Vue.extend({
     components: {
         AddFrameCommand,
         APIDiscovery,
+        GoogleDrive,
         /* IFTRUE_isPurePython */
         PythonConsole, 
         /* FITRUE_isPurePython */
