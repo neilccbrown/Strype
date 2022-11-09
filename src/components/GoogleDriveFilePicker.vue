@@ -1,5 +1,5 @@
 <template>
-    <button type="button" @click="startPicking();" v-t="'buttonLabel.pickFromGoogleDrive'" class="btn btn-secondary cmd-button"/>
+    <button type="button" @click="startPicking" v-t="'buttonLabel.pickFromGoogleDrive'" class="btn btn-secondary cmd-button"/>
 </template>
 <script lang="ts">
 import Vue from "vue";

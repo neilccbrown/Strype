@@ -1,7 +1,7 @@
 <template>
     <div>
         <button v-if="!signedIn" type="button" @click="signIn" v-t="'buttonLabel.signInToGoogle'" class="btn btn-secondary cmd-button"/>
-        <button v-if="signedIn" type="button" @click="saveToGoogleDrive();" v-t="'buttonLabel.saveToGoogleDrive'" class="btn btn-secondary cmd-button"/>
+        <button v-if="signedIn" type="button" @click="saveToGoogleDrive" v-t="'buttonLabel.saveToGoogleDrive'" class="btn btn-secondary cmd-button"/>
         <GoogleDriveFilePicker v-if="signedIn" @picked="loadPickedId" :dev-key="'AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E'" :oauth-token="oauthToken" />
     </div>
 </template>
