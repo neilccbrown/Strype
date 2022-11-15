@@ -27,7 +27,7 @@ export default Vue.extend({
         
         createPicker() {
             const docsView = new google.picker.DocsView();
-            docsView.setMimeTypes("text/plain");
+            docsView.setMimeTypes("application/strype");
             const picker = new google.picker.PickerBuilder()
                 .disableFeature(google.picker.Feature.MULTISELECT_ENABLED)
                 .addView(docsView)

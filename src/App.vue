@@ -235,6 +235,12 @@ export default Vue.extend({
                 );
             }
         }
+        
+        this.$root.$on("setAutoSaveFunction", (f: () => void) => {
+            this.autoSaveState = f;
+            // We will save on a timer but we should also save now so we're up to date:
+            this.autoSaveState();
+        });
     },
 
     methods: {
