@@ -90,7 +90,7 @@ export default Vue.extend({
             mbAPIExampleCodeParts: [] as string[], //the example code parts generated when using the API discovery tool (each part <==> one API level)
             showExtraDoc: false,
             addedAPICode: false, //a flag indicating if something has been added with the API
-        }
+        };
     },
 
     computed:{
@@ -259,7 +259,7 @@ export default Vue.extend({
             const selectedItemSiblings = this.flatAPIDesc.filter((item) => item.immediateParentName == selectedItem.immediateParentName && item.name != this.selectedAPIItemName).map((item) => item.name);
             const selectedItemImmediateParentSiblings = this.flatAPIDesc.filter((item) => item.immediateParentName == selectedItemGrandParent).map((item) => item.name);
             const firstLevelItems = this.flatAPIDesc.filter((item) => item.level == 1).map((item) => item.name);
-            this.itemsToShow = [...this.selectedAPIHierarchyNames, ...selectedItemSiblings,... selectedItemImmediateParentSiblings,... firstLevelItems]
+            this.itemsToShow = [...this.selectedAPIHierarchyNames, ...selectedItemSiblings,... selectedItemImmediateParentSiblings,... firstLevelItems];
         },
 
         // Prepare the code example for the hovered API element.
@@ -272,7 +272,7 @@ export default Vue.extend({
                     let examplePortion = (isHoveredLevel) ? codePortion : this.mbAPIExampleCodeParts[level-1];
                     examplePortion = examplePortion.replace(/\(.*\)/, function(matchedStr){
                         //trim the parenthesis from the matched expression
-                        return "(</span><span class=\"code-example-args\">" + matchedStr.replaceAll(/(\(|\))/g, "") + "</span><span>)"
+                        return "(</span><span class=\"code-example-args\">" + matchedStr.replaceAll(/(\(|\))/g, "") + "</span><span>)";
                     });
                     exampleStr = exampleStr.concat("<span>" + examplePortion + "</span>");
                     if(isHoveredLevel){
@@ -375,7 +375,7 @@ export default Vue.extend({
             // Gets the style for the code example div. Only the margin top is actually dynamic 
             // (if there is no documentation to show, then we don't want a margin)
             const marginTop = (needTopMargin) ? "10px" : "0px";
-            return {"margin-top": marginTop, display: "table", "background-color": "rgba(255,255,255,.6)", color: "black", "font-style": "italic", "border-top": "3px solid #B4B4B4", "padding": "5px"}
+            return {"margin-top": marginTop, display: "table", "background-color": "rgba(255,255,255,.6)", color: "black", "font-style": "italic", "border-top": "3px solid #B4B4B4", "padding": "5px"};
         },
     },
 });

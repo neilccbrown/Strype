@@ -1,5 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-const MoveAssetsPlugin = require("move-assets-webpack-plugin")
+const MoveAssetsPlugin = require("move-assets-webpack-plugin");
 
 const configureWebpackExtraProps = (process.env.npm_config_microbit)
     ? {
@@ -64,6 +64,12 @@ module.exports = {
             }
             return [options];
         });
+        // From https://stackoverflow.com/questions/61031121/vue-js-with-mocha-and-styles-resources-loader-cant-load-dependency-sass
+        if (process.env.NODE_ENV === "test") {
+            const scssRule = config.module.rule("scss");
+            scssRule.uses.clear();
+            scssRule.use("null-loader").loader("null-loader");
+        }
     },
 
     publicPath: (process.env.npm_config_python)?"/editor/":"/microbit/",
@@ -85,4 +91,4 @@ module.exports = {
             },
         },
     },
-}
+};

@@ -8,13 +8,13 @@ import hash from "object-hash";
 //  value        --> the value of the difference (null if deletion, actual value if addition or update)
 const checkArrayIsEmpty = (array: []): boolean => {
     return array.findIndex((val) => val !== undefined) == -1;
-}
+};
 
 const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, result: ObjectPropertyDiff[], path: string) => {
     const pathSeparator = (path.length > 0) ? "." : "";
     
     for(const obj1property in obj1) {
-        const obj1value = obj1[obj1property]
+        const obj1value = obj1[obj1property];
      
         //We first check if the property is defined in obj2
         //--> if yes, we check if there is a difference in the value,
@@ -48,7 +48,7 @@ const findDiffDeep = (obj1: {[id: string]: any}, obj2: {[id: string]: any}, resu
             result.push({propertyPathWithArrayFlag: (path + pathSeparator + obj1property), value: null });
         }
     }
-} 
+}; 
 
 //After using findDiffDeep(), the obj2 may have remaining non empty values.
 //These values are changes added in obj2 and need to be saved too.
@@ -72,7 +72,7 @@ const checkAddedValues = (obj: {[id: string]: any}, result: ObjectPropertyDiff[]
             result.push({propertyPathWithArrayFlag: path + pathSeparator + objProperty, value: objValue});
         }
     }
-}
+};
 
 //Entry point for checking the difference between two objects.
 //The differnence between obj1 and obj2 is saved as an array of ObjectPropertyDiff objects.
@@ -92,9 +92,9 @@ export const getObjectPropertiesDifferences = (obj1: {[id: string]: any}, obj2: 
     checkAddedValues(obj2copy,result, "");
   
     return result;
-}
+};
 
-export const saveContentToFile = (content: string, fileName: string) => {
+export const saveContentToFile = (content: string, fileName: string) : void => {
     // from https://blog.logrocket.com/programmatic-file-downloads-in-the-browser-9a5186298d5c/
 
     const url = URL.createObjectURL(new Blob([content], {type: "text/plain"}));
@@ -112,7 +112,7 @@ export const saveContentToFile = (content: string, fileName: string) => {
     a.addEventListener("click", clickHandler, false);
 
     a.click();
-}
+};
 
 export function readFileAsync(file: Blob): Promise<BufferSource>  {
     return new Promise((resolve, reject) => {
@@ -139,16 +139,16 @@ export const readFileContent = async (file: File): Promise<string>  => {
                 resolve(text);
             }
             else {
-                reject("the file content cannot be interpreted as a text file")
+                reject("the file content cannot be interpreted as a text file");
             }
         };
         fileReader.readAsText(file, "UTF-8");
     });
 
     return result;    
-}
+};
 
 export const getSHA1HashForObject = (obj: {[id: string]: any}): string => {
     const res = hash(obj);
     return res;
-}
+};

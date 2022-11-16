@@ -350,7 +350,7 @@ export const countRecursiveChildren = function(frameId: number, countLimit?: num
     }
 
     return childrenCount;
-}
+};
 
 export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, currentFrameId: number, parentId: number,  nextAvailableId: { id: number}, framesToReturn: EditorFrameObjects): void {
     // This method recursively clones a frame and all its children.
@@ -399,7 +399,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
         );
     });
     
-}
+};
 
 //Search all children/joint frames ids for a specific frame
 export const getAllChildrenAndJointFramesIds = function(frameId: number): number[]  {
@@ -418,7 +418,7 @@ export const getAllChildrenAndJointFramesIds = function(frameId: number): number
     });
 
     return childrenJointsIdsList;
-}
+};
 
 export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boolean {
     //check the checksum and version properties are present and checksum is as expected, if not, the document doesn't have integrity
@@ -429,9 +429,9 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
         //take the checkpoints out the object to check the checksum
         const foundChecksum = obj["checksum"];
         delete obj["checksum"];
-        const foundVersion = obj["version"]
+        const foundVersion = obj["version"];
         delete obj["version"];
-        let foundPlatform = undefined
+        let foundPlatform = undefined;
         if(obj["platform"]){
             foundPlatform = obj["platform"];
             delete obj["platform"];
@@ -444,7 +444,7 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
         //and return if the checksum was right
         return foundChecksum === expectedChecksum;        
     }
-}
+};
 
 export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): boolean {
     if(state["frameObjects"] == undefined){
@@ -471,7 +471,7 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
         }
     });
     return success;
-}
+};
 
 // Finds out what is the root frame Id of a "block" of disabled frames
 export const getDisabledBlockRootFrameId = function(frameId: number): number {
@@ -482,7 +482,7 @@ export const getDisabledBlockRootFrameId = function(frameId: number): number {
     else{
         return frameId;
     }
-}
+};
 
 export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
     // Change the disable property to destination parent state if the source's parent and destination's parent are different
@@ -499,7 +499,7 @@ export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFra
 
     // The source need to be changed to the destination's parent 
     return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
-}
+};
 
 export const getLastSibling= function (frameId: number): number {
     
@@ -637,7 +637,7 @@ export const checkIfLastJointChild = function (frameId: number): boolean {
 export const isFramePartOfJointStructure = function (frameId: number): boolean {
     const frame = useStore().frameObjects[frameId];
     return (frame.frameType.isJointFrame || frame.jointFrameIds.length > 0);
-}
+};
 
 
 export const checkIfFirstChild = function (frameId: number): boolean {
@@ -678,7 +678,7 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     
     // step 4 --> return the position
     return prevCaretPos;
-}
+};
 
 // This method returns a boolean value indicating whether the caret (current position) is contained
 // within one of the frame types specified in "containerTypes"

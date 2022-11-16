@@ -73,7 +73,7 @@ export default Vue.extend({
     data: function() {
         return {
             hasCommentsToMove: false,
-        }
+        };
     },
 
     props: {
@@ -143,7 +143,7 @@ export default Vue.extend({
                         frameId: this.frameId,
                         isCollapsed: value,
                     }
-                )
+                );
             },
         },
 
@@ -199,7 +199,7 @@ export default Vue.extend({
                 //update the property indicating if dragging the frames in another container is allowed: 
                 //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
                 this.hasCommentsToMove = this.appStore.selectedFrames
-                    .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== AllFrameTypesIdentifier.comment) === undefined
+                    .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== AllFrameTypesIdentifier.comment) === undefined;
                 
                 // Notify the start of a drag and drop
                 notifyDragStarted();

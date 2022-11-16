@@ -31,11 +31,11 @@ function builtinRead(x: any) {
 function sInput(prompt: string) {
     // the function returns a promise to give a result back later...
     return new Promise(function(resolve,reject){
-        outf(prompt) 
+        outf(prompt); 
         // make the text area enabled to allow the user to type something (if it was disabled)
         const isConsoleTextAreaLocked = consoleTextArea.disabled;
         if(isConsoleTextAreaLocked){
-            consoleTextArea.disabled = false
+            consoleTextArea.disabled = false;
             // set the text caret to the end of the prompt
             consoleTextArea.focus();
         }
@@ -63,13 +63,13 @@ function sInput(prompt: string) {
         }
 
         function consoleKeyListener(event: KeyboardEvent){
-            const eventKeyLowerCase = event.key.toLowerCase()
+            const eventKeyLowerCase = event.key.toLowerCase();
             // monitor a key hit on "enter" to validate input
             if (eventKeyLowerCase == "enter") {
                 // remove keyup handler from #console
-                consoleTextArea.removeEventListener("keydown", consoleKeyListener)
-                consoleTextArea.removeEventListener("compositionstart", consoleCompositionListener)
-                consoleTextArea.removeEventListener("compositionend", consoleCompositionListener)
+                consoleTextArea.removeEventListener("keydown", consoleKeyListener);
+                consoleTextArea.removeEventListener("compositionstart", consoleCompositionListener);
+                consoleTextArea.removeEventListener("compositionend", consoleCompositionListener);
                 // resolve the promise with the value of the input field
                 const inputText = consoleTextArea.value.substring(initialConsoleTextAreaCaretPos);
                 // add a line return to the console after we have retrieved the input text from user
@@ -102,11 +102,11 @@ function sInput(prompt: string) {
             }
         }
 
-        consoleTextArea.addEventListener("keydown", consoleKeyListener)
-        consoleTextArea.addEventListener("compositionstart", consoleCompositionListener)
-        consoleTextArea.addEventListener("compositionend", consoleCompositionListener)
+        consoleTextArea.addEventListener("keydown", consoleKeyListener);
+        consoleTextArea.addEventListener("compositionstart", consoleCompositionListener);
+        consoleTextArea.addEventListener("compositionend", consoleCompositionListener);
 
-    })
+    });
 }
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,

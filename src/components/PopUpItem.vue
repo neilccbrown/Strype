@@ -34,7 +34,7 @@ export default Vue.extend({
     data: function() {
         return {
             hoveredOver: false,
-        }
+        };
     },
 
     computed: {
@@ -45,17 +45,17 @@ export default Vue.extend({
                 this.selected? 
                     "selectedAcItem"
                     :
-                    "" 
+                    ""; 
         },
     },
 
     methods: {
         hoverOver(): void {
-            this.hoveredOver = true && this.isSelectable
+            this.hoveredOver = true && this.isSelectable;
         },
 
         hoverOut(): void {
-            this.hoveredOver = false
+            this.hoveredOver = false;
         },
     },
 

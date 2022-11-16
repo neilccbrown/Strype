@@ -60,10 +60,10 @@ export function storeCodeToDOM(code: string): void {
 // Functions to check / replace the input function of Python, as this should not be run when the a/c is running
 function getMatchesForCodeInputFunction(code: string) : CodeMatchIterable {
     // the method can be preceded by white characters, operators and brackets
-    const regex = /([\s+([,?:=&|])(input *\()/g
-    const res = {hasMatches: code.match(regex) !==null} as CodeMatchIterable
+    const regex = /([\s+([,?:=&|])(input *\()/g;
+    const res = {hasMatches: code.match(regex) !==null} as CodeMatchIterable;
     if(res.hasMatches){
-        res.iteratorMatches = code.matchAll(regex)
+        res.iteratorMatches = code.matchAll(regex);
     }
     return res;
 }
@@ -72,7 +72,7 @@ function replaceInputFunction(code: string): string {
     // if the method is not found at all we just exit and return the code at it was
     // otherwise, we need a bit more than just replacing the above regex: we have no guarantee the first/last closing parenthesis 
     // MATCH the opening one of "input(". We search for the right replacement to make
-    const regexMatchs = getMatchesForCodeInputFunction(code)
+    const regexMatchs = getMatchesForCodeInputFunction(code);
     
     if(!regexMatchs.hasMatches) {
         return code;
@@ -81,7 +81,7 @@ function replaceInputFunction(code: string): string {
     if(regexMatchs.iteratorMatches) {
         for(const regexMatch of regexMatchs.iteratorMatches) {
         // we find where to stop the replacement for one match, note that we know there will be at least a \n introduced by the a/c control code before "input("
-            const startMatchIndex = regexMatch.index??0 + 1 // because "input(" is the second group, the first group will always have something
+            const startMatchIndex = regexMatch.index??0 + 1; // because "input(" is the second group, the first group will always have something
             let hasOpenedBracket = false, bracketCount = 0, inStrLitteral = false, strLitteralIndic = "", charIndex = 1;
             while(!hasOpenedBracket || bracketCount > 0) {
                 const charInCode = code.charAt(startMatchIndex + charIndex);
@@ -100,8 +100,8 @@ function replaceInputFunction(code: string): string {
                     break;            
                 case "\"":
                     if(!inStrLitteral){
-                        strLitteralIndic = "\""
-                        inStrLitteral = true
+                        strLitteralIndic = "\"";
+                        inStrLitteral = true;
                     }
                     else {
                         if(prevCharInCode!= "\\" && strLitteralIndic == "\""){
@@ -111,8 +111,8 @@ function replaceInputFunction(code: string): string {
                     break;
                 case "'":
                     if(!inStrLitteral){
-                        strLitteralIndic = "'"
-                        inStrLitteral = true
+                        strLitteralIndic = "'";
+                        inStrLitteral = true;
                     }
                     else {
                         if(prevCharInCode!= "\\" && strLitteralIndic == "'"){
@@ -121,11 +121,11 @@ function replaceInputFunction(code: string): string {
                     }
                     break;                
                 }        
-                charIndex++
+                charIndex++;
             }
             //for this match, we can now replace the input() function by a string (of the same length to make sure we don't mess up indexes)
             //note that we repeat a space charIndex-3 times because we need to account the 2 double quotes, and we started iterating charIndex at 1
-            code = code.substring(0, startMatchIndex + 1) + "\"" + " ".repeat(charIndex - 3) + "\"" + code.substring(startMatchIndex + charIndex)
+            code = code.substring(0, startMatchIndex + 1) + "\"" + " ".repeat(charIndex - 3) + "\"" + code.substring(startMatchIndex + charIndex);
         }
     }
     return code;
@@ -151,7 +151,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // we also search for the input function as it would systematically trigger a prompt whenever we run the a/c (but OK for exec on console though)
     // we replace it by an empty string
     userCode = userCode.replaceAll(INDENT+"print(",INDENT+"pass#");
-    userCode = replaceInputFunction(userCode)
+    userCode = replaceInputFunction(userCode);
 
 
     let inspectionCode ="from browser import document as __document, console as __console\n";
@@ -163,7 +163,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     "import __random\n"+
     "__sys.modules['os'] = __osMB\n"+
     "__sys.modules['time'] = __timeMB\n"+
-    "__sys.modules['random'] = __random\n"
+    "__sys.modules['random'] = __random\n";
 
     /* FITRUE_isMicrobit */
 
@@ -173,8 +173,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         */
         // append the line that gets all the possible names of the namespace and the context
         // The builtins will be used only if we don't have a context
-        inspectionCode += "\nvalidContext = True"
-        inspectionCode += "\ntry:"
+        inspectionCode += "\nvalidContext = True";
+        inspectionCode += "\ntry:";
         if(isImportModuleAC){
             /* IFTRUE_isMicrobit */
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = "+contextAC;
@@ -194,18 +194,18 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = dir("+contextAC+")";
         }
         
-        inspectionCode += "\nexcept:\n"+INDENT+"validContext = False"
+        inspectionCode += "\nexcept:\n"+INDENT+"validContext = False";
         // if the previous lines created a problem, that means that the context or the token are not correct and we should stop
-        inspectionCode += "\nif(validContext):"
+        inspectionCode += "\nif(validContext):";
         // Define the slot id we are talking about
-        inspectionCode += "\n"+INDENT+"try:"
+        inspectionCode += "\n"+INDENT+"try:";
         // append the line that removes useless names and saves them to the results
         // we also need to remove validContext so that we don't get it in the results
-        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$') and name!='validContext']"
+        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$') and name!='validContext']";
         // If there are no results, we notify the hidden span that there is no AC available
         
-        inspectionCode += "\n"+INDENT+INDENT+"resultsWithModules={}"
-        inspectionCode += "\n"+INDENT+INDENT+"if(len(results)>0):"
+        inspectionCode += "\n"+INDENT+INDENT+"resultsWithModules={}";
+        inspectionCode += "\n"+INDENT+INDENT+"if(len(results)>0):";
         //We are creating a Dictionary with tuples of {module: [list of results]}
         // If there is no context, we want to know each result's source/module
         // The results can belong to one of the following four modules:
@@ -213,43 +213,43 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // 2) builtins --> user defined variable
         // 3) Any other imported library
         // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue) 
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"for name in results:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"for name in results:";
         // in case the contextAC is not empty, this is the 'module'
         // otherwise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
         // if not, the we retrieve the module name with globals().get(name).__module__
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''";
         if(contextAC.length == 0){
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if str(globals().get(name)).startswith('<module '):";
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"module = \""+i18n.t("autoCompletion.importedModules")+"\"";
         }
         
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if module:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\""
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\""
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\"";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\"";
         // if there is no list for the specific mod, create it and append the name; otherwise just append the name
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)";
         
         // Before we finish we need to have the "My Variables" on the top of the list(dictionary)
         // Get the index of "My Variables" in the dictionary
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"indexOfMyVariables = list(resultsWithModules.keys()).index(\""+i18n.t("autoCompletion.myVariables")+"\")"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"indexOfMyVariables = list(resultsWithModules.keys()).index(\""+i18n.t("autoCompletion.myVariables")+"\")";
         // If it is present
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if indexOfMyVariables >= 0:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if indexOfMyVariables >= 0:";
         // Convert the dictionary to a list
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups = list(resultsWithModules.items())"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups = list(resultsWithModules.items())";
         // Swap My Variables with the module in the first place
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]";
         // Convert back to dictionary!
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)"         
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)";         
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules";
         // If there are no results
-        inspectionCode += "\n"+INDENT+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+"else:";
         // We empty any previous results so that the AC won't be shown
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text =''"
-        inspectionCode += "\n"+INDENT+"except Exception as e2:\n"+INDENT+INDENT+"__console.log('exception2', e2)" 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text =''";
+        inspectionCode += "\n"+INDENT+"except Exception as e2:\n"+INDENT+INDENT+"__console.log('exception2', e2)"; 
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
@@ -273,31 +273,31 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('No documentation available')";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"continue";
         // built-in types most likely refer to variable or values defined by the user
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"isBuiltInType = (typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset));"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"isBuiltInType = (typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset));";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if isBuiltInType:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult.__name__ or 'No documentation available'));"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult.__name__ or 'No documentation available'));";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':";
         //We make sure for functions that we can get the arguments. If we can't we just explains it to get something, at least and not having a/c crashing
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if 'co_varnames' in dir(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__')):"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"else:"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + '\\n(arguments could not be found)')"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Built-in value')"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"else:"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if 'co_varnames' in dir(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__')):";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"else:";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + '\\n(arguments could not be found)')";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Built-in value')";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"else:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"try:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"old_stdout = sys.stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = mystdout = StringIO()";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"help(exec(result))";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append((mystdout.getvalue().replace(\"'\",\" \").replace(\"\\\"\",\" \")) or 'No documentation available')";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"except:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('No documentation available')"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('No documentation available')";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()"
-        inspectionCode += "\n"+INDENT+INDENT+"__document['"+documentationSpanId+"'].text = documentation;"
-        inspectionCode += "\n"+INDENT+INDENT+"__document['"+typesSpanId+"'].text = types;"
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()";
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+documentationSpanId+"'].text = documentation;";
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+typesSpanId+"'].text = types;";
 
         // we store the context *path* obtained by checking the type of the context with Python, or leave empty if no context.
         // it will be used in the AutoCompletion component to check versions
@@ -318,11 +318,11 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     // Fake a click to the hidden span to trigger the AC window to show
     // This must be done by Brython to be sure that the AC and documentation
     // have had time to load.
-    inspectionCode += "\ntry:"
+    inspectionCode += "\ntry:";
     inspectionCode += "\n"+INDENT+"if len(__document.get(id='"+((regenerateAC) ? acSpanId : reshowResultsId)+"')) > 0:";   
     inspectionCode += "\n"+INDENT+INDENT+"from browser import window";
     inspectionCode += "\n"+INDENT+INDENT+"event = window.MouseEvent.new('click')";
-    inspectionCode += "\n"+INDENT+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)"
+    inspectionCode += "\n"+INDENT+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)";
     inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"__console.log('exception4', e4)";
     
     // We need to put the user code before, so that the inspection can work on the code's results
@@ -409,7 +409,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     //        e.g.  max( --> here the context = `max()` and no tokenAC. We may need to return the args to show a hint to the user.
 
     let tokenAC = "";
-    let contextAC = ""
+    let contextAC = "";
     
     // if the string's last character is an operator or symbol that means there is no context and tokenAC
     // we also try to avoid checking for context and token when the line ends with multiple dots, as it creates a problem to Brython

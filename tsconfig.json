@@ -14,10 +14,16 @@
     "sourceMap": true,
     "baseUrl": ".",
     "types": [
+      "gapi", 
+      "google.accounts",
+      "google.picker",
       "webpack-env",
       "webpack",
       "jquery",
-      "jest"
+      "mocha",
+      "chai",
+      "cypress",
+      "node"
     ],
     "paths": {
       "@/*": [

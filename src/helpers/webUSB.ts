@@ -1,14 +1,14 @@
 import * as DAPjs from "dapjs";
 import { compileFlashAndBuffer } from "./compile";
-import {FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, WebUSBListener} from "@/types/types"
-import * as PartialFlashingJS from "./partial-flashing"
+import {FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, WebUSBListener} from "@/types/types";
+import * as PartialFlashingJS from "./partial-flashing";
 import { useStore } from "@/store/store"; 
 import Compiler from "@/compiler/compiler";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
 import Vue from "vue";
 import i18n from "@/i18n";
 
-export function flash(callerData: Record<string, any>) {
+export function flash(callerData: Record<string, any>) : void {
     let proceed = true;
             
     //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
@@ -76,7 +76,7 @@ async function getUSBAccess() {
     return device;
 }
 
-export async function connectUSB() {
+export async function connectUSB() : Promise<DAPjs.DAPLink> {
     const device = await getUSBAccess();
 
     const transport = new DAPjs.WebUSB(device);
@@ -85,7 +85,7 @@ export async function connectUSB() {
     return daplink;
 }
 
-export async function flashData(listener: WebUSBListener, compiler: Compiler) {
+export async function flashData(listener: WebUSBListener, compiler: Compiler) : Promise<void> {
     let progressValue = 0;
 
     const updateProgress = function(progress: number) {
@@ -110,7 +110,7 @@ export async function flashData(listener: WebUSBListener, compiler: Compiler) {
             if(flashAndBufferArray){
                 const flashBytes = flashAndBufferArray.flash;
                 const hexBuffer = flashAndBufferArray.buffer;
-                return PartialFlashingJS.PartialFlashing.flashAsync(dapWrapper, flashBytes, hexBuffer, updateProgress)
+                return PartialFlashingJS.PartialFlashing.flashAsync(dapWrapper, flashBytes, hexBuffer, updateProgress);
             }        
         }).then(()=>listener.onUploadSuccessHandler(), (error) => listener.onUploadFailureHandler(error.message));
 }

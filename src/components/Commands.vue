@@ -6,6 +6,7 @@
             <button type="button" @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.sendToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
             FITRUE_isMicrobit */
             <button type="button" @click="downloadPython" v-t="'buttonLabel.downloadPython'" class="btn btn-secondary cmd-button"/>
+            <GoogleDrive/>
         </div>
         <div v-if="showProgress" class="progress cmd-progress-container">
             <div 
@@ -70,6 +71,7 @@
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import APIDiscovery from "@/components/APIDiscovery.vue";
+import GoogleDrive from "@/components/GoogleDrive.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { flash } from "@/helpers/webUSB";
@@ -80,7 +82,7 @@ import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 /* IFTRUE_isPurePython */
-import PythonConsole from "@/components/PythonConsole.vue"
+import PythonConsole from "@/components/PythonConsole.vue";
 /* FITRUE_isPurePython */
 
 export default Vue.extend({
@@ -89,6 +91,7 @@ export default Vue.extend({
     components: {
         AddFrameCommand,
         APIDiscovery,
+        GoogleDrive,
         /* IFTRUE_isPurePython */
         PythonConsole, 
         /* FITRUE_isPurePython */
@@ -100,7 +103,7 @@ export default Vue.extend({
             progressPercent: 0,
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language)
-        }
+        };
     },
 
     beforeMount() {
@@ -244,60 +247,18 @@ export default Vue.extend({
                 }
             }
         );
+
+        window.addEventListener("keyup", this.onKeyUp);
         
-        window.addEventListener(
-            "keyup",
-            //lambda is has the advantage over a `function` that it preserves `this`. not used in this instance, just mentioning for future reference.
-            (event: KeyboardEvent) => {
-                const isEditing = this.appStore.isEditing;
-                const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
-            
-                if(event.key == "Escape"){
-                    if(this.appStore.areAnyFramesSelected){
-                        this.appStore.unselectAllFrames();
-                        this.appStore.makeSelectedFramesVisible();
-                    }
-                    if(isEditing){
-                        (document.activeElement as HTMLElement).blur();
-                        this.appStore.isEditing = false;
-                    }
-                }
-                else {
-                    if(!isEditing){
-                        //cases when there is no editing:
-                        if(!(event.ctrlKey || event.metaKey)){
-                            if(event.key == "Delete" || event.key == "Backspace"){
-                                if(!ignoreKeyEvent){
-                                    //delete a frame or a frame selection
-                                    this.appStore.deleteFrames(event.key);
-                                    event.stopImmediatePropagation();
-                                }
-                                else{
-                                    this.appStore.ignoreKeyEvent = false;
-                                }
-                            }
-                            //add the frame in the editor if allowed
-                            else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
-                                if(!ignoreKeyEvent){
-                                    this.appStore.addFrameWithCommand(
-                                        this.addFrameCommands[event.key.toLowerCase()][0].type
-                                    );
-                                }
-                                else{
-                                    this.appStore.ignoreKeyEvent = false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }                
-        );
-    
         document.addEventListener(CustomEventTypes.editorAddFrameCommandsUpdated, () => {
             // When the frame commands have been updated (i.e. language changed), we need to get this component to be re-rendered:
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
+    },
+    
+    beforeDestroy() {
+        window.removeEventListener("keyup", this.onKeyUp);
     },
 
     mounted() {
@@ -316,6 +277,50 @@ export default Vue.extend({
     },
 
     methods: {
+        onKeyUp(event: KeyboardEvent) {
+            const isEditing = this.appStore.isEditing;
+            const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
+        
+            if(event.key == "Escape"){
+                if(this.appStore.areAnyFramesSelected){
+                    this.appStore.unselectAllFrames();
+                    this.appStore.makeSelectedFramesVisible();
+                }
+                if(isEditing){
+                    (document.activeElement as HTMLElement).blur();
+                    this.appStore.isEditing = false;
+                }
+            }
+            else {
+                if(!isEditing){
+                    //cases when there is no editing:
+                    if(!(event.ctrlKey || event.metaKey)){
+                        if(event.key == "Delete" || event.key == "Backspace"){
+                            if(!ignoreKeyEvent){
+                                //delete a frame or a frame selection
+                                this.appStore.deleteFrames(event.key);
+                                event.stopImmediatePropagation();
+                            }
+                            else{
+                                this.appStore.ignoreKeyEvent = false;
+                            }
+                        }
+                        //add the frame in the editor if allowed
+                        else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
+                            if(!ignoreKeyEvent){
+                                    this.appStore.addFrameWithCommand(
+                                        this.addFrameCommands[event.key.toLowerCase()][0].type
+                                    );
+                            }
+                            else{
+                                this.appStore.ignoreKeyEvent = false;
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        
         handleAppScroll(event: WheelEvent) {
             const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
             $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
@@ -336,10 +341,10 @@ export default Vue.extend({
         getTabClasses(tabIndex: number): string[] {
             const disabledClassStr = (this.isEditing) ? " commands-tab-disabled" : "";
             if(tabIndex == this.tabIndex){
-                return ["commands-tab commands-tab-active"]
+                return ["commands-tab commands-tab-active"];
             }
             else {
-                return ["commands-tab" + disabledClassStr]
+                return ["commands-tab" + disabledClassStr];
             }
         },
         /*FITRUE_isMicrobit */

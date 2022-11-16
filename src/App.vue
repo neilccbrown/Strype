@@ -134,9 +134,9 @@ export default Vue.extend({
         },
 
         localStorageAutosaveKey(): string {
-            let storageString = "PythonStrypeSavedState"
+            let storageString = "PythonStrypeSavedState";
             /* IFTRUE_isMicrobit */
-            storageString = "MicrobitStrypeSavedState"
+            storageString = "MicrobitStrypeSavedState";
             /*FITRUE_isMicrobit */
             return storageString;
         },
@@ -174,7 +174,7 @@ export default Vue.extend({
                 setTimeout(() =>  {
                     this.resetStrypeProjectFlag = true;
                     this.setAutoSaveState();
-                }, 10000)
+                }, 10000);
                 
             }
         });
@@ -204,7 +204,7 @@ export default Vue.extend({
         // Listen to the Python console display change events (as the editor needs to be resized too)
         document.addEventListener(CustomEventTypes.pythonConsoleDisplayChanged, (event) => {
             this.isLargePythonConsole = (event as CustomEvent).detail;
-        })
+        });
         /* IFTRUE_isPurePython */
 
         /* IFTRUE_isMicrobit */
@@ -254,7 +254,7 @@ export default Vue.extend({
         autoSaveState() {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
-                localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true))
+                localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
             }
         },
 
@@ -332,7 +332,7 @@ export default Vue.extend({
                             }
                         }
                     }
-                })
+                });
             }
         },
 
