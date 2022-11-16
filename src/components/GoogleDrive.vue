@@ -132,7 +132,6 @@ export default Vue.extend({
                 method: "GET",
                 params: {"alt": "media"},
             }).execute((resp) => {
-                //console.log("Loading content from Google Drive: " + JSON.stringify(resp));
                 this.appStore.setStateFromJSONStr(
                     {
                         stateJSONStr: JSON.stringify(resp),
