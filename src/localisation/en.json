@@ -63,6 +63,9 @@
         "sendToMicrobit":"Send to micro:bit",
         "downloadHex":"Convert to Hex file",
         "downloadPython":"Convert to Python file",
+        "signInToGoogle":"Sign-in with Google",
+        "saveToGoogleDrive":"Save to Google Drive",
+        "pickFromGoogleDrive":"Load from Google Drive",
         "startCoding":"Start Coding!",
         "addCodeExtract":"&larr; Add to code",
         "showMore":"show more",
@@ -96,7 +99,9 @@
         "mainContainer":"My code:",
         "preCompiledErrorNeedFix":"Please fix existing errors first.",
         "noWebUSB":"This browser does not support webUSB connections. Please use a browser such as Google Chrome.",
-        "emptyCodeError" :"The code cannot be empty."
+        "emptyCodeError":"The code cannot be empty.",
+        "enterFileNameTitle":"Enter File Name",
+        "enterFileNameLabel":"Enter the file name you would like to save as:"
     },
     "contextMenu": {
         "cut":"Cut Frame(s)",

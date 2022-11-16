@@ -106,6 +106,7 @@ export default Vue.extend({
             autoSaveTimerId: -1,
             resetStrypeProjectFlag:false,
             isLargePythonConsole: false,
+            autoSaveState: () => {},
         };
     },
 
@@ -158,6 +159,7 @@ export default Vue.extend({
     },
 
     created() {
+        this.autoSaveState = () => this.autoSaveStateToWebLocalStorage();
         window.addEventListener("beforeunload", (event) => {
             // Browsers won't display a customised message, and can detect when to prompt the user,
             // so we don't need to do anything special.
@@ -233,6 +235,12 @@ export default Vue.extend({
                 );
             }
         }
+        
+        this.$root.$on("setAutoSaveFunction", (f: () => void) => {
+            this.autoSaveState = f;
+            // We will save on a timer but we should also save now so we're up to date:
+            this.autoSaveState();
+        });
     },
 
     methods: {
@@ -242,7 +250,7 @@ export default Vue.extend({
             }, 300000);
         },
         
-        autoSaveState() {
+        autoSaveStateToWebLocalStorage() : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));

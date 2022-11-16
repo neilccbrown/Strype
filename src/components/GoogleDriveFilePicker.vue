@@ -1,5 +1,5 @@
 <template>
-    <button type="button" @click="startPicking();" v-t="'buttonLabel.pickFromGoogleDrive'" class="btn btn-secondary cmd-button"/>
+    <button type="button" @click="startPicking" v-t="'buttonLabel.pickFromGoogleDrive'" class="btn btn-secondary cmd-button"/>
 </template>
 <script lang="ts">
 import Vue from "vue";
@@ -27,7 +27,7 @@ export default Vue.extend({
         
         createPicker() {
             const docsView = new google.picker.DocsView();
-            docsView.setMimeTypes("text/plain");
+            docsView.setMimeTypes("application/strype");
             const picker = new google.picker.PickerBuilder()
                 .disableFeature(google.picker.Feature.MULTISELECT_ENABLED)
                 .addView(docsView)
