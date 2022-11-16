@@ -3,8 +3,8 @@
         <button v-if="!signedIn" type="button" @click="signIn" v-t="'buttonLabel.signInToGoogle'" class="btn btn-secondary cmd-button"/>
         <b-button v-if="signedIn" type="button" v-b-modal.ask-gdrive-filename v-t="'buttonLabel.saveToGoogleDrive'" class="btn btn-secondary cmd-button"/>
         <GoogleDriveFilePicker v-if="signedIn" @picked="loadPickedId" :dev-key="'AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E'" :oauth-token="oauthToken" />
-        <b-modal no-close-on-backdrop hide-header-close ok-only id="ask-gdrive-filename" ref="ask-gdrive-filename" title="Enter File Name" @hidden="startSavingToGoogleDrive">
-            <p>Enter the file name you would like to save as:</p>
+        <b-modal no-close-on-backdrop hide-header-close ok-only id="ask-gdrive-filename" ref="ask-gdrive-filename" :title="$t('appMessage.enterFileNameTitle')" @hidden="startSavingToGoogleDrive">
+            <p>{{this.enterFileNameLabel}}</p>
             <input v-model="saveFileName" />
         </b-modal>
     </div>
@@ -14,6 +14,7 @@ import Vue from "vue";
 import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
+import i18n from "@/i18n";
 
 export default Vue.extend({
     name: "GoogleDrive",
@@ -143,6 +144,10 @@ export default Vue.extend({
     },
     computed: {
         ...mapStores(useStore),
+        
+        enterFileNameLabel() {
+            return i18n.t("appMessage.enterFileNameLabel");
+        },
     },
 });
 </script>
