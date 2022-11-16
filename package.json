@@ -4,10 +4,11 @@
     "private": true,
     "scripts": {
         "serve": "vue-cli-service serve",
-        "serve:https": "HTTPS=true vue-cli-service serve",
         "build": "vue-cli-service build",
+        "test:unit": "vue-cli-service test:unit",
+        "lint": "vue-cli-service lint",
         "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/localisation/**/*.json'",
-        "lint": "vue-cli-service lint"
+        "serve:https": "HTTPS=true vue-cli-service serve"
     },
     "dependencies": {
         "@fortawesome/free-solid-svg-icons": "^5.15.4",
@@ -30,7 +31,6 @@
         "lodash": "^4.17.20",
         "lz-string": "^1.4.4",
         "move-assets-webpack-plugin": "^1.3.2",
-        "node-hid": "^1.3.0",
         "object-hash": "^2.0.3",
         "pinia": "^2.0.13",
         "python-shell": "^2.0.3",
@@ -46,15 +46,14 @@
         "vue-confirm-dialog": "^1.0.2",
         "vue-i18n": "^8.27.1",
         "vue-input-autowidth": "^1.0.10",
-        "vue-recaptcha": "^2.0.1",
-        "vue-recaptcha-v3": "^2.0.1",
         "vue-simple-context-menu": "^3.4.2",
         "vuedraggable": "^2.24.3"
     },
     "devDependencies": {
+        "@pinia/testing": "^0.0.14",
         "@types/file-saver": "^2.0.5",
+        "@types/jest": "^27.0.1",
         "@types/lz-string": "^1.3.34",
-        "@types/node-hid": "^1.2.0",
         "@types/textarea-caret": "^3.0.0",
         "@types/w3c-web-usb": "^1.0.6",
         "@typescript-eslint/eslint-plugin": "^4.33.0",
@@ -62,31 +61,38 @@
         "@vue/cli-plugin-babel": "^4.5.17",
         "@vue/cli-plugin-eslint": "^4.5.17",
         "@vue/cli-plugin-typescript": "^4.5.17",
+        "@vue/cli-plugin-unit-jest": "~5.0.0",
         "@vue/cli-plugin-vuex": "^4.5.17",
         "@vue/cli-service": "^4.5.17",
         "@vue/eslint-config-typescript": "^7.0.0",
+        "@vue/test-utils": "^1.1.3",
+        "@vue/vue2-jest": "^27.0.0-alpha.2",
         "arkit": "^1.6.4",
+        "babel-jest": "^27.0.6",
         "eslint": "^6.0.0",
         "eslint-plugin-vue": "^7.20.0",
         "husky": "^7.0.4",
+        "jest": "^27.0.5",
+        "jest-transform-stub": "^2.0.0",
         "js-conditional-compile-loader": "^1.0.15",
         "lint-staged": "^11.2.6",
         "sass": "^1.49.9",
         "sass-loader": "^10.2.1",
+        "ts-jest": "^27.0.4",
         "typescript": "^4.6.3",
         "vue-cli-plugin-i18n": "2.1.1",
         "vue-template-compiler": "^2.6.12",
         "webpack": "^4.0.0",
         "webpack-cli": "^4.9.2"
     },
-    "lint-staged": {
-        "src/**/*.{ts,vue}": [
-            "npm run lint"
-        ]
-    },
     "husky": {
         "hooks": {
             "pre-commit": "lint-staged"
         }
+    },
+    "lint-staged": {
+        "src/**/*.{ts,vue}": [
+            "npm run lint"
+        ]
     }
 }

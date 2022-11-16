@@ -3,7 +3,7 @@
 import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
-import { getEditableSlotUIID, getFrameUIID } from "./editor";
+import { getLabelSlotUIID, getFrameUIID } from "./editor";
 import Vue from "vue";
 
 // Declation of JS objects required for using Skulpt:
@@ -154,8 +154,8 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             // We need to slightly delay the focus events so that the UI has been regenerated and the error popup shows.
             setTimeout(() => {
                 document.querySelector("#" + getFrameUIID(frameId))?.scrollIntoView();
-                const lastSlotIndex = Math.max(...Object.keys(useStore().frameObjects[frameId].contentDict).map((slotIndexStr) => parseInt(slotIndexStr)));
-                const editableSlot =  document.getElementById(getEditableSlotUIID(frameId, lastSlotIndex));
+                const lastSlotIndex = Math.max(...Object.keys(useStore().frameObjects[frameId].labelSlotsDict).map((slotIndexStr) => parseInt(slotIndexStr)));
+                const editableSlot =  document.getElementById(getLabelSlotUIID(frameId, lastSlotIndex));
                 if(editableSlot){
                     editableSlot.focus();
                     (editableSlot as HTMLInputElement).setSelectionRange(0, 0);                    

@@ -307,7 +307,7 @@ export default Vue.extend({
             // then we have a specific colour - to avoid colours to add up together when going deeper in the frames,
             // we only apply that colour to the frames that have not a parent set to deletable         
             if(this.deletableFrame && this.appStore.potentialDeleteFrameIds){
-                const isParentDeletable = this.appStore.potentialDeleteFrameIds.includes(getParentOrJointParent(this.appStore.frameObjects, this.frameId));
+                const isParentDeletable = this.appStore.potentialDeleteFrameIds.includes(getParentOrJointParent(this.frameId));
                 return (!isParentDeletable) ? "rgba(255,0,0,0.6)" : "transparent"; 
             }
 
@@ -399,11 +399,11 @@ export default Vue.extend({
                     const isCopyJointFrame = (this.appStore.copiedFrames[this.appStore.copiedFrameId]?.frameType.isJointFrame) ?? false;
                     const isAllowedForJointAbove = (!this.isJointFrame) || (this.isJointFrame && isCopyJointFrame);
                     const isAllowedForJointBelow = !this.isJointFrame
-                        || (this.isJointFrame && isCopyJointFrame && !isLastInParent(this.appStore.frameObjects, this.frameId))
-                        || (this.isJointFrame && isLastInParent(this.appStore.frameObjects, this.frameId));
+                        || (this.isJointFrame && isCopyJointFrame && !isLastInParent(this.frameId))
+                        || (this.isJointFrame && isLastInParent(this.frameId));
                     const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
                     const targetPasteBelow = this.getTargetPasteBelow();
-                    canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.id, caretNavigationPositionAbove.caretPosition as CaretPosition));
+                    canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.frameId, caretNavigationPositionAbove.caretPosition as CaretPosition));
                     canPasteBelowFrame = isAllowedForJointBelow && (this.appStore.isPasteAllowedAtFrame(targetPasteBelow.id, targetPasteBelow.caretPosition));
                     const sliceNumber = (!canPasteAboveFrame && !canPasteBelowFrame)
                         ? 3 // both paste menu entries and divider
@@ -429,10 +429,9 @@ export default Vue.extend({
 
                 // We only show "delete outer" if the top level frame(s) to delete are all block frames and not function definitions
                 const canDeleteOuter = (this.isPartOfSelection) 
-                    ? !this.appStore
+                    ? this.appStore
                         .selectedFrames
-                        .map((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef)
-                        .includes(false)
+                        .every((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef)
                     : this.isBlockFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef;
                 if(!canDeleteOuter){
                     const deleteOuterOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "deleteOuter");
@@ -520,6 +519,7 @@ export default Vue.extend({
             }
             else{
                 // Add the target frames Ids in the flag array - they will always be shown no matter it's a single or outer delete
+                // As we are modifying the potentialDeleteFrameIds while iterating through it, we need to make a copy on which we iterate
                 const potentialDeleteFrameIDs = (this.appStore.selectedFrames.length > 0) ? [...this.appStore.selectedFrames] : [this.frameId];
                 [...potentialDeleteFrameIDs].forEach((targetFrameId) => {
                     if(isOuterDelete){
@@ -528,7 +528,7 @@ export default Vue.extend({
                     }
                     else{
                         // Add all the children and joints of the targets in the flag array if we are in a single delete
-                        potentialDeleteFrameIDs.push(...getAllChildrenAndJointFramesIds(this.appStore.frameObjects, targetFrameId));
+                        potentialDeleteFrameIDs.push(...getAllChildrenAndJointFramesIds(targetFrameId));
                     }
                 });
                 this.appStore.potentialDeleteFrameIds.push(...potentialDeleteFrameIDs);
@@ -597,7 +597,7 @@ export default Vue.extend({
             const frameRect = frameClickedDiv.getBoundingClientRect();
             const headerRect = document.querySelector("#"+this.uiid+ " .frame-header")?.getBoundingClientRect();
             if(headerRect){            
-                let newCaretPosition: NavigationPosition = {id: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
+                let newCaretPosition: NavigationPosition = {frameId: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
                 // The following logic applies to select a caret position based on the frame and the location of the click:
                 // if a click occurs between the top of a frame and its header top mid half
                 //    --> get the cursor visually above the frame
@@ -622,7 +622,7 @@ export default Vue.extend({
                             hasPassedPosition = (clickY >= previousThreshold && clickY < midFrameThresholdPos.midYThreshold);
                             previousThreshold = midFrameThresholdPos.midYThreshold;
                             if(hasPassedPosition){
-                                newCaretPosition.id = midFrameThresholdPos.caretPos.id;
+                                newCaretPosition.frameId = midFrameThresholdPos.caretPos.id;
                                 newCaretPosition.caretPosition = midFrameThresholdPos.caretPos.caretPosition;
                                 break;
                             }
@@ -634,16 +634,16 @@ export default Vue.extend({
                             // in between joints are disabled, the caret will be still be at the last child's bottom.
                             // If that joint has no children, we keep in its body.
                             // If the joint frame is the last of the structure, then we need to show the caret below for the root parent.
-                            if(isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId)){
-                                if(this.appStore.frameObjects[this.frameId].jointParentId > 0 && isLastInParent(this.appStore.frameObjects, this.frameId)){
+                            if(isFramePartOfJointStructure(this.frameId)){
+                                if(this.appStore.frameObjects[this.frameId].jointParentId > 0 && isLastInParent(this.frameId)){
                                     // Case of a joint frame which is last of of the joint structure
-                                    newCaretPosition.id = this.appStore.frameObjects[this.frameId].jointParentId;
+                                    newCaretPosition.frameId = this.appStore.frameObjects[this.frameId].jointParentId;
                                     newCaretPosition.caretPosition = CaretPosition.below;
                                 }
                                 else{
                                     // Case of root joint frame or  joint frame which is not last of the joint structure
                                     if(this.appStore.frameObjects[this.frameId].childrenIds.length > 0){
-                                        newCaretPosition.id = [...this.appStore.frameObjects[this.frameId].childrenIds].pop() as number;// get the last joint child frame id
+                                        newCaretPosition.frameId = [...this.appStore.frameObjects[this.frameId].childrenIds].pop() as number;// get the last joint child frame id
                                         newCaretPosition.caretPosition = CaretPosition.below;
                                     }
                                     else{
@@ -661,7 +661,7 @@ export default Vue.extend({
                     }
                 }
                 
-                this.appStore.toggleCaret({id: newCaretPosition.id, caretPosition: newCaretPosition.caretPosition as CaretPosition});
+                this.appStore.toggleCaret({id: newCaretPosition.frameId, caretPosition: newCaretPosition.caretPosition as CaretPosition});
             }
         },
 
@@ -679,7 +679,7 @@ export default Vue.extend({
                 bodyFrameIds.forEach((childFrameId) => {
                     const childFrameDivRect = document.getElementById(getFrameUIID(childFrameId))?.getBoundingClientRect() as DOMRect;
                     const prevPos = getAboveFrameCaretPosition(childFrameId);
-                    midFramePosArray.push({caretPos: {id: prevPos.id, caretPosition: prevPos.caretPosition as CaretPosition},
+                    midFramePosArray.push({caretPos: {id: prevPos.frameId, caretPosition: prevPos.caretPosition as CaretPosition},
                         midYThreshold: childFrameDivRect.top + childFrameDivRect.height/2 });
                 });
 
@@ -704,8 +704,8 @@ export default Vue.extend({
                 this.appStore.copySelectedFramesToPosition(
                     {
                         newParentId: (this.isJointFrame)
-                            ? getParent(this.appStore.frameObjects, this.appStore.frameObjects[this.frameId])
-                            : getParentOrJointParent(this.appStore.frameObjects, this.frameId),
+                            ? getParent(this.appStore.frameObjects[this.frameId])
+                            : getParentOrJointParent(this.frameId),
                     }
                 );
             }
@@ -713,7 +713,7 @@ export default Vue.extend({
                 this.appStore.copyFrameToPosition(
                     {
                         frameId : this.frameId,
-                        newParentId: getParentOrJointParent(this.appStore.frameObjects, this.frameId),
+                        newParentId: getParentOrJointParent(this.frameId),
                         newIndex: this.appStore.getIndexInParent(this.frameId)+1,
                     }
                 );
@@ -750,7 +750,7 @@ export default Vue.extend({
             if(this.appStore.isSelectionCopied){
                     this.appStore.pasteSelection(
                         {
-                            clickedFrameId: caretNavigationPositionAbove.id,
+                            clickedFrameId: caretNavigationPositionAbove.frameId,
                             caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
                         }
                     );
@@ -758,7 +758,7 @@ export default Vue.extend({
                 else {
                     this.appStore.pasteFrame(
                         {
-                            clickedFrameId: caretNavigationPositionAbove.id,
+                            clickedFrameId: caretNavigationPositionAbove.frameId,
                             caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
                         }
                     );
@@ -792,12 +792,12 @@ export default Vue.extend({
             // if we are pasting a joint frame below another joint frame, then we need to paste as if it was below the last child of target joint
             //    or in the target joint frame body if there are no children.
             const isCopyJointFrame = (this.appStore.copiedFrames[this.appStore.copiedFrameId]?.frameType.isJointFrame) ?? false;
-            const targetFrameId = (this.isJointFrame && isLastInParent(this.appStore.frameObjects, this.frameId) && !isCopyJointFrame) 
+            const targetFrameId = (this.isJointFrame && isLastInParent(this.frameId) && !isCopyJointFrame) 
                 ? this.appStore.frameObjects[this.frameId].jointParentId
-                : (isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId) && isCopyJointFrame) 
+                : (isFramePartOfJointStructure(this.frameId) && isCopyJointFrame) 
                     ? ([...this.appStore.frameObjects[this.frameId].childrenIds].pop())??this.frameId 
                     : this.frameId;
-            const caretPosition = (isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId) && isCopyJointFrame 
+            const caretPosition = (isFramePartOfJointStructure(this.frameId) && isCopyJointFrame 
                 && this.appStore.frameObjects[this.frameId].childrenIds.length == 0)
                 ? CaretPosition.body
                 : CaretPosition.below;

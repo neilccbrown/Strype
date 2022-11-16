@@ -1,12 +1,12 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, FrameSlotContent, AcResultsWithModule, ImportsContainerDefinition, EditableFocusPayload, EditableSlotPayload, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, AcResultsWithModule, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getParentOrJointParent, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, clearAllFrameErrors, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { generateAllFrameCommandsDefs, getAddCommandsDefs, getEditableSlotUIID, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
+import { generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string"
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -38,6 +38,10 @@ export const useStore = defineStore("app", {
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
+            anchorSlotCursorInfos: undefined as SlotCursorInfos | undefined, // where we "leave" the cursor when selecting (like the base of the arrow)
+
+            focusSlotCursorInfos: undefined as SlotCursorInfos | undefined, // where we move the cursor when selecting (like the tip of the arrow) 
+ 
             isDraggingFrame: false, // Indicates whether drag and drop of frames is in process
 
             // This is an indicator of the CURRENT editable slot's initial content being edited.
@@ -50,6 +54,8 @@ export const useStore = defineStore("app", {
 
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
+
+            bypassEditableSlotBlurErrorCheck: false,
 
             currentMessage: MessageDefinitions.NoMessage,
 
@@ -110,12 +116,17 @@ export const useStore = defineStore("app", {
                 .filter((a) => a);
         },
         
-        getContentForFrameSlot: (state) => (frameId: number, slotId: number) => {
-            const retCode = state.frameObjects[frameId]?.contentDict[slotId].code;
-            // return "" if it is undefined
-            return retCode ?? "";
+        getContentForFrameSlot: () => (frameSlotInfos: SlotInfos) => {
+            return (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code;
         },
         
+        getFlatSlotBases: (state) => (frameId: number, labelIndex: number) => {
+            // Flatten the imbricated slots of associated with a label and return the corresponding array of FlatSlotBase objects
+            // The operators always get in between the fields, and we always have one 1 root structure for a label,
+            // and bracketed structures can never be found at 1st or last position
+            return generateFlatSlotBases(state.frameObjects[frameId].labelSlotsDict[labelIndex].slotStructures);
+        },
+
         getJointFramesForFrameId: (state) => (frameId: number, group: string) => {
             const jointFrameIds = state.frameObjects[frameId].jointFrameIds;
             const jointFrames: FrameObject[] = [];
@@ -191,8 +202,12 @@ export const useStore = defineStore("app", {
             return frame.frameType.innerJointDraggableGroup;
         },
         
-        isEditableFocused: (state) => (frameId: number, slotIndex: number) => {
-            return state.frameObjects[frameId].contentDict[slotIndex].focused;
+        isEditableFocused: () => (frameSlotInfos: SlotCoreInfos) => {
+            // ONLY a text type slot can be focused (so operators, brackets and quote UI slots will always return false)
+            if(isLabelSlotEditable(frameSlotInfos.slotType)){
+                return (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).focused ?? false;
+            }
+            return false;
         },
         
         generateAvailableFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition) => {
@@ -214,7 +229,7 @@ export const useStore = defineStore("app", {
             // Two possible cases:
             // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame; OR if we are in a moving condition as explained above (M)
             // (b) and (a) or (M)
-            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0) || (caretPosition == CaretPosition.below && isFramePartOfJointStructure(state.frameObjects, currentFrame.id)) ){
+            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0) || (caretPosition == CaretPosition.below && isFramePartOfJointStructure(currentFrame.id)) ){
                 focusedFrame = currentFrame;
             }
             // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame
@@ -301,7 +316,7 @@ export const useStore = defineStore("app", {
             //as there is no static rule for showing the "break" or "continue" statements,
             //we need to check if the current frame is within a "for" or a "while" loop.
             //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
-            const canShowLoopBreakers = isContainedInFrame(state. frameObjects, frameId,caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
+            const canShowLoopBreakers = isContainedInFrame(frameId,caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
             if(!canShowLoopBreakers){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
@@ -315,7 +330,7 @@ export const useStore = defineStore("app", {
             //"return" and "global" statements can't be added when in the main container frame
             //We don't forbid them to be in the main container, but we don't provide a way to add them directly.
             //They can be added when in the function definition container though.
-            const canShowReturnStatement = isContainedInFrame(state. frameObjects, frameId,caretPosition, [FuncDefContainerDefinition.type]);
+            const canShowReturnStatement = isContainedInFrame(frameId,caretPosition, [FuncDefContainerDefinition.type]);
             if(!canShowReturnStatement){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
@@ -354,36 +369,18 @@ export const useStore = defineStore("app", {
             return filteredCommands;
         },
         
-        isCurrentFrameLabelShown: (state) => (frameId: number, slotIndex: number) => {
-            const frame = state.frameObjects[frameId]
-
-            // if it is an optional Label (as there are optional slots WHITOUT optional labels [e.g. functional params[) and it is not a function call
-            if(frame.frameType.labels[slotIndex]?.optionalLabel === true && frame.frameType.type !== AllFrameTypesIdentifier.empty){
-
-                // show the label IFF:
-                // 1) we are focused on this frame
-                // 2) it has code in it
-                // 3) We are editing this frame
-                return state.currentFrame.id === frameId || 
-                        frame.contentDict[slotIndex].code !== "" || 
-                        (state.isEditing && state.currentFrame.id === frameId);
-            }
-
-            //not optional label --> it's never hidden so we don't need to check any flag
-            return true;
+        isErroneousSlot: () => (frameSlotInfos: SlotCoreInfos) => {
+            return ((retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).error??"") !== "";
         },
         
-        isErroneousSlot: (state) => (frameId: number, slotIndex: number) => {
-            return state.frameObjects[frameId].contentDict[slotIndex].error !== "";
-        },
-        
-        getErrorForSlot: (state) => (frameId: number, slotIndex: number) => {
-            return state.frameObjects[frameId].contentDict[slotIndex].error;
+        getErrorForSlot: () => (frameSlotInfos: SlotCoreInfos) => {     
+            return (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).error??"";
         },
 
-        getErrorHeaderForSlot: (state) => (frameId: number, slotIndex: number) => {
-            return (state.frameObjects[frameId].contentDict[slotIndex].errorTitle) 
-                ? state.frameObjects[frameId].contentDict[slotIndex].errorTitle as string
+        getErrorHeaderForSlot: () => (frameSlotInfos: SlotCoreInfos) => {
+            const errorTitle = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).errorTitle;
+            return (errorTitle) 
+                ? errorTitle
                 : i18n.t("errorMessage.errorTitle") as string; 
         },
 
@@ -522,37 +519,47 @@ export const useStore = defineStore("app", {
             // We make sure we don't look up the variable/function in the current frame
             // (for example, if we are in a variable assignment, we shouldn't pick up on that variable being written)
             // the returned value is an array of UserDefinedElement objects.
+            // Note: the slots we look at can only be 1 single code since they are LHS or function name slots.
             return Object.values(state.frameObjects).filter((frame: FrameObject) => (frame.id !== state.currentFrame.id 
                 && (frame.frameType.type === AllFrameTypesIdentifier.funcdef || frame.frameType.type === AllFrameTypesIdentifier.varassign)))
-                .map((frame: FrameObject) => ({name: frame.contentDict[0].code, isFunction: frame.frameType.type === AllFrameTypesIdentifier.funcdef}) as UserDefinedElement);
+                .map((frame: FrameObject) => ({name: (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
+                    isFunction: frame.frameType.type === AllFrameTypesIdentifier.funcdef}) as UserDefinedElement);
         },
 
-        isSlotFirstVisibleInFrame:(state) => (frameId: number, slotIndex: number) => {
-            // This getter checks if the given slot of a given frame is *visually* the first shown to the user
-            const contentDict = Object.values(state.frameObjects[frameId].contentDict);
-            return (contentDict.find((content: FrameSlotContent, index) => (index < slotIndex && content.shownLabel)) === undefined);
+        isSlotFirstVisibleInFrame:(state) => (frameId: number, labelSlotsIndex: number, slotId: string) => {
+            // This getter checks if the given slots for a label are *visually* the first shown to the user
+            const labelSlotsDict = Object.values(state.frameObjects[frameId].labelSlotsDict);
+            return (slotId == "0" || slotId.endsWith(",0")) && (labelSlotsDict.find((labelSlotsStruct, index) => (index < labelSlotsIndex && (labelSlotsStruct.shown??true))) === undefined);
         },
 
-        // Check up if the API generator can be shown, depending on the current position in the code editor (cf. details in method)
+        // Check up if the API generator can be shown, depending on the current position in the code editor. 
+        // If the current position is within a frame, then it depends what frame it is (cf. inner comments),
+        // if the current position isn't a frame (blue caret) check where we are in the editor (cf. inner comments)
         canShowAPICodeGenerator: (state) => {
-            // first check if we are in an editoble slot or at a position where the caret is shown
             const currentFrame = state.frameObjects[state.currentFrame.id];
-            const slotContent = Object.entries(currentFrame.contentDict).find((entry) => entry[1].focused);
-            if(slotContent){
-                // we are in a slot. All slots allow the code generated by the API if they are empty, except those that never show it:
+            const focusSlotCursorInfos = state.focusSlotCursorInfos;
+            if(focusSlotCursorInfos){
+                // We are in a slot. All slots allow the code generated by the API if they are empty*, except those that never show it:
                 // - var assign LHS
                 // - imports
                 // - function definition
-                // - comment
-                return slotContent[1].code.length == 0 && !((currentFrame.frameType.type === AllFrameTypesIdentifier.varassign && slotContent[0] === "0")
-                    || currentFrame.frameType.type === AllFrameTypesIdentifier.import 
-                    || currentFrame.frameType.type === AllFrameTypesIdentifier.funcdef 
-                    || currentFrame.frameType.type === AllFrameTypesIdentifier.comment);
+                //(*) for string slots and comments, we allow adding code anywhere. If a slot non space content fully highlighted we also alllow adding the code.
+                const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(getLabelSlotUIID(focusSlotCursorInfos.slotInfos));
+                const currentSlotCode = (document.getElementById(getLabelSlotUIID(focusSlotCursorInfos.slotInfos)))?.textContent??"";
+                const nonHighlightedCode = currentSlotCode.substring(0, selectionStart) + currentSlotCode.substring(selectionEnd);
+                const isSlotWholeCodeContentSelected = (selectionStart != selectionEnd && nonHighlightedCode.trim().length == 0);
+                const isLHSVarAssign = (currentFrame.frameType.type == AllFrameTypesIdentifier.varassign && focusSlotCursorInfos.slotInfos.labelSlotsIndex == 0); 
+                return (currentSlotCode.trim().length == 0 || focusSlotCursorInfos.slotInfos.slotType == SlotType.string 
+                    || currentFrame.frameType.type == AllFrameTypesIdentifier.comment || isSlotWholeCodeContentSelected)
+                    && currentFrame.frameType.type != AllFrameTypesIdentifier.import 
+                    && currentFrame.frameType.type != AllFrameTypesIdentifier.funcdef
+                    && !isLHSVarAssign;
             }
             else{
-                // we are at a caret position. We can always add a new method call frame as long as we're not in one of the following:
+                // We are at a caret position. We can always add a new method call frame as long as we're not in one of the following:
                 // - imports container
                 // - function definition container
+                const currentFrame = state.frameObjects[state.currentFrame.id];
                 return (state.currentFrame.caretPosition == CaretPosition.body && currentFrame.id != state.importContainerId && currentFrame.id != state.functionDefContainerId) 
                     || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId !== undefined && currentFrame.parentId != state.importContainerId && currentFrame.parentId != state.functionDefContainerId);        
             }
@@ -611,18 +618,12 @@ export const useStore = defineStore("app", {
 
             if(payload.key=== "Delete"){
                 //delete the frame and all children
-                removeFrameInFrameList(
-                    this.frameObjects,
-                    payload.frameToDeleteId
-                );
+                removeFrameInFrameList(payload.frameToDeleteId);
             }
             else{
                 //delete the frame entirely with sub levels
                 if(payload.deleteChildren === true){
-                    removeFrameInFrameList(
-                        this.frameObjects,
-                        payload.frameToDeleteId
-                    );
+                    removeFrameInFrameList(payload.frameToDeleteId);
                 }
                 else{
                     //we "replace" the frame to delete by its content in its parent's location
@@ -718,8 +719,9 @@ export const useStore = defineStore("app", {
         },
 
         setEditableFocus(payload: EditableFocusPayload) {
+            // Use Vue.set here because "focused" may not yet exist on the object (it's an optional field)
             Vue.set(
-                this.frameObjects[payload.frameId].contentDict[payload.slotId],
+                retrieveSlotFromSlotInfos(payload),
                 "focused",
                 payload.focused
             );
@@ -740,10 +742,12 @@ export const useStore = defineStore("app", {
             const availablePositions = getAvailableNavigationPositions();
             const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
             // Where is the current in the list
-            const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
+            const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.frameId===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
 
             const delta = (key === "ArrowDown")?1:-1;
-            const nextCaret = (listOfCaretPositions[currentCaretIndex + delta]??currentCaret) as CurrentFrame;
+            const nextCaret = (listOfCaretPositions[currentCaretIndex + delta]) 
+                ? ({id: listOfCaretPositions[currentCaretIndex + delta].frameId, caretPosition: listOfCaretPositions[currentCaretIndex + delta].caretPosition}) as CurrentFrame
+                : currentCaret;
 
             this.currentFrame.id = nextCaret.id;
             this.currentFrame.caretPosition = nextCaret.caretPosition;
@@ -788,51 +792,219 @@ export const useStore = defineStore("app", {
             );
         },
 
-        setCurrentInitCodeValue(payload: {frameId: number; slotId: number}){
-            this.currentInitCodeValue = this.frameObjects[payload.frameId].contentDict[payload.slotId].code;
+        setCurrentInitCodeValue(frameSlotInfos: SlotCoreInfos){
+            this.currentInitCodeValue = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code;
         },
 
-        doSetFrameEditableSlotContent(payload: EditableSlotPayload){
-            Vue.set(
-                this.frameObjects[payload.frameId].contentDict[payload.slotId],
-                "code",
-                payload.code
-            );
+        addNewSlot(currentSlotInfos: SlotCoreInfos, operatorOrBracket: string, lhsCode: string, rhsCode: string, addingSlotType: SlotType, addOperatorBefore: boolean, midCode: string) {
+            // This action adds new slots for a label.
+            // The behaviour and meaning of the arguments depends of the type of addition we perform, see details for each case.
+            // currentSlotInfos is always the slot from which we are doing an action
+            const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(currentSlotInfos.slotId);
+            const parentFieldSlot = (parentId.length > 0) 
+                ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: parentId}) as SlotsStructure
+                : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
+  
+            if(addingSlotType==SlotType.operator){
+                // We are adding an operator. In this context, the function arguments have this meaning:
+                // operatorOrBracket: the operator we are addding to the current slot structure
+                // addOperatorBefore: indicates if we are prepending or appending the operator in relation to current framea
+                // lhsCode: the code on the LHS of this operator: the current slot if addOperatorBefore is false, the one before otherwise
+                // rhsCode: the code on the RHS of this operator: the current slot if addOperatorBefore is true, the one after otherwise
+                // Add operator first
+                parentFieldSlot.operators.splice(slotIndex, 0, {code: operatorOrBracket});
+                // Update or create the operands
+                // If the operator precedes [resp. follows] the current frame, we update the current frame content with rhsCode [resp. lhsCode],
+                // and we update the precéding [resp. next] slot content with the lhsCode [resp. rhsCode] if it exists, create it otherwise
+                const codeForCurrentSlot = addOperatorBefore ? rhsCode : lhsCode;
+                const codeForOtherOperandSlot = addOperatorBefore ? lhsCode : rhsCode;
+                const otherOperandSlotIndex = addOperatorBefore ? slotIndex : (slotIndex + 1);
+                (parentFieldSlot.fields[slotIndex] as BaseSlot).code = codeForCurrentSlot;
+                parentFieldSlot.fields.splice(otherOperandSlotIndex, 0, {code: codeForOtherOperandSlot});                
+            }
+            else{
+                // We are adding a bracketed structure or a string slot. In this context, the function arguments have this meaning:
+                // operatorOrBracket: the opening bracket [resp. quote] of that structure [resp. string slot]
+                // lhsCode: the code on the slot that precedes the structured slot [resp. string slot] we insert
+                // rhsCode: the code on the slot that follows the structured slot [resp. string slot] we insert
+                // midCode: if provided, the code that should be added as a base field within the structured slot [the string quote] we insert 
+                //          this makes sense when we highlight a text and wrap it with brackets [resp. quotes]
+                // Adding a new bracketed slot means we also add the empty operators "around" it:
+                // we replace the slot where we add the brackets into this:
+                // <base slot (LHS)><empty operator><bracket [resp. string] slot><empty operator><basic slot (RHS)>
+
+                // Create the fields first
+                const newFields: FieldSlot[] = [];
+                // the LHS part
+                newFields[0] = {code: lhsCode};
+                // the new bracketed structure or string slot depending what we are adding
+                newFields[1] = (addingSlotType == SlotType.bracket)
+                    ? {openingBracketValue: operatorOrBracket, fields: [{code: midCode}], operators: []}
+                    : {quote: operatorOrBracket, code: midCode} as FieldSlot;
+                // the RHS part
+                newFields[2] = {code: rhsCode};
+                // now we can replace the existing slot
+                parentFieldSlot.fields.splice(slotIndex, 1, ...newFields);
+
+                // Create the operators
+                parentFieldSlot.operators.splice(slotIndex, 0, ...[{code: ""}, {code: ""}]);
+            }
         },
 
-        setSlotErroneous(payload: {frameId: number; slotIndex: number; error: string, errorTitle?: string}) {
-            const existingError =  this.frameObjects[payload.frameId].contentDict[payload.slotIndex].error;
+        deleteSlots(isForwardDeletion: boolean, currentSlotInfos: SlotCoreInfos, deleteFromIndex: number, deleteToIndex: number): {newSlotId: string, cursorPosOffset: number} {
+            // Deleting slots depends on the direction of deletion (with del or backspace), the scope of deletion
+            // (from a selection or a from one position of code) and the nature of the field deleted.
+            // When there is no selection, we do a deletion on the basis of a slot and an operator are deleted:
+            // the operator is removed, and the fields merge together. When deleting brackets or strings, we do the operation
+            // on each end of the bracket / string, because these slots are always surrounded by empty operators.
+            // The returned value is the new ID of the current slot and the cursor position offset (to be used by UI)
+            //TODO adapt for selection
+         
+            const hasSlotSelectedToDelete = (deleteFromIndex != deleteToIndex);
+            const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(currentSlotInfos.slotId);
+            const parentSlot = (parentId.length > 0) 
+                ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: parentId}) as SlotsStructure
+                : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
+            const slotToDeleteInfos = getFlatNeighourFieldSlotInfos(currentSlotInfos, isForwardDeletion);
+            
+            if(slotToDeleteInfos){
+                const {parentId: slotToDeleteParentId, slotIndex: slotToDeleteIndex} = getSlotParentIdAndIndexSplit(slotToDeleteInfos.slotId);
+                const slotToDelete = retrieveSlotFromSlotInfos(slotToDeleteInfos);
+
+                // If we are deleting the brackets (not the structure altogether but literaly the brackets)
+                // then the parents of the current slot and the slot to delete cannot be the same, and one of them is 
+                // de facto in a bracket.
+                const isRemovingBrackets = (parentId != slotToDeleteParentId);
+                const isRemovingString = (slotToDeleteInfos.slotType == SlotType.string) || (currentSlotInfos.slotType == SlotType.string);
+
+                // Deal with bracket / string partial deletion as a particular case
+                if(isRemovingBrackets || isRemovingString){
+                    const isCurrentSlotSpecialType = (isRemovingBrackets)
+                        ? (currentSlotInfos.slotId.match(/,/)?.length??0) > (slotToDeleteInfos.slotId.match(/,/)?.length??0)
+                        : currentSlotInfos.slotType == SlotType.string;                    
+                    const slotToDeleteParentSlot = (slotToDeleteParentId.length > 0)
+                        ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: slotToDeleteParentId})
+                        : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
+
+                    let parsedStringContentRes =  null;
+                    if(isRemovingString){
+                        const stringSlot = (isCurrentSlotSpecialType) ? retrieveSlotFromSlotInfos(currentSlotInfos) as StringSlot : slotToDelete as StringSlot;
+                        const stringLiteral = stringSlot.quote + stringSlot.code + stringSlot.quote;
+                        parsedStringContentRes =  parseCodeLiteral(stringLiteral, true);
+                    }
+                    const fieldsInSpecialTypeNumber = (isRemovingBrackets)
+                        ? ((isCurrentSlotSpecialType) ? parentSlot.fields.length : (slotToDeleteParentSlot as SlotsStructure).fields.length)
+                        : (parsedStringContentRes?.slots.fields.length)??0;
+                    const slotStructureToUpdate = (isCurrentSlotSpecialType && isRemovingBrackets) ? slotToDeleteParentSlot as SlotsStructure : parentSlot;
+    
+                    // Move the content of the bracket / string slot in the bracket parent
+                    if(isCurrentSlotSpecialType){
+                        const indexOfSpecialTypeField = (isRemovingBrackets) ? parseInt(parentId.substring(parentId.lastIndexOf(",") + 1)) : slotIndex;
+                        const contentToMove = (isRemovingBrackets) ? parentSlot : parsedStringContentRes?.slots as SlotsStructure;
+                        slotStructureToUpdate.fields.splice(indexOfSpecialTypeField, 1, ...contentToMove.fields);
+                        slotStructureToUpdate.operators.splice(indexOfSpecialTypeField, 0, ...contentToMove.operators);
+                    }
+                    else{
+                        const changeSlotsIndexOffset = (isForwardDeletion) ? 1 : -1;
+                        const contentToMove = (isRemovingBrackets) ? slotToDeleteParentSlot as SlotsStructure : parsedStringContentRes?.slots as SlotsStructure;
+                        slotStructureToUpdate.fields.splice(slotIndex + changeSlotsIndexOffset, 1, ...contentToMove.fields);
+                        slotStructureToUpdate.operators.splice(slotIndex + changeSlotsIndexOffset, 0, ...contentToMove.operators);
+                    }
+                
+
+                    // Compute the cursor offset that deleting a bracket / string slot will trigger.
+                    // For strings, the intial cursor position at focus is not used, since we are changing the slots structure altogether,
+                    // therefore, we need to also include the newly created slots from the string into our offset
+                    const cursorStringOffset = (isRemovingString && isCurrentSlotSpecialType) 
+                        ? ((isForwardDeletion) 
+                            ? (slotStructureToUpdate.fields[slotToDeleteIndex  + fieldsInSpecialTypeNumber - 2] as BaseSlot).code.length 
+                            : (slotStructureToUpdate.fields[slotToDeleteIndex  + 1] as BaseSlot).code.length)
+                        : 0; 
+                    const cursorOffsetSlotIndex = (isForwardDeletion) ? -2 : 2;
+                    const cursorPosOffset = cursorStringOffset + ((fieldsInSpecialTypeNumber == 1 && isCurrentSlotSpecialType) 
+                        ? (slotStructureToUpdate.fields[slotToDeleteIndex + cursorOffsetSlotIndex] as BaseSlot).code.length 
+                        : 0);
+                    
+                    // Now recursively call the method for each ends of what was the bracket / string before, starting with the closing end
+                    const parentToUpdateId = (isCurrentSlotSpecialType && isRemovingBrackets) ? slotToDeleteParentId : parentId;
+                    const currentSlotType = (isRemovingString) ? SlotType.code : currentSlotInfos.slotType; // When we delete a string the type is no longer a string...
+                    const indexOfLastBracketChild = (isCurrentSlotSpecialType) 
+                        ? ((isForwardDeletion) ? slotToDeleteIndex  + fieldsInSpecialTypeNumber - 2 : slotToDeleteIndex + fieldsInSpecialTypeNumber)
+                        : ((isForwardDeletion) ? slotIndex + fieldsInSpecialTypeNumber : slotIndex  + fieldsInSpecialTypeNumber - 2);
+                    const idForLastBracketChild = getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, indexOfLastBracketChild);
+                    this.deleteSlots(true, {...currentSlotInfos, slotId: idForLastBracketChild, slotType: currentSlotType}, indexOfLastBracketChild + 1, indexOfLastBracketChild + 1);
+                    const indexOfFirstBracketChild = (isCurrentSlotSpecialType) 
+                        ? ((isForwardDeletion) ? slotToDeleteIndex - 1 : slotToDeleteIndex + 1)
+                        : ((isForwardDeletion) ? slotIndex + 1 : slotIndex - 1);
+                    const idForFirstBracketChild = getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, indexOfFirstBracketChild);
+                    this.deleteSlots(false, {...currentSlotInfos, slotId: idForFirstBracketChild, slotType: currentSlotType}, indexOfFirstBracketChild - 1, indexOfFirstBracketChild - 1);
+                    
+                    // Prepare the ID of the new current slot:
+                    const newCurrentSlotId = (isCurrentSlotSpecialType)
+                        ? ((isForwardDeletion) 
+                            ? getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, Math.max(0, indexOfLastBracketChild - 1)) 
+                            : getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, Math.max(0, indexOfFirstBracketChild - 1)))
+                        : ((isForwardDeletion) 
+                            ? currentSlotInfos.slotId 
+                            : getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + fieldsInSpecialTypeNumber - 3));
+                    return {newSlotId: newCurrentSlotId, cursorPosOffset: cursorPosOffset};
+                }
+
+
+                // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
+                // If there was no slot selection, now we merge the 2 fields surrouding the deleted operator:
+                // when forward deleting, that means appening the next field content to the current slot's content,
+                // when backward deleting, that means prepending the previous field content to the current's slot content.
+                const slotToDeleteCode = (slotToDelete as BaseSlot).code;
+                const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
+                if(!hasSlotSelectedToDelete){
+                    (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode); 
+                }
+
+                // Now we do the fields/operator deletion:
+                                
+                // Delete the operators from the parent slot structure. As the indexing for fields and operators works as f0,o0,f1,o1,...f(n),o(n),f(n+1)
+                // if forward deletion, we delete from operator indexed (deletedFromIndex-1) to operator indexed (deletedToIndex - 1)
+                // if backward deleting, we delete from operator (deletedFromIndex to??????????
+                const deleteOperatorsFromIndex = (isForwardDeletion) ? deleteFromIndex - 1 : deleteFromIndex;
+                parentSlot.operators.splice(deleteOperatorsFromIndex, (deleteToIndex - deleteFromIndex + 1));
+
+                // Delete the fields from the parent slot structure.
+                parentSlot.fields.splice(deleteFromIndex, deleteToIndex - deleteFromIndex + 1);
+
+                return {
+                    newSlotId: (isForwardDeletion) ? currentSlotInfos.slotId : slotToDeleteInfos.slotId,
+                    cursorPosOffset: 0,
+                };
+            }
+
+            // We should never arrive here
+            return {newSlotId: "", cursorPosOffset: 0};
+        },
+
+
+        setSlotErroneous(frameSlotInfos: SlotInfos) {
+            const slotObject = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot);
+            const existingError =  slotObject.error??"";
             const existingErrorBits = existingError.split("\n");
             // Sometimes we need to extend the error, if more than one different errors are on the same slot
-            if(!existingErrorBits.includes(payload.error)){
-                const newError = (existingError === "" || payload.error === "") ? payload.error: (existingError +"\n" + payload.error);
+            if(!existingErrorBits.includes(frameSlotInfos.error??"")){
+                const newError = (existingError === "" || frameSlotInfos.error === "") ? frameSlotInfos.error: (existingError +"\n" + frameSlotInfos.error);
+                // As error-related properties are optional, we need to use Vue.set(), since they may not exist on the object yet
                 Vue.set(
-                    this.frameObjects[payload.frameId].contentDict[payload.slotIndex],
+                    slotObject,
                     "error",
                     newError
                 );
 
-                if(payload.errorTitle){
+                if(frameSlotInfos.errorTitle){
                     Vue.set(
-                        this.frameObjects[payload.frameId].contentDict[payload.slotIndex],
+                        slotObject,
                         "errorTitle",
-                        payload.errorTitle
+                        frameSlotInfos.errorTitle
                     );
                 }
             }           
-        },
-
-        clearAllErrors() {
-            Object.keys(this.frameObjects).forEach((id: any) => {
-                Object.keys(this.frameObjects[id].contentDict).forEach((slot: any) => {
-                    Vue.set(
-                        this.frameObjects[id].contentDict[slot],
-                        "error",
-                        ""
-                    );
-                    Vue.delete(this.frameObjects[id].contentDict[slot], "errorTitle");
-                });
-            });  
         },
 
         addPreCompileErrors(id: string) {
@@ -844,6 +1016,15 @@ export const useStore = defineStore("app", {
         removePreCompileErrors(id: string ) {
             if(this.preCompileErrors.includes(id)) {
                 this.preCompileErrors.splice(this.preCompileErrors.indexOf(id),1);
+            }
+        },
+
+        setSlotTextCursors(anchorCursorInfos: SlotCursorInfos | undefined, focusCursorInfos: SlotCursorInfos | undefined){
+            Vue.set(this, "anchorSlotCursorInfos", anchorCursorInfos);
+            Vue.set(this, "focusSlotCursorInfos", focusCursorInfos);
+            if(!anchorCursorInfos || !focusCursorInfos){
+                // Force the selection on the page to be reset too
+                window.getSelection()?.removeAllRanges();
             }
         },
 
@@ -931,22 +1112,24 @@ export const useStore = defineStore("app", {
             //However it is not just doing it without checking up things: because of the caret issues we need to generate a mock change of currentFrame.Id etc 
             //if there is no difference and the action may rely on the cursor position.
             //We use a "mock" change to force a difference of cursor between state and previous state, and revert to actual value after change is backed up.
-
             let backupCurrentFrame = {} as CurrentFrame;
             let backupCurrentFocus = false;
             let backupCurrentFrameVisibility = CaretPosition.none;
+            let slot = {} as BaseSlot;
             if(payload.mockCurrentCursorFocus !== undefined){
+                const mockCurrentCursorFocus = payload.mockCurrentCursorFocus;
                 //before saving the state, we "mock" a change of current state ID to a dummy value
                 //so that a difference is raised --> if users change the cursor, before doing undo,
                 //the cursor will correctly be at the right location. Same with focused.
+                slot = (retrieveSlotFromSlotInfos(mockCurrentCursorFocus) as BaseSlot);
                 backupCurrentFrame = this.currentFrame;
-                backupCurrentFocus = this.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused;
+                backupCurrentFocus = slot.focused??false;
                 backupCurrentFrameVisibility = this.frameObjects[this.currentFrame.id].caretVisibility;
-                this.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused = false;
+                slot.focused = false;
                 this.currentFrame = {id: 0, caretPosition: CaretPosition.none};
                 this.frameObjects[payload.mockCurrentCursorFocus.frameId].caretVisibility = CaretPosition.none;
+                
             }
-           
 
             this.diffToPreviousState.push(getObjectPropertiesDifferences(this.$state, payload.previousState));
             //don't exceed the maximum of undo steps allowed
@@ -964,7 +1147,7 @@ export const useStore = defineStore("app", {
 
             if(payload.mockCurrentCursorFocus !== undefined){
                 //revert the mock changes in the state
-                this.frameObjects[payload.mockCurrentCursorFocus.frameId].contentDict[payload.mockCurrentCursorFocus.slotId].focused = backupCurrentFocus;
+                slot.focused = backupCurrentFocus;
                 this.currentFrame = backupCurrentFrame;
                 this.frameObjects[backupCurrentFrame.id].caretVisibility = backupCurrentFrameVisibility;
             }
@@ -1059,7 +1242,7 @@ export const useStore = defineStore("app", {
                 //if we notified a change of current caret, we make sure it makes correctly displayed 
                 if(changeCaret){
                     //if the frame where the previous state of the caret was notified still exists, we set its caret to "none"
-                    if(getAvailableNavigationPositions().map((e)=>e.id).includes(oldCaretId) && this.frameObjects[oldCaretId]){
+                    if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(oldCaretId) && this.frameObjects[oldCaretId]){
                         Vue.set(
                             this.frameObjects[oldCaretId],
                             "caretVisibility",
@@ -1070,20 +1253,44 @@ export const useStore = defineStore("app", {
                     this.currentFrame.caretPosition = this.frameObjects[newCaretId].caretVisibility;
                 }
 
-                //finally, if there is a change on an editable slot, we trigger an error check for that slot/slot context
+                //Finally, if there is a change on an editable slot, we trigger an error check for that slot/slot context
                 //to make sure that the update on the editable slot is coherent with errors shown
-                //If a change has something related to an editable slot content, we do an error check there
-                const checkErrorChangeEntry: ObjectPropertyDiff|undefined = changeList.find((changeEntry: ObjectPropertyDiff) => (changeEntry.propertyPathWithArrayFlag.match(/\.contentDict_false\.\d*_false\.code$/)?.length??0) > 0);
+                const checkErrorChangeEntry: ObjectPropertyDiff|undefined = changeList
+                    .find((changeEntry: ObjectPropertyDiff) => (changeEntry.propertyPathWithArrayFlag.match(/\.labelSlotsDict_false\..*\.code$/)?.length??0) > 0);
                 if(checkErrorChangeEntry){
-                    //retrieve the elements we need to check an error regarding that slot
+                    // Retrieve the elements we need to check an error regarding that slot
                     const changePath = checkErrorChangeEntry.propertyPathWithArrayFlag;
-                    let indexOfId = "frameObjects_false.".length;
-                    const frameId = parseInt(changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId));
-                    indexOfId = changePath.indexOf(".contentDict_false.") + ".contentDict_false.".length; 
-                    const slotId = parseInt(changePath.substr(indexOfId,changePath.indexOf("_",indexOfId)-indexOfId));
-                    const code = checkErrorChangeEntry.value; 
+                    // *frame id* --> "frameObjects_false.<frameID>_false.xxxxx"
+                    let indexOfPrefix = "frameObjects_false.".length;
+
+                    const frameId = parseInt(changePath.substring(indexOfPrefix, changePath.indexOf("_", indexOfPrefix))); 
+                    // *label index* --> "xxxxx.labelSlotsDict_false.<index>_false.yyyy"
+                    indexOfPrefix = changePath.indexOf(".labelSlotsDict_false.") + ".labelSlotsDict_false.".length; 
+                    const labelSlotsIndex = parseInt(changePath.substring(indexOfPrefix, changePath.indexOf("_", indexOfPrefix)));
+                    // Now that we have the frame ID and the labelSlotS index,we keep parsing the change entry path to find the slot ID of the slot we are looking for
+                    let foundSlot = false;
+                    let slotId = "";
+                    const fieldsPrefix = ".fields_true.";
+                    // *root slot structure* --> yyy.slotStructures_false.fields_true.<levelIndex>_false.zzz (note that we always check for fields, as operator and brackets won't generate errors)
+                    indexOfPrefix = changePath.indexOf(".slotStructures_false.fields_true.") + ".slotStructures_false.fields_true.".length; 
+                    do{
+                        slotId = slotId + ((slotId.length > 0) ? "," :"") + changePath.substring(indexOfPrefix, Math.max(changePath.indexOf("_", indexOfPrefix), changePath.indexOf("_true.code")));
+                        // if we have deeper levels to check, we will find "fields_true" again in the next bits of the path
+                        indexOfPrefix = changePath.indexOf(fieldsPrefix, indexOfPrefix) + fieldsPrefix.length; 
+                        foundSlot = (indexOfPrefix == fieldsPrefix.length - 1); // as if the indexOf() above failed, it would return -1
+                    } while(!foundSlot);
+                     
                     //now check the errors
-                    checkCodeErrors(frameId, slotId, code);
+                    checkCodeErrors({
+                        frameId: frameId,
+                        labelSlotsIndex: labelSlotsIndex,
+                        slotId: slotId,
+                        code: checkErrorChangeEntry.value,
+                        //all other fields values aren't important for the method we call
+                        initCode: "",
+                        isFirstChange: true,
+                        slotType: SlotType.code,
+                    });
                 }
 
                 //keep the arrays of changes in sync with undo/redo sequences
@@ -1100,11 +1307,11 @@ export const useStore = defineStore("app", {
         doChangeDisableFrame(payload: {frameId: number; isDisabling: boolean; ignoreEnableFromRoot?: boolean}) {
             //if we enable, we may need to use the root frame ID instead of the frame ID where the menu has been invocked
             //because enabling a frame enables all the frames for that disabled "block" (i.e. the top disabled frame and its children/joint frames)
-            const rootFrameID = (payload.isDisabling || (payload.ignoreEnableFromRoot??false)) ? payload.frameId : getDisabledBlockRootFrameId(this.frameObjects, payload.frameId);
+            const rootFrameID = (payload.isDisabling || (payload.ignoreEnableFromRoot??false)) ? payload.frameId : getDisabledBlockRootFrameId(payload.frameId);
 
             //When we disable or enable a frame, we also disable/enable all the sublevels (children and joint frames)
             const allFrameIds = [rootFrameID];
-            allFrameIds.push(...getAllChildrenAndJointFramesIds(this.frameObjects, rootFrameID));
+            allFrameIds.push(...getAllChildrenAndJointFramesIds(rootFrameID));
             allFrameIds.forEach((frameId) => {
                 Vue.set(
                     this.frameObjects[frameId],
@@ -1112,27 +1319,12 @@ export const useStore = defineStore("app", {
                     payload.isDisabling
                 );
 
-                //if disabling [resp. enabling], we also need to remove [resp. add] potential errors of empty editable slots
+                // If disabling [resp. enabling], we also need to remove [resp. add] potential errors of empty editable slots
                 if(payload.isDisabling){
-                    Object.keys(this.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
-                        Vue.set(
-                            this.frameObjects[frameId].contentDict[parseInt(slotIndex)],
-                            "error",
-                            ""
-                        );
-                        Vue.delete(this.frameObjects[frameId].contentDict[parseInt(slotIndex)], "errorTitle");
-
-                        const uiid = getEditableSlotUIID(frameId, Number.parseInt(slotIndex));
-                        if(this.preCompileErrors.includes(uiid)) {
-                            this.preCompileErrors.splice(this.preCompileErrors.indexOf(uiid),1);
-                        }
-                    });
+                    clearAllFrameErrors(frameId);                                
                 } 
                 else{
-                    Object.keys(this.frameObjects[frameId].contentDict).forEach((slotIndex: string) => {
-                        const slotIndexNber = Number.parseInt(slotIndex);
-                        checkCodeErrors(frameId, slotIndexNber, this.frameObjects[frameId].contentDict[slotIndexNber].code);
-                    });
+                    checkCodeErrorsForFrame(frameId);
                 }                 
             });
         },
@@ -1292,40 +1484,38 @@ export const useStore = defineStore("app", {
             }
         },
 
-        async setFrameEditableSlotContent(payload: EditableSlotPayload) {
+        async setFrameEditableSlotContent(frameSlotInfos: SlotInfos) {
             //This action is called EVERY time a unitary change is made on the editable slot.
             //We save changes at the entire slot level: therefore, we need to remove the last
             //previous state to replace it with the difference between the state even before and now;            
             let stateBeforeChanges = {};
-            if(!payload.isFirstChange){
+            if(!frameSlotInfos.isFirstChange){
                 this.diffToPreviousState.pop();
-                this.frameObjects[payload.frameId].contentDict[payload.slotId].code = payload.initCode;  
+                (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.initCode;  
             }
 
             //save the previous state
             stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
-            this.doSetFrameEditableSlotContent(payload);
+            (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.code;
 
             //save state changes
             this.saveStateChanges({
                 previousState: stateBeforeChanges,
                 mockCurrentCursorFocus: {
-                    frameId: payload.frameId,
-                    slotId: payload.slotId,
+                    ...frameSlotInfos,
                     focused: true,
                 },
             });
         },
 
-        updateErrorsOnSlotValidation(payload: EditableSlotPayload) {  
+        updateErrorsOnSlotValidation(frameSlotInfos: SlotInfos) {  
             this.isEditing = false;
 
-            if(this.frameObjects[payload.frameId]){
+            if(this.frameObjects[frameSlotInfos.frameId]){
                 this.setEditableFocus(
                     {
-                        frameId: payload.frameId,
-                        slotId: payload.slotId,
+                        ...frameSlotInfos,
                         focused: false,
                     }
                 );
@@ -1333,40 +1523,28 @@ export const useStore = defineStore("app", {
                 // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
                 this.commandsTabIndex = 0; //0 is the index of the add frame tab
 
-                this.setCurrentInitCodeValue(
-                    {
-                        frameId: payload.frameId,
-                        slotId: payload.slotId,
-                    }
-                );       
-                
+                this.setCurrentInitCodeValue(frameSlotInfos);       
                 // Now we check errors in relation with this code update
-                checkCodeErrors(payload.frameId, payload.slotId, payload.code);
+                checkCodeErrors(frameSlotInfos);
             }
         },
 
-        setFocusEditableSlot(payload: {frameId: number; slotId: number; caretPosition: CaretPosition}){            
-            this.setCurrentInitCodeValue(
-                {
-                    frameId: payload.frameId,
-                    slotId: payload.slotId,
-                }
-            );
+        setFocusEditableSlot(payload: {frameSlotInfos: SlotCoreInfos; caretPosition: CaretPosition}){            
+            this.setCurrentInitCodeValue(payload.frameSlotInfos);
             
             this.isEditing = true;
 
             //First set the curretFrame to this frame
             this.setCurrentFrame(
                 {
-                    id: payload.frameId,
+                    id: payload.frameSlotInfos.frameId,
                     caretPosition: payload.caretPosition,
                 }
             );
             //Then store which editable has the focus
             this.setEditableFocus(
                 {
-                    frameId: payload.frameId,
-                    slotId: payload.slotId,
+                    ...payload.frameSlotInfos,
                     focused: true,
                 }
             );   
@@ -1453,14 +1631,23 @@ export const useStore = defineStore("app", {
                 id: this.nextAvailableId++,
                 parentId: addingJointFrame ? 0 : parentId, // Despite we calculated parentID earlier, it may not be used
                 jointParentId: addingJointFrame ? parentId : 0,
-                contentDict:
-                    //find each editable slot and create an empty & unfocused entry for it
-                    //optional labels are not visible by default, not optional labels are visible by default
-                    frame.labels.filter((el)=> el.slot).reduce(
-                        (acc, cur, idx) => ({ 
-                            ...acc, 
-                            [idx]: {code: "", focused: false, error: "", shownLabel:(!cur?.optionalLabel ?? true)},
-                        }),
+                labelSlotsDict:
+                    // For each label defined by the frame type, if the label allows slots, we create an empty "field" slot (code type)
+                    // optionalLabel is false by default, and if value is true, the label is hidden when created.
+                    // For an "empty" frame (function call), we set the default slots as "<function name>()" rather than only a single code slot
+                    frame.labels.filter((el)=> el.showSlots??true).reduce(
+                        (acc, cur, idx) => {
+                            const labelContent: LabelSlotsContent = {
+                                shown: (!cur?.hidableLabelSlots ?? true),
+                                slotStructures: /*(frame.type == AllFrameTypesIdentifier.empty) 
+                                    ? {fields: [{code: ""}, {openingBracketValue: "(", fields: [{code: ""}], operators: []}, {code: ""}], operators:[{code: ""},{code: ""}]}
+                                    : */{fields: [{code: ""}], operators: []},
+                            }
+                            return { 
+                                ...acc, 
+                                [idx]: labelContent,
+                            }
+                        },
                         {}
                     ),
             };
@@ -1484,23 +1671,24 @@ export const useStore = defineStore("app", {
             // which will then be merged to the existing caret positions
             const newFramesCaretPositions: NavigationPosition[] = [];
             
-            //first add the slot numbers
-            Object.values(newFrame.contentDict).forEach( (element,index) => {
-                if(element.shownLabel){
-                    newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition:true, slotNumber: index});
+            //first add the slots
+            Object.values(newFrame.labelSlotsDict).forEach((element,index) => {
+                if(element.shown??true){
+                    // we would only have 1 empty slot for this label, so its ID is "0"
+                    newFramesCaretPositions.push({frameId: newFrame.id, isSlotNavigationPosition:true, labelSlotsIndex: index, slotId: "0"});
                 }
             });
       
       
             //now add the caret positions
             if(newFrame.frameType.allowChildren){
-                newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.body});
+                newFramesCaretPositions.push({frameId: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.body});
             }
             if(!addingJointFrame){
-                newFramesCaretPositions.push({id: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.below});
+                newFramesCaretPositions.push({frameId: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.below});
             }
             const availablePositions = getAvailableNavigationPositions();
-            const indexOfCurrent = availablePositions.findIndex((e) => e.id===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositions.findIndex((e) => e.frameId===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition)
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
@@ -1570,20 +1758,20 @@ export const useStore = defineStore("app", {
 
                 const currentFrame = this.frameObjects[currentFrameId];
 
-                let frameToDelete: NavigationPosition = {id:-100, isSlotNavigationPosition: false};
+                let frameToDelete: NavigationPosition = {frameId:-100, isSlotNavigationPosition: false};
                 let deleteChildren = false;
 
                 if(key === "Delete"){
                     
                     // Where the current sits in the available positions
-                    const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.id === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
+                    const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                     // the "next" position of the current
                     frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false}
                     
                     // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration below
-                    if((this.frameObjects[frameToDelete.id]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.id]?.frameType.type === AllFrameTypesIdentifier.funcdef)
+                    if((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
                          && (frameToDelete.caretPosition??"") === CaretPosition.below){
-                        frameToDelete.id = -100
+                        frameToDelete.frameId = -100
                     }
                 }
                 else {
@@ -1606,25 +1794,26 @@ export const useStore = defineStore("app", {
                             }
                         }
                         else{
-                            const newCurrent = (availablePositions[availablePositions.findIndex((e)=> e.id===currentFrame.id)-1]??this.currentFrame) as CurrentFrame
+                            const prevFramePos = availablePositions[availablePositions.findIndex((e)=> e.frameId===currentFrame.id)-1]; 
+                            const newCurrent = (prevFramePos) ? {id: prevFramePos.frameId, caretPosition: prevFramePos.caretPosition} as CurrentFrame : this.currentFrame;
                             this.setCurrentFrame({id: newCurrent.id, caretPosition: newCurrent.caretPosition});
                             deleteChildren = true;
                         }
-                        frameToDelete.id = currentFrame.id;
+                        frameToDelete.frameId = currentFrame.id;
                     }
                 }
 
                 //Delete the frame if a frame to delete has been found
-                if(frameToDelete.id > 0){
+                if(frameToDelete.frameId > 0){
                     //before actually deleting the frame(s), we check if the user should be notified of a large deletion
-                    if(countRecursiveChildren(this.frameObjects, frameToDelete.id, 3) >= 3){
+                    if(countRecursiveChildren(frameToDelete.frameId, 3) >= 3){
                         showDeleteMessage = true;
                     }
 
                     this.deleteFrame(
                         {
                             key:key,
-                            frameToDeleteId: frameToDelete.id,  
+                            frameToDeleteId: frameToDelete.frameId,  
                             deleteChildren: deleteChildren,
                         }
                     );
@@ -1652,7 +1841,7 @@ export const useStore = defineStore("app", {
             }
         },
         
-        deleteFrameFromSlot(frameId: number){            
+        deleteFrameFromSlot(frameId: number){      
             // Before we delete the frame, we need to "invalidate" the key events: as this action (deleteFrameFromSlot) is triggered on a key down event, 
             // when the key (backspace) is released, the key up event is fired, but since the frame is deleted, 
             // the event is caught at the window level (and since we are no more in editing mode, the deletion method is called again). So we invalidate the 
@@ -1671,15 +1860,14 @@ export const useStore = defineStore("app", {
            
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
-            // Prepare a list of ids for the frame to delete (reversed order)
+            // Prepare a list of ids for the frame to delete
             const framesToDelete: number[] = [];
             if(this.selectedFrames.length > 0){
-                framesToDelete.push(...this.selectedFrames.reverse());
+                framesToDelete.push(...this.selectedFrames);
             }
             else{
                 framesToDelete.push(frameId);
             }
-            framesToDelete.reverse();
 
             // Now perform the deletion for each top level frames to delete
             framesToDelete.forEach((topLevelFrameId) => {
@@ -1708,7 +1896,6 @@ export const useStore = defineStore("app", {
         },
 
         async leftRightKey(payload: {key: string, availablePositions?: NavigationPosition[]}) {
-
             //  used for moving index up (+1) or down (-1)
             const directionDown = payload.key === "ArrowRight" || payload.key === "Enter";
             const directionDelta = (directionDown)?+1:-1;
@@ -1717,14 +1904,16 @@ export const useStore = defineStore("app", {
             let currentFramePosition;
 
             if (this.isEditing){ 
-                const posOfCurSlot = Object.entries(this.frameObjects[this.currentFrame.id].contentDict).findIndex((slot) => slot[1].focused);
-                currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.slotNumber === posOfCurSlot && e.id === this.currentFrame.id); 
+                // Retrieve the slot that currently has focus in the current frame by looking up in the DOM
+                const foundSlotCoreInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
+                currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
+                        && e.labelSlotsIndex === foundSlotCoreInfos.labelSlotsIndex && e.slotId === foundSlotCoreInfos.slotId);                  
             }
             else {
-                currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.id === this.currentFrame.id); 
+                currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.frameId === this.currentFrame.id); 
             }
             
-            const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition])                        
+            const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition])         
 
             // irrespective to where we are going to, we need to make sure to hide current caret
             Vue.set(
@@ -1739,29 +1928,43 @@ export const useStore = defineStore("app", {
                 const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: directionDelta};
                 this.editableSlotViaKeyboard = slotReachInfos;
 
+                const nextSlotCoreInfos = {
+                    frameId: nextPosition.frameId,
+                    labelSlotsIndex: nextPosition.labelSlotsIndex as number,
+                    slotId: nextPosition.slotId as string,
+                    slotType: SlotType.code, // we can only focus a code slot
+                };
+                const nextSlot = retrieveSlotFromSlotInfos(nextSlotCoreInfos);
+                nextSlotCoreInfos.slotType = evaluateSlotType(nextSlot);
+
                 this.setEditableFocus(
                     {
-                        frameId: nextPosition.id,
-                        slotId: (nextPosition.slotNumber ?? -1),
+                        ...nextSlotCoreInfos,
                         focused: true,
                     }
                 );
+                
+                // Restore the text cursor
+                const textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
+                this.setSlotTextCursors({slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}, {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos});
             }
             else{
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
 
                 Vue.set(
-                    this.frameObjects[nextPosition.id],
+                    this.frameObjects[nextPosition.frameId],
                     "caretVisibility",
                     nextPosition.caretPosition
                 );
+
+                this.setSlotTextCursors(undefined, undefined);
        
                 this.currentFrame.caretPosition = nextPosition.caretPosition as CaretPosition;
             }
 
             //In any case change the current frame
-            this.currentFrame.id = nextPosition.id;            
+            this.currentFrame.id = nextPosition.frameId;            
         },
 
         generateStateJSONStrWithCheckpoint(compress?: boolean) {
@@ -2083,9 +2286,8 @@ export const useStore = defineStore("app", {
             // Are we pasting into a joint frame: that depends what we copied. If we copied a joint frame
             // then we need to check if we are in a joint frame body (because of previous checks, we know we'd be at the end of that body).
             // If we copied something else then we just check the location we want to paste to.
-            const isClickedJointFrame = (isCopiedJointFrame && payload.caretPosition === CaretPosition.below)
-                ? true
-                : this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
+            const isClickedJointFrame = (isCopiedJointFrame && payload.caretPosition === CaretPosition.below) 
+                || this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
 
             // When pasting a joint frame, the clicked frame might not be the right one to use: if we are pasting in below a joint frame's child
             // then we are actually wanting to paste after that child's parent (the joint frame after which we want to paste)
@@ -2096,7 +2298,7 @@ export const useStore = defineStore("app", {
             // Clicked is joint ? parent of clicked(*) is its joint parent ELSE clicked is the real parent
             // (*) unless we wanted to paste into the root of this joint structure, then the parent is joint we clicked into
             const clickedParentId = (isClickedJointFrame) 
-                ? (this.frameObjects[jointFrameAsClickedId].jointParentId > 0) ? this.frameObjects[jointFrameAsClickedId].jointParentId : jointFrameAsClickedId
+                ? ((this.frameObjects[jointFrameAsClickedId].jointParentId > 0) ? this.frameObjects[jointFrameAsClickedId].jointParentId : jointFrameAsClickedId)
                 : this.frameObjects[payload.clickedFrameId].parentId;
 
             // Flag indicating if we are either in a normal body not in a context of joint frames or in a the root parent in a context of joint frames
@@ -2111,7 +2313,7 @@ export const useStore = defineStore("app", {
             // If the caret is below and it is not a joint frame, or caret is body and we deal with a joint frame(*), parent is the clicked's parent
             // (*) only if we are copying in another joint frame: if we are copying in the root then the parent is the root itself
             const pasteToParentId = inBodyContext
-                ? (isClickedJointFrame) ? jointFrameAsClickedId : payload.clickedFrameId
+                ? ((isClickedJointFrame) ? jointFrameAsClickedId : payload.clickedFrameId)
                 : clickedParentId;
 
             // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
@@ -2235,26 +2437,26 @@ export const useStore = defineStore("app", {
                 // we need to keep the elements which correspond to the siblingsOrChildren list
                 if(!element.isSlotNavigationPosition){
                     // we only include belows
-                    if(siblingsOrChildren.includes(element.id) &&  element.caretPosition === CaretPosition.below) {
+                    if(siblingsOrChildren.includes(element.frameId) &&  element.caretPosition === CaretPosition.below) {
                     // going down, we cannot select a body position
                         availablePositionsOfSiblings.push(element)
                     }
                     // except when going upwards we may need the our parent's body to be added
-                    else if(directionUp && currentFrame.parentId === element.id && element.caretPosition == CaretPosition.body){
+                    else if(directionUp && currentFrame.parentId === element.frameId && element.caretPosition == CaretPosition.body){
                         availablePositionsOfSiblings.push(element)
                     }
                 }
             })
             
             // In the new list with the available positions that we could go to, we first find the index of the current
-            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.id === this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.frameId === this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition)
             // and then we find the new current
             // NOTE here that the one to be selected and the new current can be different. i.e. I am below the first child of an if and going up
             // the one to be selected is the one I am bellow, and the current is the body of the if! (i.e. the parent)
             const newCurrent = availablePositionsOfSiblings[indexOfCurrent+delta]
           
             this.selectDeselectFrame({frameId: frameIdToBeSelected, direction: key.replace("Arrow","").toLowerCase()}); 
-            this.setCurrentFrame(newCurrent as CurrentFrame);
+            this.setCurrentFrame({id:newCurrent.frameId, caretPosition: newCurrent.caretPosition} as CurrentFrame);
         },
 
         shiftClickSelection(payload: {clickedFrameId: number; clickedCaretPosition: CaretPosition}) {
@@ -2264,8 +2466,8 @@ export const useStore = defineStore("app", {
             const availablePositions = getAvailableNavigationPositions();
             const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
 
-            const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.id === this.currentFrame.id && item.caretPosition === this.currentFrame.caretPosition);
-            const indexOfTarget: number = listOfCaretPositions.findIndex((item)=> item.id === payload.clickedFrameId && item.caretPosition === payload.clickedCaretPosition);
+            const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.frameId === this.currentFrame.id && item.caretPosition === this.currentFrame.caretPosition);
+            const indexOfTarget: number = listOfCaretPositions.findIndex((item)=> item.frameId === payload.clickedFrameId && item.caretPosition === payload.clickedCaretPosition);
             
             if(indexOfCurrent === indexOfTarget) {
                 return;
@@ -2275,10 +2477,10 @@ export const useStore = defineStore("app", {
             const direction = (indexOfCurrent < indexOfTarget)?"ArrowDown" : "ArrowUp" ;
 
             const stopId = (direction==="ArrowUp")
-                ? listOfCaretPositions[indexOfTarget+1].id // going up we always stop on the next of the clicked
+                ? listOfCaretPositions[indexOfTarget+1].frameId // going up we always stop on the next of the clicked
                 : payload.clickedCaretPosition === CaretPosition.below 
                     ? payload.clickedFrameId // if we go down and click bellow, we go on the clicked
-                    : listOfCaretPositions[indexOfTarget-1].id// down and click body, we go to the previous of clicked
+                    : listOfCaretPositions[indexOfTarget-1].frameId// down and click body, we go to the previous of clicked
 
 
             let previousFramesSelection: number[] = [];
@@ -2344,7 +2546,7 @@ export const useStore = defineStore("app", {
             // we are moving it to the same place (between first and last index of the selected ones); 
             // If that's the case we don't do anything as it may cause a problem (e.g. if selected indexes are 0...3
             // it may move it to 1 instead of 0.
-            const parentIdOfSelected = getParentOrJointParent(this.frameObjects,this.frameObjects[this.selectedFrames[0]].id)
+            const parentIdOfSelected = getParentOrJointParent(this.frameObjects[this.selectedFrames[0]].id)
             let newIndex = payload.event[eventType].newIndex;
 
             if(eventType === "moved" && payload.parentId === parentIdOfSelected) {

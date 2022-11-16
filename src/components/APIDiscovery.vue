@@ -71,9 +71,9 @@
 
 <script lang="ts">
 import Vue from "vue";
-import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType} from "@/types/types"
+import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType, SlotCursorInfos, SlotType} from "@/types/types"
 import { useStore } from "@/store/store"
-import { getEditableSlotUIID } from "@/helpers/editor";
+import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, setTextCursorPositionOfHTMLElement } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 
@@ -292,30 +292,44 @@ export default Vue.extend({
         useExampleCode(): void {
             //if the API is disabled, this action should trigger anything
             if(!this.disabledAPI()){
-                const newCode = this.mbAPIExampleCodeParts.join("");
+                const codeToInsert = this.mbAPIExampleCodeParts.join("");
                 if(!this.isEditing){
                     // part 1): not editing the code: we create a new method call frame, then add the code in (parts 2 & 3)
                     this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.empty)).then(() => {
-                    // as we added a new frame, we need to get the new current frame
-                        this.addExampleCodeInSlot(this.appStore.currentFrame.id, 0, newCode);
+                        // as we added a new frame, we need to get the new current frame
+                        this.addExampleCodeInSlot({
+                            slotInfos: {
+                                frameId: this.appStore.currentFrame.id,
+                                labelSlotsIndex: 0,
+                                slotId: "0",
+                                slotType: SlotType.code,
+                            },
+                            cursorPos: codeToInsert.length,
+                        },
+                        codeToInsert);
                     });
                 }
                 else{
                     // editing mode, just add the code in the existing slot (parts 2 & 3)
-                    const currentFrame = this.appStore.getCurrentFrameObject;
-                    const currentSlotIndex = parseInt(Object.entries(currentFrame.contentDict).find((entry) => entry[1].focused)?.[0]??"-1") ;
-                    this.addExampleCodeInSlot(currentFrame.id, currentSlotIndex, newCode); 
+                    const currentFocusedSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+                    if(currentFocusedSlotCursorInfos){
+                        const inputSpanSlotElementId = getLabelSlotUIID(currentFocusedSlotCursorInfos.slotInfos);
+                        const inputspanSlotContent = document.getElementById(inputSpanSlotElementId)?.textContent??"";
+                        const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(inputSpanSlotElementId);
+                        this.addExampleCodeInSlot({...currentFocusedSlotCursorInfos, cursorPos: selectionStart + codeToInsert.length}
+                            , inputspanSlotContent.substring(0, selectionStart) + codeToInsert + inputspanSlotContent.substring(selectionEnd)); 
+                    }                  
                 }  
             }          
         },
 
         // The externalised part to add the code example content in an editable slot (cf useExampleCode() parts 2 & 3) 
-        addExampleCodeInSlot(frameId: number, slotIndex: number, content: string){
+        addExampleCodeInSlot(slotcursorInfos: SlotCursorInfos, content: string){
+            const {slotInfos, cursorPos} = slotcursorInfos;
             this.addedAPICode = true;
             this.appStore.setFrameEditableSlotContent(
                 {
-                    frameId: frameId,
-                    slotId: slotIndex,
+                    ...slotInfos,
                     code: content,
                     initCode: "",
                     isFirstChange: true,
@@ -323,10 +337,13 @@ export default Vue.extend({
             )
                 .then(()=>{
                     //we select the arguments of the added functions (if applies)
-                    const inputField = document.getElementById(getEditableSlotUIID(frameId, slotIndex)) as HTMLInputElement;
-                    if(inputField && inputField.value.match(/^.*\(.*\)$/)){
-                        inputField.setSelectionRange(inputField.value.indexOf("(") + 1, inputField.value.lastIndexOf(")"), "forward");
-                    }
+                    //TODO : will require multi slot selection... Note that we don't need to do this for comments and string slots
+                    // for the time being, we just set the cursor after the insertion
+                    setTextCursorPositionOfHTMLElement((document.getElementById(getLabelSlotUIID(slotInfos)) as HTMLSpanElement), cursorPos);
+                    // Update the store too
+                    this.appStore.setSlotTextCursors(slotcursorInfos, slotcursorInfos);
+                    //Refactor the slots, we call the refactorisation on the LabelSlotsStructure
+                    (this.$root.$refs[getFrameLabelSlotsStructureUIID(slotInfos.frameId, slotInfos.labelSlotsIndex)] as any).checkSlotRefactoring(getLabelSlotUIID(slotInfos));
                 });
         },
 

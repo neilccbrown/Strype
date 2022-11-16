@@ -11,7 +11,7 @@ const initialDemoState: EditorFrameObjects = {
         childrenIds: [-1, -2, -3],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { },
+        labelSlotsDict: { },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -25,7 +25,7 @@ const initialDemoState: EditorFrameObjects = {
         childrenIds: [1],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: {},
+        labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
@@ -40,7 +40,7 @@ const initialDemoState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { },
+        labelSlotsDict: { },
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
@@ -55,7 +55,7 @@ const initialDemoState: EditorFrameObjects = {
         childrenIds: [2,3],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: {},
+        labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.body,
         multiDragPosition: "",
@@ -71,9 +71,10 @@ const initialDemoState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: { 0: {code : "microbit", focused: false, error :"", shownLabel: true},
-            1: {code : "*", focused: false, error :"", shownLabel: true},
-            2: {code : "", focused: false, error :"", shownLabel: false} },
+        labelSlotsDict: {
+            0: {slotStructures: {operators: [], fields: [{code: "microbit"}]}},
+            1: {slotStructures: {operators: [], fields: [{code: "*"}]}},
+            2: {slotStructures: {operators: [], fields: [{code: ""}]}, shown: false}},
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -88,9 +89,9 @@ const initialDemoState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: {
-            0: {code :  "myString", focused: false, error :"", shownLabel: true},
-            1: {code :  "\"Hello micro:bit!\"", focused: false, error :"", shownLabel: true} },
+        labelSlotsDict: {
+            0: {slotStructures: {operators: [], fields: [{code: "myString"}]}},
+            1: {slotStructures: {operators: [{code: ""},{code: ""}], fields: [{code: ""},{code: "Hello micro:bit!", quote: "\""},{code: ""}]}}},
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
@@ -105,8 +106,8 @@ const initialDemoState: EditorFrameObjects = {
         childrenIds: [4],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: {
-            0: {code :  "True", focused: false, error :"", shownLabel: true},
+        labelSlotsDict: {
+            0: {slotStructures: {operators: [], fields: [{code: "True"}]}},
         },
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
@@ -122,13 +123,10 @@ const initialDemoState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        contentDict: {
-            0: {code :  "display.scroll(myString)", focused: false, error :"", shownLabel: true},
-        },
+        labelSlotsDict: {0: {slotStructures: {operators: [{code: "."}, {code: ""}, {code: ""}], fields: [{code: "display"}, {code: "scroll"}, {openingBracketValue: "(", fields: [{code: "myString"}], operators: []}, {code: ""}]}}},
         caretVisibility: CaretPosition.none,
         multiDragPosition: "",
     },
-
 };
 
 export default initialDemoState;

@@ -76,7 +76,7 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import { AppEvent, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementEditableSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID } from "./helpers/editor";
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
@@ -186,7 +186,7 @@ export default Vue.extend({
         window.addEventListener(
             "contextmenu",
             (event: MouseEvent) => {
-                if(!isElementEditableSlotInput(event.target)){
+                if(!isElementLabelSlotInput(event.target)){
                     event.stopImmediatePropagation();
                     event.preventDefault();
                 }
@@ -216,6 +216,15 @@ export default Vue.extend({
         // As the application starts up, we compile the microbit library with the appropriate language setting.
         getAPIItemTextualDescriptions(true);
         /* FITRUE_isMicrobit */
+
+        // Add an event listener for text selection changes. It will be used for changes of text selection and text cursors (start/end).
+        document.addEventListener("selectionchange", this.handleDocumentSelectionChange);
+    },
+
+    destroyed() {
+        // Removes the listeners
+        document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
+
     },
 
     mounted() {
@@ -324,6 +333,30 @@ export default Vue.extend({
                         }
                     }
                 })
+            }
+        },
+
+        handleDocumentSelectionChange(){
+            // When the selection has changed, we update the cursor infos in the store.
+            // TODO with multi slots selection, this code WILL need changes as the way to retrieve the nodes isn't checked
+            const windowSelection = window?.getSelection();
+            if(windowSelection){
+                let anchorSpanElement = windowSelection?.anchorNode?.parentElement;
+                let focusSpanElement =  windowSelection?.focusNode?.parentElement;
+                // When the editable slots are empty, the span doesn't get the focus, but the container div does.
+                // So we need to retrieve the right HTML component by hand.
+                if(anchorSpanElement?.tagName.toLowerCase() == "div" && anchorSpanElement.className.includes(" labelSlot-container")){
+                    anchorSpanElement = anchorSpanElement.firstElementChild as HTMLSpanElement;
+                }
+                if(focusSpanElement?.tagName.toLowerCase() == "div" && focusSpanElement.className.includes(" labelSlot-container")){
+                    focusSpanElement = focusSpanElement.firstElementChild as HTMLSpanElement;
+                }
+                if(anchorSpanElement && focusSpanElement && isElementLabelSlotInput(anchorSpanElement) && isElementLabelSlotInput(focusSpanElement)){
+                    const anchorSlotInfo = parseLabelSlotUIID(anchorSpanElement.id);
+                    const focusSlotInfo = parseLabelSlotUIID(focusSpanElement.id);
+                    this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: windowSelection.anchorOffset},
+                        {slotInfos: focusSlotInfo, cursorPos: windowSelection.focusOffset});
+                }
             }
         },
     },
