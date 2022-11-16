@@ -55,7 +55,7 @@ export function parseLabelSlotUIID(uiid: string): SlotCoreInfos {
         res.frameId = parseInt(uiidMatch[1]);
         res.labelSlotsIndex = parseInt(uiidMatch[2]);
         res.slotId = uiidMatch[4];
-        res.slotType = parseInt(uiidMatch[3], 8)
+        res.slotType = parseInt(uiidMatch[3], 8);
     }
     return res;
 }
@@ -156,7 +156,7 @@ export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: num
 }
 
 export function getFrameContextMenuUIID(frameUIID: string): string {
-    return frameUIID + "frameContextMenu"
+    return frameUIID + "frameContextMenu";
 }
 
 export function getCodeEditorUIID(): string {
@@ -508,7 +508,7 @@ export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((s
 
 
 // Brackets: order inside each array is important, keep matching opening and closing tokens
-export const openBracketCharacters = ["(","{","["]
+export const openBracketCharacters = ["(","{","["];
 export const closeBracketCharacters = [")","}","]"];
 export const getMatchingBracket = (bracketValue: string, isOpening: boolean): string => {
     const srcArray = (isOpening) ? openBracketCharacters : closeBracketCharacters;
@@ -519,7 +519,7 @@ export const getMatchingBracket = (bracketValue: string, isOpening: boolean): st
         return targetArray[indexOfBracket];
     }
     return "";
-}
+};
 
 // String quotes: Python allows both double and single quotes. We also keep an ordered list of "graphical" matching quotes
 // Note: we ignore triple quotes for Python in Strype.
@@ -532,17 +532,16 @@ export const getUIQuote = (quoteValue: string, isOpening: boolean): string => {
     const UIArray = (quoteValue == stringSingleQuoteChar) ? UISingleQuotesCharacters : UIDoubleQuotesCharacters;
     // Return the matching UI quote
     return UIArray[(isOpening) ? 0 : 1];
-    
-}
+};
 
 export const getStringAllowedRawQuote = (stringQuote: string): string => {
     const indexOfStringQuote = stringQuoteCharacters.indexOf(stringQuote);
     // Return the quote symbol that do not need escape inside the string o "" if we didn't find it (which should not happen, but just for safety...)
     if(indexOfStringQuote > -1){
-        return stringQuoteCharacters[(indexOfStringQuote + 1) % 2]
+        return stringQuoteCharacters[(indexOfStringQuote + 1) % 2];
     }
     return "";
-}
+};
 
 /* End operator and brackets related content*/
 
@@ -727,7 +726,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
     }
 
     return {slots: resStructSlot, cursorOffset: cursorOffset};
-}
+};
 
 const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: string): {slots: SlotsStructure, cursorOffset: number} => {
     let cursorOffset = 0;
@@ -743,7 +742,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         const innerMatchIndex = params[0].indexOf(params[paramIndex]);
         const indexOfSign =  params.at(-2) + innerMatchIndex + innerSignIndex;
         return params.at(-1).substring(params.at(-2), indexOfSign) + "0" + params.at(-1).substring(indexOfSign + 1, params.at(-2) + (params[0] as string).length);
-    }
+    };
 
     blankedStringCodeLiteral = blankedStringCodeLiteral
         // Replacing exponential sign operator first (ex "-.25e-5" --> replace "-" after "e")
@@ -801,4 +800,4 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     });
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
-}
+};

@@ -308,9 +308,9 @@ export default Vue.extend({
                         //add the frame in the editor if allowed
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
                             if(!ignoreKeyEvent){
-                                    this.appStore.addFrameWithCommand(
-                                        this.addFrameCommands[event.key.toLowerCase()][0].type
-                                    );
+                                this.appStore.addFrameWithCommand(
+                                    this.addFrameCommands[event.key.toLowerCase()][0].type
+                                );
                             }
                             else{
                                 this.appStore.ignoreKeyEvent = false;

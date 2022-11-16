@@ -71,8 +71,8 @@
 
 <script lang="ts">
 import Vue from "vue";
-import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType, SlotCursorInfos, SlotType} from "@/types/types"
-import { useStore } from "@/store/store"
+import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType, SlotCursorInfos, SlotType} from "@/types/types";
+import { useStore } from "@/store/store";
 import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, setTextCursorPositionOfHTMLElement } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";

@@ -137,7 +137,7 @@ export default Vue.extend({
                 labelSlotsIndex: this.labelSlotsIndex,
                 slotId: this.slotId,
                 slotType: this.slotType,
-            }
+            };
         },
 
         initCode(): string {
@@ -305,7 +305,7 @@ export default Vue.extend({
                 const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
 
                 //workout the correct context if we are in a code editable slot
-                const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport)
+                const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
                 const resultsAC = (isImportFrame) 
                     ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.labelSlotsIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
                     : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
@@ -491,7 +491,7 @@ export default Vue.extend({
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
-                return
+                return;
             }
 
             const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
@@ -779,7 +779,7 @@ export default Vue.extend({
             }
             else{
                 // Delete a slot
-                this.deleteSlots(event)
+                this.deleteSlots(event);
             }
         },
 
@@ -815,7 +815,7 @@ export default Vue.extend({
         },
    
         isImportFrame(): boolean {
-            return this.appStore.isImportFrame(this.frameId)
+            return this.appStore.isImportFrame(this.frameId);
         },
 
         getACresultsFromBrython(): void {

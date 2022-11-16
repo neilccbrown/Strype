@@ -27,7 +27,7 @@ import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, FlatSlotBase, getFrameD
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import LabelSlot from "@/components/LabelSlot.vue"
+import LabelSlot from "@/components/LabelSlot.vue";
 import { getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, parseCodeLiteral, setTextCursorPositionOfHTMLElement, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
 import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 
@@ -48,7 +48,7 @@ export default Vue.extend({
     data: function() {
         return {
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
-        }
+        };
     },
 
     created(){
@@ -118,7 +118,7 @@ export default Vue.extend({
                 
                     const focusSlotInfos = this.focusSlotCursorInfos.slotInfos;
                     const focusSlotCursorPos = this.focusSlotCursorInfos.cursorPos;
-                    const focusInputSpan = document.getElementById(getLabelSlotUIID(focusSlotInfos)) as HTMLSpanElement
+                    const focusInputSpan = document.getElementById(getLabelSlotUIID(focusSlotInfos)) as HTMLSpanElement;
                     // That's not just to keep TS happy: the focus span could here be null, when a change of slot type happens
                     if(focusInputSpan){
                         const focusInputSpanContent = focusInputSpan.textContent??"";

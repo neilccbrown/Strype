@@ -743,7 +743,7 @@ export const useStore = defineStore("app", {
             const availablePositions = getAvailableNavigationPositions();
             const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
             // Where is the current in the list
-            const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.frameId===currentCaret.id && e.caretPosition === currentCaret.caretPosition)
+            const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.frameId===currentCaret.id && e.caretPosition === currentCaret.caretPosition);
 
             const delta = (key === "ArrowDown")?1:-1;
             const nextCaret = (listOfCaretPositions[currentCaretIndex + delta]) 
@@ -1643,11 +1643,11 @@ export const useStore = defineStore("app", {
                                 slotStructures: /*(frame.type == AllFrameTypesIdentifier.empty) 
                                     ? {fields: [{code: ""}, {openingBracketValue: "(", fields: [{code: ""}], operators: []}, {code: ""}], operators:[{code: ""},{code: ""}]}
                                     : */{fields: [{code: ""}], operators: []},
-                            }
+                            };
                             return { 
                                 ...acc, 
                                 [idx]: labelContent,
-                            }
+                            };
                         },
                         {}
                     ),
@@ -1689,7 +1689,7 @@ export const useStore = defineStore("app", {
                 newFramesCaretPositions.push({frameId: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.below});
             }
             const availablePositions = getAvailableNavigationPositions();
-            const indexOfCurrent = availablePositions.findIndex((e) => e.frameId===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositions.findIndex((e) => e.frameId===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition);
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
@@ -1772,7 +1772,7 @@ export const useStore = defineStore("app", {
                     // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration below
                     if((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
                          && (frameToDelete.caretPosition??"") === CaretPosition.below){
-                        frameToDelete.frameId = -100
+                        frameToDelete.frameId = -100;
                     }
                 }
                 else {
@@ -1914,7 +1914,7 @@ export const useStore = defineStore("app", {
                 currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.frameId === this.currentFrame.id); 
             }
             
-            const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition])         
+            const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);       
 
             // irrespective to where we are going to, we need to make sure to hide current caret
             Vue.set(
@@ -2444,13 +2444,13 @@ export const useStore = defineStore("app", {
                     }
                     // except when going upwards we may need the our parent's body to be added
                     else if(directionUp && currentFrame.parentId === element.frameId && element.caretPosition == CaretPosition.body){
-                        availablePositionsOfSiblings.push(element)
+                        availablePositionsOfSiblings.push(element);
                     }
                 }
             });
             
             // In the new list with the available positions that we could go to, we first find the index of the current
-            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.frameId === this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition)
+            const indexOfCurrent = availablePositionsOfSiblings.findIndex((e) => e.frameId === this.currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
             // and then we find the new current
             // NOTE here that the one to be selected and the new current can be different. i.e. I am below the first child of an if and going up
             // the one to be selected is the one I am bellow, and the current is the body of the if! (i.e. the parent)
@@ -2481,7 +2481,7 @@ export const useStore = defineStore("app", {
                 ? listOfCaretPositions[indexOfTarget+1].frameId // going up we always stop on the next of the clicked
                 : payload.clickedCaretPosition === CaretPosition.below 
                     ? payload.clickedFrameId // if we go down and click bellow, we go on the clicked
-                    : listOfCaretPositions[indexOfTarget-1].frameId// down and click body, we go to the previous of clicked
+                    : listOfCaretPositions[indexOfTarget-1].frameId; // down and click body, we go to the previous of clicked
 
 
             let previousFramesSelection: number[] = [];
@@ -2547,7 +2547,7 @@ export const useStore = defineStore("app", {
             // we are moving it to the same place (between first and last index of the selected ones); 
             // If that's the case we don't do anything as it may cause a problem (e.g. if selected indexes are 0...3
             // it may move it to 1 instead of 0.
-            const parentIdOfSelected = getParentOrJointParent(this.frameObjects[this.selectedFrames[0]].id)
+            const parentIdOfSelected = getParentOrJointParent(this.frameObjects[this.selectedFrames[0]].id);
             let newIndex = payload.event[eventType].newIndex;
 
             if(eventType === "moved" && payload.parentId === parentIdOfSelected) {

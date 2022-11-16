@@ -22,7 +22,7 @@ export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSl
     return (slotCoreInfos.slotType == SlotType.operator) 
         ? currentSlotStruct.operators[parseInt(slotsLevelPos.at(-1) as string)] 
         : (currentSlotStruct.fields[parseInt(slotsLevelPos.at(-1) as string)]);
-}
+};
 
 export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): FieldSlot | undefined => {
     // If the ID of the slot does not indicate any level, then there is no parent and we return undefined
@@ -33,7 +33,7 @@ export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): Field
     const parentId = slotInfos.slotId.substring(0, slotInfos.slotId.lastIndexOf(","));
     //We find the slot. Since it cannot be an operator (an operator has no children) we set another type
     return retrieveSlotFromSlotInfos({...slotInfos, slotId: parentId, slotType: SlotType.code});
-}
+};
 
 // This method generates the "flat" slot bases, which are used by the UI. It acts as a mapping between the data model saving slots as a tree, and a flat version that
 // we feed Vue components to display the slots.
@@ -98,7 +98,7 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
     addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slotStructure.fields.at(-1) as FieldSlot)});
 
     return flatSlotBases;
-}
+};
 
 export const retrieveSlotByPredicate = (frameLabelSlotStructs: SlotsStructure[], predicate: ((slot: FieldSlot) => boolean)): BaseSlot | undefined => {
     let resSlot: FieldSlot | undefined = undefined;
@@ -125,7 +125,7 @@ export const retrieveSlotByPredicate = (frameLabelSlotStructs: SlotsStructure[],
     });
 
     return resSlot;
-}
+};
 export const getSlotParentIdAndIndexSplit = (slotId: string): {parentId: string, slotIndex: number} => {
     const idMatchArray = slotId.match(/^((\d+,)*)(\d+)$/);
     if(idMatchArray){
@@ -136,11 +136,11 @@ export const getSlotParentIdAndIndexSplit = (slotId: string): {parentId: string,
         };
     }
     return  {parentId: "", slotIndex: -1};
-}
+};
 
 export const getSlotIdFromParentIdAndIndexSplit = (parentId: string, slotIndex: number): string => {
-    return (parentId + ((parentId.length > 0) ? "," : "") + slotIndex)
-}
+    return (parentId + ((parentId.length > 0) ? "," : "") + slotIndex);
+};
 
 export const getFlatNeighourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNext: boolean, stopAtStructure?: boolean): SlotCoreInfos | null => {
     // Find the flat neighbour (i.e. sibling if in same level or neareast upper level slot) of the slot identified by slotId.
@@ -173,7 +173,7 @@ export const getFlatNeighourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNext
         // (which will return undefined if not found)
         return hasParent ? getFlatNeighourFieldSlotInfos({...slotInfos, slotId: parentId}, findNext, stopAtStructure) : null;
     }
-}
+};
 
 export const evaluateSlotType = (slot: FieldSlot): SlotType => {
     if(isFieldBracketedSlot(slot)){
@@ -198,9 +198,9 @@ export const evaluateSlotType = (slot: FieldSlot): SlotType => {
             }
         }
     }
-}
+};
 
-export const removeFrameInFrameList = (frameId: number) => {
+export const removeFrameInFrameList = (frameId: number): void => {
     // When removing a frame in the list, we remove all its sub levels,
     // then update its parent and then delete the frame itself
     const frameObject = useStore().frameObjects[frameId];
@@ -226,7 +226,7 @@ export const removeFrameInFrameList = (frameId: number) => {
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
-export const getParent = (currentFrame: FrameObject) => {
+export const getParent = (currentFrame: FrameObject): number => {
     let parentId = 0;
     if(currentFrame.id !== 0){
         parentId = (currentFrame.jointParentId > 0) ? useStore().frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
@@ -377,7 +377,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
 
     //Look at the subChildren first and then at the joint frames
     frame.childrenIds.forEach((childId: number, index: number) => {
-        frame.childrenIds[index] = ++nextAvailableId.id
+        frame.childrenIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
             listOfFrames,
             childId,
@@ -721,7 +721,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
             frameId: (frameIdMatch != null) ? parseInt(frameIdMatch[0]) : -100, // need to check the match isn't null for TS, but it should NOT be.
             isSlotNavigationPosition: isSlotNavigationPosition, 
             ...positionObjIdentifier,            
-        }
+        };
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
 

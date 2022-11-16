@@ -93,7 +93,7 @@ export default class Parser {
                 if(label.showSlots??true){
                     // Record each slots' vertical positions for that label.
                     const currentPosition = output.length;
-                    const slotStartsLenghtsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, true)
+                    const slotStartsLenghtsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, true);
                     labelSlotsPositionLenghts[labelSlotsIndex] = {
                         slotStarts: slotStartsLenghtsAndCode.slotStarts, 
                         slotLengths: slotStartsLenghtsAndCode.slotLengths,
@@ -426,7 +426,7 @@ export default class Parser {
         let code = "";
         const slotStarts: number[] = [];
         const slotLenghts: number[] = [];
-        const slotIds: string[] = []
+        const slotIds: string[] = [];
         const slotTypes: SlotType[] = [];
         const addSlotInPositionLengths = (length: number, id: string, appendedCode: string, type: SlotType) => {
             slotStarts.push(currentOutputPosition + code.length);
