@@ -1,6 +1,6 @@
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { CodeMatchIterable, FrameObject } from "@/types/types";
+import { BaseSlot, CodeMatchIterable, FrameObject } from "@/types/types";
 /* IFTRUE_isMicrobit */
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 /* FITRUE_isMicrobit */
@@ -465,7 +465,7 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
 
     if(lookupModulePart){
         //we look at the module part --> get the module part candidates from Brython
-        contextAC = frame.labelSlotsDict[0].code;
+        contextAC = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
         const userCode = "import " + contextAC;
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0), userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId, acContextPathSpanId);
     }

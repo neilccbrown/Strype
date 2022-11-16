@@ -133,7 +133,7 @@ export default Vue.extend({
 
         coreSlotInfo(): SlotCoreInfos{
             return {
-                frameId: this.$parent.$props.frameId,
+                frameId: this.frameId,
                 labelSlotsIndex: this.labelSlotsIndex,
                 slotId: this.slotId,
                 slotType: this.slotType,

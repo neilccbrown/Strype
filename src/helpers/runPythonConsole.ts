@@ -3,7 +3,6 @@
 import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
-import { getLabelSlotUIID, getFrameUIID } from "./editor";
 import Vue from "vue";
 
 // Declation of JS objects required for using Skulpt:
@@ -147,20 +146,7 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") +" >");
 
             // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
-            Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);
-
-            // Show the error in the UI: we ensure the frame is visible in the editor (i.e. in the page viewport)
-            // and we get focus into the last available slot (and make sure text caret is at first position)
-            // We need to slightly delay the focus events so that the UI has been regenerated and the error popup shows.
-            setTimeout(() => {
-                document.querySelector("#" + getFrameUIID(frameId))?.scrollIntoView();
-                const lastSlotIndex = Math.max(...Object.keys(useStore().frameObjects[frameId].labelSlotsDict).map((slotIndexStr) => parseInt(slotIndexStr)));
-                const editableSlot =  document.getElementById(getLabelSlotUIID(frameId, lastSlotIndex));
-                if(editableSlot){
-                    editableSlot.focus();
-                    (editableSlot as HTMLInputElement).setSelectionRange(0, 0);                    
-                }
-            }, 300);            
+            Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);            
         }
         else{
             // In case we couldn't get the line and the frame correctly, we just display a simple message
