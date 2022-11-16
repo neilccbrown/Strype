@@ -159,7 +159,7 @@ export default Vue.extend({
     },
 
     created() {
-        this.autoSaveState = () => this.autoSaveStateToStore();
+        this.autoSaveState = () => this.autoSaveStateToWebLocalStorage();
         window.addEventListener("beforeunload", (event) => {
             // Browsers won't display a customised message, and can detect when to prompt the user,
             // so we don't need to do anything special.
@@ -250,7 +250,7 @@ export default Vue.extend({
             }, 300000);
         },
         
-        autoSaveStateToStore() : void {
+        autoSaveStateToWebLocalStorage() : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
