@@ -154,7 +154,7 @@ export interface LabelSlotPositionsAndCode extends LabelSlotsPositions {
 }
 
 export interface LineAndSlotPositions {
-    // Index is the line number, and for each labels, we hold the slot starts and lenghts
+    // Index is the line number, and for each labels, we hold the slot starts and lengths
     [line: number]: {
         frameId: number ; 
         labelSlotStartLengths: {[labelIndex: number]: LabelSlotsPositions}};
@@ -608,7 +608,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
 
     /*3) if required, update the types in all the frames existing in the editor (needed to update default texts and frame container labels) */
     if(regenerateExistingFrames){
-        Object.values(useStore().frameObjects).forEach((frameObject) => {
+        Object.values(useStore().frameObjects).forEach((frameObject: FrameObject) => {
             // For containers, we just assign the label manually again here
             switch(frameObject.frameType.type){
             case ImportsContainerDefinition.type:
@@ -621,7 +621,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
                 break;
             default:
-                // For all normal frames, we rely on the frame definition type
+                // For all normal frames, we rely on the frame definition type                
                 frameObject.frameType.labels.forEach((labelDef, index) => {
                     labelDef.defaultText = getFrameDefType(frameObject.frameType.type).labels[index].defaultText;
                 });

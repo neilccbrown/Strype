@@ -23,12 +23,12 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, parseCodeLiteral, setTextCursorPositionOfHTMLElement, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, parseCodeLiteral, parseLabelSlotUIID, setTextCursorPositionOfHTMLElement, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
 import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 
 export default Vue.extend({
@@ -88,11 +88,6 @@ export default Vue.extend({
             if(isSlotQuoteType(slot.type)){
                 // We show quotes in the UI as textual opening or closing quotes
                 return getUIQuote(slot.code, slot.type == SlotType.openingQuote);
-            }
-            else if(slot.type == SlotType.string){
-                // The escaped quotes inside a string will be shown as the resulting quote in the UI
-                // so we need to escape them again...
-                return slot.code.replaceAll((retrieveSlotFromSlotInfos({frameId: this.frameId, slotId: slot.id, slotType: slot.type, labelSlotsIndex: this.labelIndex}) as StringSlot).quote , (match) => "\\" + match);
             }
             return slot.code;
         },
@@ -165,13 +160,29 @@ export default Vue.extend({
                 let uiLiteralCode = "";
                 let foundFocusSpan = false;
                 labelDiv.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
-                    uiLiteralCode += spanElement.textContent;
+                    // The code is extracted from the span; we only transform the string quotes as they are styled for the UI, we need to restore them to their code-style equivalent.
+                    if(isSlotQuoteType(parseLabelSlotUIID(spanElement.id).slotType)){
+                        switch(spanElement.textContent){
+                        case UIDoubleQuotesCharacters[0]:
+                        case UIDoubleQuotesCharacters[1]:
+                            uiLiteralCode += "\"";
+                            break;
+                        case UISingleQuotesCharacters[0]:
+                        case UISingleQuotesCharacters[1]:
+                            uiLiteralCode += "'";
+                            break;            
+                        }
+                    }
+                    else{
+                        uiLiteralCode += spanElement.textContent;
+                    }
+                    
                     if(spanElement.id === slotUIID){
                         focusCursorAbsPos += (this.appStore.focusSlotCursorInfos?.cursorPos??0);                        
                         foundFocusSpan = true;
                     }
                     else if(!foundFocusSpan){
-                        // In most cases, we just increment the lenght by the span content length,
+                        // In most cases, we just increment the length by the span content length,
                         // BUT there is one exception: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
                         // therefore we need to account for them when dealing with such operator
                         let spacesOffset = 0;
@@ -186,8 +197,6 @@ export default Vue.extend({
                         focusCursorAbsPos += (spanElementContentLength + spacesOffset);
                     }
                 });    
-                UIDoubleQuotesCharacters.forEach((uiQuote) => uiLiteralCode = uiLiteralCode.replaceAll(uiQuote, "\""));
-                UISingleQuotesCharacters.forEach((uiQuote) => uiLiteralCode = uiLiteralCode.replaceAll(uiQuote, "\""));
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, false);
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 this.$forceUpdate();
@@ -211,7 +220,7 @@ export default Vue.extend({
                                 }                            
                             }
                             else{
-                                // In most cases, we just increment the lenght by the span content length,
+                                // In most cases, we just increment the length by the span content length,
                                 // BUT there is one exception: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
                                 // therefore we need to account for them when dealing with such operator
                                 const spacesOffset = (trimmedKeywordOperators.includes(spanElement.textContent??"")) 

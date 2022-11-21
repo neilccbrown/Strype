@@ -2,7 +2,7 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, AcResultsWithModule, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, clearAllFrameErrors, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, clearAllFrameErrors, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -530,7 +530,7 @@ export const useStore = defineStore("app", {
         isSlotFirstVisibleInFrame:(state) => (frameId: number, labelSlotsIndex: number, slotId: string) => {
             // This getter checks if the given slots for a label are *visually* the first shown to the user
             const labelSlotsDict = Object.values(state.frameObjects[frameId].labelSlotsDict);
-            return (slotId == "0" || slotId.endsWith(",0")) && (labelSlotsDict.find((labelSlotsStruct, index) => (index < labelSlotsIndex && (labelSlotsStruct.shown??true))) === undefined);
+            return (slotId == "0" && (labelSlotsDict.find((labelSlotsStruct, index) => (index < labelSlotsIndex && (labelSlotsStruct.shown??true))) === undefined));
         },
 
         // Check up if the API generator can be shown, depending on the current position in the code editor. 
@@ -866,7 +866,7 @@ export const useStore = defineStore("app", {
             const parentSlot = (parentId.length > 0) 
                 ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: parentId}) as SlotsStructure
                 : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
-            const slotToDeleteInfos = getFlatNeighourFieldSlotInfos(currentSlotInfos, isForwardDeletion);
+            const slotToDeleteInfos = getFlatNeighbourFieldSlotInfos(currentSlotInfos, isForwardDeletion);
             
             if(slotToDeleteInfos){
                 const {parentId: slotToDeleteParentId, slotIndex: slotToDeleteIndex} = getSlotParentIdAndIndexSplit(slotToDeleteInfos.slotId);
@@ -1718,6 +1718,7 @@ export const useStore = defineStore("app", {
         },
 
         deleteFrames(key: string, ignoreBackState?: boolean){
+            console.trace();
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
             // we remove the editable slots from the available positions

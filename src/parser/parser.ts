@@ -75,7 +75,7 @@ export default class Parser {
     
     private parseStatement(statement: FrameObject, indentation = ""): string {
         let output = indentation;
-        const labelSlotsPositionLenghts: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
+        const labelSlotsPositionLengths: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
 
         if(this.checkIfFrameHasError(statement) || (statement.frameType.type === AllFrameTypesIdentifier.comment) 
             || (statement.frameType.type === AllFrameTypesIdentifier.empty && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#")) ) {
@@ -93,15 +93,15 @@ export default class Parser {
                 if(label.showSlots??true){
                     // Record each slots' vertical positions for that label.
                     const currentPosition = output.length;
-                    const slotStartsLenghtsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, true);
-                    labelSlotsPositionLenghts[labelSlotsIndex] = {
-                        slotStarts: slotStartsLenghtsAndCode.slotStarts, 
-                        slotLengths: slotStartsLenghtsAndCode.slotLengths,
-                        slotIds: slotStartsLenghtsAndCode.slotIds,
-                        slotTypes: slotStartsLenghtsAndCode.slotTypes,
+                    const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, true);
+                    labelSlotsPositionLengths[labelSlotsIndex] = {
+                        slotStarts: slotStartsLengthsAndCode.slotStarts, 
+                        slotLengths: slotStartsLengthsAndCode.slotLengths,
+                        slotIds: slotStartsLengthsAndCode.slotIds,
+                        slotTypes: slotStartsLengthsAndCode.slotTypes,
                     };
                     // add their code to the output
-                    output += slotStartsLenghtsAndCode.code + " ";
+                    output += slotStartsLengthsAndCode.code + " ";
                 }
             }
             else if(!(statement.labelSlotsDict[labelSlotsIndex].shown??true)){
@@ -113,7 +113,7 @@ export default class Parser {
         
         output += "\n";
     
-        this.framePositionMap[this.line] =  {frameId: statement.id, labelSlotStartLengths: labelSlotsPositionLenghts};
+        this.framePositionMap[this.line] =  {frameId: statement.id, labelSlotStartLengths: labelSlotsPositionLengths};
         
         this.line += 1;
 
@@ -221,12 +221,12 @@ export default class Parser {
                     let labelSlotsIndex = -1;
                     let slotId: string | undefined = undefined;
                     let slotType: SlotType = SlotType.code;
-                    Object.entries(this.framePositionMap[error.line].labelSlotStartLengths).forEach((labelSlotStartLenghtsEntry) => 
-                        labelSlotStartLenghtsEntry[1].slotStarts.forEach((slotStart, index) => {
-                            if(slotStart <= error.offset && (slotStart + labelSlotStartLenghtsEntry[1].slotLengths[index]) >= error.offset){
-                                labelSlotsIndex = parseInt(labelSlotStartLenghtsEntry[0]);
-                                slotId = labelSlotStartLenghtsEntry[1].slotIds[index];
-                                slotType = labelSlotStartLenghtsEntry[1].slotTypes[index];
+                    Object.entries(this.framePositionMap[error.line].labelSlotStartLengths).forEach((labelSlotStartLengthsEntry) => 
+                        labelSlotStartLengthsEntry[1].slotStarts.forEach((slotStart, index) => {
+                            if(slotStart <= error.offset && (slotStart + labelSlotStartLengthsEntry[1].slotLengths[index]) >= error.offset){
+                                labelSlotsIndex = parseInt(labelSlotStartLengthsEntry[0]);
+                                slotId = labelSlotStartLengthsEntry[1].slotIds[index];
+                                slotType = labelSlotStartLengthsEntry[1].slotTypes[index];
                             }
                         }));
                         
@@ -425,12 +425,12 @@ export default class Parser {
         // we get the flat map of the slots and operate a consumer at each iteration to retrieve the infos we need
         let code = "";
         const slotStarts: number[] = [];
-        const slotLenghts: number[] = [];
+        const slotLengths: number[] = [];
         const slotIds: string[] = [];
         const slotTypes: SlotType[] = [];
         const addSlotInPositionLengths = (length: number, id: string, appendedCode: string, type: SlotType) => {
             slotStarts.push(currentOutputPosition + code.length);
-            slotLenghts.push(length); // add the surounding spaces
+            slotLengths.push(length); // add the surounding spaces
             slotIds.push(id);
             code += appendedCode;
             slotTypes.push(type);
@@ -456,6 +456,6 @@ export default class Parser {
                 addSlotInPositionLengths(flatSlot.code.length, flatSlot.id, flatSlot.code, flatSlot.type);
             }
         });
-        return {code: code, slotLengths: slotLenghts, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 
+        return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 
     }
 }

@@ -38,6 +38,7 @@ export function isIdAFrameId(id: string): boolean {
     return id.match(/^frame_id_\d+$/) !== null;
 }
 
+const labelSlotUIIDRegex = /^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d)*)$/;
 export function getLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
     // If a change is done in this method, also update isElementLabelSlotInput() and parseLabelSlotUIID()
     // For explanation about the slotID format, see generateFlatSlotBases() in storeMethods.ts
@@ -47,10 +48,11 @@ export function getLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
     return "input_frame_" + slotCoreInfos.frameId + "_label_" + slotCoreInfos.labelSlotsIndex + "_slot_" + formattedTypeValue + "_" + slotCoreInfos.slotId;
 }
 
+
 export function parseLabelSlotUIID(uiid: string): SlotCoreInfos {
     // Cf. getLabelSlotUIID() for the format
     const res: SlotCoreInfos = {frameId: -100, labelSlotsIndex: -1, slotId: "", slotType: SlotType.code };
-    const uiidMatch = uiid.match(/^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d)*)$/);
+    const uiidMatch = uiid.match(labelSlotUIIDRegex);
     if(uiidMatch){
         res.frameId = parseInt(uiidMatch[1]);
         res.labelSlotsIndex = parseInt(uiidMatch[2]);
@@ -65,7 +67,7 @@ export function isElementLabelSlotInput(element: EventTarget | null): boolean{
         return false;
     }
     // Cf. getLabelSlotUIID() for the format
-    return (element as HTMLSpanElement).id.match("^input_frame_\\d+_label_\\d+_slot_[0-7]{4}_\\d+(,\\d)*$") != null;
+    return (element as HTMLSpanElement).id.match(labelSlotUIIDRegex) != null;
 }
 
 export function isElementEditableLabelSlotInput(element: EventTarget | null): boolean{
@@ -73,7 +75,8 @@ export function isElementEditableLabelSlotInput(element: EventTarget | null): bo
         return false;
     }
     // Cf. getLabelSlotUIID() for the format
-    return (element as HTMLSpanElement).id.match("^input_frame_\\d+_label_\\d+_slot_000\\d_\\d(,\\d)*$") != null;
+    const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_\\d+_label_\\d+_slot_000(\\d)_\\d(,\\d)*$");
+    return regexMatch != null && parseInt(regexMatch[1]) < 8;
 }
 
 export function isLabelSlotEditable(type: SlotType): boolean {

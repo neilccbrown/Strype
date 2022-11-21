@@ -103,26 +103,30 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
 export const retrieveSlotByPredicate = (frameLabelSlotStructs: SlotsStructure[], predicate: ((slot: FieldSlot) => boolean)): BaseSlot | undefined => {
     let resSlot: FieldSlot | undefined = undefined;
 
-    frameLabelSlotStructs.forEach((frameLabelSlotStruct) => {
-        if(!resSlot){
-            // Very unlikely we search something in operators, but better make the function complete
-            resSlot = frameLabelSlotStruct.operators.find((operatorSlot) => predicate(operatorSlot));
-        }
+    for(const frameLabelSlotStruct of frameLabelSlotStructs){
+        // Very unlikely we search something in operators, but better make the function complete
+        resSlot = frameLabelSlotStruct.operators.find((operatorSlot) => predicate(operatorSlot));
+    
         if(!resSlot){
             // Nothing found in operators, we check fields
             // As we look for slots, we need to get into the nested fields if needed
-            frameLabelSlotStruct.fields.forEach((fieldSlot) => {
-                if(!resSlot){
-                    if(isFieldBracketedSlot(fieldSlot)){
-                        resSlot = retrieveSlotByPredicate([fieldSlot as SlotsStructure], predicate);
-                    }
-                    else if(predicate(fieldSlot)){
-                        resSlot = fieldSlot;
-                    }
+            for(const fieldSlot of frameLabelSlotStruct.fields){
+                if(isFieldBracketedSlot(fieldSlot)){
+                    resSlot = retrieveSlotByPredicate([fieldSlot as SlotsStructure], predicate);
                 }
-            });
+                else if(predicate(fieldSlot)){
+                    resSlot = fieldSlot;
+                }
+                if(resSlot != null) {
+                    break;
+                }
+            }
         }
-    });
+
+        if(resSlot != null){
+            break;
+        }
+    }
 
     return resSlot;
 };
@@ -142,7 +146,7 @@ export const getSlotIdFromParentIdAndIndexSplit = (parentId: string, slotIndex: 
     return (parentId + ((parentId.length > 0) ? "," : "") + slotIndex);
 };
 
-export const getFlatNeighourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNext: boolean, stopAtStructure?: boolean): SlotCoreInfos | null => {
+export const getFlatNeighbourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNext: boolean, stopAtStructure?: boolean): SlotCoreInfos | null => {
     // Find the flat neighbour (i.e. sibling if in same level or neareast upper level slot) of the slot identified by slotId.
     // If findNext is true, we look for the next sibling, otherwise, we look for the previous.
     // Unless specified by the optional flag stopAtStructure is true, we search for field slots, so operators are ignored.
@@ -171,7 +175,7 @@ export const getFlatNeighourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNext
     else{
         // The flat neighbour is not a sibling of that node, so we look for the parent's sibling instead
         // (which will return undefined if not found)
-        return hasParent ? getFlatNeighourFieldSlotInfos({...slotInfos, slotId: parentId}, findNext, stopAtStructure) : null;
+        return hasParent ? getFlatNeighbourFieldSlotInfos({...slotInfos, slotId: parentId}, findNext, stopAtStructure) : null;
     }
 };
 
