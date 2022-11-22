@@ -221,7 +221,7 @@ export default Vue.extend({
                         }
                     }
                     else{
-                        //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by EditableSlots.
+                        //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by LabelSlotsStructure.
                         // We start by getting from the DOM all the available caret and editable slot positions
                         this.appStore.leftRightKey({ key:event.key });
                         event.stopImmediatePropagation();
@@ -307,9 +307,14 @@ export default Vue.extend({
                         }
                         //add the frame in the editor if allowed
                         else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
-                            this.appStore.addFrameWithCommand(
-                                this.addFrameCommands[event.key.toLowerCase()][0].type
-                            );
+                            if(!ignoreKeyEvent){
+                                this.appStore.addFrameWithCommand(
+                                    this.addFrameCommands[event.key.toLowerCase()][0].type
+                                );
+                            }
+                            else{
+                                this.appStore.ignoreKeyEvent = false;
+                            }
                         }
                     }
                 }

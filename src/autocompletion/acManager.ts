@@ -1,6 +1,6 @@
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { CodeMatchIterable, FrameObject } from "@/types/types";
+import { BaseSlot, CodeMatchIterable, FrameObject } from "@/types/types";
 /* IFTRUE_isMicrobit */
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 /* FITRUE_isMicrobit */
@@ -459,13 +459,13 @@ export function getImportCandidatesForAC(slotCode: string, frameId: number, slot
 
     //find out how to address the AC based on that import (are we looking for a module name or for a module part?)
     const frame: FrameObject = useStore().frameObjects[frameId];
-    const lookupModulePart = (slotIndex == 1 && frame.contentDict[0].shownLabel); //false -> we look at a module itself, true -> we look at a module part  
+    const lookupModulePart = (slotIndex == 1 && frame.labelSlotsDict[0].shown); //false -> we look at a module itself, true -> we look at a module part  
     let contextAC = "";
     const tokenAC = slotCode;
 
     if(lookupModulePart){
         //we look at the module part --> get the module part candidates from Brython
-        contextAC = frame.contentDict[0].code;
+        contextAC = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
         const userCode = "import " + contextAC;
         prepareBrythonCode((currentACContext.localeCompare(contextAC)!=0), userCode, contextAC, acSpanId, documentationSpanId, typesSpanId, false, reshowResultsId, acContextPathSpanId);
     }

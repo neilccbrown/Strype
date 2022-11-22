@@ -8,18 +8,16 @@
             <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
             <div 
                 style="font-weight: 600;"
-                :class="{'next-to-eachother': true, hidden: isLabelHidden(index), leftMargin: index > 0, rightMargin: (item.label.length > 0),'frameColouredLabel': !isCommentFrame}"
+                :class="{'next-to-eachother': true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0),'frameColouredLabel': !isCommentFrame}"
                 v-html="item.label"
             >
             </div>
-            <EditableSlot
-                v-if="item.slot"
+            <LabelSlotsStructure 
+                v-if="areSlotsShown(item)"
                 :isDisabled="isDisabled"
                 :default-text="item.defaultText"
-                :slotIndex="index"
                 :frameId="frameId"
-                :optionalSlot="item.optionalSlot"
-                :isHidden="isLabelHidden(index)"
+                :labelIndex="index"
             />
         </div>
     </div>
@@ -30,9 +28,9 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import EditableSlot from "@/components/EditableSlot.vue";
+import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import { useStore } from "@/store/store";
-import {AllFrameTypesIdentifier} from "@/types/types";
+import {AllFrameTypesIdentifier, FrameLabel} from "@/types/types";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -42,7 +40,7 @@ export default Vue.extend({
     name: "FrameHeader",
 
     components: {
-        EditableSlot,
+        LabelSlotsStructure,
     },
 
     props: {
@@ -63,9 +61,13 @@ export default Vue.extend({
         },
     },
 
-    methods: {
-        isLabelHidden(slotIndex: number): boolean { 
-            return !this.appStore.isCurrentFrameLabelShown(this.frameId, slotIndex);
+    methods:{
+        isLabelHidden(labelDetails: FrameLabel): boolean {
+            return !(labelDetails.showLabel??true);
+        },
+
+        areSlotsShown(labelDetails: FrameLabel): boolean {
+            return labelDetails.showSlots??true;
         },
     },
 });

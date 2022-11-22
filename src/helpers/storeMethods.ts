@@ -1,30 +1,222 @@
-import { FrameObject, CaretPosition, EditorFrameObjects, ChangeFramePropInfos, CurrentFrame, NavigationPosition, StrypePlatform, FrameSlotContent, AllFrameTypesIdentifier, getFrameDefType } from "@/types/types";
-import Vue from "vue";
-import { useStore } from "@/store/store";
-import i18n from "@/i18n";
 import { getSHA1HashForObject } from "@/helpers/common";
-import { getEditableSlotUIID } from "./editor";
+import i18n from "@/i18n";
 import Parser from "@/parser/parser";
+import { useStore } from "@/store/store";
+import { BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import Vue from "vue";
+import { getLabelSlotUIID, getMatchingBracket, parseLabelSlotUIID } from "./editor";
 
-export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId: number) : void => {
+export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
+    // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
+    const rootSlotStruct = useStore().frameObjects[slotCoreInfos.frameId].labelSlotsDict[slotCoreInfos.labelSlotsIndex].slotStructures;
+    const slotsLevelPos = slotCoreInfos.slotId.split(",");
+    let currentSlotStruct = rootSlotStruct;
+    const levelDepth = slotsLevelPos.length;
+    slotsLevelPos.forEach((slotIndex, levelIndex) => {
+        if(levelIndex < levelDepth - 1){
+            // We are not yet in the terminal field/operator we are looking for, we update the structure variable
+            currentSlotStruct = (currentSlotStruct.fields[parseInt(slotIndex)] as SlotsStructure);
+        }                
+    });
+
+    return (slotCoreInfos.slotType == SlotType.operator) 
+        ? currentSlotStruct.operators[parseInt(slotsLevelPos.at(-1) as string)] 
+        : (currentSlotStruct.fields[parseInt(slotsLevelPos.at(-1) as string)]);
+};
+
+export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): FieldSlot | undefined => {
+    // If the ID of the slot does not indicate any level, then there is no parent and we return undefined
+    if(!slotInfos.slotId.includes(",")){
+        return undefined;
+    }
+
+    const parentId = slotInfos.slotId.substring(0, slotInfos.slotId.lastIndexOf(","));
+    //We find the slot. Since it cannot be an operator (an operator has no children) we set another type
+    return retrieveSlotFromSlotInfos({...slotInfos, slotId: parentId, slotType: SlotType.code});
+};
+
+// This method generates the "flat" slot bases, which are used by the UI. It acts as a mapping between the data model saving slots as a tree, and a flat version that
+// we feed Vue components to display the slots.
+// The most important property here is the ID as it conveys the information about the slot's position in the tree structure of the data model, and is used by the UI
+// to identify the slot (HTML-wise).
+// The ids are in that format <x, y ... z> where each number is the position in the level (0-based index)
+// The terminal level is indexed for either operator or field -- we know which one to check upon based on the slot type parameter
+// for example if the root slot has only 3 same level children (field/operator/field), ids will respectively be "0", "0" and "1"
+// if the root slot as 3 level children and the second of them has 3 same level children (again field/operator/field), ids will respectively be:
+// "0", "1,0", "1,0", "1,1", "2"
+export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase) => void): FlatSlotBase[] => {
+    // The operators always get in between the fields, and we always have one 1 root structure for a label,
+    // and bracketed structures can never be found at 1st or last position
+    let currIndex = -1;
+    const flatSlotBases: FlatSlotBase[] = [];
+    const addFlatSlot = (flatSlot: FlatSlotBase) => {
+        flatSlotBases.push(flatSlot);
+        // If a flat slot consumer is defined, we call it here
+        if(flatSlotConsumer){
+            flatSlotConsumer(flatSlot);
+        }
+    };
+
+    slotStructure.operators.forEach((operatorSlot, index) => {
+        // Add the precededing field
+        currIndex++;
+        const slotId = getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex);
+        const fieldSlot = slotStructure.fields[index];
+        if(isFieldBracketedSlot(fieldSlot)){
+            // We have a bracketed structure, so we need to get into the nested level.
+            // 1) add the opening bracket
+            addFlatSlot({id: slotId, code: fieldSlot.openingBracketValue as string, type:SlotType.openingBracket});
+            // 2) add what is inside the brackets
+            flatSlotBases.push(...generateFlatSlotBases(fieldSlot as SlotsStructure, slotId, flatSlotConsumer));
+            // 3) add the closing bracket
+            addFlatSlot({id: slotId, code: getMatchingBracket(fieldSlot.openingBracketValue as string, true), type:SlotType.closingBracket});
+
+        }
+        else if(isFieldStringSlot(fieldSlot)){
+            // We have a string slot
+            // 1) add the opening quote
+            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.openingQuote});
+            // 2) add what is inside the quotes
+            addFlatSlot({id: slotId, code: fieldSlot.code, type:SlotType.string});
+            // 3) add the closing quote
+            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.closingQuote});
+        }
+        else{
+            // we have a simple slot, we check if we can infer the detailed type (i.e. number or boolean literals)
+            // otherwise we consider it is just a code slot
+            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(fieldSlot)});
+        }   
+
+        // Add this operator only if it is not blank
+        if(operatorSlot.code.length > 0) {
+            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator});
+        }
+    });
+
+    // Add the last remaining field and call the consumer (if provided)
+    currIndex++;
+    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slotStructure.fields.at(-1) as FieldSlot)});
+
+    return flatSlotBases;
+};
+
+export const retrieveSlotByPredicate = (frameLabelSlotStructs: SlotsStructure[], predicate: ((slot: FieldSlot) => boolean)): BaseSlot | undefined => {
+    let resSlot: FieldSlot | undefined = undefined;
+
+    for(const frameLabelSlotStruct of frameLabelSlotStructs){
+        // Very unlikely we search something in operators, but better make the function complete
+        resSlot = frameLabelSlotStruct.operators.find((operatorSlot) => predicate(operatorSlot));
+    
+        if(!resSlot){
+            // Nothing found in operators, we check fields
+            // As we look for slots, we need to get into the nested fields if needed
+            for(const fieldSlot of frameLabelSlotStruct.fields){
+                if(isFieldBracketedSlot(fieldSlot)){
+                    resSlot = retrieveSlotByPredicate([fieldSlot as SlotsStructure], predicate);
+                }
+                else if(predicate(fieldSlot)){
+                    resSlot = fieldSlot;
+                }
+                if(resSlot != null) {
+                    break;
+                }
+            }
+        }
+
+        if(resSlot != null){
+            break;
+        }
+    }
+
+    return resSlot;
+};
+export const getSlotParentIdAndIndexSplit = (slotId: string): {parentId: string, slotIndex: number} => {
+    const idMatchArray = slotId.match(/^((\d+,)*)(\d+)$/);
+    if(idMatchArray){
+        //Should match, keep TS happy
+        return {
+            parentId: (idMatchArray[1] != null) ? idMatchArray[1].substring(0,idMatchArray[1].length - 1) : "",
+            slotIndex: parseInt(idMatchArray[3]),
+        };
+    }
+    return  {parentId: "", slotIndex: -1};
+};
+
+export const getSlotIdFromParentIdAndIndexSplit = (parentId: string, slotIndex: number): string => {
+    return (parentId + ((parentId.length > 0) ? "," : "") + slotIndex);
+};
+
+export const getFlatNeighbourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNext: boolean, stopAtStructure?: boolean): SlotCoreInfos | null => {
+    // Find the flat neighbour (i.e. sibling if in same level or neareast upper level slot) of the slot identified by slotId.
+    // If findNext is true, we look for the next sibling, otherwise, we look for the previous.
+    // Unless specified by the optional flag stopAtStructure is true, we search for field slots, so operators are ignored.
+    const parentIdAndIndexSplit = getSlotParentIdAndIndexSplit(slotInfos.slotId);
+    const parentId = parentIdAndIndexSplit.parentId;
+    const hasParent = (parentId.length > 0);
+    const slotIndex = parentIdAndIndexSplit.slotIndex;
+    const sameLevelSlotsCount = hasParent 
+        ? (retrieveSlotFromSlotInfos({...slotInfos, slotId: parentId}) as SlotsStructure).fields.length // a parent is by definition a SlotStructure
+        : useStore().frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.length;
+    const isNeighbourInSameLevel = findNext ? (slotIndex < sameLevelSlotsCount - 1) : (slotIndex > 0);
+    if(isNeighbourInSameLevel){
+        // The flat neighbour is a sibling of that node, that's easy we just return that sibling
+        const neighbourSlotId = getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + (findNext ? 1 : -1));
+        const neighbourSlot = retrieveSlotFromSlotInfos({...slotInfos, slotId: neighbourSlotId}); 
+        const type = evaluateSlotType(neighbourSlot);
+        if(isSlotBracketType(type) && !stopAtStructure){
+            // Get the field inside the bracket: first child field if looking for next neighbour, last otherwise.
+            const childFieldId = (findNext) ? 0 : (neighbourSlot as SlotsStructure).fields.length - 1;
+            const noTypeChildSlotInfos = {...slotInfos, slotId: neighbourSlotId + "," + childFieldId};
+            const childType = evaluateSlotType(retrieveSlotFromSlotInfos(noTypeChildSlotInfos));
+            return {...noTypeChildSlotInfos, slotType: childType};
+        }
+        return {...slotInfos, slotId: neighbourSlotId, slotType: type};
+    }
+    else{
+        // The flat neighbour is not a sibling of that node, so we look for the parent's sibling instead
+        // (which will return undefined if not found)
+        return hasParent ? getFlatNeighbourFieldSlotInfos({...slotInfos, slotId: parentId}, findNext, stopAtStructure) : null;
+    }
+};
+
+export const evaluateSlotType = (slot: FieldSlot): SlotType => {
+    if(isFieldBracketedSlot(slot)){
+        return SlotType.bracket;
+    }
+    else if (isFieldStringSlot(slot)){
+        return  SlotType.string;
+    }
+    else {
+        // For a code type slot, we check if that's a number or boolean literal value
+        if(slot.code.trim() == "True" || slot.code.trim() == "False"){
+            return SlotType.bool;
+        }
+        else {
+            //then we look for numbers (format examples: 9, 9+1j, 0x9, 0o11, 0b1001, 0.9e1)
+            const numberRegEx = /^(-|\+)?((0b[01]+)|(0x[0-9A-Fa-f]+)|(\d+(\.\d+|)[eE]-?\d+)|((\d+(\.\d+|)[+-]\d+(\.\d+|)j)|(\d+(\.\d+|)j)|(\d+(\.\d+|))))$/g;
+            if(slot.code.match(numberRegEx) != null){
+                return SlotType.number;
+            }
+            else{
+                return SlotType.code;
+            }
+        }
+    }
+};
+
+export const removeFrameInFrameList = (frameId: number): void => {
     // When removing a frame in the list, we remove all its sub levels,
     // then update its parent and then delete the frame itself
-    const frameObject = listOfFrames[frameId];
+    const frameObject = useStore().frameObjects[frameId];
 
     //we need a copy of the childrenIds are we are modifying them in the foreach
     const childrenIds = [...frameObject.childrenIds];
-    childrenIds.forEach((childId: number) => removeFrameInFrameList(
-        listOfFrames,
-        childId
-    ));
+    childrenIds.forEach((childId: number) => removeFrameInFrameList(childId));
     //we need a copy of the jointFrameIds are we are modifying them in the foreach
     const jointFramesIds = [...frameObject.jointFrameIds];
-    jointFramesIds.forEach((jointFrameId: number) => removeFrameInFrameList(
-        listOfFrames,
-        jointFrameId
-    ));
+    jointFramesIds.forEach((jointFrameId: number) => removeFrameInFrameList(jointFrameId));
     const deleteAJointFrame = (frameObject.jointParentId > 0); 
-    const listToUpdate = (deleteAJointFrame) ? listOfFrames[frameObject.jointParentId].jointFrameIds : listOfFrames[frameObject.parentId].childrenIds;
+    const listToUpdate = (deleteAJointFrame) ? useStore().frameObjects[frameObject.jointParentId].jointFrameIds : useStore().frameObjects[frameObject.parentId].childrenIds;
     listToUpdate.splice(
         listToUpdate.indexOf(frameId),
         1
@@ -32,31 +224,31 @@ export const removeFrameInFrameList = (listOfFrames: EditorFrameObjects, frameId
 
     //Now we can delete the frame from the list of frameObjects
     Vue.delete(
-        listOfFrames,
+        useStore().frameObjects,
         frameId
     );
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
-export const getParentId = (listOfFrames: EditorFrameObjects, currentFrame: FrameObject) : number => {
+export const getParent = (currentFrame: FrameObject): number => {
     let parentId = 0;
     if(currentFrame.id !== 0){
-        parentId = (currentFrame.jointParentId > 0) ? listOfFrames[currentFrame.jointParentId].parentId : currentFrame.parentId;
+        parentId = (currentFrame.jointParentId > 0) ? useStore().frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
     }
     return parentId;
 };
 
 // Checks if it is a joint Frame or not and returns JointParent OR Parent respectively
-export const getParentOrJointParent = (listOfFrames: EditorFrameObjects, frameId: number): number  => {
-    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
+export const getParentOrJointParent = (frameId: number): number  => {
+    const isJointFrame = useStore().frameObjects[frameId].frameType.isJointFrame;
     return (isJointFrame)? 
-        listOfFrames[frameId].jointParentId:
-        listOfFrames[frameId].parentId;
+        useStore().frameObjects[frameId].jointParentId:
+        useStore().frameObjects[frameId].parentId;
 };
 
-export const isLastInParent = (listOfFrames: EditorFrameObjects, frameId: number): boolean => {
-    const frame = listOfFrames[frameId];
-    const parent = listOfFrames[getParentOrJointParent(listOfFrames,frameId)];
+export const isLastInParent = (frameId: number): boolean => {
+    const frame = useStore().frameObjects[frameId];
+    const parent = useStore().frameObjects[getParentOrJointParent(frameId)];
 
     const siblingList = (frame.jointParentId>0)? parent.jointFrameIds : parent.childrenIds;
 
@@ -64,17 +256,17 @@ export const isLastInParent = (listOfFrames: EditorFrameObjects, frameId: number
 };
 
 //Returns a list with all the previous frames (of the same level) and next frames (including first level children) used for navigating the caret
-export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, currentFrameId: number, caretPosition: CaretPosition, direction: "up"|"down"): number[] => {
-    const currentFrame = listOfFrames[currentFrameId];
+export const childrenListWithJointFrames = (currentFrameId: number, caretPosition: CaretPosition, direction: "up"|"down"): number[] => {
+    const currentFrame = useStore().frameObjects[currentFrameId];
             
     // Create the list of children + joints with which the caret will work with
     let childrenAndJointFramesIds = [] as number[];
-    const parentId = getParentId(listOfFrames,currentFrame);
+    const parentId = getParent(currentFrame);
 
-    childrenAndJointFramesIds = [...listOfFrames[parentId].childrenIds];    
+    childrenAndJointFramesIds = [...useStore().frameObjects[parentId].childrenIds];    
     
     // Joint frames are added to a temp list and caret works with this list instead.
-    if (isFramePartOfJointStructure(listOfFrames, currentFrame.id)) {
+    if (isFramePartOfJointStructure(currentFrame.id)) {
 
         const jointParentId = (currentFrame.jointParentId > 0) ? currentFrame.jointParentId : currentFrame.id;
         const indexOfJointParent = childrenAndJointFramesIds.indexOf(jointParentId);
@@ -83,7 +275,7 @@ export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, cu
         childrenAndJointFramesIds.splice(
             indexOfJointParent+1,
             0,
-            ...listOfFrames[jointParentId].jointFrameIds
+            ...useStore().frameObjects[jointParentId].jointFrameIds
         );
     }
     
@@ -101,10 +293,10 @@ export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, cu
             const previousSubLevelFrameIds = 
                 (currentFrame.id < 0) ?
                     ((indexOfCurrentInParent > 0) ? 
-                        listOfFrames[previousId].childrenIds : 
+                        useStore().frameObjects[previousId].childrenIds : 
                         []
                     ) :
-                    listOfFrames[previousId].jointFrameIds;
+                    useStore().frameObjects[previousId].jointFrameIds;
            
             //the last joint frames are added to the temporary list
             childrenAndJointFramesIds.splice(
@@ -129,20 +321,19 @@ export const childrenListWithJointFrames = (listOfFrames: EditorFrameObjects, cu
     return childrenAndJointFramesIds;
 };
 
-export const countRecursiveChildren = function(listOfFrames: EditorFrameObjects, frameId: number, countLimit?: number): number {
+export const countRecursiveChildren = function(frameId: number, countLimit?: number): number {
     // This method counts all recursive children (i.e. children, grand children, ...) of a frame.
     // The countLimit is a threshold to reach where we can stop recursion. Therefore the number of children returned IS NOT guaranted
     // to be less than the limit: it just means we don't look at any more siblings/sub children if we reached this limit.
     // If this argument isn't passed in the method, all recursive children are counted until we reach the end of the tree.
     
-    const currentChildrenIds = listOfFrames[frameId].childrenIds;
-    const currentJointFramesIds = listOfFrames[frameId].jointFrameIds;
+    const currentChildrenIds = useStore().frameObjects[frameId].childrenIds;
+    const currentJointFramesIds = useStore().frameObjects[frameId].jointFrameIds;
     
     let childrenCount = currentChildrenIds.length;
     if(countLimit === undefined || childrenCount < countLimit){
         //if there is no limit set, or if we haven't reached it, we look at the subchildren
         currentChildrenIds.forEach((childId: number) => childrenCount += countRecursiveChildren(
-            listOfFrames, 
             childId, 
             countLimit
         ));
@@ -151,11 +342,10 @@ export const countRecursiveChildren = function(listOfFrames: EditorFrameObjects,
             //for the joint frame structure, if a joint frame has at least one child, we count is as its parent 
             //child to give it a count.
             currentJointFramesIds.forEach((jointFrameId: number) => {
-                if(listOfFrames[jointFrameId].childrenIds.length > 0){
+                if(useStore().frameObjects[jointFrameId].childrenIds.length > 0){
                     childrenCount++;
                 }
                 childrenCount += countRecursiveChildren(
-                    listOfFrames, 
                     jointFrameId, 
                     countLimit
                 );
@@ -193,7 +383,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     frame.childrenIds.forEach((childId: number, index: number) => {
         frame.childrenIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
-            listOfFrames, 
+            listOfFrames,
             childId,
             frame.id,
             nextAvailableId, 
@@ -205,7 +395,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     frame.jointFrameIds.forEach((childId: number, index: number) => {
         frame.jointFrameIds[index] = ++nextAvailableId.id;
         cloneFrameAndChildren(
-            listOfFrames, 
+            listOfFrames,
             childId,
             frame.id,
             nextAvailableId,
@@ -216,19 +406,19 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
 };
 
 //Search all children/joint frames ids for a specific frame
-export const getAllChildrenAndJointFramesIds = function(listOfFrames: EditorFrameObjects, frameId: number): number[]  {
+export const getAllChildrenAndJointFramesIds = function(frameId: number): number[]  {
     const childrenJointsIdsList = [] as number[];
 
     //get the children frames ids
-    listOfFrames[frameId].childrenIds.forEach((childId: number) => {
+    useStore().frameObjects[frameId].childrenIds.forEach((childId: number) => {
         childrenJointsIdsList.push(childId);
-        childrenJointsIdsList.push(...getAllChildrenAndJointFramesIds(listOfFrames, childId));
+        childrenJointsIdsList.push(...getAllChildrenAndJointFramesIds(childId));
     });
 
     //get the joint frames ids
-    listOfFrames[frameId].jointFrameIds.forEach((jointId: number) => {
+    useStore().frameObjects[frameId].jointFrameIds.forEach((jointId: number) => {
         childrenJointsIdsList.push(jointId);
-        childrenJointsIdsList.push(...getAllChildrenAndJointFramesIds(listOfFrames, jointId));
+        childrenJointsIdsList.push(...getAllChildrenAndJointFramesIds(jointId));
     });
 
     return childrenJointsIdsList;
@@ -288,10 +478,10 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
 };
 
 // Finds out what is the root frame Id of a "block" of disabled frames
-export const getDisabledBlockRootFrameId = function(listOfFrames: EditorFrameObjects, frameId: number): number {
-    const frameParentId = (listOfFrames[frameId].jointParentId > 0) ? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
-    if(listOfFrames[frameParentId].isDisabled){
-        return getDisabledBlockRootFrameId(listOfFrames, frameParentId);
+export const getDisabledBlockRootFrameId = function(frameId: number): number {
+    const frameParentId = (useStore().frameObjects[frameId].jointParentId > 0) ? useStore().frameObjects[frameId].jointParentId : useStore().frameObjects[frameId].parentId;
+    if(useStore().frameObjects[frameParentId].isDisabled){
+        return getDisabledBlockRootFrameId(frameParentId);
     }
     else{
         return frameId;
@@ -315,53 +505,53 @@ export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFra
     return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
 };
 
-export const getLastSibling= function (listOfFrames: EditorFrameObjects, frameId: number): number {
+export const getLastSibling= function (frameId: number): number {
     
-    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
-    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
-    const parentsChildren = (isJointFrame)? listOfFrames[parentId].jointFrameIds : listOfFrames[parentId].childrenIds;
+    const isJointFrame = useStore().frameObjects[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame) ? useStore().frameObjects[frameId].jointParentId : useStore().frameObjects[frameId].parentId;
+    const parentsChildren = (isJointFrame) ? useStore().frameObjects[parentId].jointFrameIds : useStore().frameObjects[parentId].childrenIds;
 
     return parentsChildren[parentsChildren.length-1];
     
 };
 
-export const getAllSiblings= function (listOfFrames: EditorFrameObjects, frameId: number): number[] {
-    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
-    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+export const getAllSiblings= function (frameId: number): number[] {
+    const isJointFrame = useStore().frameObjects[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame) ? useStore().frameObjects[frameId].jointParentId : useStore().frameObjects[frameId].parentId;
 
-    return (isJointFrame)? listOfFrames[parentId].jointFrameIds : listOfFrames[parentId].childrenIds;    
+    return (isJointFrame) ? useStore().frameObjects[parentId].jointFrameIds : useStore().frameObjects[parentId].childrenIds;    
 };
 
-export const getNextSibling= function (listOfFrames: EditorFrameObjects, frameId: number): number {
-    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
-    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+export const getNextSibling= function (frameId: number): number {
+    const isJointFrame = useStore().frameObjects[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame) ? useStore().frameObjects[frameId].jointParentId : useStore().frameObjects[frameId].parentId;
 
-    const list = (isJointFrame)? listOfFrames[parentId].jointFrameIds : listOfFrames[parentId].childrenIds;    
+    const list = (isJointFrame) ? useStore().frameObjects[parentId].jointFrameIds : useStore().frameObjects[parentId].childrenIds;    
 
     return list[list.indexOf(frameId)+1]??-100;
 };
 
-export const getAllSiblingsAndJointParent= function (listOfFrames: EditorFrameObjects, frameId: number): number[] {
-    const isJointFrame = listOfFrames[frameId].frameType.isJointFrame;
-    const parentId = (isJointFrame)? listOfFrames[frameId].jointParentId : listOfFrames[frameId].parentId;
+export const getAllSiblingsAndJointParent= function (frameId: number): number[] {
+    const isJointFrame = useStore().frameObjects[frameId].frameType.isJointFrame;
+    const parentId = (isJointFrame) ? useStore().frameObjects[frameId].jointParentId : useStore().frameObjects[frameId].parentId;
 
-    return (isJointFrame)? [listOfFrames[frameId].jointParentId, ...listOfFrames[parentId].jointFrameIds] : listOfFrames[parentId].childrenIds;    
+    return (isJointFrame)? [useStore().frameObjects[frameId].jointParentId, ...useStore().frameObjects[parentId].jointFrameIds] : useStore().frameObjects[parentId].childrenIds;    
 };
 
-export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame: CurrentFrame, direction: "up"|"down", selectedFrames: number[]): {frameForSelection: number, newCurrentFrame: CurrentFrame}|null => {
+export const frameForSelection = (currentFrame: CurrentFrame, direction: "up"|"down", selectedFrames: number[]): {frameForSelection: number, newCurrentFrame: CurrentFrame}|null => {
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.
-    if( currentFrame.caretPosition === CaretPosition.body && (direction === "up" || listOfFrames[currentFrame.id].childrenIds.length === 0) ){
+    if( currentFrame.caretPosition === CaretPosition.body && (direction === "up" || useStore().frameObjects[currentFrame.id].childrenIds.length === 0) ){
         return null;
     }
 
     const parentId = (currentFrame.caretPosition === CaretPosition.body)? 
         currentFrame.id : 
-        getParentOrJointParent(listOfFrames, currentFrame.id);
+        getParentOrJointParent(currentFrame.id);
 
-    const parent = listOfFrames[parentId];
-    const isCurrentJoint = listOfFrames[currentFrame.id].jointParentId > 0;
+    const parent = useStore().frameObjects[parentId];
+    const isCurrentJoint = useStore().frameObjects[currentFrame.id].jointParentId > 0;
 
     // If there are no joint frames in the parent, even if we are talking about a frame that can have joint frames (i.e. a single if),
     // then the list is the same level children.
@@ -370,8 +560,8 @@ export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame
     let actualCurrentFrameId = currentFrame.id;
     let sameLevelFrameIds = parent.childrenIds;
     if (isCurrentJoint && parent.jointFrameIds.length > 0) {
-        if(isLastInParent(listOfFrames, currentFrame.id) && !selectedFrames.includes(currentFrame.id)) {
-            sameLevelFrameIds = listOfFrames[parent.parentId].childrenIds;
+        if(isLastInParent(currentFrame.id) && !selectedFrames.includes(currentFrame.id)) {
+            sameLevelFrameIds = useStore().frameObjects[parent.parentId].childrenIds;
             actualCurrentFrameId = parent.id;
         }
         else {
@@ -379,8 +569,8 @@ export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame
         }
     }
     // In the case that we are below a parent of joint frames the list is the joint children
-    else if(currentFrame.caretPosition === CaretPosition.below && direction !== "up" && listOfFrames[currentFrame.id].jointFrameIds.length >0) {
-        sameLevelFrameIds = listOfFrames[currentFrame.id].jointFrameIds;
+    else if(currentFrame.caretPosition === CaretPosition.below && direction !== "up" && useStore().frameObjects[currentFrame.id].jointFrameIds.length >0) {
+        sameLevelFrameIds = useStore().frameObjects[currentFrame.id].jointFrameIds;
     }
 
     const indexDelta = (direction === "up")? -1 : 1;
@@ -398,15 +588,14 @@ export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame
 
 
     // If we are about to select non Joint frame and in the current selection there are Joint frames then we prevent it
-    const hasJointChildren = selectedFrames.find((id) => listOfFrames[id].jointParentId > 0) ?? 0;
-    if( hasJointChildren > 0 && listOfFrames[frameToBeSelected].jointParentId === 0) {
+    const hasJointChildren = selectedFrames.find((id) => useStore().frameObjects[id].jointParentId > 0) ?? 0;
+    if( hasJointChildren > 0 && useStore().frameObjects[frameToBeSelected].jointParentId === 0) {
         return null;
     }
 
     // Create the list of children + joints with which the caret will work with
     const allSameLevelFramesAndJointIds = 
     childrenListWithJointFrames(
-        listOfFrames, 
         frameToBeSelected,
         currentFrame.caretPosition, 
         direction
@@ -416,7 +605,7 @@ export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame
     if( frameToBeSelected !== undefined ) {
         let indexOfSelectedInWiderList = allSameLevelFramesAndJointIds.indexOf(frameToBeSelected);
 
-        const numberOfJointChildrenOfSelected = listOfFrames[frameToBeSelected].jointFrameIds.length;
+        const numberOfJointChildrenOfSelected = useStore().frameObjects[frameToBeSelected].jointFrameIds.length;
 
         if( numberOfJointChildrenOfSelected > 0 && direction === "down") {
             // indexDelta gives us the + or - for the direction of how many jointChildren we need to skip.
@@ -444,34 +633,34 @@ export const frameForSelection = (listOfFrames: EditorFrameObjects, currentFrame
     
 };
 
-export const checkIfLastJointChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
-    const parent: FrameObject = listOfFrames[listOfFrames[frameId].jointParentId];
+export const checkIfLastJointChild = function (frameId: number): boolean {
+    const parent: FrameObject = useStore().frameObjects[useStore().frameObjects[frameId].jointParentId];
     return [...parent.jointFrameIds].pop() === frameId;
 };
 
-export const isFramePartOfJointStructure = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
-    const frame = listOfFrames[frameId];
+export const isFramePartOfJointStructure = function (frameId: number): boolean {
+    const frame = useStore().frameObjects[frameId];
     return (frame.frameType.isJointFrame || frame.jointFrameIds.length > 0);
 };
 
 
-export const checkIfFirstChild = function (listOfFrames: EditorFrameObjects, frameId: number): boolean {
-    const parent: FrameObject = listOfFrames[listOfFrames[frameId].parentId||listOfFrames[frameId].jointParentId];
+export const checkIfFirstChild = function (frameId: number): boolean {
+    const parent: FrameObject = useStore().frameObjects[useStore().frameObjects[frameId].parentId||useStore().frameObjects[frameId].jointParentId];
     return ([...parent.childrenIds].shift()??[...parent.jointFrameIds].shift()) === frameId;
 };
 
 // This method checks if there is a compound (parent+child) frame above the selected frame and returns the 
 // the correct previous e.g. if(1): "2" elif(3): "4"  and we are after "4" and going up, we should end up below "3" and not "4"!
-export const getPreviousIdForCaretBelow = function (listOfFrames: EditorFrameObjects, currentFrame: number): number {
+export const getPreviousIdForCaretBelow = function (currentFrame: number): number {
 
     // selecting means selecting a same level frame 
-    const siblings = getAllSiblings(listOfFrames,currentFrame);
+    const siblings = getAllSiblings(currentFrame);
 
     // if there is a previous sibling then get it, otherwise get the parent
-    const previous = siblings[siblings.indexOf(currentFrame)-1]??listOfFrames[currentFrame].parentId;
+    const previous = siblings[siblings.indexOf(currentFrame)-1]??useStore().frameObjects[currentFrame].parentId;
 
     // in case the sibling has joint children, going up means going under it's last child
-    return [...listOfFrames[previous].jointFrameIds].pop()??previous;
+    return [...useStore().frameObjects[previous].jointFrameIds].pop()??previous;
     
 };
 
@@ -485,7 +674,7 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     // step 2 --> find the index of the dragged top frame caret based on this logic:
     // if we had moved an block frame, we look for the caret position before the that block frame "body" position (which is the first position for that block frames)
     // if we had moved a statement frame, we look for the caret position before the statement frame "below" position (which is the first position for that statemen frame)
-    const referenceFramePosIndex = availablePositions.findIndex((navPos) => navPos.id == frameId
+    const referenceFramePosIndex = availablePositions.findIndex((navPos) => navPos.frameId == frameId
         && navPos.caretPosition == ((useStore().frameObjects[frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below));
     
     // step 3 --> get the position before that (a frame is at least contained in a frame container, so position index can't be 0)
@@ -497,15 +686,15 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
 
 // This method returns a boolean value indicating whether the caret (current position) is contained
 // within one of the frame types specified in "containerTypes"
-export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, currFrameId: number, caretPosition: CaretPosition, containerTypes: string[]): boolean {
+export const isContainedInFrame = function (currFrameId: number, caretPosition: CaretPosition, containerTypes: string[]): boolean {
     let isAncestorTypeFound = false;
     let frameToCheckId = (caretPosition === CaretPosition.body) ? 
         currFrameId:
-        getParentId(listOfFrames, listOfFrames[currFrameId]);
+        getParent(useStore().frameObjects[currFrameId]);
     
     while(frameToCheckId != 0 && !isAncestorTypeFound){
-        isAncestorTypeFound = containerTypes.includes(listOfFrames[frameToCheckId].frameType.type);
-        frameToCheckId = getParentId(listOfFrames, listOfFrames[frameToCheckId]);
+        isAncestorTypeFound = containerTypes.includes(useStore().frameObjects[frameToCheckId].frameType.type);
+        frameToCheckId = getParent(useStore().frameObjects[frameToCheckId]);
     }
 
     return isAncestorTypeFound;
@@ -514,82 +703,72 @@ export const isContainedInFrame = function (listOfFrames: EditorFrameObjects, cu
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
 // We get the available caret positions through the DOM, where they are all present.
 export const getAvailableNavigationPositions = function(): NavigationPosition[] {
-    // We start by getting from the DOM all the available caret and editable slot positions
+    // We start by getting from the DOM all the available caret and editable slot positions 
+    // (slots of "code" type slots, e.g. not operators -- won't appear in allCaretDOMPositions)
     const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
-    // We create a list that hold objects of {id,isSlotNavigationPosition,caretPosition,slotNumber) for each available navigation positions
+    // We create a list that hold objects of {frameId,isSlotNavigationPosition,caretPosition?,labelSlotsIndex?, slotId?) for each available navigation positions
     // and discard the locations that correspond to the editable slots of disable frames
     return Object.values(allCaretDOMpositions).map((e)=> {
         const isSlotNavigationPosition = e.id.startsWith("input");
-        // Retrieves the identifier for the navigation position: the type of caret position for a caret (e.g. "caretBody"), the index for a slot
+        // Retrieves the identifier for the navigation position: the type of caret position for a caret (e.g. "caretBody"), the indexes/ids for a slot
         // we extract it from the id of the elements, they are of that form:
-        // slots --> "input_frameId_<frameId>_slot_<slotIndex>" where <frameId> and <slotIndex> are numbers (we want <slotIndex>)
+        // slots (*) --> "input_frame_<frameId>_label_<labelSlotsIndex>_slot_<slotType>_<slotId>" where <frameId>, <labelSlotsIndex> and <slotType> are numbers and <slotId> a string (we want <slotIndex> and <slotId>)
         // carets --> "caret_<type>_<frameId>" where <type> is one of caretBelow or caretBody, and <frameId> as mentioned above (we want <type>)
+        // (*) cf function getLabelSlotUIID in the helper editor.ts
+        const labelSlotCoreInfos = parseLabelSlotUIID(e.id);
         const positionObjIdentifier = (isSlotNavigationPosition) 
-            ? {slotNumber: parseInt(e.id.replace(/input_frameId_\d+_slot_/,""))}
+            ? {labelSlotsIndex: labelSlotCoreInfos.labelSlotsIndex, slotId: labelSlotCoreInfos.slotId}
             : {caretPosition: e.id.includes(CaretPosition.below) ? CaretPosition.below : CaretPosition.body}; 
         // We retrieve also the frameId from the identifier of the element (format is mentioned above)
         const frameIdMatch = e.id.match(/-?\d+/);
         return {
-            id: (frameIdMatch != null) ? parseInt(frameIdMatch[0]) : -100, // need to check the match isn't null for TS, but it should NOT be.
+            frameId: (frameIdMatch != null) ? parseInt(frameIdMatch[0]) : -100, // need to check the match isn't null for TS, but it should NOT be.
             isSlotNavigationPosition: isSlotNavigationPosition, 
             ...positionObjIdentifier,            
         };
-    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.id] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.id].isDisabled)) as NavigationPosition[]; 
+    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
 
-export const checkCodeErrors = (frameId: number, slotId: number, code: string): void => {
+export const checkCodeErrors = (slotInfos: SlotInfos): void => {
     // This method for checking errors is called when a frame slot has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
     // we clear the errors completely for that frame/slot before we check the errors again for it.
-    const currentErrorMessage = (slotId > -1) ? useStore().frameObjects[frameId].contentDict[slotId].error : undefined ;
+    const slot = retrieveSlotFromSlotInfos(slotInfos);
+    const currentErrorMessage = (slot as BaseSlot).error;
     useStore().setSlotErroneous(
         {
-            frameId: frameId, 
-            slotIndex: slotId, 
+            ...slotInfos,
             error: "",
         }
     );
-    Vue.delete(useStore().frameObjects[frameId].contentDict[slotId],"errorTitle");
+    Vue.delete(slot,"errorTitle");
 
     /* IFTRUE_isPurePython */
-    // One particular case: if the error is a runtime error, other editable slots of that frame will also show the error,
-    // therefore, we invalidate the errors for all these other slots.
-    Object.entries(useStore().frameObjects[frameId].contentDict).forEach((contentDictEntry) => {
-        if(parseInt(contentDictEntry[0]) != slotId && contentDictEntry[1].errorTitle?.includes(i18n.t("console.runtimeErrorEditableSlotHeader") as string)) {
-            useStore().setSlotErroneous(
-                {
-                    frameId: frameId, 
-                    slotIndex: parseInt(contentDictEntry[0]), 
-                    error: "",
-                }
-            );
-            Vue.delete(useStore().frameObjects[frameId].contentDict[parseInt(contentDictEntry[0])],"errorTitle");
-        }        
-    });
+    // If the frame of this slot has a runtime error, we also clear it
+    Vue.delete(useStore().frameObjects[slotInfos.frameId], "runTimeError");
     /* FITRUE_isPurePython */
 
-    const frameObject = useStore().frameObjects[frameId];
-
-    const optionalSlot = frameObject.frameType.labels[slotId].optionalSlot ?? true;
-    const errorMessage = useStore().getErrorForSlot(frameId,slotId);
-    if(code !== "") {
+    // Check for precompiled errors (empty slots)
+    const frameObject = useStore().frameObjects[slotInfos.frameId];
+    // Optional slot is relevant to a label, therefore, we consider it is actually relevant only if 1 field slot is in the structure
+    const isOptionalSlot = (frameObject.labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.length > 1) 
+        || (frameObject.frameType.labels[slotInfos.labelSlotsIndex].optionalSlot ?? false);
+    if(slotInfos.code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
-        if(!optionalSlot && (errorMessage === i18n.t("errorMessage.emptyEditableSlot")
-            || currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot"))) {
-            useStore().removePreCompileErrors(getEditableSlotUIID(frameId, slotId));                
+        if(currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
+            useStore().removePreCompileErrors(getLabelSlotUIID(slotInfos));                
         }
     }
-    else if(!optionalSlot){
+    else if(!isOptionalSlot){
         useStore().setSlotErroneous( 
             {
-                frameId: frameId, 
-                slotIndex: slotId,  
+                ...slotInfos,  
                 error: i18n.t("errorMessage.emptyEditableSlot") as string,
             }
         );
-        useStore().addPreCompileErrors(getEditableSlotUIID(frameId, slotId));
+        useStore().addPreCompileErrors(getLabelSlotUIID(slotInfos));
     }
-                
+
     // We check Python error (with TigerPython) for this portion of code only.
     // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared on the SLOT only.
     // If we are on a joint element, we check the whole joint siblings from root to last joint, otherwise, the single current line suffice.
@@ -598,37 +777,59 @@ export const checkCodeErrors = (frameId: number, slotId: number, code: string): 
     const availablePositions = getAvailableNavigationPositions();
     const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
     const caretPosition = (frameObject.frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
-    const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.id===frameId && e.isSlotNavigationPosition && e.caretPosition === caretPosition);
+    const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.frameId===slotInfos.frameId && e.caretPosition === caretPosition);
     const nextCaretId =  (isJoinFrame) 
-        ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.id===frameObject.jointParentId && !e.isSlotNavigationPosition && e.caretPosition === CaretPosition.below) + 1]?.id??-100
-        : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.body && frameObject.childrenIds.length == 0) ? 2 : 1)]?.id??-100);
-    const startFrameId = (isJoinFrame) ? frameObject.jointParentId : frameId;
+        ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.frameId===frameObject.jointParentId && !e.isSlotNavigationPosition && e.caretPosition === CaretPosition.below) + 1]?.frameId??-100
+        : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.body && frameObject.childrenIds.length == 0) ? 2 : 1)]?.frameId??-100);
+    const startFrameId = (isJoinFrame) ? frameObject.jointParentId : slotInfos.frameId;
     const parser = new Parser(true);
     const portionOutput = parser.parse(startFrameId, nextCaretId);
     parser.getErrorsFormatted(portionOutput);
 };
 
-export function checkAndtransformFuncCallFrameToVarAssignFrame(frameId: number, code: string): void{
-    // We check if the code (from a function call frame) is actually a variable assignment,
-    // and if needed, transform the function call frame to a var assign frame by adapting 
-    // the existing frame object -- we do nothing special if there is no variable assignment detected.
-    const codeVarAssignRegexMatch = code.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=([^=].*)$/);
-    if(codeVarAssignRegexMatch != null){
-        // We should always end up here since we have already checked the code against the regex
-        Vue.set(useStore().frameObjects[frameId],"frameType", getFrameDefType(AllFrameTypesIdentifier.varassign));
-        const newContent: { [index: number]: FrameSlotContent} = {
-            0: {
-                code: codeVarAssignRegexMatch[1],
-                error: "",
-                focused: false,
-                shownLabel: true,
-            },
-            1: {
-                code: codeVarAssignRegexMatch[3],
-                error: "",
-                focused: false,
-                shownLabel: true,
-            } };
-        Vue.set(useStore().frameObjects[frameId], "contentDict", newContent);
-    }
+export function checkCodeErrorsForFrame(frameId: number): void {
+    // We wil need to recreate the slot ID while parsing each slots of the frame to check errors on them
+    // so we use the FlatSlotBase generator (only on that frame), and apply the error checks for each flat slot
+    // ONLY on code type slots
+    Object.values(useStore().frameObjects[frameId].labelSlotsDict).forEach((labelSlotStruct, labelSlotsIndex) => {
+        generateFlatSlotBases(labelSlotStruct.slotStructures, "", (flatSlot: FlatSlotBase) => {
+            if(isSlotCodeType(flatSlot.type)){
+                checkCodeErrors({
+                    frameId: frameId,
+                    labelSlotsIndex: labelSlotsIndex,
+                    slotId: flatSlot.id,
+                    slotType: flatSlot.type,
+                    code: flatSlot.code,
+                    error: flatSlot.error,
+                    errorTitle: flatSlot.errorTitle,
+                    // These other properties are not important
+                    initCode: "",
+                    isFirstChange: true,
+                });
+            }
+        });
+    });
+}
+
+export function clearAllFrameErrors(frameId: number): void {
+    // We wil need to recreate the slot ID while parsing each slots of the frame to clear precompiled errors
+    // so we use the FlatSlotBase generator (only on that frame), and remove the compiled errors for each flat slot
+    Object.values(useStore().frameObjects[frameId].labelSlotsDict).forEach((labelSlotStruct, labelSlotsIndex) => {
+        // We only keep the erroneous slots
+        generateFlatSlotBases(labelSlotStruct.slotStructures, "", (flatSlot: FlatSlotBase) => {
+            if((flatSlot.error?.length??0) > 0){
+                const erroneousSlot = retrieveSlotFromSlotInfos({frameId: frameId, labelSlotsIndex: labelSlotsIndex, slotId: flatSlot.id, slotType: flatSlot.type});
+                Vue.set(erroneousSlot, "error", "");
+                Vue.delete(erroneousSlot, "errorTitle");                            
+                  
+                // Delete precompiled errors for that slot
+                useStore().removePreCompileErrors(getLabelSlotUIID({
+                    frameId: frameId,
+                    labelSlotsIndex: labelSlotsIndex,
+                    slotId: flatSlot.id,
+                    slotType: flatSlot.type,
+                })); 
+            }
+        });
+    });
 }

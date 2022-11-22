@@ -34,15 +34,26 @@
 
                 <FrameHeader
                     v-if="frameType.labels !== null"
+                    :id="frameHeaderId"
                     :isDisabled="isDisabled"
                     v-blur="isDisabled"
                     :frameId="frameId"
                     :frameType="frameType.type"
                     :labels="frameType.labels"
-                    class="frame-header"
+                    :class="{'frame-header': true, error: hasRuntimeError}"
                     :style="frameMarginStyle['header']"
                     :frameAllowChildren="allowChildren"
                 />
+                <b-popover
+                    v-if="hasRuntimeError"
+                    :target="frameHeaderId"
+                    :title="$t('console.runtimeErrorEditableSlotHeader')"
+                    triggers="hover focus"
+                    :content="runTimeErrorMessage"
+                    custom-class="error-popover"
+                    placement="left"
+                >
+                </b-popover>
                 <FrameBody
                     v-if="allowChildren"
                     :frameId="frameId"
@@ -88,8 +99,8 @@ import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -144,6 +155,10 @@ export default Vue.extend({
     computed: {
         ...mapStores(useStore),
 
+        frameHeaderId(): string {
+            return getFrameHeaderUIID(this.frameId);
+        },
+
         allowsJointChildren(): boolean {
             return this.appStore.getAllowedJointChildren(this.frameId);
         },
@@ -167,6 +182,14 @@ export default Vue.extend({
             frameClass += (this.selectedPosition === "last")? "selectedBottom " : ""; 
             frameClass += (this.selectedPosition === "first-and-last" || this.contextMenuEnforcedSelect)? "selectedTopBottom " : "";  
             return frameClass;
+        },
+
+        runTimeErrorMessage(): string {
+            return this.appStore.frameObjects[this.frameId].runTimeError ?? "";
+        },
+
+        hasRuntimeError(): boolean {
+            return this.runTimeErrorMessage.length > 0;
         },
 
         deletableFrame(): boolean{
@@ -240,6 +263,9 @@ export default Vue.extend({
             });
             this.contextMenuObserver.observe(contextMenuContainer,{attributes: true, attributeFilter: ['style']});
         }
+
+        // The frame header can listen for events from the editable slots focus to manage header level error messages
+        document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
     },
 
     destroyed() {
@@ -247,6 +273,10 @@ export default Vue.extend({
 
         // Probably not required but for safety, remove the observer set up in mounted()
         this.contextMenuObserver.disconnect();
+
+        // Same as above, not sure it is required to remove the event since anyway the event loop won't be raised
+        // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
+        document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
     },
 
     methods: {
@@ -277,7 +307,7 @@ export default Vue.extend({
             // then we have a specific colour - to avoid colours to add up together when going deeper in the frames,
             // we only apply that colour to the frames that have not a parent set to deletable         
             if(this.deletableFrame && this.appStore.potentialDeleteFrameIds){
-                const isParentDeletable = this.appStore.potentialDeleteFrameIds.includes(getParentOrJointParent(this.appStore.frameObjects, this.frameId));
+                const isParentDeletable = this.appStore.potentialDeleteFrameIds.includes(getParentOrJointParent(this.frameId));
                 return (!isParentDeletable) ? "rgba(255,0,0,0.6)" : "transparent"; 
             }
 
@@ -293,6 +323,12 @@ export default Vue.extend({
             else{
                 return "transparent";
             }
+        },
+
+        onFrameContentEdited() {
+            // When the frame content has been changed, we clear the potential runtime error
+            // needs a Vue.set() to keep reactivity
+            Vue.set(this.appStore.frameObjects[this.frameId],"runTimeError", "");
         },
 
         handleClick (event: MouseEvent, action: string) {
@@ -363,11 +399,11 @@ export default Vue.extend({
                     const isCopyJointFrame = (this.appStore.copiedFrames[this.appStore.copiedFrameId]?.frameType.isJointFrame) ?? false;
                     const isAllowedForJointAbove = (!this.isJointFrame) || (this.isJointFrame && isCopyJointFrame);
                     const isAllowedForJointBelow = !this.isJointFrame
-                        || (this.isJointFrame && isCopyJointFrame && !isLastInParent(this.appStore.frameObjects, this.frameId))
-                        || (this.isJointFrame && isLastInParent(this.appStore.frameObjects, this.frameId));
+                        || (this.isJointFrame && isCopyJointFrame && !isLastInParent(this.frameId))
+                        || (this.isJointFrame && isLastInParent(this.frameId));
                     const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
                     const targetPasteBelow = this.getTargetPasteBelow();
-                    canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.id, caretNavigationPositionAbove.caretPosition as CaretPosition));
+                    canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.frameId, caretNavigationPositionAbove.caretPosition as CaretPosition));
                     canPasteBelowFrame = isAllowedForJointBelow && (this.appStore.isPasteAllowedAtFrame(targetPasteBelow.id, targetPasteBelow.caretPosition));
                     const sliceNumber = (!canPasteAboveFrame && !canPasteBelowFrame)
                         ? 3 // both paste menu entries and divider
@@ -492,7 +528,7 @@ export default Vue.extend({
                     }
                     else{
                         // Add all the children and joints of the targets in the flag array if we are in a single delete
-                        potentialDeleteFrameIDs.push(...getAllChildrenAndJointFramesIds(this.appStore.frameObjects, targetFrameId));
+                        potentialDeleteFrameIDs.push(...getAllChildrenAndJointFramesIds(targetFrameId));
                     }
                 });
                 this.appStore.potentialDeleteFrameIds.push(...potentialDeleteFrameIDs);
@@ -561,7 +597,7 @@ export default Vue.extend({
             const frameRect = frameClickedDiv.getBoundingClientRect();
             const headerRect = document.querySelector("#"+this.uiid+ " .frame-header")?.getBoundingClientRect();
             if(headerRect){            
-                let newCaretPosition: NavigationPosition = {id: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
+                let newCaretPosition: NavigationPosition = {frameId: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
                 // The following logic applies to select a caret position based on the frame and the location of the click:
                 // if a click occurs between the top of a frame and its header top mid half
                 //    --> get the cursor visually above the frame
@@ -586,7 +622,7 @@ export default Vue.extend({
                             hasPassedPosition = (clickY >= previousThreshold && clickY < midFrameThresholdPos.midYThreshold);
                             previousThreshold = midFrameThresholdPos.midYThreshold;
                             if(hasPassedPosition){
-                                newCaretPosition.id = midFrameThresholdPos.caretPos.id;
+                                newCaretPosition.frameId = midFrameThresholdPos.caretPos.id;
                                 newCaretPosition.caretPosition = midFrameThresholdPos.caretPos.caretPosition;
                                 break;
                             }
@@ -598,16 +634,16 @@ export default Vue.extend({
                             // in between joints are disabled, the caret will be still be at the last child's bottom.
                             // If that joint has no children, we keep in its body.
                             // If the joint frame is the last of the structure, then we need to show the caret below for the root parent.
-                            if(isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId)){
-                                if(this.appStore.frameObjects[this.frameId].jointParentId > 0 && isLastInParent(this.appStore.frameObjects, this.frameId)){
+                            if(isFramePartOfJointStructure(this.frameId)){
+                                if(this.appStore.frameObjects[this.frameId].jointParentId > 0 && isLastInParent(this.frameId)){
                                     // Case of a joint frame which is last of of the joint structure
-                                    newCaretPosition.id = this.appStore.frameObjects[this.frameId].jointParentId;
+                                    newCaretPosition.frameId = this.appStore.frameObjects[this.frameId].jointParentId;
                                     newCaretPosition.caretPosition = CaretPosition.below;
                                 }
                                 else{
                                     // Case of root joint frame or  joint frame which is not last of the joint structure
                                     if(this.appStore.frameObjects[this.frameId].childrenIds.length > 0){
-                                        newCaretPosition.id = [...this.appStore.frameObjects[this.frameId].childrenIds].pop() as number;// get the last joint child frame id
+                                        newCaretPosition.frameId = [...this.appStore.frameObjects[this.frameId].childrenIds].pop() as number;// get the last joint child frame id
                                         newCaretPosition.caretPosition = CaretPosition.below;
                                     }
                                     else{
@@ -624,8 +660,8 @@ export default Vue.extend({
                         newCaretPosition.caretPosition = CaretPosition.below;
                     }
                 }
-               
-                this.appStore.toggleCaret({id: newCaretPosition.id, caretPosition: newCaretPosition.caretPosition as CaretPosition});
+                
+                this.appStore.toggleCaret({id: newCaretPosition.frameId, caretPosition: newCaretPosition.caretPosition as CaretPosition});
             }
         },
 
@@ -643,7 +679,7 @@ export default Vue.extend({
                 bodyFrameIds.forEach((childFrameId) => {
                     const childFrameDivRect = document.getElementById(getFrameUIID(childFrameId))?.getBoundingClientRect() as DOMRect;
                     const prevPos = getAboveFrameCaretPosition(childFrameId);
-                    midFramePosArray.push({caretPos: {id: prevPos.id, caretPosition: prevPos.caretPosition as CaretPosition},
+                    midFramePosArray.push({caretPos: {id: prevPos.frameId, caretPosition: prevPos.caretPosition as CaretPosition},
                         midYThreshold: childFrameDivRect.top + childFrameDivRect.height/2 });
                 });
 
@@ -668,8 +704,8 @@ export default Vue.extend({
                 this.appStore.copySelectedFramesToPosition(
                     {
                         newParentId: (this.isJointFrame)
-                            ? getParentId(this.appStore.frameObjects, this.appStore.frameObjects[this.frameId])
-                            : getParentOrJointParent(this.appStore.frameObjects, this.frameId),
+                            ? getParent(this.appStore.frameObjects[this.frameId])
+                            : getParentOrJointParent(this.frameId),
                     }
                 );
             }
@@ -677,7 +713,7 @@ export default Vue.extend({
                 this.appStore.copyFrameToPosition(
                     {
                         frameId : this.frameId,
-                        newParentId: getParentOrJointParent(this.appStore.frameObjects, this.frameId),
+                        newParentId: getParentOrJointParent(this.frameId),
                         newIndex: this.appStore.getIndexInParent(this.frameId)+1,
                     }
                 );
@@ -714,7 +750,7 @@ export default Vue.extend({
             if(this.appStore.isSelectionCopied){
                     this.appStore.pasteSelection(
                         {
-                            clickedFrameId: caretNavigationPositionAbove.id,
+                            clickedFrameId: caretNavigationPositionAbove.frameId,
                             caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
                         }
                     );
@@ -722,7 +758,7 @@ export default Vue.extend({
                 else {
                     this.appStore.pasteFrame(
                         {
-                            clickedFrameId: caretNavigationPositionAbove.id,
+                            clickedFrameId: caretNavigationPositionAbove.frameId,
                             caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
                         }
                     );
@@ -756,12 +792,12 @@ export default Vue.extend({
             // if we are pasting a joint frame below another joint frame, then we need to paste as if it was below the last child of target joint
             //    or in the target joint frame body if there are no children.
             const isCopyJointFrame = (this.appStore.copiedFrames[this.appStore.copiedFrameId]?.frameType.isJointFrame) ?? false;
-            const targetFrameId = (this.isJointFrame && isLastInParent(this.appStore.frameObjects, this.frameId) && !isCopyJointFrame) 
+            const targetFrameId = (this.isJointFrame && isLastInParent(this.frameId) && !isCopyJointFrame) 
                 ? this.appStore.frameObjects[this.frameId].jointParentId
-                : (isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId) && isCopyJointFrame) 
+                : (isFramePartOfJointStructure(this.frameId) && isCopyJointFrame) 
                     ? ([...this.appStore.frameObjects[this.frameId].childrenIds].pop())??this.frameId 
                     : this.frameId;
-            const caretPosition = (isFramePartOfJointStructure(this.appStore.frameObjects, this.frameId) && isCopyJointFrame 
+            const caretPosition = (isFramePartOfJointStructure(this.frameId) && isCopyJointFrame 
                 && this.appStore.frameObjects[this.frameId].childrenIds.length == 0)
                 ? CaretPosition.body
                 : CaretPosition.below;
@@ -822,6 +858,10 @@ export default Vue.extend({
     padding-bottom: 1px;
     border-radius: 8px;
     border: 1px solid transparent;
+}
+
+.frame-header {
+    border-radius: 5px;
 }
 
 // This should be ".frameDiv:hover" but drag and drop is messing things up

@@ -1,8 +1,9 @@
 import Compiler from "@/compiler/compiler";
 import { hasEditorCodeErrors } from "@/helpers/editor";
+import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, CodeStyle, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, LineAndSlotPositions, ParserElements, StyledCodeSplits} from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType } from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
@@ -30,7 +31,7 @@ export default class Parser {
     private startAtFrameId = -100; // default value to indicate there is no start
     private stopAtFrameId = -100; // default value to indicate there is no stop
     private exitFlag = false; // becomes true when the stopAtFrameId is reached.
-    private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the slots start at
+    private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the *editable slots* start at
     private line = 0;
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
@@ -74,42 +75,38 @@ export default class Parser {
     
     private parseStatement(statement: FrameObject, indentation = ""): string {
         let output = indentation;
-        const positions: number[] = [];
-        const lengths: number[] = [];
-        let currSlotIndex = 0;
+        const labelSlotsPositionLengths: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
 
         if(this.checkIfFrameHasError(statement) || (statement.frameType.type === AllFrameTypesIdentifier.comment) 
-            || (statement.frameType.type === AllFrameTypesIdentifier.empty && statement.contentDict[0].code.startsWith("#")) ) {
+            || (statement.frameType.type === AllFrameTypesIdentifier.empty && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#")) ) {
             return "";
         }
             
-        statement.frameType.labels.forEach( (label) => {
-            if(!label.slot || statement.contentDict[currSlotIndex].shownLabel) {
-                //for varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
+        statement.frameType.labels.forEach((label, labelSlotsIndex) => {
+            // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
+            if(label.showLabel??true){
                 output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
-
-                //if there is an editable slot
-                if(label.slot){
-                    // Record its vertical position
-                    const currentPosition = output.length;
-                    positions.push(currentPosition);
-                    // add its code to the output
-                    output += statement.contentDict[currSlotIndex].code + " ";
-                    lengths.push(output.length-currentPosition+1);
-                }
             }
-            else if(!statement.contentDict[currSlotIndex].shownLabel){
-                //even if the label and its slot aren't visible, they need to be logged within the framePositionMap
-                //as 0 length elements to line framePositionMap up with the slot indexes
-                positions.push(output.length);
-                lengths.push(0);
-            }
-            currSlotIndex++;
+            
+            //if there are slots
+            if(label.showSlots??true){
+                // Record each slots' vertical positions for that label.
+                const currentPosition = output.length;
+                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, true);
+                labelSlotsPositionLengths[labelSlotsIndex] = {
+                    slotStarts: slotStartsLengthsAndCode.slotStarts, 
+                    slotLengths: slotStartsLengthsAndCode.slotLengths,
+                    slotIds: slotStartsLengthsAndCode.slotIds,
+                    slotTypes: slotStartsLengthsAndCode.slotTypes,
+                };
+                // add their code to the output
+                output += slotStartsLengthsAndCode.code + " ";
+            }            
         });
         
         output += "\n";
     
-        this.framePositionMap[this.line] =  {frameId: statement.id, slotStarts: positions, slotLengths: lengths};
+        this.framePositionMap[this.line] =  {frameId: statement.id, labelSlotStartLengths: labelSlotsPositionLengths};
         
         this.line += 1;
 
@@ -212,18 +209,32 @@ export default class Parser {
             
             // For each error, show red border around its input in the UI
             errors.forEach((error: ErrorInfo) => {
-                if( this.framePositionMap[error.line] !== undefined) {
-                    if(this.isErrorIfInSlotBounds(error.line,error.offset)) {
+                if(this.framePositionMap[error.line] !== undefined) {
+                    // Look up in which slot the error should be shown (where the error offset is slotStart[i]<= offset AND slotStart[i] + slotLength[i] >= offset)
+                    let labelSlotsIndex = -1;
+                    let slotId: string | undefined = undefined;
+                    let slotType: SlotType = SlotType.code;
+                    Object.entries(this.framePositionMap[error.line].labelSlotStartLengths).forEach((labelSlotStartLengthsEntry) => 
+                        labelSlotStartLengthsEntry[1].slotStarts.forEach((slotStart, index) => {
+                            if(slotStart <= error.offset && (slotStart + labelSlotStartLengthsEntry[1].slotLengths[index]) >= error.offset){
+                                labelSlotsIndex = parseInt(labelSlotStartLengthsEntry[0]);
+                                slotId = labelSlotStartLengthsEntry[1].slotIds[index];
+                                slotType = labelSlotStartLengthsEntry[1].slotTypes[index];
+                            }
+                        }));
+                        
+                    // Only show error if we have found the slot
+                    if(labelSlotsIndex > -1 && slotId !== undefined){
                         useStore().setSlotErroneous({
                             frameId: this.framePositionMap[error.line].frameId,
-                            // Get the slotIndex where the error's offset is ( i.e. slotStart[i]<= offset AND slotStart[i+1]?>offset)
-                            slotIndex: this.framePositionMap[error.line].slotStarts.findIndex(
-                                (element, index, array) => {
-                                    return element<=error.offset && 
-                                            ((index<array.length-1)? (array[index+1] > error.offset) : true);
-                                }
-                            ), 
+                            labelSlotsIndex: labelSlotsIndex,
+                            slotId: slotId,
+                            slotType: slotType, 
                             error: error.msg,
+                            // Other properties are not used
+                            code: "",
+                            initCode: "",
+                            isFirstChange: true,
                         });
                     }
                 }
@@ -231,18 +242,6 @@ export default class Parser {
         }
 
         return errorString;
-    }
-
-    private isErrorIfInSlotBounds(errorLine: number, errorOffset: number) {
-        for (let index = 0; index < this.framePositionMap[errorLine].slotLengths.length; index++) {
-            const slot = this.framePositionMap[errorLine];
-            // if the error's offset is within the bounds of any slot, return true
-            if(errorOffset >= slot.slotStarts[index] && errorOffset <= (slot.slotStarts[index] + slot.slotLengths[index]-1)) {
-                return true;
-            }
-        }
-        // If the offset was inside none of the slots, then return false
-        return false;    
     }
 
     public getCodeWithoutErrorsAndLoops(endFrameId: number): string {
@@ -380,7 +379,8 @@ export default class Parser {
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {
-        return !this.ignoreCheckErrors && (Object.values(frame.contentDict).some((slot) => slot.error!=="" ));
+        return !this.ignoreCheckErrors && retrieveSlotByPredicate(Object.values(frame.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures),
+            (slot: FieldSlot) => ((slot as BaseSlot).error?.length??0) > 0) != undefined;
     }
 
     private isCompoundStatement(line: string, spaces: string[]): boolean {
@@ -412,59 +412,43 @@ export default class Parser {
     public getFramePositionMap(): LineAndSlotPositions {
         return this.framePositionMap;
     }
-}
 
-export function getStyledCodeLiteralsSplits(code: string): StyledCodeSplits[]{
-    //we use regular expressions to get the different code parts we are interested in:
-    //literals for strings, booleans, numbers.
-    //in order to avoid finding other tokens inside strings and ease the findings we work with a transformed copy of the code,
-    //which contains replaced strings values that cannot match numbers/booleans
-    let tempCode = code;
-    const styledCodeSplits = [] as StyledCodeSplits[];
-   
-    //first look for strings (contained between "" or '')
-    const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1/g;
-    let matchesArray = [...tempCode.matchAll(strRegEx)];
-    matchesArray.forEach((matchBit) => {
-        styledCodeSplits.push({start:matchBit.index??0, end: (matchBit.index??0) + matchBit[0].length,style: CodeStyle.string});
-        //and we transform the temp string for masking the string contents
-        tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
-    });      
+    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, niceSpaces?: boolean): LabelSlotPositionsAndCode {
+        // To retrieve this information, we procede with the following: 
+        // we get the flat map of the slots and operate a consumer at each iteration to retrieve the infos we need
+        let code = "";
+        const slotStarts: number[] = [];
+        const slotLengths: number[] = [];
+        const slotIds: string[] = [];
+        const slotTypes: SlotType[] = [];
+        const addSlotInPositionLengths = (length: number, id: string, appendedCode: string, type: SlotType) => {
+            slotStarts.push(currentOutputPosition + code.length);
+            slotLengths.push(length); // add the surounding spaces
+            slotIds.push(id);
+            code += appendedCode;
+            slotTypes.push(type);
+        };
 
-    //then we look for numbers (format examples: 9, 9+1j, 0x9, 0o11, 0b1001, 0.9e1)
-    const numberRegEx = /(^| +|[,+\-()/*%&|~^><=])(-?(0b[01]+)|(0x[0-9A-Fa-f]+)|(\d+(\.\d+|)[eE]-?\d+)|((\d+(\.\d+|)[+-]\d+(\.\d+|)j)|(\d+(\.\d+|)j)|(\d+(\.\d+|))))($| +|[,+\-()/*%&|~^><=])/g;
-    matchesArray = [...tempCode.matchAll(numberRegEx)];
-    while(matchesArray.length > 0){
-        matchesArray.forEach((matchBit) => {
-            //the number that we found is located in the group 2 of the match, we save it
-            const startOfNumber = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
-            const lengthOfNumber = matchBit[2].length;
-            styledCodeSplits.push({start:startOfNumber, end: startOfNumber + lengthOfNumber,style: CodeStyle.number});
-            //and we transform the temp string for another iteration of the number checks
-            tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
-        });               
-                   
-        //prepare for next iteration:
-        matchesArray = [...tempCode.matchAll(numberRegEx)];
+        generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase) => {
+            if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type)){
+                // a quote or a bracket is a 1 character token, shown in the code
+                // but it's not editable so we don't include it in the slot positions
+                code += flatSlot.code;
+            }
+            else if(flatSlot.type == SlotType.operator){
+                // an operator, if not blank, is shown in the code and we keep spaces surrounding it
+                // there could be an error on an operator, so we included it in the slot positions
+                if(flatSlot.code.length > 0){
+                    // Add extra 2 characters for the surrounding spaces the optional flag "niceSpaces" is set
+                    const niceSpaceValue = (niceSpaces) ? " " : "";
+                    addSlotInPositionLengths(flatSlot.code.length + ((niceSpaces) ? 2 : 0), flatSlot.id, niceSpaceValue + flatSlot.code + niceSpaceValue, flatSlot.type);
+                }
+            }
+            else{        
+                // that's an editable (code) slot, we get the position and length for that slot
+                addSlotInPositionLengths(flatSlot.code.length, flatSlot.id, flatSlot.code, flatSlot.type);
+            }
+        });
+        return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 
     }
-
-    //finally we look for booleans (True and False)
-    const boolRegEx = /(^| +|[,+\-(/*%&|~^><=[]])((True)|(False))($| +|[,+\-)\]/*%&|~^><=])/g;
-    matchesArray = [...tempCode.matchAll(boolRegEx)];
-    while(matchesArray.length > 0){
-        matchesArray.forEach((matchBit) => {
-            //the boolean value that we found is located in the group 2 of the match, we save it
-            const startOfBool = (matchBit.index??0) + matchBit[0].indexOf(matchBit[2]);
-            const lengthOfBool = matchBit[2].length;
-            styledCodeSplits.push({start:startOfBool, end: startOfBool + lengthOfBool,style: CodeStyle.bool});
-            //and we transform the temp string for another iteration of the boolean checks
-            tempCode = tempCode.substring(0, matchBit.index??0) + matchBit[0].replaceAll(/./g," ") + tempCode.substring((matchBit.index??0) + matchBit[0].length);
-        });               
-                   
-        //prepare for next iteration:
-        matchesArray = [...tempCode.matchAll(boolRegEx)];
-    }
-    
-    //we sort the split bits by start index before returning the result
-    return styledCodeSplits.sort((split1,split2) => split1.start - split2.start);
 }

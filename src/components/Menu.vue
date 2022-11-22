@@ -47,7 +47,7 @@
             </div>   
         </Slide>
         <div 
-                class="editableslot-placeholder"
+                class="project-name-placeholder"
                 id="projectNameDiv"
                 :value="projectName"
         />
@@ -394,6 +394,13 @@ export default Vue.extend({
 
 .project-impexp-div {
     margin-left: 5%;
+}
+
+.project-name-placeholder {
+    position: absolute;
+    display: inline-block;
+    visibility: hidden;
+    white-space: pre; //as this div placeholder is used to dynamically compute the width of the input field, we have to preserve the spaces exactly written by the user in the input field.
 }
 
 .bm-item-list > hr {
