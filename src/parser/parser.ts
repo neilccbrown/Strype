@@ -82,33 +82,26 @@ export default class Parser {
             return "";
         }
             
-        statement.frameType.labels.forEach( (label, labelSlotsIndex) => {
-            if(statement.labelSlotsDict[labelSlotsIndex].shown??true) {
-                //for varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
-                if(label.showLabel??true){
-                    output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
-                }
-                
-                //if there are slots
-                if(label.showSlots??true){
-                    // Record each slots' vertical positions for that label.
-                    const currentPosition = output.length;
-                    const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, true);
-                    labelSlotsPositionLengths[labelSlotsIndex] = {
-                        slotStarts: slotStartsLengthsAndCode.slotStarts, 
-                        slotLengths: slotStartsLengthsAndCode.slotLengths,
-                        slotIds: slotStartsLengthsAndCode.slotIds,
-                        slotTypes: slotStartsLengthsAndCode.slotTypes,
-                    };
-                    // add their code to the output
-                    output += slotStartsLengthsAndCode.code + " ";
-                }
+        statement.frameType.labels.forEach((label, labelSlotsIndex) => {
+            // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
+            if(label.showLabel??true){
+                output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
             }
-            else if(!(statement.labelSlotsDict[labelSlotsIndex].shown??true)){
-                //TODO: adapt this with subslots if we have optional label/slots again in future.
-                //even if the label and its slot aren't visible, they need to be logged within the framePositionMap
-                //as 0 length elements to line framePositionMap up with the slot indexes
-            }
+            
+            //if there are slots
+            if(label.showSlots??true){
+                // Record each slots' vertical positions for that label.
+                const currentPosition = output.length;
+                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, true);
+                labelSlotsPositionLengths[labelSlotsIndex] = {
+                    slotStarts: slotStartsLengthsAndCode.slotStarts, 
+                    slotLengths: slotStartsLengthsAndCode.slotLengths,
+                    slotIds: slotStartsLengthsAndCode.slotIds,
+                    slotTypes: slotStartsLengthsAndCode.slotTypes,
+                };
+                // add their code to the output
+                output += slotStartsLengthsAndCode.code + " ";
+            }            
         });
         
         output += "\n";

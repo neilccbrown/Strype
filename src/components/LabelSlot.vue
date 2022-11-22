@@ -213,16 +213,20 @@ export default Vue.extend({
             return this.appStore.getErrorHeaderForSlot(this.coreSlotInfo);
         },
 
-        isFirstVisibleInFrame(): boolean{
-            return this.appStore.isSlotFirstVisibleInFrame(this.frameId, this.labelSlotsIndex, this.slotId);
-        },
-
         debugAC(): boolean{
             return this.appStore.debugAC;
         },
 
         isDraggingFrame(): boolean{
             return this.appStore.isDraggingFrame;
+        },
+
+        isFrameEmpty(): boolean {
+            // This computed property checks that all the (visible) editable slots of a frame, and if applies, its body, are empty
+            const isEmpty = !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent) => ((labelSlotContent.shown??true) && 
+                (labelSlotContent.slotStructures.fields.length > 1 || (labelSlotContent.slotStructures.fields[0] as BaseSlot).code.trim().length > 0))) 
+                || this.appStore.frameObjects[this.frameId].childrenIds.length > 0);
+            return isEmpty;
         },
     },
 
@@ -380,7 +384,6 @@ export default Vue.extend({
                     if(!this.appStore.ignoreKeyEvent){
                         this.appStore.setSlotTextCursors(undefined, undefined);
                     }
-                    console.trace();
                     this.appStore.ignoreKeyEvent = false;
                 }
             }
@@ -396,6 +399,7 @@ export default Vue.extend({
                 if((textCaretPos == 0 && event.key==="ArrowLeft") 
                         || (textCaretPos === ((spanInput.textContent?.length)??0) && event.key==="ArrowRight")
                         || (event.key === "Enter" )) {
+                    // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     this.appStore.ignoreKeyEvent=true;
                     this.appStore.leftRightKey(
                         {
@@ -738,7 +742,9 @@ export default Vue.extend({
                 let newTextCursorPos = selectionStart;
                 if(selectionEnd != selectionStart){
                     // There is a text selection: it doesn't matter if we are using "del" or "backspace", the result is the same
-                    inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + inputSpanFieldContent.substring(selectionEnd);                
+                    inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + inputSpanFieldContent.substring(selectionEnd);     
+                    // The cursor position may change, so we updated it in the store. 
+                    this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: selectionStart}, {slotInfos: this.coreSlotInfo, cursorPos: selectionStart});             
                 }
                 else if(!((isForwardDeletion && focusSlotCursorInfos?.cursorPos == this.code.length) || (!isForwardDeletion && focusSlotCursorInfos?.cursorPos == 0))){
                     const deletionOffset = (isForwardDeletion) ? 0 : -1;
@@ -771,8 +777,7 @@ export default Vue.extend({
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
             this.stillBackSpaceDown = true; 
-            if(this.isFirstVisibleInFrame && this.getSlotContent().length == 0 
-                && this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1){
+            if(this.isFrameEmpty){
                 //if the user had already released the key up, no point waiting, we delete straight away
                 if(this.canBackspaceDeleteFrame){
                     this.onBlur();
@@ -795,7 +800,7 @@ export default Vue.extend({
         },
 
         onBackSpaceKeyUp(){
-            this.canBackspaceDeleteFrame = (this.isFirstVisibleInFrame && this.getSlotContent().length == 0);
+            this.canBackspaceDeleteFrame = this.isFrameEmpty;
             this.stillBackSpaceDown = false;
         },
 

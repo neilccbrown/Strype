@@ -527,12 +527,6 @@ export const useStore = defineStore("app", {
                     isFunction: frame.frameType.type === AllFrameTypesIdentifier.funcdef}) as UserDefinedElement);
         },
 
-        isSlotFirstVisibleInFrame:(state) => (frameId: number, labelSlotsIndex: number, slotId: string) => {
-            // This getter checks if the given slots for a label are *visually* the first shown to the user
-            const labelSlotsDict = Object.values(state.frameObjects[frameId].labelSlotsDict);
-            return (slotId == "0" && (labelSlotsDict.find((labelSlotsStruct, index) => (index < labelSlotsIndex && (labelSlotsStruct.shown??true))) === undefined));
-        },
-
         // Check up if the API generator can be shown, depending on the current position in the code editor. 
         // If the current position is within a frame, then it depends what frame it is (cf. inner comments),
         // if the current position isn't a frame (blue caret) check where we are in the editor (cf. inner comments)
@@ -1718,7 +1712,6 @@ export const useStore = defineStore("app", {
         },
 
         deleteFrames(key: string, ignoreBackState?: boolean){
-            console.trace();
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
 
             // we remove the editable slots from the available positions
@@ -1909,7 +1902,9 @@ export const useStore = defineStore("app", {
                 // Retrieve the slot that currently has focus in the current frame by looking up in the DOM
                 const foundSlotCoreInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
-                        && e.labelSlotsIndex === foundSlotCoreInfos.labelSlotsIndex && e.slotId === foundSlotCoreInfos.slotId);                  
+                        && e.labelSlotsIndex === foundSlotCoreInfos.labelSlotsIndex && e.slotId === foundSlotCoreInfos.slotId);     
+                // Now we can effectively ask the slot to loose focus because we could retrieve it (and we need to get it blurred so further actions are not happening in the span)
+                document.getElementById(getLabelSlotUIID(foundSlotCoreInfos))?.blur();             
             }
             else {
                 currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.frameId === this.currentFrame.id); 
