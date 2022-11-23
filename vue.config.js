@@ -60,7 +60,7 @@ module.exports = {
             });
         config.plugin("copy").tap(([options]) => {
             if(process.env.npm_config_python) {
-                options[0].ignore.push("pythonLib/**");
+                options.patterns[0].globOptions.ignore.push("pythonLib/**");
             }
             return [options];
         });
