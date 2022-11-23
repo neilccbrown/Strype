@@ -59,18 +59,17 @@ function checkTextEquals(ws: JQuery, expecteds : string[]) : void {
  * Then gets all the body items and matches them against the body of the CodeMatch.
  */
 function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
-    cy.get(".frame-header").first().get("input,.frameColouredLabel").should((parts) => {
+    cy.get(".frame-header").first().get(".labelSlot-input,.frameColouredLabel").should((parts) => {
         let s = "";
         for (let i = 0; i < parts.length; i++) {
             const p : any = parts[i];
 
             const text = p.value || p.textContent || "";
             
-            if (s.length == 0) {
-                s = text;
-            }
-            else {
-                s = s.trimEnd() + " " + text;
+            s = s.trimEnd() + text;
+            if (text.match(/[a-zA-Z0-9]/)) {
+                // Only add spaces if it has some non-punctuation characters:
+                s += " ";
             }
         }
         matchLine(header(match), s.trimEnd());
@@ -202,7 +201,7 @@ if (Cypress.env("mode") == "microbit") {
     ];
 
     defaultMyCode = [
-        /myString\s+[⇐=]\s+"Hello micro:bit!"/,
+        /myString\s*[⇐=]\s*“Hello micro:bit!”/,
         "display.scroll(myString)",
     ];
 }
@@ -211,7 +210,7 @@ else {
     ];
 
     defaultMyCode  = [
-        /myString\s+[⇐=]\s+"Hello from Python!"/,
+        /myString\s*[⇐=]\s*“Hello from Python!”/,
         "print(myString)",
     ];
 }
