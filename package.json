@@ -85,8 +85,6 @@
         "eslint": "^7",
         "eslint-plugin-vue": "^7.20.0",
         "husky": "^7.0.4",
-        "jest": "^27.0.5",
-        "jest-transform-stub": "^2.0.0",
         "js-conditional-compile-loader": "^1.0.15",
         "lint-staged": "^11.2.6",
         "mocha": "^10.0.0",
