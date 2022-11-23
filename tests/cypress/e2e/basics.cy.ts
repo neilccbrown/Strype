@@ -59,21 +59,23 @@ function checkTextEquals(ws: JQuery, expecteds : string[]) : void {
  * Then gets all the body items and matches them against the body of the CodeMatch.
  */
 function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
-    cy.get(".frame-header").first().get(".labelSlot-input,.frameColouredLabel").should((parts) => {
+    cy.get(".frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").should((parts) => {
         let s = "";
         for (let i = 0; i < parts.length; i++) {
             const p : any = parts[i];
 
             const text = p.value || p.textContent || "";
             
-            s = s.trimEnd() + text;
-            if (text.match(/[a-zA-Z0-9]/)) {
-                // Only add spaces if it has some non-punctuation characters:
-                s += " ";
+            if (text.match(/[a-zA-Z0-9]/) && !p.classList.contains("string-slot")) {
+                // Only add spaces if it has some non-punctuation characters and isn't a string:
+                s = s + text + " ";
+            }
+            else {
+                s = s.trimEnd() + text;
             }
         }
         matchLine(header(match), s.trimEnd());
-    });
+    }));
     // .get().filter() fails if there are no items but the body is permitted to be empty for us.  So we must check
     // if we expect an empty body and act accordingly:
     if (body(match).length > 0) {
@@ -122,7 +124,7 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
  */
 function sanityCheck() : void {
     // Check exactly one caret visible or focused input field:
-    cy.get(".caret:not(.invisible),input:focus").should("have.length", 1);
+    cy.get(".caret:not(.invisible),.labelSlot-input:focus").should("have.length", 1);
 }
 
 /**
@@ -197,12 +199,12 @@ let defaultMyCode : CodeMatch[];
 
 if (Cypress.env("mode") == "microbit") {
     defaultImports = [
-        "from microbit import *",
+        /from\s+microbit\s+import\s*\*/,
     ];
 
     defaultMyCode = [
-        /myString\s*[⇐=]\s*“Hello micro:bit!”/,
-        "display.scroll(myString)",
+        /myString\s*[⇐=]\s*[“"]Hello micro:bit![”"]/,
+        /display\s*.\s*scroll\(myString\)/,
     ];
 }
 else {
@@ -210,7 +212,7 @@ else {
     ];
 
     defaultMyCode  = [
-        /myString\s*[⇐=]\s*“Hello from Python!”/,
+        /myString\s*[⇐=]\s*[“"]Hello from Python![”"]/,
         "print(myString)",
     ];
 }
@@ -266,7 +268,7 @@ describe("Adding frames", () => {
     });
     it("Lets you add multiple frames", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type(" foo({enter} bar(3");
+        cy.get("body").type(" foo({rightArrow}{enter} bar(3");
         checkCodeEquals(defaultImports.concat([
             "foo()",
             "bar(3)",
@@ -275,7 +277,8 @@ describe("Adding frames", () => {
     it("Lets you add nested frames", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // i adds an if; add an if True with an if False inside:
-        cy.get("body").type("iTrue{rightArrow}iFalse{rightArrow}");
+        cy.get("body").type("iTrue{rightArrow}");
+        cy.get("body").type("iFalse{rightArrow}");
         // Put a foo() in the inner body:
         cy.get("body").type(" foo({rightArrow}{rightArrow}");
         // Put a bar(3) in the outer if, just after the inner if:
@@ -283,8 +286,8 @@ describe("Adding frames", () => {
         // And add baz(5) after the ifs:
         cy.get("body").type("{downArrow} baz(5");
         checkCodeEquals(defaultImports.concat([
-            {h: /if True\s+:/, b:[
-                {h: /if False\s+:/, b:[
+            {h: /if\s+True\s+:/, b:[
+                {h: /if\s+False\s+:/, b:[
                     "foo()",
                 ]},
                 "bar(3)",
