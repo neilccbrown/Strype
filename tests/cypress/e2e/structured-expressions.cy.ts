@@ -1,5 +1,5 @@
 function assertState(expectedState : string) : void {
-    cy.get(".frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").should((parts) => {
+    cy.get("#FrameContainer_-3 .frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").should((parts) => {
         let s = "";
         if (!parts) {
             // Try to debug an occasional seemingly impossible failure:
