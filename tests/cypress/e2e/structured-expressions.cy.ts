@@ -3,7 +3,7 @@ function assertState(expectedState : string) : void {
         let s = "";
         if (!parts) {
             // Try to debug an occasional seemingly impossible failure:
-            cy.task('log', "Parts is null which I'm sure shouldn't happen, came from frame: " + h);
+            cy.task("log", "Parts is null which I'm sure shouldn't happen, came from frame: " + h);
         }
         for (let i = 0; i < parts.length; i++) {
             const p : any = parts[i];
