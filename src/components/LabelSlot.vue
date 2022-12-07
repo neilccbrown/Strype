@@ -64,7 +64,7 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, setTextCursorPositionOfHTMLElement, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral } from "@/helpers/editor";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, setTextCursorPositionOfHTMLElement, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -535,8 +535,8 @@ export default Vue.extend({
                 // However, when no text is highlighted and we are just before that same closing bracket / quote (no text between text cursor and bracket)
                 // we move the text cursor in the next slot, as we consider the user closed an existing already closed bracket / quote.
                 let shouldMoveToNextSlot = (selectionStart == selectionEnd);
-                const isEscapingString = isFieldStringSlot(currentSlot) && currentStartTextCursor > 0 && inputSpanFieldContent[currentStartTextCursor - 1] == "\\"
-                    && (currentStartTextCursor < inputSpanFieldContent.length && inputSpanFieldContent[currentStartTextCursor]!= event.key || currentStartTextCursor == inputSpanFieldContent.length);
+                const isEscapingString = isFieldStringSlot(currentSlot) && currentStartTextCursor > 0 && (getNumPrecedingBackslashes(inputSpanFieldContent, currentStartTextCursor) % 2) == 1
+                    || (currentStartTextCursor < inputSpanFieldContent.length && inputSpanFieldContent[currentStartTextCursor]!= event.key);
                 if(isEscapingString){
                     return;
                 }
