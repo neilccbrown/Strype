@@ -10,7 +10,7 @@ function assertState(expectedState : string) : void {
 
             const text = p.value || p.textContent || "";
             
-            if (p.getAttribute("contenteditable") == "true") {
+            if (p.getAttribute("contenteditable") == "true" && !p.classList.contains("string-slot")) {
                 s += "{" + text + "}";
             }
             else {
@@ -36,6 +36,20 @@ function testInsert(insertion : string, result : string) : void {
         // TODO test splitting the insert like in Java
     });    
 }
+
+
+function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
+    // TODO implement
+}
+
+function testInsertExisting(a : string, b : string, c : string) : void {
+    // TODO implement
+}
+
+function testBackspace(a : string, b : string) : void {
+    // TODO implement
+}
+
 
 // We need this to prevent test failures.  I don't actually know what the error is for sure
 // (even if you log it, it is not visible), but I suspect it may be a Brython error that I
@@ -90,4 +104,69 @@ describe("Stride TestExpressionSlot.testOperators()", () => {
     testInsert("s.length().", "{s}.{length}_({})_{}.{$}");
     //testInsert("s.length()..", "{s}.{length}_({})_{}..{$}");
     //testInsert("s.length()..1", "{s}.{length}_({})_{}..{1$}");
+});
+
+describe("Stride TestExpressionSlot.testStrings()", () => {
+    // With trailing quote
+    testInsert("\"hello\"", "{}_“hello”_{$}");
+    // Without trailing quote (caret stays in string):
+    testInsert("\"hello", "{}_“hello$”_{}");
+    testInsert("\"hello\"+\"world\"", "{}_“hello”_{}+{}_“world”_{$}");
+    testInsert("\"hello\"+\"world\"+(5*6)", "{}_“hello”_{}+{}_“world”_{}+{}_({5}*{6})_{$}");
+
+    // Quote in a string, escaped:
+    testInsert("\"\\\"\"", "{}_“\\\"”_{$}");
+    // Escaped single quote:
+    testInsert("\"\\'\"", "{}_“\\'”_{$}");
+    // Unescaped single quote:
+    testInsert("\"'\"", "{}_“'”_{$}");
+    // Escaped backslash:
+    testInsert("\"\\\\\"", "{}_“\\\\”_{$}");
+
+    // All of the above again, but swapping single and double quotes:
+    
+    // With trailing quote
+    testInsert("'hello'", "{}_‘hello’_{$}");
+    // Without trailing quote (caret stays in string):
+    testInsert("'hello", "{}_‘hello$’_{}");
+    testInsert("'hello'+'world'", "{}_‘hello’_{}+{}_‘world’_{$}");
+    testInsert("'hello'+'world'+(5*6)", "{}_‘hello’_{}+{}_‘world’_{}+{}_({5}*{6})_{$}");
+
+    // Single quote in a string, escaped:
+    testInsert("'\\''", "{}_‘\\'’_{$}");
+    // Escaped double quote:
+    testInsert("'\\\"'", "{}_‘\\\"’_{$}");
+    // Unescaped double quote:
+    testInsert("'\"'", "{}_‘\"’_{$}");
+    // Escaped backslash:
+    testInsert("'\\\\'", "{}_‘\\\\’_{$}");
+    
+
+    // Adding quote later:
+    testMultiInsert("abc{\"}def", "{abc$def}", "{abc}_\"$\"_{def}");
+    testMultiInsert("abc{\"}", "{abc$}", "{abc}_\"$\"_{}");
+    testMultiInsert("{\"}def", "{$def}", "{}_\"$\"_{def}");
+    testMultiInsert("abc{\"}.def", "{abc$}.{def}", "{abc}_\"$\"_{}.{def}");
+    testMultiInsert("abc{\"}*def", "{abc$}*{def}", "{abc}_\"$\"_{}*{def}");
+    testMultiInsert("abc{\"}def()", "{abc$def}_({})_{}", "{abc}_\"$\"_{def}_({})_{}");
+    testMultiInsert("abc{\"}()", "{abc$}_({})_{}", "{abc}_\"$\"_{}_({})_{}");
+
+    // Adding string adjacent to String:
+    // First, before:
+    testInsertExisting("$\"b\"", "\"a", "{}_\"a$\"_{}_\"b\"_{}");
+    testInsertExisting("$\"b\"", "\"a\"", "{}_\"a\"_{$}_\"b\"_{}");
+    // Also, after:
+    testInsertExisting("\"a\"$", "\"b", "{}_\"a\"_{}_\"b$\"_{}");
+
+
+    // Example found while pasting from BlueJ (double escaped here)
+    // TODO re-enable
+    //testInsert("foo(c == '\\\\' or c == '\"' or c == '\\'')",
+    //"{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{$})_{}");
+
+    // Deletion:
+    testBackspace("\"a\bb\"", "{}_\"$b\"_{}");
+    testBackspace("\"\bab\"", "{$ab}");
+    testBackspace("\"ab\b\"", "{}_\"a$\"_{}");
+    testBackspace("\"ab\"\b", "{ab$}");
 });
