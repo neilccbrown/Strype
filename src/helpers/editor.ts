@@ -620,7 +620,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
     const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
     let missingClosingQuote = "";
     const blankedStringCodeLiteral = codeLiteral.replace(strRegEx, (match) => {
-        if(!match.endsWith(match[0]) || match.endsWith("\\" + match[0])){
+        if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
             missingClosingQuote = match[0];
         }
         return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
@@ -804,3 +804,20 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };
+
+/**
+ * Gets the number of backslashes that directly precede cursorPos without any other character intervening
+ */
+export function getNumPrecedingBackslashes(content: string, cursorPos : number) : number {
+    let count = 0;
+    while (cursorPos > 0) {
+        cursorPos -= 1;
+        if (content.at(cursorPos) == "\\") {
+            count += 1;
+        }
+        else {
+            break;
+        }
+    }
+    return count;
+}

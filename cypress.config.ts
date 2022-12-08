@@ -26,6 +26,13 @@ export default defineConfig({
                     })
                 },
             })
+            // Allow logging to console (although only the first message seems to get logged?)
+            on('task', {
+                log (message) {
+                    console.log(message) 
+                    return null
+                }
+            })
             
             config.baseUrl = config.env.mode == "microbit" ? "http://localhost:8081/microbit/" : "http://localhost:8081/editor/"
             return config

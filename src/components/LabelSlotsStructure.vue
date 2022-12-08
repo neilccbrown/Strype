@@ -216,6 +216,8 @@ export default Vue.extend({
                                     (spanElement as HTMLSpanElement).focus();
                                     const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
                                     setTextCursorPositionOfHTMLElement(spanElement as HTMLSpanElement, pos);
+                                    const cursorInfos = {slotInfos: parseLabelSlotUIID(spanElement.id), cursorPos: pos};
+                                    this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
                                     foundPos = true;
                                 }                            
                             }
