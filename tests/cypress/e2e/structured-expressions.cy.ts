@@ -126,11 +126,11 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
 }
 
 function testBackspace(originalInclBksp : string, expectedResult : string) : void {
-    it("Tests " + originalInclBksp, () => {
-        const cursorIndex = originalInclBksp.indexOf("\b");
-        expect(cursorIndex).to.not.equal(-1);
-        const before = originalInclBksp.substring(0, cursorIndex);
-        const after = originalInclBksp.substring(cursorIndex + 1);
+    const bkspIndex = originalInclBksp.indexOf("\b");
+    it("Tests Backspace " + originalInclBksp, () => {
+        expect(bkspIndex).to.not.equal(-1);
+        const before = originalInclBksp.substring(0, bkspIndex);
+        const after = originalInclBksp.substring(bkspIndex + 1);
 
         cy.get("body").type(" ");
         assertState("{$}");
@@ -148,6 +148,28 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
             });
         });
     });
+    if (bkspIndex > 0) {
+        it("Tests Delete " + originalInclBksp, () => {
+            const before = originalInclBksp.substring(0, bkspIndex - 1);
+            const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
+
+            cy.get("body").type(" ");
+            assertState("{$}");
+            if (before.length > 0) {
+                cy.get("body").type(before);
+            }
+            withSelection((posToInsert) => {
+                if (after.length > 0) {
+                    cy.get("body").type(after);
+                }
+                cy.get("#" + posToInsert.id).focus();
+                moveToPositionThen(posToInsert.cursorPos, () => {
+                    cy.get("body").type("{del}");
+                    assertState(expectedResult);
+                });
+            });
+        });
+    }
 }
 
 
