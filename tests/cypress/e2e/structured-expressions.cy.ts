@@ -55,7 +55,7 @@ function testInsert(insertion : string, result : string) : void {
 function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => void) {
     // This is awkward, but cypress doesn't let us set or query the cursor position directly so we have to
     // use withSelection to query, then press left/right until is the one we want:
-    withSelection(cur => {
+    withSelection((cur) => {
         if (cur.cursorPos == cursorPos) {
             // We've arrived:
             runAfterPositionReached();
