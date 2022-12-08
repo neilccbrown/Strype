@@ -29,6 +29,8 @@ function assertState(expectedState : string) : void {
 }
 
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
+    // We need a delay to make sure last DOM update has occurred:
+    cy.wait(500);
     cy.get("#editor").then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
@@ -49,9 +51,53 @@ function testInsert(insertion : string, result : string) : void {
     });    
 }
 
+// Moves until the position within the slot is the given cursor pos, then executes the given function
+function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => void) {
+    // This is awkward, but cypress doesn't let us set or query the cursor position directly so we have to
+    // use withSelection to query, then press left/right until is the one we want:
+    withSelection(cur => {
+        if (cur.cursorPos == cursorPos) {
+            // We've arrived:
+            runAfterPositionReached();
+        }
+        else if (cur.cursorPos > cursorPos) {
+            cy.get("body").type("{leftarrow}");
+            moveToPositionThen(cursorPos, runAfterPositionReached);
+        }
+        else {
+            cy.get("body").type("{rightarrow}");
+            moveToPositionThen(cursorPos, runAfterPositionReached);
+        }
+    });
+}
 
 function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
-    // TODO implement
+    it("Tests " + multiInsertion, () => {
+        const startNest = multiInsertion.indexOf("{");
+        const endNest = multiInsertion.indexOf("}", startNest);
+        expect(startNest).to.not.equal(-1);
+        expect(endNest).to.not.equal(-1);
+        const before = multiInsertion.substring(0, startNest);
+        const nest = multiInsertion.substring(startNest + 1, endNest);
+        const after = multiInsertion.substring(endNest + 1);
+
+        cy.get("body").type(" ");
+        assertState("{$}");
+        if (before.length > 0) {
+            cy.get("body").type(before);
+        }
+        withSelection((posToInsertNest) => {
+            if (after.length > 0) {
+                cy.get("body").type(after);
+            }
+            cy.get("#" + posToInsertNest.id).focus();
+            moveToPositionThen(posToInsertNest.cursorPos, () => {
+                assertState(firstResult);
+                cy.get("body").type(nest);
+                assertState(secondResult);
+            });
+        });
+    });
 }
 
 function testInsertExisting(a : string, b : string, c : string) : void {
@@ -155,13 +201,13 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     
 
     // Adding quote later:
-    testMultiInsert("abc{\"}def", "{abc$def}", "{abc}_\"$\"_{def}");
-    testMultiInsert("abc{\"}", "{abc$}", "{abc}_\"$\"_{}");
-    testMultiInsert("{\"}def", "{$def}", "{}_\"$\"_{def}");
-    testMultiInsert("abc{\"}.def", "{abc$}.{def}", "{abc}_\"$\"_{}.{def}");
-    testMultiInsert("abc{\"}*def", "{abc$}*{def}", "{abc}_\"$\"_{}*{def}");
-    testMultiInsert("abc{\"}def()", "{abc$def}_({})_{}", "{abc}_\"$\"_{def}_({})_{}");
-    testMultiInsert("abc{\"}()", "{abc$}_({})_{}", "{abc}_\"$\"_{}_({})_{}");
+    testMultiInsert("abc{\"}def", "{abc$def}", "{abc}_“$”_{def}");
+    testMultiInsert("abc{\"}", "{abc$}", "{abc}_“$”_{}");
+    testMultiInsert("{\"}def", "{$def}", "{}_“$”_{def}");
+    testMultiInsert("abc{\"}.def", "{abc$}.{def}", "{abc}_“$”_{}.{def}");
+    testMultiInsert("abc{\"}*def", "{abc$}*{def}", "{abc}_“$”_{}*{def}");
+    testMultiInsert("abc{\"}def()", "{abc$def}_({})_{}", "{abc}_“$”_{def}_({})_{}");
+    testMultiInsert("abc{\"}()", "{abc$}_({})_{}", "{abc}_“$”_{}_({})_{}");
 
     // Adding string adjacent to String:
     // First, before:
