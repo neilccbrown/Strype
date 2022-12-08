@@ -100,8 +100,29 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
     });
 }
 
-function testInsertExisting(a : string, b : string, c : string) : void {
-    // TODO implement
+function testInsertExisting(original : string, toInsert : string, expectedResult : string) : void {
+    it("Tests " + original, () => {
+        const cursorIndex = original.indexOf("$");
+        expect(cursorIndex).to.not.equal(-1);
+        const before = original.substring(0, cursorIndex);
+        const after = original.substring(cursorIndex + 1);
+
+        cy.get("body").type(" ");
+        assertState("{$}");
+        if (before.length > 0) {
+            cy.get("body").type(before);
+        }
+        withSelection((posToInsert) => {
+            if (after.length > 0) {
+                cy.get("body").type(after);
+            }
+            cy.get("#" + posToInsert.id).focus();
+            moveToPositionThen(posToInsert.cursorPos, () => {
+                cy.get("body").type(toInsert);
+                assertState(expectedResult);
+            });
+        });
+    });
 }
 
 function testBackspace(a : string, b : string) : void {
@@ -211,10 +232,10 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
 
     // Adding string adjacent to String:
     // First, before:
-    testInsertExisting("$\"b\"", "\"a", "{}_\"a$\"_{}_\"b\"_{}");
-    testInsertExisting("$\"b\"", "\"a\"", "{}_\"a\"_{$}_\"b\"_{}");
+    testInsertExisting("$\"b\"", "\"a", "{}_“a$”_{}_“b”_{}");
+    testInsertExisting("$\"b\"", "\"a\"", "{}_“a”_{$}_“b”_{}");
     // Also, after:
-    testInsertExisting("\"a\"$", "\"b", "{}_\"a\"_{}_\"b$\"_{}");
+    testInsertExisting("\"a\"$", "\"b", "{}_“a”_{}_“b$”_{}");
 
 
     // Example found while pasting from BlueJ (double escaped here)
