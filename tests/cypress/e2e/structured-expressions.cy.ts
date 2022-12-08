@@ -125,8 +125,29 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
     });
 }
 
-function testBackspace(a : string, b : string) : void {
-    // TODO implement
+function testBackspace(originalInclBksp : string, expectedResult : string) : void {
+    it("Tests " + originalInclBksp, () => {
+        const cursorIndex = originalInclBksp.indexOf("\b");
+        expect(cursorIndex).to.not.equal(-1);
+        const before = originalInclBksp.substring(0, cursorIndex);
+        const after = originalInclBksp.substring(cursorIndex + 1);
+
+        cy.get("body").type(" ");
+        assertState("{$}");
+        if (before.length > 0) {
+            cy.get("body").type(before);
+        }
+        withSelection((posToInsert) => {
+            if (after.length > 0) {
+                cy.get("body").type(after);
+            }
+            cy.get("#" + posToInsert.id).focus();
+            moveToPositionThen(posToInsert.cursorPos, () => {
+                cy.get("body").type("{backspace}");
+                assertState(expectedResult);
+            });
+        });
+    });
 }
 
 
@@ -244,8 +265,8 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     //"{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{$})_{}");
 
     // Deletion:
-    testBackspace("\"a\bb\"", "{}_\"$b\"_{}");
+    testBackspace("\"a\bb\"", "{}_“$b”_{}");
     testBackspace("\"\bab\"", "{$ab}");
-    testBackspace("\"ab\b\"", "{}_\"a$\"_{}");
+    testBackspace("\"ab\b\"", "{}_“a$”_{}");
     testBackspace("\"ab\"\b", "{ab$}");
 });
