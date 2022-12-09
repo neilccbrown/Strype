@@ -1,26 +1,40 @@
 function assertState(expectedState : string) : void {
-    cy.get("#FrameContainer_-3 .frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").should((parts) => {
-        let s = "";
-        if (!parts) {
-            // Try to debug an occasional seemingly impossible failure:
-            cy.task("log", "Parts is null which I'm sure shouldn't happen, came from frame: " + h);
-        }
-        for (let i = 0; i < parts.length; i++) {
-            const p : any = parts[i];
-
-            const text = p.value || p.textContent || "";
-            
-            if (p.getAttribute("contenteditable") == "true" && !p.classList.contains("string-slot")) {
-                s += "{" + text + "}";
+    withSelection((info) => {
+        cy.get("#FrameContainer_-3 .frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").then((parts) => {
+            let s = "";
+            if (!parts) {
+                // Try to debug an occasional seemingly impossible failure:
+                cy.task("log", "Parts is null which I'm sure shouldn't happen, came from frame: " + h);
             }
-            else {
+            for (let i = 0; i < parts.length; i++) {
+                const p : any = parts[i];
+    
+                let text = p.value || p.textContent || "";
+                
+                if (p.getAttribute("contenteditable") == "true") {
+                    // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
+                    if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
+                        text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
+                    }
+                    if (!p.classList.contains("string-slot")) {
+                        text = "{" + text + "}";
+                    }
+                }
                 s += text;
             }
-        }
-        // For now, we ignore cursor position (indicated by $):
-        // Also, there is no correspondence for _ (indicating a null operator) in the Strype interface so just ignore that:
-        expect(s).to.equal(expectedState.replace("$", "").replaceAll("_", ""));
-    }));
+            // There is no correspondence for _ (indicating a null operator) in the Strype interface so just ignore that:
+            expect(s).to.equal(expectedState.replaceAll("_", ""));
+        }));
+    });
+}
+
+function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
+    // We need a delay to make sure last DOM update has occurred:
+    cy.wait(500);
+    cy.get("#editor").then((eds) => {
+        const ed = eds.get()[0];
+        inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
+    });
 }
 
 function testInsert(insertion : string, result : string) : void {
@@ -32,22 +46,130 @@ function testInsert(insertion : string, result : string) : void {
         cy.get("body").type(" " + insertion);
         assertState(result);
 
-        // TODO test caret position?
+        // TODO test caret position mapping?
         // TODO test splitting the insert like in Java
     });    
 }
 
+// Moves until the position within the slot is the given cursor pos, then executes the given function
+function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => void) {
+    // This is awkward, but cypress doesn't let us set or query the cursor position directly so we have to
+    // use withSelection to query, then press left/right until is the one we want:
+    withSelection((cur) => {
+        if (cur.cursorPos == cursorPos) {
+            // We've arrived:
+            runAfterPositionReached();
+        }
+        else if (cur.cursorPos > cursorPos) {
+            cy.get("body").type("{leftarrow}");
+            moveToPositionThen(cursorPos, runAfterPositionReached);
+        }
+        else {
+            cy.get("body").type("{rightarrow}");
+            moveToPositionThen(cursorPos, runAfterPositionReached);
+        }
+    });
+}
 
 function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
-    // TODO implement
+    it("Tests " + multiInsertion, () => {
+        const startNest = multiInsertion.indexOf("{");
+        const endNest = multiInsertion.indexOf("}", startNest);
+        expect(startNest).to.not.equal(-1);
+        expect(endNest).to.not.equal(-1);
+        const before = multiInsertion.substring(0, startNest);
+        const nest = multiInsertion.substring(startNest + 1, endNest);
+        const after = multiInsertion.substring(endNest + 1);
+
+        cy.get("body").type(" ");
+        assertState("{$}");
+        if (before.length > 0) {
+            cy.get("body").type(before);
+        }
+        withSelection((posToInsertNest) => {
+            if (after.length > 0) {
+                cy.get("body").type(after);
+            }
+            cy.get("#" + posToInsertNest.id.replace(",", "\\,")).focus();
+            moveToPositionThen(posToInsertNest.cursorPos, () => {
+                assertState(firstResult);
+                cy.get("body").type(nest);
+                assertState(secondResult);
+            });
+        });
+    });
 }
 
-function testInsertExisting(a : string, b : string, c : string) : void {
-    // TODO implement
+function testInsertExisting(original : string, toInsert : string, expectedResult : string) : void {
+    it("Tests " + original, () => {
+        const cursorIndex = original.indexOf("$");
+        expect(cursorIndex).to.not.equal(-1);
+        const before = original.substring(0, cursorIndex);
+        const after = original.substring(cursorIndex + 1);
+
+        cy.get("body").type(" ");
+        assertState("{$}");
+        if (before.length > 0) {
+            cy.get("body").type(before);
+        }
+        withSelection((posToInsert) => {
+            if (after.length > 0) {
+                cy.get("body").type(after);
+            }
+            cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+            moveToPositionThen(posToInsert.cursorPos, () => {
+                cy.get("body").type(toInsert);
+                assertState(expectedResult);
+            });
+        });
+    });
 }
 
-function testBackspace(a : string, b : string) : void {
-    // TODO implement
+function testBackspace(originalInclBksp : string, expectedResult : string) : void {
+    const bkspIndex = originalInclBksp.indexOf("\b");
+    it("Tests Backspace " + originalInclBksp, () => {
+        expect(bkspIndex).to.not.equal(-1);
+        const before = originalInclBksp.substring(0, bkspIndex);
+        const after = originalInclBksp.substring(bkspIndex + 1);
+
+        cy.get("body").type(" ");
+        assertState("{$}");
+        if (before.length > 0) {
+            cy.get("body").type(before);
+        }
+        withSelection((posToInsert) => {
+            if (after.length > 0) {
+                cy.get("body").type(after);
+            }
+            cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+            moveToPositionThen(posToInsert.cursorPos, () => {
+                cy.get("body").type("{backspace}");
+                assertState(expectedResult);
+            });
+        });
+    });
+    if (bkspIndex > 0) {
+        it("Tests Delete " + originalInclBksp, () => {
+            const before = originalInclBksp.substring(0, bkspIndex - 1);
+            const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
+
+            cy.get("body").type(" ");
+            assertState("{$}");
+            if (before.length > 0) {
+                cy.get("body").type(before);
+            }
+            withSelection((posToInsert) => {
+                if (after.length > 0) {
+                    cy.get("body").type(after);
+                }
+                cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+                moveToPositionThen(posToInsert.cursorPos, () => {
+                    cy.get("body").type("{del}");
+                    assertState(expectedResult);
+                });
+            });
+        });
+    }
 }
 
 
@@ -87,9 +209,9 @@ describe("Stride TestExpressionSlot.testOperators()", () => {
     //testInsert("false!=!!!false", "{false}!={}!{}!{}!{false$}");
     // Must surround these in a method call because otherwise the = gets converted
     // to an assignment:
-    testInsert("foo(5==-6)", "{foo}({5}=={-6$}){}");
-    testInsert("foo(5==--6)", "{foo}({5}=={}-{-6$}){}");
-    testInsert("foo(5==----6)", "{foo}({5}=={}-{}-{}-{-6$}){}");
+    testInsert("foo(5==-6)", "{foo}({5}=={-6}){$}");
+    testInsert("foo(5==--6)", "{foo}({5}=={}-{-6}){$}");
+    testInsert("foo(5==----6)", "{foo}({5}=={}-{}-{}-{-6}){$}");
     testInsert("a.b", "{a}.{b$}");
     //testInsert("a..b", "{a}..{b$}");
     testInsert("y-1", "{y}-{1$}");
@@ -143,20 +265,20 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     
 
     // Adding quote later:
-    testMultiInsert("abc{\"}def", "{abc$def}", "{abc}_\"$\"_{def}");
-    testMultiInsert("abc{\"}", "{abc$}", "{abc}_\"$\"_{}");
-    testMultiInsert("{\"}def", "{$def}", "{}_\"$\"_{def}");
-    testMultiInsert("abc{\"}.def", "{abc$}.{def}", "{abc}_\"$\"_{}.{def}");
-    testMultiInsert("abc{\"}*def", "{abc$}*{def}", "{abc}_\"$\"_{}*{def}");
-    testMultiInsert("abc{\"}def()", "{abc$def}_({})_{}", "{abc}_\"$\"_{def}_({})_{}");
-    testMultiInsert("abc{\"}()", "{abc$}_({})_{}", "{abc}_\"$\"_{}_({})_{}");
+    testMultiInsert("abc{\"}def", "{abc$def}", "{abc}_“$”_{def}");
+    testMultiInsert("abc{\"}", "{abc$}", "{abc}_“$”_{}");
+    testMultiInsert("{\"}def", "{$def}", "{}_“$”_{def}");
+    testMultiInsert("abc{\"}.def", "{abc$}.{def}", "{abc}_“$”_{}.{def}");
+    testMultiInsert("abc{\"}*def", "{abc$}*{def}", "{abc}_“$”_{}*{def}");
+    testMultiInsert("abc{\"}def()", "{abc$def}_({})_{}", "{abc}_“$”_{def}_({})_{}");
+    testMultiInsert("abc{\"}()", "{abc$}_({})_{}", "{abc}_“$”_{}_({})_{}");
 
     // Adding string adjacent to String:
     // First, before:
-    testInsertExisting("$\"b\"", "\"a", "{}_\"a$\"_{}_\"b\"_{}");
-    testInsertExisting("$\"b\"", "\"a\"", "{}_\"a\"_{$}_\"b\"_{}");
+    testInsertExisting("$\"b\"", "\"a", "{}_“a$”_{}_“b”_{}");
+    testInsertExisting("$\"b\"", "\"a\"", "{}_“a”_{$}_“b”_{}");
     // Also, after:
-    testInsertExisting("\"a\"$", "\"b", "{}_\"a\"_{}_\"b$\"_{}");
+    testInsertExisting("\"a\"$", "\"b", "{}_“a”_{}_“b$”_{}");
 
 
     // Example found while pasting from BlueJ (double escaped here)
@@ -165,8 +287,29 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     //"{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{$})_{}");
 
     // Deletion:
-    testBackspace("\"a\bb\"", "{}_\"$b\"_{}");
+    testBackspace("\"a\bb\"", "{}_“$b”_{}");
     testBackspace("\"\bab\"", "{$ab}");
-    testBackspace("\"ab\b\"", "{}_\"a$\"_{}");
+    testBackspace("\"ab\b\"", "{}_“a$”_{}");
     testBackspace("\"ab\"\b", "{ab$}");
+});
+
+describe("Stride TestExpressionSlot.testBackspace()", () => {
+    testBackspace("\bxyz", "{$xyz}");
+    testBackspace("x\byz", "{$yz}");
+    testBackspace("xy\bz", "{x$z}");
+    testBackspace("xyz\b", "{xy$}");
+
+    testBackspace("xy\b+ab", "{x$}+{ab}");
+    testBackspace("xy+\bab", "{xy$ab}");
+    testBackspace("xy+a\bb", "{xy}+{$b}");
+
+    // TODO convert these to Strype equivalent:
+    //testBackspace("new t\bon", "{}new {$on}");
+    // This one isn't possible using delete, but is by using backspace:
+    //testBackspace("new \bton", "{new$ton}", true, false);
+    // This one isn't possible using backspace, but is by using delete:
+    //testBackspace("n\bew ton", "{$ewton}", false, true);
+
+    testBackspace("move(\b)", "{move$}");
+    testBackspace("(\b)", "{$}");
 });
