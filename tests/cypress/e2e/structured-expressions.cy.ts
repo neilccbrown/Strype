@@ -90,7 +90,7 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsertNest.id).focus();
+            cy.get("#" + posToInsertNest.id.replace(",", "\\,")).focus();
             moveToPositionThen(posToInsertNest.cursorPos, () => {
                 assertState(firstResult);
                 cy.get("body").type(nest);
@@ -116,7 +116,7 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsert.id).focus();
+            cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
             moveToPositionThen(posToInsert.cursorPos, () => {
                 cy.get("body").type(toInsert);
                 assertState(expectedResult);
@@ -141,7 +141,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsert.id).focus();
+            cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
             moveToPositionThen(posToInsert.cursorPos, () => {
                 cy.get("body").type("{backspace}");
                 assertState(expectedResult);
@@ -162,7 +162,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
                 if (after.length > 0) {
                     cy.get("body").type(after);
                 }
-                cy.get("#" + posToInsert.id).focus();
+                cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
                 moveToPositionThen(posToInsert.cursorPos, () => {
                     cy.get("body").type("{del}");
                     assertState(expectedResult);
