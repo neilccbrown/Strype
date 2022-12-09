@@ -71,6 +71,17 @@ function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => vo
     });
 }
 
+function focusSlotId(originalId : string) {
+    // Sometimes slots can change type, which is encoded in the ID, so we want to ignore that when selecting
+    // (and it won't be possible to pick another ID by accident, as the other parts are still unique when assembled):
+    const labelSlotUIIDRegex = /^(input_frame_\d+_label_\d+_slot_[0-7]{3})[0-7](_\d+(,\d)*)$/;
+    const ms = originalId.match(labelSlotUIIDRegex);
+    if (ms != null) {
+        // We must escape commas in ID as otherwise it looks like multiple selectors joined with a comma:
+        cy.get("*[id^=" + ms[1] + "][id$=" + ms[2].replace(",", "\\,") + "]").focus();
+    }
+}
+
 function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
     it("Tests " + multiInsertion, () => {
         const startNest = multiInsertion.indexOf("{");
@@ -90,7 +101,7 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsertNest.id.replace(",", "\\,")).focus();
+            focusSlotId(posToInsertNest.id);
             moveToPositionThen(posToInsertNest.cursorPos, () => {
                 assertState(firstResult);
                 cy.get("body").type(nest);
@@ -116,7 +127,7 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+            focusSlotId(posToInsert.id);
             moveToPositionThen(posToInsert.cursorPos, () => {
                 cy.get("body").type(toInsert);
                 assertState(expectedResult);
@@ -141,7 +152,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+            focusSlotId(posToInsert.id);
             moveToPositionThen(posToInsert.cursorPos, () => {
                 cy.get("body").type("{backspace}");
                 assertState(expectedResult);
@@ -162,7 +173,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
                 if (after.length > 0) {
                     cy.get("body").type(after);
                 }
-                cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+                focusSlotId(posToInsert.id);
                 moveToPositionThen(posToInsert.cursorPos, () => {
                     cy.get("body").type("{del}");
                     assertState(expectedResult);
