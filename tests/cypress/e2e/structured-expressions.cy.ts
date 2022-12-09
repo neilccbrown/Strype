@@ -292,3 +292,24 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     testBackspace("\"ab\b\"", "{}_“a$”_{}");
     testBackspace("\"ab\"\b", "{ab$}");
 });
+
+describe("Stride TestExpressionSlot.testBackspace()", () => {
+    testBackspace("\bxyz", "{$xyz}");
+    testBackspace("x\byz", "{$yz}");
+    testBackspace("xy\bz", "{x$z}");
+    testBackspace("xyz\b", "{xy$}");
+
+    testBackspace("xy\b+ab", "{x$}+{ab}");
+    testBackspace("xy+\bab", "{xy$ab}");
+    testBackspace("xy+a\bb", "{xy}+{$b}");
+
+    // TODO convert these to Strype equivalent:
+    //testBackspace("new t\bon", "{}new {$on}");
+    // This one isn't possible using delete, but is by using backspace:
+    //testBackspace("new \bton", "{new$ton}", true, false);
+    // This one isn't possible using backspace, but is by using delete:
+    //testBackspace("n\bew ton", "{$ewton}", false, true);
+
+    testBackspace("move(\b)", "{move$}");
+    testBackspace("(\b)", "{$}");
+});
