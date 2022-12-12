@@ -409,3 +409,26 @@ describe("Stride TestExpressionSlot.testFloating()", () => {
     //testBackspace("a..\bc", "{a}.{$c}", true, false); // backspace after
     //testBackspace("a.\b.c", "{a$}.{c}", false, true); // delete before
 });
+
+describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
+    testInsert("a+(b*c)", "{a}+{}_({b}*{c})_{$}");
+    testBackspace("a+(b*c)\b", "{a}+{b}*{c$}");
+    testBackspace("a+(\bb*c)", "{a}+{$b}*{c}");
+
+    testInsert("((MyWorld)getWorld()).getWidth()",
+        "{}_({}_({MyWorld})_{getWorld}_({})_{})_{}.{getWidth}_({})_{$}");
+    testBackspace("((MyWorld)getWorld()).getWidth()\b",
+        "{}_({}_({MyWorld})_{getWorld}_({})_{})_{}.{getWidth$}");
+    testBackspace("((MyWorld)getWorld()).\bgetWidth()",
+        "{}_({}_({MyWorld})_{getWorld}_({})_{})_{$getWidth}_({})_{}");
+    testBackspace("((MyWorld)getWorld())\b.getWidth()",
+        "{}_({MyWorld})_{getWorld}_({})_{$}.{getWidth}_({})_{}");
+    testBackspace("((MyWorld)getWorld(\b)).getWidth()",
+        "{}_({}_({MyWorld})_{getWorld$})_{}.{getWidth}_({})_{}");
+    testBackspace("((MyWorld)\bgetWorld()).getWidth()",
+        "{}_({MyWorld$getWorld}_({})_{})_{}.{getWidth}_({})_{}");
+    testBackspace("((\bMyWorld)getWorld()).getWidth()",
+        "{}_({$MyWorldgetWorld}_({})_{})_{}.{getWidth}_({})_{}");
+    testBackspace("(\b(MyWorld)getWorld()).getWidth()",
+        "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
+});
