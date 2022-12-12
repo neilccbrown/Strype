@@ -894,7 +894,7 @@ export const useStore = defineStore("app", {
                     // If removing brackets, this flag being true indicates we are INSIDE the bracket when deleting, false means we are outside the bracket we are deleting.
                     // Similarly, for strings, true indicates we are INSIDE the string when deleting, false means we are outside.
                     const isCurrentSlotSpecialType = (isRemovingBrackets)
-                        ? (currentSlotInfos.slotId.match(/,/)?.length??0) > (slotToDeleteInfos.slotId.match(/,/)?.length??0)
+                        ? (currentSlotInfos.slotId.match(/,/g)?.length??0) > (slotToDeleteInfos.slotId.match(/,/g)?.length??0)
                         : currentSlotInfos.slotType == SlotType.string;                    
                     // The parent of the slot to delete:
                     const slotToDeleteParentSlot = (slotToDeleteParentId.length > 0)
