@@ -71,6 +71,17 @@ function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => vo
     });
 }
 
+function focusSlotId(originalId : string) {
+    // Sometimes slots can change type, which is encoded in the ID, so we want to ignore that when selecting
+    // (and it won't be possible to pick another ID by accident, as the other parts are still unique when assembled):
+    const labelSlotUIIDRegex = /^(input_frame_\d+_label_\d+_slot_[0-7]{3})[0-7](_\d+(,\d)*)$/;
+    const ms = originalId.match(labelSlotUIIDRegex);
+    if (ms != null) {
+        // We must escape commas in ID as otherwise it looks like multiple selectors joined with a comma:
+        cy.get("*[id^=" + ms[1] + "][id$=" + ms[2].replaceAll(",", "\\,") + "]").focus();
+    }
+}
+
 function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
     it("Tests " + multiInsertion, () => {
         const startNest = multiInsertion.indexOf("{");
@@ -90,7 +101,7 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsertNest.id.replace(",", "\\,")).focus();
+            focusSlotId(posToInsertNest.id);
             moveToPositionThen(posToInsertNest.cursorPos, () => {
                 assertState(firstResult);
                 cy.get("body").type(nest);
@@ -116,7 +127,7 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+            focusSlotId(posToInsert.id);
             moveToPositionThen(posToInsert.cursorPos, () => {
                 cy.get("body").type(toInsert);
                 assertState(expectedResult);
@@ -127,7 +138,7 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
 
 function testBackspace(originalInclBksp : string, expectedResult : string) : void {
     const bkspIndex = originalInclBksp.indexOf("\b");
-    it("Tests Backspace " + originalInclBksp, () => {
+    it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
         expect(bkspIndex).to.not.equal(-1);
         const before = originalInclBksp.substring(0, bkspIndex);
         const after = originalInclBksp.substring(bkspIndex + 1);
@@ -141,7 +152,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+            focusSlotId(posToInsert.id);
             moveToPositionThen(posToInsert.cursorPos, () => {
                 cy.get("body").type("{backspace}");
                 assertState(expectedResult);
@@ -149,7 +160,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
         });
     });
     if (bkspIndex > 0) {
-        it("Tests Delete " + originalInclBksp, () => {
+        it("Tests Delete " + originalInclBksp.replace("\b", "\\b"), () => {
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
 
@@ -162,7 +173,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
                 if (after.length > 0) {
                     cy.get("body").type(after);
                 }
-                cy.get("#" + posToInsert.id.replace(",", "\\,")).focus();
+                focusSlotId(posToInsert.id);
                 moveToPositionThen(posToInsert.cursorPos, () => {
                     cy.get("body").type("{del}");
                     assertState(expectedResult);
@@ -312,4 +323,89 @@ describe("Stride TestExpressionSlot.testBackspace()", () => {
 
     testBackspace("move(\b)", "{move$}");
     testBackspace("(\b)", "{$}");
+});
+
+describe("Strype test nested brackets", () => {
+    testInsert("((a+b)+c())", "{}_({}_({a}+{b})_{}+{c}_({})_{})_{$}");
+    testInsert("((a)c())", "{}_({}_({a})_{c}_({})_{})_{$}");
+
+    //testBackspace("((\b))", "{}_({$})_{}");
+    //testBackspace("((a))c((\b))", "{}_({}_({a})_{})_{c}_({$})_{}");
+});
+
+describe("Stride TestExpressionSlot.testFloating()", () => {
+    // For some of this, they are a syntax error anyway, so it is not crucial which way we split them
+    // Still, a regression might indicate a problem
+
+    testInsert("1.0", "{1.0$}");
+    testInsert("10.20", "{10.20$}");
+    testInsert("a.0", "{a}.{0$}");
+    testInsert("1.a", "{1}.{a$}");
+    testInsert("x1.a", "{x1}.{a$}");
+    testInsert("+1", "{+1$}");
+    testInsert("+1.0", "{+1.0$}");
+    testInsert("+1.0e5", "{+1.0e5$}");
+    testInsert("+1.0e", "{}+{1}.{0e$}");
+    testInsert("+1.0e+5", "{+1.0e+5$}");
+    testInsert("+1.0e+5+6", "{+1.0e+5}+{6$}");
+    testInsert("3+1", "{3}+{1$}");
+    testInsert("3+1.0", "{3}+{1.0$}");
+    testInsert("3+1.0e5", "{3}+{1.0e5$}");
+    testInsert("3+1.0e+5", "{3}+{1.0e+5$}");
+    testInsert("3+1.0e+5+6", "{3}+{1.0e+5}+{6$}");
+    
+    testInsert("+1+2+3", "{+1}+{2}+{3$}");
+    testInsert("+1++2", "{+1}+{+2$}");
+    testInsert("+1++2+3", "{+1}+{+2}+{3$}");
+    testInsert("+1++2++3", "{+1}+{+2}+{+3$}");
+    testInsert("++1++2++3", "{}+{+1}+{+2}+{+3$}");
+    testMultiInsert("+{1}", "{}+{$}", "{+1$}");
+    testMultiInsert("+{+1}", "{}+{$}", "{}+{+1$}");
+    testMultiInsert("1++{2}", "{1}+{}+{$}", "{1}+{+2$}");
+    testInsert("-1-2-3", "{-1}-{2}-{3$}");
+    testInsert("-1--2", "{-1}-{-2$}");
+    testInsert("-1--2-3", "{-1}-{-2}-{3$}");
+    testInsert("-1--2--3", "{-1}-{-2}-{-3$}");
+    testInsert("--1--2--3", "{}-{-1}-{-2}-{-3$}");
+    testMultiInsert("-{1}", "{}-{$}", "{-1$}");
+    testMultiInsert("-{-1}", "{}-{$}", "{}-{-1$}");
+    testMultiInsert("1--{2}", "{1}-{}-{$}", "{1}-{-2$}");
+
+    testInsert("1e6", "{1e6$}");
+    testInsert("1e-6", "{1e-6$}");
+    testInsert("10e20", "{10e20$}");
+    testInsert("10e+20", "{10e+20$}");
+    testInsert("10e-20", "{10e-20$}");
+
+    testInsert("1.0.3", "{1}.{0}.{3$}");
+    testInsert("1.0.3.4", "{1}.{0}.{3}.{4$}");
+    testInsert("1.0.x3.4", "{1}.{0}.{x3}.{4$}");
+
+    // The problem here is that + is first an operator, then merged back in,
+    // so when we preserve the position after plus, it becomes invalid, so we
+    // can't easily test that the right thing happens deleting the plus:
+    //testBackspace("+\b1.0e-5", "{$1.0e-5}", false, true);
+    //testBackspace("+1\b.0e-5", "{}+{$}.{0e-5}", true, false);
+    testBackspace("+1.\b0e-5", "{+1$0e-5}");
+    testBackspace("+1.0\be-5", "{+1.$e-5}");
+    //testBackspace("+1.0e\b-5", "{+1.0$}-{5}");
+    //testBackspace("+1.0e-\b5", "{+1.0e$5}");
+    //testBackspace("+1.0e-5\b", "{}+{1}.{0e}-{$}");
+
+    testMultiInsert("{1}e-6", "{$e}-{6}", "{1$e-6}");
+    testMultiInsert("1{e}-6", "{1$}-{6}", "{1e$-6}");
+    testMultiInsert("1e{-}6", "{1e$6}", "{1e-$6}");
+    testMultiInsert("1e-{6}", "{1e}-{$}", "{1e-6$}");
+
+    testMultiInsert("{x}1e-6", "{$1e-6}", "{x$1e}-{6}");
+    testMultiInsert("1{x}e-6", "{1$e-6}", "{1x$e}-{6}");
+    testMultiInsert("1e{x}-6", "{1e$-6}", "{1ex$}-{6}");
+    //testMultiInsert("1e-{x}6", "{1e-$6}", "{1e-x$6}");
+
+    testInsert("1.0", "{1.0$}");
+    testInsert("1..0", "{1}.{}.{0$}");
+    //testBackspace("1..\b0", "{1.$0}", true, false); // backspace after
+    //testBackspace("1.\b.0", "{1$.0}", false, true); // delete before
+    //testBackspace("a..\bc", "{a}.{$c}", true, false); // backspace after
+    //testBackspace("a.\b.c", "{a$}.{c}", false, true); // delete before
 });
