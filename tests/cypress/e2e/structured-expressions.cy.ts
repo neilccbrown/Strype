@@ -78,7 +78,7 @@ function focusSlotId(originalId : string) {
     const ms = originalId.match(labelSlotUIIDRegex);
     if (ms != null) {
         // We must escape commas in ID as otherwise it looks like multiple selectors joined with a comma:
-        cy.get("*[id^=" + ms[1] + "][id$=" + ms[2].replace(",", "\\,") + "]").focus();
+        cy.get("*[id^=" + ms[1] + "][id$=" + ms[2].replaceAll(",", "\\,") + "]").focus();
     }
 }
 
