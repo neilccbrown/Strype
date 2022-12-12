@@ -329,8 +329,8 @@ describe("Strype test nested brackets", () => {
     testInsert("((a+b)+c())", "{}_({}_({a}+{b})_{}+{c}_({})_{})_{$}");
     testInsert("((a)c())", "{}_({}_({a})_{c}_({})_{})_{$}");
 
-    //testBackspace("((\b))", "{}_({$})_{}");
-    //testBackspace("((a))c((\b))", "{}_({}_({a})_{})_{c}_({$})_{}");
+    testBackspace("((\b))", "{}_({$})_{}");
+    testBackspace("((a))c((\b))", "{}_({}_({a})_{})_{c}_({$})_{}");
 });
 
 describe("Stride TestExpressionSlot.testFloating()", () => {
