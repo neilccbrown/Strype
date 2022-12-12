@@ -138,7 +138,7 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
 
 function testBackspace(originalInclBksp : string, expectedResult : string) : void {
     const bkspIndex = originalInclBksp.indexOf("\b");
-    it("Tests Backspace " + originalInclBksp, () => {
+    it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
         expect(bkspIndex).to.not.equal(-1);
         const before = originalInclBksp.substring(0, bkspIndex);
         const after = originalInclBksp.substring(bkspIndex + 1);
@@ -160,7 +160,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string) : voi
         });
     });
     if (bkspIndex > 0) {
-        it("Tests Delete " + originalInclBksp, () => {
+        it("Tests Delete " + originalInclBksp.replace("\b", "\\b"), () => {
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
 
