@@ -653,16 +653,23 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
         // Look for inner brackets, iteration is NOT made on "closingBracketPos" so we can keep the latest value
         do {
             closingBracketPos = blankedStringCodeLiteral.indexOf(closingBracketValue, startLookingOtherOpeningBracketsPos);
-            if(closingBracketPos > -1){
-                innerOpeningBracketCount --;
-                if(blankedStringCodeLiteral.substring(startLookingOtherOpeningBracketsPos, closingBracketPos).includes(openingBracketValue)){
-                    innerOpeningBracketCount++;
+            const nextOpen = blankedStringCodeLiteral.indexOf(openingBracketValue, startLookingOtherOpeningBracketsPos);
+            if (closingBracketPos > -1) {
+                if (nextOpen > -1 && nextOpen < closingBracketPos) {
+                    innerOpeningBracketCount ++;
+                    startLookingOtherOpeningBracketsPos = nextOpen + 1;
+                }
+                else {
+                    innerOpeningBracketCount--;
                     startLookingOtherOpeningBracketsPos = closingBracketPos + 1;
                 }
             }            
         }
-        while (!(innerOpeningBracketCount == 0 || closingBracketPos == -1 || blankedStringCodeLiteral.indexOf(openingBracketValue, startLookingOtherOpeningBracketsPos) > -1));
+        while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
 
+        console.log("Open pos: " + firstOpenedBracketPos);
+        console.log("Close pos: " + closingBracketPos);        
+        
         // Now that we have found the bracket boudary (if we didn't find a closing bracket match, we "manually" close after the whole content following opening bracket)
         // we can make a structure and parse the split code content as 
         //  - before the bracket
