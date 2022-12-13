@@ -767,34 +767,65 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // We construct the list of all operator with a specific order: first the spaced keyword operators, 
     // then the double symbolic operators and lastly the unitary symbolic operators. We put double operators
     // first so that they are found first in the search for operators.
-    const allOperators = [...keywordOperatorsWithSurroundSpaces, ...operators.sort((op1, op2) => (op2.length - op1.length))];
+    interface OpDef {
+        match: RegExp | string; // The match to search for (regex or literal)
+        textToUse : string; // The text to use for the operator (needed especially when the above is a RegExp) in the final expression
+    }
+    interface OpFound extends OpDef {
+        pos: number; // The position of the match (0 = first character in string)
+        length: number; // The length of the match in characters within the string
+    }
+    const allOperators: OpDef[] = [...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
+        return {match: new RegExp("(?<!\\p{Lu}|\\p{Ll}|\\p{Lt}|\\p{Lm}|\\p{Lo}|\\p{Nl}|\\p{Mn}|\\p{Mc}|\\p{Nd}|\\p{Pc}|_)" + opSpace.trim() + " "), textToUse: opSpace} as OpDef;
+    }),
+    ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
+        return {match: o, textToUse: o} as OpDef;
+    })];
     let hasOperator = true;
     let lookOffset = 0;
     while(hasOperator){
-        const operatorPosList = allOperators.flatMap((operator) => blankedStringCodeLiteral.indexOf(operator, lookOffset));
-        hasOperator = operatorPosList.some((operatorPos) => operatorPos > -1);
+        const operatorPosList : OpFound[] = allOperators.flatMap((operator : OpDef) => {
+            if (operator.match instanceof RegExp) {
+                // "g" flag is necessary to make it obey the lastIndex item as a place to start:
+                const regex = new RegExp(operator.match, "g");
+                regex.lastIndex = lookOffset;
+                const result = regex.exec(blankedStringCodeLiteral);
+                if (result == null) {
+                    return {...operator, pos: -1, length: 0} as OpFound;
+                }
+                else {
+                    return {...operator, pos: result.index, length: result[0].length} as OpFound;
+                }
+            }
+            else {
+                return {...operator, pos: blankedStringCodeLiteral.indexOf(operator.match, lookOffset), length: operator.match.length} as OpFound;
+            }
+        });
+        hasOperator = operatorPosList.some((operatorPos) => operatorPos.pos > -1);
         if(hasOperator){
             // Look for the first operator of the string inside the list
-            let firstOperatorPos = -1;
-            operatorPosList.forEach((pos) => {
-                if(pos > -1 && (pos < firstOperatorPos || firstOperatorPos == -1)){
-                    firstOperatorPos = pos;
+            let firstOperator : OpFound | null = null;
+            for (const op of operatorPosList) {
+                if(op.pos > -1 && (firstOperator == null || op.pos < firstOperator.pos)){
+                    firstOperator = op;
                 }
-            });
-            
-            // Get the LHS as field and this operator as operator in the resulting structure
-            // We perform a last step before returning the code unit: remove any remaining "dead" closing bracket
-            const operator = allOperators[operatorPosList.indexOf(firstOperatorPos)];
-            let lhsCode = codeLiteral.substring(lookOffset, firstOperatorPos);
-            closeBracketCharacters.forEach((closingBracket) => {
-                lhsCode = lhsCode.replaceAll(closingBracket, () => {
-                    cursorOffset += -1;
-                    return "";
+            }
+
+            // Will always be true or else we wouldn't be in the outer if:
+            if (firstOperator) {
+                // Get the LHS as field and this operator as operator in the resulting structure
+                // We perform a last step before returning the code unit: remove any remaining "dead" closing bracket
+                let lhsCode = codeLiteral.substring(lookOffset, firstOperator.pos);
+                closeBracketCharacters.forEach((closingBracket) => {
+                    lhsCode = lhsCode.replaceAll(closingBracket, () => {
+                        cursorOffset += -1;
+                        return "";
+                    });
                 });
-            });
-            resStructSlot.fields.push({code: codeLiteral.substring(lookOffset, firstOperatorPos)});
-            resStructSlot.operators.push({code: operator.trim()});
-            lookOffset = firstOperatorPos + operator.length;
+                resStructSlot.fields.push({code: codeLiteral.substring(lookOffset, firstOperator.pos).trim()});
+                resStructSlot.operators.push({code: firstOperator.textToUse});
+                lookOffset = firstOperator.pos + firstOperator.length;
+            }
         }
     }
     // As we always have at least 1 field, and operators contained between fields, we need to add the trimming field 
