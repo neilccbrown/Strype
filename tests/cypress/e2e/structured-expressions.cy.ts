@@ -30,7 +30,7 @@ function assertState(expectedState : string) : void {
 
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
-    cy.wait(500);
+    cy.wait(200);
     cy.get("#editor").then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
