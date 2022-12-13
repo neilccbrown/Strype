@@ -307,9 +307,8 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
 
 
     // Example found while pasting from BlueJ (double escaped here)
-    // TODO re-enable
-    //testInsert("foo(c == '\\\\' or c == '\"' or c == '\\'')",
-    //"{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{$})_{}");
+    testInsert("foo(c=='\\\\' or c=='\"' or c=='\\'')",
+        "{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{$})_{}");
 
     // Deletion:
     testBackspace("\"a\bb\"", "{}_“$b”_{}");
@@ -480,3 +479,33 @@ describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
     testBackspace("(\b(MyWorld)getWorld()).getWidth()",
         "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
 });
+
+describe("Test word operators", () => {
+    testInsert("a or ", "{a} or {$}");
+    testInsert("a or b", "{a} or {b$}");
+    testInsert("or b", "{} or {b$}");
+    testInsert("orb", "{orb$}");
+    testInsert("orc or ork", "{orc} or {ork$}");
+    testInsert("notand or nand", "{notand} or {nand$}");
+    testInsert("nor or neither", "{nor} or {neither$}");
+    testInsert("öor or oör", "{öor} or {oör$}");
+    testInsert("a is b", "{a} is {b$}");
+    testInsert("a is not b", "{a} is not {b$}");
+    testInsert("a or not b", "{a} or {} not {b$}");
+    testInsert("a and or in b", "{a} and {} or {} in {b$}");
+    
+    testMultiInsert("a is {not }b", "{a} is {$b}", "{a} is not {$b}");
+    testMultiInsert("a or {not }b", "{a} or {$b}", "{a} or {} not {$b}");
+    
+    testBackspace("a or \bb", "{a$b}", true, false);
+    testBackspace("a is not \bb", "{a$b}", true, false);
+    testBackspace("a or not \bb", "{a} or {$b}", true, false);
+    testBackspace("a or \bnot b", "{a$} not {b}", true, false);
+
+    testInsert("1or 2", "{1or 2$}");
+    testInsert("1 or 2", "{1} or {2$}");
+    testInsert("1 or2", "{1 or2$}");
+    
+    // TODO tests with multiple chained operators, and with brackets
+});
+
