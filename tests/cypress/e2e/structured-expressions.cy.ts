@@ -239,6 +239,19 @@ describe("Stride TestExpressionSlot.testOperators()", () => {
     //testInsert("s.length()..1", "{s}.{length}_({})_{}..{1$}");
 });
 
+describe("Stride TestExpressionSlot.testDot()", () => {
+    testInsert(".", "{}.{$}");
+    testInsert("0.", "{0.$}");
+    testInsert("a.", "{a}.{$}");
+    testInsert("foo()", "{foo}_({})_{$}");
+    testInsert("foo().bar()", "{foo}_({})_{}.{bar}_({})_{$}");
+    testInsert("foo+().", "{foo}+{}_({})_{}.{$}");
+
+    testMultiInsert("foo(){.}a", "{foo}_({})_{$a}", "{foo}_({})_{}.{$a}");
+
+    testBackspace("foo()0\b.", "{foo}_({})_{$}.{}");
+});
+
 describe("Stride TestExpressionSlot.testStrings()", () => {
     // With trailing quote
     testInsert("\"hello\"", "{}_“hello”_{$}");
