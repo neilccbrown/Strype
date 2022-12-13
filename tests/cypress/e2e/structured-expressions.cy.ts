@@ -410,6 +410,27 @@ describe("Stride TestExpressionSlot.testFloating()", () => {
     //testBackspace("a.\b.c", "{a$}.{c}", false, true); // delete before
 });
 
+describe("Stride TestExpressionSlot.testBrackets()", () => {
+    testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
+    testInsert("a+(b-(c*d))", "{a}+{}_({b}-{}_({c}*{d})_{})_{$}");
+
+    // Without close:
+    testInsert("(a+b", "{}_({a}+{b$})_{}");
+
+    testInsert("(((", "{}_({}_({}_({$})_{})_{})_{}");
+    testInsert("((()", "{}_({}_({}_({})_{$})_{})_{}");
+    testInsert("((())", "{}_({}_({}_({})_{})_{$})_{}");
+    testInsert("((()))", "{}_({}_({}_({})_{})_{})_{$}");
+
+    testInsert("(a+(b*c)+d)", "{}_({a}+{}_({b}*{c})_{}+{d})_{$}");
+
+    testMultiInsert("({(MyWorld)}getWorld()).getWidth()",
+        "{}_({$getWorld}_({})_{})_{}.{getWidth}_({})_{}",
+        "{}_({}_({MyWorld})_{$getWorld}_({})_{})_{}.{getWidth}_({})_{}");
+
+    testInsert("a(bc)d", "{a}_({bc})_{d$}");
+});
+
 describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
     testInsert("a+(b*c)", "{a}+{}_({b}*{c})_{$}");
     testBackspace("a+(b*c)\b", "{a}+{b}*{c$}");
