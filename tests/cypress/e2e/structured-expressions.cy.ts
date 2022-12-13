@@ -304,6 +304,19 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     testBackspace("\"ab\"\b", "{ab$}");
 });
 
+describe("Stride TestExpressionSlot.testOvertype()", () => {
+    // Opening bracket just before one does not overtype in Strype at the moment:
+    testInsertExisting("$()", "move", "{move$}_({})_{}");
+    testInsertExisting("move$()", "(",  "{move}_({$})_{}_({})_{}");
+
+    testInsertExisting("$\"bye\"", "\"hi\"+", "{}_“hi”_{}+{$}_“bye”_{}");
+    testInsertExisting("\"hi$\"", "\"",  "{}_“hi”_{$}");
+
+    // Most operators, like +, don't overtype:
+    testInsertExisting("a$+z", "+", "{a}+{$}+{z}");
+    testInsertExisting("a$+z", "+b", "{a}+{b$}+{z}");
+});
+
 describe("Stride TestExpressionSlot.testBackspace()", () => {
     testBackspace("\bxyz", "{$xyz}");
     testBackspace("x\byz", "{$yz}");
@@ -329,8 +342,8 @@ describe("Strype test nested brackets", () => {
     testInsert("((a+b)+c())", "{}_({}_({a}+{b})_{}+{c}_({})_{})_{$}");
     testInsert("((a)c())", "{}_({}_({a})_{c}_({})_{})_{$}");
 
-    //testBackspace("((\b))", "{}_({$})_{}");
-    //testBackspace("((a))c((\b))", "{}_({}_({a})_{})_{c}_({$})_{}");
+    testBackspace("((\b))", "{}_({$})_{}");
+    testBackspace("((a))c((\b))", "{}_({}_({a})_{})_{c}_({$})_{}");
 });
 
 describe("Stride TestExpressionSlot.testFloating()", () => {
@@ -408,4 +421,48 @@ describe("Stride TestExpressionSlot.testFloating()", () => {
     //testBackspace("1.\b.0", "{1$.0}", false, true); // delete before
     //testBackspace("a..\bc", "{a}.{$c}", true, false); // backspace after
     //testBackspace("a.\b.c", "{a$}.{c}", false, true); // delete before
+});
+
+describe("Stride TestExpressionSlot.testBrackets()", () => {
+    testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
+    testInsert("a+(b-(c*d))", "{a}+{}_({b}-{}_({c}*{d})_{})_{$}");
+
+    // Without close:
+    testInsert("(a+b", "{}_({a}+{b$})_{}");
+
+    testInsert("(((", "{}_({}_({}_({$})_{})_{})_{}");
+    testInsert("((()", "{}_({}_({}_({})_{$})_{})_{}");
+    testInsert("((())", "{}_({}_({}_({})_{})_{$})_{}");
+    testInsert("((()))", "{}_({}_({}_({})_{})_{})_{$}");
+
+    testInsert("(a+(b*c)+d)", "{}_({a}+{}_({b}*{c})_{}+{d})_{$}");
+
+    testMultiInsert("({(MyWorld)}getWorld()).getWidth()",
+        "{}_({$getWorld}_({})_{})_{}.{getWidth}_({})_{}",
+        "{}_({}_({MyWorld})_{$getWorld}_({})_{})_{}.{getWidth}_({})_{}");
+
+    testInsert("a(bc)d", "{a}_({bc})_{d$}");
+});
+
+describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
+    testInsert("a+(b*c)", "{a}+{}_({b}*{c})_{$}");
+    testBackspace("a+(b*c)\b", "{a}+{b}*{c$}");
+    testBackspace("a+(\bb*c)", "{a}+{$b}*{c}");
+
+    testInsert("((MyWorld)getWorld()).getWidth()",
+        "{}_({}_({MyWorld})_{getWorld}_({})_{})_{}.{getWidth}_({})_{$}");
+    testBackspace("((MyWorld)getWorld()).getWidth()\b",
+        "{}_({}_({MyWorld})_{getWorld}_({})_{})_{}.{getWidth$}");
+    testBackspace("((MyWorld)getWorld()).\bgetWidth()",
+        "{}_({}_({MyWorld})_{getWorld}_({})_{})_{$getWidth}_({})_{}");
+    testBackspace("((MyWorld)getWorld())\b.getWidth()",
+        "{}_({MyWorld})_{getWorld}_({})_{$}.{getWidth}_({})_{}");
+    testBackspace("((MyWorld)getWorld(\b)).getWidth()",
+        "{}_({}_({MyWorld})_{getWorld$})_{}.{getWidth}_({})_{}");
+    testBackspace("((MyWorld)\bgetWorld()).getWidth()",
+        "{}_({MyWorld$getWorld}_({})_{})_{}.{getWidth}_({})_{}");
+    testBackspace("((\bMyWorld)getWorld()).getWidth()",
+        "{}_({$MyWorldgetWorld}_({})_{})_{}.{getWidth}_({})_{}");
+    testBackspace("(\b(MyWorld)getWorld()).getWidth()",
+        "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
 });

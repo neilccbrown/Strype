@@ -723,7 +723,8 @@ export default Vue.extend({
                 this.$nextTick(() => {
                     const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
                     const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
-                    const slotUIID = getLabelSlotUIID({...newCurrentSlotInfoNoType, slotType: newCurrentSlotType}); 
+                    let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                    const slotUIID = getLabelSlotUIID(newSlotInfos); 
                     const inputSpanField = document.getElementById(slotUIID) as HTMLSpanElement;
                     const newTextCursorPos = (isForwardDeletion) 
                         ? referenceCursorPos + cursorPosOffset 
@@ -731,8 +732,13 @@ export default Vue.extend({
                     if(inputSpanField){
                         inputSpanField.focus();
                         setTextCursorPositionOfHTMLElement(inputSpanField, newTextCursorPos);                
+                        const cursorInfos = {slotInfos: newSlotInfos, cursorPos: newTextCursorPos};
+                        this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
                     }
                     this.appStore.bypassEditableSlotBlurErrorCheck = false;
+
+                    // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
+                    this.$emit("requestSlotsRefactoring", slotUIID);
                 });                                
             }
             else{
@@ -757,11 +763,10 @@ export default Vue.extend({
                     // Do nothing if there is actual change
                     return;
                 }
-                   
-            }
 
-            // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-            this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID));
+                // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
+                this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID));
+            }            
         },
 
         onDeleteKeyDown(event: KeyboardEvent){

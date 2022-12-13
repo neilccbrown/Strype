@@ -666,9 +666,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
             }            
         }
         while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
-
-        console.log("Open pos: " + firstOpenedBracketPos);
-        console.log("Close pos: " + closingBracketPos);        
+       
         
         // Now that we have found the bracket boudary (if we didn't find a closing bracket match, we "manually" close after the whole content following opening bracket)
         // we can make a structure and parse the split code content as 
