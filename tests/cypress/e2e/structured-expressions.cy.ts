@@ -6,7 +6,8 @@ function assertState(expectedState : string) : void {
                 // Try to debug an occasional seemingly impossible failure:
                 cy.task("log", "Parts is null which I'm sure shouldn't happen, came from frame: " + h);
             }
-            for (let i = 0; i < parts.length; i++) {
+            // Since we're in an if frame, we ignore the first and last part:
+            for (let i = 1; i < parts.length - 1; i++) {
                 const p : any = parts[i];
     
                 let text = p.value || p.textContent || "";
@@ -39,9 +40,7 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
 
 function testInsert(insertion : string, result : string) : void {
     it("Tests " + insertion, () => {
-        cy.get("body").type(" ");
-        // Get rid of brackets:
-        cy.get("body").type("{del}");
+        cy.get("body").type("i");
         assertState("{$}");
         cy.get("body").type(" " + insertion);
         assertState(result);
@@ -92,7 +91,7 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
         const nest = multiInsertion.substring(startNest + 1, endNest);
         const after = multiInsertion.substring(endNest + 1);
 
-        cy.get("body").type(" ");
+        cy.get("body").type("i");
         assertState("{$}");
         if (before.length > 0) {
             cy.get("body").type(before);
@@ -118,7 +117,7 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
         const before = original.substring(0, cursorIndex);
         const after = original.substring(cursorIndex + 1);
 
-        cy.get("body").type(" ");
+        cy.get("body").type("i");
         assertState("{$}");
         if (before.length > 0) {
             cy.get("body").type(before);
@@ -136,35 +135,37 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
     });
 }
 
-function testBackspace(originalInclBksp : string, expectedResult : string) : void {
+function testBackspace(originalInclBksp : string, expectedResult : string, testBackspace = true, testDelete = true) : void {
     const bkspIndex = originalInclBksp.indexOf("\b");
-    it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
-        expect(bkspIndex).to.not.equal(-1);
-        const before = originalInclBksp.substring(0, bkspIndex);
-        const after = originalInclBksp.substring(bkspIndex + 1);
+    if (testBackspace) {
+        it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
+            expect(bkspIndex).to.not.equal(-1);
+            const before = originalInclBksp.substring(0, bkspIndex);
+            const after = originalInclBksp.substring(bkspIndex + 1);
 
-        cy.get("body").type(" ");
-        assertState("{$}");
-        if (before.length > 0) {
-            cy.get("body").type(before);
-        }
-        withSelection((posToInsert) => {
-            if (after.length > 0) {
-                cy.get("body").type(after);
+            cy.get("body").type("i");
+            assertState("{$}");
+            if (before.length > 0) {
+                cy.get("body").type(before);
             }
-            focusSlotId(posToInsert.id);
-            moveToPositionThen(posToInsert.cursorPos, () => {
-                cy.get("body").type("{backspace}");
-                assertState(expectedResult);
+            withSelection((posToInsert) => {
+                if (after.length > 0) {
+                    cy.get("body").type(after);
+                }
+                focusSlotId(posToInsert.id);
+                moveToPositionThen(posToInsert.cursorPos, () => {
+                    cy.get("body").type("{backspace}");
+                    assertState(expectedResult);
+                });
             });
         });
-    });
-    if (bkspIndex > 0) {
+    }
+    if (bkspIndex > 0 && testDelete) {
         it("Tests Delete " + originalInclBksp.replace("\b", "\\b"), () => {
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
 
-            cy.get("body").type(" ");
+            cy.get("body").type("i");
             assertState("{$}");
             if (before.length > 0) {
                 cy.get("body").type(before);
