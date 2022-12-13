@@ -304,6 +304,19 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     testBackspace("\"ab\"\b", "{ab$}");
 });
 
+describe("Stride TestExpressionSlot.testOvertype()", () => {
+    // Opening bracket just before one does not overtype in Strype at the moment:
+    testInsertExisting("$()", "move", "{move$}_({})_{}");
+    testInsertExisting("move$()", "(",  "{move}_({$})_{}_({})_{}");
+
+    testInsertExisting("$\"bye\"", "\"hi\"+", "{}_“hi”_{}+{$}_“bye”_{}");
+    testInsertExisting("\"hi$\"", "\"",  "{}_“hi”_{$}");
+
+    // Most operators, like +, don't overtype:
+    testInsertExisting("a$+z", "+", "{a}+{$}+{z}");
+    testInsertExisting("a$+z", "+b", "{a}+{b$}+{z}");
+});
+
 describe("Stride TestExpressionSlot.testBackspace()", () => {
     testBackspace("\bxyz", "{$xyz}");
     testBackspace("x\byz", "{$yz}");
