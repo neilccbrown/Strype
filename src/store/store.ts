@@ -852,6 +852,17 @@ export const useStore = defineStore("app", {
             }
         },
 
+        /**
+         * This method is called if we need to delete an operator, bracket or string (i.e. the deletion is not solely
+         * contained neatly in one slot).  We envisage this as being in a particular slot (the current slot) and deleting
+         * our neighbouring slot to the left or right.
+         * 
+         * @param isForwardDeletion True if we are deleting the slot after us (using the Delete key), or
+         *                          False if we are deleting the slot before us (using the Backspace key)
+         * @param currentSlotInfos The slot where the key was pressed.
+         * @param deleteFromIndex Delete from this slot index of the parent (inclusive)
+         * @param deleteToIndex Delete to this slot index of the parent (inclusive)
+         */
         deleteSlots(isForwardDeletion: boolean, currentSlotInfos: SlotCoreInfos, deleteFromIndex: number, deleteToIndex: number): {newSlotId: string, cursorPosOffset: number} {
             // Deleting slots depends on the direction of deletion (with del or backspace), the scope of deletion
             // (from a selection or a from one position of code) and the nature of the field deleted.
@@ -862,13 +873,19 @@ export const useStore = defineStore("app", {
             //TODO adapt for selection
          
             const hasSlotSelectedToDelete = (deleteFromIndex != deleteToIndex);
+            // Split the target slot ID into parent ID and the index of us within the parent:
             const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(currentSlotInfos.slotId);
+            // The parent slot is the root if our parent ID is blank: 
             const parentSlot = (parentId.length > 0) 
                 ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: parentId}) as SlotsStructure
                 : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
+            // We find the  neighbouring slot which is being deleted.  We fold their content into us if we are siblings.
+            // If they are at a different level, it is more complicated (see further on) 
             const slotToDeleteInfos = getFlatNeighbourFieldSlotInfos(currentSlotInfos, isForwardDeletion);
             
+            // We should only have been called in the first place if this is true, but satisfy TypeScript:
             if(slotToDeleteInfos){
+                // Get the slot to be deleted:
                 const {parentId: slotToDeleteParentId, slotIndex: slotToDeleteIndex} = getSlotParentIdAndIndexSplit(slotToDeleteInfos.slotId);
                 const slotToDelete = retrieveSlotFromSlotInfos(slotToDeleteInfos);
 
@@ -880,22 +897,27 @@ export const useStore = defineStore("app", {
 
                 // Deal with bracket / string partial deletion as a particular case
                 if(isRemovingBrackets || isRemovingString){
+                    // If removing brackets, this flag being true indicates we are INSIDE the bracket when deleting, false means we are outside the bracket we are deleting.
+                    // Similarly, for strings, true indicates we are INSIDE the string when deleting, false means we are outside.
                     const isCurrentSlotSpecialType = (isRemovingBrackets)
-                        ? (currentSlotInfos.slotId.match(/,/)?.length??0) > (slotToDeleteInfos.slotId.match(/,/)?.length??0)
+                        ? (currentSlotInfos.slotId.match(/,/g)?.length??0) > (slotToDeleteInfos.slotId.match(/,/g)?.length??0)
                         : currentSlotInfos.slotType == SlotType.string;                    
+                    // The parent of the slot to delete:
                     const slotToDeleteParentSlot = (slotToDeleteParentId.length > 0)
                         ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: slotToDeleteParentId})
                         : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
 
-                    let parsedStringContentRes =  null;
+                    let parsedStringContentRes = null;
                     if(isRemovingString){
                         const stringSlot = (isCurrentSlotSpecialType) ? retrieveSlotFromSlotInfos(currentSlotInfos) as StringSlot : slotToDelete as StringSlot;
                         const stringLiteral = stringSlot.quote + stringSlot.code + stringSlot.quote;
                         parsedStringContentRes =  parseCodeLiteral(stringLiteral, true);
                     }
+                    // The number of fields in the bracket/string (for the latter, after it is turned into code, so the string "a+b" would be 2):
                     const fieldsInSpecialTypeNumber = (isRemovingBrackets)
                         ? ((isCurrentSlotSpecialType) ? parentSlot.fields.length : (slotToDeleteParentSlot as SlotsStructure).fields.length)
                         : (parsedStringContentRes?.slots.fields.length)??0;
+                    // If we are inside and removing brackets, use the [outside] target's parent, otherwise we can just use our parent:
                     const slotStructureToUpdate = (isCurrentSlotSpecialType && isRemovingBrackets) ? slotToDeleteParentSlot as SlotsStructure : parentSlot;
     
                     // Move the content of the bracket / string slot in the bracket parent

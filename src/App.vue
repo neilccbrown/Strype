@@ -18,7 +18,8 @@
             </div>
         </div>
         <div class="row">
-            <div id="editor" class="col-8">
+            <!-- These data items are to enable testing: -->
+            <div id="editor" class="col-8" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
                 <div class="top">
                     <MessageBanner 
                         v-if="showMessage"
@@ -76,7 +77,7 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import { AppEvent, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID } from "./helpers/editor";
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
@@ -116,6 +117,15 @@ export default Vue.extend({
         // gets the container frames objects which are in the root
         containerFrames(): FrameObject[] {
             return this.appStore.getFramesForParentId(0);
+        },
+
+        slotFocusId() : string {
+            const slotCoreInfos = useStore().focusSlotCursorInfos?.slotInfos;
+            return slotCoreInfos ? getLabelSlotUIID(slotCoreInfos) : "";
+        },
+        
+        slotCursorPos() : number {
+            return useStore().focusSlotCursorInfos?.cursorPos ?? -1;
         },
 
         showMessage(): boolean {

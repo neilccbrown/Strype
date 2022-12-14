@@ -669,16 +669,21 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
         // Look for inner brackets, iteration is NOT made on "closingBracketPos" so we can keep the latest value
         do {
             closingBracketPos = blankedStringCodeLiteral.indexOf(closingBracketValue, startLookingOtherOpeningBracketsPos);
-            if(closingBracketPos > -1){
-                innerOpeningBracketCount --;
-                if(blankedStringCodeLiteral.substring(startLookingOtherOpeningBracketsPos, closingBracketPos).includes(openingBracketValue)){
-                    innerOpeningBracketCount++;
+            const nextOpen = blankedStringCodeLiteral.indexOf(openingBracketValue, startLookingOtherOpeningBracketsPos);
+            if (closingBracketPos > -1) {
+                if (nextOpen > -1 && nextOpen < closingBracketPos) {
+                    innerOpeningBracketCount ++;
+                    startLookingOtherOpeningBracketsPos = nextOpen + 1;
+                }
+                else {
+                    innerOpeningBracketCount--;
                     startLookingOtherOpeningBracketsPos = closingBracketPos + 1;
                 }
             }            
         }
-        while (!(innerOpeningBracketCount == 0 || closingBracketPos == -1 || blankedStringCodeLiteral.indexOf(openingBracketValue, startLookingOtherOpeningBracketsPos) > -1));
-
+        while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
+       
+        
         // Now that we have found the bracket boudary (if we didn't find a closing bracket match, we "manually" close after the whole content following opening bracket)
         // we can make a structure and parse the split code content as 
         //  - before the bracket
@@ -768,7 +773,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         .replaceAll(/(^\s*|[+\-*/%<>&|^=!]\s*)((\d+(\.\d*)?|\.\d+)[eE][-+]\d+j?)($|(\s*[ +\-*/%<>&|^=!]))/g,
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing a preceding sign operator
-        .replaceAll(/(^\s*|[+\-*/%<>&|^=!]\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))($|(\s*[ +\-*/%<>&|^=!]))/g,
+        .replaceAll(/(^\s*|[+\-*/%<>&|^=!]\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))(?=$|(\s*[ +\-*/%<>&|^=!]))/g,
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing the decimal separator
         .replaceAll(/(^\s*|[+\-*/%<>&|^=!]\s*)(((\d+(\.\d*)|\.\d+)([eE][0]?\d+)?j?))($|(\s*[ +\-*/%<>&|^=!]))/g,

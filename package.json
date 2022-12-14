@@ -14,7 +14,7 @@
         "serve:https": "HTTPS=true vue-cli-service serve",
         "cy:run:microbit": "cypress run --env mode=microbit",
         "cy:run:python": "cypress run --env mode=python",
-        "test:cypress": "cross-env WAIT_ON_TIMEOUT=60000 start-server-and-test serve:python http://localhost:8081/editor/ cy:run:python && cross-env WAIT_ON_TIMEOUT=60000 start-server-and-test serve:microbit http://localhost:8081/microbit/ cy:run:microbit"
+        "test:cypress": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:python http-get://127.0.0.1:8081/editor/ cy:run:python && cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://127.0.0.1:8081/microbit/ cy:run:microbit"
     },
     "dependencies": {
         "@fortawesome/free-solid-svg-icons": "^5.15.4",
