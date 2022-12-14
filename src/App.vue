@@ -82,7 +82,7 @@ import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import Draggable from "vuedraggable";
-import scssVars  from "@/assets/style/exports.scss";
+import scssVars  from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
