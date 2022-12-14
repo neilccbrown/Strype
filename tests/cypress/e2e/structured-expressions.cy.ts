@@ -308,7 +308,7 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
 
     // Example found while pasting from BlueJ (double escaped here)
     testInsert("foo(c=='\\\\' or c=='\"' or c=='\\'')",
-        "{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{$})_{}");
+        "{foo}_({c}=={}_‘\\\\’_{} or {c}=={}_‘\"’_{} or {c}=={}_‘\\'’_{$})_{}");
 
     // Deletion:
     testBackspace("\"a\bb\"", "{}_“$b”_{}");
@@ -498,7 +498,8 @@ describe("Test word operators", () => {
     testMultiInsert("a or {not }b", "{a} or {$b}", "{a} or {} not {$b}");
     
     testBackspace("a or \bb", "{a$b}", true, false);
-    testBackspace("a is not \bb", "{a$b}", true, false);
+    testBackspace("a is not \bb", "{a} is {$b}", true, false);
+    testBackspace("a \bis not \bb", "{a} not {$b}", false, true);
     testBackspace("a or not \bb", "{a} or {$b}", true, false);
     testBackspace("a or \bnot b", "{a$} not {b}", true, false);
 
