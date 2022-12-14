@@ -506,7 +506,8 @@ export const operators = [".","+","-","/","*","%","//","**","&","|","~","^",">>"
     "==","=","!=",">=","<=","<",">"];
 // Note that for those textual operator keywords, we only have space surrounding the single words: double words don't need
 // as they will always come from a combination of writing one word then the other (the first will be added as operator)
-export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is ", "is not", " or ", " not ", "not in"];
+// Important that the longer operators come before the shorter ones with the same prefix:
+export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not "];
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
 
 
@@ -776,7 +777,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         length: number; // The length of the match in characters within the string
     }
     const allOperators: OpDef[] = [...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
-        return {match: new RegExp("(?<!\\p{Lu}|\\p{Ll}|\\p{Lt}|\\p{Lm}|\\p{Lo}|\\p{Nl}|\\p{Mn}|\\p{Mc}|\\p{Nd}|\\p{Pc}|_)" + opSpace.trim() + " "), textToUse: opSpace} as OpDef;
+        return {match: new RegExp("(?<!\\p{Lu}|\\p{Ll}|\\p{Lt}|\\p{Lm}|\\p{Lo}|\\p{Nl}|\\p{Mn}|\\p{Mc}|\\p{Nd}|\\p{Pc}|_)" + opSpace.trim().replaceAll(" ", "\\s+") + " "), textToUse: opSpace} as OpDef;
     }),
     ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
         return {match: o, textToUse: o} as OpDef;
