@@ -972,6 +972,19 @@ export const useStore = defineStore("app", {
                             : getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + fieldsInSpecialTypeNumber - 3));
                     return {newSlotId: newCurrentSlotId, cursorPosOffset: cursorPosOffset};
                 }
+                else if (deleteFromIndex == deleteToIndex) {
+                    // Get the adjacent operator and check whether it has a space in it:
+                    const deleteOperatorsFromIndex = (isForwardDeletion) ? deleteFromIndex - 1 : deleteFromIndex;
+                    if (parentSlot.operators[deleteOperatorsFromIndex]?.code?.trim()?.includes(" ")) {
+                        parentSlot.operators[deleteOperatorsFromIndex].code = isForwardDeletion ?
+                            parentSlot.operators[deleteOperatorsFromIndex].code.substring(parentSlot.operators[deleteOperatorsFromIndex].code.indexOf(" ", 1))
+                            : parentSlot.operators[deleteOperatorsFromIndex].code.substring(0, 1 + parentSlot.operators[deleteOperatorsFromIndex].code.lastIndexOf(" ", parentSlot.operators[deleteOperatorsFromIndex].code.length - 2));
+                        return {
+                            newSlotId: currentSlotInfos.slotId,
+                            cursorPosOffset: isForwardDeletion ? (parentSlot.fields[slotIndex] as BaseSlot).code.length : 0,
+                        };
+                    }
+                }
 
 
                 // Change the slot content first, to avoid issues with indexes once things are deleted from the store...

@@ -562,10 +562,10 @@ export default Vue.extend({
                     const isStringQuote = stringQuoteCharacters.includes(event.key);
                     if(isSymbolicOperator 
                     || isBang
-                    || keywordOperatorsWithSurroundSpaces.findIndex((operator) => {
+                    || keywordOperatorsWithSurroundSpaces.some((operator) => {
                         textualOperator = operator.trim();
                         return (potentialOutput.includes(operator) || potentialOutput.startsWith(textualOperator + " "));
-                    })  > -1
+                    })
                     || isBracket
                     || isStringQuote
                     ){

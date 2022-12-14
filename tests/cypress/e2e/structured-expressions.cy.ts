@@ -6,7 +6,8 @@ function assertState(expectedState : string) : void {
                 // Try to debug an occasional seemingly impossible failure:
                 cy.task("log", "Parts is null which I'm sure shouldn't happen, came from frame: " + h);
             }
-            for (let i = 0; i < parts.length; i++) {
+            // Since we're in an if frame, we ignore the first and last part:
+            for (let i = 1; i < parts.length - 1; i++) {
                 const p : any = parts[i];
     
                 let text = p.value || p.textContent || "";
@@ -30,7 +31,7 @@ function assertState(expectedState : string) : void {
 
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
-    cy.wait(500);
+    cy.wait(200);
     cy.get("#editor").then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
@@ -39,9 +40,7 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
 
 function testInsert(insertion : string, result : string) : void {
     it("Tests " + insertion, () => {
-        cy.get("body").type(" ");
-        // Get rid of brackets:
-        cy.get("body").type("{del}");
+        cy.get("body").type("i");
         assertState("{$}");
         cy.get("body").type(" " + insertion);
         assertState(result);
@@ -92,7 +91,7 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
         const nest = multiInsertion.substring(startNest + 1, endNest);
         const after = multiInsertion.substring(endNest + 1);
 
-        cy.get("body").type(" ");
+        cy.get("body").type("i");
         assertState("{$}");
         if (before.length > 0) {
             cy.get("body").type(before);
@@ -118,7 +117,7 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
         const before = original.substring(0, cursorIndex);
         const after = original.substring(cursorIndex + 1);
 
-        cy.get("body").type(" ");
+        cy.get("body").type("i");
         assertState("{$}");
         if (before.length > 0) {
             cy.get("body").type(before);
@@ -136,35 +135,37 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
     });
 }
 
-function testBackspace(originalInclBksp : string, expectedResult : string) : void {
+function testBackspace(originalInclBksp : string, expectedResult : string, testBackspace = true, testDelete = true) : void {
     const bkspIndex = originalInclBksp.indexOf("\b");
-    it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
-        expect(bkspIndex).to.not.equal(-1);
-        const before = originalInclBksp.substring(0, bkspIndex);
-        const after = originalInclBksp.substring(bkspIndex + 1);
+    if (testBackspace) {
+        it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
+            expect(bkspIndex).to.not.equal(-1);
+            const before = originalInclBksp.substring(0, bkspIndex);
+            const after = originalInclBksp.substring(bkspIndex + 1);
 
-        cy.get("body").type(" ");
-        assertState("{$}");
-        if (before.length > 0) {
-            cy.get("body").type(before);
-        }
-        withSelection((posToInsert) => {
-            if (after.length > 0) {
-                cy.get("body").type(after);
+            cy.get("body").type("i");
+            assertState("{$}");
+            if (before.length > 0) {
+                cy.get("body").type(before);
             }
-            focusSlotId(posToInsert.id);
-            moveToPositionThen(posToInsert.cursorPos, () => {
-                cy.get("body").type("{backspace}");
-                assertState(expectedResult);
+            withSelection((posToInsert) => {
+                if (after.length > 0) {
+                    cy.get("body").type(after);
+                }
+                focusSlotId(posToInsert.id);
+                moveToPositionThen(posToInsert.cursorPos, () => {
+                    cy.get("body").type("{backspace}");
+                    assertState(expectedResult);
+                });
             });
         });
-    });
-    if (bkspIndex > 0) {
+    }
+    if (bkspIndex > 0 && testDelete) {
         it("Tests Delete " + originalInclBksp.replace("\b", "\\b"), () => {
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
 
-            cy.get("body").type(" ");
+            cy.get("body").type("i");
             assertState("{$}");
             if (before.length > 0) {
                 cy.get("body").type(before);
@@ -239,6 +240,19 @@ describe("Stride TestExpressionSlot.testOperators()", () => {
     //testInsert("s.length()..1", "{s}.{length}_({})_{}..{1$}");
 });
 
+describe("Stride TestExpressionSlot.testDot()", () => {
+    testInsert(".", "{}.{$}");
+    testInsert("0.", "{0.$}");
+    testInsert("a.", "{a}.{$}");
+    testInsert("foo()", "{foo}_({})_{$}");
+    testInsert("foo().bar()", "{foo}_({})_{}.{bar}_({})_{$}");
+    testInsert("foo+().", "{foo}+{}_({})_{}.{$}");
+
+    testMultiInsert("foo(){.}a", "{foo}_({})_{$a}", "{foo}_({})_{}.{$a}");
+
+    testBackspace("foo()0\b.", "{foo}_({})_{$}.{}");
+});
+
 describe("Stride TestExpressionSlot.testStrings()", () => {
     // With trailing quote
     testInsert("\"hello\"", "{}_“hello”_{$}");
@@ -293,9 +307,8 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
 
 
     // Example found while pasting from BlueJ (double escaped here)
-    // TODO re-enable
-    //testInsert("foo(c == '\\\\' or c == '\"' or c == '\\'')",
-    //"{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{$})_{}");
+    testInsert("foo(c=='\\\\' or c=='\"' or c=='\\'')",
+        "{foo}_({c}=={}_‘\\\\’_{} or {c}=={}_‘\"’_{} or {c}=={}_‘\\'’_{})_{$}");
 
     // Deletion:
     testBackspace("\"a\bb\"", "{}_“$b”_{}");
@@ -466,3 +479,34 @@ describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
     testBackspace("(\b(MyWorld)getWorld()).getWidth()",
         "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
 });
+
+describe("Test word operators", () => {
+    testInsert("a or ", "{a} or {$}");
+    testInsert("a or b", "{a} or {b$}");
+    testInsert("or b", "{} or {b$}");
+    testInsert("orb", "{orb$}");
+    testInsert("orc or ork", "{orc} or {ork$}");
+    testInsert("notand or nand", "{notand} or {nand$}");
+    testInsert("nor or neither", "{nor} or {neither$}");
+    testInsert("öor or oör", "{öor} or {oör$}");
+    testInsert("a is b", "{a} is {b$}");
+    testInsert("a is not b", "{a} is not {b$}");
+    testInsert("a or not b", "{a} or {} not {b$}");
+    testInsert("a and or in b", "{a} and {} or {} in {b$}");
+    
+    testMultiInsert("a is {not }b", "{a} is {$b}", "{a} is not {$b}");
+    testMultiInsert("a or {not }b", "{a} or {$b}", "{a} or {} not {$b}");
+    
+    testBackspace("a or \bb", "{a$b}", true, false);
+    testBackspace("a is not \bb", "{a} is {$b}", true, false);
+    testBackspace("a \bis not b", "{a$} not {b}", false, true);
+    testBackspace("a or not \bb", "{a} or {$b}", true, false);
+    testBackspace("a or \bnot b", "{a$} not {b}", true, false);
+
+    testInsert("1or 2", "{1or 2$}");
+    testInsert("1 or 2", "{1} or {2$}");
+    testInsert("1 or2", "{1 or2$}");
+    
+    // TODO tests with multiple chained operators, and with brackets
+});
+
