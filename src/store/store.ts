@@ -2,11 +2,11 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, AcResultsWithModule, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, clearAllFrameErrors, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, clearAllFrameErrors, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, makeSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -56,7 +56,13 @@ export const useStore = defineStore("app", {
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
 
+            // This flag is to avoid a loss of focus when we are leaving the application
+            ignoreFocusRequest: false,
+
             bypassEditableSlotBlurErrorCheck: false,
+            
+            // Flag to indicate when an action of selection spans across slots
+            isSelectingMultiSlots : false,
 
             currentMessage: MessageDefinitions.NoMessage,
 
@@ -722,7 +728,7 @@ export const useStore = defineStore("app", {
             );
         },
 
-        changeCaretWithKeyboard(key: string) {            
+        changeCaretWithKeyboard(key: string) {    
             const currId = this.currentFrame.id;
             const currPosition = this.currentFrame.caretPosition;
 
@@ -739,7 +745,7 @@ export const useStore = defineStore("app", {
             // Where is the current in the list
             const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.frameId===currentCaret.id && e.caretPosition === currentCaret.caretPosition);
 
-            const delta = (key === "ArrowDown")?1:-1;
+            const delta = (key === "ArrowDown") ? 1 : -1;
             const nextCaret = (listOfCaretPositions[currentCaretIndex + delta]) 
                 ? ({id: listOfCaretPositions[currentCaretIndex + delta].frameId, caretPosition: listOfCaretPositions[currentCaretIndex + delta].caretPosition}) as CurrentFrame
                 : currentCaret;
@@ -1019,7 +1025,7 @@ export const useStore = defineStore("app", {
             Vue.set(this, "focusSlotCursorInfos", focusCursorInfos);
             if(!anchorCursorInfos || !focusCursorInfos){
                 // Force the selection on the page to be reset too
-                window.getSelection()?.removeAllRanges();
+                document.getSelection()?.removeAllRanges();
             }
         },
 
@@ -1525,8 +1531,16 @@ export const useStore = defineStore("app", {
         },
 
         setFocusEditableSlot(payload: {frameSlotInfos: SlotCoreInfos; caretPosition: CaretPosition}){            
+            // First thing to do is checking if another slot had focus, and remove it that's the case
+            // (as the selection has already been changed via the browser, we cannot use it)            
+            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+            const prevFocusedSlot = retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false);
+            if(prevFocusedSlot){
+                (prevFocusedSlot as BaseSlot).focused = false;
+            }
+
             this.setCurrentInitCodeValue(payload.frameSlotInfos);
-            
+
             this.isEditing = true;
 
             //First set the curretFrame to this frame
@@ -1634,9 +1648,7 @@ export const useStore = defineStore("app", {
                         (acc, cur, idx) => {
                             const labelContent: LabelSlotsContent = {
                                 shown: (!cur?.hidableLabelSlots ?? true),
-                                slotStructures: /*(frame.type == AllFrameTypesIdentifier.empty) 
-                                    ? {fields: [{code: ""}, {openingBracketValue: "(", fields: [{code: ""}], operators: []}, {code: ""}], operators:[{code: ""},{code: ""}]}
-                                    : */{fields: [{code: ""}], operators: []},
+                                slotStructures: {fields: [{code: ""}], operators: []},
                             };
                             return { 
                                 ...acc, 
@@ -1890,27 +1902,53 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        async leftRightKey(payload: {key: string, availablePositions?: NavigationPosition[]}) {
+        async leftRightKey(payload: {key: string, isShiftKeyHold?: boolean, availablePositions?: NavigationPosition[]}) {
             //  used for moving index up (+1) or down (-1)
             const directionDown = payload.key === "ArrowRight" || payload.key === "Enter";
             const directionDelta = (directionDown)?+1:-1;
             // if the available positions are not passed as argument, we compute them from the DOM
             const availablePositions = payload.availablePositions??getAvailableNavigationPositions();
-            let currentFramePosition;
+            let currentFramePosition: number;
 
             if (this.isEditing){ 
                 // Retrieve the slot that currently has focus in the current frame by looking up in the DOM
                 const foundSlotCoreInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
                         && e.labelSlotsIndex === foundSlotCoreInfos.labelSlotsIndex && e.slotId === foundSlotCoreInfos.slotId);     
-                // Now we can effectively ask the slot to loose focus because we could retrieve it (and we need to get it blurred so further actions are not happening in the span)
-                document.getElementById(getLabelSlotUIID(foundSlotCoreInfos))?.blur();             
+                // Now we can effectively ask the slot to "lose focus" because we could retrieve it (and we need to get it blurred so further actions are not happening in the span)
+                document.getElementById(getLabelSlotUIID(foundSlotCoreInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));         
             }
             else {
                 currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.frameId === this.currentFrame.id); 
             }
             
-            const nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);       
+            // The next position depends whether we are selection text:
+            // if not, we just get to the following/previous available position
+            // if so, the next position is either the following/previous available position within *a same* structure.
+            let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);    
+            let multiSlotSelNotChanging = false;   
+            if(payload.isShiftKeyHold){
+                const currentSlotInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
+                const currentSlotInfosLevel = currentSlotInfos.slotId.split(",").length;
+                // To find what is the next position, we need to use the slot ids: as we can only get into an editable slot and in the same level
+                // and in the same frame label, we find the slot that matches those criteria, if any.
+                // Note that if we are currently in a string, and we have reached this method, then we are at a boundary of the string and we cannot go anywhere...
+                const nextSelectionPosition = (currentSlotInfos.slotType == SlotType.string) ? undefined : availablePositions.find((navigPos, index) => {
+                    const isDirectionCorrect = (directionDelta > 0) ? index > currentFramePosition : index < currentFramePosition;
+                    return isDirectionCorrect && navigPos.frameId == currentSlotInfos.frameId && navigPos.isSlotNavigationPosition && navigPos.slotType !== SlotType.string 
+                        && navigPos.labelSlotsIndex == currentSlotInfos.labelSlotsIndex && (navigPos.slotId??"").split(",").length == currentSlotInfosLevel;
+                });    
+
+                if(nextSelectionPosition){
+                    nextPosition = nextSelectionPosition;
+                }
+                else{
+                    // There is no possible change to the multi selection (or there is nothing to select at all)
+                    // so we keep everything in the same state
+                    multiSlotSelNotChanging = true;
+                    nextPosition = availablePositions[currentFramePosition];
+                }
+            }
 
             // irrespective to where we are going to, we need to make sure to hide current caret
             Vue.set(
@@ -1941,14 +1979,23 @@ export const useStore = defineStore("app", {
                     }
                 );
                 
-                // Restore the text cursor
-                const textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
-                this.setSlotTextCursors({slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}, {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos});
+                // Restore the text cursor, the anchor is the same as the focus if we are not selecting text
+                // (as the slot may have not yet be renderered in the UI, for example when adding a new frame, we do it later)
+                Vue.nextTick(() => {
+                    const textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    const anchorCursorInfos = (payload.isShiftKeyHold) ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
+                    const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
+                    this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
+                    makeSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
+                });
+                
+                // As we may have moved from a blue caret position, we make sure that we are always setting the caret position to the next available caret position possible.
+                // (which should be "below" for a statement frame, and "body" for a block frame)
+                this.currentFrame.caretPosition = (this.frameObjects[nextPosition.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
             }
             else{
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
-
                 Vue.set(
                     this.frameObjects[nextPosition.frameId],
                     "caretVisibility",
@@ -1957,7 +2004,8 @@ export const useStore = defineStore("app", {
 
                 this.setSlotTextCursors(undefined, undefined);
        
-                this.currentFrame.caretPosition = nextPosition.caretPosition as CaretPosition;
+                // The new caret
+                this.currentFrame.caretPosition = nextPosition.caretPosition as CaretPosition;                
             }
 
             //In any case change the current frame

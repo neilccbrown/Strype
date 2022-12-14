@@ -717,7 +717,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
         // (*) cf function getLabelSlotUIID in the helper editor.ts
         const labelSlotCoreInfos = parseLabelSlotUIID(e.id);
         const positionObjIdentifier = (isSlotNavigationPosition) 
-            ? {labelSlotsIndex: labelSlotCoreInfos.labelSlotsIndex, slotId: labelSlotCoreInfos.slotId}
+            ? {labelSlotsIndex: labelSlotCoreInfos.labelSlotsIndex, slotId: labelSlotCoreInfos.slotId, slotType: labelSlotCoreInfos.slotType}
             : {caretPosition: e.id.includes(CaretPosition.below) ? CaretPosition.below : CaretPosition.body}; 
         // We retrieve also the frameId from the identifier of the element (format is mentioned above)
         const frameIdMatch = e.id.match(/-?\d+/);

@@ -209,10 +209,12 @@ export default Vue.extend({
 
                 //prevent default scrolling and navigation
                 if (!isEditing && (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+                    if(this.appStore.ignoreKeyEvent){
+                        this.appStore.ignoreKeyEvent = false;
+                        return;
+                    }
+                    
                     if (event.key === "ArrowDown" || event.key === "ArrowUp" ) {
-                        //first we remove the focus of the current active element (to avoid editable slots to keep it)
-                        (document.activeElement as HTMLElement).blur();
-
                         if(event.shiftKey){
                             this.appStore.selectMultipleFrames(event.key);
                         }

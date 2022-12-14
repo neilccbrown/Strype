@@ -200,6 +200,7 @@ export interface NavigationPosition {
     caretPosition?: string;
     labelSlotsIndex?: number;
     slotId?: string;
+    slotType?: SlotType;
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;

@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getSlotParentIdAndIndexSplit } from "./storeMethods";
 
@@ -9,6 +9,8 @@ export const undoMaxSteps = 50;
 export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
+    editableSlotGotCaret= "slotGotCaret",
+    editableSlotLostCaret = "slotLostCaret",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
@@ -87,14 +89,13 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the start of the selection.
     let caretPos = 0;
-    const sel = window.getSelection();
+    const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
         if (range.commonAncestorContainer.parentNode == htmlElement) {
             caretPos = range.startOffset;
         }
     }
-    
     return caretPos;
 }
 
@@ -102,7 +103,7 @@ export function getTextEndCursorPositionOfHTMLElement(htmlElement: HTMLSpanEleme
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the end of the selection.
     let caretPos = 0;
-    const sel = window.getSelection();
+    const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
         if (range.commonAncestorContainer.parentNode == htmlElement) {
@@ -141,17 +142,32 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: strin
     return {selectionStart: -1, selectionEnd: -1};
 }
 
-export function setTextCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement, position: number): void {
-    const range = document.createRange();  
-    if(htmlElement.firstChild){
-        range.setStart(htmlElement.firstChild, position);
-        const sel = window.getSelection();
-        if(sel) {
-            range.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        } 
-    }
+export function makeSelection(anchorCursorInfos: SlotCursorInfos, focusCursorInfos: SlotCursorInfos): void{
+    const anchorElement = document.getElementById(getLabelSlotUIID(anchorCursorInfos.slotInfos));
+    const focusElement = document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos));
+    if(anchorElement && focusElement){
+        // Before doing the selection, we make sure that we can use the given slot cursor infos:
+        // when a slot is empty, the span element doesn't have a firstChild attribute. In this case,
+        // the node for the selection that we use is the span itself relative its parent.
+        // (a span isn't directly contained in the contenteditable div )
+        const anchorNode = ((anchorElement.textContent??"").length > 0)
+            ? anchorElement.firstChild as Node
+            : anchorElement.parentElement as Node;
+
+        const anchorOffset = ((anchorElement.textContent??"").length > 0) 
+            ? anchorCursorInfos.cursorPos
+            : Object.values(anchorNode.childNodes).findIndex((node: any) => node.id && node.id == anchorElement.id);
+
+        const focusNode = ((focusElement.textContent??"").length > 0)
+            ? focusElement.firstChild as Node
+            : focusElement.parentElement as Node;
+            
+        const focusOffset = ((focusElement.textContent??"").length > 0) 
+            ? focusCursorInfos.cursorPos
+            : Object.values(focusNode.childNodes).findIndex((node: any) => node.id && node.id == focusElement.id);
+
+        document.getSelection()?.setBaseAndExtent(anchorNode, anchorOffset, focusNode, focusOffset);
+    }    
 }
 
 export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: number): string{
@@ -620,7 +636,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
     const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
     let missingClosingQuote = "";
     const blankedStringCodeLiteral = codeLiteral.replace(strRegEx, (match) => {
-        if(!match.endsWith(match[0]) || match.endsWith("\\" + match[0])){
+        if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
             missingClosingQuote = match[0];
         }
         return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
@@ -804,3 +820,20 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };
+
+/**
+ * Gets the number of backslashes that directly precede cursorPos without any other character intervening
+ */
+export function getNumPrecedingBackslashes(content: string, cursorPos : number) : number {
+    let count = 0;
+    while (cursorPos > 0) {
+        cursorPos -= 1;
+        if (content.at(cursorPos) == "\\") {
+            count += 1;
+        }
+        else {
+            break;
+        }
+    }
+    return count;
+}

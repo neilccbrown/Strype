@@ -1,17 +1,27 @@
 <template>
-    <div class="next-to-eachother" :id="labelSlotsStructDivId">
+    <div 
+        :id="labelSlotsStructDivId"
+        contenteditable="true"
+        @keydown.left="onLRKeyDown($event)"
+        @keydown.right="onLRKeyDown($event)"
+        @keydown="forwardKeyEvent($event)"
+        @keyup="forwardKeyEvent($event)"
+        @focus="onFocus"
+        @blur="blurEditableSlot()"
+        class="next-to-eachother label-slot-container"
+    >
         <div 
             v-for="(slotItem, slotIndex) in subSlots" 
             :key="frameId + '_'  + labelIndex + '_' + slotIndex"
             class="next-to-eachother"
         >
-            <!-- Note: the default text is only used here to handle presentation but it will never show as such in subslots -->
+            <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
                 :labelSlotsIndex="labelIndex"
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
                 :isDisabled="isDisabled"
-                :default-text="(subSlots.length == 1) ? defaultText : ''"
+                :default-text="(subSlots.length == 1) ? defaultText : '\u200b'"
                 :code="getSlotCode(slotItem)"
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
@@ -28,7 +38,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, parseCodeLiteral, parseLabelSlotUIID, setTextCursorPositionOfHTMLElement, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, makeSelection, parseCodeLiteral, parseLabelSlotUIID, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
 import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 
 export default Vue.extend({
@@ -213,9 +223,11 @@ export default Vue.extend({
                                     setInsideNextSlot = true;
                                 }
                                 else{
-                                    (spanElement as HTMLSpanElement).focus();
+                                    (spanElement as HTMLSpanElement).dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                                     const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
-                                    setTextCursorPositionOfHTMLElement(spanElement as HTMLSpanElement, pos);
+                                    const cursorInfos = {slotInfos: parseLabelSlotUIID(spanElement.id), cursorPos: pos};
+                                    makeSelection(cursorInfos, cursorInfos);
+                                    this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
                                     foundPos = true;
                                 }                            
                             }
@@ -255,6 +267,94 @@ export default Vue.extend({
 
             }
         },
+
+        forwardKeyEvent(event: KeyboardEvent) {
+            // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
+            // We need to forward the event to the currently "focused" (editable) slot.
+            // ** LEFT/RIGHT ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
+            if(event.key == "ArrowLeft" || event.key == "ArrowRight"){
+                return;
+            }
+            
+            if(this.appStore.focusSlotCursorInfos){
+                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new KeyboardEvent(event.type, {
+                        key: event.key,
+                        altKey: event.altKey,
+                        shiftKey: event.shiftKey,
+                        ctrlKey: event.ctrlKey,
+                        metaKey: event.metaKey,
+                    }));
+            }
+            event.preventDefault();
+        },
+
+        onLRKeyDown(event: KeyboardEvent) {
+            // Because the event handling, it is easier to deal with the left/right arrow at this component level.
+            if(this.appStore.focusSlotCursorInfos){
+                const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;
+                const spanInput = document.getElementById(getLabelSlotUIID(slotInfos)) as HTMLSpanElement;
+
+                // If we're trying to go off the bounds of this slot
+                if((cursorPos == 0 && event.key==="ArrowLeft") 
+                        || (cursorPos === ((spanInput.textContent?.length)??0) && event.key==="ArrowRight")) {
+                    // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
+                    this.appStore.isSelectingMultiSlots = event.shiftKey;
+                    this.appStore.ignoreKeyEvent=true;
+                    this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
+                        // If we are doing a selection, we need to reflect this in the UI
+                        if(event.shiftKey){
+                            makeSelection(this.appStore.anchorSlotCursorInfos as SlotCursorInfos, this.appStore.focusSlotCursorInfos as SlotCursorInfos);                     
+                        }
+                    });                        
+                }
+                // If a key modifier (ctrl, shift, alt or meta) is pressed, we don't do anything special (browser handles it),
+                else if(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey){                    
+                    return;
+                }
+                else {
+                    //no specific action to take, we just move the cursor to the left or to the right
+                    this.appStore.isSelectingMultiSlots = false; // reset flag
+                    const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
+                    const slotCursorInfo: SlotCursorInfos = {slotInfos: slotInfos, cursorPos: (cursorPos + incrementStep)};
+                    makeSelection(slotCursorInfo, slotCursorInfo);
+                }
+                event.preventDefault();
+                event.stopImmediatePropagation();  
+            }                      
+        },
+
+        onFocus(){
+            // When the application gains focus again, the browser might try to give the first span of a div the focus (because the div may have been focused)
+            // even if we have the blue caret showing. We do not let this happen.
+            if(this.appStore.ignoreFocusRequest && this.appStore.focusSlotCursorInfos == undefined){
+                document.getElementById(this.labelSlotsStructDivId)?.blur();               
+            }
+            this.appStore.ignoreFocusRequest = false;
+        },
+
+        blurEditableSlot(){
+            // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
+            // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
+            if(document.activeElement == document.getElementById(this.labelSlotsStructDivId)){
+                // We don't lose focus that's from an outside event (like when the browser itself loses focus)
+                // cf https://stackoverflow.com/questions/24638129/javascript-dom-how-to-prevent-blur-event-if-focus-is-lost-to-another-window
+                this.appStore.ignoreFocusRequest = true;
+                return;
+
+            }
+            if(this.appStore.focusSlotCursorInfos && this.appStore.focusSlotCursorInfos.slotInfos.frameId == this.frameId 
+                && this.appStore.focusSlotCursorInfos.slotInfos.labelSlotsIndex == this.labelIndex){
+                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
+            }
+        },
     },
 });
 </script>
+
+<style lang="scss">
+.label-slot-container{
+    outline: none;
+}
+</style>
