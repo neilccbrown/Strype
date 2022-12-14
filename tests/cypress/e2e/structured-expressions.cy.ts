@@ -74,11 +74,10 @@ function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => vo
 function focusSlotId(originalId : string) {
     // Sometimes slots can change type, which is encoded in the ID, so we want to ignore that when selecting
     // (and it won't be possible to pick another ID by accident, as the other parts are still unique when assembled):
-    const labelSlotUIIDRegex = /^(input_frame_\d+_label_\d+_slot_[0-7]{3})[0-7](_\d+(,\d)*)$/;
+    const labelSlotUIIDRegex = /^input_frame_(\d+)_label_(\d+)_/;
     const ms = originalId.match(labelSlotUIIDRegex);
     if (ms != null) {
-        // We must escape commas in ID as otherwise it looks like multiple selectors joined with a comma:
-        cy.get("*[id^=" + ms[1] + "][id$=" + ms[2].replaceAll(",", "\\,") + "]").focus();
+        cy.get("#labelSlotsStruct" + ms[1] + "_" + ms[2]).focus();
     }
 }
 
