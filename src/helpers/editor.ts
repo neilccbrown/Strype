@@ -787,7 +787,8 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         const operatorPosList : OpFound[] = allOperators.flatMap((operator : OpDef) => {
             if (operator.match instanceof RegExp) {
                 // "g" flag is necessary to make it obey the lastIndex item as a place to start:
-                const regex = new RegExp(operator.match, "g");
+                // "u" flag is necessary for unicode escapes
+                const regex = new RegExp(operator.match, "gu");
                 regex.lastIndex = lookOffset;
                 const result = regex.exec(blankedStringCodeLiteral);
                 if (result == null) {
