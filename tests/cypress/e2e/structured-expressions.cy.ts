@@ -12,14 +12,13 @@ function assertState(expectedState : string) : void {
     
                 let text = p.value || p.textContent || "";
                 
-                if (p.getAttribute("contenteditable") == "true") {
-                    // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
-                    if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
-                        text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
-                    }
-                    if (!p.classList.contains("string-slot")) {
-                        text = "{" + text + "}";
-                    }
+                // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
+                if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
+                    text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
+                }
+                // Don't put curly brackets around strings, operators or brackets:
+                if (!p.classList.contains("string-slot") && !p.classList.contains("operator-slot") && !/[([)\]$]/.exec(p.textContent)) {
+                    text = "{" + text + "}";
                 }
                 s += text;
             }
@@ -40,6 +39,8 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
 
 function testInsert(insertion : string, result : string) : void {
     it("Tests " + insertion, () => {
+        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+        cy.contains("Convert to Python file").click();
         cy.get("body").type("i");
         assertState("{$}");
         cy.get("body").type(" " + insertion);
@@ -83,6 +84,9 @@ function focusSlotId(originalId : string) {
 
 function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
     it("Tests " + multiInsertion, () => {
+        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+        cy.contains("Convert to Python file").click();
+        
         const startNest = multiInsertion.indexOf("{");
         const endNest = multiInsertion.indexOf("}", startNest);
         expect(startNest).to.not.equal(-1);
@@ -112,6 +116,9 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
 
 function testInsertExisting(original : string, toInsert : string, expectedResult : string) : void {
     it("Tests " + original, () => {
+        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+        cy.contains("Convert to Python file").click();
+        
         const cursorIndex = original.indexOf("$");
         expect(cursorIndex).to.not.equal(-1);
         const before = original.substring(0, cursorIndex);
@@ -139,6 +146,9 @@ function testBackspace(originalInclBksp : string, expectedResult : string, testB
     const bkspIndex = originalInclBksp.indexOf("\b");
     if (testBackspace) {
         it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
+            // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+            cy.contains("Convert to Python file").click();
+            
             expect(bkspIndex).to.not.equal(-1);
             const before = originalInclBksp.substring(0, bkspIndex);
             const after = originalInclBksp.substring(bkspIndex + 1);
@@ -162,6 +172,9 @@ function testBackspace(originalInclBksp : string, expectedResult : string, testB
     }
     if (bkspIndex > 0 && testDelete) {
         it("Tests Delete " + originalInclBksp.replace("\b", "\\b"), () => {
+            // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+            cy.contains("Convert to Python file").click();
+            
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
 
@@ -204,6 +217,9 @@ beforeEach(() => {
 
 describe("Test brackets", () => {
     it("Tests brackets", () => {
+        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+        cy.contains("Convert to Python file").click();
+        
         testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
     });
 });
