@@ -595,7 +595,7 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
 }
 
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
-export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean): {slots: SlotsStructure, cursorOffset: number} => {
+export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, cursorPos?: number): {slots: SlotsStructure, cursorOffset: number} => {
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
     //  {fields: {"", s1, "", "", s2, ""}, operators: ["", "", "+", "", ""] }}
@@ -727,7 +727,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
         }
         else{
             // 3 - break the code by operatorSlot
-            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral);
+            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, cursorPos);
             cursorOffset += operatorCursorOffset;
             resStructSlot.fields = operatorSplitsStruct.fields;
             resStructSlot.operators = operatorSplitsStruct.operators;
@@ -737,7 +737,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };
 
-const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: string): {slots: SlotsStructure, cursorOffset: number} => {
+const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: string, cursorPos?:number): {slots: SlotsStructure, cursorOffset: number} => {
     let cursorOffset = 0;
 
     // Before checking the operators, we need "blank" the exception we do not consider operators:
@@ -828,7 +828,13 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
                         return "";
                     });
                 });
-                resStructSlot.fields.push({code: codeLiteral.substring(lookOffset, firstOperator.pos).trim()});
+                const fieldContent = codeLiteral.substring(lookOffset, firstOperator.pos);
+                if (cursorPos && cursorPos >= lookOffset && cursorPos < firstOperator.pos) {
+                    resStructSlot.fields.push({code: fieldContent.substring(0, cursorPos - lookOffset) + fieldContent.substring(cursorPos - lookOffset).trimEnd()});
+                }
+                else {
+                    resStructSlot.fields.push({code: fieldContent.trim()});
+                }
                 resStructSlot.operators.push({code: firstOperator.match});
                 lookOffset = firstOperator.pos + firstOperator.length;
             }
