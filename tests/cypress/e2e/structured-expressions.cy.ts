@@ -511,6 +511,9 @@ describe.only("Test word operators", () => {
     testInsert("ab and cd and ef", "{ab} and {cd} and {ef$}");
     testMultiInsert("ab{ and cd} and ef", "{ab$} and {ef}", "{ab} and {cd$} and {ef}");
     testMultiInsert("ab{ } and ef", "{ab$} and {ef}", "{ab $} and {ef}");
+    testMultiInsert("ab{+cd} and ef", "{ab$} and {ef}", "{ab}+{cd$} and {ef}");
+    testMultiInsert("ab{ andor} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {} or {$} and {}_({ef})_{}");
+    testMultiInsert("ab{ andcd} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {cd$} and {}_({ef})_{}");
     testMultiInsert("ab{ and cd} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {cd$} and {}_({ef})_{}");
     testMultiInsert("pre or (ab{ and cd} and ef) or post", "{pre} or {}_({ab$} and {ef})_{} or {post}", "{pre} or {}_({ab} and {cd$} and {ef})_{} or {post}");
     testMultiInsert("(a0) or ab{ and cd} and ef", "{}_({a0})_{} or {ab$} and {ef}", "{}_({a0})_{} or {ab} and {cd$} and {ef}");
