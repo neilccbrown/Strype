@@ -485,6 +485,7 @@ describe("Test word operators", () => {
     testInsert("a or b", "{a} or {b$}");
     testInsert("or b", "{} or {b$}");
     testInsert("orb", "{orb$}");
+    testInsert("not a", "{} not {a$}");
     testInsert("orc or ork", "{orc} or {ork$}");
     testInsert("notand or nand", "{notand} or {nand$}");
     testInsert("nor or neither", "{nor} or {neither$}");

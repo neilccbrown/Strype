@@ -769,35 +769,39 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // then the double symbolic operators and lastly the unitary symbolic operators. We put double operators
     // first so that they are found first in the search for operators.
     interface OpDef {
-        match: RegExp | string; // The match to search for (regex or literal)
-        textToUse : string; // The text to use for the operator (needed especially when the above is a RegExp) in the final expression
+        match: string; // The match to search for
+        keywordOperator : boolean; // Whether the operator is a keyword operator
     }
     interface OpFound extends OpDef {
         pos: number; // The position of the match (0 = first character in string)
         length: number; // The length of the match in characters within the string
     }
     const allOperators: OpDef[] = [...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
-        return {match: new RegExp("(?<!\\p{Lu}|\\p{Ll}|\\p{Lt}|\\p{Lm}|\\p{Lo}|\\p{Nl}|\\p{Mn}|\\p{Mc}|\\p{Nd}|\\p{Pc}|_)" + opSpace.trim().replaceAll(" ", "\\s+") + " "), textToUse: opSpace} as OpDef;
+        return {match: opSpace, keywordOperator: true} as OpDef;
     }),
     ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
-        return {match: o, textToUse: o} as OpDef;
+        return {match: o, keywordOperator: false} as OpDef;
     })];
     let hasOperator = true;
     let lookOffset = 0;
+    // "u" flag is necessary for unicode escapes
+    const cannotPrecedeKeywordOps = /^(\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|\p{Nl}|\p{Mn}|\p{Mc}|\p{Nd}|\p{Pc}|_)$/u;
     while(hasOperator){
         const operatorPosList : OpFound[] = allOperators.flatMap((operator : OpDef) => {
-            if (operator.match instanceof RegExp) {
+            if (operator.keywordOperator) {
                 // "g" flag is necessary to make it obey the lastIndex item as a place to start:
-                // "u" flag is necessary for unicode escapes
-                const regex = new RegExp(operator.match, "gu");
+                const regex = new RegExp(operator.match.trim().replaceAll(" ", "\\s+") + " ", "g");
                 regex.lastIndex = lookOffset;
-                const result = regex.exec(blankedStringCodeLiteral);
-                if (result == null) {
-                    return {...operator, pos: -1, length: 0} as OpFound;
+                let result = regex.exec(blankedStringCodeLiteral);
+                while (result != null) {
+                    // Only a valid result if preceded by non-text character:
+                    if ((result.index == 0 || !cannotPrecedeKeywordOps.exec(blankedStringCodeLiteral.substring(result.index - 1, result.index)))) {
+                        return {...operator, pos: result.index, length: result[0].length} as OpFound;
+                    }
+                    // Otherwise search again:
+                    result = regex.exec(blankedStringCodeLiteral);
                 }
-                else {
-                    return {...operator, pos: result.index, length: result[0].length} as OpFound;
-                }
+                return {...operator, pos: -1, length: 0} as OpFound;
             }
             else {
                 return {...operator, pos: blankedStringCodeLiteral.indexOf(operator.match, lookOffset), length: operator.match.length} as OpFound;
@@ -825,7 +829,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
                     });
                 });
                 resStructSlot.fields.push({code: codeLiteral.substring(lookOffset, firstOperator.pos).trim()});
-                resStructSlot.operators.push({code: firstOperator.textToUse});
+                resStructSlot.operators.push({code: firstOperator.match});
                 lookOffset = firstOperator.pos + firstOperator.length;
             }
         }
