@@ -207,7 +207,7 @@ export default Vue.extend({
                         focusCursorAbsPos += (spanElementContentLength + spacesOffset);
                     }
                 });    
-                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, false);
+                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, false, focusCursorAbsPos);
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 this.$forceUpdate();
                 this.$nextTick(() => {

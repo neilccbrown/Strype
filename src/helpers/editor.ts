@@ -611,7 +611,7 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
 }
 
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
-export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean): {slots: SlotsStructure, cursorOffset: number} => {
+export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, cursorPos?: number): {slots: SlotsStructure, cursorOffset: number} => {
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
     //  {fields: {"", s1, "", "", s2, ""}, operators: ["", "", "+", "", ""] }}
@@ -699,12 +699,12 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
         if(afterBracketCode.length > 0){
             afterBracketCode = FIELD_PLACERHOLDER + afterBracketCode;
         }
-        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode);
+        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, false, cursorPos);
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode);
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, false, cursorPos ? cursorPos - (firstOpenedBracketPos + 1) : undefined);
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, false);
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, false, cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER) ? cursorPos - (closingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined);
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
@@ -743,7 +743,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
         }
         else{
             // 3 - break the code by operatorSlot
-            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral);
+            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, cursorPos);
             cursorOffset += operatorCursorOffset;
             resStructSlot.fields = operatorSplitsStruct.fields;
             resStructSlot.operators = operatorSplitsStruct.operators;
@@ -753,7 +753,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean):
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };
 
-const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: string): {slots: SlotsStructure, cursorOffset: number} => {
+const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: string, cursorPos?:number): {slots: SlotsStructure, cursorOffset: number} => {
     let cursorOffset = 0;
 
     // Before checking the operators, we need "blank" the exception we do not consider operators:
@@ -785,35 +785,39 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // then the double symbolic operators and lastly the unitary symbolic operators. We put double operators
     // first so that they are found first in the search for operators.
     interface OpDef {
-        match: RegExp | string; // The match to search for (regex or literal)
-        textToUse : string; // The text to use for the operator (needed especially when the above is a RegExp) in the final expression
+        match: string; // The match to search for
+        keywordOperator : boolean; // Whether the operator is a keyword operator
     }
     interface OpFound extends OpDef {
         pos: number; // The position of the match (0 = first character in string)
         length: number; // The length of the match in characters within the string
     }
     const allOperators: OpDef[] = [...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
-        return {match: new RegExp("(?<!\\p{Lu}|\\p{Ll}|\\p{Lt}|\\p{Lm}|\\p{Lo}|\\p{Nl}|\\p{Mn}|\\p{Mc}|\\p{Nd}|\\p{Pc}|_)" + opSpace.trim().replaceAll(" ", "\\s+") + " "), textToUse: opSpace} as OpDef;
+        return {match: opSpace, keywordOperator: true} as OpDef;
     }),
     ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
-        return {match: o, textToUse: o} as OpDef;
+        return {match: o, keywordOperator: false} as OpDef;
     })];
     let hasOperator = true;
     let lookOffset = 0;
+    // "u" flag is necessary for unicode escapes
+    const cannotPrecedeKeywordOps = /^(\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|\p{Nl}|\p{Mn}|\p{Mc}|\p{Nd}|\p{Pc}|_)$/u;
     while(hasOperator){
         const operatorPosList : OpFound[] = allOperators.flatMap((operator : OpDef) => {
-            if (operator.match instanceof RegExp) {
+            if (operator.keywordOperator) {
                 // "g" flag is necessary to make it obey the lastIndex item as a place to start:
-                // "u" flag is necessary for unicode escapes
-                const regex = new RegExp(operator.match, "gu");
+                const regex = new RegExp(operator.match.trim().replaceAll(" ", "\\s+") + " ", "g");
                 regex.lastIndex = lookOffset;
-                const result = regex.exec(blankedStringCodeLiteral);
-                if (result == null) {
-                    return {...operator, pos: -1, length: 0} as OpFound;
+                let result = regex.exec(blankedStringCodeLiteral);
+                while (result != null) {
+                    // Only a valid result if preceded by non-text character:
+                    if ((result.index == 0 || !cannotPrecedeKeywordOps.exec(blankedStringCodeLiteral.substring(result.index - 1, result.index)))) {
+                        return {...operator, pos: result.index, length: result[0].length} as OpFound;
+                    }
+                    // Otherwise search again:
+                    result = regex.exec(blankedStringCodeLiteral);
                 }
-                else {
-                    return {...operator, pos: result.index, length: result[0].length} as OpFound;
-                }
+                return {...operator, pos: -1, length: 0} as OpFound;
             }
             else {
                 return {...operator, pos: blankedStringCodeLiteral.indexOf(operator.match, lookOffset), length: operator.match.length} as OpFound;
@@ -840,8 +844,14 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
                         return "";
                     });
                 });
-                resStructSlot.fields.push({code: codeLiteral.substring(lookOffset, firstOperator.pos).trim()});
-                resStructSlot.operators.push({code: firstOperator.textToUse});
+                const fieldContent = codeLiteral.substring(lookOffset, firstOperator.pos);
+                if (cursorPos && cursorPos >= lookOffset && cursorPos < firstOperator.pos) {
+                    resStructSlot.fields.push({code: fieldContent.substring(0, cursorPos - lookOffset) + fieldContent.substring(cursorPos - lookOffset).trimEnd()});
+                }
+                else {
+                    resStructSlot.fields.push({code: fieldContent.trim()});
+                }
+                resStructSlot.operators.push({code: firstOperator.match});
                 lookOffset = firstOperator.pos + firstOperator.length;
             }
         }

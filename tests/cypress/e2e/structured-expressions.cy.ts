@@ -495,11 +495,12 @@ describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
         "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
 });
 
-describe("Test word operators", () => {
+describe.only("Test word operators", () => {
     testInsert("a or ", "{a} or {$}");
     testInsert("a or b", "{a} or {b$}");
     testInsert("or b", "{} or {b$}");
     testInsert("orb", "{orb$}");
+    testInsert("not a", "{} not {a$}");
     testInsert("orc or ork", "{orc} or {ork$}");
     testInsert("notand or nand", "{notand} or {nand$}");
     testInsert("nor or neither", "{nor} or {neither$}");
@@ -522,6 +523,17 @@ describe("Test word operators", () => {
     testInsert("1 or 2", "{1} or {2$}");
     testInsert("1 or2", "{1 or2$}");
     
-    // TODO tests with multiple chained operators, and with brackets
+    testInsert("ab and cd and ef", "{ab} and {cd} and {ef$}");
+    testMultiInsert("ab{ and cd} and ef", "{ab$} and {ef}", "{ab} and {cd$} and {ef}");
+    testMultiInsert("ab{ } and ef", "{ab$} and {ef}", "{ab $} and {ef}");
+    testMultiInsert("ab{+cd} and ef", "{ab$} and {ef}", "{ab}+{cd$} and {ef}");
+    testMultiInsert("ab{ andor} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {} or {$} and {}_({ef})_{}");
+    testMultiInsert("ab{ andcd} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {cd$} and {}_({ef})_{}");
+    testMultiInsert("ab{ and cd} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {cd$} and {}_({ef})_{}");
+    testMultiInsert("pre or (ab{ and cd} and ef) or post", "{pre} or {}_({ab$} and {ef})_{} or {post}", "{pre} or {}_({ab} and {cd$} and {ef})_{} or {post}");
+    testMultiInsert("(a0) or ab{ and cd} and ef", "{}_({a0})_{} or {ab$} and {ef}", "{}_({a0})_{} or {ab} and {cd$} and {ef}");
+    testInsert("(a+b)or c", "{}_({a}+{b})_{} or {c$}");
+    testInsert("(a+b)or (c-d)", "{}_({a}+{b})_{} or {}_({c}-{d})_{$}");
+    testInsert("(a and b)or (c and d)", "{}_({a} and {b})_{} or {}_({c} and {d})_{$}");
 });
 
