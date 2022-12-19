@@ -472,7 +472,7 @@ export default Vue.extend({
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
             if(((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.varassign && this.labelSlotsIndex === 0){
-                // Simulate an Enter press to make sure we go to the next slot
+                // Simulate a right arrow key press to make sure we go to the next slot
                 document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                     new KeyboardEvent(event.type, {
                         key: "ArrowRight",
@@ -500,7 +500,7 @@ export default Vue.extend({
                 let shouldMoveToNextSlot = (selectionStart == selectionEnd);
                 // Checking if we are escaping the quote used for this string (i.e. we are after an escaping \, and there is no quote following the caret)
                 const isEscapingString = isFieldStringSlot(currentSlot) && currentStartTextCursor > 0 && (getNumPrecedingBackslashes(inputSpanFieldContent, currentStartTextCursor) % 2) == 1
-                    && (currentStartTextCursor < inputSpanFieldContent.length && inputSpanFieldContent[currentStartTextCursor]!= event.key || currentStartTextCursor == inputSpanFieldContent.length);
+                    && ((currentStartTextCursor < inputSpanFieldContent.length && inputSpanFieldContent[currentStartTextCursor]!= event.key) || currentStartTextCursor == inputSpanFieldContent.length);
                 if(isEscapingString){
                     this.insertSimpleTypedKey(event.key, true);
                     return;

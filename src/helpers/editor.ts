@@ -156,7 +156,7 @@ export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCu
 
         const anchorOffset = ((anchorElement.textContent??"").length > 0) 
             ? anchorCursorInfos.cursorPos
-            : Object.values(anchorNode.childNodes).findIndex((node: any) => node.id && node.id == anchorElement.id);
+            : Object.values(anchorNode.childNodes).findIndex((node: any) => node.id === anchorElement.id);
 
         const focusNode = ((focusElement.textContent??"").length > 0)
             ? focusElement.firstChild as Node
@@ -164,7 +164,7 @@ export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCu
             
         const focusOffset = ((focusElement.textContent??"").length > 0) 
             ? focusCursorInfos.cursorPos
-            : Object.values(focusNode.childNodes).findIndex((node: any) => node.id && node.id == focusElement.id);
+            : Object.values(focusNode.childNodes).findIndex((node: any) => node.id === focusElement.id);
 
         document.getSelection()?.setBaseAndExtent(anchorNode, anchorOffset, focusNode, focusOffset);
     }    
