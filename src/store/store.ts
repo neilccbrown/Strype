@@ -6,7 +6,7 @@ import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFr
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, makeSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -2021,7 +2021,7 @@ export const useStore = defineStore("app", {
                     const anchorCursorInfos = (payload.isShiftKeyHold) ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
                     const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
-                    makeSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
+                    setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
                 });
                 
                 // As we may have moved from a blue caret position, we make sure that we are always setting the caret position to the next available caret position possible.

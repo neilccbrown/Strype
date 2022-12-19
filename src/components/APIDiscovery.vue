@@ -73,7 +73,7 @@
 import Vue from "vue";
 import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType, SlotCursorInfos, SlotType} from "@/types/types";
 import { useStore } from "@/store/store";
-import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, makeSelection } from "@/helpers/editor";
+import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 
@@ -339,7 +339,7 @@ export default Vue.extend({
                     //we select the arguments of the added functions (if applies)
                     //TODO : will require multi slot selection... Note that we don't need to do this for comments and string slots
                     // for the time being, we just set the cursor after the insertion
-                    makeSelection(slotcursorInfos, slotcursorInfos);
+                    setDocumentSelection(slotcursorInfos, slotcursorInfos);
                     // Update the store too
                     this.appStore.setSlotTextCursors(slotcursorInfos, slotcursorInfos);
                     //Refactor the slots, we call the refactorisation on the LabelSlotsStructure

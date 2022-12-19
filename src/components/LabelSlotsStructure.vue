@@ -38,7 +38,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, makeSelection, parseCodeLiteral, parseLabelSlotUIID, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
 import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 
 export default Vue.extend({
@@ -226,7 +226,7 @@ export default Vue.extend({
                                     (spanElement as HTMLSpanElement).dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                                     const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
                                     const cursorInfos = {slotInfos: parseLabelSlotUIID(spanElement.id), cursorPos: pos};
-                                    makeSelection(cursorInfos, cursorInfos);
+                                    setDocumentSelection(cursorInfos, cursorInfos);
                                     this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
                                     foundPos = true;
                                 }                            
@@ -304,7 +304,7 @@ export default Vue.extend({
                     this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
                         // If we are doing a selection, we need to reflect this in the UI
                         if(event.shiftKey){
-                            makeSelection(this.appStore.anchorSlotCursorInfos as SlotCursorInfos, this.appStore.focusSlotCursorInfos as SlotCursorInfos);                     
+                            setDocumentSelection(this.appStore.anchorSlotCursorInfos as SlotCursorInfos, this.appStore.focusSlotCursorInfos as SlotCursorInfos);                     
                         }
                     });                        
                 }
@@ -317,7 +317,7 @@ export default Vue.extend({
                     this.appStore.isSelectingMultiSlots = false; // reset flag
                     const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
                     const slotCursorInfo: SlotCursorInfos = {slotInfos: slotInfos, cursorPos: (cursorPos + incrementStep)};
-                    makeSelection(slotCursorInfo, slotCursorInfo);
+                    setDocumentSelection(slotCursorInfo, slotCursorInfo);
                 }
                 event.preventDefault();
                 event.stopImmediatePropagation();  

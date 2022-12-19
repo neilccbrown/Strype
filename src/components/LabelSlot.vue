@@ -5,6 +5,7 @@
             spellcheck="false"
             :disabled="isDisabled"
             :placeholder="defaultText"
+            :contenteditable="isEditableSlot"
             @click.stop="onGetCaret"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
@@ -61,8 +62,8 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, makeSelection, getFrameLabelSlotsStructureUIID } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos} from "@/types/types";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID } from "@/helpers/editor";
+import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -90,11 +91,16 @@ export default Vue.extend({
     },
 
     beforeUpdate(){
-        // The property "code" is reactive, but for some reason, the DOM isn't updated.
-        // So we do it ourselves here when the value of "code" changes.
+        // If the text isn't set again here, despite "code" being reactive, we end up with "duplicated" insert with operators.
         const spanElement = document.getElementById(this.UIID);
-        if(spanElement){ // Keep TS happy
+        if(spanElement && this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos){ // Keep TS happy
+            const prevTextContent = spanElement.textContent;
             spanElement.textContent = this.code;
+            // After changing the code here, FF requires the right caret position to be reassigned, otherwise the caret moves back to the first
+            // position. The condition ensure we do this only for the right slot, and when the text is in line with the selection we are going to set.
+            if(areSlotCoreInfosEqual(this.appStore.focusSlotCursorInfos.slotInfos, this.coreSlotInfo) && prevTextContent === this.code){
+                setDocumentSelection(this.appStore.anchorSlotCursorInfos, this.appStore.focusSlotCursorInfos);
+            }
         }
     },
 
@@ -287,7 +293,7 @@ export default Vue.extend({
             // so we reposition it correctly, at the next tick (because code needs to be updated first)
             this.$nextTick(() => {
                 const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
-                makeSelection(slotCursorInfo, slotCursorInfo);
+                setDocumentSelection(slotCursorInfo, slotCursorInfo);
             });
 
             this.isFirstChange = false;
@@ -526,7 +532,7 @@ export default Vue.extend({
                                 const afterBracketOrStringSlotCursorInfo: SlotCursorInfos = {slotInfos: {...this.coreSlotInfo, slotId: nextSlotInfos.slotId, slotType: nextSlotInfos.slotType}, cursorPos: 0};
                                 this.appStore.editableSlotViaKeyboard.isKeyboard = true; // in order to get the focused editable subslot performing the bracket checks in onGetCaret()
                                 document.getElementById(getLabelSlotUIID(afterBracketOrStringSlotCursorInfo.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
-                                makeSelection(afterBracketOrStringSlotCursorInfo, afterBracketOrStringSlotCursorInfo);
+                                this.appStore.setSlotTextCursors(afterBracketOrStringSlotCursorInfo, afterBracketOrStringSlotCursorInfo);
                             }               
                         });
                     }
@@ -624,7 +630,7 @@ export default Vue.extend({
                     }
                 ).then(() => {
                     const slotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: newPos};
-                    makeSelection(slotCursorInfos, slotCursorInfos);
+                    setDocumentSelection(slotCursorInfos, slotCursorInfos);
                 });
             }          
         },
@@ -717,7 +723,7 @@ export default Vue.extend({
                     const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                     const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newTextCursorPos};
                     document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
-                    makeSelection(slotCursorInfos, slotCursorInfos);
+                    setDocumentSelection(slotCursorInfos, slotCursorInfos);
                     this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
                     this.appStore.bypassEditableSlotBlurErrorCheck = false;
 

@@ -142,7 +142,7 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: strin
     return {selectionStart: -1, selectionEnd: -1};
 }
 
-export function makeSelection(anchorCursorInfos: SlotCursorInfos, focusCursorInfos: SlotCursorInfos): void{
+export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCursorInfos: SlotCursorInfos): void{
     const anchorElement = document.getElementById(getLabelSlotUIID(anchorCursorInfos.slotInfos));
     const focusElement = document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos));
     if(anchorElement && focusElement){
