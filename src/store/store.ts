@@ -2003,8 +2003,11 @@ export const useStore = defineStore("app", {
                 // and in the same frame label, we find the slot that matches those criteria, if any.
                 // Note that if we are currently in a string, and we have reached this method, then we are at a boundary of the string and we cannot continue a selection outside this string,
                 // so the current selection won't change.
-                const nextSelectionPosition = (currentSlotInfos.slotType == SlotType.string) ? undefined : availablePositions.find((navigPos, index) => {
-                    const isDirectionCorrect = (directionDelta > 0) ? index > currentFramePosition : index < currentFramePosition;
+                // We traverse the list of available positions in the order of the selection's direction (i.e. backwards if selecting backwards)
+                // otherwise we may match an item that matches the condition, but that isn't the closest slot we are willing to select (when doing backwards.)
+                const positionsList = (directionDelta > 0) ? availablePositions : availablePositions.reverse();
+                const nextSelectionPosition = (currentSlotInfos.slotType == SlotType.string) ? undefined : positionsList.find((navigPos, index) => {
+                    const isDirectionCorrect = (directionDelta > 0) ? index > currentFramePosition : index > (positionsList.length - currentFramePosition - 1);
                     return isDirectionCorrect && navigPos.frameId == currentSlotInfos.frameId && navigPos.isSlotNavigationPosition && navigPos.slotType !== SlotType.string 
                         && navigPos.labelSlotsIndex == currentSlotInfos.labelSlotsIndex && (navigPos.slotId??"").split(",").length == currentSlotInfosLevel;
                 });    
