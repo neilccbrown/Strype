@@ -1,12 +1,12 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, AcResultsWithModule, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, AcResultsWithModule, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, clearAllFrameErrors, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -860,158 +860,192 @@ export const useStore = defineStore("app", {
          * @param isForwardDeletion True if we are deleting the slot after us (using the Delete key), or
          *                          False if we are deleting the slot before us (using the Backspace key)
          * @param currentSlotInfos The slot where the key was pressed.
-         * @param deleteFromIndex Delete from this slot index of the parent (inclusive)
-         * @param deleteToIndex Delete to this slot index of the parent (inclusive)
+         * @returns an object containing the resulting new slot id (newSlotId), and the cursor position offset within this slot (cursorPosOffset)
          */
-        deleteSlots(isForwardDeletion: boolean, currentSlotInfos: SlotCoreInfos, deleteFromIndex: number, deleteToIndex: number): {newSlotId: string, cursorPosOffset: number} {
+        deleteSlots(isForwardDeletion: boolean, currentSlotInfos: SlotCoreInfos): {newSlotId: string, cursorPosOffset: number} {
             // Deleting slots depends on the direction of deletion (with del or backspace), the scope of deletion
             // (from a selection or a from one position of code) and the nature of the field deleted.
             // When there is no selection, we do a deletion on the basis of a slot and an operator are deleted:
             // the operator is removed, and the fields merge together. When deleting brackets or strings, we do the operation
             // on each end of the bracket / string, because these slots are always surrounded by empty operators.
             // The returned value is the new ID of the current slot and the cursor position offset (to be used by UI)
-            //TODO adapt for selection
-         
-            const hasSlotSelectedToDelete = (deleteFromIndex != deleteToIndex);
-            // Split the target slot ID into parent ID and the index of us within the parent:
-            const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(currentSlotInfos.slotId);
-            // The parent slot is the root if our parent ID is blank: 
-            const parentSlot = (parentId.length > 0) 
-                ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: parentId}) as SlotsStructure
-                : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
-            // We find the  neighbouring slot which is being deleted.  We fold their content into us if we are siblings.
-            // If they are at a different level, it is more complicated (see further on) 
-            const slotToDeleteInfos = getFlatNeighbourFieldSlotInfos(currentSlotInfos, isForwardDeletion);
+            // When there is a selection, we always end up with one resulting slot. The deletion direction doesn't matter.
+            if(this.anchorSlotCursorInfos && this.focusSlotCursorInfos){
+                const hasSlotSelectedToDelete = (!areSlotCoreInfosEqual(this.anchorSlotCursorInfos.slotInfos, this.focusSlotCursorInfos.slotInfos));
+                // Split the target slot ID into parent ID and the index of us within the parent:
+                const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(currentSlotInfos.slotId);
+                // The parent slot is the root if our parent ID is blank: 
+                const parentSlot = (parentId.length > 0) 
+                    ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: parentId}) as SlotsStructure
+                    : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
+                if(!hasSlotSelectedToDelete){
+                    // This is case when there is NO selection and we need to delete a slot:
+                    // we find the  neighbouring slot which is being deleted.  We fold their content into us if we are siblings.
+                    const slotToDeleteInfos = getFlatNeighbourFieldSlotInfos(currentSlotInfos, isForwardDeletion);
             
-            // We should only have been called in the first place if this is true, but satisfy TypeScript:
-            if(slotToDeleteInfos){
-                // Get the slot to be deleted:
-                const {parentId: slotToDeleteParentId, slotIndex: slotToDeleteIndex} = getSlotParentIdAndIndexSplit(slotToDeleteInfos.slotId);
-                const slotToDelete = retrieveSlotFromSlotInfos(slotToDeleteInfos);
+                    // We should only have been called in the first place if this is true, but satisfy TypeScript:
+                    if(slotToDeleteInfos){
+                        // Get the slot to be deleted:
+                        const {parentId: slotToDeleteParentId, slotIndex: slotToDeleteIndex} = getSlotParentIdAndIndexSplit(slotToDeleteInfos.slotId);
+                        const slotToDelete = retrieveSlotFromSlotInfos(slotToDeleteInfos);
 
-                // If we are deleting the brackets (not the structure altogether but literaly the brackets)
-                // then the parents of the current slot and the slot to delete cannot be the same, and one of them is 
-                // de facto in a bracket.
-                const isRemovingBrackets = (parentId != slotToDeleteParentId);
-                const isRemovingString = (slotToDeleteInfos.slotType == SlotType.string) || (currentSlotInfos.slotType == SlotType.string);
+                        // If we are deleting the brackets (not the structure altogether but literaly the brackets)
+                        // then the parents of the current slot and the slot to delete cannot be the same, and one of them is 
+                        // de facto in a bracket.
+                        const isRemovingBrackets = (parentId != slotToDeleteParentId);
+                        const isRemovingString = (slotToDeleteInfos.slotType == SlotType.string) || (currentSlotInfos.slotType == SlotType.string);
 
-                // Deal with bracket / string partial deletion as a particular case
-                if(isRemovingBrackets || isRemovingString){
-                    // If removing brackets, this flag being true indicates we are INSIDE the bracket when deleting, false means we are outside the bracket we are deleting.
-                    // Similarly, for strings, true indicates we are INSIDE the string when deleting, false means we are outside.
-                    const isCurrentSlotSpecialType = (isRemovingBrackets)
-                        ? (currentSlotInfos.slotId.match(/,/g)?.length??0) > (slotToDeleteInfos.slotId.match(/,/g)?.length??0)
-                        : currentSlotInfos.slotType == SlotType.string;                    
-                    // The parent of the slot to delete:
-                    const slotToDeleteParentSlot = (slotToDeleteParentId.length > 0)
-                        ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: slotToDeleteParentId})
-                        : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
+                        // Deal with bracket / string partial deletion as a particular case
+                        if(isRemovingBrackets || isRemovingString){
+                        // If removing brackets, this flag being true indicates we are INSIDE the bracket when deleting, false means we are outside the bracket we are deleting.
+                        // Similarly, for strings, true indicates we are INSIDE the string when deleting, false means we are outside.
+                            const isCurrentSlotSpecialType = (isRemovingBrackets)
+                                ? (currentSlotInfos.slotId.match(/,/g)?.length??0) > (slotToDeleteInfos.slotId.match(/,/g)?.length??0)
+                                : currentSlotInfos.slotType == SlotType.string;                    
+                            // The parent of the slot to delete:
+                            const slotToDeleteParentSlot = (slotToDeleteParentId.length > 0)
+                                ? retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: slotToDeleteParentId})
+                                : this.frameObjects[currentSlotInfos.frameId].labelSlotsDict[currentSlotInfos.labelSlotsIndex].slotStructures;
 
-                    let parsedStringContentRes = null;
-                    if(isRemovingString){
-                        const stringSlot = (isCurrentSlotSpecialType) ? retrieveSlotFromSlotInfos(currentSlotInfos) as StringSlot : slotToDelete as StringSlot;
-                        const stringLiteral = stringSlot.quote + stringSlot.code + stringSlot.quote;
-                        parsedStringContentRes =  parseCodeLiteral(stringLiteral, true);
-                    }
-                    // The number of fields in the bracket/string (for the latter, after it is turned into code, so the string "a+b" would be 2):
-                    const fieldsInSpecialTypeNumber = (isRemovingBrackets)
-                        ? ((isCurrentSlotSpecialType) ? parentSlot.fields.length : (slotToDeleteParentSlot as SlotsStructure).fields.length)
-                        : (parsedStringContentRes?.slots.fields.length)??0;
-                    // If we are inside and removing brackets, use the [outside] target's parent, otherwise we can just use our parent:
-                    const slotStructureToUpdate = (isCurrentSlotSpecialType && isRemovingBrackets) ? slotToDeleteParentSlot as SlotsStructure : parentSlot;
+                            let parsedStringContentRes = null;
+                            if(isRemovingString){
+                                const stringSlot = (isCurrentSlotSpecialType) ? retrieveSlotFromSlotInfos(currentSlotInfos) as StringSlot : slotToDelete as StringSlot;
+                                const stringLiteral = stringSlot.quote + stringSlot.code + stringSlot.quote;
+                                parsedStringContentRes =  parseCodeLiteral(stringLiteral, true);
+                            }
+                            // The number of fields in the bracket/string (for the latter, after it is turned into code, so the string "a+b" would be 2):
+                            const fieldsInSpecialTypeNumber = (isRemovingBrackets)
+                                ? ((isCurrentSlotSpecialType) ? parentSlot.fields.length : (slotToDeleteParentSlot as SlotsStructure).fields.length)
+                                : (parsedStringContentRes?.slots.fields.length)??0;
+                            // If we are inside and removing brackets, use the [outside] target's parent, otherwise we can just use our parent:
+                            const slotStructureToUpdate = (isCurrentSlotSpecialType && isRemovingBrackets) ? slotToDeleteParentSlot as SlotsStructure : parentSlot;
     
-                    // Move the content of the bracket / string slot in the bracket parent
-                    if(isCurrentSlotSpecialType){
-                        const indexOfSpecialTypeField = (isRemovingBrackets) ? parseInt(parentId.substring(parentId.lastIndexOf(",") + 1)) : slotIndex;
-                        const contentToMove = (isRemovingBrackets) ? parentSlot : parsedStringContentRes?.slots as SlotsStructure;
-                        slotStructureToUpdate.fields.splice(indexOfSpecialTypeField, 1, ...contentToMove.fields);
-                        slotStructureToUpdate.operators.splice(indexOfSpecialTypeField, 0, ...contentToMove.operators);
-                    }
-                    else{
-                        const changeSlotsIndexOffset = (isForwardDeletion) ? 1 : -1;
-                        const contentToMove = (isRemovingBrackets) ? slotToDeleteParentSlot as SlotsStructure : parsedStringContentRes?.slots as SlotsStructure;
-                        slotStructureToUpdate.fields.splice(slotIndex + changeSlotsIndexOffset, 1, ...contentToMove.fields);
-                        slotStructureToUpdate.operators.splice(slotIndex + changeSlotsIndexOffset, 0, ...contentToMove.operators);
-                    }
+                            // Move the content of the bracket / string slot in the bracket parent
+                            if(isCurrentSlotSpecialType){
+                                const indexOfSpecialTypeField = (isRemovingBrackets) ? parseInt(parentId.substring(parentId.lastIndexOf(",") + 1)) : slotIndex;
+                                const contentToMove = (isRemovingBrackets) ? parentSlot : parsedStringContentRes?.slots as SlotsStructure;
+                                slotStructureToUpdate.fields.splice(indexOfSpecialTypeField, 1, ...contentToMove.fields);
+                                slotStructureToUpdate.operators.splice(indexOfSpecialTypeField, 0, ...contentToMove.operators);
+                            }
+                            else{
+                                const changeSlotsIndexOffset = (isForwardDeletion) ? 1 : -1;
+                                const contentToMove = (isRemovingBrackets) ? slotToDeleteParentSlot as SlotsStructure : parsedStringContentRes?.slots as SlotsStructure;
+                                slotStructureToUpdate.fields.splice(slotIndex + changeSlotsIndexOffset, 1, ...contentToMove.fields);
+                                slotStructureToUpdate.operators.splice(slotIndex + changeSlotsIndexOffset, 0, ...contentToMove.operators);
+                            }
                 
 
-                    // Compute the cursor offset that deleting a bracket / string slot will trigger.
-                    // For strings, the intial cursor position at focus is not used, since we are changing the slots structure altogether,
-                    // therefore, we need to also include the newly created slots from the string into our offset
-                    const cursorStringOffset = (isRemovingString && isCurrentSlotSpecialType) 
-                        ? ((isForwardDeletion) 
-                            ? (slotStructureToUpdate.fields[slotToDeleteIndex  + fieldsInSpecialTypeNumber - 2] as BaseSlot).code.length 
-                            : (slotStructureToUpdate.fields[slotToDeleteIndex  + 1] as BaseSlot).code.length)
-                        : 0; 
-                    const cursorOffsetSlotIndex = (isForwardDeletion) ? -2 : 2;
-                    const cursorPosOffset = cursorStringOffset + ((fieldsInSpecialTypeNumber == 1 && isCurrentSlotSpecialType) 
-                        ? (slotStructureToUpdate.fields[slotToDeleteIndex + cursorOffsetSlotIndex] as BaseSlot).code.length 
-                        : 0);
+                            // Compute the cursor offset that deleting a bracket / string slot will trigger.
+                            // For strings, the intial cursor position at focus is not used, since we are changing the slots structure altogether,
+                            // therefore, we need to also include the newly created slots from the string into our offset
+                            const cursorStringOffset = (isRemovingString && isCurrentSlotSpecialType) 
+                                ? ((isForwardDeletion) 
+                                    ? (slotStructureToUpdate.fields[slotToDeleteIndex  + fieldsInSpecialTypeNumber - 2] as BaseSlot).code.length 
+                                    : (slotStructureToUpdate.fields[slotToDeleteIndex  + 1] as BaseSlot).code.length)
+                                : 0; 
+                            const cursorOffsetSlotIndex = (isForwardDeletion) ? -2 : 2;
+                            const cursorPosOffset = cursorStringOffset + ((fieldsInSpecialTypeNumber == 1 && isCurrentSlotSpecialType) 
+                                ? (slotStructureToUpdate.fields[slotToDeleteIndex + cursorOffsetSlotIndex] as BaseSlot).code.length 
+                                : 0);
                     
-                    // Now recursively call the method for each ends of what was the bracket / string before, starting with the closing end
-                    const parentToUpdateId = (isCurrentSlotSpecialType && isRemovingBrackets) ? slotToDeleteParentId : parentId;
-                    const currentSlotType = (isRemovingString) ? SlotType.code : currentSlotInfos.slotType; // When we delete a string the type is no longer a string...
-                    const indexOfLastBracketChild = (isCurrentSlotSpecialType) 
-                        ? ((isForwardDeletion) ? slotToDeleteIndex  + fieldsInSpecialTypeNumber - 2 : slotToDeleteIndex + fieldsInSpecialTypeNumber)
-                        : ((isForwardDeletion) ? slotIndex + fieldsInSpecialTypeNumber : slotIndex  + fieldsInSpecialTypeNumber - 2);
-                    const idForLastBracketChild = getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, indexOfLastBracketChild);
-                    this.deleteSlots(true, {...currentSlotInfos, slotId: idForLastBracketChild, slotType: currentSlotType}, indexOfLastBracketChild + 1, indexOfLastBracketChild + 1);
-                    const indexOfFirstBracketChild = (isCurrentSlotSpecialType) 
-                        ? ((isForwardDeletion) ? slotToDeleteIndex - 1 : slotToDeleteIndex + 1)
-                        : ((isForwardDeletion) ? slotIndex + 1 : slotIndex - 1);
-                    const idForFirstBracketChild = getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, indexOfFirstBracketChild);
-                    this.deleteSlots(false, {...currentSlotInfos, slotId: idForFirstBracketChild, slotType: currentSlotType}, indexOfFirstBracketChild - 1, indexOfFirstBracketChild - 1);
+                            // Now recursively call the method for each ends of what was the bracket / string before, starting with the closing end
+                            const parentToUpdateId = (isCurrentSlotSpecialType && isRemovingBrackets) ? slotToDeleteParentId : parentId;
+                            const currentSlotType = (isRemovingString) ? SlotType.code : currentSlotInfos.slotType; // When we delete a string the type is no longer a string...
+                            const indexOfLastBracketChild = (isCurrentSlotSpecialType) 
+                                ? ((isForwardDeletion) ? slotToDeleteIndex  + fieldsInSpecialTypeNumber - 2 : slotToDeleteIndex + fieldsInSpecialTypeNumber)
+                                : ((isForwardDeletion) ? slotIndex + fieldsInSpecialTypeNumber : slotIndex  + fieldsInSpecialTypeNumber - 2);
+                            const idForLastBracketChild = getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, indexOfLastBracketChild);
+                            this.deleteSlots(true, {...currentSlotInfos, slotId: idForLastBracketChild, slotType: currentSlotType});
+                            const indexOfFirstBracketChild = (isCurrentSlotSpecialType) 
+                                ? ((isForwardDeletion) ? slotToDeleteIndex - 1 : slotToDeleteIndex + 1)
+                                : ((isForwardDeletion) ? slotIndex + 1 : slotIndex - 1);
+                            const idForFirstBracketChild = getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, indexOfFirstBracketChild);
+                            this.deleteSlots(false, {...currentSlotInfos, slotId: idForFirstBracketChild, slotType: currentSlotType});
                     
-                    // Prepare the ID of the new current slot:
-                    const newCurrentSlotId = (isCurrentSlotSpecialType)
-                        ? ((isForwardDeletion) 
-                            ? getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, Math.max(0, indexOfLastBracketChild - 1)) 
-                            : getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, Math.max(0, indexOfFirstBracketChild - 1)))
-                        : ((isForwardDeletion) 
-                            ? currentSlotInfos.slotId 
-                            : getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + fieldsInSpecialTypeNumber - 3));
-                    return {newSlotId: newCurrentSlotId, cursorPosOffset: cursorPosOffset};
-                }
-                else if (deleteFromIndex == deleteToIndex) {
-                    // Get the adjacent operator and check whether it has a space in it:
-                    const deleteOperatorsFromIndex = (isForwardDeletion) ? deleteFromIndex - 1 : deleteFromIndex;
-                    if (parentSlot.operators[deleteOperatorsFromIndex]?.code?.trim()?.includes(" ")) {
-                        parentSlot.operators[deleteOperatorsFromIndex].code = isForwardDeletion ?
-                            parentSlot.operators[deleteOperatorsFromIndex].code.substring(parentSlot.operators[deleteOperatorsFromIndex].code.indexOf(" ", 1))
-                            : parentSlot.operators[deleteOperatorsFromIndex].code.substring(0, 1 + parentSlot.operators[deleteOperatorsFromIndex].code.lastIndexOf(" ", parentSlot.operators[deleteOperatorsFromIndex].code.length - 2));
+                            // Prepare the ID of the new current slot:
+                            const newCurrentSlotId = (isCurrentSlotSpecialType)
+                                ? ((isForwardDeletion) 
+                                    ? getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, Math.max(0, indexOfLastBracketChild - 1)) 
+                                    : getSlotIdFromParentIdAndIndexSplit(parentToUpdateId, Math.max(0, indexOfFirstBracketChild - 1)))
+                                : ((isForwardDeletion) 
+                                    ? currentSlotInfos.slotId 
+                                    : getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + fieldsInSpecialTypeNumber - 3));
+                            return {newSlotId: newCurrentSlotId, cursorPosOffset: cursorPosOffset};
+                        }
+                        else {
+                            // Get the adjacent operator and check whether it has a space in it:
+                            const deleteOperatorsFromIndex = (isForwardDeletion) ? slotIndex : slotIndex - 1;
+                            if (parentSlot.operators[deleteOperatorsFromIndex]?.code?.trim()?.includes(" ")) {
+                                parentSlot.operators[deleteOperatorsFromIndex].code = isForwardDeletion ?
+                                    parentSlot.operators[deleteOperatorsFromIndex].code.substring(parentSlot.operators[deleteOperatorsFromIndex].code.indexOf(" ", 1))
+                                    : parentSlot.operators[deleteOperatorsFromIndex].code.substring(0, 1 + parentSlot.operators[deleteOperatorsFromIndex].code.lastIndexOf(" ", parentSlot.operators[deleteOperatorsFromIndex].code.length - 2));
+                                return {
+                                    newSlotId: currentSlotInfos.slotId,
+                                    cursorPosOffset: isForwardDeletion ? (parentSlot.fields[slotIndex] as BaseSlot).code.length : 0,
+                                };
+                            }
+                        }                    
+
+                        // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
+                        // Now we merge the 2 fields surrouding the deleted operator:
+                        // when forward deleting, that means appening the next field content to the current slot's content,
+                        // when backward deleting, that means prepending the previous field content to the current's slot content.
+                        const slotToDeleteCode = (slotToDelete as BaseSlot).code;
+                        const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
+                        (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode); 
+
+                        // Now we do the fields/operator deletion:
+                                
+                        // Delete the operators from the parent slot structure
+                        const deleteOperatorsFromIndex = (isForwardDeletion) ? slotIndex : slotIndex - 1;
+                        parentSlot.operators.splice(deleteOperatorsFromIndex, 1);
+
+                        // Delete the fields from the parent slot structure.
+                        parentSlot.fields.splice((isForwardDeletion) ? slotIndex + 1 : slotIndex - 1, 1);
+
                         return {
-                            newSlotId: currentSlotInfos.slotId,
-                            cursorPosOffset: isForwardDeletion ? (parentSlot.fields[slotIndex] as BaseSlot).code.length : 0,
+                            newSlotId: (isForwardDeletion) ? currentSlotInfos.slotId : slotToDeleteInfos.slotId,
+                            cursorPosOffset: 0,
                         };
                     }
                 }
-
-
-                // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
-                // If there was no slot selection, now we merge the 2 fields surrouding the deleted operator:
-                // when forward deleting, that means appening the next field content to the current slot's content,
-                // when backward deleting, that means prepending the previous field content to the current's slot content.
-                const slotToDeleteCode = (slotToDelete as BaseSlot).code;
-                const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
-                if(!hasSlotSelectedToDelete){
-                    (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode); 
+                else{
+                    // The case of selection of slots requires to check where we are in the boudaries:
+                    // either inside a slot or at the edge of it -- when we are inside, the remaining text of the slot need to be kept.
+                    // The direction of deletion doesn't matter (isForwardDeletion flag), but the relative position of the anchor/focus does.
+                    // 1 - first construct the resulting text of the deletion
+                    const anchorSlot = retrieveSlotFromSlotInfos(this.anchorSlotCursorInfos.slotInfos);
+                    const focusSlot = retrieveSlotFromSlotInfos(currentSlotInfos);
+                    const {slotIndex: anchorSlotIndex} = getSlotParentIdAndIndexSplit(this.anchorSlotCursorInfos.slotInfos.slotId);
+                    const isAnchorBeforeFocus = (getSelectionCursorsComparisonValue() as number) < 0;
+                    const newCode = (isAnchorBeforeFocus) 
+                        ? (anchorSlot as BaseSlot).code.substring(0,this.anchorSlotCursorInfos.cursorPos) + (focusSlot as BaseSlot).code.substring(this.focusSlotCursorInfos.cursorPos)
+                        : (focusSlot as BaseSlot).code.substring(0, this.focusSlotCursorInfos.cursorPos) + (anchorSlot as BaseSlot).code.substring(this.anchorSlotCursorInfos.cursorPos);
+                    // 2 - perform the actual slot deletion.
+                    // Operators: we delete from the operator that follow the selection start slot, it has the same index as this slot.
+                    // the last operator to be deleted is the one just before the selection end slot, and it its index is the slot index - 1
+                    // there will always be at least 1 operator removed, since slots are separated by operators
+                    const deleteOperatorsFromIndex = (isAnchorBeforeFocus) ? anchorSlotIndex : slotIndex;
+                    const deleteOperatorsToIndex = (isAnchorBeforeFocus) ? slotIndex - 1 : anchorSlotIndex - 1;
+                    parentSlot.operators.splice(deleteOperatorsFromIndex, deleteOperatorsToIndex - deleteOperatorsFromIndex + 1);
+                    // Fields: we don't delete the current slot, we delete as many frames there are to the anchor slot.
+                    // There will be always at least 1 field to remove since we are doing a selection
+                    const deleteFieldsFromIndex = (isAnchorBeforeFocus) ? anchorSlotIndex + 1 : slotIndex + 1;
+                    const deleteFieldsToIndex = (isAnchorBeforeFocus) ? slotIndex : anchorSlotIndex;
+                    const numberOfFieldsToDelete = deleteFieldsToIndex - deleteFieldsFromIndex + 1;
+                    parentSlot.fields.splice(deleteFieldsFromIndex, numberOfFieldsToDelete);
+                    // 3 - get the resulting slot ID, and set the resulting code in
+                    // (the current slot ID won't change if the selection is leftwards, it will in the other direction as there is an offset once deletion occur)
+                    const newSlotId = (isAnchorBeforeFocus) 
+                        ? (getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex - numberOfFieldsToDelete)) 
+                        : currentSlotInfos.slotId;
+                    (retrieveSlotFromSlotInfos({...currentSlotInfos, slotId: newSlotId}) as BaseSlot).code = newCode;
+                    // 4 - return value 
+                    return {
+                        newSlotId: newSlotId, 
+                        cursorPosOffset: 0,
+                    };
                 }
-
-                // Now we do the fields/operator deletion:
-                                
-                // Delete the operators from the parent slot structure. As the indexing for fields and operators works as f0,o0,f1,o1,...f(n),o(n),f(n+1)
-                // if forward deletion, we delete from operator indexed (deletedFromIndex-1) to operator indexed (deletedToIndex - 1)
-                // if backward deleting, we delete from operator (deletedFromIndex to??????????
-                const deleteOperatorsFromIndex = (isForwardDeletion) ? deleteFromIndex - 1 : deleteFromIndex;
-                parentSlot.operators.splice(deleteOperatorsFromIndex, (deleteToIndex - deleteFromIndex + 1));
-
-                // Delete the fields from the parent slot structure.
-                parentSlot.fields.splice(deleteFromIndex, deleteToIndex - deleteFromIndex + 1);
-
-                return {
-                    newSlotId: (isForwardDeletion) ? currentSlotInfos.slotId : slotToDeleteInfos.slotId,
-                    cursorPosOffset: 0,
-                };
             }
 
             // We should never arrive here

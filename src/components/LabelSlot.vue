@@ -66,7 +66,7 @@ import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResult
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 
 export default Vue.extend({
@@ -678,7 +678,7 @@ export default Vue.extend({
             }
         },
 
-        deleteSlots(event: KeyboardEvent, focusSlotCursorInfo?: SlotCursorInfos){            
+        deleteSlots(event: KeyboardEvent){            
             event.preventDefault();
             event.stopImmediatePropagation();
             this.appStore.ignoreKeyEvent = true;
@@ -689,73 +689,95 @@ export default Vue.extend({
             const nextSlotInfos = getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true);
             const previousSlotInfos = getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, false);
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
- 
-            //TODO this condition will need to be corrected when using multi slot selection
-            //as well as the logic to get the code and indexes
-            // Slots will be removed when the text caret is at the end of a slot and there is no text selection
-            // we delete slots only when there is an operator between the current slot, and the next flat (UI) slot.      
-            if((selectionStart == selectionEnd) && focusSlotCursorInfos && anchorSlotCursorInfos 
-                && ((isForwardDeletion && focusSlotCursorInfos.cursorPos == this.code.length && nextSlotInfos) || (!isForwardDeletion && focusSlotCursorInfos.cursorPos == 0 && previousSlotInfos))){
-                this.appStore.ignoreKeyEvent = true;
-                this.appStore.bypassEditableSlotBlurErrorCheck = true;
-                document.getElementById(this.UIID)?.blur();
-                
-                const deleteSlotOffset = (isForwardDeletion) ? 1 : -1;
-                const deleteFromIndex = getSlotParentIdAndIndexSplit(this.slotId).slotIndex + deleteSlotOffset;
-                const isDeletingFromString = (this.slotType == SlotType.string);
-                // if we are deleting from a string, we start from a reference cursor position or code length of 0 and only use offset to reposition the cursor
-                const backDeletionCharactersToRetainCount = (isDeletingFromString) ? 0 : this.code.length;
-                const referenceCursorPos = (isDeletingFromString) 
-                    ? 0 
-                    : focusSlotCursorInfos.cursorPos;
-                const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo, deleteFromIndex, deleteFromIndex);
-                
-                // Restore the text cursor position (need to wait for reactive changes)
-                this.$nextTick(() => {
-                    const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                    const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
-                    let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
-                    const slotUIID = getLabelSlotUIID(newSlotInfos); 
-                    const inputSpanField = document.getElementById(slotUIID) as HTMLSpanElement;
-                    const newTextCursorPos = (isForwardDeletion) 
-                        ? referenceCursorPos + cursorPosOffset 
-                        : ((inputSpanField.textContent??"").length - cursorPosOffset - backDeletionCharactersToRetainCount); 
-                    const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
-                    const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newTextCursorPos};
-                    document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
-                    setDocumentSelection(slotCursorInfos, slotCursorInfos);
-                    this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
-                    this.appStore.bypassEditableSlotBlurErrorCheck = false;
 
-                    // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                    this.$emit("requestSlotsRefactoring", slotUIID);
-                });                                
-            }
-            else{
-                // We are deleting text: we only need to update the slot content and the text cursor position
-                const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
-                const inputSpanFieldContent = inputSpanField.textContent ?? "";
-                let newTextCursorPos = selectionStart;
-                if(selectionEnd != selectionStart){
-                    // There is a text selection: it doesn't matter if we are using "del" or "backspace", the result is the same
-                    inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + inputSpanFieldContent.substring(selectionEnd);     
-                    // The cursor position may change, so we updated it in the store. 
-                    this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: selectionStart}, {slotInfos: this.coreSlotInfo, cursorPos: selectionStart});             
-                }
-                else if(!((isForwardDeletion && focusSlotCursorInfos?.cursorPos == this.code.length) || (!isForwardDeletion && focusSlotCursorInfos?.cursorPos == 0))){
-                    const deletionOffset = (isForwardDeletion) ? 0 : -1;
-                    newTextCursorPos += deletionOffset;
-                    inputSpanField.textContent = inputSpanFieldContent.substring(0, newTextCursorPos) + inputSpanFieldContent.substring(newTextCursorPos + 1);  
-                    // The cursor position changes, so we updated it in the store. 
-                    this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos}, {slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos});                                 
+            if(focusSlotCursorInfos && anchorSlotCursorInfos){
+                const isSelectingMultiSlots = !areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos);
+
+                // Without selection, a slot will be removed when the text caret is at the end of a slot and there is no text selection
+                // we delete slots only when there is an operator between the current slot, and the next flat (UI) slot.      
+                if(!isSelectingMultiSlots && (selectionStart == selectionEnd) 
+                    && ((isForwardDeletion && focusSlotCursorInfos.cursorPos == this.code.length && nextSlotInfos) || (!isForwardDeletion && focusSlotCursorInfos.cursorPos == 0 && previousSlotInfos))){
+                    this.appStore.bypassEditableSlotBlurErrorCheck = true;
+                    
+                    const isDeletingFromString = (this.slotType == SlotType.string);
+                    // if we are deleting from a string, we start from a reference cursor position or code length of 0 and only use offset to reposition the cursor
+                    const backDeletionCharactersToRetainCount = (isDeletingFromString) ? 0 : this.code.length;
+                    const referenceCursorPos = (isDeletingFromString) 
+                        ? 0 
+                        : focusSlotCursorInfos.cursorPos;
+                    const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);
+                    
+                    // Restore the text cursor position (need to wait for reactive changes)
+                    this.$nextTick(() => {
+                        const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
+                        const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                        let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                        const slotUIID = getLabelSlotUIID(newSlotInfos); 
+                        const inputSpanField = document.getElementById(slotUIID) as HTMLSpanElement;
+                        const newTextCursorPos = (isForwardDeletion) 
+                            ? referenceCursorPos + cursorPosOffset 
+                            : ((inputSpanField.textContent??"").length - cursorPosOffset - backDeletionCharactersToRetainCount); 
+                        const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                        const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newTextCursorPos};
+                        document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                        setDocumentSelection(slotCursorInfos, slotCursorInfos);
+                        this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
+                        this.appStore.bypassEditableSlotBlurErrorCheck = false;
+
+                        // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
+                        this.$emit("requestSlotsRefactoring", slotUIID);
+                    });                                
                 }
                 else{
-                    // Do nothing if there is actual change
-                    return;
-                }
+                    // We are deleting some code, several cases can happen:
+                    // there is a selection of text (case A) or slots (case B) (i.e. within one slot / across slots)
+                    // simply remove a character within a slot (case C)
+                    // We are deleting text within one slot: we only need to update the slot content and the text cursor position
+                    const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
+                    const inputSpanFieldContent = inputSpanField.textContent ?? "";
+                    let newTextCursorPos = selectionStart;
+                    if(selectionEnd != selectionStart || isSelectingMultiSlots){
+                        // We are deleting a selection. We need to see if we are also deleting slots (case B) or just text within one slot (case A).
+                        // It doesn't matter if we are using "del" or "backspace", the result is the same.
+                        if(!isSelectingMultiSlots){
+                            // Case A, simply delete the text selection within one slot
+                            inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + inputSpanFieldContent.substring(selectionEnd);
+                            //The cursor position may change, so we update it in the store.
+                            this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: selectionStart}, {slotInfos: this.coreSlotInfo, cursorPos: selectionStart});             
+                        }
+                        else{
+                            // Case B: we are deleteing a selection spanning across several slots
+                            const anchorOffset = anchorSlotCursorInfos.cursorPos;
+                            const {newSlotId} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);                    
+                            // Restore the text cursor position (need to wait for reactive changes)
+                            this.$nextTick(() => {
+                                const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
+                                const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                                //let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                                //const slotUIID = getLabelSlotUIID(newSlotInfos); 
+                                const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                                const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: anchorOffset};
+                                document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                                setDocumentSelection(slotCursorInfos, slotCursorInfos);
+                                this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
+                            });
+                        }
+                    }
+                    else if(!((isForwardDeletion && focusSlotCursorInfos?.cursorPos == this.code.length) || (!isForwardDeletion && focusSlotCursorInfos?.cursorPos == 0))){
+                        const deletionOffset = (isForwardDeletion) ? 0 : -1;
+                        newTextCursorPos += deletionOffset;
+                        inputSpanField.textContent = inputSpanFieldContent.substring(0, newTextCursorPos) + inputSpanFieldContent.substring(newTextCursorPos + 1);  
+                        // The cursor position changes, so we updated it in the store. 
+                        this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos}, {slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos});                                 
+                    }
+                    else{
+                        // Do nothing if there is no actual change
+                        return;
+                    }
 
-                // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID));
+                    // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
+                    this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID));
+                }
             }            
         },
 
