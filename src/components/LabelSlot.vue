@@ -22,7 +22,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @paste.prevent.stop="onCodePaste($event)"
-            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, error: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
+            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
             :id="UIID"
             :key="UIID"
             :style="spanStyle"
@@ -881,6 +881,12 @@ export default Vue.extend({
     content: attr(placeholder);
     font-style: italic;
     color: #757575;
+}
+
+.errorSlot {
+    display: inline-block;
+    position:relative;
+    background: url("~@/assets/images/wave.png") bottom repeat-x;
 }
 
 .bold {
