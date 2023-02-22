@@ -981,7 +981,7 @@ export const useStore = defineStore("app", {
                                     : parentSlot.operators[deleteOperatorsFromIndex].code.substring(0, 1 + parentSlot.operators[deleteOperatorsFromIndex].code.lastIndexOf(" ", parentSlot.operators[deleteOperatorsFromIndex].code.length - 2));
                                 return {
                                     newSlotId: currentSlotInfos.slotId,
-                                    cursorPosOffset: isForwardDeletion ? (parentSlot.fields[slotIndex] as BaseSlot).code.length : 0,
+                                    cursorPosOffset: 0,
                                 };
                             }
                         }                    
