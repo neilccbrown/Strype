@@ -976,9 +976,9 @@ export const useStore = defineStore("app", {
                             // Get the adjacent operator and check whether it has a space in it:
                             const deleteOperatorsFromIndex = (isForwardDeletion) ? slotIndex : slotIndex - 1;
                             if (parentSlot.operators[deleteOperatorsFromIndex]?.code?.trim()?.includes(" ")) {
-                                parentSlot.operators[deleteOperatorsFromIndex].code = isForwardDeletion ?
-                                    parentSlot.operators[deleteOperatorsFromIndex].code.substring(parentSlot.operators[deleteOperatorsFromIndex].code.indexOf(" ", 1))
-                                    : parentSlot.operators[deleteOperatorsFromIndex].code.substring(0, 1 + parentSlot.operators[deleteOperatorsFromIndex].code.lastIndexOf(" ", parentSlot.operators[deleteOperatorsFromIndex].code.length - 2));
+                                parentSlot.operators[deleteOperatorsFromIndex].code = (isForwardDeletion) 
+                                    ? parentSlot.operators[deleteOperatorsFromIndex].code.substring(parentSlot.operators[deleteOperatorsFromIndex].code.indexOf(" ") + 1)
+                                    : parentSlot.operators[deleteOperatorsFromIndex].code.substring(0, parentSlot.operators[deleteOperatorsFromIndex].code.lastIndexOf(" ", parentSlot.operators[deleteOperatorsFromIndex].code.length - 2));
                                 return {
                                     newSlotId: currentSlotInfos.slotId,
                                     cursorPosOffset: 0,
