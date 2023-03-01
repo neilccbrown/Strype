@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getSlotParentIdAndIndexSplit } from "./storeMethods";
 
@@ -9,6 +9,8 @@ export const undoMaxSteps = 50;
 export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
+    editableSlotGotCaret= "slotGotCaret",
+    editableSlotLostCaret = "slotLostCaret",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
@@ -87,14 +89,13 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the start of the selection.
     let caretPos = 0;
-    const sel = window.getSelection();
+    const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
         if (range.commonAncestorContainer.parentNode == htmlElement) {
             caretPos = range.startOffset;
         }
     }
-    
     return caretPos;
 }
 
@@ -102,7 +103,7 @@ export function getTextEndCursorPositionOfHTMLElement(htmlElement: HTMLSpanEleme
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the end of the selection.
     let caretPos = 0;
-    const sel = window.getSelection();
+    const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
         if (range.commonAncestorContainer.parentNode == htmlElement) {
@@ -141,17 +142,32 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: strin
     return {selectionStart: -1, selectionEnd: -1};
 }
 
-export function setTextCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement, position: number): void {
-    const range = document.createRange();  
-    if(htmlElement.firstChild){
-        range.setStart(htmlElement.firstChild, position);
-        const sel = window.getSelection();
-        if(sel) {
-            range.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        } 
-    }
+export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCursorInfos: SlotCursorInfos): void{
+    const anchorElement = document.getElementById(getLabelSlotUIID(anchorCursorInfos.slotInfos));
+    const focusElement = document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos));
+    if(anchorElement && focusElement){
+        // Before doing the selection, we make sure that we can use the given slot cursor infos:
+        // when a slot is empty, the span element doesn't have a firstChild attribute. In this case,
+        // the node for the selection that we use is the span itself relative its parent.
+        // (a span isn't directly contained in the contenteditable div )
+        const anchorNode = ((anchorElement.textContent??"").length > 0)
+            ? anchorElement.firstChild as Node
+            : anchorElement.parentElement as Node;
+
+        const anchorOffset = ((anchorElement.textContent??"").length > 0) 
+            ? anchorCursorInfos.cursorPos
+            : Object.values(anchorNode.childNodes).findIndex((node: any) => node.id === anchorElement.id);
+
+        const focusNode = ((focusElement.textContent??"").length > 0)
+            ? focusElement.firstChild as Node
+            : focusElement.parentElement as Node;
+            
+        const focusOffset = ((focusElement.textContent??"").length > 0) 
+            ? focusCursorInfos.cursorPos
+            : Object.values(focusNode.childNodes).findIndex((node: any) => node.id === focusElement.id);
+
+        document.getSelection()?.setBaseAndExtent(anchorNode, anchorOffset, focusNode, focusOffset);
+    }    
 }
 
 export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: number): string{
@@ -511,6 +527,28 @@ export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", 
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
 
 
+// We construct the list of all operator with a specific order: first the spaced keyword operators, 
+// then the double symbolic operators and lastly the unitary symbolic operators. We put double operators
+// first so that they are found first in the search for operators.
+interface OpDef {
+    match: string; // The match to search for
+    keywordOperator : boolean; // Whether the operator is a keyword operator
+}
+interface OpFound extends OpDef {
+    pos: number; // The position of the match (0 = first character in string)
+    length: number; // The length of the match in characters within the string
+}
+
+const allOperators: OpDef[] = [
+    ...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
+        return {match: opSpace, keywordOperator: true} as OpDef;
+    }),
+    ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
+        return {match: o, keywordOperator: false} as OpDef;
+    }),
+];
+    
+
 // Brackets: order inside each array is important, keep matching opening and closing tokens
 export const openBracketCharacters = ["(","{","["];
 export const closeBracketCharacters = [")","}","]"];
@@ -765,23 +803,6 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
             (...params) => blankReplacer(3, ["."], ...params));
 
     const resStructSlot: SlotsStructure = {fields: [], operators:[]};
-    // We construct the list of all operator with a specific order: first the spaced keyword operators, 
-    // then the double symbolic operators and lastly the unitary symbolic operators. We put double operators
-    // first so that they are found first in the search for operators.
-    interface OpDef {
-        match: string; // The match to search for
-        keywordOperator : boolean; // Whether the operator is a keyword operator
-    }
-    interface OpFound extends OpDef {
-        pos: number; // The position of the match (0 = first character in string)
-        length: number; // The length of the match in characters within the string
-    }
-    const allOperators: OpDef[] = [...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
-        return {match: opSpace, keywordOperator: true} as OpDef;
-    }),
-    ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
-        return {match: o, keywordOperator: false} as OpDef;
-    })];
     let hasOperator = true;
     let lookOffset = 0;
     // "u" flag is necessary for unicode escapes
@@ -834,15 +855,26 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
                 }
                 else {
                     resStructSlot.fields.push({code: fieldContent.trim()});
+                    // Update the cursor position as the LHS may have been trimmed
+                    // (only the cursor is passed the position)
+                    if((cursorPos??0)>firstOperator.pos) {
+                        cursorOffset += (fieldContent.trim().length - fieldContent.length);
+                    }
                 }
-                resStructSlot.operators.push({code: firstOperator.match});
+                resStructSlot.operators.push({code: firstOperator.match.trim()});
+                // If there was some spaces between the operator and the RHS, they will be removed so we need to account for them
+                // (only the cursor is passed the position)
+                if((cursorPos??0)>firstOperator.pos) {
+                    const operatorTrimmedStart = firstOperator.match.trimStart();
+                    cursorOffset += (operatorTrimmedStart.trim().length - operatorTrimmedStart.length);
+                }
                 lookOffset = firstOperator.pos + firstOperator.length;
             }
         }
     }
     // As we always have at least 1 field, and operators contained between fields, we need to add the trimming field 
     // (and we also need to remove "dead" closing brackets)
-    let code = codeLiteral.substring(lookOffset);
+    let code = codeLiteral.substring(lookOffset).trimStart();
     closeBracketCharacters.forEach((closingBracket) => {
         code = code.replaceAll(closingBracket, () => {
             cursorOffset += -1;

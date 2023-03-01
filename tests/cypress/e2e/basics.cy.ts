@@ -124,7 +124,7 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
  */
 function sanityCheck() : void {
     // Check exactly one caret visible or focused input field:
-    cy.get(".caret:not(.invisible),.labelSlot-input:focus").should("have.length", 1);
+    cy.get(".caret:not(.invisible),.label-slot-container:focus").should("have.length", 1);
 }
 
 /**

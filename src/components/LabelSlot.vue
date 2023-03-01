@@ -1,17 +1,14 @@
 <template>
-    <div :class="{'next-to-eachother labelSlot-container': true, nohover: isDraggingFrame}">
+    <div :id="'div_'+UIID" :class="{'next-to-eachother labelSlot-container': true, nohover: isDraggingFrame}">
         <span
             autocomplete="off"
             spellcheck="false"
-            :contenteditable="isEditableSlot"
             :disabled="isDisabled"
             :placeholder="defaultText"
-            v-focus="focused"
-            @click.stop
-            @focus="onFocus"
-            @blur="onBlur"
-            @keydown.left="onLRKeyDown($event)"
-            @keydown.right="onLRKeyDown($event)"
+            :contenteditable="isEditableSlot"
+            @click.stop="onGetCaret"
+            @slotGotCaret="onGetCaret"
+            @slotLostCaret="onLoseCaret"
             @keydown.up.prevent.stop="onUDKeyDown($event)"
             @keydown.down.prevent.stop="onUDKeyDown($event)"
             @keydown.prevent.stop.esc
@@ -41,6 +38,7 @@
             triggers="hover focus"
             :content="errorMessage"
             custom-class="error-popover"
+            placement="bottom"
         >
         </b-popover>
 
@@ -64,11 +62,11 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, setTextCursorPositionOfHTMLElement, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, EditableSlotReachInfos, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos} from "@/types/types";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID } from "@/helpers/editor";
+import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 
 export default Vue.extend({
@@ -93,11 +91,16 @@ export default Vue.extend({
     },
 
     beforeUpdate(){
-        // The property "code" is reactive, but for some reason, the DOM isn't updated.
-        // So we do it ourselves here when the value of "code" changes.
+        // If the text isn't set again here, despite "code" being reactive, we end up with "duplicated" insert with operators.
         const spanElement = document.getElementById(this.UIID);
-        if(spanElement){ // Keep TS happy
+        if(spanElement && this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos){ // Keep TS happy
+            const prevTextContent = spanElement.textContent;
             spanElement.textContent = this.code;
+            // After changing the code here, FF requires the right caret position to be reassigned, otherwise the caret moves back to the first
+            // position. The condition ensure we do this only for the right slot, and when the text is in line with the selection we are going to set.
+            if(areSlotCoreInfosEqual(this.appStore.focusSlotCursorInfos.slotInfos, this.coreSlotInfo) && prevTextContent === this.code){
+                setDocumentSelection(this.appStore.anchorSlotCursorInfos, this.appStore.focusSlotCursorInfos);
+            }
         }
     },
 
@@ -230,41 +233,6 @@ export default Vue.extend({
         },
     },
 
-    directives: {
-        // NOTE: it looks like in directives pinia store are not yet defined, so we don't use the mapStores() here
-        focus: {
-            //This is needed to set the focus when a frame with slots has just been added (i.e. when `leftRightKey` is called after `addFrameWithCommand` in Commands.vue)
-            inserted: function (el,binding) {
-                if(binding.value) {
-                    //when entering a new editableslot, we make sure to reset the flag informing how the slot has been reache
-                    useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
-                    el.focus();
-                }
-            },
-            // Used so the store can set the focus of this element
-            componentUpdated: function (el, binding) {
-                if(binding.value !== binding.oldValue) {
-                    if(binding.value){
-                        //when a slot gains focus, we check that it was reached via keyboard: if so, depending on the reaching direction
-                        //we set the text cursor to the start or the end of the text. When it's not reached via keyboard (i.e. via mouse)
-                        //we don't change the cursor ourselves as it will be set where the user clicked at.
-                        const editableSlotReachingInfo: EditableSlotReachInfos = useStore().editableSlotViaKeyboard;
-                        if(editableSlotReachingInfo.isKeyboard){
-                            const cursorPos = (editableSlotReachingInfo.direction === -1) ? ((el as HTMLSpanElement).textContent?.length??0) : 0;
-                            setTextCursorPositionOfHTMLElement(el, cursorPos);
-                            //reset the flag informing how the slot has been reached
-                            useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
-                        }
-                        el.focus();
-                    }
-                    else {
-                        el.blur();
-                    }
-                }
-            },
-        },
-    },
-
     methods: {
         getSlotContent(): string{
             // If the input span hasn't yet be created, we return an empty string
@@ -323,10 +291,9 @@ export default Vue.extend({
 
             // The cursor position is not maintained because of the changes in the store and reactivity
             // so we reposition it correctly, at the next tick (because code needs to be updated first)
-            // Note that we need to retrieve the span again as the slot type, hence the span id might
-            // have changed (when for example changing from a generic code value to a number literal)
-            this.$nextTick(() => {  
-                setTextCursorPositionOfHTMLElement(document.getElementById(this.UIID) as HTMLSpanElement, this.textCursorPos);
+            this.$nextTick(() => {
+                const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
+                setDocumentSelection(slotCursorInfo, slotCursorInfo);
             });
 
             this.isFirstChange = false;
@@ -337,8 +304,9 @@ export default Vue.extend({
             return this.isFirstChange && this.appStore.isErroneousSlot(this.coreSlotInfo);
         },
 
-        //Apparently focus happens first before blur when moving from one slot to another.
-        onFocus(): void {
+        // Event callback equivalent to what would happen for a focus event callback 
+        // (the spans don't get focus anymore because the containg editable div grab it)
+        onGetCaret(): void {
             this.isFirstChange = true;
             //reset the AC context
             resetCurrentContextAC();
@@ -353,13 +321,16 @@ export default Vue.extend({
             useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
         },
 
-        onBlur(): void {
+
+        // Event callback equivalent to what would happen for a blur event callback 
+        // (the spans don't get focus anymore because the containg editable div grab it)
+        onLoseCaret(): void {
             // Before anything, we make sure that the current frame still exists.
             if(this.appStore.frameObjects[this.frameId] != undefined){
                 if(!this.debugAC) {
                     this.showAC = false;
                     this.acRequested = false;
-                    if(this.appStore.bypassEditableSlotBlurErrorCheck){
+                    if(this.appStore.bypassEditableSlotBlurErrorCheck || this.appStore.isSelectingMultiSlots){
                         this.appStore.setEditableFocus(
                             {
                                 ...this.coreSlotInfo,
@@ -381,7 +352,8 @@ export default Vue.extend({
                     this.isFirstChange = true;
 
                     // As we leave a slot, we reset the slot cursor infos EXCEPT when the keyboard event is ignored
-                    if(!this.appStore.ignoreKeyEvent){
+                    // or when we are doing multislot selection
+                    if(!this.appStore.ignoreKeyEvent && !this.appStore.isSelectingMultiSlots){
                         this.appStore.setSlotTextCursors(undefined, undefined);
                     }
                     this.appStore.ignoreKeyEvent = false;
@@ -389,39 +361,8 @@ export default Vue.extend({
             }
         },
 
-        onLRKeyDown(event: KeyboardEvent) {
-            //get the input field
-            const spanInput: HTMLSpanElement = this.$el.firstElementChild as HTMLSpanElement;
-            if(spanInput !== undefined){
-                const textCaretPos = getTextStartCursorPositionOfHTMLElement(spanInput);
-
-                // If we're trying to go off the bounds of this slot
-                if((textCaretPos == 0 && event.key==="ArrowLeft") 
-                        || (textCaretPos === ((spanInput.textContent?.length)??0) && event.key==="ArrowRight")
-                        || (event.key === "Enter" )) {
-                    // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
-                    this.appStore.ignoreKeyEvent=true;
-                    this.appStore.leftRightKey(
-                        {
-                            key: event.key,
-                        }
-                    );                        
-                }
-                // If a key modifier (ctrl, shift, alt or meta) is pressed, we don't do anything special (browser handles it)                        
-                else if(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey){
-                    return;
-                }
-                else {
-                    //no specific action to take, we just move the cursor to the left or to the right
-                    const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
-                    setTextCursorPositionOfHTMLElement(spanInput, textCaretPos + incrementStep);
-                }
-            }
-            event.preventDefault();
-            event.stopImmediatePropagation();            
-        },
-
         onUDKeyDown(event: KeyboardEvent) {
+            this.appStore.isSelectingMultiSlots = false; // reset the flag
             //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
                 // If the AutoCompletion is on we just browse through it's contents
@@ -432,12 +373,22 @@ export default Vue.extend({
                 }
                 // Else we move the caret
                 else {  
-                    // In any case the focus is lost, and the caret is shown (below by default)
-                    this.onBlur();
+                    // In any case the focus is lost, and the caret is shown (visually below by default)
+                    this.onLoseCaret();
                     //If the up arrow is pressed you need to move the caret as well.
                     if( event.key === "ArrowUp" ) {
                         this.appStore.changeCaretPosition(event.key);
                     }
+                    else{
+                        // Restore the caret visibility
+                        this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
+                    }
+
+                    // Make sure there is no longer a selection
+                    this.appStore.setSlotTextCursors(undefined, undefined);
+                    document.getSelection()?.removeAllRanges();
+
+                    this.appStore.ignoreKeyEvent = true;
                 }
             }
         },
@@ -481,7 +432,14 @@ export default Vue.extend({
             // (for Enter --> we use onLRKeyDown(); for Tab --> we don't do anything special, keep the default browser behaviour)
             else {
                 if(event.key == "Enter") {
-                    this.onLRKeyDown(event);
+                    // Pretend we move the caret to the last possible position of this side
+                    const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
+                    this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
+                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                        new KeyboardEvent("keydown", {
+                            key: "ArrowRight",
+                        })
+                    );
                 }
             }
             this.showAC = this.debugAC;
@@ -514,7 +472,12 @@ export default Vue.extend({
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
             if(((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.varassign && this.labelSlotsIndex === 0){
-                this.onLRKeyDown(new KeyboardEvent("keydown", { key: "Enter" })); // simulate an Enter press to make sure we go to the next slot
+                // Simulate a right arrow key press to make sure we go to the next slot
+                document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                    new KeyboardEvent(event.type, {
+                        key: "ArrowRight",
+                    })
+                );
                 event.preventDefault();
                 event.stopPropagation();
             }
@@ -531,23 +494,26 @@ export default Vue.extend({
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
             // First we check closing brackets or quote as they have a specifc behaviour, then keep working out the other things
             else if((closeBracketCharacters.includes(event.key) && !isFieldStringSlot(currentSlot)) || (isFieldStringSlot(currentSlot) && stringQuoteCharacters.includes(event.key))){
-                // Closing bracket / quote: key hits are ignored except for espcaing a quote in a string
+                // Closing bracket / quote: key hits are ignored except for escaping a quote in a string
                 // However, when no text is highlighted and we are just before that same closing bracket / quote (no text between text cursor and bracket)
                 // we move the text cursor in the next slot, as we consider the user closed an existing already closed bracket / quote.
                 let shouldMoveToNextSlot = (selectionStart == selectionEnd);
+                // Checking if we are escaping the quote used for this string (i.e. we are after an escaping \, and there is no quote following the caret)
                 const isEscapingString = isFieldStringSlot(currentSlot) && currentStartTextCursor > 0 && (getNumPrecedingBackslashes(inputSpanFieldContent, currentStartTextCursor) % 2) == 1
-                    || (currentStartTextCursor < inputSpanFieldContent.length && inputSpanFieldContent[currentStartTextCursor]!= event.key);
+                    && ((currentStartTextCursor < inputSpanFieldContent.length && inputSpanFieldContent[currentStartTextCursor]!= event.key) || currentStartTextCursor == inputSpanFieldContent.length);
                 if(isEscapingString){
+                    this.insertSimpleTypedKey(event.key, true);
                     return;
                 }
                 if(shouldMoveToNextSlot){
-                    if(stringQuoteCharacters.includes(event.key)){
+                    if(isFieldStringSlot(currentSlot)){
                         // Check for string quotes first, note that contrary to brackets, trailing spaces in a string are meaningful
                         shouldMoveToNextSlot = currentStartTextCursor == inputSpanFieldContent.length 
                             && (currentSlot as StringSlot).quote == event.key;
                         if(!shouldMoveToNextSlot && (currentSlot as StringSlot).quote != event.key){
                             // If a quote that is NOT the same as this slot's quote was typed, we can add it.
                             // So, we just don't do anything special in that situation.
+                            this.insertSimpleTypedKey(event.key, true);
                             return;
                         }
                     }
@@ -563,21 +529,16 @@ export default Vue.extend({
                         this.$nextTick(() => {
                             if(nextSlotInfos){
                                 //Should always find something because a bracket or a string slot are followed by a text slot
-                                const afterBracketOrStringSlot = (document.getElementById(getLabelSlotUIID({...this.coreSlotInfo, slotId: nextSlotInfos.slotId, slotType: nextSlotInfos.slotType})) as HTMLSpanElement);
-                                this.appStore.editableSlotViaKeyboard.isKeyboard = true; // in order to get the focused editable subslot performing the bracket checks in onFocus()
-                                afterBracketOrStringSlot.focus();
-                                setTextCursorPositionOfHTMLElement(afterBracketOrStringSlot, 0);
+                                const afterBracketOrStringSlotCursorInfo: SlotCursorInfos = {slotInfos: {...this.coreSlotInfo, slotId: nextSlotInfos.slotId, slotType: nextSlotInfos.slotType}, cursorPos: 0};
+                                this.appStore.editableSlotViaKeyboard.isKeyboard = true; // in order to get the focused editable subslot performing the bracket checks in onGetCaret()
+                                document.getElementById(getLabelSlotUIID(afterBracketOrStringSlotCursorInfo.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                                this.appStore.setSlotTextCursors(afterBracketOrStringSlotCursorInfo, afterBracketOrStringSlotCursorInfo);
                             }               
                         });
                     }
                 }
                 event.preventDefault();
                 event.stopImmediatePropagation();
-            }
-            // Check that if we are in a string slot, all characters but the quote of that string are allowed
-            // note: string quotes logic is already handled by checking the closing brackets/quotes above
-            else if(isFieldStringSlot(currentSlot) && (currentSlot as StringSlot).quote != event.key) {
-                return;
             }
             else{
                 // In any other scenario, we capture the key ourselves to handle the UI changes
@@ -586,17 +547,26 @@ export default Vue.extend({
                 this.appStore.ignoreKeyEvent = true;
                 let insertKey = true;
 
-                // Brackets, quotes or operators have been typed. For operators:
-                // a symbol style operator is either one by itself or the second character of one operator (e.g. "=="),
-                // a text style operator is detected in the slot (eg " and "), we split the slot to insert that operator
-                // In Python, "!" is NOT an operator, but "!=" is. Therefore we need to deal with "!" here if it composes "!=".
-                let textualOperator  = ""; // we need this to be able to find out which textual operator we have found
-                let potentialOutput = inputSpanFieldContent.substring(0, currentStartTextCursor) + event.key + inputSpanFieldContent.substring(currentEndTextCursor);
-                const isSymbolicOperator = operators.includes(event.key);
-                const isBang = (event.key === "!");
-                const isBracket = openBracketCharacters.includes(event.key);
-                const isStringQuote = stringQuoteCharacters.includes(event.key);
-                if(isSymbolicOperator 
+                // Check that if we are in a string slot, all characters but the quote of that string are allowed
+                // note: string quotes logic is already handled by checking the closing brackets/quotes above
+                if(isFieldStringSlot(currentSlot)) {
+                    if((currentSlot as StringSlot).quote == event.key){
+                        return;
+                    }
+                    this.insertSimpleTypedKey(event.key);
+                }
+                else{
+                    // Brackets, quotes or operators have been typed. For operators:
+                    // a symbol style operator is either one by itself or the second character of one operator (e.g. "=="),
+                    // a text style operator is detected in the slot (eg " and "), we split the slot to insert that operator
+                    // In Python, "!" is NOT an operator, but "!=" is. Therefore we need to deal with "!" here if it composes "!=".
+                    let textualOperator  = ""; // we need this to be able to find out which textual operator we have found
+                    let potentialOutput = inputSpanFieldContent.substring(0, currentStartTextCursor) + event.key + inputSpanFieldContent.substring(currentEndTextCursor);
+                    const isSymbolicOperator = operators.includes(event.key);
+                    const isBang = (event.key === "!");
+                    const isBracket = openBracketCharacters.includes(event.key);
+                    const isStringQuote = stringQuoteCharacters.includes(event.key);
+                    if(isSymbolicOperator 
                     || isBang
                     || keywordOperatorsWithSurroundSpaces.some((operator) => {
                         textualOperator = operator.trim();
@@ -604,44 +574,65 @@ export default Vue.extend({
                     })
                     || isBracket
                     || isStringQuote
-                ){
+                    ){
                     // If we are in the LHS of a function definition, of a variable assignment, of a for; or in an import, then we just don't allow 
                     // the operator, bracket or quote
-                    const forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.varassign, AllFrameTypesIdentifier.for].includes(this.frameType) 
+                        const forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.varassign, AllFrameTypesIdentifier.for].includes(this.frameType) 
                         && this.labelSlotsIndex == 0
                         || this.frameType == AllFrameTypesIdentifier.import;
-                    insertKey = !forbidOperator;
-                    if(!forbidOperator){
-                        if(isBracket || isStringQuote){
-                            insertKey = false;
-                            // add the counter part here, so the parser can work things out properly with slots
-                            inputSpanField.textContent = inputSpanFieldContent.substring(0, currentStartTextCursor)
+                        insertKey = !forbidOperator;
+                        if(!forbidOperator){
+                            if(isBracket || isStringQuote){
+                                insertKey = false;
+                                // add the counter part here, so the parser can work things out properly with slots
+                                inputSpanField.textContent = inputSpanFieldContent.substring(0, currentStartTextCursor)
                                     + event.key 
                                     + inputSpanFieldContent.substring(selectionStart, selectionEnd) 
                                     + ((isBracket) ? getMatchingBracket(event.key, true) : event.key)
                                     + inputSpanFieldContent.substring(currentStartTextCursor + (selectionEnd - selectionStart));
-                            // If there is no text selection, we "autocomplete" the opening token and want to get after it, into the structure, at position 0
-                            // if there text selection, we are wrapping the text with the tokens and we want to get after the closing token
-                            const newPos = (selectionStart == selectionEnd) ? selectionStart + 1 : (currentStartTextCursor + 2 + (selectionEnd -  selectionStart));
-                            this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
-                        }               
+                                // If there is no text selection, we "autocomplete" the opening token and want to get after it, into the structure, at position 0
+                                // if there text selection, we are wrapping the text with the tokens and we want to get after the closing token
+                                const newPos = (selectionStart == selectionEnd) ? selectionStart + 1 : (currentStartTextCursor + 2 + (selectionEnd -  selectionStart));
+                                this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
+                            }               
+                        }
+                    }
+                    if(insertKey){
+                    // Add the typed key manually
+                        this.insertSimpleTypedKey(event.key);
                     }
                 }
-                if(insertKey){
-                    // Add the typed key manuall
-                    inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart)
-                        + event.key 
-                        + inputSpanFieldContent.substring(selectionEnd);
-                    // Update the focus cusor infos (to the next character position)
-                    const newPos = selectionStart + 1;
-                    this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
-                }
-
                 // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
                 // let the parsing and slot factorisation do the checkup later
                 // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
                 this.$emit("requestSlotsRefactoring", this.UIID);
             }            
+        },
+
+        insertSimpleTypedKey(keyValue: string, forcedInsert?: boolean){
+            const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
+            const inputSpanFieldContent = inputSpanField.textContent ?? "";  
+            const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
+            inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart)
+                        + keyValue 
+                        + inputSpanFieldContent.substring(selectionEnd);
+            // Update the focus cusor infos (to the next character position)
+            const newPos = selectionStart + 1;
+            this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos}); 
+            // In some cases (i.e. editing inside a string) we do not call the slot refactoring which will handle the selection properly 
+            if(forcedInsert){
+                this.appStore.setFrameEditableSlotContent(
+                    {
+                        ...this.coreSlotInfo,
+                        code: inputSpanField.textContent,
+                        initCode: this.initCode,
+                        isFirstChange: this.isFirstChange,
+                    }
+                ).then(() => {
+                    const slotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: newPos};
+                    setDocumentSelection(slotCursorInfos, slotCursorInfos);
+                });
+            }          
         },
 
         onCodePaste(event: ClipboardEvent){
@@ -687,7 +678,7 @@ export default Vue.extend({
             }
         },
 
-        deleteSlots(event: KeyboardEvent, focusSlotCursorInfo?: SlotCursorInfos){            
+        deleteSlots(event: KeyboardEvent){            
             event.preventDefault();
             event.stopImmediatePropagation();
             this.appStore.ignoreKeyEvent = true;
@@ -698,74 +689,95 @@ export default Vue.extend({
             const nextSlotInfos = getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true);
             const previousSlotInfos = getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, false);
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
- 
-            //TODO this condition will need to be corrected when using multi slot selection
-            //as well as the logic to get the code and indexes
-            // Slots will be removed when the text caret is at the end of a slot and there is no text selection
-            // we delete slots only when there is an operator between the current slot, and the next flat (UI) slot.      
-            if((selectionStart == selectionEnd) && focusSlotCursorInfos && anchorSlotCursorInfos 
-                && ((isForwardDeletion && focusSlotCursorInfos.cursorPos == this.code.length && nextSlotInfos) || (!isForwardDeletion && focusSlotCursorInfos.cursorPos == 0 && previousSlotInfos))){
-                this.appStore.ignoreKeyEvent = true;
-                this.appStore.bypassEditableSlotBlurErrorCheck = true;
-                document.getElementById(this.UIID)?.blur();
-                
-                const deleteSlotOffset = (isForwardDeletion) ? 1 : -1;
-                const deleteFromIndex = getSlotParentIdAndIndexSplit(this.slotId).slotIndex + deleteSlotOffset;
-                const isDeletingFromString = (this.slotType == SlotType.string);
-                // if we are deleting from a string, we start from a reference cursor position or code length of 0 and only use offset to reposition the cursor
-                const backDeletionCharactersToRetainCount = (isDeletingFromString) ? 0 : this.code.length;
-                const referenceCursorPos = (isDeletingFromString) 
-                    ? 0 
-                    : focusSlotCursorInfos.cursorPos;
-                const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo, deleteFromIndex, deleteFromIndex);
-                
-                // Restore the text cursor position (need to wait for reactive changes)
-                this.$nextTick(() => {
-                    const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                    const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
-                    let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
-                    const slotUIID = getLabelSlotUIID(newSlotInfos); 
-                    const inputSpanField = document.getElementById(slotUIID) as HTMLSpanElement;
-                    const newTextCursorPos = (isForwardDeletion) 
-                        ? referenceCursorPos + cursorPosOffset 
-                        : ((inputSpanField.textContent??"").length - cursorPosOffset - backDeletionCharactersToRetainCount); 
-                    if(inputSpanField){
-                        inputSpanField.focus();
-                        setTextCursorPositionOfHTMLElement(inputSpanField, newTextCursorPos);                
-                        const cursorInfos = {slotInfos: newSlotInfos, cursorPos: newTextCursorPos};
-                        this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
-                    }
-                    this.appStore.bypassEditableSlotBlurErrorCheck = false;
 
-                    // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                    this.$emit("requestSlotsRefactoring", slotUIID);
-                });                                
-            }
-            else{
-                // We are deleting text: we only need to update the slot content and the text cursor position
-                const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
-                const inputSpanFieldContent = inputSpanField.textContent ?? "";
-                let newTextCursorPos = selectionStart;
-                if(selectionEnd != selectionStart){
-                    // There is a text selection: it doesn't matter if we are using "del" or "backspace", the result is the same
-                    inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + inputSpanFieldContent.substring(selectionEnd);     
-                    // The cursor position may change, so we updated it in the store. 
-                    this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: selectionStart}, {slotInfos: this.coreSlotInfo, cursorPos: selectionStart});             
-                }
-                else if(!((isForwardDeletion && focusSlotCursorInfos?.cursorPos == this.code.length) || (!isForwardDeletion && focusSlotCursorInfos?.cursorPos == 0))){
-                    const deletionOffset = (isForwardDeletion) ? 0 : -1;
-                    newTextCursorPos += deletionOffset;
-                    inputSpanField.textContent = inputSpanFieldContent.substring(0, newTextCursorPos) + inputSpanFieldContent.substring(newTextCursorPos + 1);  
-                    // The cursor position changes, so we updated it in the store. 
-                    this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos}, {slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos});                                 
+            if(focusSlotCursorInfos && anchorSlotCursorInfos){
+                const isSelectingMultiSlots = !areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos);
+
+                // Without selection, a slot will be removed when the text caret is at the end of a slot and there is no text selection
+                // we delete slots only when there is an operator between the current slot, and the next flat (UI) slot.      
+                if(!isSelectingMultiSlots && (selectionStart == selectionEnd) 
+                    && ((isForwardDeletion && focusSlotCursorInfos.cursorPos == this.code.length && nextSlotInfos) || (!isForwardDeletion && focusSlotCursorInfos.cursorPos == 0 && previousSlotInfos))){
+                    this.appStore.bypassEditableSlotBlurErrorCheck = true;
+                    
+                    const isDeletingFromString = (this.slotType == SlotType.string);
+                    // if we are deleting from a string, we start from a reference cursor position or code length of 0 and only use offset to reposition the cursor
+                    const backDeletionCharactersToRetainCount = (isDeletingFromString) ? 0 : this.code.length;
+                    const referenceCursorPos = (isDeletingFromString) 
+                        ? 0 
+                        : focusSlotCursorInfos.cursorPos;
+                    const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);
+                    
+                    // Restore the text cursor position (need to wait for reactive changes)
+                    this.$nextTick(() => {
+                        const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
+                        const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                        let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                        const slotUIID = getLabelSlotUIID(newSlotInfos); 
+                        const inputSpanField = document.getElementById(slotUIID) as HTMLSpanElement;
+                        const newTextCursorPos = (isForwardDeletion) 
+                            ? referenceCursorPos + cursorPosOffset 
+                            : ((inputSpanField.textContent??"").length - cursorPosOffset - backDeletionCharactersToRetainCount); 
+                        const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                        const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newTextCursorPos};
+                        document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                        setDocumentSelection(slotCursorInfos, slotCursorInfos);
+                        this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
+                        this.appStore.bypassEditableSlotBlurErrorCheck = false;
+
+                        // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
+                        this.$emit("requestSlotsRefactoring", slotUIID);
+                    });                                
                 }
                 else{
-                    // Do nothing if there is actual change
-                    return;
-                }
+                    // We are deleting some code, several cases can happen:
+                    // there is a selection of text (case A) or slots (case B) (i.e. within one slot / across slots)
+                    // simply remove a character within a slot (case C)
+                    // We are deleting text within one slot: we only need to update the slot content and the text cursor position
+                    const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
+                    const inputSpanFieldContent = inputSpanField.textContent ?? "";
+                    let newTextCursorPos = selectionStart;
+                    if(selectionEnd != selectionStart || isSelectingMultiSlots){
+                        // We are deleting a selection. We need to see if we are also deleting slots (case B) or just text within one slot (case A).
+                        // It doesn't matter if we are using "del" or "backspace", the result is the same.
+                        if(!isSelectingMultiSlots){
+                            // Case A, simply delete the text selection within one slot
+                            inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + inputSpanFieldContent.substring(selectionEnd);
+                            //The cursor position may change, so we update it in the store.
+                            this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: selectionStart}, {slotInfos: this.coreSlotInfo, cursorPos: selectionStart});             
+                        }
+                        else{
+                            // Case B: we are deleteing a selection spanning across several slots
+                            const anchorOffset = anchorSlotCursorInfos.cursorPos;
+                            const {newSlotId} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);                    
+                            // Restore the text cursor position (need to wait for reactive changes)
+                            this.$nextTick(() => {
+                                const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
+                                const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                                //let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                                //const slotUIID = getLabelSlotUIID(newSlotInfos); 
+                                const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                                const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: anchorOffset};
+                                document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                                setDocumentSelection(slotCursorInfos, slotCursorInfos);
+                                this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
+                            });
+                        }
+                    }
+                    else if(!((isForwardDeletion && focusSlotCursorInfos?.cursorPos == this.code.length) || (!isForwardDeletion && focusSlotCursorInfos?.cursorPos == 0))){
+                        const deletionOffset = (isForwardDeletion) ? 0 : -1;
+                        newTextCursorPos += deletionOffset;
+                        inputSpanField.textContent = inputSpanFieldContent.substring(0, newTextCursorPos) + inputSpanFieldContent.substring(newTextCursorPos + 1);  
+                        // The cursor position changes, so we updated it in the store. 
+                        this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos}, {slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos});                                 
+                    }
+                    else{
+                        // Do nothing if there is no actual change
+                        return;
+                    }
 
-                // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID));
+                    // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
+                    this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID));
+                }
             }            
         },
 
@@ -785,13 +797,13 @@ export default Vue.extend({
             if(this.isFrameEmpty){
                 //if the user had already released the key up, no point waiting, we delete straight away
                 if(this.canBackspaceDeleteFrame){
-                    this.onBlur();
+                    this.onLoseCaret();
                     this.appStore.deleteFrameFromSlot(this.frameId);
                 }
                 else{        
                     setTimeout(() => {
                         if(this.stillBackSpaceDown){
-                            this.onBlur();
+                            this.onLoseCaret();
                             this.appStore.deleteFrameFromSlot(this.frameId);
                         }
                     }, 600);
@@ -861,6 +873,8 @@ export default Vue.extend({
     outline: none;
     cursor: text;
     white-space: pre;
+    user-select: text;
+    min-width: 3px;
 }
 
 .labelSlot-input:empty::before {
@@ -871,7 +885,7 @@ export default Vue.extend({
 
 .bold {
     font-weight: 600;
-    color: red !important;
+    color: black !important;
 }
 
 // Classes related to the different slot types (cf type.ts)

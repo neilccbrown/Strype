@@ -12,14 +12,13 @@ function assertState(expectedState : string) : void {
     
                 let text = p.value || p.textContent || "";
                 
-                if (p.getAttribute("contenteditable") == "true") {
-                    // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
-                    if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
-                        text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
-                    }
-                    if (!p.classList.contains("string-slot")) {
-                        text = "{" + text + "}";
-                    }
+                // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
+                if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
+                    text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
+                }
+                // Don't put curly brackets around strings, operators or brackets:
+                if (!p.classList.contains("string-slot") && !p.classList.contains("operator-slot") && !/[([)\]$]/.exec(p.textContent)) {
+                    text = "{" + text + "}";
                 }
                 s += text;
             }
@@ -40,6 +39,8 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
 
 function testInsert(insertion : string, result : string) : void {
     it("Tests " + insertion, () => {
+        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+        cy.contains("Convert to Python file").click();
         cy.get("body").type("i");
         assertState("{$}");
         cy.get("body").type(" " + insertion);
@@ -70,19 +71,62 @@ function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => vo
     });
 }
 
+// Reaches the targeted slot *within the slots of a frame label*.
+// targetSlotSpanID is the HTML ID of the slot
+// goLeft indicates if we reach the slot going leftwards (i.e. left arrow); false if going rightwards
+// The method returns true if we could reached the targeted slot 
+//      (false indicate that lost focus on slots, meaning we activated the blue caret, or that we are not in the same frame label structure anymore)
+function reachFrameLabelSlot(targetSlotSpanID: string, goLeft: boolean): boolean{
+    // First we extract the parts we are interested in: the frame label structure ID (the begining of the ID before "_slot_") and the slot ID (e.g. "2,0,4")
+    // (the editable slot ID is expected to be formatted as "input_frame_<frameId>_label_<labelId>_slot_<type>_<slotID>")
+    const targetFrameLabelIDPart = targetSlotSpanID.substring(0, targetSlotSpanID.indexOf("_slot_"));
+    const targetSlotID = targetSlotSpanID.substring(targetSlotSpanID.lastIndexOf("_") + 1);
+    // Move to the start [resp. end] of the slot and then move to the previous [resp. next] editable slot if going leftwards [resp. rightwards]
+    const keyArrow = (goLeft) ? "{leftarrow}" : "{rightarrow}";
+    let reachedTarget = false;
+    withSelection((curPos) => {
+        // As commas are special tokens in HTML selectors syntax, we need to parse them so the selector matches the element id correctly (our slot IDs may have commas).
+        cy.get("#"+curPos.id.replaceAll(",","\\,")).then((el) => {
+            const moveToPosCursorPos = (goLeft) ? 0 :  el.text().length;
+            moveToPositionThen(moveToPosCursorPos, () => {
+                cy.get("body").type(keyArrow).then(() => {
+                    withSelection((neighbourPos) => {
+                        // If at this stage we are no longer in the same frame label structure than the target, we do not continue
+                        if(!neighbourPos.id.startsWith(targetFrameLabelIDPart)) {
+                            return;
+                        }
+
+                        if(neighbourPos.id.substring(neighbourPos.id.lastIndexOf("_") + 1) != targetSlotID){
+                            // We are on a slot of this frame label, but not the one we wanted, we move again:
+                            reachFrameLabelSlot(targetSlotSpanID, goLeft);
+                        }
+                        else{
+                            // We reached the target
+                            reachedTarget = true;
+                        }
+                    });            
+                });            
+            });
+        });
+    });
+    return reachedTarget;
+}
+
 function focusSlotId(originalId : string) {
     // Sometimes slots can change type, which is encoded in the ID, so we want to ignore that when selecting
     // (and it won't be possible to pick another ID by accident, as the other parts are still unique when assembled):
-    const labelSlotUIIDRegex = /^(input_frame_\d+_label_\d+_slot_[0-7]{3})[0-7](_\d+(,\d)*)$/;
+    const labelSlotUIIDRegex = /^input_frame_(\d+)_label_(\d+)_/;
     const ms = originalId.match(labelSlotUIIDRegex);
     if (ms != null) {
-        // We must escape commas in ID as otherwise it looks like multiple selectors joined with a comma:
-        cy.get("*[id^=" + ms[1] + "][id$=" + ms[2].replaceAll(",", "\\,") + "]").focus();
+        cy.get("#labelSlotsStruct" + ms[1] + "_" + ms[2]).focus();
     }
 }
 
 function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
     it("Tests " + multiInsertion, () => {
+        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+        cy.contains("Convert to Python file").click();
+        
         const startNest = multiInsertion.indexOf("{");
         const endNest = multiInsertion.indexOf("}", startNest);
         expect(startNest).to.not.equal(-1);
@@ -100,7 +144,13 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            focusSlotId(posToInsertNest.id);
+            // Focus doesn't work, instead let's move the caret until we are in the right slot
+            withSelection((newPosToInsert) => {
+                if(newPosToInsert.id != posToInsertNest.id){
+                    reachFrameLabelSlot( posToInsertNest.id, true);
+                }
+            });
+
             moveToPositionThen(posToInsertNest.cursorPos, () => {
                 assertState(firstResult);
                 cy.get("body").type(nest);
@@ -112,6 +162,9 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
 
 function testInsertExisting(original : string, toInsert : string, expectedResult : string) : void {
     it("Tests " + original, () => {
+        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+        cy.contains("Convert to Python file").click();
+        
         const cursorIndex = original.indexOf("$");
         expect(cursorIndex).to.not.equal(-1);
         const before = original.substring(0, cursorIndex);
@@ -139,6 +192,9 @@ function testBackspace(originalInclBksp : string, expectedResult : string, testB
     const bkspIndex = originalInclBksp.indexOf("\b");
     if (testBackspace) {
         it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
+            // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+            cy.contains("Convert to Python file").click();
+            
             expect(bkspIndex).to.not.equal(-1);
             const before = originalInclBksp.substring(0, bkspIndex);
             const after = originalInclBksp.substring(bkspIndex + 1);
@@ -152,7 +208,15 @@ function testBackspace(originalInclBksp : string, expectedResult : string, testB
                 if (after.length > 0) {
                     cy.get("body").type(after);
                 }
-                focusSlotId(posToInsert.id);
+
+                // Focus doesn't work, instead let's move the caret until we are in the right slot
+                withSelection((newPosToInsert) => {
+                    if(newPosToInsert.id != posToInsert.id){
+                        reachFrameLabelSlot( posToInsert.id, true);
+                    }
+                });
+                
+                // We are somewhere in the slot we wanted to be, just make sure we now get to the right position
                 moveToPositionThen(posToInsert.cursorPos, () => {
                     cy.get("body").type("{backspace}");
                     assertState(expectedResult);
@@ -162,6 +226,9 @@ function testBackspace(originalInclBksp : string, expectedResult : string, testB
     }
     if (bkspIndex > 0 && testDelete) {
         it("Tests Delete " + originalInclBksp.replace("\b", "\\b"), () => {
+            // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+            cy.contains("Convert to Python file").click();
+            
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
 
@@ -174,7 +241,15 @@ function testBackspace(originalInclBksp : string, expectedResult : string, testB
                 if (after.length > 0) {
                     cy.get("body").type(after);
                 }
-                focusSlotId(posToInsert.id);
+
+                // Focus doesn't work, instead let's move the caret until we are in the right slot
+                withSelection((newPosToInsert) => {
+                    if(newPosToInsert.id != posToInsert.id){
+                        reachFrameLabelSlot( posToInsert.id, true);
+                    }
+                });
+
+                // We are now somewhere in the slot we want to be, we just make sure that's at the right position
                 moveToPositionThen(posToInsert.cursorPos, () => {
                     cy.get("body").type("{del}");
                     assertState(expectedResult);
@@ -204,6 +279,9 @@ beforeEach(() => {
 
 describe("Test brackets", () => {
     it("Tests brackets", () => {
+        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+        cy.contains("Convert to Python file").click();
+        
         testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
     });
 });
@@ -481,44 +559,44 @@ describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
 });
 
 describe.only("Test word operators", () => {
-    testInsert("a or ", "{a} or {$}");
-    testInsert("a or b", "{a} or {b$}");
-    testInsert("or b", "{} or {b$}");
+    testInsert("a or ", "{a}or{$}");
+    testInsert("a or b", "{a}or{b$}");
+    testInsert("or b", "{}or{b$}");
     testInsert("orb", "{orb$}");
-    testInsert("not a", "{} not {a$}");
-    testInsert("orc or ork", "{orc} or {ork$}");
-    testInsert("notand or nand", "{notand} or {nand$}");
-    testInsert("nor or neither", "{nor} or {neither$}");
-    testInsert("öor or oör", "{öor} or {oör$}");
-    testInsert("a is b", "{a} is {b$}");
-    testInsert("a is not b", "{a} is not {b$}");
-    testInsert("a or not b", "{a} or {} not {b$}");
-    testInsert("a and or in b", "{a} and {} or {} in {b$}");
+    testInsert("not a", "{}not{a$}");
+    testInsert("orc or ork", "{orc}or{ork$}");
+    testInsert("notand or nand", "{notand}or{nand$}");
+    testInsert("nor or neither", "{nor}or{neither$}");
+    testInsert("öor or oör", "{öor}or{oör$}");
+    testInsert("a is b", "{a}is{b$}");
+    testInsert("a is not b", "{a}is not{b$}");
+    testInsert("a or not b", "{a}or{}not{b$}");
+    testInsert("a and or in b", "{a}and{}or{}in{b$}");
     
-    testMultiInsert("a is {not }b", "{a} is {$b}", "{a} is not {$b}");
-    testMultiInsert("a or {not }b", "{a} or {$b}", "{a} or {} not {$b}");
-    
+    testMultiInsert("a is {not }b", "{a}is{$b}", "{a}is not{$b}");
+    testMultiInsert("a or {not }b", "{a}or{$b}", "{a}or{}not{$b}");
+   
     testBackspace("a or \bb", "{a$b}", true, false);
-    testBackspace("a is not \bb", "{a} is {$b}", true, false);
-    testBackspace("a \bis not b", "{a$} not {b}", false, true);
-    testBackspace("a or not \bb", "{a} or {$b}", true, false);
-    testBackspace("a or \bnot b", "{a$} not {b}", true, false);
+    testBackspace("a is not \bb", "{a}is{$b}", true, false);    
+    testBackspace("a \bis not b", "{a$}not{b}", false, true);    
+    testBackspace("a or not \bb", "{a}or{$b}", true, false);
+    testBackspace("a or \bnot b", "{a$}not{b}", true, false);
 
     testInsert("1or 2", "{1or 2$}");
-    testInsert("1 or 2", "{1} or {2$}");
+    testInsert("1 or 2", "{1}or{2$}");
     testInsert("1 or2", "{1 or2$}");
     
-    testInsert("ab and cd and ef", "{ab} and {cd} and {ef$}");
-    testMultiInsert("ab{ and cd} and ef", "{ab$} and {ef}", "{ab} and {cd$} and {ef}");
-    testMultiInsert("ab{ } and ef", "{ab$} and {ef}", "{ab $} and {ef}");
-    testMultiInsert("ab{+cd} and ef", "{ab$} and {ef}", "{ab}+{cd$} and {ef}");
-    testMultiInsert("ab{ andor} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {} or {$} and {}_({ef})_{}");
-    testMultiInsert("ab{ andcd} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {cd$} and {}_({ef})_{}");
-    testMultiInsert("ab{ and cd} and (ef)", "{ab$} and {}_({ef})_{}", "{ab} and {cd$} and {}_({ef})_{}");
-    testMultiInsert("pre or (ab{ and cd} and ef) or post", "{pre} or {}_({ab$} and {ef})_{} or {post}", "{pre} or {}_({ab} and {cd$} and {ef})_{} or {post}");
-    testMultiInsert("(a0) or ab{ and cd} and ef", "{}_({a0})_{} or {ab$} and {ef}", "{}_({a0})_{} or {ab} and {cd$} and {ef}");
-    testInsert("(a+b)or c", "{}_({a}+{b})_{} or {c$}");
-    testInsert("(a+b)or (c-d)", "{}_({a}+{b})_{} or {}_({c}-{d})_{$}");
-    testInsert("(a and b)or (c and d)", "{}_({a} and {b})_{} or {}_({c} and {d})_{$}");
+    testInsert("ab and cd and ef", "{ab}and{cd}and{ef$}");
+    testMultiInsert("ab{ and cd} and ef", "{ab$}and{ef}", "{ab}and{cd$}and{ef}");
+    testMultiInsert("ab{ } and ef", "{ab$}and{ef}", "{ab $}and{ef}");
+    testMultiInsert("ab{+cd} and ef", "{ab$}and{ef}", "{ab}+{cd$}and{ef}");
+    testMultiInsert("ab{ andor} and (ef)", "{ab$}and{}_({ef})_{}", "{ab}and{}or{$}and{}_({ef})_{}");
+    testMultiInsert("ab{ andcd} and (ef)", "{ab$}and{}_({ef})_{}", "{ab}and{cd$}and{}_({ef})_{}");
+    testMultiInsert("ab{ and cd} and (ef)", "{ab$}and{}_({ef})_{}", "{ab}and{cd$}and{}_({ef})_{}");
+    testMultiInsert("pre or (ab{ and cd} and ef) or post", "{pre}or{}_({ab$}and{ef})_{}or{post}", "{pre}or{}_({ab}and{cd$}and{ef})_{}or{post}");
+    testMultiInsert("(a0) or ab{ and cd} and ef", "{}_({a0})_{}or{ab$}and{ef}", "{}_({a0})_{}or{ab}and{cd$}and{ef}");
+    testInsert("(a+b)or c", "{}_({a}+{b})_{}or{c$}");
+    testInsert("(a+b)or (c-d)", "{}_({a}+{b})_{}or{}_({c}-{d})_{$}");
+    testInsert("(a and b)or (c and d)", "{}_({a}and{b})_{}or{}_({c}and{d})_{$}");
 });
 

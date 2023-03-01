@@ -82,7 +82,7 @@ import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import Draggable from "vuedraggable";
-import scssVars  from "@/assets/style/exports.scss";
+import scssVars  from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
@@ -236,7 +236,6 @@ export default Vue.extend({
     destroyed() {
         // Removes the listeners
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
-
     },
 
     mounted() {
@@ -357,12 +356,12 @@ export default Vue.extend({
         handleDocumentSelectionChange(){
             // When the selection has changed, we update the cursor infos in the store.
             // TODO with multi slots selection, this code WILL need changes as the way to retrieve the nodes isn't checked
-            const windowSelection = window?.getSelection();
-            if(windowSelection){
-                let anchorSpanElement = windowSelection?.anchorNode?.parentElement;
-                let focusSpanElement =  windowSelection?.focusNode?.parentElement;
+            const docSelection = document.getSelection();
+            if(docSelection){
+                let anchorSpanElement = docSelection?.anchorNode?.parentElement;
+                let focusSpanElement =  docSelection?.focusNode?.parentElement;
                 // When the editable slots are empty, the span doesn't get the focus, but the container div does.
-                // So we need to retrieve the right HTML component by hand.
+                // So we need to retrieve the right HTML component by hand.           
                 if(anchorSpanElement?.tagName.toLowerCase() == "div" && anchorSpanElement.className.includes(" labelSlot-container")){
                     anchorSpanElement = anchorSpanElement.firstElementChild as HTMLSpanElement;
                 }
@@ -372,8 +371,8 @@ export default Vue.extend({
                 if(anchorSpanElement && focusSpanElement && isElementLabelSlotInput(anchorSpanElement) && isElementLabelSlotInput(focusSpanElement)){
                     const anchorSlotInfo = parseLabelSlotUIID(anchorSpanElement.id);
                     const focusSlotInfo = parseLabelSlotUIID(focusSpanElement.id);
-                    this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: windowSelection.anchorOffset},
-                        {slotInfos: focusSlotInfo, cursorPos: windowSelection.focusOffset});
+                    this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: docSelection.anchorOffset},
+                        {slotInfos: focusSlotInfo, cursorPos: docSelection.focusOffset});
                 }
             }
         },

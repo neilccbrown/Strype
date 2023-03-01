@@ -1,17 +1,27 @@
 <template>
-    <div class="next-to-eachother" :id="labelSlotsStructDivId">
+    <div 
+        :id="labelSlotsStructDivId"
+        contenteditable="true"
+        @keydown.left="onLRKeyDown($event)"
+        @keydown.right="onLRKeyDown($event)"
+        @keydown="forwardKeyEvent($event)"
+        @keyup="forwardKeyEvent($event)"
+        @focus="onFocus"
+        @blur="blurEditableSlot()"
+        class="next-to-eachother label-slot-container"
+    >
         <div 
             v-for="(slotItem, slotIndex) in subSlots" 
             :key="frameId + '_'  + labelIndex + '_' + slotIndex"
             class="next-to-eachother"
         >
-            <!-- Note: the default text is only used here to handle presentation but it will never show as such in subslots -->
+            <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
                 :labelSlotsIndex="labelIndex"
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
                 :isDisabled="isDisabled"
-                :default-text="(subSlots.length == 1) ? defaultText : ''"
+                :default-text="(subSlots.length == 1) ? defaultText : '\u200b'"
                 :code="getSlotCode(slotItem)"
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
@@ -23,13 +33,13 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, parseCodeLiteral, parseLabelSlotUIID, setTextCursorPositionOfHTMLElement, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
-import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 
 export default Vue.extend({
     name: "LabelSlotsStructure.vue",
@@ -178,27 +188,32 @@ export default Vue.extend({
                     }
                     
                     if(spanElement.id === slotUIID){
-                        focusCursorAbsPos += (this.appStore.focusSlotCursorInfos?.cursorPos??0);                        
+                        focusCursorAbsPos += (this.appStore.focusSlotCursorInfos?.cursorPos??0);     
                         foundFocusSpan = true;
                     }
-                    else if(!foundFocusSpan){
+                    else{
                         // In most cases, we just increment the length by the span content length,
                         // BUT there is one exception: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
-                        // therefore we need to account for them when dealing with such operator
+                        // therefore we need to account for them when dealing with such operators
                         let spacesOffset = 0;
                         const spanElementContentLength = (spanElement.textContent?.length??0);
                         if((trimmedKeywordOperators.includes(spanElement.textContent??""))){
                             spacesOffset = 2;
                             // Reinsert the spaces in the literal code
-                            uiLiteralCode = uiLiteralCode.substring(0, focusCursorAbsPos) 
-                                + " " + uiLiteralCode.substring(focusCursorAbsPos, focusCursorAbsPos + (spanElement.textContent?.length??0)) 
-                                + " " + uiLiteralCode.substring(focusCursorAbsPos + (spanElement.textContent?.length??0));
+                            uiLiteralCode = uiLiteralCode.substring(0, uiLiteralCode.length - spanElementContentLength) 
+                                + " " + uiLiteralCode.substring(uiLiteralCode.length - spanElementContentLength) 
+                                + " ";
                         }
-                        focusCursorAbsPos += (spanElementContentLength + spacesOffset);
+                        if(!foundFocusSpan) {
+                            focusCursorAbsPos += (spanElementContentLength + spacesOffset);
+                        }
                     }
                 });    
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, false, focusCursorAbsPos);
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
+                // The parser can be return a different size "code" of the slots than the code literal
+                // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
+                focusCursorAbsPos += parsedCodeRes.cursorOffset;
                 this.$forceUpdate();
                 this.$nextTick(() => {
                     let newUICodeLiteralLength = 0;
@@ -213,50 +228,163 @@ export default Vue.extend({
                                     setInsideNextSlot = true;
                                 }
                                 else{
-                                    (spanElement as HTMLSpanElement).focus();
-                                    const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
-                                    setTextCursorPositionOfHTMLElement(spanElement as HTMLSpanElement, pos);
-                                    const cursorInfos = {slotInfos: parseLabelSlotUIID(spanElement.id), cursorPos: pos};
-                                    this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
                                     foundPos = true;
+                                    (spanElement as HTMLSpanElement).dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                                    const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
+                                    const cursorInfos = {slotInfos: parseLabelSlotUIID(spanElement.id), cursorPos: pos};
+
+                                    // We check if changes trigger the conversion of an empty frame to a varassign frame (i.e. an empty frame contains a variable assignment
+                                    // If not, we set the new cursor right now
+                                    // We also check here if the changes trigger the conversion of an empty frame to a varassign frame (i.e. an empty frame contains a variable assignment)
+                                    if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && uiLiteralCode.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=(([^=].*)|$)/) != null){
+                                        this.appStore.setSlotTextCursors(undefined, undefined);
+
+                                        this.$nextTick(() => {
+                                            // Remove the focus
+                                            const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
+                                            if(focusedSlot){
+                                                focusedSlot.focused = false;
+                                            }
+                        
+                                            // Change the type of frame to varassign and adapt the content
+                                            Vue.set(this.appStore.frameObjects[this.frameId],"frameType", getFrameDefType(AllFrameTypesIdentifier.varassign));                       
+                                            const newContent: { [index: number]: LabelSlotsContent} = {
+                                                // LHS can only be a single field slot
+                                                0: {
+                                                    slotStructures:{
+                                                        fields: [{code: uiLiteralCode.substring(0, uiLiteralCode.indexOf("="))}],
+                                                        operators: []},
+                                                },
+                                                //RHS are the other fields and operators
+                                                1: {
+                                                    slotStructures:{
+                                                        fields: parsedCodeRes.slots.fields.slice(1),
+                                                        operators: parsedCodeRes.slots.operators.slice(1),
+                                                    },
+                                                }, 
+                                            };
+                                            // Set focus to the right slot (first of RHS)
+                                            (newContent[1].slotStructures.fields[0] as BaseSlot).focused = true;
+                                            this.appStore.frameObjects[this.frameId].labelSlotsDict = newContent;
+
+                                            // We need to reposition the cursor again, we shoud be in the SAME slot as we were, except that 
+                                            // we are now in another frame label index (must be 1) and at the first of the slots
+                                            const newCursorSlotInfos: SlotCursorInfos = {
+                                                slotInfos: {...cursorInfos.slotInfos, labelSlotsIndex: 1, slotId: "0"},
+                                                cursorPos: cursorInfos.cursorPos,
+                                            };                                        
+                                            this.$nextTick(() => this.$nextTick(() => {
+                                                setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
+                                                this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                            }));
+                                            
+                                        
+                                        });                                        
+                                    }
+                                    else{
+                                        setDocumentSelection(cursorInfos, cursorInfos);
+                                        this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
+                                    }
                                 }                            
                             }
                             else{
-                                // In most cases, we just increment the length by the span content length,
-                                // BUT there is one exception: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
-                                // therefore we need to account for them when dealing with such operator
-                                const spacesOffset = (trimmedKeywordOperators.includes(spanElement.textContent??"")) 
-                                    ? 2
-                                    : 0;
-                                newUICodeLiteralLength += (spanContentLength + spacesOffset);
+                                // We just increment the length by the span content length (spacing for operators should have been dealt with when parsing the code literal)
+                                newUICodeLiteralLength += (spanContentLength);
                             }
                         }
                     });
-                    
-                    // We also check here if the changes trigger the conversion of an empty frame to a varassign frame (i.e. an empty frame contains a variable assignment)
-                    if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && uiLiteralCode.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=(([^=].*)|$)/) != null){
-                        Vue.set(this.appStore.frameObjects[this.frameId],"frameType", getFrameDefType(AllFrameTypesIdentifier.varassign));
-                        const newContent: { [index: number]: LabelSlotsContent} = {
-                            // LHS can only be a single field slot
-                            0: {
-                                slotStructures:{
-                                    fields: [{code: uiLiteralCode.substring(0, uiLiteralCode.indexOf("="))}],
-                                    operators: []},
-                            },
-                            //RHS are the other fields and operators
-                            1: {
-                                slotStructures:{
-                                    fields: parsedCodeRes.slots.fields.slice(1),
-                                    operators: parsedCodeRes.slots.operators.slice(1),
-                                },
-                            }, 
-                        };
-                        this.appStore.frameObjects[this.frameId].labelSlotsDict = newContent;
-                    }
                 });
 
+            }
+        },
+
+        forwardKeyEvent(event: KeyboardEvent) {
+            // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
+            // We need to forward the event to the currently "focused" (editable) slot.
+            // ** LEFT/RIGHT ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
+            if(event.key == "ArrowLeft" || event.key == "ArrowRight"){
+                return;
+            }
+            
+            if(this.appStore.focusSlotCursorInfos){
+                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new KeyboardEvent(event.type, {
+                        key: event.key,
+                        altKey: event.altKey,
+                        shiftKey: event.shiftKey,
+                        ctrlKey: event.ctrlKey,
+                        metaKey: event.metaKey,
+                    }));
+            }
+            event.preventDefault();
+        },
+
+        onLRKeyDown(event: KeyboardEvent) {
+            // Because the event handling, it is easier to deal with the left/right arrow at this component level.
+            if(this.appStore.focusSlotCursorInfos){
+                const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;
+                const spanInput = document.getElementById(getLabelSlotUIID(slotInfos)) as HTMLSpanElement;
+
+                // If we're trying to go off the bounds of this slot
+                if((cursorPos == 0 && event.key==="ArrowLeft") 
+                        || (cursorPos === ((spanInput.textContent?.length)??0) && event.key==="ArrowRight")) {
+                    // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
+                    this.appStore.isSelectingMultiSlots = event.shiftKey;
+                    this.appStore.ignoreKeyEvent=true;
+                    this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
+                        // If we are doing a selection, we need to reflect this in the UI
+                        if(event.shiftKey){
+                            setDocumentSelection(this.appStore.anchorSlotCursorInfos as SlotCursorInfos, this.appStore.focusSlotCursorInfos as SlotCursorInfos);                     
+                        }
+                    });                        
+                }
+                // If a key modifier (ctrl, shift, alt or meta) is pressed, we don't do anything special (browser handles it),
+                else if(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey){                    
+                    return;
+                }
+                else {
+                    //no specific action to take, we just move the cursor to the left or to the right
+                    this.appStore.isSelectingMultiSlots = false; // reset flag
+                    const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
+                    const slotCursorInfo: SlotCursorInfos = {slotInfos: slotInfos, cursorPos: (cursorPos + incrementStep)};
+                    setDocumentSelection(slotCursorInfo, slotCursorInfo);
+                }
+                event.preventDefault();
+                event.stopImmediatePropagation();  
+            }                      
+        },
+
+        onFocus(){
+            // When the application gains focus again, the browser might try to give the first span of a div the focus (because the div may have been focused)
+            // even if we have the blue caret showing. We do not let this happen.
+            if(this.appStore.ignoreFocusRequest && this.appStore.focusSlotCursorInfos == undefined){
+                document.getElementById(this.labelSlotsStructDivId)?.blur();               
+            }
+            this.appStore.ignoreFocusRequest = false;
+        },
+
+        blurEditableSlot(){
+            // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
+            // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
+            if(document.activeElement?.id === this.labelSlotsStructDivId){
+                // We don't lose focus that's from an outside event (like when the browser itself loses focus)
+                // cf https://stackoverflow.com/questions/24638129/javascript-dom-how-to-prevent-blur-event-if-focus-is-lost-to-another-window
+                this.appStore.ignoreFocusRequest = true;
+                return;
+
+            }
+            if(this.appStore.focusSlotCursorInfos && this.appStore.focusSlotCursorInfos.slotInfos.frameId == this.frameId 
+                && this.appStore.focusSlotCursorInfos.slotInfos.labelSlotsIndex == this.labelIndex){
+                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
             }
         },
     },
 });
 </script>
+
+<style lang="scss">
+.label-slot-container{
+    outline: none;
+}
+</style>
