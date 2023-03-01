@@ -539,12 +539,14 @@ interface OpFound extends OpDef {
     length: number; // The length of the match in characters within the string
 }
 
-const allOperators: OpDef[] = [...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
-    return {match: opSpace, keywordOperator: true} as OpDef;
-}),
-...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
-    return {match: o, keywordOperator: false} as OpDef;
-})];
+const allOperators: OpDef[] = [
+    ...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
+        return {match: opSpace, keywordOperator: true} as OpDef;
+    }),
+    ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
+        return {match: o, keywordOperator: false} as OpDef;
+    }),
+];
     
 
 // Brackets: order inside each array is important, keep matching opening and closing tokens

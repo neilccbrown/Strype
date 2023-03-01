@@ -85,6 +85,7 @@ function reachFrameLabelSlot(targetSlotSpanID: string, goLeft: boolean): boolean
     const keyArrow = (goLeft) ? "{leftarrow}" : "{rightarrow}";
     let reachedTarget = false;
     withSelection((curPos) => {
+        // As commas are special tokens in HTML selectors syntax, we need to parse them so the selector matches the element id correctly (our slot IDs may have commas).
         cy.get("#"+curPos.id.replaceAll(",","\\,")).then((el) => {
             const moveToPosCursorPos = (goLeft) ? 0 :  el.text().length;
             moveToPositionThen(moveToPosCursorPos, () => {
