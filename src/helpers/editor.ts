@@ -527,6 +527,28 @@ export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", 
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
 
 
+// We construct the list of all operator with a specific order: first the spaced keyword operators, 
+// then the double symbolic operators and lastly the unitary symbolic operators. We put double operators
+// first so that they are found first in the search for operators.
+interface OpDef {
+    match: string; // The match to search for
+    keywordOperator : boolean; // Whether the operator is a keyword operator
+}
+interface OpFound extends OpDef {
+    pos: number; // The position of the match (0 = first character in string)
+    length: number; // The length of the match in characters within the string
+}
+
+const allOperators: OpDef[] = [
+    ...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
+        return {match: opSpace, keywordOperator: true} as OpDef;
+    }),
+    ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
+        return {match: o, keywordOperator: false} as OpDef;
+    }),
+];
+    
+
 // Brackets: order inside each array is important, keep matching opening and closing tokens
 export const openBracketCharacters = ["(","{","["];
 export const closeBracketCharacters = [")","}","]"];
@@ -781,23 +803,6 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
             (...params) => blankReplacer(3, ["."], ...params));
 
     const resStructSlot: SlotsStructure = {fields: [], operators:[]};
-    // We construct the list of all operator with a specific order: first the spaced keyword operators, 
-    // then the double symbolic operators and lastly the unitary symbolic operators. We put double operators
-    // first so that they are found first in the search for operators.
-    interface OpDef {
-        match: string; // The match to search for
-        keywordOperator : boolean; // Whether the operator is a keyword operator
-    }
-    interface OpFound extends OpDef {
-        pos: number; // The position of the match (0 = first character in string)
-        length: number; // The length of the match in characters within the string
-    }
-    const allOperators: OpDef[] = [...keywordOperatorsWithSurroundSpaces.map((opSpace) => {
-        return {match: opSpace, keywordOperator: true} as OpDef;
-    }),
-    ...operators.sort((op1, op2) => (op2.length - op1.length)).map((o) => {
-        return {match: o, keywordOperator: false} as OpDef;
-    })];
     let hasOperator = true;
     let lookOffset = 0;
     // "u" flag is necessary for unicode escapes
@@ -850,15 +855,26 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
                 }
                 else {
                     resStructSlot.fields.push({code: fieldContent.trim()});
+                    // Update the cursor position as the LHS may have been trimmed
+                    // (only the cursor is passed the position)
+                    if((cursorPos??0)>firstOperator.pos) {
+                        cursorOffset += (fieldContent.trim().length - fieldContent.length);
+                    }
                 }
-                resStructSlot.operators.push({code: firstOperator.match});
+                resStructSlot.operators.push({code: firstOperator.match.trim()});
+                // If there was some spaces between the operator and the RHS, they will be removed so we need to account for them
+                // (only the cursor is passed the position)
+                if((cursorPos??0)>firstOperator.pos) {
+                    const operatorTrimmedStart = firstOperator.match.trimStart();
+                    cursorOffset += (operatorTrimmedStart.trim().length - operatorTrimmedStart.length);
+                }
                 lookOffset = firstOperator.pos + firstOperator.length;
             }
         }
     }
     // As we always have at least 1 field, and operators contained between fields, we need to add the trimming field 
     // (and we also need to remove "dead" closing brackets)
-    let code = codeLiteral.substring(lookOffset);
+    let code = codeLiteral.substring(lookOffset).trimStart();
     closeBracketCharacters.forEach((closingBracket) => {
         code = code.replaceAll(closingBracket, () => {
             cursorOffset += -1;
