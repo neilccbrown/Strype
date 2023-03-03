@@ -306,7 +306,7 @@ export default Vue.extend({
             // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
             if((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true){
                 //get the autocompletion candidates
-                const textBeforeCaret = this.code.substr(0,selectionStart??0)??"";
+                const textBeforeCaret = this.getSlotContent().substr(0,selectionStart??0)??"";
 
                 //workout the correct context if we are in a code editable slot
                 const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
@@ -842,8 +842,7 @@ export default Vue.extend({
                 return;
             }
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-            const currentTextCursorPos = inputField.selectionStart??0;
+            const currentTextCursorPos = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
             const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
 
@@ -853,10 +852,24 @@ export default Vue.extend({
                 + ((isSelectedFunction)?"()":"")
                 + this.getSlotContent().substr(currentTextCursorPos);
             
-            // position the text cursor just after the AC selection - in the parenthesis for functions
-            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.tokenAC.length + ((isSelectedFunction)?1:0);
+            // Remove content before the cursor (and put cursor at the beginning):
+            (document.getElementById(this.UIID) as HTMLSpanElement).textContent = this.getSlotContent().substr(currentTextCursorPos);
+            const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0};
+            this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
+            setDocumentSelection(slotCursorInfo, slotCursorInfo);
+            // Then "paste" in the completion:
+            this.onCodePasteImpl(newCode);
+            // Slight hack; if it ended in a bracket, go left one place to end up back in the bracket:
+            if (newCode.endsWith(")")) {
+                this.$nextTick(() => {
+                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                        new KeyboardEvent("keydown", {
+                            key: "ArrowLeft",
+                        })
+                    );
+                });
+            }
             
-            this.setSlotContent(newCode);
             this.showAC = this.debugAC;
             this.acRequested = false;
         },
