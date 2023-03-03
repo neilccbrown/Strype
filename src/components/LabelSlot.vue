@@ -464,6 +464,9 @@ export default Vue.extend({
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
+                this.$nextTick(() => {
+                    this.updateAC();
+                });
                 return;
             }
 
