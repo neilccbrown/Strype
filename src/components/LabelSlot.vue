@@ -264,31 +264,6 @@ export default Vue.extend({
                 }
             );
 
-            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-            const frame: FrameObject = this.appStore.frameObjects[this.frameId];
-
-            // if the input field exists and it is not a "free texting" slot
-            // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
-            if(inputField && ((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true)){
-                //get the autocompletion candidates
-                const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
-
-                //workout the correct context if we are in a code editable slot
-                const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
-                const resultsAC = (isImportFrame) 
-                    ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.labelSlotsIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
-                    : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
-                this.showAC = resultsAC.showAC;
-                this.contextAC = resultsAC.contextAC;
-                if(resultsAC.showAC){
-                    this.tokenAC = resultsAC.tokenAC.toLowerCase();
-                }
-
-                this.$nextTick(() => {
-                    this.getACresultsFromBrython();
-                });
-            }
-
             // The cursor position is not maintained because of the changes in the store and reactivity
             // so we reposition it correctly, at the next tick (because code needs to be updated first)
             this.$nextTick(() => {
@@ -319,6 +294,35 @@ export default Vue.extend({
 
             // Reset the flag here as we have consumed the focus event (cf. directives > focus)
             useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
+
+            this.updateAC();
+        },
+        
+        updateAC() : void {
+            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
+            const frame: FrameObject = this.appStore.frameObjects[this.frameId];
+
+            // if the input field exists and it is not a "free texting" slot
+            // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
+            if(inputField && ((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true)){
+                //get the autocompletion candidates
+                const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
+
+                //workout the correct context if we are in a code editable slot
+                const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
+                const resultsAC = (isImportFrame)
+                    ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.labelSlotsIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
+                    : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
+                this.showAC = resultsAC.showAC;
+                this.contextAC = resultsAC.contextAC;
+                if(resultsAC.showAC){
+                    this.tokenAC = resultsAC.tokenAC.toLowerCase();
+                }
+
+                this.$nextTick(() => {
+                    this.getACresultsFromBrython();
+                });
+            }
         },
 
 
