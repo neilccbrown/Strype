@@ -299,14 +299,14 @@ export default Vue.extend({
         },
         
         updateAC() : void {
-            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
             const frame: FrameObject = this.appStore.frameObjects[this.frameId];
+            const selectionStart = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
 
-            // if the input field exists and it is not a "free texting" slot
+            // If the slot accepts auto-complete, i.e. it is not a "free texting" slot
             // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
-            if(inputField && ((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true)){
+            if((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true){
                 //get the autocompletion candidates
-                const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
+                const textBeforeCaret = this.code.substr(0,selectionStart??0)??"";
 
                 //workout the correct context if we are in a code editable slot
                 const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
