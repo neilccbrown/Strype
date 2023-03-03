@@ -264,31 +264,6 @@ export default Vue.extend({
                 }
             );
 
-            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-            const frame: FrameObject = this.appStore.frameObjects[this.frameId];
-
-            // if the input field exists and it is not a "free texting" slot
-            // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
-            if(inputField && ((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true)){
-                //get the autocompletion candidates
-                const textBeforeCaret = inputField.value?.substr(0,inputField.selectionStart??0)??"";
-
-                //workout the correct context if we are in a code editable slot
-                const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
-                const resultsAC = (isImportFrame) 
-                    ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.labelSlotsIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
-                    : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
-                this.showAC = resultsAC.showAC;
-                this.contextAC = resultsAC.contextAC;
-                if(resultsAC.showAC){
-                    this.tokenAC = resultsAC.tokenAC.toLowerCase();
-                }
-
-                this.$nextTick(() => {
-                    this.getACresultsFromBrython();
-                });
-            }
-
             // The cursor position is not maintained because of the changes in the store and reactivity
             // so we reposition it correctly, at the next tick (because code needs to be updated first)
             this.$nextTick(() => {
@@ -319,6 +294,35 @@ export default Vue.extend({
 
             // Reset the flag here as we have consumed the focus event (cf. directives > focus)
             useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
+
+            this.updateAC();
+        },
+        
+        updateAC() : void {
+            const frame: FrameObject = this.appStore.frameObjects[this.frameId];
+            const selectionStart = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
+
+            // If the slot accepts auto-complete, i.e. it is not a "free texting" slot
+            // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
+            if((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true){
+                //get the autocompletion candidates
+                const textBeforeCaret = this.getSlotContent().substr(0,selectionStart??0)??"";
+
+                //workout the correct context if we are in a code editable slot
+                const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
+                const resultsAC = (isImportFrame)
+                    ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.labelSlotsIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
+                    : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
+                this.showAC = resultsAC.showAC;
+                this.contextAC = resultsAC.contextAC;
+                if(resultsAC.showAC){
+                    this.tokenAC = resultsAC.tokenAC.toLowerCase();
+                }
+
+                this.$nextTick(() => {
+                    this.getACresultsFromBrython();
+                });
+            }
         },
 
 
@@ -453,9 +457,17 @@ export default Vue.extend({
             // We store the key.down key event.key value for the bracket/quote closing method (cf details there)
             this.keyDownStr = event.key;
 
+            // We capture the key shortcut for opening the a/c
+            if((event.metaKey || event.ctrlKey) && event.key == " "){
+                this.acRequested = true;
+            }
+
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
+                this.$nextTick(() => {
+                    this.updateAC();
+                });
                 return;
             }
 
@@ -473,7 +485,9 @@ export default Vue.extend({
             // pressing "=" or space keys move to RHS editable slot (but we allow the a/c to be activated)
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
-            if(((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.varassign && this.labelSlotsIndex === 0){
+            if(this.labelSlotsIndex === 0 && selectionStart === selectionEnd && selectionStart === inputSpanFieldContent.length &&
+                ((((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.varassign) || 
+                (((event.key === "(" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.funcdef))){
                 // Simulate a right arrow key press to make sure we go to the next slot
                 document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                     new KeyboardEvent(event.type, {
@@ -482,10 +496,6 @@ export default Vue.extend({
                 );
                 event.preventDefault();
                 event.stopPropagation();
-            }
-            // We capture the key shortcut for opening the a/c
-            else if((event.metaKey || event.ctrlKey) && event.key == " "){
-                this.acRequested = true;
             }
             // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
             else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment && currentStartTextCursor == 0){
@@ -637,17 +647,22 @@ export default Vue.extend({
             }          
         },
 
-        onCodePaste(event: ClipboardEvent){
+        onCodePaste(event: ClipboardEvent) {
+            this.appStore.ignoreKeyEvent = true;
+            if (event.clipboardData) {
+                this.onCodePasteImpl(event.clipboardData.getData("Text"));
+            }
+        },
+        
+        onCodePasteImpl(content : string) {
             // Pasted code is done in 3 steps:
             // 1) correct the code literal if needed (for example pasting "(a" will result in pasting "(a)")
             // 2) add the corrected code at the current location 
             // 3) set the text cursor at the right location       
             // 4) check if the slots need to be refactorised
-            this.appStore.ignoreKeyEvent = true;
-            const inputSpanField = document.getElementById(this.UIID);
-            const clipboardData = event.clipboardData;
+            const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
-            if(inputSpanField && inputSpanField.textContent != undefined && clipboardData){ //Keep TS happy
+            if(inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
                 // part 1 - note that if we are in a string, we just copy as is except for the quotes that must be parsed
                 let cursorOffset = 0;
                 let correctedPastedCode = "";
@@ -655,13 +670,13 @@ export default Vue.extend({
                     const regex = (this.stringQuote =="\"")
                         ? /(^|[^\\])(")/g
                         : /(^|[^\\])(')/g;
-                    correctedPastedCode = clipboardData.getData("Text").replaceAll(regex, (match) => {
+                    correctedPastedCode = content.replaceAll(regex, (match) => {
                         cursorOffset--;
                         return match[0]??"";
                     });
                 }
                 else{
-                    const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(clipboardData.getData("Text"));
+                    const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content);
                     const parser = new Parser();
                     correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
                     cursorOffset = tempcursorOffset;
@@ -672,7 +687,7 @@ export default Vue.extend({
                         + inputSpanField.textContent.substring(selectionEnd);
                 // part 3: the orignal cursor position is at the end of the copied string, and we add the offset that is generated while parsing the code
                 // so that for example when we copied a non terminated code, the cursor will stay inside the non terminated bit.
-                const newPos = selectionStart + clipboardData.getData("Text").length + cursorOffset;
+                const newPos = selectionStart + content.length + cursorOffset;
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4
@@ -830,21 +845,33 @@ export default Vue.extend({
                 return;
             }
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-            const inputField = document.getElementById(this.UIID) as HTMLInputElement;
-            const currentTextCursorPos = inputField.selectionStart??0;
+            const currentTextCursorPos = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text
             const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
 
             const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
             const newCode = this.getSlotContent().substr(0, currentTextCursorPos - this.tokenAC.length)
                 + selectedItem 
-                + ((isSelectedFunction)?"()":"")
-                + this.getSlotContent().substr(currentTextCursorPos);
+                + ((isSelectedFunction)?"()":"");
             
-            // position the text cursor just after the AC selection - in the parenthesis for functions
-            this.textCursorPos = currentTextCursorPos + selectedItem.length - this.tokenAC.length + ((isSelectedFunction)?1:0);
+            // Remove content before the cursor (and put cursor at the beginning):
+            this.setSlotContent(this.getSlotContent().substr(currentTextCursorPos));
+            const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0};
+            this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
+            setDocumentSelection(slotCursorInfo, slotCursorInfo);
+            // Then "paste" in the completion:
+            this.onCodePasteImpl(newCode);
+            // Slight hack; if it ended in a bracket, go left one place to end up back in the bracket:
+            if (newCode.endsWith(")")) {
+                this.$nextTick(() => {
+                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                        new KeyboardEvent("keydown", {
+                            key: "ArrowLeft",
+                        })
+                    );
+                });
+            }
             
-            this.setSlotContent(newCode);
             this.showAC = this.debugAC;
             this.acRequested = false;
         },
