@@ -451,6 +451,12 @@ export default Vue.extend({
             // We store the key.down key event.key value for the bracket/quote closing method (cf details there)
             this.keyDownStr = event.key;
 
+            // We capture the key shortcut for opening the a/c
+            if((event.metaKey || event.ctrlKey) && event.key == " "){
+                console.log("AC requested");
+                this.acRequested = true;
+            }
+
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
@@ -480,10 +486,6 @@ export default Vue.extend({
                 );
                 event.preventDefault();
                 event.stopPropagation();
-            }
-            // We capture the key shortcut for opening the a/c
-            else if((event.metaKey || event.ctrlKey) && event.key == " "){
-                this.acRequested = true;
             }
             // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
             else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment && currentStartTextCursor == 0){
