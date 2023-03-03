@@ -644,7 +644,13 @@ export default Vue.extend({
             }          
         },
 
-        onCodePaste(event: ClipboardEvent){
+        onCodePaste(event: ClipboardEvent) {
+            if (event.clipboardData) {
+                this.onCodePasteImpl(event.clipboardData.getData("Text"));
+            }
+        },
+        
+        onCodePasteImpl(content : string) {
             // Pasted code is done in 3 steps:
             // 1) correct the code literal if needed (for example pasting "(a" will result in pasting "(a)")
             // 2) add the corrected code at the current location 
@@ -652,9 +658,8 @@ export default Vue.extend({
             // 4) check if the slots need to be refactorised
             this.appStore.ignoreKeyEvent = true;
             const inputSpanField = document.getElementById(this.UIID);
-            const clipboardData = event.clipboardData;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
-            if(inputSpanField && inputSpanField.textContent != undefined && clipboardData){ //Keep TS happy
+            if(inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
                 // part 1 - note that if we are in a string, we just copy as is except for the quotes that must be parsed
                 let cursorOffset = 0;
                 let correctedPastedCode = "";
@@ -662,13 +667,13 @@ export default Vue.extend({
                     const regex = (this.stringQuote =="\"")
                         ? /(^|[^\\])(")/g
                         : /(^|[^\\])(')/g;
-                    correctedPastedCode = clipboardData.getData("Text").replaceAll(regex, (match) => {
+                    correctedPastedCode = content.replaceAll(regex, (match) => {
                         cursorOffset--;
                         return match[0]??"";
                     });
                 }
                 else{
-                    const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(clipboardData.getData("Text"));
+                    const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content);
                     const parser = new Parser();
                     correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
                     cursorOffset = tempcursorOffset;
@@ -679,7 +684,7 @@ export default Vue.extend({
                         + inputSpanField.textContent.substring(selectionEnd);
                 // part 3: the orignal cursor position is at the end of the copied string, and we add the offset that is generated while parsing the code
                 // so that for example when we copied a non terminated code, the cursor will stay inside the non terminated bit.
-                const newPos = selectionStart + clipboardData.getData("Text").length + cursorOffset;
+                const newPos = selectionStart + content.length + cursorOffset;
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4
