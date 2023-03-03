@@ -96,10 +96,12 @@ export default Vue.extend({
 
     mounted() {
         window.addEventListener("keyup", this.onKeyUp);
+        window.addEventListener("paste", this.pasteIfFocused);
     },
 
     destroyed() {
         window.removeEventListener("keyup", this.onKeyUp);
+        window.removeEventListener("paste", this.pasteIfFocused);
     },
 
     updated() {
@@ -130,6 +132,12 @@ export default Vue.extend({
                 }
                 event.preventDefault();
                 return;
+            }
+        },
+        
+        pasteIfFocused() {
+            if (!this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition)) {
+                this.doPaste();
             }
         },
 
@@ -174,22 +182,26 @@ export default Vue.extend({
             // by any other mean which caret is the one the user clicked on.
             const currentShownContextMenuUUID: string = this.appStore.contextMenuShownId;
             if(currentShownContextMenuUUID === this.uiid){
-                if(this.appStore.isSelectionCopied){
-                    this.appStore.pasteSelection(
-                        {
-                            clickedFrameId: this.frameId,
-                            caretPosition: this.caretAssignedPosition,
-                        }
-                    );
-                }
-                else {
-                    this.appStore.pasteFrame(
-                        {
-                            clickedFrameId: this.frameId,
-                            caretPosition: this.caretAssignedPosition,
-                        }
-                    );
-                }
+                this.doPaste();
+            }
+        },
+        
+        doPaste() : void {
+            if(this.appStore.isSelectionCopied){
+                this.appStore.pasteSelection(
+                    {
+                        clickedFrameId: this.frameId,
+                        caretPosition: this.caretAssignedPosition,
+                    }
+                );
+            }
+            else {
+                this.appStore.pasteFrame(
+                    {
+                        clickedFrameId: this.frameId,
+                        caretPosition: this.caretAssignedPosition,
+                    }
+                );
             }
         },
     },
