@@ -457,7 +457,6 @@ export default Vue.extend({
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
-                console.log("AC requested");
                 this.acRequested = true;
             }
 
