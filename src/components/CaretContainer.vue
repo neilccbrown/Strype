@@ -31,7 +31,7 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import { CaretPosition, FrameObject } from "@/types/types";
+import { CaretPosition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import $ from "jquery";
 import { getCaretUIID, getEditorMiddleUIID } from "@/helpers/editor";
@@ -95,12 +95,10 @@ export default Vue.extend({
     },
 
     mounted() {
-        window.addEventListener("keyup", this.onKeyUp);
         window.addEventListener("paste", this.pasteIfFocused);
     },
 
     destroyed() {
-        window.removeEventListener("keyup", this.onKeyUp);
         window.removeEventListener("paste", this.pasteIfFocused);
     },
 
@@ -119,24 +117,12 @@ export default Vue.extend({
     },
     
     methods: {
-        onKeyUp(event: KeyboardEvent) {
-            if(!this.isEditing && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "v")) {
-                // A paste via shortcut cannot get the verification that would be done via a click
-                // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here
-                const currentFrame: FrameObject = this.appStore.getCurrentFrameObject;
-                if(currentFrame.id === this.frameId && currentFrame.caretVisibility === this.caretAssignedPosition && this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) { 
-                    //we need to update the context menu as if it had been shown
-                    this.appStore.contextMenuShownId = this.uiid;
-                    this.paste();
-                    event.stopImmediatePropagation();
-                }
-                event.preventDefault();
-                return;
-            }
-        },
-        
         pasteIfFocused() {
-            if (!this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition)) {
+            // A paste via shortcut cannot get the verification that would be done via a click
+            // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here
+            if (!this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition) && this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {
+                //we need to update the context menu as if it had been shown
+                this.appStore.contextMenuShownId = this.uiid;
                 this.doPaste();
             }
         },
