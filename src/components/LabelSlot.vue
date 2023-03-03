@@ -645,6 +645,7 @@ export default Vue.extend({
         },
 
         onCodePaste(event: ClipboardEvent) {
+            this.appStore.ignoreKeyEvent = true;
             if (event.clipboardData) {
                 this.onCodePasteImpl(event.clipboardData.getData("Text"));
             }
@@ -656,8 +657,7 @@ export default Vue.extend({
             // 2) add the corrected code at the current location 
             // 3) set the text cursor at the right location       
             // 4) check if the slots need to be refactorised
-            this.appStore.ignoreKeyEvent = true;
-            const inputSpanField = document.getElementById(this.UIID);
+            const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
             if(inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
                 // part 1 - note that if we are in a string, we just copy as is except for the quotes that must be parsed
@@ -849,11 +849,10 @@ export default Vue.extend({
             const isSelectedFunction =  (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
             const newCode = this.getSlotContent().substr(0, currentTextCursorPos - this.tokenAC.length)
                 + selectedItem 
-                + ((isSelectedFunction)?"()":"")
-                + this.getSlotContent().substr(currentTextCursorPos);
+                + ((isSelectedFunction)?"()":"");
             
             // Remove content before the cursor (and put cursor at the beginning):
-            (document.getElementById(this.UIID) as HTMLSpanElement).textContent = this.getSlotContent().substr(currentTextCursorPos);
+            this.setSlotContent(this.getSlotContent().substr(currentTextCursorPos));
             const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0};
             this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
             setDocumentSelection(slotCursorInfo, slotCursorInfo);
