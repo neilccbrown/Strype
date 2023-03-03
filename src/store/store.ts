@@ -220,6 +220,11 @@ export const useStore = defineStore("app", {
         },
         
         generateAvailableFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition) => {
+            // If we are currently editing there are no frame command to show...
+            if(state.isEditing) {
+                return {} as  {[id: string]: AddFrameCommandDef[]};
+            }
+
             const currentFrame  = state.frameObjects[frameId];
             const parent = state.frameObjects[currentFrame.parentId];
 
