@@ -260,6 +260,7 @@ export const JointFrameIdentifiers = {
 const StandardFrameTypesIdentifiers = {
     ...CommentFrameTypesIdentifier,
     empty: "",
+    blank: "blank",
     if: "if",
     for: "for",
     while: "while",
@@ -494,6 +495,13 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "#F6F2E9",
     };
 
+    const BlankDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.blank,
+        labels: [],
+        colour: "#F6F2E9",
+    };
+
     const ReturnDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.return,
@@ -597,6 +605,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         FuncDefDefinition,
         WithDefinition,
         EmptyDefinition,
+        BlankDefinition,
         ReturnDefinition,
         VarAssignDefinition,
         ImportDefinition,

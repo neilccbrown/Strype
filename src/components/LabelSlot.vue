@@ -431,16 +431,15 @@ export default Vue.extend({
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
                 this.acItemClicked(document.querySelector(".selectedAcItem")?.id??"");
             }
-            // If AC is not loaded or no selection is available, we want to take the focus from the slot
-            // (for Enter --> we use onLRKeyDown(); for Tab --> we don't do anything special, keep the default browser behaviour)
+            // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot
             else {
                 if(event.key == "Enter") {
-                    // Pretend we move the caret to the last possible position of this side
+                    // Same as hitting arrow down
                     const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
                     this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
                     document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                         new KeyboardEvent("keydown", {
-                            key: "ArrowRight",
+                            key: "ArrowDown",
                         })
                     );
                 }

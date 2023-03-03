@@ -858,6 +858,7 @@ export default Vue.extend({
     padding-bottom: 1px;
     border-radius: 8px;
     border: 1px solid transparent;
+    min-height: $frame-container-min-height;
 }
 
 .frame-header {

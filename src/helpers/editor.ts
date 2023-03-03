@@ -333,6 +333,13 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.funccall_detail") as string,
             symbol: "⌴",//"␣"
         }],
+        "enter": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.blank),
+            description: i18n.t("frame.blank_desc") as string,
+            shortcut: "\x13",
+            tooltip:i18n.t("frame.blank_detail") as string,
+            symbol: "↵",
+        }],
         "r": [{
             type: getFrameDefType(AllFrameTypesIdentifier.return),
             description: "return",
