@@ -7,7 +7,7 @@
         @keydown="forwardKeyEvent($event)"
         @keyup="forwardKeyEvent($event)"
         @focus="onFocus"
-        @blur="blurEditableSlot()"
+        @blur="blurEditableSlot"
         class="next-to-eachother label-slot-container"
     >
         <div 
@@ -39,7 +39,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
-import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrorsForFrame, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 
 export default Vue.extend({
     name: "LabelSlotsStructure.vue",
@@ -373,11 +373,23 @@ export default Vue.extend({
                 return;
 
             }
+            this.appStore.ignoreKeyEvent = false;
             if(this.appStore.focusSlotCursorInfos && this.appStore.focusSlotCursorInfos.slotInfos.frameId == this.frameId 
                 && this.appStore.focusSlotCursorInfos.slotInfos.labelSlotsIndex == this.labelIndex){
                 document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
                     ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
             }
+
+            // When the label slots structure loses focus, we may need to check the errors. 
+            // This happens when we move to anywhere BUT the same frame (so for example, in another label slots structure of that frame).
+            // However, we do not know where we move at this stage, so we will keep trace of in which frame we were, and wait a bit to check who has focus: a slot, or anything else.
+            // If it's a slot that has focus, then we check whether it belongs to the same frame or not than the frame we left.
+            this.appStore.lastBlurredFrameId = this.frameId;
+            setTimeout(() => {
+                if(this.frameId != ((this.appStore.focusSlotCursorInfos?.slotInfos.frameId)??-1)){
+                    checkCodeErrorsForFrame(this.appStore.lastBlurredFrameId);
+                }
+            }, 200);
         },
     },
 });

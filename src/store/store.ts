@@ -42,6 +42,8 @@ export const useStore = defineStore("app", {
             anchorSlotCursorInfos: undefined as SlotCursorInfos | undefined, // where we "leave" the cursor when selecting (like the base of the arrow)
 
             focusSlotCursorInfos: undefined as SlotCursorInfos | undefined, // where we move the cursor when selecting (like the tip of the arrow) 
+
+            lastBlurredFrameId: -1, // Used to keep trace of which frame had focus to check is we moved out the frame when clicking somewhere (for errors checking)
  
             isDraggingFrame: false, // Indicates whether drag and drop of frames is in process
 
@@ -760,7 +762,7 @@ export const useStore = defineStore("app", {
             );
 
             const nextFrameObject = this.frameObjects[nextCaret.id];
-            if( "isCollapsed" in nextFrameObject ) {
+            if("isCollapsed" in nextFrameObject ) {
                 Vue.set(
                     nextFrameObject,
                     "isCollapsed",
@@ -1579,7 +1581,7 @@ export const useStore = defineStore("app", {
             });
         },
 
-        updateErrorsOnSlotValidation(frameSlotInfos: SlotInfos) {  
+        validateSlot(frameSlotInfos: SlotInfos) {  
             this.isEditing = false;
 
             if(this.frameObjects[frameSlotInfos.frameId]){
@@ -1594,8 +1596,6 @@ export const useStore = defineStore("app", {
                 this.commandsTabIndex = 0; //0 is the index of the add frame tab
 
                 this.setCurrentInitCodeValue(frameSlotInfos);       
-                // Now we check errors in relation with this code update
-                checkCodeErrors(frameSlotInfos);
             }
         },
 

@@ -66,7 +66,7 @@ import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResult
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 
 export default Vue.extend({
@@ -339,7 +339,7 @@ export default Vue.extend({
                         );
                     }
                     else{
-                        this.appStore.updateErrorsOnSlotValidation(
+                        this.appStore.validateSlot(
                             {
                                 ...this.coreSlotInfo,
                                 code: this.getSlotContent().trim(),
@@ -383,6 +383,9 @@ export default Vue.extend({
                         // Restore the caret visibility
                         this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
                     }
+
+                    // And check for errors on the frame
+                    checkCodeErrorsForFrame(this.frameId);
 
                     // Make sure there is no longer a selection
                     this.appStore.setSlotTextCursors(undefined, undefined);
