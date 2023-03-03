@@ -316,7 +316,11 @@ export default Vue.extend({
                         metaKey: event.metaKey,
                     }));
             }
-            event.preventDefault();
+            // Let through various shortcuts like Ctrl-A, Ctrl-C, etc, so that they trigger the in-built
+            // actions of selectAll, copy, etc:
+            if (!event.ctrlKey && !event.metaKey) {
+                event.preventDefault();
+            }
         },
 
         onLRKeyDown(event: KeyboardEvent) {
