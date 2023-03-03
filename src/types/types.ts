@@ -490,7 +490,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const EmptyDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.empty,
-        labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false, optionalSlot: true}],
+        labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false}],
         colour: "#F6F2E9",
     };
 

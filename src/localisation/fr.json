@@ -8,7 +8,7 @@
             "expression":"expression ",
             "value":"valeur ",
             "variable":"variable ",
-            "funcCall":"appel de fonction ",
+            "funcCall":"fonction() ",
             "exception":"exception ",
             "name":"nom ",
             "parameters":"paramètres ",
