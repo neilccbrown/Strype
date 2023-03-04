@@ -1,6 +1,6 @@
 <template>
     <div
-        :class="{'frame-body-container frame-container-minheight':true, error: empty, 'body-deletable': bodyDeletable}"
+        :class="{'frame-body-container frame-container-minheight':true, 'body-deletable': bodyDeletable}"
         :id="uiid"
     >
         <div>
@@ -40,14 +40,6 @@
                     class="frame content-children"
                 />
             </Draggable>
-            <b-popover
-                v-if="empty && !isDraggingFrame"
-                :target="uiid"
-                :title="this.$i18n.t('errorMessage.errorTitle')"
-                triggers="hover focus"
-                placement="left"
-                :content="errorMessage"
-            ></b-popover>
         </div>
     </div>
 </template>
@@ -132,27 +124,6 @@ export default Vue.extend({
             return getFrameBodyUIID(this.frameId);
         },
 
-        empty(): boolean {
-            let empty = false;
-            const currentFrameId = this.appStore.currentFrame.id;
-            //check if there are at least 1 frame, NOT disabled, and that we are not inside that frame body
-            if(!this.isDisabled && (this.frames).filter((frame) => !frame.isDisabled && frame.frameType.type !== AllFrameTypesIdentifier.comment).length < 1 
-                && (this.appStore.forceShowEmptyBodyErrorCurrentFrame || !(this.caretVisibility === this.caretPosition.body && this.frameId===currentFrameId))) {
-                empty = true;
-                this.appStore.addPreCompileErrors(this.uiid);                
-            }
-            else {
-                this.appStore.removePreCompileErrors(this.uiid);
-            }
-            return empty;
-        },
-
-        errorMessage(): string {
-            return (this.hasDisabledOrCommentFrames) 
-                ? this.$i18n.t("errorMessage.noValidChildFrameBody") as string 
-                : this.$i18n.t("errorMessage.emptyFrameBody") as string;
-        },
-
         isDraggingFrame(): boolean{
             return this.appStore.isDraggingFrame;
         },
@@ -167,10 +138,6 @@ export default Vue.extend({
             // For compatibility with previous versions of the store
             return false;                       
         },
-    },
-
-    beforeDestroy() {
-        this.appStore.removePreCompileErrors(this.uiid);
     },
 
     methods: {
@@ -253,10 +220,6 @@ export default Vue.extend({
     margin-right: 4px;
     border-color: #000 !important;
     border-radius: 8px;
-}
-
-.error {
-    border: 2px solid #d66 !important;
 }
 
 .body-deletable {

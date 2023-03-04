@@ -233,15 +233,13 @@ export function getAcContextPathId(slotId: string): string{
 export const fileImportSupportedFormats: string[] = ["spy"];
 
 // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
-// by an error class on a frame ("frameDiv" + "error"), a frame body ("frame-body-container" + "error") 
-// or an editable slot ("labelSlot-input" + "error").
+// by an error class on a frame ("frameDiv" + "error") or an editable slot ("labelSlot-input" + "errorSlot").
 export function hasEditorCodeErrors(): boolean {
-    const erroneousHTMLElements = document.getElementsByClassName("error");
+    const erroneousHTMLElements = [...document.getElementsByClassName("error"), ...document.getElementsByClassName("errorSlot")];
     if(erroneousHTMLElements.length > 0){
         let hasErrors = false;
         for(const erroneousHTMLElement of erroneousHTMLElements) {
             hasErrors = hasErrors || erroneousHTMLElement.className.includes("frameDiv") 
-                || erroneousHTMLElement.className.includes("frame-body-container") 
                 || erroneousHTMLElement.className.includes("labelSlot-input");
         }
         return hasErrors;
@@ -334,6 +332,13 @@ export function generateAllFrameCommandsDefs():void {
             shortcut: " ",
             tooltip:i18n.t("frame.funccall_detail") as string,
             symbol: "⌴",//"␣"
+        }],
+        "enter": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.blank),
+            description: i18n.t("frame.blank_desc") as string,
+            shortcut: "\x13",
+            tooltip:i18n.t("frame.blank_detail") as string,
+            symbol: "↵",
         }],
         "r": [{
             type: getFrameDefType(AllFrameTypesIdentifier.return),

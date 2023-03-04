@@ -22,7 +22,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @paste.prevent.stop="onCodePaste($event)"
-            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, error: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
+            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
             :id="UIID"
             :key="UIID"
             :style="spanStyle"
@@ -66,7 +66,7 @@ import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResult
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 
 export default Vue.extend({
@@ -343,7 +343,7 @@ export default Vue.extend({
                         );
                     }
                     else{
-                        this.appStore.updateErrorsOnSlotValidation(
+                        this.appStore.validateSlot(
                             {
                                 ...this.coreSlotInfo,
                                 code: this.getSlotContent().trim(),
@@ -387,6 +387,9 @@ export default Vue.extend({
                         // Restore the caret visibility
                         this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
                     }
+
+                    // And check for errors on the frame
+                    checkCodeErrorsForFrame(this.frameId);
 
                     // Make sure there is no longer a selection
                     this.appStore.setSlotTextCursors(undefined, undefined);
@@ -432,16 +435,15 @@ export default Vue.extend({
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
                 this.acItemClicked(document.querySelector(".selectedAcItem")?.id??"");
             }
-            // If AC is not loaded or no selection is available, we want to take the focus from the slot
-            // (for Enter --> we use onLRKeyDown(); for Tab --> we don't do anything special, keep the default browser behaviour)
+            // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot
             else {
                 if(event.key == "Enter") {
-                    // Pretend we move the caret to the last possible position of this side
+                    // Same as hitting arrow down
                     const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
                     this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
                     document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                         new KeyboardEvent("keydown", {
-                            key: "ArrowRight",
+                            key: "ArrowDown",
                         })
                     );
                 }
@@ -908,6 +910,13 @@ export default Vue.extend({
     content: attr(placeholder);
     font-style: italic;
     color: #757575;
+}
+
+.errorSlot {
+    display: inline-block;
+    position:relative;
+    background: url("~@/assets/images/wave.png") bottom repeat-x;
+    min-width: 5px !important; // if a slot is empty, it is almost impossible to see the wave underline, so we get a minimum width set to erroneous slots
 }
 
 .bold {

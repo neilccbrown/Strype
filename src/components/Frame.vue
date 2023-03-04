@@ -189,7 +189,7 @@ export default Vue.extend({
         },
 
         hasRuntimeError(): boolean {
-            return this.runTimeErrorMessage.length > 0;
+            return (this.runTimeErrorMessage.length > 0);
         },
 
         deletableFrame(): boolean{
@@ -858,10 +858,15 @@ export default Vue.extend({
     padding-bottom: 1px;
     border-radius: 8px;
     border: 1px solid transparent;
+    min-height: $frame-container-min-height;
 }
 
 .frame-header {
     border-radius: 5px;
+}
+
+.error {
+    border: 2px solid #d66 !important;
 }
 
 // This should be ".frameDiv:hover" but drag and drop is messing things up

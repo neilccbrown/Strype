@@ -52,8 +52,7 @@ export default Vue.extend({
 
     methods: {
         runCodeOnPyConsole() {
-            // Before doing anything, we make sure there are no errors found in the in code
-            this.appStore.forceShowEmptyBodyErrorCurrentFrame = true; // We want to show the error at the current frame
+            // Before doing anything, we make sure there are no errors found in the code
             this.$nextTick(() => {
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
                 if(hasEditorCodeErrors()) {
