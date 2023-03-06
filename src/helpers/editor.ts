@@ -524,7 +524,7 @@ export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
  */
 // For Strype, we ignore the following double/triple operators += -= /= *= %= //= **= &= |= ^= >>= <<= 
 export const operators = [".","+","-","/","*","%","//","**","&","|","~","^",">>","<<",
-    "==","=","!=",">=","<=","<",">"];
+    "==","=","!=",">=","<=","<",">",","];
 // Note that for those textual operator keywords, we only have space surrounding the single words: double words don't need
 // as they will always come from a combination of writing one word then the other (the first will be added as operator)
 // Important that the longer operators come before the shorter ones with the same prefix:

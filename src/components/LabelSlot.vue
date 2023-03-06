@@ -179,22 +179,25 @@ export default Vue.extend({
         }, 
 
         getSpanTypeClass(): string {
-            // Returns the class name for a span type (code, int, operator...)
+            // Returns the class name for a span type (i.e. distinction between operators, string and the rest)
             let codeTypeCSS = "";
+            let boldClass = "";
             switch(this.slotType){
             case SlotType.operator:
-                codeTypeCSS = "operator-slot";
+                // For commas, we do not show the operator style but the text style
+                codeTypeCSS = (this.code==",") ? "code-slot" : "operator-slot";
                 break;
             case SlotType.string:
             case SlotType.openingQuote:
             case SlotType.closingQuote:
                 codeTypeCSS = "string-slot";
                 break;
-            case SlotType.number:
-                codeTypeCSS = "number-slot";
-                break;
-            case SlotType.bool:
-                codeTypeCSS = "bool-slot";
+            default:
+                // Everything is code, however, if we are in a function definition name slot, we want the text to show bold as well.
+                if(this.frameType === AllFrameTypesIdentifier.funcdef && this.coreSlotInfo.labelSlotsIndex == 0){
+                    boldClass = " bold";
+                }
+                codeTypeCSS = "code-slot" + boldClass;
                 break;
             }
             return codeTypeCSS;
@@ -929,16 +932,12 @@ export default Vue.extend({
     color: #006600 !important;
 }
 
-.number-slot {
+.operator-slot {
     color: blue !important;
 }
 
-.bool-slot {
-    color: purple !important; 
-}
-
-.operator-slot {
-    color: #8a6706cc !important;
+.code-slot {
+    color: black !important; 
 }
 // end classes for slot type
 

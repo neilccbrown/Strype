@@ -56,8 +56,6 @@ export enum SlotType{
     // code types
     code = 0o0007, // meta category
     string = 0o0001, // detail: a string
-    number = 0o0002, // detail: an number
-    bool = 0o0003, // detail: a boolean
     // quotes for string types
     quote = 0o0070, // meta category
     openingQuote = 0o0010, // detail for the opening one
