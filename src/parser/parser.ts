@@ -63,7 +63,7 @@ export default class Parser {
                     children,
                     indentation + conditionalIndent
                 ) :
-                "") // empty bodies are added as empty lines in the code
+                indentation + conditionalIndent +"pass" + "\n") // empty bodies are added as a "pass" statement in the code
             + 
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id, "all"), 

@@ -77,7 +77,7 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import { AppEvent, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID } from "./helpers/editor";
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
@@ -171,6 +171,18 @@ export default Vue.extend({
     created() {
         this.autoSaveState = () => this.autoSaveStateToWebLocalStorage();
         window.addEventListener("beforeunload", (event) => {
+            // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
+            // we systematically exit any slot being edited to have a state showing the blue caret.
+            // We do so by simulating a key down event (which exists the current slot)
+            const focusCursorInfos = useStore().focusSlotCursorInfos;
+            if(useStore().isEditing && focusCursorInfos){
+                document.getElementById(getFrameLabelSlotsStructureUIID(focusCursorInfos.slotInfos.frameId, focusCursorInfos.slotInfos.labelSlotsIndex))?.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        key: "ArrowDown",
+                    })
+                );
+            }
+
             // Browsers won't display a customised message, and can detect when to prompt the user,
             // so we don't need to do anything special.
             event.returnValue = true;
