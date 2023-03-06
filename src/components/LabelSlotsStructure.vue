@@ -390,7 +390,8 @@ export default Vue.extend({
             // If it's a slot that has focus, then we check whether it belongs to the same frame or not than the frame we left.
             this.appStore.lastBlurredFrameId = this.frameId;
             setTimeout(() => {
-                if(this.frameId != ((this.appStore.focusSlotCursorInfos?.slotInfos.frameId)??-1)){
+                // Need to check if frame still exists because it may have been deleted after blurring:
+                if(this.frameId != ((this.appStore.focusSlotCursorInfos?.slotInfos.frameId)??-1) && this.appStore.lastBlurredFrameId in this.appStore.frameObjects){
                     checkCodeErrorsForFrame(this.appStore.lastBlurredFrameId);
                 }
             }, 200);

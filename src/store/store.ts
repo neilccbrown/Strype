@@ -1766,13 +1766,39 @@ export const useStore = defineStore("app", {
             if(!addingJointFrame){
                 newFramesCaretPositions.push({frameId: newFrame.id, isSlotNavigationPosition: false, caretPosition: CaretPosition.below});
             }
-            const availablePositions = getAvailableNavigationPositions();
+            let availablePositions = getAvailableNavigationPositions();
             const indexOfCurrent = availablePositions.findIndex((e) => e.frameId===this.currentFrame.id && !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition);
             
             // the old positions, with the new ones added at the right place
             // done here as we cannot splice while giving it as input
             availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions);
 
+            if (this.selectedFrames.length > 0 && frame.allowChildren) {
+                this.copySelection();
+                //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
+                this.deleteFrames("Delete");
+                this.pasteSelection(
+                    {
+                        clickedFrameId: newFrame.id,
+                        caretPosition: CaretPosition.body,
+                    }
+                );
+                // Find the frame before, if any:
+                const index = this.getIndexInParent(newFrame.id);
+                if (index == 0) {
+                    this.setCurrentFrame({id: newFrame.parentId, caretPosition: CaretPosition.body});
+                }                
+                else {
+                    this.setCurrentFrame({id: this.frameObjects[newFrame.parentId].childrenIds[index - 1], caretPosition: CaretPosition.below});
+                }
+                await Vue.nextTick();
+                availablePositions = getAvailableNavigationPositions();
+            }
+            else {
+                this.unselectAllFrames();
+            }
+
+        
             //"move" the caret along, using the newly computed positions
             await this.leftRightKey(
                 {
@@ -1788,8 +1814,6 @@ export const useStore = defineStore("app", {
                         }
                     )
             );
-            
-            this.unselectAllFrames();
         },
 
         deleteFrames(key: string, ignoreBackState?: boolean){
