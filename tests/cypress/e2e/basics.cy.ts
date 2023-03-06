@@ -337,7 +337,7 @@ describe("Wrapping frames", () => {
         cy.get("body").type("iTrue");
         checkCodeEquals(defaultImports.concat([
             "foo()",
-            {h: /if True\s+:/, b:[
+            {h: /if\s+True\s+:/, b:[
                 "bar()",
                 "baz()",
             ]},
