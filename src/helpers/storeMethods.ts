@@ -187,20 +187,8 @@ export const evaluateSlotType = (slot: FieldSlot): SlotType => {
         return  SlotType.string;
     }
     else {
-        // For a code type slot, we check if that's a number or boolean literal value
-        if(slot.code.trim() == "True" || slot.code.trim() == "False"){
-            return SlotType.bool;
-        }
-        else {
-            //then we look for numbers (format examples: 9, 9+1j, 0x9, 0o11, 0b1001, 0.9e1)
-            const numberRegEx = /^(-|\+)?((0b[01]+)|(0x[0-9A-Fa-f]+)|(\d+(\.\d+|)[eE]-?\d+)|((\d+(\.\d+|)[+-]\d+(\.\d+|)j)|(\d+(\.\d+|)j)|(\d+(\.\d+|))))$/g;
-            if(slot.code.match(numberRegEx) != null){
-                return SlotType.number;
-            }
-            else{
-                return SlotType.code;
-            }
-        }
+        // Other things are just "code"
+        return SlotType.code;
     }
 };
 
