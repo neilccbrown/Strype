@@ -62,7 +62,7 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID } from "@/helpers/editor";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -284,10 +284,51 @@ export default Vue.extend({
 
         // Event callback equivalent to what would happen for a focus event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
-        onGetCaret(): void {
+        onGetCaret(event: MouseEvent): void {
             this.isFirstChange = true;
             //reset the AC context
             resetCurrentContextAC();
+
+            // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
+            // We should have neigbours because brackets, quotes and operators are always surronded by fields, but keep TS happy
+            if(this.slotType != SlotType.code && this.slotType != SlotType.string){
+                const clickXValue = event.x;
+                const slotWidth = document.getElementById(getLabelSlotUIID(this.coreSlotInfo))?.offsetWidth??0;
+                const slotXPos = document.getElementById(getLabelSlotUIID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
+
+                // Get the spans of that frame label container
+                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex) + " span");
+                let indexOfCurrentSpan = 0;
+                spans.forEach((element, index) => {
+                    if(element.id == getLabelSlotUIID(this.coreSlotInfo)){
+                        indexOfCurrentSpan = index;
+                    }
+                });
+
+                // Get the neigbour spans
+                const previousNeighbourSlotInfos = parseLabelSlotUIID(spans[indexOfCurrentSpan - 1].id);
+                const nextNeighbourSlotInfos = parseLabelSlotUIID(spans[indexOfCurrentSpan + 1].id);
+                if(slotWidth> 0){
+                    // Set default neigbour as the next
+                    let neighbourSlotInfos = nextNeighbourSlotInfos;
+                    let cursorPos = 0;
+                    if(clickXValue < (slotXPos + (slotWidth / 2))) {
+                        neighbourSlotInfos = previousNeighbourSlotInfos; 
+                        cursorPos = (document.getElementById(getLabelSlotUIID(previousNeighbourSlotInfos))?.textContent??"").length;                       
+                    }
+                  
+                    // Focus on the nearest neighbour to the click
+                    event.preventDefault();
+                    this.$nextTick(() => {
+                        const neighbourCursorSlotInfos: SlotCursorInfos = {slotInfos: neighbourSlotInfos, cursorPos: cursorPos};
+                        document.getElementById(getLabelSlotUIID(neighbourSlotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                        setDocumentSelection(neighbourCursorSlotInfos, neighbourCursorSlotInfos);
+                        this.appStore.setSlotTextCursors(neighbourCursorSlotInfos, neighbourCursorSlotInfos);
+                    });
+                    return;
+                }
+            }
+            
             this.appStore.setFocusEditableSlot(
                 {
                     frameSlotInfos: this.coreSlotInfo,
