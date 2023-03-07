@@ -142,6 +142,7 @@ export default Vue.extend({
     }
 
     #pythonConsole:disabled {
+        -webkit-text-fill-color: #ffffff; // Required for Safari
         color: white;
     }
 </style>
