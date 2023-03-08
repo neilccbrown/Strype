@@ -25,7 +25,7 @@
             :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
             :id="UIID"
             :key="UIID"
-            :style="spanStyle"
+            :style="spanBackgroundStyle"
             @input="onSlotSpanChange"
             v-text="code"
         >
@@ -159,7 +159,7 @@ export default Vue.extend({
             return this.appStore.frameObjects[this.frameId].frameType.type;
         },
 
-        spanStyle(): Record<string, string> {
+        spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
             const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
             
@@ -171,15 +171,13 @@ export default Vue.extend({
                 "background-color": ((this.focused) 
                     ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
                     : ((isStructureSingleSlot && !isSlotOptional && this.code.trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
-                    + " !important",
-                "color": (this.frameType === AllFrameTypesIdentifier.comment)
-                    ? "#97971E"
-                    : "#000", 
+                    + " !important", 
             };
         }, 
 
         getSpanTypeClass(): string {
             // Returns the class name for a span type (i.e. distinction between operators, string and the rest)
+            // Comments are treated differently as they have their own specific colour
             let codeTypeCSS = "";
             let boldClass = "";
             switch(this.slotType){
@@ -193,11 +191,17 @@ export default Vue.extend({
                 codeTypeCSS = "string-slot";
                 break;
             default:
-                // Everything is code, however, if we are in a function definition name slot, we want the text to show bold as well.
-                if(this.frameType === AllFrameTypesIdentifier.funcdef && this.coreSlotInfo.labelSlotsIndex == 0){
-                    boldClass = " bold";
+                // Check comments here
+                if(this.frameType === AllFrameTypesIdentifier.comment){
+                    codeTypeCSS = "comment-slot";
                 }
-                codeTypeCSS = "code-slot" + boldClass;
+                else{
+                    // Everything else is code, however, if we are in a function definition name slot, we want the text to show bold as well.
+                    if(this.frameType === AllFrameTypesIdentifier.funcdef && this.coreSlotInfo.labelSlotsIndex == 0){
+                        boldClass = " bold";
+                    }
+                    codeTypeCSS = "code-slot" + boldClass;
+                }
                 break;
             }
             return codeTypeCSS;
@@ -557,7 +561,10 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
             }
-            
+            // On comments, we do not need multislots and parsing any code, we just let any key go through
+            else if(this.frameType == AllFrameTypesIdentifier.comment){
+                this.insertSimpleTypedKey(event.key, true);
+            }
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
             // First we check closing brackets or quote as they have a specifc behaviour, then keep working out the other things
             else if((closeBracketCharacters.includes(event.key) && !isFieldStringSlot(currentSlot)) || (isFieldStringSlot(currentSlot) && stringQuoteCharacters.includes(event.key))){
@@ -990,6 +997,10 @@ export default Vue.extend({
 
 .code-slot {
     color: black !important; 
+}
+
+.comment-slot {
+    color: #97971E !important;
 }
 // end classes for slot type
 

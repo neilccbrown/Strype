@@ -160,6 +160,14 @@ export default Vue.extend({
         },
 
         checkSlotRefactoring(slotUIID: string) {
+            // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
+            const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment && currentFocusSlotCursorInfos){
+                (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = document.getElementById(getLabelSlotUIID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"";
+                this.$nextTick(() => setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos));
+                return;
+            }
+
             // When edition on a slot occurs, we need to check if the slots for this label need refactorisation (for example, adding operators, brackets etc will generate split slots).
             // We first retrieve the literal code if the frame label via the DOM (because we do not yet update the state) and parse it the code to slots
             const labelDiv = document.getElementById(this.labelSlotsStructDivId);
