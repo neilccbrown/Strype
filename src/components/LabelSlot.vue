@@ -552,8 +552,8 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
             }
-            // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
-            else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment && currentStartTextCursor == 0){
+            // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors
+            else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && currentStartTextCursor == 0){
                 event.preventDefault();
                 event.stopPropagation();
             }
