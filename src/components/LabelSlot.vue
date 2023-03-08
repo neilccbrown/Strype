@@ -463,9 +463,14 @@ export default Vue.extend({
                 event.stopPropagation();
                 this.showAC = this.debugAC;
                 this.acRequested = false;
+                return;
             }
+
             // If AC is not loaded, we want to take the focus from the slot
-            // when we reach at here, the "esc" key event is just propagated and acts as normal
+            if(this.appStore.isEditing){
+                (document.activeElement as HTMLElement).blur();
+                this.appStore.isEditing = false;
+            }
         },
 
         onTabKeyDown(event: KeyboardEvent){
@@ -522,7 +527,7 @@ export default Vue.extend({
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
                 // Do not updated the a/c if arrows up/down, escape and enter keys are hit because it will mess with navigation of the a/c
-                if(!["ArrowUp", "ArrowDown","Enter", "Escape"].includes(this.keyDownStr)) {
+                if(!["ArrowUp", "ArrowDown","Enter","Escape"].includes(this.keyDownStr)) {
                     this.$nextTick(() => {
                         this.updateAC();
                     });
