@@ -519,9 +519,9 @@ export default Vue.extend({
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
                 // Do not updated the a/c if arrows up/down, escape and enter keys are hit because it will mess with navigation of the a/c
                 if(!["ArrowUp", "ArrowDown","Enter", "Escape"].includes(this.keyDownStr)) {
-                this.$nextTick(() => {
-                    this.updateAC();
-                });
+                    this.$nextTick(() => {
+                        this.updateAC();
+                    });
                 }
                 return;
             }
