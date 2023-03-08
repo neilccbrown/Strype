@@ -62,11 +62,11 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID } from "@/helpers/editor";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 
 export default Vue.extend({
@@ -348,9 +348,17 @@ export default Vue.extend({
 
             // If the slot accepts auto-complete, i.e. it is not a "free texting" slot
             // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
-            if((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true){
-                //get the autocompletion candidates
-                const textBeforeCaret = this.getSlotContent().substr(0,selectionStart??0)??"";
+            const labelDiv = document.getElementById( getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex));
+            if(labelDiv && ((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true)){
+                // Get the autocompletion candidates, based on everything that is preceding the caret 
+                // (in the slot AND in the other previous slots of the same STRUCTURE, that is the previous frames of the same level of slots hierarchy)
+                const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(this.slotId);
+                const hasSameLevelPreviousSlots = (slotIndex > 0);
+                const startSlotUIID = getLabelSlotUIID({...this.coreSlotInfo, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, 0)});
+                const textBeforeThisSlot = (hasSameLevelPreviousSlots) 
+                    ? getFrameLabelSlotLiteralCodeAndFocus(labelDiv, this.UIID, {startSlotUIID: startSlotUIID , stopSlotUIID: this.UIID}).uiLiteralCode
+                    : "";
+                const textBeforeCaret = textBeforeThisSlot + this.getSlotContent().substring(0,selectionStart??0)??"";
 
                 //workout the correct context if we are in a code editable slot
                 const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);

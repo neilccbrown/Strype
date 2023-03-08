@@ -174,6 +174,64 @@ export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: num
     return "labelSlotsStruct" + frameId + "_"  + labelIndex;
 }
 
+// Helper method to retrieve the literal python code from a frame label structure UI
+// frameLabelStruct: the HTML element representing the current frame label structure
+// currentSlotUIID: the HTML id for the current editable slot we are in
+// delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UIID and stop is exclusive
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number}{
+    let focusSpanPos = 0;
+    let uiLiteralCode = "";
+    let foundFocusSpan = false;
+    let ignoreSpan = !!delimiters;
+    frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {    
+        if(delimiters && (delimiters.startSlotUIID == spanElement.id || delimiters.stopSlotUIID == spanElement.id)){
+            ignoreSpan = !ignoreSpan ;
+        } 
+        if(!ignoreSpan) {
+            // The code is extracted from the span; we only transform the string quotes as they are styled for the UI, we need to restore them to their code-style equivalent.
+            if(isSlotQuoteType(parseLabelSlotUIID(spanElement.id).slotType)){
+                switch(spanElement.textContent){
+                case UIDoubleQuotesCharacters[0]:
+                case UIDoubleQuotesCharacters[1]:
+                    uiLiteralCode += "\"";
+                    break;
+                case UISingleQuotesCharacters[0]:
+                case UISingleQuotesCharacters[1]:
+                    uiLiteralCode += "'";
+                    break;            
+                }
+            }
+            else{
+                uiLiteralCode += spanElement.textContent;
+            }
+        
+            if(spanElement.id === currentSlotUIID){
+                focusSpanPos += (useStore().focusSlotCursorInfos?.cursorPos??0);     
+                foundFocusSpan = true;
+            }
+            else{
+                // In most cases, we just increment the length by the span content length,
+                // BUT there is one exception: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
+                // therefore we need to account for them when dealing with such operators
+                let spacesOffset = 0;
+                const spanElementContentLength = (spanElement.textContent?.length??0);
+                if((trimmedKeywordOperators.includes(spanElement.textContent??""))){
+                    spacesOffset = 2;
+                    // Reinsert the spaces in the literal code
+                    uiLiteralCode = uiLiteralCode.substring(0, uiLiteralCode.length - spanElementContentLength) 
+                    + " " + uiLiteralCode.substring(uiLiteralCode.length - spanElementContentLength) 
+                    + " ";
+                }
+                if(!foundFocusSpan) {
+                    focusSpanPos += (spanElementContentLength + spacesOffset);
+                }
+            }
+        }
+    });    
+    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos};
+}
+
+
 export function getFrameContextMenuUIID(frameUIID: string): string {
     return frameUIID + "frameContextMenu";
 }

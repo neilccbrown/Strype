@@ -38,7 +38,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, trimmedKeywordOperators, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
 import { checkCodeErrorsForFrame, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 
 export default Vue.extend({
@@ -166,49 +166,7 @@ export default Vue.extend({
             if(labelDiv){ // keep TS happy
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
-                let focusCursorAbsPos = 0;
-                let uiLiteralCode = "";
-                let foundFocusSpan = false;
-                labelDiv.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
-                    // The code is extracted from the span; we only transform the string quotes as they are styled for the UI, we need to restore them to their code-style equivalent.
-                    if(isSlotQuoteType(parseLabelSlotUIID(spanElement.id).slotType)){
-                        switch(spanElement.textContent){
-                        case UIDoubleQuotesCharacters[0]:
-                        case UIDoubleQuotesCharacters[1]:
-                            uiLiteralCode += "\"";
-                            break;
-                        case UISingleQuotesCharacters[0]:
-                        case UISingleQuotesCharacters[1]:
-                            uiLiteralCode += "'";
-                            break;            
-                        }
-                    }
-                    else{
-                        uiLiteralCode += spanElement.textContent;
-                    }
-                    
-                    if(spanElement.id === slotUIID){
-                        focusCursorAbsPos += (this.appStore.focusSlotCursorInfos?.cursorPos??0);     
-                        foundFocusSpan = true;
-                    }
-                    else{
-                        // In most cases, we just increment the length by the span content length,
-                        // BUT there is one exception: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
-                        // therefore we need to account for them when dealing with such operators
-                        let spacesOffset = 0;
-                        const spanElementContentLength = (spanElement.textContent?.length??0);
-                        if((trimmedKeywordOperators.includes(spanElement.textContent??""))){
-                            spacesOffset = 2;
-                            // Reinsert the spaces in the literal code
-                            uiLiteralCode = uiLiteralCode.substring(0, uiLiteralCode.length - spanElementContentLength) 
-                                + " " + uiLiteralCode.substring(uiLiteralCode.length - spanElementContentLength) 
-                                + " ";
-                        }
-                        if(!foundFocusSpan) {
-                            focusCursorAbsPos += (spanElementContentLength + spacesOffset);
-                        }
-                    }
-                });    
+                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUIID);
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, false, focusCursorAbsPos);
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
