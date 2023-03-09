@@ -288,10 +288,6 @@ export default Vue.extend({
                     this.appStore.unselectAllFrames();
                     this.appStore.makeSelectedFramesVisible();
                 }
-                if(isEditing){
-                    (document.activeElement as HTMLElement).blur();
-                    this.appStore.isEditing = false;
-                }
             }
             else {
                 if(!isEditing){

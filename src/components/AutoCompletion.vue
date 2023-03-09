@@ -243,8 +243,10 @@ export default Vue.extend({
                         if(parsedResults[myFunctionsModuleLabel].find((result) => (result === userDefItem.name)) === undefined) {
                             parsedResults[myFunctionsModuleLabel].push(userDefItem.name);
                             parsedDoc[myFunctionsModuleLabel].push(this.$i18n.t("errorMessage.errorUserDefinedFuncMsg") as string);
-                            parsedTypes[myFunctionsModuleLabel].push(""); 
                         }
+                        // In any case, we push a "function" type
+                        parsedTypes[myFunctionsModuleLabel].push("function"); 
+
                     }
                     else {
                         //If module has not been created, create it

@@ -25,7 +25,7 @@
             :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
             :id="UIID"
             :key="UIID"
-            :style="spanStyle"
+            :style="spanBackgroundStyle"
             @input="onSlotSpanChange"
             v-text="code"
         >
@@ -62,11 +62,11 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID } from "@/helpers/editor";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 
 export default Vue.extend({
@@ -159,7 +159,7 @@ export default Vue.extend({
             return this.appStore.frameObjects[this.frameId].frameType.type;
         },
 
-        spanStyle(): Record<string, string> {
+        spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
             const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
             
@@ -171,15 +171,13 @@ export default Vue.extend({
                 "background-color": ((this.focused) 
                     ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
                     : ((isStructureSingleSlot && !isSlotOptional && this.code.trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
-                    + " !important",
-                "color": (this.frameType === AllFrameTypesIdentifier.comment)
-                    ? "#97971E"
-                    : "#000", 
+                    + " !important", 
             };
         }, 
 
         getSpanTypeClass(): string {
             // Returns the class name for a span type (i.e. distinction between operators, string and the rest)
+            // Comments are treated differently as they have their own specific colour
             let codeTypeCSS = "";
             let boldClass = "";
             switch(this.slotType){
@@ -193,11 +191,17 @@ export default Vue.extend({
                 codeTypeCSS = "string-slot";
                 break;
             default:
-                // Everything is code, however, if we are in a function definition name slot, we want the text to show bold as well.
-                if(this.frameType === AllFrameTypesIdentifier.funcdef && this.coreSlotInfo.labelSlotsIndex == 0){
-                    boldClass = " bold";
+                // Check comments here
+                if(this.frameType === AllFrameTypesIdentifier.comment){
+                    codeTypeCSS = "comment-slot";
                 }
-                codeTypeCSS = "code-slot" + boldClass;
+                else{
+                    // Everything else is code, however, if we are in a function definition name slot, we want the text to show bold as well.
+                    if(this.frameType === AllFrameTypesIdentifier.funcdef && this.coreSlotInfo.labelSlotsIndex == 0){
+                        boldClass = " bold";
+                    }
+                    codeTypeCSS = "code-slot" + boldClass;
+                }
                 break;
             }
             return codeTypeCSS;
@@ -348,9 +352,17 @@ export default Vue.extend({
 
             // If the slot accepts auto-complete, i.e. it is not a "free texting" slot
             // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
-            if((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true){
-                //get the autocompletion candidates
-                const textBeforeCaret = this.getSlotContent().substr(0,selectionStart??0)??"";
+            const labelDiv = document.getElementById( getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex));
+            if(labelDiv && ((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true)){
+                // Get the autocompletion candidates, based on everything that is preceding the caret 
+                // (in the slot AND in the other previous slots of the same STRUCTURE, that is the previous frames of the same level of slots hierarchy)
+                const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(this.slotId);
+                const hasSameLevelPreviousSlots = (slotIndex > 0);
+                const startSlotUIID = getLabelSlotUIID({...this.coreSlotInfo, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, 0)});
+                const textBeforeThisSlot = (hasSameLevelPreviousSlots) 
+                    ? getFrameLabelSlotLiteralCodeAndFocus(labelDiv, this.UIID, {startSlotUIID: startSlotUIID , stopSlotUIID: this.UIID}).uiLiteralCode
+                    : "";
+                const textBeforeCaret = textBeforeThisSlot + this.getSlotContent().substring(0,selectionStart??0)??"";
 
                 //workout the correct context if we are in a code editable slot
                 const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
@@ -451,9 +463,14 @@ export default Vue.extend({
                 event.stopPropagation();
                 this.showAC = this.debugAC;
                 this.acRequested = false;
+                return;
             }
+
             // If AC is not loaded, we want to take the focus from the slot
-            // when we reach at here, the "esc" key event is just propagated and acts as normal
+            if(this.appStore.isEditing){
+                (document.activeElement as HTMLElement).blur();
+                this.appStore.isEditing = false;
+            }
         },
 
         onTabKeyDown(event: KeyboardEvent){
@@ -509,9 +526,12 @@ export default Vue.extend({
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
-                this.$nextTick(() => {
-                    this.updateAC();
-                });
+                // Do not updated the a/c if arrows up/down, escape and enter keys are hit because it will mess with navigation of the a/c
+                if(!["ArrowUp", "ArrowDown","Enter","Escape"].includes(this.keyDownStr)) {
+                    this.$nextTick(() => {
+                        this.updateAC();
+                    });
+                }
                 return;
             }
 
@@ -541,12 +561,15 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
             }
-            // We also prevent start trailing spaces on all slots except comments, to avoid indentation errors
-            else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment && currentStartTextCursor == 0){
+            // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors
+            else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && currentStartTextCursor == 0){
                 event.preventDefault();
                 event.stopPropagation();
             }
-            
+            // On comments, we do not need multislots and parsing any code, we just let any key go through
+            else if(this.frameType == AllFrameTypesIdentifier.comment){
+                this.insertSimpleTypedKey(event.key, true);
+            }
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
             // First we check closing brackets or quote as they have a specifc behaviour, then keep working out the other things
             else if((closeBracketCharacters.includes(event.key) && !isFieldStringSlot(currentSlot)) || (isFieldStringSlot(currentSlot) && stringQuoteCharacters.includes(event.key))){
@@ -979,6 +1002,10 @@ export default Vue.extend({
 
 .code-slot {
     color: black !important; 
+}
+
+.comment-slot {
+    color: #97971E !important;
 }
 // end classes for slot type
 
