@@ -76,13 +76,15 @@ import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
-import { AppEvent, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID } from "./helpers/editor";
+import { AppEvent, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex } from "./helpers/editor";
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import Draggable from "vuedraggable";
 import scssVars  from "@/assets/style/_export.module.scss";
+import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
+import { cloneDeep } from "lodash";
 
 //////////////////////
 //     Component    //
@@ -243,11 +245,15 @@ export default Vue.extend({
 
         // Add an event listener for text selection changes. It will be used for changes of text selection and text cursors (start/end).
         document.addEventListener("selectionchange", this.handleDocumentSelectionChange);
+
+        // Add en event listener for the mouse up events, it will be used for detecting the end of a drag in the context of slots/text selection.
+        document.addEventListener("mouseup", this.checkMouseSelection);
     },
 
     destroyed() {
         // Removes the listeners
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
+        document.removeEventListener("mouseup", this.checkMouseSelection);
     },
 
     mounted() {
@@ -387,6 +393,74 @@ export default Vue.extend({
                         {slotInfos: focusSlotInfo, cursorPos: docSelection.focusOffset});
                 }
             }
+        },
+
+        checkMouseSelection(){
+            // Contrary to the keyboard selection, we do not have a very easy way to control the mouse selection,
+            // and the browser's handling selection may end up with a wrong selection in the sense of our slot structure.
+            // (However it will not exceed the scope of the frame label slots struct the selection is currently in.)
+            // When the mouse button is released we check that we have a mutli slot selectiond that it is coherent, if not we updated it.
+            // Note that calling this on dragend event won't work, I think because the event is captured by the frame drag and drop already
+            this.$nextTick(() => {
+                const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
+                const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+                if(anchorSlotCursorInfos && focusSlotCursorInfos){
+                    // If the anchor and focus are not in the same level (case A), or one of the anchor/focus is a string and the other isn't the same string (case B)
+                    // then we need to amend the selection
+                    const anchorLevel =  (anchorSlotCursorInfos?.slotInfos.slotId.split(",").length)??0;
+                    const focusLevel = (focusSlotCursorInfos?.slotInfos.slotId.split(",").length)??0;
+                    const isSelectionNotAllowed = (focusLevel != anchorLevel) 
+                        || ((focusSlotCursorInfos.slotInfos.slotType == SlotType.string || anchorSlotCursorInfos.slotInfos.slotType == SlotType.string)
+                             && focusSlotCursorInfos.slotInfos.slotId != anchorSlotCursorInfos.slotInfos.slotId)
+                        || ((focusSlotCursorInfos.slotInfos.slotType == SlotType.string && anchorSlotCursorInfos.slotInfos.slotType == SlotType.string)
+                             && focusSlotCursorInfos.slotInfos.slotId != anchorSlotCursorInfos.slotInfos.slotId);
+                    if(isSelectionNotAllowed) {
+                        const forwardSelection = ((getSelectionCursorsComparisonValue() as number) < 0);
+                        let amendedSelectionFocusCursorSlotInfos = cloneDeep(anchorSlotCursorInfos) as SlotCursorInfos;
+                        if(focusLevel != anchorLevel){
+                            // Case A: different levels
+                            const anchorParentSlotId = getSlotParentIdAndIndexSplit(anchorSlotCursorInfos.slotInfos.slotId).parentId;
+                            if ((focusLevel < anchorLevel)) {
+                                // Case A.1: if we go from a deeper level to an outer level, then we stop at the last [resp. first] sibling of the anchor level when selection forwards [resp. backwards]
+                                const anchorParentSlot = retrieveParentSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as SlotsStructure;
+                                const siblingSlotId = getSlotIdFromParentIdAndIndexSplit(anchorParentSlotId,  (forwardSelection) ? anchorParentSlot.fields.length - 1 : 0);
+                                amendedSelectionFocusCursorSlotInfos.slotInfos.slotId = siblingSlotId;
+                                const siblingSlot = retrieveSlotFromSlotInfos(amendedSelectionFocusCursorSlotInfos.slotInfos);
+                                amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? (siblingSlot as BaseSlot).code.length : 0;
+                            }
+                            else{
+                                // case A.2: if we go from an outer level to a deeper level, then need to find where is the focus "ancestor" in same level of the anchor, and stop before [resp. after] if going forwards [resp. backwards]
+                                const ancestorIndex = getSameLevelAncestorIndex(focusSlotCursorInfos.slotInfos.slotId, anchorParentSlotId);
+                                const closestAncestorNeighbourSlotId = getSlotIdFromParentIdAndIndexSplit(anchorParentSlotId,  (forwardSelection) ? ancestorIndex - 1 : ancestorIndex + 1);
+                                const closestAncestorNeighbourSlot = retrieveSlotFromSlotInfos({...amendedSelectionFocusCursorSlotInfos.slotInfos, slotId: closestAncestorNeighbourSlotId}) as BaseSlot;
+                                amendedSelectionFocusCursorSlotInfos.slotInfos.slotId = closestAncestorNeighbourSlotId;
+                                amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? closestAncestorNeighbourSlot.code.length : 0;
+                            }
+                        }
+                        else{
+                            // Case B: problem with string selection :
+                            // if the anchor is a string we reach the beginning or the end of that string depending on the selection direction
+                            // if the anchor is not a string then we stop just before or after the target string depending on the selection direction
+                            if(anchorSlotCursorInfos.slotInfos.slotType == SlotType.string){
+                                const anchorSlot = (retrieveSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as StringSlot);
+                                amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? anchorSlot.code.length : 0;
+                            }
+                            else{
+                                const {parentId, slotIndex: focusSlotIndex} = getSlotParentIdAndIndexSplit(focusSlotCursorInfos.slotInfos.slotId);
+                                const stringSlotNeighbourSlotID = getSlotIdFromParentIdAndIndexSplit(parentId, (forwardSelection) ? focusSlotIndex-1 : focusSlotIndex + 1);
+                                // The neigbour of a string is necessarily a base slot, because strings are surrounded by them....
+                                const stringSlotNeighbourSlotInfos = {...focusSlotCursorInfos.slotInfos, slotId: stringSlotNeighbourSlotID, slotType: SlotType.code};
+                                const stringSlotNeighbourSlot = retrieveSlotFromSlotInfos(stringSlotNeighbourSlotInfos) as BaseSlot;
+                                amendedSelectionFocusCursorSlotInfos = {slotInfos: stringSlotNeighbourSlotInfos, cursorPos: (forwardSelection) ? stringSlotNeighbourSlot.code.length : 0};
+                            }
+                        }
+                        
+                        // Update the selection now 
+                        this.appStore.setSlotTextCursors(anchorSlotCursorInfos, amendedSelectionFocusCursorSlotInfos);
+                        setDocumentSelection(anchorSlotCursorInfos, amendedSelectionFocusCursorSlotInfos);
+                    }
+                }
+            });     
         },
     },
 });

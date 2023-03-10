@@ -664,24 +664,39 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
     const focusCursorInfos = useStore().focusSlotCursorInfos;
     
     if(anchorCursorInfos && focusCursorInfos){
+        const {slotInfos: anchorSlotInfos, cursorPos: anchorCursorPos} = anchorCursorInfos;
+        const {slotInfos: focusSlotInfos, cursorPos: focusCursorPos} = focusCursorInfos;
         // Check if same frame first
-        if(anchorCursorInfos.slotInfos.frameId == focusCursorInfos.slotInfos.frameId){
+        if(anchorSlotInfos.frameId == focusSlotInfos.frameId){
             // Check if same label index
-            if(anchorCursorInfos.slotInfos.labelSlotsIndex == focusCursorInfos.slotInfos.labelSlotsIndex){
+            if(anchorSlotInfos.labelSlotsIndex == focusSlotInfos.labelSlotsIndex){
                 // check if same slot ID (we don't need to worry about the operators, brackets or quotes)
-                if(anchorCursorInfos.slotInfos.slotId == focusCursorInfos.slotInfos.slotId){
+                if(anchorSlotInfos.slotId == focusSlotInfos.slotId){
                     // Check the cursors difference
-                    return anchorCursorInfos.cursorPos - focusCursorInfos.cursorPos;
+                    return anchorCursorPos - focusCursorPos;
                 }
                 
-                // Not the same slot ID, we return the ID comparison because the last "token" of the ID is the slot index
-                const anchorSlotIndex = getSlotParentIdAndIndexSplit(anchorCursorInfos.slotInfos.slotId).slotIndex;
-                const focusSlotIndex = getSlotParentIdAndIndexSplit(focusCursorInfos.slotInfos.slotId).slotIndex;
-                return anchorSlotIndex - focusSlotIndex;
+                // Not in the same slot, we check the slots in relation to each other and their level in the hierarchy
+                const {parentId: anchorParentId, slotIndex: anchorSlotIndex} = getSlotParentIdAndIndexSplit(anchorSlotInfos.slotId);
+                const {parentId: focusParentId, slotIndex:focusSlotIndex} = getSlotParentIdAndIndexSplit(focusSlotInfos.slotId);
+                // check if the anchor and the focus slots are in the hierachy level
+                if(anchorParentId == focusParentId){
+                    // Same level:  we return the ID comparison because the last "token" of the ID is the slot index
+                    return anchorSlotIndex - focusSlotIndex;
+                }
+            
+                // Not the same level we need to find the position of the deeper level slot's ancestor which is of the same level as the outer slot
+                // and the relative position we look for is the difference between those two positions
+                const anchorLevelCount = anchorSlotInfos.slotId.split(",").length;
+                const focusLevelCount = focusSlotInfos.slotId.split(",").length;
+                const isAnchorAtDeeperLevel = (anchorLevelCount > focusLevelCount);
+                const anchorIndexToUse = (isAnchorAtDeeperLevel) ? getSameLevelAncestorIndex(anchorSlotInfos.slotId, focusParentId) : anchorSlotIndex;
+                const focusIndexToUse = (isAnchorAtDeeperLevel) ? focusSlotIndex : getSameLevelAncestorIndex(focusSlotInfos.slotId, anchorParentId);
+                return (anchorIndexToUse - focusIndexToUse);                
             }
 
             // Not the same label index, we return the indexes difference
-            return (anchorCursorInfos.slotInfos.labelSlotsIndex - focusCursorInfos.slotInfos.labelSlotsIndex);
+            return (anchorSlotInfos.labelSlotsIndex - focusSlotInfos.labelSlotsIndex);
         }
 
         // Not same frame, return the frame POSITION difference, we can't use ID as they are not indexes
@@ -694,6 +709,15 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
     // The method expects the anchor and focus cursors to be valid.
     return undefined; 
 }
+
+export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParentId: string): number => {
+    const ancestorRegex = new RegExp("^"+sameLevelThanSlotParentId + ((sameLevelThanSlotParentId.length > 0) ? "," : "") +"(\\d+),.+$");
+    const ancestorMatch = slotId.match(ancestorRegex);
+    if(ancestorMatch){
+        return parseInt(ancestorMatch[1]);
+    }
+    return -1;
+};
 
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
 export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, cursorPos?: number): {slots: SlotsStructure, cursorOffset: number} => {
