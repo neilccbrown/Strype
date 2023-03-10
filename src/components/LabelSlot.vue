@@ -62,7 +62,7 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, getTextStartCursorPositionOfHTMLElement, closeBracketCharacters, getTextEndCursorPositionOfHTMLElement, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -722,7 +722,8 @@ export default Vue.extend({
         },
         
         onCodePasteImpl(content : string) {
-            // Pasted code is done in 3 steps:
+            // Pasted code is done in several steps:
+            // 0) clean up the content
             // 1) correct the code literal if needed (for example pasting "(a" will result in pasting "(a)")
             // 2) add the corrected code at the current location 
             // 3) set the text cursor at the right location       
@@ -730,6 +731,21 @@ export default Vue.extend({
             const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
             if(inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
+                // part 0 : the code copied from the interface contains unwanted CRLF added by the browser between the spans
+                // We want to clear that, we replace them by spaces to avoid issues with keyword operators, except for
+                // - before/after the content (we trime before doing anything)
+                // - surrounding the string (between the styled quotes) where we replace them by empty to preseve the string content
+                // we also then replace the styled quotes appropriately
+                // TODO: Strype is too permissive at the moment with copy/paste: we can't detect the difference between what comes from us and outside
+                // and if the line returns are line returns or coming from the UI (slots). For the moment, do as if we can only work from the UI.
+                content = content.trim();
+                content = content
+                    .replaceAll(UIDoubleQuotesCharacters[0]+"\r\n", stringDoubleQuoteChar)
+                    .replaceAll("\r\n"+UIDoubleQuotesCharacters[1], stringDoubleQuoteChar)
+                    .replaceAll(UISingleQuotesCharacters[0]+"\r\n", stringSingleQuoteChar)
+                    .replaceAll("\r\n"+UISingleQuotesCharacters[1], stringSingleQuoteChar)
+                    .replaceAll("\r\n","");
+          
                 // part 1 - note that if we are in a string, we just copy as is except for the quotes that must be parsed
                 let cursorOffset = 0;
                 let correctedPastedCode = "";
