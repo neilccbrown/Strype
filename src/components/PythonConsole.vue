@@ -89,6 +89,7 @@ export default Vue.extend({
             // Mouse scrolling on the right panel (commands) is forwarded to the editor -- for the console, we don't want to propagate the event
             // Key events are captured by the UI to navigate the blue cursor -- for the console, we don't want to propagate the event
             event.stopPropagation();
+            this.appStore.ignoreKeyEvent = true;
         },
 
         toggleConsoleDisplay(){
