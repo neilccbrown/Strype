@@ -230,10 +230,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         }
         
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if module:";
-        // ignore the module "__main__"
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"__main__\"):";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"continue";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith(\"$exec\"):";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if module.startswith('__main__'):";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myFunctions")+"\"";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"elif module.startswith(\"builtins\"):";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\"";
