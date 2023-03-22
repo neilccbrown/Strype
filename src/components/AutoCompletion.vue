@@ -370,12 +370,6 @@ export default Vue.extend({
         getTypeOfSelected(id: string): string {
             // We start by getting the index
             const indexOfSelected = parseInt(id.replace(this.UIID,""));
-            console.log("\n\nCHECKING TYPEEEEEEEEEEEEE >>>>>>>>>> \n");
-            console.log("index of selected : " + indexOfSelected);
-            console.log("this.resultsToShow");
-            console.log(JSON.stringify(this.resultsToShow));
-            console.log("\n\n");
-            console.log(((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type);
             // Here we are making all the ACresult objects in a flatten array (with contact.apply()) in which we are then finding the selected and return its type
             return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type;
         },
