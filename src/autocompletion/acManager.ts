@@ -153,8 +153,14 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     userCode = userCode.replaceAll(INDENT+"print(",INDENT+"pass#");
     userCode = replaceInputFunction(userCode);
 
+    // To avoid problems with strings in the contextAC (i.e. in function calls), we use an "escaped" value JSON-compliant
+    // (note that the rendered string is wrapped by double quotes)
+    const jsonStringifiedContext = JSON.stringify(contextAC);
+
 
     let inspectionCode ="from browser import document as __document, console as __console\n";
+    // import json for formatting the content to be later parsed in JSON properly
+    inspectionCode += "import json as __json\n";
     
     /* IFTRUE_isMicrobit */
     inspectionCode += "import sys as __sys\n"+
@@ -217,7 +223,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // in case the contextAC is not empty, this is the 'module'
         // otherwise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
         // if not, the we retrieve the module name with globals().get(name).__module__
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = '"+contextAC+"' or globals().get(name).__module__ or ''";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = "+ jsonStringifiedContext + " or globals().get(name).__module__ or ''";
         if(contextAC.length == 0){
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if str(globals().get(name)).startswith('<module '):";
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"module = \""+i18n.t("autoCompletion.importedModules")+"\"";
@@ -233,7 +239,7 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"module=\""+i18n.t("autoCompletion.myVariables")+"\"";
         // if there is no list for the specific mod, create it and append the name; otherwise just append the name
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"resultsWithModules.setdefault(module,[]).append(name)";
-        
+
         // Before we finish we need to have the "My Variables" on the top of the list(dictionary)
         // Get the index of "My Variables" in the dictionary
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"try:";
@@ -246,8 +252,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]";
         // Convert back to dictionary!
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)";         
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = resultsWithModules";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = __json.dumps(resultsWithModules)";
         // If there are no results
         inspectionCode += "\n"+INDENT+INDENT+"else:";
         // We empty any previous results so that the AC won't be shown
@@ -270,23 +276,23 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"for result in resultsWithModules[module]:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"try:";
         // If there is context available, the `type()` needs it in order to give proper results. 
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"typeOfResult = type(exec("+((contextAC.length>0)?("'"+contextAC+".'+"):"")+"result))";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"types.setdefault(module,[]).append(typeOfResult.__name__ or 'No documentation available')";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"typeOfResult = type(eval("+((contextAC.length>0)?(jsonStringifiedContext+"+'.'+"):"")+"result)).__name__";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"types.setdefault(module,[]).append(typeOfResult or 'No documentation available')";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"except:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('No documentation available')";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"continue";
         // built-in types most likely refer to variable or values defined by the user
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"isBuiltInType = (typeOfResult in (str,bool,int,float,complex,list, tuple, range,bytes, bytearray, memoryview,set, frozenset));";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"isBuiltInType = (typeOfResult in ('str','bool','int','float','complex','list','tuple','range','bytes','bytearray','memoryview','set','frozenset'));";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if isBuiltInType:";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult.__name__ or 'No documentation available'));";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'function':";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Type of: '+(typeOfResult or 'No documentation available'));";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult == 'function' or typeOfResult == 'method':";
         //We make sure for functions that we can get the arguments. If we can't we just explains it to get something, at least and not having a/c crashing
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if 'co_varnames' in dir(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__')):";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec('"+((contextAC.length>0)?(contextAC+"."):"")+"'+result+'.__code__.co_varnames'))";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"if '__code__' in dir(exec("+((contextAC.length>0)?(jsonStringifiedContext+"+'.'+"):"")+"result)) and 'co_varnames' in dir(exec("+((contextAC.length>0)?(jsonStringifiedContext+"+'.'+"):"")+"result+'.__code__')):";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"arguments = str(exec("+((contextAC.length>0)?(jsonStringifiedContext+"+'.'+"):"")+"result+'.__code__.co_varnames'))";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + ((' with arguments: ' + arguments.replace(\"'\",\" \").replace(\"\\\"\",\" \").replace(\",)\",\")\")) if arguments != '()' else ' without arguments'));";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"else:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Function ' + result + '\\n(arguments could not be found)')";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult.__name__ == 'NoneType':";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"elif typeOfResult == 'NoneType':";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"documentation.setdefault(module,[]).append('Built-in value')";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"else:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"try:";
@@ -299,8 +305,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()";
-        inspectionCode += "\n"+INDENT+INDENT+"__document['"+documentationSpanId+"'].text = documentation;";
-        inspectionCode += "\n"+INDENT+INDENT+"__document['"+typesSpanId+"'].text = types;";
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+documentationSpanId+"'].text = __json.dumps(documentation);";
+        inspectionCode += "\n"+INDENT+INDENT+"__document['"+typesSpanId+"'].text = __json.dumps(types);";
 
         // we store the context *path* obtained by checking the type of the context with Python, or leave empty if no context.
         // it will be used in the AutoCompletion component to check versions
@@ -309,8 +315,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
             // if there is a context,  we get the context path from 
             // - self value if that's a module,
             // - type() that returns the type as "<class 'xxx'>"
-            inspectionCode += "\n"+INDENT+INDENT+"if str(globals().get('"+contextAC+"')).startswith('<module '):";
-            inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = '"+contextAC+"'";
+            inspectionCode += "\n"+INDENT+INDENT+"if str(globals().get("+jsonStringifiedContext+")).startswith('<module '):";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = "+jsonStringifiedContext;
             inspectionCode += "\n"+INDENT+INDENT+"elif str(type("+contextAC+")).startswith('<class \\''):";
             inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
         }
