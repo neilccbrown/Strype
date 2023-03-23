@@ -663,7 +663,24 @@ export default Vue.extend({
                         if(!forbidOperator){
                             if(isBracket || isStringQuote){
                                 insertKey = false;
-                                // add the counter part here, so the parser can work things out properly with slots
+                                // When an opening bracket is typed and there is no text highlighted, we check if we need to "skipped" that input: if we are at the end of an editable slot, and the next slot is a bracketed structure
+                                // that starts with the same opening bracket that the typed one, we move to the next slot rather than adding a new bracketed structure.
+                                // (at this point of the code, we know we're not in a String slot)
+                                if(isBracket && nextSlotInfos && nextSlotInfos.slotType == SlotType.bracket && selectionStart==selectionEnd){
+                                    const isAtEndOfSlot = inputSpanFieldContent.substring(selectionEnd).trim().length == 0;
+                                    const areOpeningBracketsEqual = (retrieveSlotFromSlotInfos(nextSlotInfos) as SlotsStructure).openingBracketValue == event.key;
+                                    if(isAtEndOfSlot && areOpeningBracketsEqual){
+                                        // Move to next slot, as it is a bracketed structure, we need to get into the first child slot of that structure
+                                        this.$nextTick(() => {
+                                            const nextBrackedStructFirstSlotCursorInfos: SlotCursorInfos = {slotInfos: {...nextSlotInfos, slotId: nextSlotInfos.slotId+",0", slotType: SlotType.code}, cursorPos: 0};
+                                            this.appStore.editableSlotViaKeyboard.isKeyboard = true; // in order to get the focused editable subslot performing the bracket checks in onGetCaret()
+                                            document.getElementById(getLabelSlotUIID(nextBrackedStructFirstSlotCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                                            this.appStore.setSlotTextCursors(nextBrackedStructFirstSlotCursorInfos, nextBrackedStructFirstSlotCursorInfos);      
+                                        });
+                                        return;
+                                    }
+                                }
+                                // If we didn't need to "skip" the opening bracket, or if we insert a string, add the counter part of the typed key here, so the parser can work things out properly with slots
                                 inputSpanField.textContent = inputSpanFieldContent.substring(0, currentStartTextCursor)
                                     + event.key 
                                     + inputSpanFieldContent.substring(selectionStart, selectionEnd) 
