@@ -130,7 +130,8 @@
     "autoCompletion": {
         "myFunctions":"My functions",
         "myVariables":"My variables",
-        "importedModules":"Imported modules"
+        "importedModules":"Imported modules",
+        "invalidState":"No completion available"
     },
     "apidiscovery" : {
         "v2InfoMsg":"This is only valid for the micro:bit board v2.",

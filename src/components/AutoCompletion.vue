@@ -1,13 +1,11 @@
 <template>
-    <div 
-        v-show="areResultsToShow()"
-    >
+    <div>
         <div class="popupContainer">
             <div
                 :style="popupPosition"
                 class="popup"
             >
-                <ul >
+                <ul v-show="areResultsToShow()">
                     <div 
                         v-for="module in Object.keys(resultsToShow)"
                         :key="UIID+module"
@@ -34,6 +32,15 @@
                         />
                     </div>
                 </ul>
+                <div v-show="!areResultsToShow()">
+                    <div 
+                        class="module empty-results"
+                        @mousedown.prevent.stop
+                        @mouseup.prevent.stop
+                    >
+                        <em v-html="$t('autoCompletion.invalidState')"></em>
+                    </div>
+                </div>
             </div>
             <div
                 :style="popupDocumentationPosition"
@@ -432,6 +439,11 @@ export default Vue.extend({
 }
 .module:hover{
     cursor: default;
+}
+
+.empty-results {
+    white-space: nowrap;
+    padding-right: 3px;
 }
 
 .popupContainer {

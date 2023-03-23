@@ -125,7 +125,8 @@
     "autoCompletion": {
       "myFunctions":"Mes fonctions",
       "myVariables":"Mes variables",
-      "importedModules":"Modules importés"
+      "importedModules":"Modules importés",
+      "invalidState":"Aucune complétion disponible"
     },
     "apidiscovery" : {
       "microbitAPI": {}

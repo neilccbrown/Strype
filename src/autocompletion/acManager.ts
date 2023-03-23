@@ -223,6 +223,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // in case the contextAC is not empty, this is the 'module'
         // otherwise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
         // if not, the we retrieve the module name with globals().get(name).__module__
+        // IMPORTANT NOTE ----- this will work fine when the python modules can be imported (i.e. defined in Brython, or added by us for micro:bit)
+        // if a module is defined but is not "reachable", then it won't show in the a/c
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"module = "+ jsonStringifiedContext + " or globals().get(name).__module__ or ''";
         if(contextAC.length == 0){
             inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+"if str(globals().get(name)).startswith('<module '):";
