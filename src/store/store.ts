@@ -1125,14 +1125,14 @@ export const useStore = defineStore("app", {
             const parent = (isJointFrame) ? this.frameObjects[this.selectedFrames[0]].jointParentId : this.frameObjects[this.selectedFrames[0]].parentId;
 
             // We generate the list of frames from the selectedFrames ids
-            const sourceFrameList: EditorFrameObjects = {};
-            this.selectedFrames.forEach((id) => sourceFrameList[id] = this.frameObjects[id]);
+            const sourceFrameList: FrameObject[] = Array(this.selectedFrames.length);
+            this.selectedFrames.forEach((id, index) => sourceFrameList[index] = this.frameObjects[id]);
             
             // All the top level cloned frames need to be stored in order to then added to their new parent's list
             const topLevelCopiedFrames: number[] = [];
             let nextAvailableId = this.nextAvailableId;
 
-            Object.values(sourceFrameList).forEach( (frame) => {
+            sourceFrameList.forEach((frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
                 topLevelCopiedFrames.push(nextAvailableId);
                 cloneFrameAndChildren(this.frameObjects, frame.id, parent, {id: nextAvailableId}, this.copiedFrames); 
