@@ -2012,7 +2012,7 @@ export const useStore = defineStore("app", {
 
         async leftRightKey(payload: {key: string, isShiftKeyHold?: boolean, availablePositions?: NavigationPosition[]}) {
             //  used for moving index up (+1) or down (-1)
-            const directionDown = payload.key === "ArrowRight" || payload.key === "Enter";
+            const directionDown = payload.key === "ArrowRight" || payload.key === "Enter" || (payload.key === "Tab" && !payload.isShiftKeyHold);
             const directionDelta = (directionDown)?+1:-1;
             // if the available positions are not passed as argument, we compute them from the DOM
             const availablePositions = payload.availablePositions??getAvailableNavigationPositions();
@@ -2035,7 +2035,7 @@ export const useStore = defineStore("app", {
             // if so, the next position is either the following/previous available position within *a same* structure.
             let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);    
             let multiSlotSelNotChanging = false;   
-            if(payload.isShiftKeyHold){
+            if(payload.isShiftKeyHold && payload.key != "Tab"){
                 const currentSlotInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 const currentSlotInfosLevel = currentSlotInfos.slotId.split(",").length;
                 // To find what is the next position, we need to use the slot ids: as we can only get into an editable slot and in the same level
@@ -2095,7 +2095,7 @@ export const useStore = defineStore("app", {
                 // (as the slot may have not yet be renderered in the UI, for example when adding a new frame, we do it later)
                 Vue.nextTick(() => {
                     const textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
-                    const anchorCursorInfos = (payload.isShiftKeyHold) ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
+                    const anchorCursorInfos = (payload.isShiftKeyHold && payload.key != "Tab") ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
                     const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
                     setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);

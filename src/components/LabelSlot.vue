@@ -124,8 +124,6 @@ export default Vue.extend({
             //or that the slot is initially empty
             canBackspaceDeleteFrame: true,   
             stillBackSpaceDown: false,
-            //use to make sure that a tab event is a proper sequence (down > up) within an editable slot
-            tabDownTriggered: false,
             //we need to track the key.down events for the bracket/quote closing method (cf details there)
             keyDownStr: "",
         };
@@ -474,18 +472,33 @@ export default Vue.extend({
         },
 
         onTabKeyDown(event: KeyboardEvent){
-            // We keep the default browser behaviour when tab is pressed AND we're not having AC on, and we don't use the Shift modifier key
-            // As browsers would use the "keydown" event, we have to intercept the event at this stage.
-            if(!event.shiftKey && this.showAC && this.acRequested && document.querySelector(".selectedAcItem")) {
-                event.preventDefault();
-                event.stopPropagation();
-                this.tabDownTriggered = true;
+            // We replicate the default browser behaviour when tab is pressed AND we're not having AC on, otherwise just do nothing
+            // (the default behaviour doesn't work at least on Windows+Chrome)
+            if(!(this.showAC && this.acRequested && document.querySelector(".selectedAcItem"))) {
+                // First move the cursor to the correct end of the slot
+                const goToNextSlot = !event.shiftKey;
+                const newCursorPosition = (goToNextSlot) ? this.code.length : 0;
+                const newSlotCursorInfos: SlotCursorInfos = {cursorPos: newCursorPosition, slotInfos: this.coreSlotInfo};
+                this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
+                setDocumentSelection(newSlotCursorInfos, newSlotCursorInfos);
+                // Then trigger an arrow key event
+                document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        key: (goToNextSlot) ? "ArrowRight" : "ArrowLeft",
+                    })
+                );
+                this.appStore.ignoreKeyEvent = true;
+                return;
             }
+            event.preventDefault();
+            event.stopPropagation();
         },
 
         onEnterOrTabKeyUp(event: KeyboardEvent){
-            //if the tab event has not been triggered by this component, we should ignore it
-            if(event.key === "Tab" && !this.tabDownTriggered) {
+            // Ignore tab events
+            if(event.key === "Tab") {
+                event.preventDefault();
+                event.stopPropagation();
                 return;
             }
 
@@ -498,20 +511,17 @@ export default Vue.extend({
             }
             // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot
             else {
-                if(event.key == "Enter") {
-                    // Same as hitting arrow down
-                    const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
-                    this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
-                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
-                        new KeyboardEvent("keydown", {
-                            key: "ArrowDown",
-                        })
-                    );
-                }
+                // Same as hitting arrow down
+                const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
+                this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
+                document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        key: "ArrowDown",
+                    })
+                );
             }
             this.showAC = this.debugAC;
             this.acRequested = false;
-            this.tabDownTriggered = false;
         },
 
         onKeyDown(event: KeyboardEvent){

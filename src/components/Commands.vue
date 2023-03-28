@@ -208,7 +208,7 @@ export default Vue.extend({
                 const isEditing = this.appStore.isEditing;
 
                 //prevent default scrolling and navigation
-                if (!isEditing && (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+                if (!isEditing && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab"].includes(event.key)) {
                     if(this.appStore.ignoreKeyEvent){
                         this.appStore.ignoreKeyEvent = false;
                         return;
@@ -223,9 +223,9 @@ export default Vue.extend({
                         }
                     }
                     else{
-                        //at this stage, left/right arrows are handled only if not editing: editing cases are directly handled by LabelSlotsStructure.
+                        // At this stage, tab and left/right arrows are handled only if not editing: editing cases are directly handled by LabelSlotsStructure.
                         // We start by getting from the DOM all the available caret and editable slot positions
-                        this.appStore.leftRightKey({ key:event.key });
+                        this.appStore.leftRightKey({ key: event.key, isShiftKeyHold: event.shiftKey});
                         event.stopImmediatePropagation();
                         event.preventDefault();
                     }
