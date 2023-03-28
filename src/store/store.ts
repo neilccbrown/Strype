@@ -1108,14 +1108,19 @@ export const useStore = defineStore("app", {
         },
         
         doCopyFrame(frameId: number) {
-            this.copiedFrameId = this.nextAvailableId;
+            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues
+            let nextAvailableId = this.nextAvailableId;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId+=1;
+            }
+            this.copiedFrameId = nextAvailableId;
 
             // If it has a JointParent, we're talking about a JointFrame
             const isJointFrame = this.frameObjects[frameId].frameType.isJointFrame;
             
             const parent = (isJointFrame) ? this.frameObjects[frameId].jointParentId : this.frameObjects[frameId].parentId;
 
-            cloneFrameAndChildren(this.frameObjects, frameId, parent, {id: this.nextAvailableId}, this.copiedFrames);             
+            cloneFrameAndChildren(this.frameObjects, frameId, parent, {id: nextAvailableId}, this.copiedFrames);             
         },
 
         doCopySelection() {
@@ -1128,9 +1133,13 @@ export const useStore = defineStore("app", {
             const sourceFrameList: FrameObject[] = Array(this.selectedFrames.length);
             this.selectedFrames.forEach((id, index) => sourceFrameList[index] = this.frameObjects[id]);
             
-            // All the top level cloned frames need to be stored in order to then added to their new parent's list
+            // All the top level cloned frames need to be stored in order to then added to their new parent's list.
+            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
             const topLevelCopiedFrames: number[] = [];
             let nextAvailableId = this.nextAvailableId;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId+=1;
+            }
 
             sourceFrameList.forEach((frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
@@ -1706,10 +1715,15 @@ export const useStore = defineStore("app", {
             } 
 
             // construct the new Frame object to be added
+            // for safety we make sure the new ID isn't already used (it shouldn't but in case something is messed up, we keep the new frame with a valid new ID)
+            let nextAvailableId = this.nextAvailableId++;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId++;
+            }
             const newFrame: FrameObject = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: frame,
-                id: this.nextAvailableId++,
+                id: nextAvailableId,
                 parentId: addingJointFrame ? 0 : parentId, // Despite we calculated parentID earlier, it may not be used
                 jointParentId: addingJointFrame ? parentId : 0,
                 labelSlotsDict:
@@ -1798,6 +1812,7 @@ export const useStore = defineStore("app", {
                 this.unselectAllFrames();
             }
 
+            this.updateNextAvailableId();
         
             //"move" the caret along, using the newly computed positions
             await this.leftRightKey(
@@ -2279,9 +2294,14 @@ export const useStore = defineStore("app", {
             payload.frameId = payload.frameId ?? this.copiedFrameId;
 
             // If it is not a paste operation, it is a duplication of the frame.
+            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
+            let nextAvailableId = this.nextAvailableId;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId+=1;
+            }
             const sourceFrameList: EditorFrameObjects = (isPasteOperation) ? this.copiedFrames : this.frameObjects;            
             const copiedFrames: EditorFrameObjects = {};
-            cloneFrameAndChildren(sourceFrameList, payload.frameId, payload.newParentId, {id: this.nextAvailableId}, copiedFrames); 
+            cloneFrameAndChildren(sourceFrameList, payload.frameId, payload.newParentId, {id: nextAvailableId}, copiedFrames); 
 
 
             // Add the copied objects to the FrameObjects
@@ -2354,8 +2374,12 @@ export const useStore = defineStore("app", {
             const copiedFrames: EditorFrameObjects = {};
 
             // All the top level cloned frames need to be stored in order to then added to their new parent's list
+            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
             const topLevelCopiedFrames: number[] = [];
             let nextAvailableId = this.nextAvailableId;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId+=1;
+            }
 
             Object.values(sourceFrameIds).forEach( (frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
