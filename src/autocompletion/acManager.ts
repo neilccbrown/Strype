@@ -1,18 +1,13 @@
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
 import { BaseSlot, CodeMatchIterable, FrameObject } from "@/types/types";
+import { operators, keywordOperatorsWithSurroundSpaces } from "@/helpers/editor";
 /* IFTRUE_isMicrobit */
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 /* FITRUE_isMicrobit */
 
 import i18n from "@/i18n";
 import _ from "lodash";
-
-const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
-    "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
-    "==","=","!=",">=","<=","<",">"];
-
-const keywordsWihtSurroundSpaces = [" and ", " in ", " is ", " or " ];
 
 const INDENT = "    ";
 
@@ -39,8 +34,8 @@ function isACNeededToShow(code: string): boolean {
  
     if(!foundOperatorFlag) {
         //then check if we follow a non symbols operators (that need surrounding spaces)
-        keywordsWihtSurroundSpaces.forEach((op) => {
-            if(code.toLowerCase().match(".* "+op+" +[^ ]*")) {
+        keywordOperatorsWithSurroundSpaces.forEach((op) => {
+            if(code.toLowerCase().match(".*"+op+"+[^ ]*")) {
                 foundOperatorFlag = true;
             }
         });
@@ -343,7 +338,6 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     //check that we are in a literal: here returns nothing
     //in a non terminated string literal
     //writing a number)
-
     if((slotCode.match(/"/g) || []).length % 2 == 1 || !isNaN(parseFloat(slotCode.substr(Math.max(slotCode.lastIndexOf(" "), 0))))){
         // the user code for the python editor should not be triggered anymore, so we "break" the editor code's content
         const userPythonCodeHTMLElt = document.getElementById("userCode");
@@ -363,7 +357,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     while(codeIndex > 0 && !breakShortCodeSearch) {
         codeIndex--;
         const codeChar = slotCode.charAt(codeIndex);
-        if((codeChar === "," || operators.includes(codeChar)) && closedParenthesisCount === 0){
+        if(codeChar != "." && operators.includes(codeChar) && closedParenthesisCount === 0){
             codeIndex++;
             break;
         }
@@ -421,7 +415,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     
     // if the string's last character is an operator or symbol that means there is no context and tokenAC
     // we also try to avoid checking for context and token when the line ends with multiple dots, as it creates a problem to Brython
-    if(!slotCode.substr(codeIndex).endsWith("..") && !operators.includes(slotCode.substr(codeIndex).slice(-1))) {
+    if(!slotCode.substring(codeIndex).endsWith("..") && slotCode[codeIndex] != "." && !operators.includes(slotCode[codeIndex])) {
         // we don't want to show the autocompletion if the code at the current position is 
         // after a space that doesn't separate some parts of an operator. In other words,
         // we want to avoid to show the autocompletion EVERYTIME the space key is hit.
@@ -434,10 +428,9 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
             return {tokenAC: tokenAC , contextAC: contextAC, showAC: false};
         }
         // code we will give us context and token is the last piece of code after the last white space
-        const subCode = slotCode.substr(codeIndex).split(" ").slice(-1).pop()??"";
-
-        tokenAC = (subCode.indexOf(".") > -1) ? subCode.substr(subCode.lastIndexOf(".") + 1) : subCode;
-        contextAC = (subCode.indexOf(".") > -1) ? subCode.substr(0, subCode.lastIndexOf(".")) : "";
+        const subCode = slotCode.substring(codeIndex).split(" ").slice(-1).pop()??"";
+        tokenAC = (subCode.indexOf(".") > -1) ? subCode.substring(subCode.lastIndexOf(".") + 1) : subCode;
+        contextAC = (subCode.indexOf(".") > -1) ? subCode.substring(0, subCode.lastIndexOf(".")) : "";
     }
    
     /***

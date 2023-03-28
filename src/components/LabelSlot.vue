@@ -350,7 +350,7 @@ export default Vue.extend({
 
             // If the slot accepts auto-complete, i.e. it is not a "free texting" slot
             // e.g. : comment, function definition name and args slots, variable assignment LHS slot.
-            const labelDiv = document.getElementById( getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex));
+            const labelDiv = document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex));
             if(labelDiv && ((frame.frameType.labels[this.labelSlotsIndex].acceptAC)??true)){
                 // Get the autocompletion candidates, based on everything that is preceding the caret 
                 // (in the slot AND in the other previous slots of the same STRUCTURE, that is the previous frames of the same level of slots hierarchy)
