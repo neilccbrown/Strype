@@ -99,21 +99,6 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     return caretPos;
 }
 
-export function getTextEndCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement): number {
-    // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
-    // if the text in the element is selected, we show the end of the selection.
-    let caretPos = 0;
-    const sel = document.getSelection();
-    if (sel && sel.rangeCount) {
-        const range = sel.getRangeAt(0);
-        if (range.commonAncestorContainer.parentNode == htmlElement) {
-            caretPos = range.endOffset;
-        }
-    }
-    
-    return caretPos;
-}
-
 export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: string): {selectionStart: number, selectionEnd: number} {
     // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boudary values for the given slot
     const focusCursorInfos = useStore().focusSlotCursorInfos;
