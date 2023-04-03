@@ -832,7 +832,7 @@ export default Vue.extend({
             }
         },
 
-        deleteSlots(event: KeyboardEvent){            
+        deleteSlots(event: KeyboardEvent){
             event.preventDefault();
             event.stopImmediatePropagation();
             this.appStore.ignoreKeyEvent = true;
@@ -900,17 +900,15 @@ export default Vue.extend({
                             this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: selectionStart}, {slotInfos: this.coreSlotInfo, cursorPos: selectionStart});             
                         }
                         else{
-                            // Case B: we are deleteing a selection spanning across several slots
-                            const anchorOffset = anchorSlotCursorInfos.cursorPos;
+                            // Case B: we are deleteing a selection spanning across several slots, we will get the selection where the leftmost position is:
+                            // the anchor if the selection is going forward, the focus otherwise
                             const {newSlotId} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);                    
                             // Restore the text cursor position (need to wait for reactive changes)
                             this.$nextTick(() => {
                                 const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
                                 const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
-                                //let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
-                                //const slotUIID = getLabelSlotUIID(newSlotInfos); 
                                 const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
-                                const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: anchorOffset};
+                                const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: selectionStart};
                                 document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                                 setDocumentSelection(slotCursorInfos, slotCursorInfos);
                                 this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
