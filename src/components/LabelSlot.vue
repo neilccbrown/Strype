@@ -534,10 +534,12 @@ export default Vue.extend({
                 this.acRequested = true;
             }
 
-            // When some text is cut through *a selection*, we need to also update the slots structure to reflect this change
-            // as the browser handle the changes in the HTML document, but this is not reflected in our underlying frame tree in the store
+            // When some text is cut through *a selection*, we need to handle it fully: we want to handle the slot changes in the store to reflect the
+            // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
+            // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
             if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() ==  "x" && slotSelectionCursorComparisonValue != 0){
-                // If the selection is forward, deleting is like pressing "backspace", otherwise, it'slike pressing "delete"
+                // There is a selection already, we can directly can set the text in the browser's clipboard here
+                navigator.clipboard.writeText(document.getSelection()?.toString()??"");
                 this.deleteSlots(new KeyboardEvent(event.type, {
                     key: (slotSelectionCursorComparisonValue < 0) ? "Backspace" : "Delete",
                 }));
@@ -913,13 +915,14 @@ export default Vue.extend({
                         else{
                             // Case B: we are deleteing a selection spanning across several slots, we will get the selection where the leftmost position is:
                             // the anchor if the selection is going forward, the focus otherwise
-                            const {newSlotId} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);                    
+                            const {newSlotId} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);    
+                            const newCursorPosition = (getSelectionCursorsComparisonValue()??0 < 0) ? selectionEnd : selectionStart;  
                             // Restore the text cursor position (need to wait for reactive changes)
                             this.$nextTick(() => {
                                 const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
                                 const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
                                 const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
-                                const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: selectionStart};
+                                const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newCursorPosition};
                                 document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                                 setDocumentSelection(slotCursorInfos, slotCursorInfos);
                                 this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
