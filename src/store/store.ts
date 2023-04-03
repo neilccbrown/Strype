@@ -2043,7 +2043,7 @@ export const useStore = defineStore("app", {
                 // so the current selection won't change.
                 // We traverse the list of available positions in the order of the selection's direction (i.e. backwards if selecting backwards)
                 // otherwise we may match an item that matches the condition, but that isn't the closest slot we are willing to select (when doing backwards.)
-                const positionsList = (directionDelta > 0) ? availablePositions : availablePositions.reverse();
+                const positionsList = (directionDelta > 0) ? availablePositions : [...availablePositions].reverse();
                 const nextSelectionPosition = (currentSlotInfos.slotType == SlotType.string) ? undefined : positionsList.find((navigPos, index) => {
                     const isDirectionCorrect = (directionDelta > 0) ? index > currentFramePosition : index > (positionsList.length - currentFramePosition - 1);
                     return isDirectionCorrect && navigPos.frameId == currentSlotInfos.frameId && navigPos.isSlotNavigationPosition && navigPos.slotType !== SlotType.string 
