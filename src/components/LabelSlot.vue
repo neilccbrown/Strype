@@ -525,12 +525,23 @@ export default Vue.extend({
         },
 
         onKeyDown(event: KeyboardEvent){
+            const slotSelectionCursorComparisonValue = getSelectionCursorsComparisonValue() as number;
             // We store the key.down key event.key value for the bracket/quote closing method (cf details there)
             this.keyDownStr = event.key;
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
                 this.acRequested = true;
+            }
+
+            // When some text is cut through *a selection*, we need to also update the slots structure to reflect this change
+            // as the browser handle the changes in the HTML document, but this is not reflected in our underlying frame tree in the store
+            if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() ==  "x" && slotSelectionCursorComparisonValue != 0){
+                // If the selection is forward, deleting is like pressing "backspace", otherwise, it'slike pressing "delete"
+                this.deleteSlots(new KeyboardEvent(event.type, {
+                    key: (slotSelectionCursorComparisonValue < 0) ? "Backspace" : "Delete",
+                }));
+                return;
             }
 
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
@@ -552,7 +563,7 @@ export default Vue.extend({
             const nextSlotInfos = getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true);
   
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
-            const hasTextSelection = (this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos && (getSelectionCursorsComparisonValue()??0) != 0);
+            const hasTextSelection = (this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos && slotSelectionCursorComparisonValue != 0);
             let refactorFocusSpanUIID = this.UIID; // by default the focus stays where we are
 
             // If the frame is a variable assignment frame and we are in the left hand side editable slot,
@@ -699,7 +710,7 @@ export default Vue.extend({
                                 let closingTokenSlotInfos = this.coreSlotInfo;                              
                                 if(hasTextSelection){
                                     // Check in what direction is the selection, note that we expect the anchor and focus to be set here (we checked before), so the comparison value shouldn't be undefined.
-                                    if((getSelectionCursorsComparisonValue()??0) < 0){
+                                    if(slotSelectionCursorComparisonValue < 0){
                                         // Anchor is before the focus: we only change the openingTokenSpanField
                                         openingTokenSpanField = (document.getElementById(getLabelSlotUIID((this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos)) as HTMLSpanElement);
                                         openingTokenSpanFieldCurosorPos = (this.appStore.anchorSlotCursorInfos as SlotCursorInfos).cursorPos;

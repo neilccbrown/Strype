@@ -1057,7 +1057,6 @@ export const useStore = defineStore("app", {
             return {newSlotId: "", cursorPosOffset: 0};
         },
 
-
         setSlotErroneous(frameSlotInfos: SlotInfos) {
             const slotObject = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot);
             const existingError =  slotObject.error??"";
