@@ -916,7 +916,7 @@ export const useStore = defineStore("app", {
                             if(isRemovingString){
                                 const stringSlot = (isCurrentSlotSpecialType) ? retrieveSlotFromSlotInfos(currentSlotInfos) as StringSlot : slotToDelete as StringSlot;
                                 const stringLiteral = stringSlot.quote + stringSlot.code + stringSlot.quote;
-                                parsedStringContentRes =  parseCodeLiteral(stringLiteral, true);
+                                parsedStringContentRes =  parseCodeLiteral(stringLiteral, {isInsideString: true});
                             }
                             // The number of fields in the bracket/string (for the latter, after it is turned into code, so the string "a+b" would be 2):
                             const fieldsInSpecialTypeNumber = (isRemovingBrackets)

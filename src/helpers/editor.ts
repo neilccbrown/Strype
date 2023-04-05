@@ -163,26 +163,29 @@ export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: num
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUIID: the HTML id for the current editable slot we are in
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UIID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
+    let hasStringSlots = false;
     frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {    
         if(delimiters && (delimiters.startSlotUIID == spanElement.id || delimiters.stopSlotUIID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
         if(!ignoreSpan) {
-            // The code is extracted from the span; we only transform the string quotes as they are styled for the UI, we need to restore them to their code-style equivalent.
+            // The code is extracted from the span; we only transform the string quotes to have a clear context to refer to in the parser, regardless the content of the strings
+            // (so for example, if in the string slot a used typed "test\" (without double quotes!), the parsing would not be disturbed by the non terminating escaping "\" at the end)
             if(isSlotQuoteType(parseLabelSlotUIID(spanElement.id).slotType)){
+                hasStringSlots = true;
                 switch(spanElement.textContent){
                 case UIDoubleQuotesCharacters[0]:
                 case UIDoubleQuotesCharacters[1]:
-                    uiLiteralCode += "\"";
+                    uiLiteralCode += STRING_DOUBLEQUOTE_PLACERHOLDER;
                     break;
                 case UISingleQuotesCharacters[0]:
                 case UISingleQuotesCharacters[1]:
-                    uiLiteralCode += "'";
+                    uiLiteralCode += STRING_SINGLEQUOTE_PLACERHOLDER;
                     break;            
                 }
             }
@@ -213,7 +216,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
         }
     });    
-    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos};
+    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots};
 }
 
 
@@ -705,7 +708,11 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
 };
 
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
-export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, cursorPos?: number): {slots: SlotsStructure, cursorOffset: number} => {
+// The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
+// both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
+const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
+const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
+export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean}): {slots: SlotsStructure, cursorOffset: number} => {
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
     //  {fields: {"", s1, "", "", s2, ""}, operators: ["", "", "+", "", ""] }}
@@ -718,7 +725,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
 
     // If flag for checking escaped strings as string is set, we replace them
     // (this is for example when de-stringify a string content)
-    if(isInsideString){
+    if(flags && flags.isInsideString){
         const escapedQuote = "\\" + codeLiteral.charAt(0);
         // /(?<!\\)\\["']/g, (match) => match.charAt(1));
         codeLiteral = codeLiteral.substring(1, codeLiteral.length - 1).replaceAll(escapedQuote, (match) => match.charAt(1));
@@ -728,13 +735,28 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
     // We simply use an equivalent size placeholder so it wont interfere the parsing later.
     // Note that the regex expression will look for either a well-formed a string literal or a non terminated string literal (for example: "test)
     // and when non terminated string literal is found, we complete the quotes manually (it will necessarily be at the end of the code literal)
-    const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
+    // When we use the quotes placeholder, we arrange the blanked strings so that their size "include" the placeholders and still match with the codeLiteral length.
+    // For example, if the code in the UI was <print("hello")>, the code literal in this method is:
+    //                             <print($strype_StrDbQuote_placeholder$hello$strype_StrDbQuote_placeholder$)>
+    // so we blank it like this --> print("                                                                 ")
+    // in that way, everything is of the same length and we keep work character indexes properly. We only need to care about the real quotes when we create the string slots.   
+    const quotesPlaceholdersRegex = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
+    const strRegEx = (flags?.skipStringEscape) ? new RegExp(quotesPlaceholdersRegex+"((?!\\1).)*\\1","g") : /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
     let missingClosingQuote = "";
     const blankedStringCodeLiteral = codeLiteral.replace(strRegEx, (match) => {
-        if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
-            missingClosingQuote = match[0];
+        if(flags?.skipStringEscape){
+            const codeStrQuotes = (match.startsWith(STRING_SINGLEQUOTE_PLACERHOLDER)) ? "'" : "\"";
+            // The length of the blanked string is twice the length of the placeholers minus 2 (for the quotes) plus the inner content length (the actual string value)
+            // in other words, the match length minus 2 (that accounts the quotes)
+            return codeStrQuotes + " ".repeat(match.length - 2) + codeStrQuotes;
         }
-        return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
+        else {
+            if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
+                missingClosingQuote = match[0];
+            }
+            return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
+        }
+        
     });
     if(missingClosingQuote.length == 1){
         // The blanking above would have already terminate the string quote in blankedStringCodeLiteral if needed,
@@ -793,12 +815,12 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
         if(afterBracketCode.length > 0){
             afterBracketCode = FIELD_PLACERHOLDER + afterBracketCode;
         }
-        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, false, cursorPos);
+        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, false, cursorPos ? cursorPos - (firstOpenedBracketPos + 1) : undefined);
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape});
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, false, cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER) ? cursorPos - (closingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined);
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (closingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
@@ -817,18 +839,20 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
             const openingQuoteValue =  blankedStringCodeLiteral[openingQuoteIndex];
             const closingQuoteIndex = openingQuoteIndex + 1 + (blankedStringCodeLiteral.substring(openingQuoteIndex + 1).match(openingQuoteValue)?.index??blankedStringCodeLiteral.length);
             // Similar to brackets, we can now split the code by what is before the string, the string itself, and what is after
+            // Note that if have known placeholders for the string quotes in the code, we need to take them into consideration at this stage
             const beforeStringCode = codeLiteral.substring(0, openingQuoteIndex);
-            const stringContentCode = codeLiteral.substring(openingQuoteIndex + 1, closingQuoteIndex);
+            const quoteTokenLength = (flags?.skipStringEscape) ? STRING_SINGLEQUOTE_PLACERHOLDER.length : 1;
+            const stringContentCode = codeLiteral.substring(openingQuoteIndex + quoteTokenLength, closingQuoteIndex - (quoteTokenLength - 1));
             // same logic as brackets for subsequent code: cf. above
             let afterStringCode = codeLiteral.substring(closingQuoteIndex + 1);
             if(afterStringCode.length > 0){
                 afterStringCode = FIELD_PLACERHOLDER + afterStringCode;
             }
             // When we construct the parts before and after the string, we need to internally set the cursor "fake" position, that is, the cursor offset by the bits we are evaluating
-            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, false, cursorPos);
+            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
             cursorOffset += beforeStringCursortOffset;
             const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
-            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, false, (cursorPos??0) - closingQuoteIndex + FIELD_PLACERHOLDER.length);
+            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + FIELD_PLACERHOLDER.length, skipStringEscape: flags?.skipStringEscape});
             cursorOffset += afterStringCursorOffset;
             if((structAfterString.fields[0] as BaseSlot).code.startsWith(FIELD_PLACERHOLDER)){
                 (structAfterString.fields[0] as BaseSlot).code = (structAfterString.fields[0] as BaseSlot).code.substring(FIELD_PLACERHOLDER.length);
@@ -838,7 +862,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
         }
         else{
             // 3 - break the code by operatorSlot
-            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, cursorPos);
+            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, flags?.cursorPos);
             cursorOffset += operatorCursorOffset;
             resStructSlot.fields = operatorSplitsStruct.fields;
             resStructSlot.operators = operatorSplitsStruct.operators;
