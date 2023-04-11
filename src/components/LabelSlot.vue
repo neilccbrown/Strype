@@ -807,11 +807,11 @@ export default Vue.extend({
                 // and if the line returns are line returns or coming from the UI (slots). For the moment, do as if we can only work from the UI.
                 content = content.trim();
                 content = content
-                    .replaceAll(UIDoubleQuotesCharacters[0]+"\r\n", stringDoubleQuoteChar)
-                    .replaceAll("\r\n"+UIDoubleQuotesCharacters[1], stringDoubleQuoteChar)
-                    .replaceAll(UISingleQuotesCharacters[0]+"\r\n", stringSingleQuoteChar)
-                    .replaceAll("\r\n"+UISingleQuotesCharacters[1], stringSingleQuoteChar)
-                    .replaceAll("\r\n","");
+                    .replaceAll(new RegExp(UIDoubleQuotesCharacters[0]+"(\r)?\n","g"), stringDoubleQuoteChar)
+                    .replaceAll(new RegExp("(\r)?\n"+UIDoubleQuotesCharacters[1],"g"), stringDoubleQuoteChar)
+                    .replaceAll(new RegExp(UISingleQuotesCharacters[0]+"(\r)?\n","g"), stringSingleQuoteChar)
+                    .replaceAll(new RegExp("(\r)?\n"+UISingleQuotesCharacters[1],"g"), stringSingleQuoteChar)
+                    .replaceAll(new RegExp("(\\r)?\\n","g"),"");
           
                 // part 1 - note that if we are in a string, we just copy as is except for the quotes that must be parsed
                 let cursorOffset = 0;
