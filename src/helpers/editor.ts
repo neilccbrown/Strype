@@ -162,8 +162,9 @@ export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: num
 // Helper method to retrieve the literal python code from a frame label structure UI
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUIID: the HTML id for the current editable slot we are in
+// useStringQuotesPlaceholders: flag to indicate if strings quotes should be replaced by placeholders (for parsing)
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UIID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, useStringQuotesPlaceholders: boolean, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
@@ -174,23 +175,31 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             ignoreSpan = !ignoreSpan ;
         } 
         if(!ignoreSpan) {
-            // The code is extracted from the span; we only transform the string quotes to have a clear context to refer to in the parser, regardless the content of the strings
+            // The code is extracted from the span; if requested, we only transform the string quotes to have a clear context to refer to in the parser, regardless the content of the strings
             // (so for example, if in the string slot a used typed "test\" (without double quotes!), the parsing would not be disturbed by the non terminating escaping "\" at the end)
             if(isSlotQuoteType(parseLabelSlotUIID(spanElement.id).slotType)){
                 hasStringSlots = true;
                 switch(spanElement.textContent){
                 case UIDoubleQuotesCharacters[0]:
                 case UIDoubleQuotesCharacters[1]:
-                    uiLiteralCode += STRING_DOUBLEQUOTE_PLACERHOLDER;
+                    uiLiteralCode += ((useStringQuotesPlaceholders) ? STRING_DOUBLEQUOTE_PLACERHOLDER : "\"");
                     break;
                 case UISingleQuotesCharacters[0]:
                 case UISingleQuotesCharacters[1]:
-                    uiLiteralCode += STRING_SINGLEQUOTE_PLACERHOLDER;
+                    uiLiteralCode += ((useStringQuotesPlaceholders) ? STRING_SINGLEQUOTE_PLACERHOLDER : "'");
                     break;            
                 }
             }
             else{
-                uiLiteralCode += spanElement.textContent;
+                // We use the content of the slot as is, except if we detect inner strings
+                // (this can happen when for example the literal string has just been inserted, note that we need to use a replacer function because "$$" is used as a token otherwise...)
+                const spanContent = (useStringQuotesPlaceholders) 
+                    ? spanElement.textContent?.replaceAll("\"\"", () => (STRING_DOUBLEQUOTE_PLACERHOLDER+STRING_DOUBLEQUOTE_PLACERHOLDER)).replaceAll("''", () => (STRING_SINGLEQUOTE_PLACERHOLDER+STRING_SINGLEQUOTE_PLACERHOLDER))
+                    : spanElement.textContent;
+                if((spanContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
+                    hasStringSlots = true;
+                }
+                uiLiteralCode += spanContent;
             }
         
             if(spanElement.id === currentSlotUIID){

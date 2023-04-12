@@ -358,7 +358,7 @@ export default Vue.extend({
                 const hasSameLevelPreviousSlots = (slotIndex > 0);
                 const startSlotUIID = getLabelSlotUIID({...this.coreSlotInfo, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, 0)});
                 const textBeforeThisSlot = (hasSameLevelPreviousSlots) 
-                    ? getFrameLabelSlotLiteralCodeAndFocus(labelDiv, this.UIID, {startSlotUIID: startSlotUIID , stopSlotUIID: this.UIID}).uiLiteralCode
+                    ? getFrameLabelSlotLiteralCodeAndFocus(labelDiv, this.UIID, false, {startSlotUIID: startSlotUIID , stopSlotUIID: this.UIID}).uiLiteralCode
                     : "";
                 const textBeforeCaret = textBeforeThisSlot + this.getSlotContent().substring(0,selectionStart??0)??"";
 
