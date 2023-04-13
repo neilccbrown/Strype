@@ -11,6 +11,7 @@ export enum CustomEventTypes {
     frameContentEdited = "frameContentEdited",
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
+    editorContentPastedInSlot = "contentPastedInSlot",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */

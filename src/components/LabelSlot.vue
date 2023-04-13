@@ -21,7 +21,7 @@
             @keydown.delete="onDeleteKeyDown"
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
-            @paste.prevent.stop="onCodePaste($event)"
+            @contentPastedInSlot="onCodePaste"
             :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
             :id="UIID"
             :key="UIID"
@@ -781,11 +781,8 @@ export default Vue.extend({
             }          
         },
 
-        onCodePaste(event: ClipboardEvent) {
-            this.appStore.ignoreKeyEvent = true;
-            if (event.clipboardData) {
-                this.onCodePasteImpl(event.clipboardData.getData("Text"));
-            }
+        onCodePaste(event: CustomEvent) {
+            this.onCodePasteImpl(event.detail);
         },
         
         onCodePasteImpl(content : string) {

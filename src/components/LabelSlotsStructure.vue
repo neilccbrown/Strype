@@ -8,6 +8,7 @@
         @keyup="forwardKeyEvent($event)"
         @focus="onFocus"
         @blur="blurEditableSlot"
+        @paste.prevent.stop="forwardPaste"
         class="next-to-eachother label-slot-container"
     >
         <div 
@@ -288,6 +289,18 @@ export default Vue.extend({
                 event.preventDefault();
             }
         },
+
+        forwardPaste(event: ClipboardEvent){
+            // Paste events need to be handled on the parent contenteditable div because FF will not accept
+            // forwarded (untrusted) events to be hooked by the children spans. 
+            this.appStore.ignoreKeyEvent = true;
+            if (event.clipboardData && this.appStore.focusSlotCursorInfos) {
+                // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
+                const content = event.clipboardData.getData("Text");
+                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: content}));
+            }
+        },        
 
         onLRKeyDown(event: KeyboardEvent) {
             // Because the event handling, it is easier to deal with the left/right arrow at this component level.
