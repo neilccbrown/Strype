@@ -420,23 +420,31 @@ export default Vue.extend({
                 const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
                 const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
                 if(anchorSlotCursorInfos && focusSlotCursorInfos){
-                    // If the anchor and focus are not in the same level (case A), or one of the anchor/focus is a string and the other isn't the same string (case B)
+                    const anchorParentSlotId = getSlotParentIdAndIndexSplit(anchorSlotCursorInfos.slotInfos.slotId).parentId;
+                    const focusParentSlotId = getSlotParentIdAndIndexSplit(focusSlotCursorInfos.slotInfos.slotId).parentId;
+                    // If one of the anchor/focus is a string and the other isn't the same string (case A),or the anchor and focus are not in the same level (tree-wise) (case B)
                     // then we need to amend the selection
                     const anchorLevel =  (anchorSlotCursorInfos?.slotInfos.slotId.split(",").length)??0;
                     const focusLevel = (focusSlotCursorInfos?.slotInfos.slotId.split(",").length)??0;
-                    const isSelectionNotAllowed = (focusLevel != anchorLevel) 
-                        || ((focusSlotCursorInfos.slotInfos.slotType == SlotType.string || anchorSlotCursorInfos.slotInfos.slotType == SlotType.string)
-                             && focusSlotCursorInfos.slotInfos.slotId != anchorSlotCursorInfos.slotInfos.slotId)
-                        || ((focusSlotCursorInfos.slotInfos.slotType == SlotType.string && anchorSlotCursorInfos.slotInfos.slotType == SlotType.string)
-                             && focusSlotCursorInfos.slotInfos.slotId != anchorSlotCursorInfos.slotInfos.slotId);
+                    const sameLevelDiffParents = (focusLevel == anchorLevel && anchorParentSlotId != focusParentSlotId);
+                    const hasStringSelected = (focusSlotCursorInfos.slotInfos.slotType == SlotType.string || anchorSlotCursorInfos.slotInfos.slotType == SlotType.string);
+                    const isSelectionNotAllowed = (focusLevel != anchorLevel) || sameLevelDiffParents
+                        || (hasStringSelected && focusSlotCursorInfos.slotInfos.slotId != anchorSlotCursorInfos.slotInfos.slotId);
                     if(isSelectionNotAllowed) {
                         const forwardSelection = ((getSelectionCursorsComparisonValue() as number) < 0);
                         let amendedSelectionFocusCursorSlotInfos = cloneDeep(anchorSlotCursorInfos) as SlotCursorInfos;
-                        if(focusLevel != anchorLevel){
-                            // Case A: different levels
-                            const anchorParentSlotId = getSlotParentIdAndIndexSplit(anchorSlotCursorInfos.slotInfos.slotId).parentId;
-                            if ((focusLevel < anchorLevel)) {
-                                // Case A.1: if we go from a deeper level to an outer level, then we stop at the last [resp. first] sibling of the anchor level when selection forwards [resp. backwards]
+                        // Case A: problem with string selection :
+                        // if the anchor is a string we reach the beginning or the end of that string depending on the selection direction
+                        // if the anchor is not a string then we stop just before or after the target string depending on the selection direction
+                        //     and the validity of where we would "land" --> cf case B
+                        if(hasStringSelected && anchorSlotCursorInfos.slotInfos.slotType == SlotType.string){
+                            const anchorSlot = (retrieveSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as StringSlot);
+                            amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? anchorSlot.code.length : 0;
+                        }
+                        else{
+                            // Case B: different levels of slots or destination is a string
+                            if ((focusLevel < anchorLevel) || sameLevelDiffParents) {
+                                // Case B.1: if we go from a deeper level to an outer level, then we stop at the last [resp. first] sibling of the anchor level when selection forwards [resp. backwards]
                                 const anchorParentSlot = retrieveParentSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as SlotsStructure;
                                 const siblingSlotId = getSlotIdFromParentIdAndIndexSplit(anchorParentSlotId,  (forwardSelection) ? anchorParentSlot.fields.length - 1 : 0);
                                 amendedSelectionFocusCursorSlotInfos.slotInfos.slotId = siblingSlotId;
@@ -444,30 +452,13 @@ export default Vue.extend({
                                 amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? (siblingSlot as BaseSlot).code.length : 0;
                             }
                             else{
-                                // case A.2: if we go from an outer level to a deeper level, then need to find where is the focus "ancestor" in same level of the anchor, and stop before [resp. after] if going forwards [resp. backwards]
+                                // case B.2: if we go from an outer level to a deeper level, then need to find where is the focus "ancestor" in same level of the anchor, and stop before [resp. after] if going forwards [resp. backwards]
                                 const ancestorIndex = getSameLevelAncestorIndex(focusSlotCursorInfos.slotInfos.slotId, anchorParentSlotId);
                                 const closestAncestorNeighbourSlotId = getSlotIdFromParentIdAndIndexSplit(anchorParentSlotId,  (forwardSelection) ? ancestorIndex - 1 : ancestorIndex + 1);
                                 const closestAncestorNeighbourSlot = retrieveSlotFromSlotInfos({...amendedSelectionFocusCursorSlotInfos.slotInfos, slotId: closestAncestorNeighbourSlotId}) as BaseSlot;
                                 amendedSelectionFocusCursorSlotInfos.slotInfos.slotId = closestAncestorNeighbourSlotId;
                                 amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? closestAncestorNeighbourSlot.code.length : 0;
-                            }
-                        }
-                        else{
-                            // Case B: problem with string selection :
-                            // if the anchor is a string we reach the beginning or the end of that string depending on the selection direction
-                            // if the anchor is not a string then we stop just before or after the target string depending on the selection direction
-                            if(anchorSlotCursorInfos.slotInfos.slotType == SlotType.string){
-                                const anchorSlot = (retrieveSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as StringSlot);
-                                amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? anchorSlot.code.length : 0;
-                            }
-                            else{
-                                const {parentId, slotIndex: focusSlotIndex} = getSlotParentIdAndIndexSplit(focusSlotCursorInfos.slotInfos.slotId);
-                                const stringSlotNeighbourSlotID = getSlotIdFromParentIdAndIndexSplit(parentId, (forwardSelection) ? focusSlotIndex-1 : focusSlotIndex + 1);
-                                // The neigbour of a string is necessarily a base slot, because strings are surrounded by them....
-                                const stringSlotNeighbourSlotInfos = {...focusSlotCursorInfos.slotInfos, slotId: stringSlotNeighbourSlotID, slotType: SlotType.code};
-                                const stringSlotNeighbourSlot = retrieveSlotFromSlotInfos(stringSlotNeighbourSlotInfos) as BaseSlot;
-                                amendedSelectionFocusCursorSlotInfos = {slotInfos: stringSlotNeighbourSlotInfos, cursorPos: (forwardSelection) ? stringSlotNeighbourSlot.code.length : 0};
-                            }
+                            } 
                         }
                         
                         // Update the selection now 

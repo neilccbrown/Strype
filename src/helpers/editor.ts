@@ -2,7 +2,7 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
-import { getAboveFrameCaretPosition, getSlotParentIdAndIndexSplit } from "./storeMethods";
+import { getAboveFrameCaretPosition } from "./storeMethods";
 
 export const undoMaxSteps = 50;
 
@@ -674,23 +674,25 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
                     return anchorCursorPos - focusCursorPos;
                 }
                 
-                // Not in the same slot, we check the slots in relation to each other and their level in the hierarchy
-                const {parentId: anchorParentId, slotIndex: anchorSlotIndex} = getSlotParentIdAndIndexSplit(anchorSlotInfos.slotId);
-                const {parentId: focusParentId, slotIndex:focusSlotIndex} = getSlotParentIdAndIndexSplit(focusSlotInfos.slotId);
-                // check if the anchor and the focus slots are in the hierachy level
-                if(anchorParentId == focusParentId){
-                    // Same level:  we return the ID comparison because the last "token" of the ID is the slot index
-                    return anchorSlotIndex - focusSlotIndex;
+                // Not in the same slot, we check the slots in relation to each other and their level in the hierarchy:
+                // we compare the ancestor indexes of each slots until a difference in found, starting from the root.
+                const anchorSlotIdIndexes = anchorCursorInfos.slotInfos.slotId.split(",");
+                const focusSlotIdIndexes = focusCursorInfos.slotInfos.slotId.split(",");
+                const minAncestorLevels = Math.min(anchorSlotIdIndexes.length + 1, focusSlotIdIndexes.length + 1);
+                let ancestorLevelIndex = 0;
+                let foundDiff = false;
+                while(!foundDiff && ancestorLevelIndex < minAncestorLevels){
+                    if(anchorSlotIdIndexes[ancestorLevelIndex] != focusSlotIdIndexes[ancestorLevelIndex]){
+                        foundDiff = true;
+                        return (parseInt(anchorSlotIdIndexes[ancestorLevelIndex]) - parseInt(focusSlotIdIndexes[ancestorLevelIndex]));
+                    }
+                    ancestorLevelIndex++;
                 }
-            
-                // Not the same level we need to find the position of the deeper level slot's ancestor which is of the same level as the outer slot
-                // and the relative position we look for is the difference between those two positions
-                const anchorLevelCount = anchorSlotInfos.slotId.split(",").length;
-                const focusLevelCount = focusSlotInfos.slotId.split(",").length;
-                const isAnchorAtDeeperLevel = (anchorLevelCount > focusLevelCount);
-                const anchorIndexToUse = (isAnchorAtDeeperLevel) ? getSameLevelAncestorIndex(anchorSlotInfos.slotId, focusParentId) : anchorSlotIndex;
-                const focusIndexToUse = (isAnchorAtDeeperLevel) ? focusSlotIndex : getSameLevelAncestorIndex(focusSlotInfos.slotId, anchorParentId);
-                return (anchorIndexToUse - focusIndexToUse);                
+                if(!foundDiff){
+                    // If we reach this bit, then it means we have one of the IDs totally contained at the start of the other (e.g. "1,2" and "1,2,3")
+                    // So the slot that has the longest ID is by definition after the one with the shortest
+                    return anchorSlotIdIndexes.length - focusSlotIdIndexes.length;
+                }
             }
 
             // Not the same label index, we return the indexes difference
@@ -708,13 +710,14 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
     return undefined; 
 }
 
+// Given a slot refered by slotID, this method looks up what is the slot index of the given slot's ancestor 
+// at the level indicated by sameLevelThanSlotParentId. See example below. 
+// The given slot is expected to be in a deeper level than the reference ancester.
 export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParentId: string): number => {
-    const ancestorRegex = new RegExp("^"+sameLevelThanSlotParentId + ((sameLevelThanSlotParentId.length > 0) ? "," : "") +"(\\d+),.+$");
-    const ancestorMatch = slotId.match(ancestorRegex);
-    if(ancestorMatch){
-        return parseInt(ancestorMatch[1]);
-    }
-    return -1;
+    // Example: the given slot ID is "0,6,2,3,7", and sameLevelThanSlotParentId is "4,1,8"
+    // As sameLevelThanSlotParentId has 3 levels, the ancestor is at position 2, what we need to return is 6 because it is at the second position in the ID of the given slot.
+    const ancestorLevels = sameLevelThanSlotParentId.split(",").length;
+    return parseInt(slotId.split(",")[ancestorLevels -1]);
 };
 
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
