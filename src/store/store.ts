@@ -2037,7 +2037,8 @@ export const useStore = defineStore("app", {
             if(payload.isShiftKeyHold && payload.key != "Tab"){
                 const currentSlotInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 const currentSlotInfosLevel = currentSlotInfos.slotId.split(",").length;
-                // To find what is the next position, we need to use the slot ids: as we can only get into an editable slot and in the same level
+                const anchorParent = getSlotParentIdAndIndexSplit((this.anchorSlotCursorInfos?.slotInfos.slotId)??"").parentId;
+                // To find what is the next position, we need to use the slot ids: as we can only get into an editable slot and in the same level (in the tree)
                 // and in the same frame label, we find the slot that matches those criteria, if any.
                 // Note that if we are currently in a string, and we have reached this method, then we are at a boundary of the string and we cannot continue a selection outside this string,
                 // so the current selection won't change.
@@ -2047,7 +2048,7 @@ export const useStore = defineStore("app", {
                 const nextSelectionPosition = (currentSlotInfos.slotType == SlotType.string) ? undefined : positionsList.find((navigPos, index) => {
                     const isDirectionCorrect = (directionDelta > 0) ? index > currentFramePosition : index > (positionsList.length - currentFramePosition - 1);
                     return isDirectionCorrect && navigPos.frameId == currentSlotInfos.frameId && navigPos.isSlotNavigationPosition && navigPos.slotType !== SlotType.string 
-                        && navigPos.labelSlotsIndex == currentSlotInfos.labelSlotsIndex && (navigPos.slotId??"").split(",").length == currentSlotInfosLevel;
+                        && anchorParent == getSlotParentIdAndIndexSplit(navigPos.slotId??"").parentId && navigPos.labelSlotsIndex == currentSlotInfos.labelSlotsIndex && (navigPos.slotId??"").split(",").length == currentSlotInfosLevel;
                 });    
 
                 if(nextSelectionPosition){
