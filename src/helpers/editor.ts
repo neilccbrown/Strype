@@ -193,14 +193,10 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
             else{
                 // We use the content of the slot as is, except if we detect inner strings
-                // (this can happen when for example the literal string has just been inserted, note that we need to use a replacer function because "$$" is used as a token otherwise...)
-                const spanContent = (useStringQuotesPlaceholders) 
-                    ? spanElement.textContent?.replaceAll("\"\"", () => (STRING_DOUBLEQUOTE_PLACERHOLDER+STRING_DOUBLEQUOTE_PLACERHOLDER)).replaceAll("''", () => (STRING_SINGLEQUOTE_PLACERHOLDER+STRING_SINGLEQUOTE_PLACERHOLDER))
-                    : spanElement.textContent;
-                if((spanContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
+                if((spanElement.textContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanElement.textContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
                     hasStringSlots = true;
                 }
-                uiLiteralCode += spanContent;
+                uiLiteralCode += (spanElement.textContent);
             }
         
             if(spanElement.id === currentSlotUIID){
@@ -209,8 +205,9 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
             else{
                 // In most cases, we just increment the length by the span content length,
-                // BUT there is one exception: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
-                // therefore we need to account for them when dealing with such operators
+                // BUT there are 2 exceptions: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
+                // therefore we need to account for them when dealing with such operators;
+                // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
                 const spanElementContentLength = (spanElement.textContent?.length??0);
                 if((trimmedKeywordOperators.includes(spanElement.textContent??""))){
@@ -220,8 +217,15 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                     + " " + uiLiteralCode.substring(uiLiteralCode.length - spanElementContentLength) 
                     + " ";
                 }
+                let stringPlaceHoldersCursorOffset = 0; // The offset induced by the difference of length between the string quotes and their placeholder representation
+                const stringPlaceholderMatcher = (spanElement.textContent as string).match(new RegExp("("+STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+"|"+STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+")", "g"));
+                if(useStringQuotesPlaceholders && stringPlaceholderMatcher != null){
+                    // The difference is 1 character per found placeholders 
+                    stringPlaceHoldersCursorOffset = stringPlaceholderMatcher.length * (STRING_DOUBLEQUOTE_PLACERHOLDER.length - 1);
+                }
+
                 if(!foundFocusSpan) {
-                    focusSpanPos += (spanElementContentLength + spacesOffset);
+                    focusSpanPos += (spanElementContentLength + spacesOffset - stringPlaceHoldersCursorOffset);
                 }
             }
         }
@@ -723,8 +727,8 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
-const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
-const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
+export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
+export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
 export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean}): {slots: SlotsStructure, cursorOffset: number} => {
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
