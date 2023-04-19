@@ -351,6 +351,12 @@ export default Vue.extend({
         },
 
         blurEditableSlot(){
+            // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
+            if(this.appStore.bypassEditableSlotBlurErrorCheck){
+                this.appStore.bypassEditableSlotBlurErrorCheck = false;
+                return;
+            }
+                   
             // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
             // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
             if(document.activeElement?.id === this.labelSlotsStructDivId){

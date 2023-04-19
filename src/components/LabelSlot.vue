@@ -121,10 +121,12 @@ export default Vue.extend({
             tokenAC: "",
             //used to force a text cursor position, for example after inserting an AC candidate
             textCursorPos: 0,    
-            //used the flags to indicate whether the user has explicitly marked a pause when deleting text with backspace
+            //flags to indicate whether the user has explicitly marked a pause when deleting text with backspace
             //or that the slot is initially empty
-            canBackspaceDeleteFrame: true,   
-            stillBackSpaceDown: false,
+            canBackspaceDeleteFrame: true,
+            requestDelayBackspaceFrameRemoval: false,
+            //use to make sure that a tab event is a proper sequence (down > up) within an editable slot
+            tabDownTriggered: false,
             //we need to track the key.down events for the bracket/quote closing method (cf details there)
             keyDownStr: "",
         };
@@ -383,13 +385,13 @@ export default Vue.extend({
 
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
-        onLoseCaret(): void {
+        onLoseCaret(keepIgnoreKeyEventFlagOn?: boolean): void {
             // Before anything, we make sure that the current frame still exists.
             if(this.appStore.frameObjects[this.frameId] != undefined){
                 if(!this.debugAC) {
                     this.showAC = false;
                     this.acRequested = false;
-                    if(this.appStore.bypassEditableSlotBlurErrorCheck || this.appStore.isSelectingMultiSlots){
+                    if((this.appStore.bypassEditableSlotBlurErrorCheck && !keepIgnoreKeyEventFlagOn) || this.appStore.isSelectingMultiSlots){
                         this.appStore.setEditableFocus(
                             {
                                 ...this.coreSlotInfo,
@@ -415,7 +417,10 @@ export default Vue.extend({
                     if(!this.appStore.ignoreKeyEvent && !this.appStore.isSelectingMultiSlots){
                         this.appStore.setSlotTextCursors(undefined, undefined);
                     }
-                    this.appStore.ignoreKeyEvent = false;
+                    
+                    if(!keepIgnoreKeyEventFlagOn){
+                        this.appStore.ignoreKeyEvent = false;
+                    }
                 }
             }
         },
@@ -964,20 +969,25 @@ export default Vue.extend({
             //  1) there is no text in the slot
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
-            this.stillBackSpaceDown = true; 
             if(this.isFrameEmpty){
-                //if the user had already released the key up, no point waiting, we delete straight away
+                this.appStore.ignoreKeyEvent=true;
+                this.appStore.bypassEditableSlotBlurErrorCheck = true;
+                
+                // If the user had already released the key up, no point waiting, we delete straight away
                 if(this.canBackspaceDeleteFrame){
-                    this.onLoseCaret();
+                    this.onLoseCaret(true);
                     this.appStore.deleteFrameFromSlot(this.frameId);
                 }
-                else{        
-                    setTimeout(() => {
-                        if(this.stillBackSpaceDown){
-                            this.onLoseCaret();
+                else{ 
+                    if(!this.requestDelayBackspaceFrameRemoval){
+                        this.requestDelayBackspaceFrameRemoval = true;
+                    }       
+                    setTimeout(() => {  
+                        if(this.requestDelayBackspaceFrameRemoval){
+                            this.onLoseCaret(true);
                             this.appStore.deleteFrameFromSlot(this.frameId);
                         }
-                    }, 600);
+                    }, 1000);
                 }
                 return;
             }
@@ -989,7 +999,7 @@ export default Vue.extend({
 
         onBackSpaceKeyUp(){
             this.canBackspaceDeleteFrame = this.isFrameEmpty;
-            this.stillBackSpaceDown = false;
+            this.requestDelayBackspaceFrameRemoval = false;
         },
 
         acItemClicked(item: string) {

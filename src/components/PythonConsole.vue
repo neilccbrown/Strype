@@ -89,6 +89,8 @@ export default Vue.extend({
             // Mouse scrolling on the right panel (commands) is forwarded to the editor -- for the console, we don't want to propagate the event
             // Key events are captured by the UI to navigate the blue cursor -- for the console, we don't want to propagate the event
             event.stopPropagation();
+            // When the enter key is pressed, it validates the input, but it also get passed to the main UI and add a blank frame
+            // to avoid this, we notify the UI to ignore key events (for everything)
             this.appStore.ignoreKeyEvent = true;
         },
 
