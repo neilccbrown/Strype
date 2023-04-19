@@ -715,7 +715,7 @@ export default Vue.extend({
                                 // We add the string quotes or brackets into the appropriate slots, so that if there is a text selection, regenerating the slots will be correct
                                 let openingTokenSpanField = inputSpanField;
                                 let openingTokenSpanFieldCurosorPos = selectionStart;
-                                let closingtokenSpanField = inputSpanField;
+                                let closingTokenSpanField = inputSpanField;
                                 let closingTokenSpanFieldCurosorPos = selectionEnd;  
                                 let closingTokenSlotInfos = this.coreSlotInfo;                              
                                 if(hasTextSelection){
@@ -727,15 +727,15 @@ export default Vue.extend({
                                     }
                                     else{
                                         // Anchor is after the focus: we only change the closingTokenSpanField
-                                        closingtokenSpanField = (document.getElementById(getLabelSlotUIID((this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos)) as HTMLSpanElement);
+                                        closingTokenSpanField = (document.getElementById(getLabelSlotUIID((this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos)) as HTMLSpanElement);
                                         closingTokenSpanFieldCurosorPos = (this.appStore.anchorSlotCursorInfos as SlotCursorInfos).cursorPos;
                                         closingTokenSlotInfos = (this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos;
                                     }
                                 }
                                 // Start with the closing end so cursor positions are still valid for the opening
-                                closingtokenSpanField.textContent = closingtokenSpanField.textContent?.substring(0, closingTokenSpanFieldCurosorPos) 
+                                closingTokenSpanField.textContent = closingTokenSpanField.textContent?.substring(0, closingTokenSpanFieldCurosorPos) 
                                     + ((isBracket) ? getMatchingBracket(event.key, true) : ((event.key == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER))
-                                    + closingtokenSpanField.textContent?.substring(closingTokenSpanFieldCurosorPos);
+                                    + closingTokenSpanField.textContent?.substring(closingTokenSpanFieldCurosorPos);
 
                                 openingTokenSpanField.textContent = openingTokenSpanField.textContent?.substring(0, openingTokenSpanFieldCurosorPos) 
                                     + ((isStringQuote) ? ((event.key == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : event.key)
@@ -743,10 +743,10 @@ export default Vue.extend({
 
                                 // If there is no text selection, we "autocomplete" the opening token and want to get after it, into the structure, at position 0
                                 // if there text selection, we are wrapping the text with the tokens and we want to get after the closing token
-                                const newPos = (!hasTextSelection) ? selectionStart + 1 : closingTokenSpanFieldCurosorPos + 2;
+                                const newPos = (!hasTextSelection) ? selectionStart + 1 : closingTokenSpanFieldCurosorPos + ((openingTokenSpanField.id == closingTokenSpanField.id) ? 2 : 1);
                                 const newSlotCursorInfos: SlotCursorInfos = {slotInfos: closingTokenSlotInfos, cursorPos: newPos};
                                 // We could be now focusing a different slot (for example if we wrapped after selecting backwards)
-                                refactorFocusSpanUIID = closingtokenSpanField.id;
+                                refactorFocusSpanUIID = closingTokenSpanField.id;
                                 this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
                             }               
                         }
