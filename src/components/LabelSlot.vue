@@ -68,6 +68,7 @@ import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } f
 import { mapStores } from "pinia";
 import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
+import { cloneDeep } from "lodash";
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -525,6 +526,8 @@ export default Vue.extend({
         },
 
         onKeyDown(event: KeyboardEvent){
+            // Save the current state
+            const stateBeforeChanges = cloneDeep(this.appStore.$state);
             const slotSelectionCursorComparisonValue = getSelectionCursorsComparisonValue() as number;
             // We store the key.down key event.key value for the bracket/quote closing method (cf details there)
             this.keyDownStr = event.key;
@@ -751,7 +754,7 @@ export default Vue.extend({
                 // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
                 // let the parsing and slot factorisation do the checkup later
                 // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
-                this.$emit("requestSlotsRefactoring", refactorFocusSpanUIID);
+                this.$emit("requestSlotsRefactoring", refactorFocusSpanUIID, stateBeforeChanges);
             }            
         },
 
@@ -786,6 +789,8 @@ export default Vue.extend({
         },
         
         onCodePasteImpl(content : string) {
+            // Save the current state
+            const stateBeforeChanges = cloneDeep(this.appStore.$state);
             // Pasted code is done in several steps:
             // 0) clean up the content
             // 1) correct the code literal if needed (for example pasting "(a" will result in pasting "(a)")
@@ -838,7 +843,7 @@ export default Vue.extend({
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4
-                this.$emit("requestSlotsRefactoring", this.UIID);     
+                this.$emit("requestSlotsRefactoring", this.UIID, stateBeforeChanges);     
             }
         },
 
@@ -846,6 +851,9 @@ export default Vue.extend({
             event.preventDefault();
             event.stopImmediatePropagation();
             this.appStore.ignoreKeyEvent = true;
+
+            // Save the current state
+            const stateBeforeChanges = cloneDeep(this.appStore.$state);
                
             const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
@@ -889,7 +897,7 @@ export default Vue.extend({
                         this.appStore.bypassEditableSlotBlurErrorCheck = false;
 
                         // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                        this.$emit("requestSlotsRefactoring", slotUIID);
+                        this.$emit("requestSlotsRefactoring", slotUIID, stateBeforeChanges);
                     });                                
                 }
                 else{
@@ -939,7 +947,7 @@ export default Vue.extend({
                     }
 
                     // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                    this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID));
+                    this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID, stateBeforeChanges));
                 }
             }            
         },

@@ -4,7 +4,7 @@ import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, Bas
 import Vue from "vue";
 import { getAboveFrameCaretPosition } from "./storeMethods";
 
-export const undoMaxSteps = 50;
+export const undoMaxSteps = 200;
 
 export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",

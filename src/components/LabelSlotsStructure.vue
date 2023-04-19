@@ -160,7 +160,7 @@ export default Vue.extend({
             return false;
         },
 
-        checkSlotRefactoring(slotUIID: string) {
+        checkSlotRefactoring(slotUIID: string, stateBeforeChanges: any) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment && currentFocusSlotCursorInfos){
@@ -243,6 +243,8 @@ export default Vue.extend({
                                             this.$nextTick(() => this.$nextTick(() => {
                                                 setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
                                                 this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                                // Save changes only when arrived here (for undo/redo)
+                                                this.appStore.saveStateChanges(stateBeforeChanges);
                                             }));
                                             
                                         
@@ -251,6 +253,8 @@ export default Vue.extend({
                                     else{
                                         setDocumentSelection(cursorInfos, cursorInfos);
                                         this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
+                                        // Save changes only when arrived here (for undo/redo)
+                                        this.appStore.saveStateChanges(stateBeforeChanges);
                                     }
                                 }                            
                             }
