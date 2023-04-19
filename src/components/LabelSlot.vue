@@ -27,6 +27,7 @@
             :key="UIID"
             :style="spanBackgroundStyle"
             @input="onSlotSpanChange"
+            @dragstart.prevent
             v-text="code"
         >
         </span>
