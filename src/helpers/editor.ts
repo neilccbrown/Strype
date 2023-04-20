@@ -163,9 +163,8 @@ export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: num
 // Helper method to retrieve the literal python code from a frame label structure UI
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUIID: the HTML id for the current editable slot we are in
-// useStringQuotesPlaceholders: flag to indicate if strings quotes should be replaced by placeholders (for parsing)
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UIID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, useStringQuotesPlaceholders: boolean, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
@@ -183,16 +182,16 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 switch(spanElement.textContent){
                 case UIDoubleQuotesCharacters[0]:
                 case UIDoubleQuotesCharacters[1]:
-                    uiLiteralCode += ((useStringQuotesPlaceholders) ? STRING_DOUBLEQUOTE_PLACERHOLDER : "\"");
+                    uiLiteralCode += STRING_DOUBLEQUOTE_PLACERHOLDER;
                     break;
                 case UISingleQuotesCharacters[0]:
                 case UISingleQuotesCharacters[1]:
-                    uiLiteralCode += ((useStringQuotesPlaceholders) ? STRING_SINGLEQUOTE_PLACERHOLDER : "'");
+                    uiLiteralCode += STRING_SINGLEQUOTE_PLACERHOLDER;
                     break;            
                 }
             }
             else{
-                // We use the content of the slot as is, except if we detect inner strings
+                // We use the content of the slot as is
                 if((spanElement.textContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanElement.textContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
                     hasStringSlots = true;
                 }
@@ -219,7 +218,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 }
                 let stringPlaceHoldersCursorOffset = 0; // The offset induced by the difference of length between the string quotes and their placeholder representation
                 const stringPlaceholderMatcher = (spanElement.textContent as string).match(new RegExp("("+STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+"|"+STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+")", "g"));
-                if(useStringQuotesPlaceholders && stringPlaceholderMatcher != null){
+                if(stringPlaceholderMatcher != null){
                     // The difference is 1 character per found placeholders 
                     stringPlaceHoldersCursorOffset = stringPlaceholderMatcher.length * (STRING_DOUBLEQUOTE_PLACERHOLDER.length - 1);
                 }
