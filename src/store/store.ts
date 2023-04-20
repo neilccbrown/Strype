@@ -1417,7 +1417,7 @@ export const useStore = defineStore("app", {
                 }
 
                 // Just like for saveStateChanges(), we need to simulate some dummy changes so that differences between
-                // the stateBeforeChanges and the current state regarding positioning are all reflected properly
+                // the stateBeforeChanges and the current state regarding positioning and editing are all reflected properly
                 // (we do not know where we'll be when undo/redo is invoked, so we need to make as if changes of positionning occurred)
                 const stateCopy = cloneDeep(this.$state);    
                 stateCopy.currentFrame = {id: 0, caretPosition: CaretPosition.none};
@@ -1431,6 +1431,7 @@ export const useStore = defineStore("app", {
                     stateCopy.anchorSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                     stateCopy.focusSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                 }
+                // Also mock the change of edition between the copy and the previous state to ensure the difference is detected.
                 stateCopy.isEditing = !this.isEditing;
 
                 const stateDifferences = getObjectPropertiesDifferences(stateCopy, stateBeforeChanges);

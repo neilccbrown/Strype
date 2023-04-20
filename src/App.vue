@@ -382,21 +382,21 @@ export default Vue.extend({
                 // So we need to retrieve the right HTML component by hand.      
                 // (usually, the first level div container gets the selection, but with FF, the second level container can also get it)     
                 if(anchorSpanElement?.tagName.toLowerCase() == "div"){
-                    if(anchorSpanElement.className.includes(" labelSlot-container")){
+                    if(anchorSpanElement.className.match(/(^| )labelSlot-container($| )/) != null){
                         // The most common case
                         anchorSpanElement = anchorSpanElement.firstElementChild as HTMLSpanElement;
                     }
-                    else if(anchorSpanElement.firstElementChild?.className.includes(" labelSlot-container")){
+                    else if(anchorSpanElement.firstElementChild?.className.match(/(^| )labelSlot-container($| )/) != null){
                         // The odd case in FF
                         anchorSpanElement = anchorSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
                     }
                 }
                 if(focusSpanElement?.tagName.toLowerCase() == "div" && focusSpanElement.className.includes(" labelSlot-container")){
-                    if(focusSpanElement.className.includes(" labelSlot-container")){
+                    if(focusSpanElement.className.match(/(^| )labelSlot-container($| )/) != null){
                         // The most common case
                         focusSpanElement = focusSpanElement.firstElementChild as HTMLSpanElement;
                     }
-                    else if(focusSpanElement.firstElementChild?.className.includes(" labelSlot-container")){
+                    else if(focusSpanElement.firstElementChild?.className.match(/(^| )labelSlot-container($| )/) != null){
                         // The odd case in FF
                         focusSpanElement = focusSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
                     }
