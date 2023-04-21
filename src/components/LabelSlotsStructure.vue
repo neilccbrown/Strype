@@ -317,7 +317,6 @@ export default Vue.extend({
                         || (cursorPos === ((spanInput.textContent?.length)??0) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     this.appStore.isSelectingMultiSlots = event.shiftKey;
-                    this.appStore.ignoreKeyEvent=true;
                     this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
                         // If we are doing a selection, we need to reflect this in the UI
                         if(event.shiftKey){
