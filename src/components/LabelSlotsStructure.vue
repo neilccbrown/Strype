@@ -8,6 +8,7 @@
         @keyup="forwardKeyEvent($event)"
         @focus="onFocus"
         @blur="blurEditableSlot"
+        @paste.prevent.stop="forwardPaste"
         class="next-to-eachother label-slot-container"
     >
         <div 
@@ -159,7 +160,7 @@ export default Vue.extend({
             return false;
         },
 
-        checkSlotRefactoring(slotUIID: string) {
+        checkSlotRefactoring(slotUIID: string, stateBeforeChanges: any) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment && currentFocusSlotCursorInfos){
@@ -174,8 +175,8 @@ export default Vue.extend({
             if(labelDiv){ // keep TS happy
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
-                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUIID);
-                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, false, focusCursorAbsPos);
+                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUIID);
+                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots});
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
@@ -242,6 +243,8 @@ export default Vue.extend({
                                             this.$nextTick(() => this.$nextTick(() => {
                                                 setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
                                                 this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                                // Save changes only when arrived here (for undo/redo)
+                                                this.appStore.saveStateChanges(stateBeforeChanges);
                                             }));
                                             
                                         
@@ -250,6 +253,8 @@ export default Vue.extend({
                                     else{
                                         setDocumentSelection(cursorInfos, cursorInfos);
                                         this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
+                                        // Save changes only when arrived here (for undo/redo)
+                                        this.appStore.saveStateChanges(stateBeforeChanges);
                                     }
                                 }                            
                             }
@@ -288,6 +293,18 @@ export default Vue.extend({
                 event.preventDefault();
             }
         },
+
+        forwardPaste(event: ClipboardEvent){
+            // Paste events need to be handled on the parent contenteditable div because FF will not accept
+            // forwarded (untrusted) events to be hooked by the children spans. 
+            this.appStore.ignoreKeyEvent = true;
+            if (event.clipboardData && this.appStore.focusSlotCursorInfos) {
+                // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
+                const content = event.clipboardData.getData("Text");
+                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: content}));
+            }
+        },        
 
         onLRKeyDown(event: KeyboardEvent) {
             // Because the event handling, it is easier to deal with the left/right arrow at this component level.
@@ -334,6 +351,12 @@ export default Vue.extend({
         },
 
         blurEditableSlot(){
+            // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
+            if(this.appStore.bypassEditableSlotBlurErrorCheck){
+                this.appStore.bypassEditableSlotBlurErrorCheck = false;
+                return;
+            }
+                   
             // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
             // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
             if(document.activeElement?.id === this.labelSlotsStructDivId){

@@ -2,15 +2,16 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
-import { getAboveFrameCaretPosition, getSlotParentIdAndIndexSplit } from "./storeMethods";
+import { getAboveFrameCaretPosition } from "./storeMethods";
 
-export const undoMaxSteps = 50;
+export const undoMaxSteps = 200;
 
 export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
+    editorContentPastedInSlot = "contentPastedInSlot",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
@@ -99,21 +100,6 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     return caretPos;
 }
 
-export function getTextEndCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement): number {
-    // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
-    // if the text in the element is selected, we show the end of the selection.
-    let caretPos = 0;
-    const sel = document.getSelection();
-    if (sel && sel.rangeCount) {
-        const range = sel.getRangeAt(0);
-        if (range.commonAncestorContainer.parentNode == htmlElement) {
-            caretPos = range.endOffset;
-        }
-    }
-    
-    return caretPos;
-}
-
 export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: string): {selectionStart: number, selectionEnd: number} {
     // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boudary values for the given slot
     const focusCursorInfos = useStore().focusSlotCursorInfos;
@@ -178,31 +164,38 @@ export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: num
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUIID: the HTML id for the current editable slot we are in
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UIID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
+    let hasStringSlots = false;
     frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {    
         if(delimiters && (delimiters.startSlotUIID == spanElement.id || delimiters.stopSlotUIID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
         if(!ignoreSpan) {
-            // The code is extracted from the span; we only transform the string quotes as they are styled for the UI, we need to restore them to their code-style equivalent.
+            // The code is extracted from the span; if requested, we only transform the string quotes to have a clear context to refer to in the parser, regardless the content of the strings
+            // (so for example, if in the string slot a used typed "test\" (without double quotes!), the parsing would not be disturbed by the non terminating escaping "\" at the end)
             if(isSlotQuoteType(parseLabelSlotUIID(spanElement.id).slotType)){
+                hasStringSlots = true;
                 switch(spanElement.textContent){
                 case UIDoubleQuotesCharacters[0]:
                 case UIDoubleQuotesCharacters[1]:
-                    uiLiteralCode += "\"";
+                    uiLiteralCode += STRING_DOUBLEQUOTE_PLACERHOLDER;
                     break;
                 case UISingleQuotesCharacters[0]:
                 case UISingleQuotesCharacters[1]:
-                    uiLiteralCode += "'";
+                    uiLiteralCode += STRING_SINGLEQUOTE_PLACERHOLDER;
                     break;            
                 }
             }
             else{
-                uiLiteralCode += spanElement.textContent;
+                // We use the content of the slot as is
+                if((spanElement.textContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanElement.textContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
+                    hasStringSlots = true;
+                }
+                uiLiteralCode += (spanElement.textContent);
             }
         
             if(spanElement.id === currentSlotUIID){
@@ -211,8 +204,9 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
             else{
                 // In most cases, we just increment the length by the span content length,
-                // BUT there is one exception: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
-                // therefore we need to account for them when dealing with such operators
+                // BUT there are 2 exceptions: textual operators require surrounding spaces to be inserted, and those spaces do not appear on the UI
+                // therefore we need to account for them when dealing with such operators;
+                // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
                 const spanElementContentLength = (spanElement.textContent?.length??0);
                 if((trimmedKeywordOperators.includes(spanElement.textContent??""))){
@@ -222,13 +216,20 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                     + " " + uiLiteralCode.substring(uiLiteralCode.length - spanElementContentLength) 
                     + " ";
                 }
+                let stringPlaceHoldersCursorOffset = 0; // The offset induced by the difference of length between the string quotes and their placeholder representation
+                const stringPlaceholderMatcher = (spanElement.textContent as string).match(new RegExp("("+STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+"|"+STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+")", "g"));
+                if(stringPlaceholderMatcher != null){
+                    // The difference is 1 character per found placeholders 
+                    stringPlaceHoldersCursorOffset = stringPlaceholderMatcher.length * (STRING_DOUBLEQUOTE_PLACERHOLDER.length - 1);
+                }
+
                 if(!foundFocusSpan) {
-                    focusSpanPos += (spanElementContentLength + spacesOffset);
+                    focusSpanPos += (spanElementContentLength + spacesOffset - stringPlaceHoldersCursorOffset);
                 }
             }
         }
     });    
-    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos};
+    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots};
 }
 
 
@@ -676,23 +677,25 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
                     return anchorCursorPos - focusCursorPos;
                 }
                 
-                // Not in the same slot, we check the slots in relation to each other and their level in the hierarchy
-                const {parentId: anchorParentId, slotIndex: anchorSlotIndex} = getSlotParentIdAndIndexSplit(anchorSlotInfos.slotId);
-                const {parentId: focusParentId, slotIndex:focusSlotIndex} = getSlotParentIdAndIndexSplit(focusSlotInfos.slotId);
-                // check if the anchor and the focus slots are in the hierachy level
-                if(anchorParentId == focusParentId){
-                    // Same level:  we return the ID comparison because the last "token" of the ID is the slot index
-                    return anchorSlotIndex - focusSlotIndex;
+                // Not in the same slot, we check the slots in relation to each other and their level in the hierarchy:
+                // we compare the ancestor indexes of each slots until a difference in found, starting from the root.
+                const anchorSlotIdIndexes = anchorCursorInfos.slotInfos.slotId.split(",");
+                const focusSlotIdIndexes = focusCursorInfos.slotInfos.slotId.split(",");
+                const minAncestorLevels = Math.min(anchorSlotIdIndexes.length + 1, focusSlotIdIndexes.length + 1);
+                let ancestorLevelIndex = 0;
+                let foundDiff = false;
+                while(!foundDiff && ancestorLevelIndex < minAncestorLevels){
+                    if(anchorSlotIdIndexes[ancestorLevelIndex] != focusSlotIdIndexes[ancestorLevelIndex]){
+                        foundDiff = true;
+                        return (parseInt(anchorSlotIdIndexes[ancestorLevelIndex]) - parseInt(focusSlotIdIndexes[ancestorLevelIndex]));
+                    }
+                    ancestorLevelIndex++;
                 }
-            
-                // Not the same level we need to find the position of the deeper level slot's ancestor which is of the same level as the outer slot
-                // and the relative position we look for is the difference between those two positions
-                const anchorLevelCount = anchorSlotInfos.slotId.split(",").length;
-                const focusLevelCount = focusSlotInfos.slotId.split(",").length;
-                const isAnchorAtDeeperLevel = (anchorLevelCount > focusLevelCount);
-                const anchorIndexToUse = (isAnchorAtDeeperLevel) ? getSameLevelAncestorIndex(anchorSlotInfos.slotId, focusParentId) : anchorSlotIndex;
-                const focusIndexToUse = (isAnchorAtDeeperLevel) ? focusSlotIndex : getSameLevelAncestorIndex(focusSlotInfos.slotId, anchorParentId);
-                return (anchorIndexToUse - focusIndexToUse);                
+                if(!foundDiff){
+                    // If we reach this bit, then it means we have one of the IDs totally contained at the start of the other (e.g. "1,2" and "1,2,3")
+                    // So the slot that has the longest ID is by definition after the one with the shortest
+                    return anchorSlotIdIndexes.length - focusSlotIdIndexes.length;
+                }
             }
 
             // Not the same label index, we return the indexes difference
@@ -710,17 +713,22 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
     return undefined; 
 }
 
+// Given a slot refered by slotID, this method looks up what is the slot index of the given slot's ancestor 
+// at the level indicated by sameLevelThanSlotParentId. See example below. 
+// The given slot is expected to be in a deeper level than the reference ancester.
 export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParentId: string): number => {
-    const ancestorRegex = new RegExp("^"+sameLevelThanSlotParentId + ((sameLevelThanSlotParentId.length > 0) ? "," : "") +"(\\d+),.+$");
-    const ancestorMatch = slotId.match(ancestorRegex);
-    if(ancestorMatch){
-        return parseInt(ancestorMatch[1]);
-    }
-    return -1;
+    // Example: the given slot ID is "0,6,2,3,7", and sameLevelThanSlotParentId is "4,1,8"
+    // As sameLevelThanSlotParentId has 3 levels, the ancestor is at position 2, what we need to return is 6 because it is at the second position in the ID of the given slot.
+    const ancestorLevels = sameLevelThanSlotParentId.split(",").length;
+    return parseInt(slotId.split(",")[ancestorLevels -1]);
 };
 
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
-export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, cursorPos?: number): {slots: SlotsStructure, cursorOffset: number} => {
+// The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
+// both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
+export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
+export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
+export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean}): {slots: SlotsStructure, cursorOffset: number} => {
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
     //  {fields: {"", s1, "", "", s2, ""}, operators: ["", "", "+", "", ""] }}
@@ -733,7 +741,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
 
     // If flag for checking escaped strings as string is set, we replace them
     // (this is for example when de-stringify a string content)
-    if(isInsideString){
+    if(flags && flags.isInsideString){
         const escapedQuote = "\\" + codeLiteral.charAt(0);
         // /(?<!\\)\\["']/g, (match) => match.charAt(1));
         codeLiteral = codeLiteral.substring(1, codeLiteral.length - 1).replaceAll(escapedQuote, (match) => match.charAt(1));
@@ -743,13 +751,28 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
     // We simply use an equivalent size placeholder so it wont interfere the parsing later.
     // Note that the regex expression will look for either a well-formed a string literal or a non terminated string literal (for example: "test)
     // and when non terminated string literal is found, we complete the quotes manually (it will necessarily be at the end of the code literal)
-    const strRegEx = /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
+    // When we use the quotes placeholder, we arrange the blanked strings so that their size "include" the placeholders and still match with the codeLiteral length.
+    // For example, if the code in the UI was <print("hello")>, the code literal in this method is:
+    //                             <print($strype_StrDbQuote_placeholder$hello$strype_StrDbQuote_placeholder$)>
+    // so we blank it like this --> print("                                                                 ")
+    // in that way, everything is of the same length and we keep work character indexes properly. We only need to care about the real quotes when we create the string slots.   
+    const quotesPlaceholdersRegex = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
+    const strRegEx = (flags?.skipStringEscape) ? new RegExp(quotesPlaceholdersRegex+"((?!\\1).)*\\1","g") : /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
     let missingClosingQuote = "";
     const blankedStringCodeLiteral = codeLiteral.replace(strRegEx, (match) => {
-        if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
-            missingClosingQuote = match[0];
+        if(flags?.skipStringEscape){
+            const codeStrQuotes = (match.startsWith(STRING_SINGLEQUOTE_PLACERHOLDER)) ? "'" : "\"";
+            // The length of the blanked string is twice the length of the placeholers minus 2 (for the quotes) plus the inner content length (the actual string value)
+            // in other words, the match length minus 2 (that accounts the quotes)
+            return codeStrQuotes + " ".repeat(match.length - 2) + codeStrQuotes;
         }
-        return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
+        else {
+            if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
+                missingClosingQuote = match[0];
+            }
+            return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
+        }
+        
     });
     if(missingClosingQuote.length == 1){
         // The blanking above would have already terminate the string quote in blankedStringCodeLiteral if needed,
@@ -808,12 +831,12 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
         if(afterBracketCode.length > 0){
             afterBracketCode = FIELD_PLACERHOLDER + afterBracketCode;
         }
-        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, false, cursorPos);
+        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, false, cursorPos ? cursorPos - (firstOpenedBracketPos + 1) : undefined);
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape});
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, false, cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER) ? cursorPos - (closingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined);
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (closingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
@@ -832,18 +855,20 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
             const openingQuoteValue =  blankedStringCodeLiteral[openingQuoteIndex];
             const closingQuoteIndex = openingQuoteIndex + 1 + (blankedStringCodeLiteral.substring(openingQuoteIndex + 1).match(openingQuoteValue)?.index??blankedStringCodeLiteral.length);
             // Similar to brackets, we can now split the code by what is before the string, the string itself, and what is after
+            // Note that if have known placeholders for the string quotes in the code, we need to take them into consideration at this stage
             const beforeStringCode = codeLiteral.substring(0, openingQuoteIndex);
-            const stringContentCode = codeLiteral.substring(openingQuoteIndex + 1, closingQuoteIndex);
+            const quoteTokenLength = (flags?.skipStringEscape) ? STRING_SINGLEQUOTE_PLACERHOLDER.length : 1;
+            const stringContentCode = codeLiteral.substring(openingQuoteIndex + quoteTokenLength, closingQuoteIndex - (quoteTokenLength - 1));
             // same logic as brackets for subsequent code: cf. above
             let afterStringCode = codeLiteral.substring(closingQuoteIndex + 1);
             if(afterStringCode.length > 0){
                 afterStringCode = FIELD_PLACERHOLDER + afterStringCode;
             }
             // When we construct the parts before and after the string, we need to internally set the cursor "fake" position, that is, the cursor offset by the bits we are evaluating
-            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, false, cursorPos);
+            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
             cursorOffset += beforeStringCursortOffset;
             const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
-            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, false, (cursorPos??0) - closingQuoteIndex + FIELD_PLACERHOLDER.length);
+            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + FIELD_PLACERHOLDER.length, skipStringEscape: flags?.skipStringEscape});
             cursorOffset += afterStringCursorOffset;
             if((structAfterString.fields[0] as BaseSlot).code.startsWith(FIELD_PLACERHOLDER)){
                 (structAfterString.fields[0] as BaseSlot).code = (structAfterString.fields[0] as BaseSlot).code.substring(FIELD_PLACERHOLDER.length);
@@ -853,7 +878,7 @@ export const parseCodeLiteral = (codeLiteral: string, isInsideString?: boolean, 
         }
         else{
             // 3 - break the code by operatorSlot
-            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, cursorPos);
+            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, flags?.cursorPos);
             cursorOffset += operatorCursorOffset;
             resStructSlot.fields = operatorSplitsStruct.fields;
             resStructSlot.operators = operatorSplitsStruct.operators;

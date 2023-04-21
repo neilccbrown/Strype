@@ -43,6 +43,12 @@ export const useStore = defineStore("app", {
 
             focusSlotCursorInfos: undefined as SlotCursorInfos | undefined, // where we move the cursor when selecting (like the tip of the arrow) 
 
+            // Flag to keep a trace of the last critical position in the editor, which is used in undo/redo sequences and allow us to not save changes of positions
+            // but restore the last position (blue caret and/or slot position) that is relevant to a cancellable action. That is necessary for doing redo properly as
+            // we only save a differences between the state and another version of the state, for that part we need to store what is "next".
+            // The initial value is set to the currentFrame caret value of the initial state
+            lastCriticalActionPositioning: {lastCriticalCaretPosition: {id: -3, caretPosition: CaretPosition.body}, lastCriticalSlotCursorInfos: undefined} as {lastCriticalCaretPosition: CurrentFrame, lastCriticalSlotCursorInfos?: SlotCursorInfos},
+
             lastBlurredFrameId: -1, // Used to keep trace of which frame had focus to check is we moved out the frame when clicking somewhere (for errors checking)
  
             isDraggingFrame: false, // Indicates whether drag and drop of frames is in process
@@ -916,7 +922,7 @@ export const useStore = defineStore("app", {
                             if(isRemovingString){
                                 const stringSlot = (isCurrentSlotSpecialType) ? retrieveSlotFromSlotInfos(currentSlotInfos) as StringSlot : slotToDelete as StringSlot;
                                 const stringLiteral = stringSlot.quote + stringSlot.code + stringSlot.quote;
-                                parsedStringContentRes =  parseCodeLiteral(stringLiteral, true);
+                                parsedStringContentRes =  parseCodeLiteral(stringLiteral, {isInsideString: true});
                             }
                             // The number of fields in the bracket/string (for the latter, after it is turned into code, so the string "a+b" would be 2):
                             const fieldsInSpecialTypeNumber = (isRemovingBrackets)
@@ -1057,7 +1063,6 @@ export const useStore = defineStore("app", {
             return {newSlotId: "", cursorPosOffset: 0};
         },
 
-
         setSlotErroneous(frameSlotInfos: SlotInfos) {
             const slotObject = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot);
             const existingError =  slotObject.error??"";
@@ -1108,14 +1113,19 @@ export const useStore = defineStore("app", {
         },
         
         doCopyFrame(frameId: number) {
-            this.copiedFrameId = this.nextAvailableId;
+            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues
+            let nextAvailableId = this.nextAvailableId;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId+=1;
+            }
+            this.copiedFrameId = nextAvailableId;
 
             // If it has a JointParent, we're talking about a JointFrame
             const isJointFrame = this.frameObjects[frameId].frameType.isJointFrame;
             
             const parent = (isJointFrame) ? this.frameObjects[frameId].jointParentId : this.frameObjects[frameId].parentId;
 
-            cloneFrameAndChildren(this.frameObjects, frameId, parent, {id: this.nextAvailableId}, this.copiedFrames);             
+            cloneFrameAndChildren(this.frameObjects, frameId, parent, {id: nextAvailableId}, this.copiedFrames);             
         },
 
         doCopySelection() {
@@ -1125,14 +1135,18 @@ export const useStore = defineStore("app", {
             const parent = (isJointFrame) ? this.frameObjects[this.selectedFrames[0]].jointParentId : this.frameObjects[this.selectedFrames[0]].parentId;
 
             // We generate the list of frames from the selectedFrames ids
-            const sourceFrameList: EditorFrameObjects = {};
-            this.selectedFrames.forEach((id) => sourceFrameList[id] = this.frameObjects[id]);
+            const sourceFrameList: FrameObject[] = Array(this.selectedFrames.length);
+            this.selectedFrames.forEach((id, index) => sourceFrameList[index] = this.frameObjects[id]);
             
-            // All the top level cloned frames need to be stored in order to then added to their new parent's list
+            // All the top level cloned frames need to be stored in order to then added to their new parent's list.
+            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
             const topLevelCopiedFrames: number[] = [];
             let nextAvailableId = this.nextAvailableId;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId+=1;
+            }
 
-            Object.values(sourceFrameList).forEach( (frame) => {
+            sourceFrameList.forEach((frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
                 topLevelCopiedFrames.push(nextAvailableId);
                 cloneFrameAndChildren(this.frameObjects, frame.id, parent, {id: nextAvailableId}, this.copiedFrames); 
@@ -1182,32 +1196,35 @@ export const useStore = defineStore("app", {
             this.contextMenuShownId = "";
         },
 
-        saveStateChanges(payload: {previousState: Record<string, unknown>; mockCurrentCursorFocus?: EditableFocusPayload}) {
-            //Saves the state changes in diffPreviousState.
-            //However it is not just doing it without checking up things: because of the caret issues we need to generate a mock change of currentFrame.Id etc 
-            //if there is no difference and the action may rely on the cursor position.
-            //We use a "mock" change to force a difference of cursor between state and previous state, and revert to actual value after change is backed up.
-            let backupCurrentFrame = {} as CurrentFrame;
-            let backupCurrentFocus = false;
-            let backupCurrentFrameVisibility = CaretPosition.none;
-            let slot = {} as BaseSlot;
-            if(payload.mockCurrentCursorFocus !== undefined){
-                const mockCurrentCursorFocus = payload.mockCurrentCursorFocus;
-                //before saving the state, we "mock" a change of current state ID to a dummy value
-                //so that a difference is raised --> if users change the cursor, before doing undo,
-                //the cursor will correctly be at the right location. Same with focused.
-                slot = (retrieveSlotFromSlotInfos(mockCurrentCursorFocus) as BaseSlot);
-                backupCurrentFrame = this.currentFrame;
-                backupCurrentFocus = slot.focused??false;
-                backupCurrentFrameVisibility = this.frameObjects[this.currentFrame.id].caretVisibility;
-                slot.focused = false;
-                this.currentFrame = {id: 0, caretPosition: CaretPosition.none};
-                this.frameObjects[payload.mockCurrentCursorFocus.frameId].caretVisibility = CaretPosition.none;
-                
+        saveStateChanges(previousState: Record<string, unknown>) {
+            // Saves the state changes in diffPreviousState.
+            // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be 
+            // the navigation status in the editor (i.e. are we editing? what blue caret or text cursor is currenty displayed), and there might not be any difference right now.
+            // So to make sure that we will ALWAYS see a difference of positioning no matter the situation, we simlate a mock change with dummy positioning,
+            // in order to get the previous state saved correctly regarding navigation.
+            const stateCopy = cloneDeep(this.$state);
+            stateCopy.currentFrame = {id: 0, caretPosition: CaretPosition.none};
+            previousState.lastCriticalActionPositioning = {lastCriticalCaretPosition: previousState.currentFrame, lastCriticalSlotCursorInfos: previousState.focusSlotCursorInfos};
+            this.lastCriticalActionPositioning = {
+                lastCriticalCaretPosition: cloneDeep(this.currentFrame),
+                lastCriticalSlotCursorInfos: (this.isEditing) ?  cloneDeep(this.focusSlotCursorInfos) : undefined,
+            };
+            const mockAnchorFocusSlotCursorInfos: SlotCursorInfos = {slotInfos: {frameId: 0, labelSlotsIndex: -1, slotId: "-1", slotType: SlotType.none}, cursorPos: -1};
+            stateCopy.lastCriticalActionPositioning.lastCriticalCaretPosition = {id: 0, caretPosition: CaretPosition.none};
+            stateCopy.lastCriticalActionPositioning.lastCriticalSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
+            if(this.isEditing){
+                const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
+                focusedSlotCopy.focused = false;
+                stateCopy.anchorSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
+                stateCopy.focusSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
             }
+            stateCopy.isEditing = !this.isEditing;
 
-            this.diffToPreviousState.push(getObjectPropertiesDifferences(this.$state, payload.previousState));
-            //don't exceed the maximum of undo steps allowed
+            const diffs = getObjectPropertiesDifferences(stateCopy, previousState);
+            this.diffToPreviousState.push(diffs);
+
+            // Don't exceed the maximum of undo steps allowed
             if(this.diffToPreviousState.length > undoMaxSteps) {
                 this.diffToPreviousState.splice(
                     0,
@@ -1219,22 +1236,27 @@ export const useStore = defineStore("app", {
                 0,
                 this.diffToNextState.length
             );
-
-            if(payload.mockCurrentCursorFocus !== undefined){
-                //revert the mock changes in the state
-                slot.focused = backupCurrentFocus;
-                this.currentFrame = backupCurrentFrame;
-                this.frameObjects[backupCurrentFrame.id].caretVisibility = backupCurrentFrameVisibility;
-            }
         },
 
         applyStateUndoRedoChanges(isUndo: boolean){
-            //flags for performing a change of current caret
-            let changeCaret = false;
-            let newCaretId = 0;
+            // Clear the current blue caret, whichever the new value will be so we do not get 2 carets if the current and new values differ
             const oldCaretId = this.currentFrame.id;
+            if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(oldCaretId) && this.frameObjects[oldCaretId]){
+                Vue.set(
+                    this.frameObjects[oldCaretId],
+                    "caretVisibility",
+                    CaretPosition.none
+                );
+            }
 
-            //performing the change if there is any change recorded in the state
+            // And remove any currently focused slot
+            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+            const focusedSlot = retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false);
+            if(focusedSlot){
+                focusedSlot.focused = false;
+            }
+
+            // Performing the change if there is any change recorded in the state
             let changeList = [] as ObjectPropertyDiff[];
             if(isUndo) {
                 changeList = this.diffToPreviousState.pop()??[];
@@ -1245,7 +1267,7 @@ export const useStore = defineStore("app", {
 
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             if(changeList.length > 0){
-                //this flag stores the arrays that need to be "cleaned" (i.e., removing the null elements)
+                // This flag stores the arrays that need to be "cleaned" (i.e., removing the null elements)
                 const arraysToClean = [] as {[id: string]: any}[];                
                 
                 //if the value in the changes isn't "null" --> replaced/add, otherwise, delete.
@@ -1283,22 +1305,23 @@ export const useStore = defineStore("app", {
                             changeEntry.value
                         );
 
-                        //if we update a current frame cursor, we make sure it is properly set
-                        if(statePartToChange === this.currentFrame && property==="id"){
-                            changeCaret = true;
-                            newCaretId = changeEntry.value;
-                        }
-
                         //if we "delete" something in an array, flag this array for clearning
                         if(lastPartIsArray && changeEntry.value===null && arraysToClean.indexOf(statePartToChange) === -1){
                             arraysToClean.push(statePartToChange);
                         }
                     }
                     else{
-                        Vue.delete(
-                            statePartToChange,
-                            property
-                        );                 
+                        // Because undefined value for anchor/focus (text selection) are meaningul, we can't destroy the property 
+                        // if it's set to be undefined. Instead, in those 2 cases we set the value directly
+                        if(property == "anchorSlotCursorInfos" || property == "focusSlotCursorInfos" || property == "lastCriticalSlotCursorInfos"){
+                            statePartToChange[property] = undefined;
+                        }
+                        else{
+                            Vue.delete(
+                                statePartToChange,
+                                property
+                            );   
+                        }              
                     }
                 });
 
@@ -1312,21 +1335,32 @@ export const useStore = defineStore("app", {
                             );
                         }
                     }
-                });
-             
-                //if we notified a change of current caret, we make sure it makes correctly displayed 
-                if(changeCaret){
-                    //if the frame where the previous state of the caret was notified still exists, we set its caret to "none"
-                    if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(oldCaretId) && this.frameObjects[oldCaretId]){
+                }); 
+
+                // We make sure the current selection of the document is in sync with what we have in the store
+                Vue.nextTick(() => {
+                    // Set the right current frame in any case
+                    const newCaretId = this.lastCriticalActionPositioning.lastCriticalCaretPosition.id;
+                    if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(newCaretId) && this.frameObjects[newCaretId]){
                         Vue.set(
-                            this.frameObjects[oldCaretId],
+                            this.frameObjects[newCaretId],
                             "caretVisibility",
-                            CaretPosition.none
+                            this.lastCriticalActionPositioning.lastCriticalCaretPosition.caretPosition
                         );
                     }
-        
-                    this.currentFrame.caretPosition = this.frameObjects[newCaretId].caretVisibility;
-                }
+                    if(this.focusSlotCursorInfos && this.anchorSlotCursorInfos){
+                        this.setSlotTextCursors(this.focusSlotCursorInfos, this.focusSlotCursorInfos);
+                        setDocumentSelection(this.focusSlotCursorInfos, this.focusSlotCursorInfos);
+                        const toFocusSlot = retrieveSlotFromSlotInfos(this.focusSlotCursorInfos.slotInfos) as BaseSlot;
+                        toFocusSlot.focused = true;
+                        this.isEditing = true;
+                    }
+                    else{
+                        // Force the selection on the page to be reset too
+                        document.getSelection()?.removeAllRanges();
+                    }
+                });
+               
 
                 //Finally, if there is a change on an editable slot, we trigger an error check for that slot/slot context
                 //to make sure that the update on the editable slot is coherent with errors shown
@@ -1368,8 +1402,39 @@ export const useStore = defineStore("app", {
                     });
                 }
 
-                //keep the arrays of changes in sync with undo/redo sequences
-                const stateDifferences = getObjectPropertiesDifferences(this.$state, stateBeforeChanges);
+                // Keep the arrays of changes in sync with undo/redo sequences
+                // The state reference is sightly modified for using the critical positions that will be required for redo                
+                this.currentFrame = this.lastCriticalActionPositioning.lastCriticalCaretPosition;
+                if(this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos){
+                    this.isEditing = true;
+                    this.anchorSlotCursorInfos = this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos;
+                    this.focusSlotCursorInfos = this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos;
+                }
+                else{
+                    this.isEditing = false;
+                    this.anchorSlotCursorInfos = undefined;
+                    this.focusSlotCursorInfos = undefined;
+                }
+
+                // Just like for saveStateChanges(), we need to simulate some dummy changes so that differences between
+                // the stateBeforeChanges and the current state regarding positioning and editing are all reflected properly
+                // (we do not know where we'll be when undo/redo is invoked, so we need to make as if changes of positionning occurred)
+                const stateCopy = cloneDeep(this.$state);    
+                stateCopy.currentFrame = {id: 0, caretPosition: CaretPosition.none};
+                const mockAnchorFocusSlotCursorInfos: SlotCursorInfos = {slotInfos: {frameId: 0, labelSlotsIndex: -1, slotId: "-1", slotType: SlotType.none}, cursorPos: -1};
+                stateCopy.lastCriticalActionPositioning.lastCriticalCaretPosition = {id: 0, caretPosition: CaretPosition.none};
+                stateCopy.lastCriticalActionPositioning.lastCriticalSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
+                if(this.isEditing){
+                    const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                    const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
+                    focusedSlotCopy.focused = false;
+                    stateCopy.anchorSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
+                    stateCopy.focusSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
+                }
+                // Also mock the change of edition between the copy and the previous state to ensure the difference is detected.
+                stateCopy.isEditing = !this.isEditing;
+
+                const stateDifferences = getObjectPropertiesDifferences(stateCopy, stateBeforeChanges);
                 if(isUndo){
                     this.diffToNextState.push(stateDifferences);
                 }
@@ -1550,9 +1615,7 @@ export const useStore = defineStore("app", {
                 }    
 
                 //save the state changes for undo/redo
-                this.saveStateChanges({                   
-                    previousState: this.stateBeforeChanges,
-                });
+                this.saveStateChanges(this.stateBeforeChanges);
 
                 //clear the stateBeforeChanges flag off
                 this.updateStateBeforeChanges(true);
@@ -1575,13 +1638,7 @@ export const useStore = defineStore("app", {
             (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.code;
 
             //save state changes
-            this.saveStateChanges({
-                previousState: stateBeforeChanges,
-                mockCurrentCursorFocus: {
-                    ...frameSlotInfos,
-                    focused: true,
-                },
-            });
+            this.saveStateChanges(stateBeforeChanges);
         },
 
         validateSlot(frameSlotInfos: SlotInfos) {  
@@ -1706,10 +1763,15 @@ export const useStore = defineStore("app", {
             } 
 
             // construct the new Frame object to be added
+            // for safety we make sure the new ID isn't already used (it shouldn't but in case something is messed up, we keep the new frame with a valid new ID)
+            let nextAvailableId = this.nextAvailableId++;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId++;
+            }
             const newFrame: FrameObject = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: frame,
-                id: this.nextAvailableId++,
+                id: nextAvailableId,
                 parentId: addingJointFrame ? 0 : parentId, // Despite we calculated parentID earlier, it may not be used
                 jointParentId: addingJointFrame ? parentId : 0,
                 labelSlotsDict:
@@ -1798,6 +1860,7 @@ export const useStore = defineStore("app", {
                 this.unselectAllFrames();
             }
 
+            this.updateNextAvailableId();
         
             //"move" the caret along, using the newly computed positions
             await this.leftRightKey(
@@ -1808,11 +1871,7 @@ export const useStore = defineStore("app", {
             ).then(
                 () => 
                     //save state changes
-                    this.saveStateChanges(
-                        {                 
-                            previousState: stateBeforeChanges,
-                        }
-                    )
+                    this.saveStateChanges(stateBeforeChanges)
             );
         },
 
@@ -1925,11 +1984,7 @@ export const useStore = defineStore("app", {
                        
             //save state changes
             if(!ignoreBackState){
-                this.saveStateChanges(
-                    {
-                        previousState: stateBeforeChanges,
-                    }
-                );
+                this.saveStateChanges(stateBeforeChanges);
             }
 
             //we show the message of large deletion after saving state changes as this is not to be notified.
@@ -1982,11 +2037,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
                                 
             //save state changes
-            this.saveStateChanges(
-                {
-                    previousState: stateBeforeChanges,
-                }
-            );
+            this.saveStateChanges(stateBeforeChanges);
         },
 
         toggleCaret(newCurrent: CurrentFrame) {
@@ -1997,7 +2048,7 @@ export const useStore = defineStore("app", {
 
         async leftRightKey(payload: {key: string, isShiftKeyHold?: boolean, availablePositions?: NavigationPosition[]}) {
             //  used for moving index up (+1) or down (-1)
-            const directionDown = payload.key === "ArrowRight" || payload.key === "Enter";
+            const directionDown = payload.key === "ArrowRight" || payload.key === "Enter" || (payload.key === "Tab" && !payload.isShiftKeyHold);
             const directionDelta = (directionDown)?+1:-1;
             // if the available positions are not passed as argument, we compute them from the DOM
             const availablePositions = payload.availablePositions??getAvailableNavigationPositions();
@@ -2020,20 +2071,21 @@ export const useStore = defineStore("app", {
             // if so, the next position is either the following/previous available position within *a same* structure.
             let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);    
             let multiSlotSelNotChanging = false;   
-            if(payload.isShiftKeyHold){
+            if(payload.isShiftKeyHold && payload.key != "Tab"){
                 const currentSlotInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 const currentSlotInfosLevel = currentSlotInfos.slotId.split(",").length;
-                // To find what is the next position, we need to use the slot ids: as we can only get into an editable slot and in the same level
+                const anchorParent = getSlotParentIdAndIndexSplit((this.anchorSlotCursorInfos?.slotInfos.slotId)??"").parentId;
+                // To find what is the next position, we need to use the slot ids: as we can only get into an editable slot and in the same level (in the tree)
                 // and in the same frame label, we find the slot that matches those criteria, if any.
                 // Note that if we are currently in a string, and we have reached this method, then we are at a boundary of the string and we cannot continue a selection outside this string,
                 // so the current selection won't change.
                 // We traverse the list of available positions in the order of the selection's direction (i.e. backwards if selecting backwards)
                 // otherwise we may match an item that matches the condition, but that isn't the closest slot we are willing to select (when doing backwards.)
-                const positionsList = (directionDelta > 0) ? availablePositions : availablePositions.reverse();
+                const positionsList = (directionDelta > 0) ? availablePositions : [...availablePositions].reverse();
                 const nextSelectionPosition = (currentSlotInfos.slotType == SlotType.string) ? undefined : positionsList.find((navigPos, index) => {
                     const isDirectionCorrect = (directionDelta > 0) ? index > currentFramePosition : index > (positionsList.length - currentFramePosition - 1);
                     return isDirectionCorrect && navigPos.frameId == currentSlotInfos.frameId && navigPos.isSlotNavigationPosition && navigPos.slotType !== SlotType.string 
-                        && navigPos.labelSlotsIndex == currentSlotInfos.labelSlotsIndex && (navigPos.slotId??"").split(",").length == currentSlotInfosLevel;
+                        && anchorParent == getSlotParentIdAndIndexSplit(navigPos.slotId??"").parentId && navigPos.labelSlotsIndex == currentSlotInfos.labelSlotsIndex && (navigPos.slotId??"").split(",").length == currentSlotInfosLevel;
                 });    
 
                 if(nextSelectionPosition){
@@ -2080,7 +2132,7 @@ export const useStore = defineStore("app", {
                 // (as the slot may have not yet be renderered in the UI, for example when adding a new frame, we do it later)
                 Vue.nextTick(() => {
                     const textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
-                    const anchorCursorInfos = (payload.isShiftKeyHold) ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
+                    const anchorCursorInfos = (payload.isShiftKeyHold && payload.key != "Tab") ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
                     const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
                     setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
@@ -2106,7 +2158,7 @@ export const useStore = defineStore("app", {
             }
 
             //In any case change the current frame
-            this.currentFrame.id = nextPosition.frameId;            
+            this.currentFrame.id = nextPosition.frameId;
         },
 
         generateStateJSONStrWithCheckpoint(compress?: boolean) {
@@ -2279,9 +2331,14 @@ export const useStore = defineStore("app", {
             payload.frameId = payload.frameId ?? this.copiedFrameId;
 
             // If it is not a paste operation, it is a duplication of the frame.
+            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
+            let nextAvailableId = this.nextAvailableId;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId+=1;
+            }
             const sourceFrameList: EditorFrameObjects = (isPasteOperation) ? this.copiedFrames : this.frameObjects;            
             const copiedFrames: EditorFrameObjects = {};
-            cloneFrameAndChildren(sourceFrameList, payload.frameId, payload.newParentId, {id: this.nextAvailableId}, copiedFrames); 
+            cloneFrameAndChildren(sourceFrameList, payload.frameId, payload.newParentId, {id: nextAvailableId}, copiedFrames); 
 
 
             // Add the copied objects to the FrameObjects
@@ -2324,11 +2381,7 @@ export const useStore = defineStore("app", {
             }
 
             //save state changes
-            this.saveStateChanges(
-                {
-                    previousState: stateBeforeChanges,
-                }
-            );
+            this.saveStateChanges(stateBeforeChanges);
         
             this.unselectAllFrames();
         },
@@ -2354,8 +2407,12 @@ export const useStore = defineStore("app", {
             const copiedFrames: EditorFrameObjects = {};
 
             // All the top level cloned frames need to be stored in order to then added to their new parent's list
+            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
             const topLevelCopiedFrames: number[] = [];
             let nextAvailableId = this.nextAvailableId;
+            while(this.frameObjects[nextAvailableId] != undefined){
+                nextAvailableId+=1;
+            }
 
             Object.values(sourceFrameIds).forEach( (frame) => {
                 //For each top level frame (i.e. each one on the selected list) we record its new id
@@ -2412,11 +2469,7 @@ export const useStore = defineStore("app", {
             }
 
             //save state changes
-            this.saveStateChanges(
-                {
-                    previousState: stateBeforeChanges,
-                }
-            );
+            this.saveStateChanges(stateBeforeChanges);
         
             this.unselectAllFrames();
         },
@@ -2512,11 +2565,7 @@ export const useStore = defineStore("app", {
             this.doChangeDisableFrame(payload);
             
             //save state changes
-            this.saveStateChanges(
-                {
-                    previousState: stateBeforeChanges,
-                }
-            );
+            this.saveStateChanges(stateBeforeChanges);
         
             this.unselectAllFrames();
         },
@@ -2533,11 +2582,7 @@ export const useStore = defineStore("app", {
                 ));
             
             //save state changes
-            this.saveStateChanges(
-                {
-                    previousState: stateBeforeChanges,
-                }
-            );
+            this.saveStateChanges(stateBeforeChanges);
         
             this.unselectAllFrames();
         },
@@ -2765,13 +2810,8 @@ export const useStore = defineStore("app", {
             if(eventType !== "added") {
                 this.makeSelectedFramesVisible();
                 this.unselectAllFrames();
-                //save state changes
                 //save the state changes for undo/redo
-                this.saveStateChanges(
-                    {                   
-                        previousState: this.stateBeforeChanges,
-                    }
-                );
+                this.saveStateChanges(this.stateBeforeChanges);
 
                 //clear the stateBeforeChanges flag off
                 this.updateStateBeforeChanges(true);

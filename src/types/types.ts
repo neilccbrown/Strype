@@ -66,7 +66,8 @@ export enum SlotType{
     closingBracket = 0o0200,// detail for the closing one
     // operator type
     operator = 0o7000, // meta category
-    
+    // "no type", which can be used for undo/redo difference marking
+    none = 0,    
 }
 
 export function isSlotCodeType(type: SlotType): boolean {

@@ -1,18 +1,13 @@
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
 import { BaseSlot, CodeMatchIterable, FrameObject } from "@/types/types";
+import { operators, keywordOperatorsWithSurroundSpaces, STRING_SINGLEQUOTE_PLACERHOLDER, STRING_DOUBLEQUOTE_PLACERHOLDER } from "@/helpers/editor";
 /* IFTRUE_isMicrobit */
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 /* FITRUE_isMicrobit */
 
 import i18n from "@/i18n";
 import _ from "lodash";
-
-const operators = ["+","-","/","*","%","//","**","&","|","~","^",">>","<<",
-    "+=","-+","*=","/=","%=","//=","**=","&=","|=","^=",">>=","<<=",
-    "==","=","!=",">=","<=","<",">"];
-
-const keywordsWihtSurroundSpaces = [" and ", " in ", " is ", " or " ];
 
 const INDENT = "    ";
 
@@ -39,8 +34,8 @@ function isACNeededToShow(code: string): boolean {
  
     if(!foundOperatorFlag) {
         //then check if we follow a non symbols operators (that need surrounding spaces)
-        keywordsWihtSurroundSpaces.forEach((op) => {
-            if(code.toLowerCase().match(".* "+op+" +[^ ]*")) {
+        keywordOperatorsWithSurroundSpaces.forEach((op) => {
+            if(code.toLowerCase().match(".*"+op+"+[^ ]*")) {
                 foundOperatorFlag = true;
             }
         });
@@ -340,11 +335,20 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
 // Check every time you're in a slot and see how to show the AC (for the code section)
 // the full AC content isn't recreated every time, but only do so when we detect a change of context.
 export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: string, documentationSpanId: string, typesSpanId: string, reshowResultsId: string, acContextPathSpanId: string): {tokenAC: string; contextAC: string; showAC: boolean} {
+    // Replace the string placeholders
+    const stringPlaceholdersParsedSlotCode = slotCode.replaceAll(STRING_SINGLEQUOTE_PLACERHOLDER, "'").replaceAll(STRING_DOUBLEQUOTE_PLACERHOLDER, "\"");
+    // Replace the string quotes placeholders by quotes AND string literal value by equivalent length non space literal
+    const quotesPlaceholdersRegex = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
+    const strRegEx = new RegExp(quotesPlaceholdersRegex+"((?!\\1).)*\\1","g");    
+    const blankedStringCodeLiteral = slotCode.replace(strRegEx, (match) => {
+        // The length of the blanked string is the match's, minus twice the length of the placeholders
+        return "'" + "0".repeat(match.length - 2*STRING_DOUBLEQUOTE_PLACERHOLDER.length) + "'";            
+    });
+
     //check that we are in a literal: here returns nothing
     //in a non terminated string literal
     //writing a number)
-
-    if((slotCode.match(/"/g) || []).length % 2 == 1 || !isNaN(parseFloat(slotCode.substr(Math.max(slotCode.lastIndexOf(" "), 0))))){
+    if((stringPlaceholdersParsedSlotCode.match(/"/g) || []).length % 2 == 1 || !isNaN(parseFloat(stringPlaceholdersParsedSlotCode.substr(Math.max(stringPlaceholdersParsedSlotCode.lastIndexOf(" "), 0))))){
         // the user code for the python editor should not be triggered anymore, so we "break" the editor code's content
         const userPythonCodeHTMLElt = document.getElementById("userCode");
         if(userPythonCodeHTMLElt){        
@@ -358,12 +362,12 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     //- the presence of an operator
     //- the presence of an argument separator
     let closedParenthesisCount = 0, closedSqBracketCount = 0, closedCurBracketCount = 0;
-    let codeIndex = slotCode.length;
+    let codeIndex = stringPlaceholdersParsedSlotCode.length;
     let breakShortCodeSearch = false;
     while(codeIndex > 0 && !breakShortCodeSearch) {
         codeIndex--;
-        const codeChar = slotCode.charAt(codeIndex);
-        if((codeChar === "," || operators.includes(codeChar)) && closedParenthesisCount === 0){
+        const codeChar = blankedStringCodeLiteral.charAt(codeIndex);
+        if(codeChar != "." && operators.includes(codeChar) && closedParenthesisCount === 0){
             codeIndex++;
             break;
         }
@@ -421,11 +425,11 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
     
     // if the string's last character is an operator or symbol that means there is no context and tokenAC
     // we also try to avoid checking for context and token when the line ends with multiple dots, as it creates a problem to Brython
-    if(!slotCode.substr(codeIndex).endsWith("..") && !operators.includes(slotCode.substr(codeIndex).slice(-1))) {
+    if(!stringPlaceholdersParsedSlotCode.substring(codeIndex).endsWith("..") && stringPlaceholdersParsedSlotCode[codeIndex] != "." && !operators.includes(stringPlaceholdersParsedSlotCode[codeIndex])) {
         // we don't want to show the autocompletion if the code at the current position is 
         // after a space that doesn't separate some parts of an operator. In other words,
         // we want to avoid to show the autocompletion EVERYTIME the space key is hit.
-        if(slotCode.trim().length > 0 && !isACNeededToShow(slotCode)){
+        if(slotCode.trim().length > 0 && !isACNeededToShow(blankedStringCodeLiteral)){
             // the user code for the python editor should not be triggered anymore, so we "break" the editor code's content
             const userPythonCodeHTMLElt = document.getElementById("userCode");
             if(userPythonCodeHTMLElt){        
@@ -434,10 +438,10 @@ export function getCandidatesForAC(slotCode: string, frameId: number, acSpanId: 
             return {tokenAC: tokenAC , contextAC: contextAC, showAC: false};
         }
         // code we will give us context and token is the last piece of code after the last white space
-        const subCode = slotCode.substr(codeIndex).split(" ").slice(-1).pop()??"";
-
-        tokenAC = (subCode.indexOf(".") > -1) ? subCode.substr(subCode.lastIndexOf(".") + 1) : subCode;
-        contextAC = (subCode.indexOf(".") > -1) ? subCode.substr(0, subCode.lastIndexOf(".")) : "";
+        const indexOfLastSpace = blankedStringCodeLiteral.substring(codeIndex).lastIndexOf(" ");
+        const subCode = stringPlaceholdersParsedSlotCode.substring(codeIndex).substring(indexOfLastSpace + 1);
+        tokenAC = (subCode.indexOf(".") > -1) ? subCode.substring(subCode.lastIndexOf(".") + 1) : subCode;
+        contextAC = (subCode.indexOf(".") > -1) ? subCode.substring(0, subCode.lastIndexOf(".")) : "";
     }
    
     /***
