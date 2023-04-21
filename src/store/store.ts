@@ -1215,7 +1215,9 @@ export const useStore = defineStore("app", {
             if(this.isEditing){
                 const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                 const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
-                focusedSlotCopy.focused = false;
+                if(focusedSlotCopy){
+                    focusedSlotCopy.focused = false;
+                }
                 stateCopy.anchorSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                 stateCopy.focusSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
             }
@@ -1427,7 +1429,9 @@ export const useStore = defineStore("app", {
                 if(this.isEditing){
                     const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                     const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
-                    focusedSlotCopy.focused = false;
+                    if(focusedSlotCopy){
+                        focusedSlotCopy.focused = false;
+                    }
                     stateCopy.anchorSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                     stateCopy.focusSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                 }
