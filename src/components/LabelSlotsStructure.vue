@@ -322,7 +322,8 @@ export default Vue.extend({
                         if(event.shiftKey){
                             setDocumentSelection(this.appStore.anchorSlotCursorInfos as SlotCursorInfos, this.appStore.focusSlotCursorInfos as SlotCursorInfos);                     
                         }
-                    });                        
+                    });       
+                    this.appStore.ignoreKeyEvent = false;                 
                 }
                 // If a key modifier (ctrl, shift, alt or meta) is pressed, we don't do anything special (browser handles it),
                 else if(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey){                    
