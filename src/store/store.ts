@@ -6,13 +6,12 @@ import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFr
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep} from "lodash";
 import $ from "jquery";
-import { getFrameUIID } from "@/helpers/editor";
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -1889,8 +1888,12 @@ export const useStore = defineStore("app", {
                 () => {
                     //save state changes
                     this.saveStateChanges(stateBeforeChanges);
-                    // To make sure we are showing the newly added frame, we scroll into view
-                    document.getElementById(getFrameUIID(newFrame.id))?.scrollIntoView();
+                    // To make sure we are showing the newly added frame, we scroll into view if needed
+                    const frameHeaderDiv = document.getElementById(getFrameHeaderUIID(newFrame.id));
+                    const frameHeaderBoundingRect = frameHeaderDiv?.getBoundingClientRect();
+                    if(frameHeaderDiv && frameHeaderBoundingRect && (frameHeaderBoundingRect.top + frameHeaderBoundingRect.height > document.documentElement.clientHeight)){
+                        document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
+                    }
                 }
             );
         },
