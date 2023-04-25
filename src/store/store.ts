@@ -740,7 +740,7 @@ export const useStore = defineStore("app", {
             );
         },
 
-        changeCaretWithKeyboard(key: string) {    
+        changeCaretWithKeyboard(key: string, isLevelScopeChange?: boolean) {    
             const currId = this.currentFrame.id;
             const currPosition = this.currentFrame.caretPosition;
 
@@ -758,8 +758,30 @@ export const useStore = defineStore("app", {
             const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.frameId===currentCaret.id && e.caretPosition === currentCaret.caretPosition);
 
             const delta = (key === "ArrowDown") ? 1 : -1;
-            const nextCaret = (listOfCaretPositions[currentCaretIndex + delta]) 
-                ? ({id: listOfCaretPositions[currentCaretIndex + delta].frameId, caretPosition: listOfCaretPositions[currentCaretIndex + delta].caretPosition}) as CurrentFrame
+            // Next caret position is a +/- 1 offset position if we are simply moving the caret, or up/down to the next same level caret position if we are navigating at level scope
+            let nextCaretPosition = currentCaretIndex + delta;
+            if(isLevelScopeChange){
+                // To find the neighbour frame at level scope, we look into the current's frame parent: if there is an availble neighbour there, we retrieve its position, otherwise
+                // we stay were we are. If the previous position would be index -1 (as 0 minus 1), the position we look for the is the parent's body.
+                if(currPosition == CaretPosition.body){
+                    // Already at the top of the current level, we stay here if we wanted to go, or go to the first child of the frame (if exists)
+                    nextCaretPosition = currentCaretIndex;
+                    if(delta > 0 && this.frameObjects[currId].childrenIds.length > 0){
+                        const firstChildId = this.frameObjects[currId].childrenIds[0];
+                        nextCaretPosition = listOfCaretPositions.findIndex((caretPos) =>  caretPos.frameId==firstChildId && caretPos.caretPosition == CaretPosition.below);
+                    }
+                }
+                else{
+                    const parentId = this.frameObjects[currId].parentId;
+                    const childrenIds = this.frameObjects[parentId].childrenIds;
+                    const neigbourFrameChildIndex = childrenIds.indexOf(currId) + delta;
+                    nextCaretPosition = (neigbourFrameChildIndex >= 0 && neigbourFrameChildIndex < childrenIds.length) 
+                        ? listOfCaretPositions.findIndex((caretPos) =>  caretPos.frameId==childrenIds[neigbourFrameChildIndex] && caretPos.caretPosition == CaretPosition.below)
+                        : ((neigbourFrameChildIndex==-1) ? listOfCaretPositions.findIndex((caretPos) =>  caretPos.frameId==parentId && caretPos.caretPosition == CaretPosition.body) : currentCaretIndex);
+                }
+            }
+            const nextCaret = (listOfCaretPositions[nextCaretPosition]) 
+                ? ({id: listOfCaretPositions[nextCaretPosition].frameId, caretPosition: listOfCaretPositions[nextCaretPosition].caretPosition}) as CurrentFrame
                 : currentCaret;
 
             this.currentFrame.id = nextCaret.id;
@@ -1728,11 +1750,11 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        changeCaretPosition(key: string) {
+        changeCaretPosition(key: string, isLevelScopeChange?: boolean) {
             // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
             this.commandsTabIndex = 0; //0 is the index of the add frame tab
 
-            this.changeCaretWithKeyboard(key);
+            this.changeCaretWithKeyboard(key, isLevelScopeChange);
             
             this.unselectAllFrames();
         },

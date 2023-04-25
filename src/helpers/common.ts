@@ -152,3 +152,8 @@ export const getSHA1HashForObject = (obj: {[id: string]: any}): string => {
     const res = hash(obj);
     return res;
 };
+
+export function isMacOSPlatform(): boolean {
+    // Best approach to evaluate if we are on macOS
+    return (navigator.platform.indexOf("Mac") > -1);
+}

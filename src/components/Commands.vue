@@ -83,6 +83,7 @@ import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 /* IFTRUE_isPurePython */
 import PythonConsole from "@/components/PythonConsole.vue";
+import { isMacOSPlatform } from "@/helpers/common";
 /* FITRUE_isPurePython */
 
 export default Vue.extend({
@@ -219,7 +220,8 @@ export default Vue.extend({
                             this.appStore.selectMultipleFrames(event.key);
                         }
                         else {
-                            this.appStore.changeCaretPosition(event.key);
+                            // The navigation is "level scope" when the ctrl key is pressed (alt key for macOS)
+                            this.appStore.changeCaretPosition(event.key, (event.ctrlKey && !isMacOSPlatform() || event.altKey && isMacOSPlatform()));
                         }
                     }
                     else{
