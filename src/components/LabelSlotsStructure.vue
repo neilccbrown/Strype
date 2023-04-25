@@ -317,13 +317,13 @@ export default Vue.extend({
                         || (cursorPos === ((spanInput.textContent?.length)??0) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     this.appStore.isSelectingMultiSlots = event.shiftKey;
-                    this.appStore.ignoreKeyEvent=true;
                     this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
                         // If we are doing a selection, we need to reflect this in the UI
                         if(event.shiftKey){
                             setDocumentSelection(this.appStore.anchorSlotCursorInfos as SlotCursorInfos, this.appStore.focusSlotCursorInfos as SlotCursorInfos);                     
                         }
-                    });                        
+                    });       
+                    this.appStore.ignoreKeyEvent = false;                 
                 }
                 // If a key modifier (ctrl, shift, alt or meta) is pressed, we don't do anything special (browser handles it),
                 else if(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey){                    

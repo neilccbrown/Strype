@@ -6,11 +6,12 @@ import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFr
 import { AppPlatform, AppVersion } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep} from "lodash";
+import $ from "jquery";
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -1215,7 +1216,9 @@ export const useStore = defineStore("app", {
             if(this.isEditing){
                 const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                 const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
-                focusedSlotCopy.focused = false;
+                if(focusedSlotCopy){
+                    focusedSlotCopy.focused = false;
+                }
                 stateCopy.anchorSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                 stateCopy.focusSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
             }
@@ -1359,6 +1362,17 @@ export const useStore = defineStore("app", {
                         // Force the selection on the page to be reset too
                         document.getSelection()?.removeAllRanges();
                     }
+
+                    // Ensure the caret (frame or text caret) is visible in the page viewport after the change.
+                    // For some reason, scrollIntoView() "miss" out the caret by a slight distance (maybe because it's a div?) so we don't see it. To adjust that issue, we scroll up a bit more.
+                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUIID(this.focusSlotCursorInfos.slotInfos) : ("caret_"+this.currentFrame.caretPosition+"_of_frame_"+this.currentFrame.id);
+                    const caretContainerEltRect = document.getElementById(htmlElementToShowId)?.getBoundingClientRect();
+                    document.getElementById(htmlElementToShowId)?.scrollIntoView();
+                    if(htmlElementToShowId.match(/caret_.*_of_frame_/) != null && caretContainerEltRect){
+                        const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
+                        const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
+                        $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + scrollStep);
+                    }     
                 });
                
 
@@ -1427,7 +1441,9 @@ export const useStore = defineStore("app", {
                 if(this.isEditing){
                     const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                     const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
-                    focusedSlotCopy.focused = false;
+                    if(focusedSlotCopy){
+                        focusedSlotCopy.focused = false;
+                    }
                     stateCopy.anchorSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                     stateCopy.focusSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                 }
@@ -1869,9 +1885,16 @@ export const useStore = defineStore("app", {
                     availablePositions: availablePositions,
                 }
             ).then(
-                () => 
+                () => {
                     //save state changes
-                    this.saveStateChanges(stateBeforeChanges)
+                    this.saveStateChanges(stateBeforeChanges);
+                    // To make sure we are showing the newly added frame, we scroll into view if needed
+                    const frameHeaderDiv = document.getElementById(getFrameHeaderUIID(newFrame.id));
+                    const frameHeaderBoundingRect = frameHeaderDiv?.getBoundingClientRect();
+                    if(frameHeaderDiv && frameHeaderBoundingRect && (frameHeaderBoundingRect.top + frameHeaderBoundingRect.height > document.documentElement.clientHeight)){
+                        document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
+                    }
+                }
             );
         },
 

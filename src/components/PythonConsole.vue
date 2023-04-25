@@ -13,9 +13,9 @@
             ref="pythonConsole"
             @focus="onFocus()"
             @change="onChange"
-            @wheel="stopPropateEvent"
-            @keydown.self.stop="stopPropateEvent"
-            @keyup.self.stop="stopPropateEvent"
+            @wheel.stop
+            @keydown.self.stop="handleKeyEvent"
+            @keyup.self="handleKeyEvent"
             disabled
             spellcheck="false"
         >    
@@ -30,7 +30,7 @@ import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
-import { CustomEventTypes, hasEditorCodeErrors } from "@/helpers/editor";
+import { CustomEventTypes, getFrameUIID, hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
 
 export default Vue.extend({
@@ -73,6 +73,8 @@ export default Vue.extend({
                 storeCodeToDOM(userCode);
                 // Trigger the actual console launch
                 runPythonConsole(console, userCode, parser.getFramePositionMap());
+                // Make sure there is no document selection for our editor
+                this.appStore.setSlotTextCursors(undefined, undefined);
             });           
         },
 
@@ -85,13 +87,16 @@ export default Vue.extend({
             consoleTextarea.scrollTop = consoleTextarea.scrollHeight;
         },
 
-        stopPropateEvent(event: WheelEvent | KeyboardEvent) {
-            // Mouse scrolling on the right panel (commands) is forwarded to the editor -- for the console, we don't want to propagate the event
-            // Key events are captured by the UI to navigate the blue cursor -- for the console, we don't want to propagate the event
-            event.stopPropagation();
-            // When the enter key is pressed, it validates the input, but it also get passed to the main UI and add a blank frame
-            // to avoid this, we notify the UI to ignore key events (for everything)
-            this.appStore.ignoreKeyEvent = true;
+        handleKeyEvent(event: KeyboardEvent) {
+            // Key events are captured by the UI to navigate the blue cursor and add frames -- for the console, we don't want to propagate the event
+            // but we have to propagate at least for key up because otherwise we can't get the input validation of the console working well.
+            if(event.type == "keyup" || event.type == "keydown"){
+                this.appStore.ignoreKeyEvent = true;
+            }
+            if(event.key.toLowerCase() == "enter" && event.type == "keyup"){
+                // With Safari, we don't get the focus back to the editor, so we need to explicitly give it to the right element.console.log("here with "+ document.activeElement);
+                document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus(); 
+            }
         },
 
         toggleConsoleDisplay(){

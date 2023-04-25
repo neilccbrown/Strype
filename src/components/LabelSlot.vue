@@ -345,6 +345,9 @@ export default Vue.extend({
             // Reset the flag here as we have consumed the focus event (cf. directives > focus)
             useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
 
+            // Make sure we're visible in the viewport properly
+            document.getElementById(getLabelSlotUIID(this.coreSlotInfo))?.scrollIntoView();
+
             this.updateAC();
         },
         

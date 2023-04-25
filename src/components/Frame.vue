@@ -15,6 +15,7 @@
             :class="frameSelectedCssClass"
         >
             <!-- keep both mousedown & click events: we need mousedown to manage the caret rendering during drag & drop -->
+            <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
             <div 
                 :style="frameStyle" 
                 :class="{frameDiv: true, frameDivHover: !isDragging, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
@@ -22,6 +23,7 @@
                 @mousedown.left="hideCaretAtClick"
                 @click="toggleCaret($event)"
                 @contextmenu="handleClick($event,'frame-context-menu')"
+                tabindex="-1"
             >
                 <vue-simple-context-menu
                     v-show="allowContextMenu"
@@ -859,6 +861,7 @@ export default Vue.extend({
     border-radius: 8px;
     border: 1px solid transparent;
     min-height: $frame-container-min-height;
+    outline: none;
 }
 
 .frame-header {
