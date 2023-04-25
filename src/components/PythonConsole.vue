@@ -13,9 +13,9 @@
             ref="pythonConsole"
             @focus="onFocus()"
             @change="onChange"
-            @wheel.stop="stopPropateEvent"
-            @keydown.self.stop="stopPropateEvent"
-            @keyup.self="stopPropateEvent"
+            @wheel.stop
+            @keydown.self.stop="handleKeyEvent"
+            @keyup.self="handleKeyEvent"
             disabled
             spellcheck="false"
         >    
@@ -87,14 +87,13 @@ export default Vue.extend({
             consoleTextarea.scrollTop = consoleTextarea.scrollHeight;
         },
 
-        stopPropateEvent(event: WheelEvent | KeyboardEvent) {
-            // Mouse scrolling on the right panel (commands) is forwarded to the editor -- for the console, we don't want to propagate the event
+        handleKeyEvent(event: KeyboardEvent) {
             // Key events are captured by the UI to navigate the blue cursor and add frames -- for the console, we don't want to propagate the event
             // but we have to propagate at least for key up because otherwise we can't get the input validation of the console working well.
             if(event.type == "keyup" || event.type == "keydown"){
                 this.appStore.ignoreKeyEvent = true;
             }
-            if(event instanceof KeyboardEvent && (event as KeyboardEvent).key.toLowerCase() == "enter" && event.type == "keyup"){
+            if(event.key.toLowerCase() == "enter" && event.type == "keyup"){
                 // With Safari, we don't get the focus back to the editor, so we need to explicitly give it to the right element.console.log("here with "+ document.activeElement);
                 document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus(); 
             }
