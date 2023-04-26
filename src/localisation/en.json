@@ -101,7 +101,9 @@
         "noWebUSB":"This browser does not support webUSB connections. Please use a browser such as Google Chrome.",
         "emptyCodeError":"The code cannot be empty.",
         "enterFileNameTitle":"Enter File Name",
-        "enterFileNameLabel":"Enter the file name you would like to save as:"
+        "enterFileNameLabel":"Enter the file name you would like to save as:",
+        "exportFileProjectName":"Project / File name to save as:",
+        "fileNameError":"Project / File name can only contains letters, numbers, spaces, hyphens or parentheses"
     },
     "contextMenu": {
         "cut":"Cut",

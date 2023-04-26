@@ -114,6 +114,9 @@ import { mapStores } from "pinia";
 //     Component    //
 //////////////////////
 const maxProjetNameWidth = 150; //this value (in pixels) is used as a max-width value when computing the input text width dynamically
+// For file names allow only A–Z a–z 0–9 _ - ()
+const fileNameRegex = /^[\d\w\s\-_()]+$/;
+            
 export default Vue.extend({
     name: "Menu",
 
@@ -142,7 +145,7 @@ export default Vue.extend({
             (event: KeyboardEvent) => {
                 //handle the Ctrl/Meta + S command for saving the project
                 if(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey)){
-                    this.exportFile();
+                    this.exportFile(true);
                     event.stopImmediatePropagation();
                     event.preventDefault();
                 }
@@ -262,9 +265,30 @@ export default Vue.extend({
             }
         },
 
-        exportFile(): void {
-            //save the JSON file of the state 
-            saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), this.appStore.projectName+".spy");
+        exportFile(keyboardShortcutCall?: boolean): void {
+            // Propose the user a chance to chance or specify the project name when they use the keyboard shortcut
+            const confirmMsg = this.$i18n.t("appMessage.exportFileProjectName") as string;
+            const promptValue = (keyboardShortcutCall) ? prompt(confirmMsg, this.appStore.projectName) : null;
+            let cancelExport = false;
+            if(promptValue != null){
+                if(promptValue.match(fileNameRegex) == null){
+                    const confirmMsg = this.$i18n.t("appMessage.fileNameError");
+                    Vue.$confirm({
+                        message: confirmMsg,
+                        button: {
+                            yes: this.$i18n.t("buttonLabel.ok"),
+                        },
+                    });    
+                    cancelExport = true;
+                }
+                else{
+                    this.appStore.projectName = promptValue;
+                }
+            }            
+            if(!cancelExport){
+                // Save the JSON file of the state 
+                saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), this.appStore.projectName+".spy");
+            }
         },
 
         resetProject(): void {
@@ -301,8 +325,6 @@ export default Vue.extend({
         },
 
         validateInput(event: KeyboardEvent): boolean {
-            // For file names allow only A–Z a–z 0–9 . _ - ()
-            const fileNameRegex = /[\d\w\s\-\\_\\(\\)]+/;
             if(event.key.match(fileNameRegex) !== null) {
                 return true;
             }
