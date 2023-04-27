@@ -5,7 +5,7 @@
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
-        <div :style="containerStyle" class="container-frames" @click="onFrameContainerClick">
+        <div :id="this.frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabIndex=-1>
             <CaretContainer
                 :frameId="this.frameId"
                 :caretVisibility="this.caretVisibility"
@@ -56,7 +56,7 @@ import { useStore } from "@/store/store";
 import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier } from "@/types/types";
 import { mapStores } from "pinia";
-import { handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -88,6 +88,10 @@ export default Vue.extend({
 
     computed: {
         ...mapStores(useStore),
+
+        frameUIID(): string{
+            return getFrameUIID(this.frameId);
+        },
         
         frames: {
             get(): FrameObject[] {
@@ -271,6 +275,7 @@ export default Vue.extend({
     margin-bottom: 15px;
     border-radius: 8px;
     border: 1px solid #B4B4B4;
+    outline: none;
 }
 
 .frame-container-minheight {

@@ -1,8 +1,9 @@
 <template>
-    <div>
+    <div @keydown="handleKeyEvent" @keyup="handleKeyEvent">
         <Slide 
             :isOpen="showMenu"
             :burgerIcon="false"
+            @openMenu="handleMenuOpen"
             @closeMenu="toggleMenuOnOff(null)"
             width="200"
         >
@@ -13,15 +14,16 @@
                         v-if="isComponentLoaded"
                         v-model="projectName" 
                         spellcheck="false"
-                        @click="nameEditing = true"
+                        @click="nameEditing = true; currentTabindexValue=1;"
                         @focus="onFocus()"
                         @blur="onBlur()"
-                        @keyup.enter.prevent.stop="blur()"
+                        @keyup.enter.prevent.stop="blur();showMenu=false"
                         @keypress="validateInput($event)"
                         :class="{'project-name': true, 'project-name-noborder': !nameEditing}"
                         id="name-input-field"
                         autocomplete="off"
                         :style="inputTextStyle"
+                        tabindex="1"
                     />                    
                     <i 
                         style="margin-left: 2px;" 
@@ -30,15 +32,15 @@
                 </div>
             </div> 
             <div class="menu-separator-div"></div>
-            <a v-if="showMenu" class="project-impexp-div" @click="importFile();toggleMenuOnOff(null);" v-t="'appMenu.loadProject'" />
-            <a v-if="showMenu" class="project-impexp-div" @click="exportFile();toggleMenuOnOff(null);" v-t="'appMenu.saveProject'"/>
-            <a v-if="showMenu" class="project-impexp-div" @click="resetProject();toggleMenuOnOff(null);" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
+            <a v-if="showMenu" class="project-impexp-div" @click="importFile();showMenu=false;" v-t="'appMenu.loadProject'" tabindex="2"/>
+            <a v-if="showMenu" class="project-impexp-div" @click="exportFile();showMenu=false;;" v-t="'appMenu.saveProject'" tabindex="3"/>
+            <a v-if="showMenu" class="project-impexp-div" @click="resetProject();showMenu=false;;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')" tabindex="4"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang" @change="toggleMenuOnOff(null)">
+                    <select name="lang" id="appLangSelect" v-model="appLang" @change="showMenu=false;" tabindex="5" @click="currentTabindexValue=5">
                         <option value="en">English</option>
                         <option value="fr">Français</option>
                         <option value="el">Ελληνικά</option>
@@ -105,7 +107,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { fileImportSupportedFormats, getEditorMenuUIID } from "@/helpers/editor";
+import { fileImportSupportedFormats, getEditorMenuUIID, getFrameUIID } from "@/helpers/editor";
 import $ from "jquery";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
@@ -116,7 +118,7 @@ import { mapStores } from "pinia";
 const maxProjetNameWidth = 150; //this value (in pixels) is used as a max-width value when computing the input text width dynamically
 // For file names allow only A–Z a–z 0–9 _ - ()
 const fileNameRegex = /^[\d\w\s\-_()]+$/;
-            
+
 export default Vue.extend({
     name: "Menu",
 
@@ -131,15 +133,19 @@ export default Vue.extend({
             //this flag is used to "delay" the computation of the input text field's width,
             //so that the width is rightfully computed when displayed for the first time
             isComponentLoaded : false,
+            // This flag is used to know if we've added the tabindex value for the closing "button", and get the number of indexes
+            retrievedTabindexesCount: -1,
+            // The tabindex of the currently focused element of the menu
+            currentTabindexValue: 1,
         };
     },
 
     mounted() {
-        //when the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
-        //because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
+        // When the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
+        // because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
         this.isComponentLoaded  = true;
 
-        //we also register the keyboad event handling for the menu here
+        // We also register the keyboad event handling for the menu here
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
@@ -148,6 +154,7 @@ export default Vue.extend({
                     this.exportFile(true);
                     event.stopImmediatePropagation();
                     event.preventDefault();
+                    this.toggleMenuOnOff(null);
                 }
             }
         );
@@ -297,15 +304,59 @@ export default Vue.extend({
             this.$emit("app-reset-project");
         },
 
-        toggleMenuOnOff(e: Event): void {
+        handleMenuOpen(){
+            // As we are handling the tab indexing and navigation manually, we need also to add the tabindex attribute for the close button:
+            // it is the last element we can reach, so we first find how many tabindexes are already set in the menu and set it dynamically
+            // (so that if we alter the menu in the future, we won't need to pay attention to that close button, it will be updated accordingly)
+            // we do it here rather than in mounted() because some elements would not yet be in the DOM if the menu hasn't been opened
+            if(this.retrievedTabindexesCount == -1){
+                (document.getElementsByClassName("bm-cross-button")[0] as HTMLSpanElement).tabIndex = 0;
+                this.retrievedTabindexesCount = document.querySelectorAll(".bm-menu [tabindex]").length;                  
+            }
+        },
+
+        toggleMenuOnOff(e: Event | null): void {
             const isMenuOpening = (e !== null);
             if(isMenuOpening) {
+                // When we open the menu, we focus the first element of the menu (i.e. the project name) to work with keyboard interaction
+                document.getElementById("name-input-field")?.focus();
                 //cf online issues about vue-burger-menu https://github.com/mbj36/vue-burger-menu/issues/33
                 e.preventDefault();
                 e.stopPropagation();
+                this.currentTabindexValue = 1;                
             }
-            this.showMenu = isMenuOpening;
+            else {
+                // Bring the focus back to the editor
+                document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus();
+                this.appStore.ignoreKeyEvent = false;                
+            }
             this.appStore.isAppMenuOpened = isMenuOpening;
+            this.showMenu = isMenuOpening;
+        },
+
+        handleKeyEvent(event: KeyboardEvent){
+            this.appStore.ignoreKeyEvent = true;
+
+            if(event.type == "keyup" && event.key == "Enter"){
+                // When the enter key is hit, we trigger the action bound to the click for the selected menu element
+                // and we cancel the natural key up event so it does not get sent to the editor (otherwise, will add a blank frame)
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                (document.activeElement as HTMLElement).click();
+            }
+
+
+            if(event.type == "keydown" && ["Tab", "ArrowDown", "ArrowUp"].includes(event.key)){
+                // When the tab key is hit, we handle the menu entry selection ourselves, because the default behaviour won't do it properly.
+                // We loop through the available elements that can have focus. Note the modulo is done here based on this (https://web.archive.org/web/20090717035140if_/javascript.about.com/od/problemsolving/a/modulobug.htm)
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                const newTabindexValue = (this.currentTabindexValue +  ((event.shiftKey || event.key == "ArrowUp") ? -1 : 1));
+                this.currentTabindexValue = ((newTabindexValue % this.retrievedTabindexesCount) + this.retrievedTabindexesCount) % this.retrievedTabindexesCount;
+                (document.querySelector(".bm-menu  [tabindex='" + this.currentTabindexValue + "']") as HTMLElement).focus();
+            }
         },
 
         computeFitWidthValue(): string {
@@ -336,7 +387,7 @@ export default Vue.extend({
 
         //Apparently focus happens first before blur when moving from one slot to another.
         onFocus(): void {
-            this.appStore.isEditing = true;    
+            this.nameEditing = true;    
         },
 
         onBlur(): void {
@@ -344,7 +395,6 @@ export default Vue.extend({
             setTimeout(() => {
                 this.nameEditing = false;
             }, 500);
-            this.appStore.isEditing = false; 
         },
         
         // Explicit blur method for "enter" key event

@@ -1809,6 +1809,7 @@ export const useStore = defineStore("app", {
             const newFrame: FrameObject = {
                 ...JSON.parse(JSON.stringify(EmptyFrameObject)),
                 frameType: frame,
+                caretVisibility: (frame.isJointFrame || frame.allowChildren) ? CaretPosition.body : CaretPosition.below,
                 id: nextAvailableId,
                 parentId: addingJointFrame ? 0 : parentId, // Despite we calculated parentID earlier, it may not be used
                 jointParentId: addingJointFrame ? parentId : 0,

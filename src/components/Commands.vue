@@ -235,7 +235,7 @@ export default Vue.extend({
                 }
 
                 //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")
-                if(!isEditing && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
+                if(!isEditing && !this.appStore.isAppMenuOpened && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
                     event.preventDefault();
                     return;
                 }
@@ -292,7 +292,7 @@ export default Vue.extend({
                 }
             }
             else {
-                if(!isEditing){
+                if(!isEditing && !this.appStore.isAppMenuOpened){
                     //cases when there is no editing:
                     if(!(event.ctrlKey || event.metaKey)){
                         if(event.key == "Delete" || event.key == "Backspace"){
