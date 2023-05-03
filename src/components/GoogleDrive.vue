@@ -1,8 +1,8 @@
 <template>
-    <div>
-        <button v-if="!signedIn" type="button" @click="signIn" v-t="'buttonLabel.signInToGoogle'" class="btn btn-secondary cmd-button"/>
-        <b-button v-if="signedIn" type="button" v-b-modal.ask-gdrive-filename v-t="'buttonLabel.saveToGoogleDrive'" class="btn btn-secondary cmd-button"/>
-        <GoogleDriveFilePicker v-if="signedIn" @picked="loadPickedId" :dev-key="'AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E'" :oauth-token="oauthToken" />
+    <div class="google-drive-container">
+        <a v-if="!signedIn" @click="signIn" v-t="'appMenu.signInToGoogle'" class="strype-menu-link strype-menu-item"/>
+        <GoogleDriveFilePicker v-if="signedIn" @picked="loadPickedId" :dev-key="'AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E'" :oauth-token="oauthToken"/>
+        <a v-if="signedIn" v-b-modal.ask-gdrive-filename v-t="'appMenu.saveToGoogleDrive'" class="strype-menu-link strype-menu-item"/>
         <b-modal no-close-on-backdrop hide-header-close ok-only id="ask-gdrive-filename" ref="ask-gdrive-filename" :title="$t('appMessage.enterFileNameTitle')" @hidden="startSavingToGoogleDrive">
             <p>{{this.enterFileNameLabel}}</p>
             <input v-model="saveFileName" />
@@ -15,6 +15,7 @@ import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import i18n from "@/i18n";
+import { CustomEventTypes } from "@/helpers/editor";
 
 export default Vue.extend({
     name: "GoogleDrive",
@@ -89,11 +90,13 @@ export default Vue.extend({
         // Sign us in when the button is clicked:
         signIn() {
             this.client?.requestAccessToken();
+            this.$emit(CustomEventTypes.strypeMenuActionPerformed);
         },
 
         // After signing in:
         updateSignInStatus() {
-            // Do nothing?  Enable button?
+            // Notify parent
+            this.$emit("google-drive-signed");
         },
 
         saveFile(content: string) {
@@ -151,3 +154,15 @@ export default Vue.extend({
     },
 });
 </script>
+
+<style lang="scss">
+.google-drive-container {
+    flex-direction: column;
+    padding: 0px !important;
+    width: $strype-menu-entry-width;
+}
+
+.google-drive-container > * {
+    padding: $strype-menu-entry-padding;
+}
+</style>

@@ -1,25 +1,6 @@
 <template>
     <div class="commands">
-        <div :id="buttonsContainerUIID" class="commands-container">
-            /* IFTRUE_isMicrobit 
-            <button type="button" v-if="uploadThroughUSB" @click="flash" v-t="'buttonLabel.uploadToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
-            <button type="button" @click="downloadHex" v-t="(uploadThroughUSB)?'buttonLabel.downloadHex':'buttonLabel.sendToMicrobit'" class="btn btn-secondary cmd-button-margin cmd-button"/>
-            FITRUE_isMicrobit */
-            <button type="button" @click="downloadPython" v-t="'buttonLabel.downloadPython'" class="btn btn-secondary cmd-button"/>
-            <GoogleDrive/>
-        </div>
-        <div v-if="showProgress" class="progress cmd-progress-container">
-            <div 
-                class="progress-bar progress-bar-striped bg-info" 
-                role="progressbar"
-                :style="progressPercentWidthStyle" 
-                :aria-valuenow="progressPercent"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                >
-                <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
-            </div>
-        </div>
+        <span spellcheck="false" class="project-name" autocomplete="off">{{projectName}}</span>            
         <div @mousedown.prevent.stop @mouseup.prevent.stop>
             /* IFTRUE_isMicrobit
             <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
@@ -63,18 +44,33 @@
         <span id="keystrokeSpan"></span>
 
         /* IFTRUE_isPurePython
-        <python-console id="pythonConsoleComponent"/>
+        <python-console class="run-code-container"/>
         FITRUE_isPurePython */
+        /* IFTRUE_isMicrobit      
+        <div class="run-code-container">  
+            <div v-if="showProgress" class="progress cmd-progress-container">
+                <div 
+                    class="progress-bar progress-bar-striped bg-info" 
+                    role="progressbar"
+                    :style="progressPercentWidthStyle" 
+                    aria-valuenow="progressPercent"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    >
+                    <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
+                </div>
+            </div>
+            <div class="commands-container">
+                <button type="button" @click="runToMicrobit" v-t="'buttonLabel.runOnMicrobit'" class="btn btn-secondary cmd-button"/>
+            </div>
+        </div>
+        FITRUE_isMicrobit */
     </div>
 </template>
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import APIDiscovery from "@/components/APIDiscovery.vue";
-import GoogleDrive from "@/components/GoogleDrive.vue";
-import { downloadHex, downloadPython } from "@/helpers/download";
-import { CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorButtonsContainerUIID, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
-import { flash } from "@/helpers/webUSB";
+import { CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject } from "@/types/types";
 import $ from "jquery";
@@ -85,14 +81,20 @@ import { mapStores } from "pinia";
 import PythonConsole from "@/components/PythonConsole.vue";
 import { isMacOSPlatform } from "@/helpers/common";
 /* FITRUE_isPurePython */
+/* IFTRUE_isMicrobit */
+import APIDiscovery from "@/components/APIDiscovery.vue";
+import { flash } from "@/helpers/webUSB";
+import { downloadHex } from "@/helpers/download";
+/* FITRUE_isMicrobit */
 
 export default Vue.extend({
     name: "Commands",
 
     components: {
         AddFrameCommand,
+        /* IFTRUE_isMicrobit */
         APIDiscovery,
-        GoogleDrive,
+        /* FITRUE_isMicrobit */
         /* IFTRUE_isPurePython */
         PythonConsole, 
         /* FITRUE_isPurePython */
@@ -107,14 +109,21 @@ export default Vue.extend({
         };
     },
 
+    /* IFTRUE_isMicrobit */
     beforeMount() {
         Vue.use(browserDetect);
         this.uploadThroughUSB = (this.$browserDetect.isChrome || this.$browserDetect.isOpera || this.$browserDetect.isEdge);
     },
+    /* FITRUE_isMicrobit */
 
     computed: {
         ...mapStores(useStore),
+
+        projectName(): string{
+            return this.appStore.projectName;
+        },
         
+        /* IFTRUE_isMicrobit */
         tabIndex: {
             get(): number{
                 return this.appStore.commandsTabIndex;
@@ -123,11 +132,7 @@ export default Vue.extend({
                 this.appStore.commandsTabIndex = index;
             },
         },
-
-        buttonsContainerUIID(): string {
-            return getEditorButtonsContainerUIID();
-        },
-
+        /* FITRUE_isMicrobit */
         commandsContainerUUID(): string {
             return getCommandsContainerUIID();
         },
@@ -326,18 +331,18 @@ export default Vue.extend({
             $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
         },
 
-        flash() {
-            flash(this.$data);
-        },
-
-        downloadHex() {
-            downloadHex();
-        },
-
-        downloadPython() {
-            downloadPython(); 
-        },
         /* IFTRUE_isMicrobit */
+        runToMicrobit() {
+            // If we can directly upload on microbit, we run the method flash().
+            // If we cannot, we run downloadHex(), it already contains code to show a message to the user.
+            if(this.uploadThroughUSB){
+                flash(this.$data);
+            }
+            else{
+                downloadHex(true);
+            }
+        },
+        
         getTabClasses(tabIndex: number): string[] {
             const disabledClassStr = (this.isEditing) ? " commands-tab-disabled" : "";
             if(tabIndex == this.tabIndex){
@@ -353,6 +358,16 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+.project-name {
+    //don't forget to update the autosize offset if padding or borderis changed!
+    border: none;
+    padding: 0px 2px; 
+    background: transparent;
+    text-align:center;
+    color: #274D19;
+    outline: none;
+}
+
 .commands {
     border-left: #383b40 1px solid;
     color: #252323;
@@ -366,6 +381,7 @@ export default Vue.extend({
     margin-top: 5px;
     background-color: #E2E7E0 !important;
     border: 1px lightgrey solid;
+    width: 100%;
 }
 
 @mixin centerer {
@@ -381,11 +397,11 @@ export default Vue.extend({
     font-weight: bold;
 }
 
-.commands-container{
+.commands-container {
     display: inline-block;
 }
 
-#keystrokeSpan{
+#keystrokeSpan {
     bottom:2px;
     left: 50%;
     transform: translate(-50%, 0);
@@ -393,25 +409,25 @@ export default Vue.extend({
     font-size:large;
     color:#666666;
 }
-/* IFTRUE_isPurePython */
-#pythonConsoleComponent{
-    margin-bottom:4px;
+
+.run-code-container {
+    /* IFTRUE_isPurePython */
+    margin-bottom: 4px;
+    /* FITRUE_isPurePython */
+    /* IFTRUE_isMicrobit */
+    margin-bottom: 90px;
+    /* FITRUE_isMicrobit */
     overflow: hidden; // that is used to keep the margin https://stackoverflow.com/questions/44165725/flexbox-preventing-margins-from-being-respected
     flex-grow: 3;
     display: flex;
     flex-direction: column;    
     align-items: flex-start;
     justify-content: flex-end;
-}        
-/* FITRUE_isPurePython */
-
-.cmd-button{
-    padding: 1px 6px 1px 6px !important;
-    margin-top: 5px;
 }
 
-.cmd-button-margin{
-    margin-right: 5px;
+.cmd-button {
+    padding: 1px 6px 1px 6px !important;
+    margin-top: 5px;
 }
 
 .list-enter-active, .list-leave-active {
@@ -423,14 +439,14 @@ export default Vue.extend({
   transform: translate3d(3);
 }
 
-.commands-tab{
+.commands-tab {
     color: #787978 !important;
     border-color: #bbc8b6 !important;
     background-color: transparent !important;
     margin-top: 10px;
 }
 
-.commands-tab-active{
+.commands-tab-active {
     color: #274D19 !important;
     border-bottom-color: #E2E7E0 !important;
 }
@@ -440,7 +456,7 @@ export default Vue.extend({
 }
 
 //the following overrides the bootstrap tab generated styles
-#commandsTabs ul{
+#commandsTabs ul {
     border-bottom-color: #bbc8b6 !important;
 }
 

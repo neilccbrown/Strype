@@ -100,7 +100,7 @@ export const useStore = defineStore("app", {
 
             contextMenuShownId: "",
 
-            projectName: i18n.t("appMenu.defaultProjName") as string,
+            projectName: i18n.t("defaultProjName") as string,
 
             // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
             ignoredDragAction: false, 

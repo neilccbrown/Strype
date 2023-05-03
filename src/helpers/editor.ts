@@ -12,6 +12,7 @@ export enum CustomEventTypes {
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
+    strypeMenuActionPerformed = "strype-menu-action-performed",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
@@ -252,10 +253,6 @@ export function getCommandsContainerUIID(): string {
 export function getEditorMenuUIID(): string {
     return "showHideMenu";
 } 
-
-export function getEditorButtonsContainerUIID(): string {
-    return "editorButtonsContainer";
-}
 
 export function getMenuLeftPaneUIID(): string {
     return "menu-bar";

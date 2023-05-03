@@ -6,7 +6,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { MessageDefinitions } from "@/types/types";
 
-export function downloadHex() : void {
+export function downloadHex(showImagePopup?: boolean) : void {
     const parserElements = parseCodeAndGetParseElements(true);
     let succeeded = !parserElements.hasErrors;
     if(succeeded){
@@ -19,11 +19,8 @@ export function downloadHex() : void {
         }
     }
 
-    //We show the image only if the download has succeeded
-    if(succeeded){
-        useStore().currentMessage = MessageDefinitions.DownloadHex;
-    } 
-    else{
+    //We show the image only if the download has succeeded, and we request one to be shown
+    if(!succeeded){
         //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
         Vue.$confirm({
             message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
@@ -31,6 +28,9 @@ export function downloadHex() : void {
                 yes: i18n.t("buttonLabel.ok"),
             },
         });    
+    }
+    else if (showImagePopup){
+        useStore().currentMessage = MessageDefinitions.DownloadHex;
     }
 }
 

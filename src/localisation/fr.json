@@ -1,5 +1,6 @@
 {
     "appName":"Éditeur Strype",
+    "defaultProjName":"Mon projet",
     "frame":{
         "defaultText":{
             "condition":"condition ",
@@ -61,10 +62,8 @@
         "yes":"Oui",
         "no":"Non",
         "ok":"OK",
-        "uploadToMicrobit":"Envoyer vers micro:bit",
+        "runOnMicrobit":"Exécuter sur micro:bit",
         "sendToMicrobit":"Envoyer vers micro:bit",
-        "downloadHex":"Convertir vers Hex",
-        "downloadPython":"Convertir vers Python",
         "startCoding":"Codez !",
         "addCodeExtract":"Ajouter au code",
         "showMore":"montrer plus",
@@ -118,9 +117,13 @@
       "deleteOuter":"Supprimer externe(s)"
     },
     "appMenu": {
-      "defaultProjName":"Mon projet",
-      "loadProject":"Charger un projet",
-      "saveProject":"Sauvegarder ce projet",
+      "downloadHex":"Convertir vers Hex",
+      "downloadPython":"Convertir vers Python",
+      "loadProject":"Charger depuis un fichier",
+      "saveProject":"Sauvegarder dans un fichier",
+      "signInToGoogle":"Se connecter à Google Drive",
+      "saveToGoogleDrive":"Sauvegarder dans Google Drive",
+      "pickFromGoogleDrive":"Charger depuis Google Drive",
       "resetProject":"Réinitialiser",
       "resetProjectTooltip":"Réinitialiser l'éditeur avec le projet par default de Strype",
       "prefs":"Préférences",
@@ -142,7 +145,7 @@
     },
   
     "console": {
-        "run":"Exécuter le code ",
+        "run":"Exécuter",
         "runtimeErrorConsole": "Erreur d'exécution",
         "runtimeErrorEditableSlotHeader": "Erreur d'exécution de cadre!",
         "expand":"Agrandir",

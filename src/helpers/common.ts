@@ -157,3 +157,6 @@ export function isMacOSPlatform(): boolean {
     // Best approach to evaluate if we are on macOS
     return (navigator.platform.indexOf("Mac") > -1);
 }
+
+// For file names allow only A–Z a–z 0–9 _ - ()
+export const fileNameRegex = /^[\d\w\s\-_()]+$/;

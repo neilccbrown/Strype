@@ -78,8 +78,10 @@ import Menu from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import { AppEvent, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex } from "./helpers/editor";
+/* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
+/* FITRUE_isMicrobit */
 import { mapStores } from "pinia";
 import Draggable from "vuedraggable";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -231,7 +233,7 @@ export default Vue.extend({
         document.addEventListener(CustomEventTypes.pythonConsoleDisplayChanged, (event) => {
             this.isLargePythonConsole = (event as CustomEvent).detail;
         });
-        /* IFTRUE_isPurePython */
+        /* FITRUE_isPurePython */
 
         /* IFTRUE_isMicrobit */
         // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...

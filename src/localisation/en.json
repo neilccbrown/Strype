@@ -1,5 +1,6 @@
 {
     "appName":"Strype editor",
+    "defaultProjName":"My project",
     "frame":{
         "defaultText":{
             "condition":"condition ",
@@ -61,13 +62,8 @@
         "yes":"Yes",
         "no":"No",
         "ok":"OK",
-        "uploadToMicrobit":"Upload to micro:bit",
+        "runOnMicrobit":"Run on micro:bit",
         "sendToMicrobit":"Send to micro:bit",
-        "downloadHex":"Convert to Hex file",
-        "downloadPython":"Convert to Python file",
-        "signInToGoogle":"Sign-in with Google",
-        "saveToGoogleDrive":"Save to Google Drive",
-        "pickFromGoogleDrive":"Load from Google Drive",
         "startCoding":"Start Coding!",
         "addCodeExtract":"&larr; Add to code",
         "showMore":"show more",
@@ -121,13 +117,17 @@
         "deleteOuter":"Delete Outer"
     },
     "appMenu": {
-        "defaultProjName":"My project",
-        "loadProject":"Load project",
-        "saveProject":"Save project",
+        "downloadHex":"Convert to Hex file",
+        "downloadPython":"Convert to Python file",
+        "loadProject":"Load from file",
+        "saveProject":"Save to file",
         "resetProject":"Reset",
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
-        "lang":"Language: "
+        "lang":"Language: ",
+        "signInToGoogle":"Sign-in to Google Drive",
+        "saveToGoogleDrive":"Save to Google Drive",
+        "pickFromGoogleDrive":"Load from Google Drive"
     },
     "autoCompletion": {
         "myFunctions":"My functions",
@@ -479,7 +479,7 @@
         "1":"Explore micro:bit"
     },
     "console": {
-        "run":"Run Code",
+        "run":"Run",
         "runtimeErrorConsole": "Runtime error",
         "runtimeErrorEditableSlotHeader": "Frame runtime error!",
         "expand":"Expand",

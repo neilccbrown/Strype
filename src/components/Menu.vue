@@ -1,5 +1,5 @@
 <template>
-    <div @keydown="handleKeyEvent" @keyup="handleKeyEvent">
+    <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1">
         <Slide 
             :isOpen="showMenu"
             :burgerIcon="false"
@@ -7,40 +7,23 @@
             @closeMenu="toggleMenuOnOff(null)"
             width="200"
         >
-            <div style="width: 100%;">
-                <div class="project-name-div">
-                    <input
-                        ref="projectNameInput"
-                        v-if="isComponentLoaded"
-                        v-model="projectName" 
-                        spellcheck="false"
-                        @click="nameEditing = true; currentTabindexValue=1;"
-                        @focus="onFocus()"
-                        @blur="onBlur()"
-                        @keyup.enter.prevent.stop="blur();showMenu=false"
-                        @keypress="validateInput($event)"
-                        :class="{'project-name': true, 'project-name-noborder': !nameEditing}"
-                        id="name-input-field"
-                        autocomplete="off"
-                        :style="inputTextStyle"
-                        tabindex="1"
-                    />                    
-                    <i 
-                        style="margin-left: 2px;" 
-                        @click="onProjectPenEditClick()"
-                        :class="{fa: true, 'fa-check': nameEditing, 'fa-pencil-alt': !nameEditing}"></i>  
-                </div>
-            </div> 
+            /* IFTRUE_isMicrobit 
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
+            FITRUE_isMicrobit */
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <div class="menu-separator-div"></div>
-            <a v-if="showMenu" class="project-impexp-div" @click="importFile();showMenu=false;" v-t="'appMenu.loadProject'" tabindex="2"/>
-            <a v-if="showMenu" class="project-impexp-div" @click="exportFile();showMenu=false;;" v-t="'appMenu.saveProject'" tabindex="3"/>
-            <a v-if="showMenu" class="project-impexp-div" @click="resetProject();showMenu=false;;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')" tabindex="4"/>
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="importFile();showMenu=false;" v-t="'appMenu.loadProject'"/>
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="exportFile();showMenu=false;;" v-t="'appMenu.saveProject'"/>
+            <div v-if="!isSignedInGoogleDrive" class="menu-separator-div"></div>
+            <GoogleDrive v-show="showMenu" @strype-menu-action-performed="onActionPerformed" @google-drive-signed="isSignedInGoogleDrive=true"/>
+            <div class="menu-separator-div"></div>
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="resetProject();showMenu=false;;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang" @change="showMenu=false;" tabindex="5" @click="currentTabindexValue=5">
+                    <select name="lang" id="appLangSelect" v-model="appLang" @change="showMenu=false;" class="strype-menu-item" @click="setCurrentTabIndexFromEltId('appLangSelect')">
                         <option value="en">English</option>
                         <option value="fr">Français</option>
                         <option value="el">Ελληνικά</option>
@@ -48,11 +31,6 @@
                 </div> 
             </div>   
         </Slide>
-        <div 
-                class="project-name-placeholder"
-                id="projectNameDiv"
-                :value="projectName"
-        />
         <div>
             <button 
                 :id="menuUIID" 
@@ -105,47 +83,38 @@
 //////////////////////
 import Vue from "vue";
 import { useStore } from "@/store/store";
-import {saveContentToFile, readFileContent} from "@/helpers/common";
+import {saveContentToFile, readFileContent, fileNameRegex} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
 import { fileImportSupportedFormats, getEditorMenuUIID, getFrameUIID } from "@/helpers/editor";
-import $ from "jquery";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
+import GoogleDrive from "@/components/GoogleDrive.vue";
+import { downloadHex, downloadPython } from "@/helpers/download";
 
 //////////////////////
 //     Component    //
 //////////////////////
-const maxProjetNameWidth = 150; //this value (in pixels) is used as a max-width value when computing the input text width dynamically
-// For file names allow only A–Z a–z 0–9 _ - ()
-const fileNameRegex = /^[\d\w\s\-_()]+$/;
-
 export default Vue.extend({
     name: "Menu",
 
     components: {
         Slide,
+        GoogleDrive,
     },
 
     data: function() {
         return {
             showMenu: false,
-            nameEditing: false,
-            //this flag is used to "delay" the computation of the input text field's width,
-            //so that the width is rightfully computed when displayed for the first time
-            isComponentLoaded : false,
             // This flag is used to know if we've added the tabindex value for the closing "button", and get the number of indexes
             retrievedTabindexesCount: -1,
             // The tabindex of the currently focused element of the menu
-            currentTabindexValue: 1,
+            currentTabindexValue: 0,
+            isSignedInGoogleDrive: false,
         };
     },
 
     mounted() {
-        // When the component is loaded, the width of the editable slot cannot be computed yet based on the placeholder
-        // because the placeholder hasn't been loaded yet. Here it is loaded so we can set the width again.
-        this.isComponentLoaded  = true;
-
-        // We also register the keyboad event handling for the menu here
+        // We register the keyboad event handling for the menu here
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
@@ -187,22 +156,6 @@ export default Vue.extend({
             return fileImportSupportedFormats.map((extension) => "." + extension).join(", ");
         },
 
-        projectName: {
-            get(): string {
-                return this.appStore.projectName;
-            },
-            set(value: string) {
-                if(value.trim().length === 0){
-                    value = (this.$i18n.t("appMenu.defaultProjName") as string);
-                }
-                this.appStore.projectName = value;
-            },
-        },
-
-        inputTextStyle(): Record<string, string> {
-            return {"width" : this.computeFitWidthValue()};
-        },
-        
         appLang: {
             get(): string {
                 return this.appStore.appLang;
@@ -214,6 +167,14 @@ export default Vue.extend({
     },
 
     methods: {
+        downloadHex() {
+            downloadHex();
+        },
+
+        downloadPython() {
+            downloadPython(); 
+        },
+        
         importFile(): void {
             //users should be warned about current editor's content loss
             const confirmMsg = this.$i18n.t("appMessage.editorConfirmChangeCode");
@@ -305,25 +266,23 @@ export default Vue.extend({
         },
 
         handleMenuOpen(){
-            // As we are handling the tab indexing and navigation manually, we need also to add the tabindex attribute for the close button:
-            // it is the last element we can reach, so we first find how many tabindexes are already set in the menu and set it dynamically
-            // (so that if we alter the menu in the future, we won't need to pay attention to that close button, it will be updated accordingly)
-            // we do it here rather than in mounted() because some elements would not yet be in the DOM if the menu hasn't been opened
-            if(this.retrievedTabindexesCount == -1){
-                (document.getElementsByClassName("bm-cross-button")[0] as HTMLSpanElement).tabIndex = 0;
-                this.retrievedTabindexesCount = document.querySelectorAll(".bm-menu [tabindex]").length;                  
-            }
+            // As we are handling the tab indexing and navigation manually, we need also to add the tabindex attribute for the menu elements
+            // (the close button and all bits in the menu). The button is treated separately, and all other elements are found based on the CSS class.
+            (document.getElementsByClassName("bm-cross-button")[0] as HTMLSpanElement).tabIndex = 0;
+            this.retrievedTabindexesCount = 1;
+            document.querySelectorAll(".bm-menu .strype-menu-item").forEach((element, index) => {
+                element.setAttribute("tabindex", (index + 1).toString());
+                this.retrievedTabindexesCount++;
+            });
         },
 
         toggleMenuOnOff(e: Event | null): void {
             const isMenuOpening = (e !== null);
             if(isMenuOpening) {
-                // When we open the menu, we focus the first element of the menu (i.e. the project name) to work with keyboard interaction
-                document.getElementById("name-input-field")?.focus();
                 //cf online issues about vue-burger-menu https://github.com/mbj36/vue-burger-menu/issues/33
                 e.preventDefault();
                 e.stopPropagation();
-                this.currentTabindexValue = 1;                
+                this.currentTabindexValue = 0;                
             }
             else {
                 // Bring the focus back to the editor
@@ -359,60 +318,19 @@ export default Vue.extend({
             }
         },
 
-        computeFitWidthValue(): string {
-            const placeholder = document.getElementById("projectNameDiv");
-            let width = 5;
-            const offset = 8; //2+2*padding value + border
-            if (placeholder) {
-                placeholder.textContent = this.projectName; 
-                //the width is computed from the placeholder's width from which
-                //we add extra space for the cursor.
-                const calculatedWidth = (placeholder.offsetWidth + offset);
-                //checks that we don't go over the max width (note: no min as we don't leave an empty input possible)
-                width = (calculatedWidth > maxProjetNameWidth) ? maxProjetNameWidth : calculatedWidth;
-            }
-            
-            return width + "px";
-        },
-
-        validateInput(event: KeyboardEvent): boolean {
-            if(event.key.match(fileNameRegex) !== null) {
-                return true;
-            }
-            else {
-                event.preventDefault();
-                return false;
-            }
-        },
-
-        //Apparently focus happens first before blur when moving from one slot to another.
-        onFocus(): void {
-            this.nameEditing = true;    
-        },
-
-        onBlur(): void {
-            //just change the flag with a sligh a delay to avoid the issue that when being in the input field and clicking on the tick, the flag has already changed
-            setTimeout(() => {
-                this.nameEditing = false;
-            }, 500);
-        },
-        
-        // Explicit blur method for "enter" key event
-        blur(): void {
-            // We are taking the focus away from the input.
-            $("#name-input-field").blur();
+        onActionPerformed(){
+            // When a menu action is performed, we close the menu
+            this.showMenu = false;
         },
 
         performUndoRedo(isUndo: boolean): void {
             this.appStore.undoRedo(isUndo);
         },
 
-        onProjectPenEditClick(): void {
-            if(!this.nameEditing){
-                // When the pen is shown (i.e. the project name is not being edited) we toggle the flag
-                // and get the focus on the input field and
-                this.nameEditing = true;
-                (this.$refs.projectNameInput as HTMLInputElement).focus();                
+        setCurrentTabIndexFromEltId(elementId: string): void {
+            const el = document.getElementById(elementId);
+            if(el){
+                this.currentTabindexValue = el.tabIndex;
             }
         },
     },
@@ -420,22 +338,17 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-
 .menu-icon-div {
     width: 100%;
     height: 24px;
     margin-bottom: 10px;
 }
 
-.file-menu-img {
-    outline: none;
-}
-
 .editor-file-input {
     display: none;
 } 
 
-.show-menu-btn{
+.show-menu-btn {
     border: none;
     outline:none;
     background-color: transparent;
@@ -445,44 +358,24 @@ export default Vue.extend({
     border-radius: 50%;
 }
 
-.project-name {
-    //don't forget to update the autosize offset if padding or borderis changed!
-    border: #6d6c6a solid 1px;
-    padding: 0px 2px; 
-    background: transparent;
-    text-align:center;
-    color: #274D19;
+.strype-menu-link {
+    margin-left: 5%;
+    width: 100%;
+    outline: none;
+    border: $strype-menu-entry-border;
+}
+
+.strype-menu-item {
     outline: none;
 }
 
-.project-name-div {
-    margin: 0 auto;
-    display: inline;
-}
-
-.project-name-noborder {
-     border-width: 0px;
-}
-
-.project-impexp-div {
-    margin-left: 5%;
-}
-
-.project-name-placeholder {
-    position: absolute;
-    display: inline-block;
-    visibility: hidden;
-    white-space: pre; //as this div placeholder is used to dynamically compute the width of the input field, we have to preserve the spaces exactly written by the user in the input field.
-}
-
-.bm-item-list > hr {
-    margin: 0;
-    height: 1px !important;
+.strype-menu-item:focus {
+    border: $strype-menu-entry-focus-border;
 }
 
 .menu-separator-div {
     border-top: 1px solid #c5c4c1 !important;
-    padding:0px;
+    padding:0px !important;
 
 }
 
@@ -504,7 +397,7 @@ export default Vue.extend({
 
 #feedbackLink {
     color: #3467FE;
-    width:24px1;
+    width:24px;
     font-size: 22px;
     margin:auto;
     display: block;
@@ -517,8 +410,20 @@ export default Vue.extend({
 }
 
 //the following classes are overriding the default CSS for vue-burger-menu
+.bm-cross-button {
+    outline: none;
+    border: $strype-menu-entry-border;
+}
+
+.bm-cross-button:focus{
+    border: $strype-menu-entry-focus-border;
+}
+
 .bm-cross {
     background: #6c757d !important;
+    top: 3px;
+    left: 9px;
+    width: 2px !important; // default is 3px, but to center the crosss in its container, better have this value
 }
 
 .bm-menu {
@@ -533,10 +438,11 @@ export default Vue.extend({
       font-size: inherit !important;
 }
 
-.bm-item-list > :not(.menu-separator-div) {
+.bm-item-list > :not(.menu-separator-div):not(.google-drive-container) {
       display: flex !important;
       text-decoration: none !important;
-      padding: 0.4em !important;
+      padding: $strype-menu-entry-padding !important;
+      width: $strype-menu-entry-width;
 }
 
 .bm-item-list > * > span {
@@ -544,5 +450,9 @@ export default Vue.extend({
       font-weight: 700 !important;
       color: white !important;
 }
-</style>
 
+.bm-item-list > hr {
+    margin: 0;
+    height: 1px !important;
+}
+</style>

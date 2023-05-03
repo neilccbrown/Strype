@@ -1,9 +1,10 @@
 <template>
-    <button type="button" @click="startPicking" v-t="'buttonLabel.pickFromGoogleDrive'" class="btn btn-secondary cmd-button"/>
+    <a @click="startPicking" v-t="'appMenu.pickFromGoogleDrive'" class="strype-menu-link strype-menu-item"/>
 </template>
 <script lang="ts">
 import Vue from "vue";
 import {useStore} from "@/store/store";
+import { CustomEventTypes } from "@/helpers/editor";
 
 // Derived from https://medium.com/timeless/google-picker-with-vue-2a39de7f36e
 
@@ -22,7 +23,10 @@ export default Vue.extend({
 
     methods: {
         startPicking() {
-            gapi.load("picker", () => this.createPicker());
+            gapi.load("picker", () => {
+                this.createPicker();
+                this.$parent.$emit(CustomEventTypes.strypeMenuActionPerformed);
+            });
         },
         
         createPicker() {

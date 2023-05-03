@@ -1,5 +1,6 @@
 {
     "appName":"Επεξεργαστής Strype",
+    "defaultProjName":"Το πρόγραμμα μου",
     "messageBannerMessage": {
         "deleteLargeCode":"Διαγράψατε ένα μεγάλο κομμάτι κώδικα. Έαν έγινε καταλάθος μπορείτε να:",
         "uploadSuccessMicrobit":"Κωδικας μεταφορτόφηκε στο micro:bit",
@@ -17,10 +18,7 @@
         "yes":"Ναι",
         "no":"Όχι",
         "ok":"Εντάξει",
-        "uploadToMicrobit":"Μεταφόρτωση στο micro:bit",
         "sendToMicrobit":"Αποστόλη στο micro:bit",
-        "downloadHex":"Μετατροπή σε Εξαδικό αρχείο",
-        "downloadPython":"Μετατροπή σε Αρχείο Python",
         "startCoding":"Ξεκίνα να προγραμματίζεις!",
         "addCodeExtract":"&larr; Εισαγωγή στον κόδικα",
         "showMore":"Περισσότερα",
@@ -63,9 +61,8 @@
         "delete":"Διαγραφή"
     },
     "appMenu": {
-        "defaultProjName":"Το πρόγραμμα μου",
-        "loadProject":"Φόρτοση προγραμματος",
-        "saveProject":"Αποθήκευση προγραμματος",
+        "downloadHex":"Μετατροπή σε Εξαδικό αρχείο",
+        "downloadPython":"Μετατροπή σε Αρχείο Python",
         "prefs":"Ρυθμίσεις",
         "lang":"Γλώσσα: "
     },
@@ -383,7 +380,7 @@
         "1":"Explore micro:bit"
     },
     "console": {
-        "run":"Εκτέλεση Κώδικα",
+        "run":"Εκτέλεση",
         "expand":"Μεγέθυνση"
     }
 }
