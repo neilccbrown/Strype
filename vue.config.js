@@ -1,9 +1,10 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
 const MoveAssetsPlugin = require("move-assets-webpack-plugin");
+const RemoveFilePlugin = require("remove-files-webpack-plugin");
 
-const configureWebpackExtraProps = (process.env.npm_config_microbit)
-    ? {
-        plugins: [
+const configureWebpackExtraProps = 
+    {
+        plugins: [(process.env.npm_config_microbit) ?
             new MoveAssetsPlugin({
                 clean: true,
                 patterns: [
@@ -14,10 +15,16 @@ const configureWebpackExtraProps = (process.env.npm_config_microbit)
                         to: "dist/",
                     },
                 ],
-            }),
+            }) 
+            :new RemoveFilePlugin({
+                after: {
+                    // Do not include at all the folder containing the microbit python files
+                    include: ["./dist/pythonLib"],
+                    trash: true,
+                },
+            }) ,
         ],
-    }
-    : {};
+    };
 
 module.exports = {
     configureWebpack: {
