@@ -221,7 +221,7 @@ export default Vue.extend({
                         }
                         else {
                             // The navigation is "level scope" when the ctrl key is pressed (alt key for macOS)
-                            this.appStore.changeCaretPosition(event.key, (event.ctrlKey && !isMacOSPlatform() || event.altKey && isMacOSPlatform()));
+                            this.appStore.changeCaretPosition(event.key, ((event.ctrlKey && !isMacOSPlatform()) || (event.altKey && isMacOSPlatform())));
                         }
                     }
                     else{

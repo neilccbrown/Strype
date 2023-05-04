@@ -17,7 +17,7 @@
                         @click="nameEditing = true; currentTabindexValue=1;"
                         @focus="onFocus()"
                         @blur="onBlur()"
-                        @keyup.enter.prevent.stop="blur();showMenu=false"
+                        @keyup.enter.prevent.stop="blur();showMenu=false;"
                         @keypress="validateInput($event)"
                         :class="{'project-name': true, 'project-name-noborder': !nameEditing}"
                         id="name-input-field"
@@ -33,8 +33,8 @@
             </div> 
             <div class="menu-separator-div"></div>
             <a v-if="showMenu" class="project-impexp-div" @click="importFile();showMenu=false;" v-t="'appMenu.loadProject'" tabindex="2"/>
-            <a v-if="showMenu" class="project-impexp-div" @click="exportFile();showMenu=false;;" v-t="'appMenu.saveProject'" tabindex="3"/>
-            <a v-if="showMenu" class="project-impexp-div" @click="resetProject();showMenu=false;;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')" tabindex="4"/>
+            <a v-if="showMenu" class="project-impexp-div" @click="exportFile();showMenu=false;" v-t="'appMenu.saveProject'" tabindex="3"/>
+            <a v-if="showMenu" class="project-impexp-div" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')" tabindex="4"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
@@ -116,8 +116,8 @@ import { mapStores } from "pinia";
 //     Component    //
 //////////////////////
 const maxProjetNameWidth = 150; //this value (in pixels) is used as a max-width value when computing the input text width dynamically
-// For file names allow only A–Z a–z 0–9 _ - ()
-const fileNameRegex = /^[\d\w\s\-_()]+$/;
+// For file names allow only A–Z a–z 0–9 _ - () and unicode characters.
+const fileNameRegex = /^[\d\p{L} \-_()]+$/;
 
 export default Vue.extend({
     name: "Menu",

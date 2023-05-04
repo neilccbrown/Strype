@@ -5,7 +5,8 @@
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
-        <div :id="this.frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabIndex=-1>
+        <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
+        <div :id="this.frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1">
             <CaretContainer
                 :frameId="this.frameId"
                 :caretVisibility="this.caretVisibility"
