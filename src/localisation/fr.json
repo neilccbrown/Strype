@@ -95,8 +95,12 @@
       "funcDefsContainer":"Définitions de fonctions :",
       "mainContainer":"Mon code :",
       "preCompiledErrorNeedFix":"Veuillez d'abord corriger les erreurs existantes.",
-      "noWebUSB":"Ce navigateur ne supporte pas les connexions webUSB. Veullez utiliser un autre navigateur (par example Google Chrome).",
-      "emptyCodeError" :"Le code ne peut pas être vide."
+      "noWebUSB":"Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
+      "emptyCodeError":"Le code ne peut pas être vide.",
+      "enterFileNameTitle":"Entrez le nom de fichier",
+      "enterFileNameLabel":"Entrez le nom de fichier que vous voulez sauvegarder :",
+      "exportFileProjectName": "Nom de projet / fichier à sauvegarder :",
+      "fileNameError":"Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses."
     },
     "contextMenu": {
       "cut":"Couper",

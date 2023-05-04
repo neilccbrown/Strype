@@ -83,6 +83,7 @@ import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 /* IFTRUE_isPurePython */
 import PythonConsole from "@/components/PythonConsole.vue";
+import { isMacOSPlatform } from "@/helpers/common";
 /* FITRUE_isPurePython */
 
 export default Vue.extend({
@@ -219,7 +220,8 @@ export default Vue.extend({
                             this.appStore.selectMultipleFrames(event.key);
                         }
                         else {
-                            this.appStore.changeCaretPosition(event.key);
+                            // The navigation is "level scope" when the ctrl key is pressed (alt key for macOS)
+                            this.appStore.changeCaretPosition(event.key, ((event.ctrlKey && !isMacOSPlatform()) || (event.altKey && isMacOSPlatform())));
                         }
                     }
                     else{
@@ -233,7 +235,7 @@ export default Vue.extend({
                 }
 
                 //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")
-                if(!isEditing && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
+                if(!isEditing && !this.appStore.isAppMenuOpened && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
                     event.preventDefault();
                     return;
                 }
@@ -290,7 +292,7 @@ export default Vue.extend({
                 }
             }
             else {
-                if(!isEditing){
+                if(!isEditing && !this.appStore.isAppMenuOpened){
                     //cases when there is no editing:
                     if(!(event.ctrlKey || event.metaKey)){
                         if(event.key == "Delete" || event.key == "Backspace"){
