@@ -1,6 +1,8 @@
 import Compiler from "@/compiler/compiler";
-import Vue from "vue";
+import { getAppSimpleMsgDlgId } from "./editor";
+import { vm } from "@/main";
 import i18n from "@/i18n";
+import { useStore } from "@/store/store"; 
 
 export function compileBlob(compiler: Compiler): Blob | undefined {
     try {
@@ -8,13 +10,9 @@ export function compileBlob(compiler: Compiler): Blob | undefined {
         return blob;
     }
     catch (error: any) {
-        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-        Vue.$confirm({
-            message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-            button: {
-                yes: i18n.t("buttonLabel.ok"),
-            },
-        });    
+        // Notify the user of any detected errors in the code
+        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+        vm.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
     }
 }
 
@@ -26,13 +24,9 @@ export function compileFlashAndBuffer(compiler: Compiler, boardId: number): { fl
         return {flash: flashBytes, buffer: hexBuffer};
     }
     catch (error: any) {
-        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-        Vue.$confirm({
-            message: error.message,
-            button: {
-                yes: i18n.t("buttonLabel.ok"),
-            },
-        });    
+        // Notify the user of a problem
+        useStore().simpleModalDlgMsg = error.message;
+        vm.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
         return undefined;
     }
 }

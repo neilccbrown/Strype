@@ -1,6 +1,5 @@
 <template>
     <div id="app" class="container-fluid">
-        <vue-confirm-dialog />
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
@@ -63,6 +62,10 @@
             </div>
             <Commands :id="commandsContainerId" class="col-4 noselect" />
         </div>
+        <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
+        <ModalDlg :dlgId="importDiffVersionModalDlgId" :noCloseOnBackDrop="true" :hideHeaderClose="true" :useYesNo="true">
+            <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
+        </ModalDlg>
     </div>
 </template>
 
@@ -75,9 +78,11 @@ import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
+import ModalDlg from "@/components/ModalDlg.vue";
+import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { useStore } from "@/store/store";
 import { AppEvent, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -100,6 +105,8 @@ export default Vue.extend({
         Commands,
         Menu,
         Draggable,
+        ModalDlg,
+        SimpleMsgModalDlg,
     },
 
     data: function() {
@@ -111,7 +118,7 @@ export default Vue.extend({
             autoSaveTimerId: -1,
             resetStrypeProjectFlag:false,
             isLargePythonConsole: false,
-            autoSaveState: () => {},
+            autoSaveState: [() => {}],
         };
     },
 
@@ -170,10 +177,18 @@ export default Vue.extend({
                 },
             };
         },
+
+        simpleMsgModalDlgId(): string{
+            return getAppSimpleMsgDlgId();
+        },
+
+        importDiffVersionModalDlgId(): string {
+            return getImportDiffVersionModalDlgId();
+        },
     },
 
     created() {
-        this.autoSaveState = () => this.autoSaveStateToWebLocalStorage();
+        this.autoSaveState[0] = () => this.autoSaveStateToWebLocalStorage();
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -193,7 +208,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                this.autoSaveState();
+                this.autoSaveState.forEach((f) => f());
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -207,7 +222,7 @@ export default Vue.extend({
             }
         });
 
-        // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 5 minutes
+        // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
 
         // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
@@ -271,21 +286,36 @@ export default Vue.extend({
                         readCompressed: true,
                     }
                 );
+
+                // Loading a file from recovery shoud always show there is no connection to Google Drive, and remove any stored save file id
+                this.appStore.isSignedInGoogleDrive = false;
             }
         }
         
-        this.$root.$on("setAutoSaveFunction", (f: () => void) => {
-            this.autoSaveState = f;
-            // We will save on a timer but we should also save now so we're up to date:
-            this.autoSaveState();
+        this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (f: () => void) => {
+            // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
+            // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
+            // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
+            window.clearInterval(this.autoSaveTimerId);
+            this.autoSaveState.push(f);
+            this.setAutoSaveState();
         });
+
+        this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (f: () => void) => {
+            window.clearInterval(this.autoSaveTimerId);
+            this.autoSaveState.pop();
+            this.setAutoSaveState();
+        });
+
+        // Listen to event for requesting the autosave now
+        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, () => this.autoSaveState.forEach((f) => f()));
     },
 
     methods: {
         setAutoSaveState() {
             this.autoSaveTimerId = window.setInterval(() => {
-                this.autoSaveState();
-            }, 300000);
+                this.autoSaveState.forEach((f) => f());
+            }, autoSaveFreqMins * 60000);
         },
         
         autoSaveStateToWebLocalStorage() : void {

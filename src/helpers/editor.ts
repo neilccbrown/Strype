@@ -3,8 +3,10 @@ import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition } from "./storeMethods";
+import { strypeFileExtension } from "./common";
 
 export const undoMaxSteps = 200;
+export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
 export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
@@ -13,6 +15,9 @@ export enum CustomEventTypes {
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
     strypeMenuActionPerformed = "strype-menu-action-performed",
+    addFunctionToEditorAutoSave = "addToAutoSaveFunction",
+    removeFunctionToEditorAutoSave = "rmToAutoSaveFunction",
+    requestEditorAutoSaveNow = "requestAutoSaveNow",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
@@ -32,6 +37,14 @@ export function getFrameUIID(frameId: number): string{
 
 export function getFrameHeaderUIID(frameId: number): string{
     return "frameHeader_" + frameId;
+}
+
+export function getAppSimpleMsgDlgId(): string {
+    return "appSimpleMsgModalDlg";
+}
+
+export function getImportDiffVersionModalDlgId(): string {
+    return "importDiffVersionModalDlg";
 }
 
 function retrieveFrameIDfromUIID(uiid: string): number {
@@ -286,7 +299,7 @@ export function getAcContextPathId(slotId: string): string{
     return slotId+"_AcContextPathSpan";
 }
 
-export const fileImportSupportedFormats: string[] = ["spy"];
+export const fileImportSupportedFormats: string[] = [strypeFileExtension];
 
 // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
 // by an error class on a frame ("frameDiv" + "error") or an editable slot ("labelSlot-input" + "errorSlot").

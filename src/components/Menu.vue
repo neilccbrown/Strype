@@ -1,4 +1,5 @@
 <template>
+    <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1">
         <Slide 
             :isOpen="showMenu"
@@ -12,12 +13,19 @@
             FITRUE_isMicrobit */
             <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <div class="menu-separator-div"></div>
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="importFile();showMenu=false;" v-t="'appMenu.loadProject'"/>
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="exportFile();showMenu=false;;" v-t="'appMenu.saveProject'"/>
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-file-modal-dlg v-t="'appMenu.loadProject'"/>
+            <ModalDlg :dlgId="loadFileModalDlgId" :noCloseOnBackDrop="true" :hideHeaderClose="true">
+                <span v-t="'appMessage.editorConfirmChangeCode'" />
+            </ModalDlg>
+            <a :id="saveFileLinkId" v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.save-strype-file-modal-dlg v-t="'appMenu.saveProject'"/>
+            <ModalDlg :dlgId="saveFileModalDlgId" :dlgTitle="$t('appMessage.enterFileNameTitle')" :noCloseOnBackDrop="true" :hideHeaderClose="true">
+                <p v-t="'appMessage.enterFileNameLabel'" />
+                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text"/>
+            </ModalDlg>
             <div v-if="!isSignedInGoogleDrive" class="menu-separator-div"></div>
-            <GoogleDrive v-show="showMenu" @strype-menu-action-performed="onActionPerformed" @google-drive-signed="isSignedInGoogleDrive=true"/>
+            <GoogleDrive v-show="showMenu" @strype-menu-action-performed="onActionPerformed"/>
             <div class="menu-separator-div"></div>
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="resetProject();showMenu=false;;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <div class="menu-separator-div"></div>
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
@@ -83,13 +91,15 @@
 //////////////////////
 import Vue from "vue";
 import { useStore } from "@/store/store";
-import {saveContentToFile, readFileContent, fileNameRegex} from "@/helpers/common";
+import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { fileImportSupportedFormats, getEditorMenuUIID, getFrameUIID } from "@/helpers/editor";
+import { CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorMenuUIID, getFrameUIID } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
+import ModalDlg from "@/components/ModalDlg.vue";
+import { BvModalEvent } from "bootstrap-vue";
 
 //////////////////////
 //     Component    //
@@ -100,6 +110,7 @@ export default Vue.extend({
     components: {
         Slide,
         GoogleDrive,
+        ModalDlg,
     },
 
     data: function() {
@@ -109,7 +120,6 @@ export default Vue.extend({
             retrievedTabindexesCount: -1,
             // The tabindex of the currently focused element of the menu
             currentTabindexValue: 0,
-            isSignedInGoogleDrive: false,
         };
     },
 
@@ -120,13 +130,23 @@ export default Vue.extend({
             (event: KeyboardEvent) => {
                 //handle the Ctrl/Meta + S command for saving the project
                 if(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey)){
-                    this.exportFile(true);
+                    document.getElementById(this.saveFileLinkId)?.click();
                     event.stopImmediatePropagation();
                     event.preventDefault();
                     this.toggleMenuOnOff(null);
                 }
             }
         );
+
+        // The events from Bootstrap modal are registered to the root app element.
+        this.$root.$on("bv::modal::show", this.onStrypeMenuShownModalDlg);
+        this.$root.$on("bv::modal::hide", this.onStrypeMenuHideModalDlg);       
+    },
+
+    beforeDestroy(){
+        // Just in case, we remove the Bootstrap modal event handler from the root app 
+        this.$root.$off("bv::modal::show", this.onStrypeMenuShownModalDlg);
+        this.$root.$off("bv::modal::hide", this.onStrypeMenuHideModalDlg);
     },
 
     computed: {
@@ -135,20 +155,41 @@ export default Vue.extend({
         menuUIID(): string {
             return getEditorMenuUIID();
         },
+
+        loadFileModalDlgId(): string {
+            return "load-strype-file-modal-dlg";
+        },
+
+        saveFileLinkId(): string {
+            return "saveStrypeFileLink";
+        },
+
+        saveFileModalDlgId(): string {
+            return "save-strype-file-modal-dlg";
+        },
+
+        saveFileNameInputId(): string {
+            return "saveStrypeFileNameInput";
+        },
+
+        isSignedInGoogleDrive(): boolean {
+            return this.appStore.isSignedInGoogleDrive;
+        },
+
         isUndoDisabled(): boolean {
             return this.appStore.isUndoRedoEmpty("undo");
         },
+
         isRedoDisabled(): boolean {
             return this.appStore.isUndoRedoEmpty("redo");
         },
+
         undoImagePath(): string {
             return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.svg") : require("@/assets/images/undo.svg");
         },
+
         redoImagePath(): string {
             return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.svg") : require("@/assets/images/redo.svg");
-        },
-        editorFileMenuOption(): Record<string,string>[] {
-            return  [{name: "import", method: "importFile"}, {name: "export", method: "exportFile"}];
         },
 
         acceptedInputFileFormat(): string {
@@ -174,22 +215,57 @@ export default Vue.extend({
         downloadPython() {
             downloadPython(); 
         },
-        
-        importFile(): void {
-            //users should be warned about current editor's content loss
-            const confirmMsg = this.$i18n.t("appMessage.editorConfirmChangeCode");
-            Vue.$confirm({
-                message: confirmMsg,
-                button: {
-                    yes: this.$i18n.t("buttonLabel.yes"),
-                    no: this.$i18n.t("buttonLabel.no"),
-                },
-                callback: (confirm: boolean) => {
-                    if(confirm){
-                        (this.$refs.importFileInput as HTMLInputElement).click();
-                    }                        
-                },
-            });    
+
+        onStrypeMenuShownModalDlg(event: BvModalEvent, dlgId: string) {
+            // This method handles the workflow of the "save file" menu entry related dialog
+            if(dlgId == this.saveFileModalDlgId){
+                // After the above event is emitted, the Strype menu is closed and the focus is given back to the editor.
+                // We want to give the focus back to the modal dialog input field and set its value.
+                // Maybe because of internal Bootstrap behaviour, can't give focus to the input right now or in next ticks
+                // so we wait a bit to generate a focus/click in the input
+                this.showMenu = false;
+                setTimeout(() => {
+                    (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value = this.appStore.projectName;
+                    document.getElementById(this.saveFileNameInputId)?.focus();
+                    document.getElementById(this.saveFileNameInputId)?.click();
+                }, 500);           
+            }
+        },
+
+        onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string) {
+            // This method handles the workflow after acting on any modal dialog of the Strype menu entries.
+            // For all cases, if there is no confirmation, nothing special happens.
+            if(event.trigger == "ok" || event.trigger == "event"){
+                // Case of "load file"
+                if(dlgId == this.loadFileModalDlgId){
+                    // We force saving the current project anyway just in case
+                    this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow);
+                    // And let the user choose a file
+                    (this.$refs.importFileInput as HTMLInputElement).click();
+                }
+                // Case of "save file"
+                else if(dlgId == this.saveFileModalDlgId){
+                    // User has been given a chance to give the file a specifc name,
+                    // when the editor is NOT connected to Google Drive, that name updates the project name.
+                    // We check that the name doesn't contain illegal characters (we are a bit restricive here)
+                    let saveFileName = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
+                    if(saveFileName.length == 0){
+                        saveFileName = this.$i18n.t("defaultProjName") as string;
+                    }
+                    if(saveFileName.trim().match(fileNameRegex) == null){
+                        // Show an error message and do nothing special
+                        this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.fileNameError") as string;
+                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    }
+                    else {
+                        if(!this.appStore.isSignedInGoogleDrive){
+                            this.appStore.projectName = saveFileName.trim();
+                        }
+                        // Save the JSON file of the state 
+                        saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), this.appStore.projectName + "." + strypeFileExtension);
+                    }
+                }
+            }
         },
         
         selectedFile() {
@@ -203,6 +279,7 @@ export default Vue.extend({
                     readFileContent(files[0])
                         .then(
                             (content) => {
+                                const wasSignedInGoogleDrive = this.appStore.isSignedInGoogleDrive;
                                 this.appStore.setStateFromJSONStr( 
                                     {
                                         stateJSONStr: content,
@@ -210,6 +287,16 @@ export default Vue.extend({
                                 );
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
+                                // If we were connected to Google Drive, we need to save the newly loaded file as a new project
+                                // otherwise, we need to make sure that the state is not showing anything related to Drive
+                                if(wasSignedInGoogleDrive){
+                                    this.appStore.currentGoogleDriveSaveFileId = undefined;
+                                    this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow);
+                                }
+                                else{
+                                    this.appStore.isSignedInGoogleDrive = false;
+                                    this.appStore.currentGoogleDriveSaveFileId = undefined;
+                                }
                             }, 
                             (reason) => this.appStore.setStateFromJSONStr( 
                                 {
@@ -230,32 +317,6 @@ export default Vue.extend({
                 
                 //reset the input file element value to empty (so further changes can be notified)
                 (this.$refs.importFileInput as HTMLInputElement).value = "";
-            }
-        },
-
-        exportFile(keyboardShortcutCall?: boolean): void {
-            // Propose the user a chance to chance or specify the project name when they use the keyboard shortcut
-            const confirmMsg = this.$i18n.t("appMessage.exportFileProjectName") as string;
-            const promptValue = (keyboardShortcutCall) ? prompt(confirmMsg, this.appStore.projectName) : null;
-            let cancelExport = false;
-            if(promptValue != null){
-                if(promptValue.match(fileNameRegex) == null){
-                    const confirmMsg = this.$i18n.t("appMessage.fileNameError");
-                    Vue.$confirm({
-                        message: confirmMsg,
-                        button: {
-                            yes: this.$i18n.t("buttonLabel.ok"),
-                        },
-                    });    
-                    cancelExport = true;
-                }
-                else{
-                    this.appStore.projectName = promptValue;
-                }
-            }            
-            if(!cancelExport){
-                // Save the JSON file of the state 
-                saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), this.appStore.projectName+".spy");
             }
         },
 

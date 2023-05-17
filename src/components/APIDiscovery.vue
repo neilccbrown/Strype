@@ -76,6 +76,8 @@ import { useStore } from "@/store/store";
 import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
+import LabelSlotsStructures from "@/components/LabelSlotsStructure.vue";
+import { cloneDeep } from "lodash";
 
 export default Vue.extend({
     name: "APIDiscovery",
@@ -343,7 +345,8 @@ export default Vue.extend({
                     // Update the store too
                     this.appStore.setSlotTextCursors(slotcursorInfos, slotcursorInfos);
                     //Refactor the slots, we call the refactorisation on the LabelSlotsStructure
-                    (this.$root.$refs[getFrameLabelSlotsStructureUIID(slotInfos.frameId, slotInfos.labelSlotsIndex)] as any).checkSlotRefactoring(getLabelSlotUIID(slotInfos));
+                    const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                    (this.$root.$refs[getFrameLabelSlotsStructureUIID(slotInfos.frameId, slotInfos.labelSlotsIndex)] as InstanceType<typeof LabelSlotsStructures>).checkSlotRefactoring(getLabelSlotUIID(slotInfos), stateBeforeChanges);
                 });
         },
 

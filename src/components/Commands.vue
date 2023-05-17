@@ -1,6 +1,12 @@
 <template>
     <div class="commands">
-        <span spellcheck="false" class="project-name" autocomplete="off">{{projectName}}</span>            
+        <div class="project-name-container">
+            <span class="project-name">{{projectName}}</span>
+            <div v-if="isSignedInGoogleDrive" :title="autoSaveGDriveTip">
+                <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="gdrive-logo"/>   
+                <span class="gdrive-sync-label">{{$i18n.t("appMessage.autosaveGDrive")}}</span>
+            </div>
+        </div>     
         <div @mousedown.prevent.stop @mouseup.prevent.stop>
             /* IFTRUE_isMicrobit
             <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
@@ -70,7 +76,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject } from "@/types/types";
 import $ from "jquery";
@@ -120,7 +126,17 @@ export default Vue.extend({
         ...mapStores(useStore),
 
         projectName(): string{
+            // When the project is updated, we reflect this into the HTML meta-data.
+            document.title = "Strype - " + this.appStore.projectName;
             return this.appStore.projectName;
+        },
+
+        isSignedInGoogleDrive(): boolean {
+            return this.appStore.isSignedInGoogleDrive;
+        },
+
+        autoSaveGDriveTip(): string{
+            return this.$i18n.t("appMessage.autoSaveGDrive", {freq: autoSaveFreqMins}) as string;
         },
         
         /* IFTRUE_isMicrobit */
@@ -204,6 +220,11 @@ export default Vue.extend({
                     setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);         
                 }
 
+                // If a modal is open, we let the event be handled by the browser
+                if(this.appStore.isModalDlgShown){
+                    return;
+                }
+
                 if((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
                     //undo-redo
                     this.appStore.undoRedo((event.key.toLowerCase() === "z"));
@@ -226,7 +247,7 @@ export default Vue.extend({
                         }
                         else {
                             // The navigation is "level scope" when the ctrl key is pressed (alt key for macOS)
-                            this.appStore.changeCaretPosition(event.key, (event.ctrlKey && !isMacOSPlatform() || event.altKey && isMacOSPlatform()));
+                            this.appStore.changeCaretPosition(event.key, ((event.ctrlKey && !isMacOSPlatform()) || (event.altKey && isMacOSPlatform())));
                         }
                     }
                     else{
@@ -289,6 +310,11 @@ export default Vue.extend({
         onKeyUp(event: KeyboardEvent) {
             const isEditing = this.appStore.isEditing;
             const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
+
+            // If a modal is open, we let the event be handled by the browser
+            if(this.appStore.isModalDlgShown){
+                return;
+            }
         
             if(event.key == "Escape"){
                 if(this.appStore.areAnyFramesSelected){
@@ -358,14 +384,26 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+.project-name-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .project-name {
-    //don't forget to update the autosize offset if padding or borderis changed!
-    border: none;
-    padding: 0px 2px; 
-    background: transparent;
-    text-align:center;
     color: #274D19;
-    outline: none;
+}
+
+.gdrive-logo {
+    width: 16px;
+    height: 16px;
+    margin-left: 5px;
+    margin-right: 2px;
+}
+
+.gdrive-sync-label {
+    color: #2e641b;
+    font-size: 80%;
 }
 
 .commands {

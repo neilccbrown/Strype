@@ -1,5 +1,4 @@
 {
-    "appName":"Éditeur Strype",
     "defaultProjName":"Mon projet",
     "frame":{
         "defaultText":{
@@ -55,13 +54,16 @@
         "uploadEditorFileSuccess":"Le chargement de fichier pour l'éditeur a été réalisé avec succès. Votre code a été chargé.",
         "forbiddenFrameMove":"Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné.",
         "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
-        "pythonInputWarning":"Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'."
+        "pythonInputWarning":"Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'.",
+        "gdriveFileSaveFail":"Le projet n'a pas pu être enregistré dans Google Drive. Un nouveau fichier sera généré dans Google Drive lors du prochain auto-enregistrement.",
+        "saveAsNewFile":"Créer un nouveau fichier dans Google Drive"
     },
     "buttonLabel":{
         "undo":"Annuler",
         "yes":"Oui",
         "no":"Non",
         "ok":"OK",
+        "cancel":"Annuler",
         "runOnMicrobit":"Exécuter sur micro:bit",
         "sendToMicrobit":"Envoyer vers micro:bit",
         "startCoding":"Codez !",
@@ -98,8 +100,12 @@
       "emptyCodeError":"Le code ne peut pas être vide.",
       "enterFileNameTitle":"Entrez le nom de fichier",
       "enterFileNameLabel":"Entrez le nom de fichier que vous voulez sauvegarder :",
-      "exportFileProjectName": "Nom de projet / fichier à sauvegarder :",
-      "fileNameError":"Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses."
+      "exportFileProjectName": "Enregistrer sous :",
+      "fileNameError":"Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
+      "autosaveGDrive":"Auto-sauvegarde dans Google Drive",
+      "autoSaveGDrive":"Le projet sera automatiquement enregistré dans Google Drive toutes les {freq} minutes.",
+      "GDriveLostConnection":"Strype a été deconnecté de Google Drive. Vos derniers changements n'ont peut-être pas été sauvegardés.",
+      "saveAsNewFile":"Générer un nouveau fichier sur Google Drive"
     },
     "contextMenu": {
       "cut":"Couper",
@@ -121,7 +127,7 @@
       "downloadPython":"Convertir vers Python",
       "loadProject":"Charger depuis un fichier",
       "saveProject":"Sauvegarder dans un fichier",
-      "signInToGoogle":"Se connecter à Google Drive",
+      "signInToGoogle":"Se connecter à Google Drive\u2122",
       "saveToGoogleDrive":"Sauvegarder dans Google Drive",
       "pickFromGoogleDrive":"Charger depuis Google Drive",
       "resetProject":"Réinitialiser",

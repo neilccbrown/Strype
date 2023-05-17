@@ -727,6 +727,7 @@ export const MessageTypes = {
     forbiddenFrameMove: "forbiddenFrameMove",
     functionFrameCantDelete: "functionFrameCantDelete",
     pythonInputWarning: "pythonInputWarning",
+    gdriveFileSaveFail: "gdriveFileSaveFail",
 };
 
 //empty message
@@ -739,10 +740,10 @@ const NoMessage: MessageDefinition = {
 
 //message for large deletation (undo)
 const LargeDeletion: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.largeDeletion,
     message: "messageBannerMessage.deleteLargeCode",
     buttons:[{label: "buttonLabel.undo", action:MessageDefinedActions.undo}],
-    path: imagePaths.empty,
 };
 
 //download hex message
@@ -755,15 +756,14 @@ const DownloadHex: MessageDefinition = {
 
 //message for upload code success in microbit progress
 const UploadSuccessMicrobit: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.uploadSuccessMicrobit,
     message: "messageBannerMessage.uploadSuccessMicrobit",
-    buttons:[],
-    path: imagePaths.empty,
-
 };
 
 //message for upload code failure in microbit progress
 const UploadFailureMicrobit: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.uploadSuccessMicrobit,
     message: {
         path: "messageBannerMessage.uploadFailureMicrobit",
@@ -771,23 +771,19 @@ const UploadFailureMicrobit: MessageDefinition = {
             [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
         },
     },
-    buttons:[],
-    path: imagePaths.empty,
 };
 
 //messages to inform the user there is no undo/redo to perfom
 const NoUndo: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.noUndo,
     message: "messageBannerMessage.noUndo",
-    buttons:[],
-    path: imagePaths.empty,
 };
 
 const NoRedo: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.noRedo,
     message: "messageBannerMessage.noRedo",
-    buttons:[],
-    path: imagePaths.empty,
 };
 
 const UploadEditorFileError: MessageDefinition = {
@@ -815,31 +811,34 @@ const UploadEditorFileNotSupported: MessageDefinition = {
 };
 
 const UploadEditorFileSuccess: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.noRedo,
     message: "messageBannerMessage.uploadEditorFileSuccess",
-    buttons:[],
-    path: imagePaths.empty,
 };
 
 const ForbiddenFrameMove: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.forbiddenFrameMove,
     message: "messageBannerMessage.forbiddenFrameMove",
-    buttons: [],
-    path: imagePaths.empty,
 };
 
 const FunctionFrameCantDelete: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.functionFrameCantDelete,
     message: "messageBannerMessage.functionFrameCantDelete",
-    buttons: [],
-    path: imagePaths.empty,
 };
 
 const PythonInputWarning: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.pythonInputWarning,
     message: "messageBannerMessage.pythonInputWarning",
-    buttons: [],
-    path: imagePaths.empty,
+};
+
+const GDriveFileSaveFail: MessageDefinition = {
+    type: MessageTypes.gdriveFileSaveFail,
+    message: "messageBannerMessage.gdriveFileSaveFail",
+    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    path: imagePaths.empty,    
 };
 
 export const MessageDefinitions = {
@@ -856,6 +855,7 @@ export const MessageDefinitions = {
     ForbiddenFrameMove,
     FunctionFrameCantDelete,
     PythonInputWarning,
+    GDriveFileSaveFail,
 };
 
 //WebUSB listener

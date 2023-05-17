@@ -158,5 +158,6 @@ export function isMacOSPlatform(): boolean {
     return (navigator.platform.indexOf("Mac") > -1);
 }
 
-// For file names allow only A–Z a–z 0–9 _ - ()
-export const fileNameRegex = /^[\d\w\s\-_()]+$/;
+export const strypeFileExtension = "spy";
+// For file names allow only A–Z a–z 0–9 _ - () spaces and unicode characters
+export const fileNameRegex = /^[\d\p{L} \-_()]+$/u;

@@ -3,15 +3,16 @@ import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPro
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, clearAllFrameErrors, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion } from "@/main";
+import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep} from "lodash";
 import $ from "jquery";
+import { BvModalEvent } from "bootstrap-vue";
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -102,6 +103,10 @@ export const useStore = defineStore("app", {
 
             projectName: i18n.t("defaultProjName") as string,
 
+            isSignedInGoogleDrive: false,
+
+            currentGoogleDriveSaveFileId: undefined as undefined|string,
+
             // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
             ignoredDragAction: false, 
 
@@ -110,6 +115,12 @@ export const useStore = defineStore("app", {
             appLang: "en",
 
             isAppMenuOpened: false,
+
+            isModalDlgShown: false,
+
+            currentModalDlgId: "",
+
+            simpleModalDlgMsg: "",
 
             acResults: {} as AcResultsWithModule,
 
@@ -594,9 +605,6 @@ export const useStore = defineStore("app", {
 
             //then change the UI via i18n
             i18n.locale = lang;
-
-            //set the right app name
-            document.title = i18n.t("appName") as string;
 
             // Change all frame definition types to update the localised bits
             generateAllFrameDefinitionTypes(true);
@@ -2316,25 +2324,21 @@ export const useStore = defineStore("app", {
             if(isStateJSONStrValid){  
                 const newStateStr = JSON.stringify(newStateObj);     
                 if(!isVersionCorrect) {
-                    //if the version isn't correct, we ask confirmation to the user before continuing 
-                    const confirmMsg = i18n.t("appMessage.editorFileUploadWrongVersion");
-                    Vue.$confirm({
-                        message: confirmMsg,
-                        button: {
-                            yes: i18n.t("buttonLabel.yes"),
-                            no: i18n.t("buttonLabel.no"),
-                        },
-                        callback: (confirm: boolean) => {
-                            if(confirm){
-                                this.doSetStateFromJSONStr(
-                                    {
-                                        stateJSONStr: newStateStr,
-                                        showMessage: payload.showMessage ?? true,
-                                    }
-                                );                                
-                            }                        
-                        },
-                    });
+                    // If the version isn't correct, we ask confirmation to the user before continuing 
+                    // for ease of coding, we register a "one time" event listener on the modal
+                    const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
+                        if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
+                            this.doSetStateFromJSONStr(
+                                {
+                                    stateJSONStr: newStateStr,
+                                    showMessage: payload.showMessage ?? true,
+                                }
+                            );      
+                            vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                        }
+                    };
+                    vm.$root.$on("bv::modal::hide", execSetStateFunction); 
+                    vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
                 }
                 else{
                     this.doSetStateFromJSONStr(

@@ -1,5 +1,4 @@
 {
-    "appName":"Strype editor",
     "defaultProjName":"My project",
     "frame":{
         "defaultText":{
@@ -55,13 +54,15 @@
         "uploadEditorFileSuccess":"The editor file upload is successful. Your code has been loaded.",
         "forbiddenFrameMove":"The selected frame(s) cannot be moved because it results in illegal code.",
         "functionFrameCantDelete":"A function definition frame cannot be deleted from this caret position when content is not empty.",
-        "pythonInputWarning":"Warning: in Chrome/Safari, the stdout console may not update between consecutive calls to 'input'"
+        "pythonInputWarning":"Warning: in Chrome/Safari, the stdout console may not update between consecutive calls to 'input'",
+        "gdriveFileSaveFail":"The project could not be saved in Google Drive. A new file in Google Drive will be created at the next auto-save."
     },
     "buttonLabel":{
         "undo":"Undo",
         "yes":"Yes",
         "no":"No",
         "ok":"OK",
+        "cancel":"Cancel",
         "runOnMicrobit":"Run on micro:bit",
         "sendToMicrobit":"Send to micro:bit",
         "startCoding":"Start Coding!",
@@ -98,8 +99,12 @@
         "emptyCodeError":"The code cannot be empty.",
         "enterFileNameTitle":"Enter File Name",
         "enterFileNameLabel":"Enter the file name you would like to save as:",
-        "exportFileProjectName":"Project / File name to save as:",
-        "fileNameError":"Project / File name can only contains letters, numbers, spaces, hyphens or parentheses"
+        "exportFileProjectName":"Save as:",
+        "fileNameError":"Project / File name can only contains letters, numbers, spaces, hyphens or parentheses",
+        "autosaveGDrive":"Auto-saving in Google Drive",
+        "autoSaveGDrive":"Project will automatically be saved to Google Drive every {freq} minutes.",
+        "GDriveLostConnection":"Strype has been disconnected from Google Drive. Your latest changes may have not been saved.",
+        "saveAsNewFile":"Create new Google Drive file"
     },
     "contextMenu": {
         "cut":"Cut",
@@ -125,7 +130,7 @@
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
         "lang":"Language: ",
-        "signInToGoogle":"Sign-in to Google Drive",
+        "signInToGoogle":"Sign-in to Google Drive\u2122",
         "saveToGoogleDrive":"Save to Google Drive",
         "pickFromGoogleDrive":"Load from Google Drive"
     },
