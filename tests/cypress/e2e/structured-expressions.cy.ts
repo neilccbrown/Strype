@@ -558,7 +558,7 @@ describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
         "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
 });
 
-describe.only("Test word operators", () => {
+describe("Test word operators", () => {
     testInsert("a or ", "{a}or{$}");
     testInsert("a or b", "{a}or{b$}");
     testInsert("or b", "{}or{b$}");
