@@ -1,6 +1,7 @@
 <template>
     <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1">
+        <GoogleDrive :ref="googleDriveComponentId" />
         <Slide 
             :isOpen="showMenu"
             :burgerIcon="false"
@@ -8,25 +9,42 @@
             @closeMenu="toggleMenuOnOff(null)"
             width="200"
         >
+            <!-- download python/hex section -->
             /* IFTRUE_isMicrobit 
             <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
             FITRUE_isMicrobit */
             <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <div class="menu-separator-div"></div>
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-file-modal-dlg v-t="'appMenu.loadProject'"/>
-            <ModalDlg :dlgId="loadFileModalDlgId" :noCloseOnBackDrop="true" :hideHeaderClose="true">
-                <span v-t="'appMessage.editorConfirmChangeCode'" />
+            <!-- load/save section -->
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg v-t="'appMenu.loadProject'" :title="$t('appMenu.loadProjectTooltip')"/>
+            <ModalDlg :dlgId="loadProjectModalDlgId">
+                <div v-if="changesNotSavedOnLoad">
+                    <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
+                    <br/>
+                </div>
+                <label v-t="'appMessage.loadToTarget'" :for="loadProjectProjectSelectId" class="load-save-label"/>
+                <select :name="loadProjectProjectSelectId" :ref="loadProjectProjectSelectId">
+                    <option :value="syncFSValue" v-t="'appMessage.targetFS'" :selected="getSyncTargetStatus(syncFSValue)"/>
+                    <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive&trade;</option>
+                </select>
             </ModalDlg>
-            <a :id="saveFileLinkId" v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.save-strype-file-modal-dlg v-t="'appMenu.saveProject'"/>
-            <ModalDlg :dlgId="saveFileModalDlgId" :dlgTitle="$t('appMessage.enterFileNameTitle')" :noCloseOnBackDrop="true" :hideHeaderClose="true">
-                <p v-t="'appMessage.enterFileNameLabel'" />
-                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text"/>
+            <a :id="saveProjectLinkId" v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
+            <ModalDlg :dlgId="saveProjectModalDlgId">
+                <label v-t="'appMessage.fileName'" class="load-save-label"/>
+                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text"/>  
+                <br/><br/>       
+                <label v-t="'appMessage.saveToTarget'" :for="saveProjectProjectSelectId" class="load-save-label" />
+                <select :name="saveProjectProjectSelectId" :ref="saveProjectProjectSelectId">
+                    <option :value="syncFSValue" v-t="'appMessage.targetFS'" :selected="getSyncTargetStatus(syncFSValue)" />
+                    <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive&trade;</option>
+                    <option v-if="isSyncingToGoogleDrive" value="gdnew">New GD test</option>
+                </select>
             </ModalDlg>
-            <div v-if="!isSignedInGoogleDrive" class="menu-separator-div"></div>
-            <GoogleDrive v-show="showMenu" @strype-menu-action-performed="onActionPerformed"/>
             <div class="menu-separator-div"></div>
+            <!-- reset section -->
             <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <div class="menu-separator-div"></div>
+            <!-- prefs (localisation) section -->
             <span v-t="'appMenu.prefs'"/>
             <div class="appMenu-prefs-div">
                 <div>
@@ -92,12 +110,13 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension} from "@/helpers/common";
-import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions } from "@/types/types";
-import { CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorMenuUIID, getFrameUIID } from "@/helpers/editor";
+import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, StrypeSyncTarget } from "@/types/types";
+import { CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorMenuUIID, getFrameUIID, SaveRequestReason } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
+import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
 
@@ -120,6 +139,8 @@ export default Vue.extend({
             retrievedTabindexesCount: -1,
             // The tabindex of the currently focused element of the menu
             currentTabindexValue: 0,
+            // The current selection for the sync target (local to this component, not in the store)            
+            localSyncTarget: StrypeSyncTarget.fs,
         };
     },
 
@@ -130,7 +151,7 @@ export default Vue.extend({
             (event: KeyboardEvent) => {
                 //handle the Ctrl/Meta + S command for saving the project
                 if(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey)){
-                    document.getElementById(this.saveFileLinkId)?.click();
+                    document.getElementById(this.saveProjectLinkId)?.click();
                     event.stopImmediatePropagation();
                     event.preventDefault();
                     this.toggleMenuOnOff(null);
@@ -140,13 +161,19 @@ export default Vue.extend({
 
         // The events from Bootstrap modal are registered to the root app element.
         this.$root.$on("bv::modal::show", this.onStrypeMenuShownModalDlg);
-        this.$root.$on("bv::modal::hide", this.onStrypeMenuHideModalDlg);       
+        this.$root.$on("bv::modal::hide", this.onStrypeMenuHideModalDlg);      
+        
+        // Event listener for saving project action completion
+        this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.loadProject);
     },
 
     beforeDestroy(){
         // Just in case, we remove the Bootstrap modal event handler from the root app 
         this.$root.$off("bv::modal::show", this.onStrypeMenuShownModalDlg);
         this.$root.$off("bv::modal::hide", this.onStrypeMenuHideModalDlg);
+
+        // And for the saving project action completion too
+        this.$root.$off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.loadProject);
     },
 
     computed: {
@@ -156,24 +183,49 @@ export default Vue.extend({
             return getEditorMenuUIID();
         },
 
-        loadFileModalDlgId(): string {
-            return "load-strype-file-modal-dlg";
+        googleDriveComponentId(): string {
+            return "googleDriveComponent";
         },
 
-        saveFileLinkId(): string {
-            return "saveStrypeFileLink";
+        loadProjectProjectSelectId(): string {
+            return "loadProjectProjectSelect";
         },
 
-        saveFileModalDlgId(): string {
-            return "save-strype-file-modal-dlg";
+        saveProjectProjectSelectId(): string {
+            return "saveProjectProjectSelect";
+        },
+
+        syncFSValue(): StrypeSyncTarget {
+            return StrypeSyncTarget.fs;
+        },
+
+        syncGDValue(): StrypeSyncTarget {
+            return StrypeSyncTarget.gd;
+        },
+
+        loadProjectModalDlgId(): string {
+            return "load-strype-project-modal-dlg";
+        },
+
+        saveProjectLinkId(): string {
+            return "saveStrypeProjLink";
+        },
+
+        saveProjectModalDlgId(): string {
+            return "save-strype-project-modal-dlg";
         },
 
         saveFileNameInputId(): string {
             return "saveStrypeFileNameInput";
         },
 
-        isSignedInGoogleDrive(): boolean {
-            return this.appStore.isSignedInGoogleDrive;
+        changesNotSavedOnLoad(): boolean {
+            // For Google Drive, we will attempt saving anyway when loading so we don't need to care.
+            return this.appStore.syncTarget != StrypeSyncTarget.gd && (this.appStore.isProjectUnsaved ?? true);
+        },
+
+        isSyncingToGoogleDrive(): boolean {
+            return this.appStore.syncTarget == StrypeSyncTarget.gd;
         },
 
         isUndoDisabled(): boolean {
@@ -205,6 +257,15 @@ export default Vue.extend({
                 this.appStore.setAppLang(lang);
             }, 
         },
+
+        strypeProjMIMEDescArray(): MIMEDesc[]{
+            return [
+                {
+                    description: this.$i18n.t("strypeFileDesc") as string,
+                    accept: { "application/strype": fileImportSupportedFormats.flatMap((extension) => "."+extension) },
+                },
+            ];
+        },
     },
 
     methods: {
@@ -216,14 +277,18 @@ export default Vue.extend({
             downloadPython(); 
         },
 
+        getSyncTargetStatus(target: StrypeSyncTarget): boolean {
+            return target == this.appStore.syncTarget;
+        },
+
         onStrypeMenuShownModalDlg(event: BvModalEvent, dlgId: string) {
             // This method handles the workflow of the "save file" menu entry related dialog
-            if(dlgId == this.saveFileModalDlgId){
+            this.showMenu = false;
+            if(dlgId == this.saveProjectModalDlgId){
                 // After the above event is emitted, the Strype menu is closed and the focus is given back to the editor.
                 // We want to give the focus back to the modal dialog input field and set its value.
                 // Maybe because of internal Bootstrap behaviour, can't give focus to the input right now or in next ticks
                 // so we wait a bit to generate a focus/click in the input
-                this.showMenu = false;
                 setTimeout(() => {
                     (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value = this.appStore.projectName;
                     document.getElementById(this.saveFileNameInputId)?.focus();
@@ -237,33 +302,70 @@ export default Vue.extend({
             // For all cases, if there is no confirmation, nothing special happens.
             if(event.trigger == "ok" || event.trigger == "event"){
                 // Case of "load file"
-                if(dlgId == this.loadFileModalDlgId){
+                if(dlgId == this.loadProjectModalDlgId){
                     // We force saving the current project anyway just in case
-                    this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow);
-                    // And let the user choose a file
-                    (this.$refs.importFileInput as HTMLInputElement).click();
+                    this.localSyncTarget = parseInt((this.$refs[this.loadProjectProjectSelectId] as HTMLSelectElement).value);
+                    this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.loadProject);
+                    // The remaining parts of the loading process will be only done once saving is complete (cd loadProjec())                    
                 }
                 // Case of "save file"
-                else if(dlgId == this.saveFileModalDlgId){
+                else if(dlgId == this.saveProjectModalDlgId){
                     // User has been given a chance to give the file a specifc name,
-                    // when the editor is NOT connected to Google Drive, that name updates the project name.
-                    // We check that the name doesn't contain illegal characters (we are a bit restricive here)
+                    // we check that the name doesn't contain illegal characters (we are a bit restricive here) for file saving
+                    // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
                     let saveFileName = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
                     if(saveFileName.length == 0){
                         saveFileName = this.$i18n.t("defaultProjName") as string;
                     }
-                    if(saveFileName.trim().match(fileNameRegex) == null){
-                        // Show an error message and do nothing special
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.fileNameError") as string;
-                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
-                    }
-                    else {
-                        if(!this.appStore.isSignedInGoogleDrive){
-                            this.appStore.projectName = saveFileName.trim();
+                    
+                    const selectValue = parseInt((this.$refs[this.saveProjectProjectSelectId] as HTMLSelectElement).value);
+                    if(selectValue != StrypeSyncTarget.gd ){
+                        if(!canBrowserSaveFilePicker && saveFileName.trim().match(fileNameRegex) == null){
+                            // Show an error message and do nothing special
+                            this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
+                            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                            return;
                         }
-                        // Save the JSON file of the state 
-                        saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), this.appStore.projectName + "." + strypeFileExtension);
+                        // Save the JSON file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
+                        if(canBrowserSaveFilePicker){
+                            saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, (fileHandle: FileSystemFileHandle) => {
+                                this.appStore.strypeProjectLocation = fileHandle;
+                                this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
+                                this.appStore.syncTarget = StrypeSyncTarget.fs;
+                            });
+                        }
+                        else{
+                            saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), saveFileName + "." + strypeFileExtension);
+                        }
                     }
+                    else {           
+                        (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFileName = saveFileName;
+                        (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFile(SaveRequestReason.saveProject);
+                    }
+                }
+            }
+        },
+
+        loadProject(){
+            // Called once sanity save has been performed
+            // If the user chose to sync on Google Drive, we should open the Drive loader. Otherwise, we open default file system.
+            // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
+            const selectValue = this.localSyncTarget;
+            if(selectValue == StrypeSyncTarget.gd){
+                (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).loadFile();
+            }
+            else{               
+                // And let the user choose a file
+                if(canBrowserOpenFilePicker){
+                    openFile(this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, (fileHandles: FileSystemFileHandle[]) => {
+                        // We select 1 file so we can get the first element of the returned array
+                        this.appStore.strypeProjectLocation = fileHandles[0];
+                        this.appStore.projectName = fileHandles[0].name.substring(0, fileHandles[0].name.lastIndexOf("."));
+                        this.appStore.syncTarget = StrypeSyncTarget.fs;
+                    });                        
+                }
+                else{
+                    (this.$refs.importFileInput as HTMLInputElement).click();
                 }
             }
         },
@@ -279,7 +381,6 @@ export default Vue.extend({
                     readFileContent(files[0])
                         .then(
                             (content) => {
-                                const wasSignedInGoogleDrive = this.appStore.isSignedInGoogleDrive;
                                 this.appStore.setStateFromJSONStr( 
                                     {
                                         stateJSONStr: content,
@@ -287,16 +388,9 @@ export default Vue.extend({
                                 );
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
-                                // If we were connected to Google Drive, we need to save the newly loaded file as a new project
-                                // otherwise, we need to make sure that the state is not showing anything related to Drive
-                                if(wasSignedInGoogleDrive){
-                                    this.appStore.currentGoogleDriveSaveFileId = undefined;
-                                    this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow);
-                                }
-                                else{
-                                    this.appStore.isSignedInGoogleDrive = false;
-                                    this.appStore.currentGoogleDriveSaveFileId = undefined;
-                                }
+                                // Update the sync target and remove Drive infos
+                                this.appStore.syncTarget = StrypeSyncTarget.fs;
+                                this.appStore.currentGoogleDriveSaveFileId = undefined;
                             }, 
                             (reason) => this.appStore.setStateFromJSONStr( 
                                 {
@@ -454,6 +548,14 @@ export default Vue.extend({
     height: 24px;
     display: block;
     margin: auto;
+}
+
+.load-project-lost-span{
+    display: block;
+}
+
+.load-save-label {
+    margin-right: 5px;
 }
 
 #feedbackLink {

@@ -1,5 +1,6 @@
 {
     "defaultProjName":"My project",
+    "strypeFileDesc":"Strype project file",
     "frame":{
         "defaultText":{
             "condition":"condition ",
@@ -55,7 +56,9 @@
         "forbiddenFrameMove":"The selected frame(s) cannot be moved because it results in illegal code.",
         "functionFrameCantDelete":"A function definition frame cannot be deleted from this caret position when content is not empty.",
         "pythonInputWarning":"Warning: in Chrome/Safari, the stdout console may not update between consecutive calls to 'input'",
-        "gdriveFileSaveFail":"The project could not be saved in Google Drive. A new file in Google Drive will be created at the next auto-save."
+        "gdriveFileSaveFail":"The project could not be saved in Google Drive. A new file in Google Drive will be created at the next auto-save.",
+        "gdriveConnectToSaveFailed":"The connection to Google Drive has been lost. The synchronisation with Google Drive is stopped, latest changes may not have been saved.",
+        "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive."
     },
     "buttonLabel":{
         "undo":"Undo",
@@ -84,11 +87,19 @@
         "errorTitle":"Error!",
         "errorUserDefinedFuncMsg":"User-defined function\nthis function definition contains errors",
         "errorUserDefinedVarMsg":"User-defined variable\none of the assigments for this variable contains errors",
-        "EOFError": "This frame cannot be empty."
+        "EOFError": "This frame cannot be empty.",
+        "GDriveSaveFailed":"Strype coud not saved to Google Drive. Your latest changes may have not been saved, and the sync has been turned off.",
+        "fileNameError":"Project / File name can only contains letters, numbers, spaces, hyphens or parentheses",
+        "gdriveConnectionSaveToLoadProjFailed":"Could not connect to Google Drive when trying to save the current project. Try to sign-in again to load another project.",
+        "gdriveConnectionSaveToUnloadPageFailed":"Could not connect to Google Drive when trying to save the current project.Try to sign-in again to save the current project before leaving Strype.",
+        "gdrivePermissionsNotMet":"Strype requires at least one access permission to use Googe Drive.",
+        "gdrivePermissionAllFilesReadOnly":"Access permission was not granted to Strype to sync files to Google Drive.",
+        "gdrivePermissionOnlySyncStrypeFiles":"Access permission was not granted to Strype to sync Google Drive files which were not loaded by Strype.",
+        "gdrivePermissionOnlyStrypeFiles":"Access permission was not granted to Strype to load and sync Google Drive files which were not loaded by Strype."
     },
     "appMessage": {
         "editorFileUpload":"Uploading your file to the editor...",
-        "editorConfirmChangeCode":"Current editor's content will be permanently lost.\nDo you want to continue?",
+        "editorConfirmChangeCode":"Current editor's content will be permanently lost.",
         "editorFileUploadWrongVersion":"This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
         "enableInnerDisabledFrameConfirm":"This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?",
         "importsContainer":"Imports:",
@@ -97,14 +108,16 @@
         "preCompiledErrorNeedFix":"Please fix existing errors first.",
         "noWebUSB":"This browser does not support webUSB connections. Please use a browser such as Google Chrome.",
         "emptyCodeError":"The code cannot be empty.",
-        "enterFileNameTitle":"Enter File Name",
-        "enterFileNameLabel":"Enter the file name you would like to save as:",
-        "exportFileProjectName":"Save as:",
-        "fileNameError":"Project / File name can only contains letters, numbers, spaces, hyphens or parentheses",
+        "loadToTarget":"Load from",
+        "saveToTarget":"Save to",
+        "targetFS":"this device",
+        "fileName":"File Name",
         "autosaveGDrive":"Auto-saving in Google Drive",
-        "autoSaveGDrive":"Project will automatically be saved to Google Drive every {freq} minutes.",
-        "GDriveLostConnection":"Strype has been disconnected from Google Drive. Your latest changes may have not been saved.",
-        "saveAsNewFile":"Create new Google Drive file"
+        "autoSaveGDriveTooltip":"Project will automatically be saved to Google Drive every {freq} minutes.",
+        "saveAsNewFile":"Create new Google Drive file",
+        "selectFolder":"Select a folder",
+        "selectStrypeFile":"Select a Strype project",
+        "folderX":"Folder \"{folder}\""
     },
     "contextMenu": {
         "cut":"Cut",
@@ -124,15 +137,14 @@
     "appMenu": {
         "downloadHex":"Convert to Hex file",
         "downloadPython":"Convert to Python file",
-        "loadProject":"Load from file",
-        "saveProject":"Save to file",
+        "loadProject":"Load",
+        "loadProjectTooltip":"Load a project from this device or from Google Drive\u2122",
+        "saveProject":"Save",
+        "saveProjectTooltip":"Save a project to this device or to Google Drive\u2122",
         "resetProject":"Reset",
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
-        "lang":"Language: ",
-        "signInToGoogle":"Sign-in to Google Drive\u2122",
-        "saveToGoogleDrive":"Save to Google Drive",
-        "pickFromGoogleDrive":"Load from Google Drive"
+        "lang":"Language: "
     },
     "autoCompletion": {
         "myFunctions":"My functions",

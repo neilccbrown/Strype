@@ -2,7 +2,7 @@
     <div class="commands">
         <div class="project-name-container">
             <span class="project-name">{{projectName}}</span>
-            <div v-if="isSignedInGoogleDrive" :title="autoSaveGDriveTip">
+            <div v-if="isSyncingInGoogleDrive" :title="autoSaveGDriveTooltip">
                 <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="gdrive-logo"/>   
                 <span class="gdrive-sync-label">{{$i18n.t("appMessage.autosaveGDrive")}}</span>
             </div>
@@ -78,7 +78,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { autoSaveFreqMins, CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -131,12 +131,12 @@ export default Vue.extend({
             return this.appStore.projectName;
         },
 
-        isSignedInGoogleDrive(): boolean {
-            return this.appStore.isSignedInGoogleDrive;
+        isSyncingInGoogleDrive(): boolean {
+            return this.appStore.syncTarget == StrypeSyncTarget.gd;
         },
 
-        autoSaveGDriveTip(): string{
-            return this.$i18n.t("appMessage.autoSaveGDrive", {freq: autoSaveFreqMins}) as string;
+        autoSaveGDriveTooltip(): string{
+            return this.$i18n.t("appMessage.autoSaveGDriveTooltip", {freq: autoSaveFreqMins}) as string;
         },
         
         /* IFTRUE_isMicrobit */

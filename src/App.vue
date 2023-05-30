@@ -63,7 +63,7 @@
             <Commands :id="commandsContainerId" class="col-4 noselect" />
         </div>
         <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
-        <ModalDlg :dlgId="importDiffVersionModalDlgId" :noCloseOnBackDrop="true" :hideHeaderClose="true" :useYesNo="true">
+        <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
     </div>
@@ -82,7 +82,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { useStore } from "@/store/store";
 import { AppEvent, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, SaveRequestReason } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -118,7 +118,7 @@ export default Vue.extend({
             autoSaveTimerId: -1,
             resetStrypeProjectFlag:false,
             isLargePythonConsole: false,
-            autoSaveState: [() => {}],
+            autoSaveState: [(reason: SaveRequestReason) => {}],
         };
     },
 
@@ -188,7 +188,7 @@ export default Vue.extend({
     },
 
     created() {
-        this.autoSaveState[0] = () => this.autoSaveStateToWebLocalStorage();
+        this.autoSaveState[0] = (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason);
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -208,7 +208,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                this.autoSaveState.forEach((f) => f());
+                this.autoSaveState.forEach((f) => f(SaveRequestReason.unloadPage));
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -286,13 +286,10 @@ export default Vue.extend({
                         readCompressed: true,
                     }
                 );
-
-                // Loading a file from recovery shoud always show there is no connection to Google Drive, and remove any stored save file id
-                this.appStore.isSignedInGoogleDrive = false;
             }
         }
         
-        this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (f: () => void) => {
+        this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (f: (reason: SaveRequestReason) => void) => {
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
@@ -301,27 +298,31 @@ export default Vue.extend({
             this.setAutoSaveState();
         });
 
-        this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (f: () => void) => {
+        this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (f: (reason: SaveRequestReason) => void) => {
             window.clearInterval(this.autoSaveTimerId);
             this.autoSaveState.pop();
             this.setAutoSaveState();
         });
 
         // Listen to event for requesting the autosave now
-        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, () => this.autoSaveState.forEach((f) => f()));
+        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (reason: SaveRequestReason) => this.autoSaveState.forEach((f) => f(reason)));
     },
 
     methods: {
         setAutoSaveState() {
             this.autoSaveTimerId = window.setInterval(() => {
-                this.autoSaveState.forEach((f) => f());
+                this.autoSaveState.forEach((f) => f(SaveRequestReason.autosave));
             }, autoSaveFreqMins * 60000);
         },
         
-        autoSaveStateToWebLocalStorage() : void {
+        autoSaveStateToWebLocalStorage(reason: SaveRequestReason) : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
+                // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                if(reason==SaveRequestReason.loadProject && this.autoSaveState.length == 1){
+                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                }
             }
         },
 

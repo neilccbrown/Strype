@@ -1,5 +1,6 @@
 {
     "defaultProjName":"Mon projet",
+    "strypeFileDesc":"Fichier de projet Strype",
     "frame":{
         "defaultText":{
             "condition":"condition ",
@@ -56,7 +57,8 @@
         "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
         "pythonInputWarning":"Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'.",
         "gdriveFileSaveFail":"Le projet n'a pas pu être enregistré dans Google Drive. Un nouveau fichier sera généré dans Google Drive lors du prochain auto-enregistrement.",
-        "saveAsNewFile":"Créer un nouveau fichier dans Google Drive"
+        "gdriveConnectToSaveFailed":"La connexion à Google Drive a été perdue. La synchronisation avec Google Drive est interrompue, les dernières modifications n'ont peut-être pas été sauvegardées.",
+        "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive."
     },
     "buttonLabel":{
         "undo":"Annuler",
@@ -85,11 +87,19 @@
       "errorTitle":"Erreur !",
       "errorUserDefinedFuncMsg":"Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
       "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
-      "EOFError": "Ce cadre ne peut pas être vide."
+      "EOFError": "Ce cadre ne peut pas être vide.",
+      "GDriveSaveFailed":"Strype coud not saved to Google Drive. Your latest changes may have not been saved, and the sync has been turned off.",
+      "fileNameError":"Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
+      "gdriveConnectionSaveToLoadProjFailed":"Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour charger un autre projet.",
+      "gdriveConnectionSaveToUnloadPageFailed":"Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour sauvegarder le project actuel avant de quitter Strype.",
+      "gdrivePermissionsNotMet":"Strype nécessite au moins une permission d'accès pour utiliser Google Drive.",
+      "gdrivePermissionAllFilesReadOnly":"Aucune permission d'accès n'a été donnée à Strype pour synchroniser les fichiers vers Googe Drive.",
+      "gdrivePermissionOnlySyncStrypeFiles":"Aucune permission d'accès n'a été donnée à Strype pour synchroniser les fichers qui n'ont pas été chargés dans Google Drive par Strype.",
+      "gdrivePermissionOnlyStrypeFiles":"Aucune permission d'accès n'a été donnée à Strype pour charger et synchroniser les fichers qui n'ont pas été chargés dans Google Drive par Strype."
     },
     "appMessage": {
       "editorFileUpload":"Chargement de votre fichier dans l'éditeur...",
-      "editorConfirmChangeCode":"Le contenu actuel de l'éditeur sera définitivement perdu.\nSouhaitez-vous continuer ?",
+      "editorConfirmChangeCode":"Le contenu actuel de l'éditeur sera définitivement perdu.",
       "editorFileUploadWrongVersion":"Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
       "enableInnerDisabledFrameConfirm":"Cette action activera le groupe entier de cadres désactivés auquel ce cadre appartient.\nSouhaitez-vous continuer ?",
       "importsContainer":"Imports :",
@@ -98,14 +108,16 @@
       "preCompiledErrorNeedFix":"Veuillez d'abord corriger les erreurs existantes.",
       "noWebUSB":"Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
       "emptyCodeError":"Le code ne peut pas être vide.",
-      "enterFileNameTitle":"Entrez le nom de fichier",
-      "enterFileNameLabel":"Entrez le nom de fichier que vous voulez sauvegarder :",
-      "exportFileProjectName": "Enregistrer sous :",
-      "fileNameError":"Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
+      "loadToTarget":"Charer à partir de",
+      "saveToTarget":"Enregister vers",
+      "targetFS":"cet ordinateur",
+      "fileName":"Nom de fichier",
       "autosaveGDrive":"Auto-sauvegarde dans Google Drive",
-      "autoSaveGDrive":"Le projet sera automatiquement enregistré dans Google Drive toutes les {freq} minutes.",
-      "GDriveLostConnection":"Strype a été deconnecté de Google Drive. Vos derniers changements n'ont peut-être pas été sauvegardés.",
-      "saveAsNewFile":"Générer un nouveau fichier sur Google Drive"
+      "autoSaveGDriveTooltip":"Le projet sera automatiquement enregistré dans Google Drive toutes les {freq} minutes.",
+      "saveAsNewFile":"Générer un nouveau fichier sur Google Drive",
+      "selectFolder":"Sélectionnez un dossier",
+      "selectStrypeFile":"Sélectionnez un projet Strype",
+      "folderX":"Dossier \"{folder}\""
     },
     "contextMenu": {
       "cut":"Couper",
@@ -125,11 +137,10 @@
     "appMenu": {
       "downloadHex":"Convertir vers Hex",
       "downloadPython":"Convertir vers Python",
-      "loadProject":"Charger depuis un fichier",
-      "saveProject":"Sauvegarder dans un fichier",
-      "signInToGoogle":"Se connecter à Google Drive\u2122",
-      "saveToGoogleDrive":"Sauvegarder dans Google Drive",
-      "pickFromGoogleDrive":"Charger depuis Google Drive",
+      "loadProject":"Charger",
+      "loadProjectTooltip":"Charger un projet depuis cet appareil ou depuis Google Drive\u2122",
+      "saveProject":"Sauvegarder",
+      "saveProjectTooltip":"Sauvegarder un projet vers cet appareil ou vers Google Drive\u2122",
       "resetProject":"Réinitialiser",
       "resetProjectTooltip":"Réinitialiser l'éditeur avec le projet par default de Strype",
       "prefs":"Préférences",

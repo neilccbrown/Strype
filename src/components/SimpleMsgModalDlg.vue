@@ -1,5 +1,5 @@
 <template>
-    <ModalDlg :dlgId="dlgId" :dlgTitle="dlgTitle" :noCloseOnBackDrop="true" :hideHeaderClose="true" :okOnly="true">
+    <ModalDlg :dlgId="dlgId" :dlgTitle="dlgTitle" :okOnly="true">
         <span>{{dlgMsg}}</span>
     </ModalDlg>
 </template>

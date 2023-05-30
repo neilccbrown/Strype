@@ -1,6 +1,6 @@
 <!-- this acts as a wrapper around the bootstrap modals, to have centralised control and customisation -->
 <template>
-    <b-modal :no-close-on-backdrop="noCloseOnBackDrop" :hide-header-close="hideHeaderClose" :id="dlgId" :title="dlgTitle" :ok-only="okOnly" :ok-title="okTitle" :cancel-title="cancelTitle">
+    <b-modal no-close-on-backdrop hide-header-close :id="dlgId" :title="dlgTitle" :ok-only="okOnly" :ok-title="okTitle" :cancel-title="cancelTitle">
             <slot/>
     </b-modal>
 </template>
@@ -16,8 +16,6 @@ export default Vue.extend({
     props:{
         dlgId: String,
         dlgTitle: String,
-        noCloseOnBackDrop: Boolean,
-        hideHeaderClose: Boolean,
         okOnly: Boolean,
         useYesNo: Boolean, // by default, the values of the buttons are OK and Cancel, this flag allows using Yes/No (in combination with okOnly) if needed
     },

@@ -728,6 +728,8 @@ export const MessageTypes = {
     functionFrameCantDelete: "functionFrameCantDelete",
     pythonInputWarning: "pythonInputWarning",
     gdriveFileSaveFail: "gdriveFileSaveFail",
+    gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
+    gdriveCantCreateStrypeFolder:"gdriveCantCreateStrypeFolder",
 };
 
 //empty message
@@ -841,6 +843,19 @@ const GDriveFileSaveFail: MessageDefinition = {
     path: imagePaths.empty,    
 };
 
+const GDriveConnectToSaveFailed: MessageDefinition = {
+    type: MessageTypes.gdriveConnectToSaveFailed,
+    message: "messageBannerMessage.gdriveConnectToSaveFailed",
+    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    path: imagePaths.empty,    
+};
+
+const GDriveCantCreateStrypeFolder: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.gdriveCantCreateStrypeFolder,
+    message: "messageBannerMessage.gdriveCantCreateStrypeFolder",
+};
+
 export const MessageDefinitions = {
     NoMessage,
     LargeDeletion,
@@ -856,6 +871,8 @@ export const MessageDefinitions = {
     FunctionFrameCantDelete,
     PythonInputWarning,
     GDriveFileSaveFail,
+    GDriveConnectToSaveFailed,
+    GDriveCantCreateStrypeFolder,
 };
 
 //WebUSB listener
@@ -955,6 +972,23 @@ export enum StrypePlatform {
     microbit = "mb",
 }
 
+export enum StrypeSyncTarget {
+    none, // Nothing set up (note that auto save is always available on WebStores)
+    fs, // The local file system (note that this is only for us to know saving has been requested once, there is NO auto-sync to the local FS)
+    gd, // Google Drive
+}
+
+export enum GoogleDriveScope {
+    all = "https://www.googleapis.com/auth/drive",
+    appFiles = "https://www.googleapis.com/auth/drive.file",
+    allFilesReadonly = "https://www.googleapis.com/auth/drive.readonly",
+}
+
+export interface GoogleDriveScopesGrant {
+    scope: GoogleDriveScope,
+    granted: boolean,
+}
+
 export interface UserDefinedElement {
     name: string;
     isFunction: boolean;
@@ -1020,3 +1054,10 @@ export interface CodeMatchIterable {
     hasMatches: boolean,
     iteratorMatches?: IterableIterator<RegExpMatchArray>
 }
+
+export interface MIMEDesc {
+    description: string,
+    accept: {[MIME: string]: string[]}
+}
+
+export type ProjectLocation = (undefined | string | FileSystemFileHandle);
