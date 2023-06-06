@@ -56,9 +56,9 @@
         "forbiddenFrameMove":"The selected frame(s) cannot be moved because it results in illegal code.",
         "functionFrameCantDelete":"A function definition frame cannot be deleted from this caret position when content is not empty.",
         "pythonInputWarning":"Warning: in Chrome/Safari, the stdout console may not update between consecutive calls to 'input'",
-        "gdriveFileSaveFail":"The project could not be saved in Google Drive. A new file in Google Drive will be created at the next auto-save.",
         "gdriveConnectToSaveFailed":"The connection to Google Drive has been lost. The synchronisation with Google Drive is stopped, latest changes may not have been saved.",
-        "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive."
+        "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive.",
+        "gdriveFileAlreadyExists":"A project with the same name already exists in the Drive location. Strype saved your project with this name \"{file}\"."
     },
     "buttonLabel":{
         "undo":"Undo",
@@ -71,7 +71,8 @@
         "startCoding":"Start Coding!",
         "addCodeExtract":"&larr; Add to code",
         "showMore":"show more",
-        "showLess":"show less"
+        "showLess":"show less",
+        "saveDiffLocation":"Save elsewhere"
     },
     "action": {
         "uploadingToMicrobit":"Uploading to micro:bit ...",
@@ -93,9 +94,8 @@
         "gdriveConnectionSaveToLoadProjFailed":"Could not connect to Google Drive when trying to save the current project. Try to sign-in again to load another project.",
         "gdriveConnectionSaveToUnloadPageFailed":"Could not connect to Google Drive when trying to save the current project.Try to sign-in again to save the current project before leaving Strype.",
         "gdrivePermissionsNotMet":"Strype requires at least one access permission to use Googe Drive.",
-        "gdrivePermissionAllFilesReadOnly":"Access permission was not granted to Strype to sync files to Google Drive.",
-        "gdrivePermissionOnlySyncStrypeFiles":"Access permission was not granted to Strype to sync Google Drive files which were not loaded by Strype.",
-        "gdrivePermissionOnlyStrypeFiles":"Access permission was not granted to Strype to load and sync Google Drive files which were not loaded by Strype."
+        "gdriveReadOnly":"This Drive file is read-only, syncing to Drive has been turned off.",
+        "gdriveWrongFile":"Please select a Strype file (extension \".spy\")."
     },
     "appMessage": {
         "editorFileUpload":"Uploading your file to the editor...",
@@ -111,13 +111,15 @@
         "loadToTarget":"Load from",
         "saveToTarget":"Save to",
         "targetFS":"this device",
-        "fileName":"File Name",
-        "autosaveGDrive":"Auto-saving in Google Drive",
+        "fileName":"File Name:",
+        "autosaveGDrive":"Saved",
         "autoSaveGDriveTooltip":"Project will automatically be saved to Google Drive every {freq} minutes.",
-        "saveAsNewFile":"Create new Google Drive file",
         "selectFolder":"Select a folder",
         "selectStrypeFile":"Select a Strype project",
-        "folderX":"Folder \"{folder}\""
+        "folderX":"\"{folder}\" folder",
+        "gdriveLocation":"Location:",
+        "gdriveAllStrypeFiles":"All Strype files",
+        "gdriveTab":"My Drive"
     },
     "contextMenu": {
         "cut":"Cut",
@@ -138,9 +140,9 @@
         "downloadHex":"Convert to Hex file",
         "downloadPython":"Convert to Python file",
         "loadProject":"Load",
-        "loadProjectTooltip":"Load a project from this device or from Google Drive\u2122",
+        "loadProjectTooltip":"Load a project from this device or from Google Drive",
         "saveProject":"Save",
-        "saveProjectTooltip":"Save a project to this device or to Google Drive\u2122",
+        "saveProjectTooltip":"Save a project to this device or to Google Drive",
         "resetProject":"Reset",
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",

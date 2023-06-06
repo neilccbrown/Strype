@@ -4,7 +4,7 @@
             <span class="project-name">{{projectName}}</span>
             <div v-if="isSyncingInGoogleDrive" :title="autoSaveGDriveTooltip">
                 <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="gdrive-logo"/>   
-                <span class="gdrive-sync-label">{{$i18n.t("appMessage.autosaveGDrive")}}</span>
+                <span class="gdrive-sync-label" v-if="isSyncingInGoogleDrive && !isEditorContentModifiedFlag" v-t="'appMessage.autosaveGDrive'" />
             </div>
         </div>     
         <div @mousedown.prevent.stop @mouseup.prevent.stop>
@@ -125,10 +125,14 @@ export default Vue.extend({
     computed: {
         ...mapStores(useStore),
 
-        projectName(): string{
+        projectName(): string {
             // When the project is updated, we reflect this into the HTML meta-data.
             document.title = "Strype - " + this.appStore.projectName;
             return this.appStore.projectName;
+        },
+
+        isEditorContentModifiedFlag(): boolean {
+            return (this.appStore.isEditorContentModified);
         },
 
         isSyncingInGoogleDrive(): boolean {

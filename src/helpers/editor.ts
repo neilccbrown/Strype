@@ -6,7 +6,7 @@ import { getAboveFrameCaretPosition } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 
 export const undoMaxSteps = 200;
-export const autoSaveFreqMins = 0.5; // The number of minutes between each autosave action.
+export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
 export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
@@ -18,16 +18,10 @@ export enum CustomEventTypes {
     removeFunctionToEditorAutoSave = "rmToAutoSaveFunction",
     requestEditorAutoSaveNow = "requestAutoSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
+    noneStrypeFilePicked = "nonStrypeFilePicked",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
-}
-
-export enum SaveRequestReason {
-    autosave,
-    saveProject,
-    loadProject,
-    unloadPage,
 }
 
 export function getFrameContainerUIID(frameId: number): string {

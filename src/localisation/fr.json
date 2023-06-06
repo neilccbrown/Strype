@@ -56,9 +56,9 @@
         "forbiddenFrameMove":"Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné.",
         "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
         "pythonInputWarning":"Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'.",
-        "gdriveFileSaveFail":"Le projet n'a pas pu être enregistré dans Google Drive. Un nouveau fichier sera généré dans Google Drive lors du prochain auto-enregistrement.",
         "gdriveConnectToSaveFailed":"La connexion à Google Drive a été perdue. La synchronisation avec Google Drive est interrompue, les dernières modifications n'ont peut-être pas été sauvegardées.",
-        "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive."
+        "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive.",
+        "gdriveFileAlreadyExists":"Un projet du même nom existe déjà dans l'emplacement de Drive. Strype a sauvegardé votre projet avec le nom \"{file}\"."
     },
     "buttonLabel":{
         "undo":"Annuler",
@@ -71,7 +71,8 @@
         "startCoding":"Codez !",
         "addCodeExtract":"Ajouter au code",
         "showMore":"montrer plus",
-        "showLess":"montrer moins"
+        "showLess":"montrer moins",
+        "saveDiffLocation":"Enregister ailleurs"
     },
     "action": {
       "uploadingToMicrobit":"Envoi en cours vers micro:bit ...",
@@ -93,9 +94,8 @@
       "gdriveConnectionSaveToLoadProjFailed":"Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour charger un autre projet.",
       "gdriveConnectionSaveToUnloadPageFailed":"Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour sauvegarder le project actuel avant de quitter Strype.",
       "gdrivePermissionsNotMet":"Strype nécessite au moins une permission d'accès pour utiliser Google Drive.",
-      "gdrivePermissionAllFilesReadOnly":"Aucune permission d'accès n'a été donnée à Strype pour synchroniser les fichiers vers Googe Drive.",
-      "gdrivePermissionOnlySyncStrypeFiles":"Aucune permission d'accès n'a été donnée à Strype pour synchroniser les fichers qui n'ont pas été chargés dans Google Drive par Strype.",
-      "gdrivePermissionOnlyStrypeFiles":"Aucune permission d'accès n'a été donnée à Strype pour charger et synchroniser les fichers qui n'ont pas été chargés dans Google Drive par Strype."
+      "gdriveReadOnly":"Ce fichier Drive est en lecture seule. La synchronisation a été désactivée.",
+      "gdriveWrongFile":"Veullez sélectionner un ficher Strype (extension \".spy\")."
     },
     "appMessage": {
       "editorFileUpload":"Chargement de votre fichier dans l'éditeur...",
@@ -111,13 +111,15 @@
       "loadToTarget":"Charer à partir de",
       "saveToTarget":"Enregister vers",
       "targetFS":"cet ordinateur",
-      "fileName":"Nom de fichier",
-      "autosaveGDrive":"Auto-sauvegarde dans Google Drive",
+      "fileName":"Nom de fichier :",
+      "autosaveGDrive":"Enregistré",
       "autoSaveGDriveTooltip":"Le projet sera automatiquement enregistré dans Google Drive toutes les {freq} minutes.",
-      "saveAsNewFile":"Générer un nouveau fichier sur Google Drive",
       "selectFolder":"Sélectionnez un dossier",
       "selectStrypeFile":"Sélectionnez un projet Strype",
-      "folderX":"Dossier \"{folder}\""
+      "folderX":"Dossier \"{folder}\"",
+      "gdriveLocation":"Emplacement :",
+      "gdriveAllStrypeFiles":"Tous les fichiers Strype",
+      "gdriveTab":"Mon Drive"
     },
     "contextMenu": {
       "cut":"Couper",
@@ -138,9 +140,9 @@
       "downloadHex":"Convertir vers Hex",
       "downloadPython":"Convertir vers Python",
       "loadProject":"Charger",
-      "loadProjectTooltip":"Charger un projet depuis cet appareil ou depuis Google Drive\u2122",
+      "loadProjectTooltip":"Charger un projet depuis cet appareil ou depuis Google Drive",
       "saveProject":"Sauvegarder",
-      "saveProjectTooltip":"Sauvegarder un projet vers cet appareil ou vers Google Drive\u2122",
+      "saveProjectTooltip":"Sauvegarder un projet vers cet appareil ou vers Google Drive",
       "resetProject":"Réinitialiser",
       "resetProjectTooltip":"Réinitialiser l'éditeur avec le projet par default de Strype",
       "prefs":"Préférences",

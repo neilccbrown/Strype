@@ -103,6 +103,8 @@ export const useStore = defineStore("app", {
 
             projectName: i18n.t("defaultProjName") as string,
 
+            isEditorContentModified: false,
+
             syncTarget: StrypeSyncTarget.none, // default value: no target
 
             strypeProjectLocation: undefined as ProjectLocation, // the last location where the strype project has been saved OR opened
@@ -1231,12 +1233,31 @@ export const useStore = defineStore("app", {
 
             //context menu indicator is cleared
             this.contextMenuShownId = "";
+            this.isModalDlgShown = false;
+            this.simpleModalDlgMsg = "";
+            this.currentModalDlgId = "";
+            this.isAppMenuOpened = false;
+
+            // Should show editing mode
+            this.isEditing = false;
+            if(this.focusSlotCursorInfos){
+                const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                const focusedSlot= (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
+                if(focusedSlot){
+                    focusedSlot.focused = false;
+                }
+                document.getElementById(getLabelSlotUIID(this.focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
+            }
+            this.ignoreKeyEvent = false;
 
             // If the sync target property did not exist in the saved stated, we set it up to the default value
             this.syncTarget = StrypeSyncTarget.none;
+            this.isEditorContentModified = false;
         },
 
         saveStateChanges(previousState: Record<string, unknown>) {
+            this.isEditorContentModified = true;
             // Saves the state changes in diffPreviousState.
             // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be 
             // the navigation status in the editor (i.e. are we editing? what blue caret or text cursor is currenty displayed), and there might not be any difference right now.
@@ -1281,6 +1302,7 @@ export const useStore = defineStore("app", {
         },
 
         applyStateUndoRedoChanges(isUndo: boolean){
+            this.isEditorContentModified = true;
             // Clear the current blue caret, whichever the new value will be so we do not get 2 carets if the current and new values differ
             const oldCaretId = this.currentFrame.id;
             if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(oldCaretId) && this.frameObjects[oldCaretId]){
@@ -2267,7 +2289,7 @@ export const useStore = defineStore("app", {
         },
        
         
-        setStateFromJSONStr(payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}){
+        setStateFromJSONStr(payload: {stateJSONStr: string; callBack: (setStateSucceeded: boolean) => void,  errorReason?: string, showMessage?: boolean, readCompressed?: boolean}){
             let isStateJSONStrValid = (payload.errorReason === undefined);
             let errorDetailMessage = payload.errorReason ?? "unknown reason";
             let isVersionCorrect = false;
@@ -2278,7 +2300,7 @@ export const useStore = defineStore("app", {
             if(isStateJSONStrValid){
                 // If the string we read was compressed, we need to uncompress it first
                 if(payload.readCompressed){
-                    this.setStateFromJSONStr({stateJSONStr: LZString.decompress(payload.stateJSONStr) as string, showMessage: payload.showMessage});
+                    this.setStateFromJSONStr({stateJSONStr: LZString.decompress(payload.stateJSONStr) as string, callBack: payload.callBack, showMessage: payload.showMessage});
                     return;
                 }
 
@@ -2345,6 +2367,9 @@ export const useStore = defineStore("app", {
                             );      
                             vm.$root.$off("bv::modal::hide", execSetStateFunction); 
                         }
+                        else{
+                            isStateJSONStrValid = false;
+                        }
                     };
                     vm.$root.$on("bv::modal::hide", execSetStateFunction); 
                     vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
@@ -2364,6 +2389,8 @@ export const useStore = defineStore("app", {
                 msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
                 this.currentMessage = message;
             }
+
+            payload.callBack(isStateJSONStrValid);
         },
 
         doSetStateFromJSONStr(payload: {stateJSONStr: string; showMessage?: boolean}){

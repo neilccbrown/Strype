@@ -81,8 +81,8 @@ import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { useStore } from "@/store/store";
-import { AppEvent, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, SaveRequestReason } from "./helpers/editor";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -118,7 +118,7 @@ export default Vue.extend({
             autoSaveTimerId: -1,
             resetStrypeProjectFlag:false,
             isLargePythonConsole: false,
-            autoSaveState: [(reason: SaveRequestReason) => {}],
+            autoSaveState: [] as AutoSaveFunction[],
         };
     },
 
@@ -188,7 +188,7 @@ export default Vue.extend({
     },
 
     created() {
-        this.autoSaveState[0] = (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason);
+        this.autoSaveState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -208,7 +208,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                this.autoSaveState.forEach((f) => f(SaveRequestReason.unloadPage));
+                this.autoSaveState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -282,6 +282,7 @@ export default Vue.extend({
                 this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
+                        callBack: () => {},
                         showMessage: false,
                         readCompressed: true,
                     }
@@ -289,29 +290,40 @@ export default Vue.extend({
             }
         }
         
-        this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (f: (reason: SaveRequestReason) => void) => {
+        this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (asf: AutoSaveFunction) => {
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
             window.clearInterval(this.autoSaveTimerId);
-            this.autoSaveState.push(f);
+            const asfEntry = this.autoSaveState.find((asfEntry) => (asfEntry.name == asf.name));
+            if(asfEntry){
+                // There is already some function set for that type of autosave, we just update the function
+                asfEntry.function = asf.function;
+            }
+            else{
+                // Nothing yet set for this type of autosave, we add the entry this.autoSaveState
+                this.autoSaveState.push(asf);
+            }
             this.setAutoSaveState();
         });
 
-        this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (f: (reason: SaveRequestReason) => void) => {
-            window.clearInterval(this.autoSaveTimerId);
-            this.autoSaveState.pop();
-            this.setAutoSaveState();
+        this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (asfName: string) => {           
+            const toDeleteIndex = this.autoSaveState.findIndex((asf) => asf.name == asfName);
+            if(toDeleteIndex > -1){
+                window.clearInterval(this.autoSaveTimerId);
+                this.autoSaveState.splice(toDeleteIndex, 1);
+                this.setAutoSaveState();
+            }            
         });
 
         // Listen to event for requesting the autosave now
-        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (reason: SaveRequestReason) => this.autoSaveState.forEach((f) => f(reason)));
+        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => this.autoSaveState.forEach((asf) => asf.function(saveReason)));
     },
 
     methods: {
         setAutoSaveState() {
             this.autoSaveTimerId = window.setInterval(() => {
-                this.autoSaveState.forEach((f) => f(SaveRequestReason.autosave));
+                this.autoSaveState.forEach((asf) => asf.function(SaveRequestReason.autosave));
             }, autoSaveFreqMins * 60000);
         },
         

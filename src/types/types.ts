@@ -685,6 +685,7 @@ export interface FormattedMessageArgKeyValuePlaceholder {
 export const FormattedMessageArgKeyValuePlaceholders: {[id: string]: FormattedMessageArgKeyValuePlaceholder} = {
     error: {key:"errorMsg", placeholderName : "{error_placeholder}"},
     list: {key:"list", placeholderName : "{list_placeholder}"},
+    file: {key: "file", placeholderName: "{file_name}"},
 };
 
 export interface FormattedMessage {
@@ -727,9 +728,9 @@ export const MessageTypes = {
     forbiddenFrameMove: "forbiddenFrameMove",
     functionFrameCantDelete: "functionFrameCantDelete",
     pythonInputWarning: "pythonInputWarning",
-    gdriveFileSaveFail: "gdriveFileSaveFail",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
     gdriveCantCreateStrypeFolder:"gdriveCantCreateStrypeFolder",
+    gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
 };
 
 //empty message
@@ -836,13 +837,6 @@ const PythonInputWarning: MessageDefinition = {
     message: "messageBannerMessage.pythonInputWarning",
 };
 
-const GDriveFileSaveFail: MessageDefinition = {
-    type: MessageTypes.gdriveFileSaveFail,
-    message: "messageBannerMessage.gdriveFileSaveFail",
-    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
-    path: imagePaths.empty,    
-};
-
 const GDriveConnectToSaveFailed: MessageDefinition = {
     type: MessageTypes.gdriveConnectToSaveFailed,
     message: "messageBannerMessage.gdriveConnectToSaveFailed",
@@ -854,6 +848,17 @@ const GDriveCantCreateStrypeFolder: MessageDefinition = {
     ...NoMessage,
     type: MessageTypes.gdriveCantCreateStrypeFolder,
     message: "messageBannerMessage.gdriveCantCreateStrypeFolder",
+};
+
+const GDriveFileAlreadyExists: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.gdriveFileAlreadyExists,
+    message: {
+        path: "messageBannerMessage.gdriveFileAlreadyExists",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.file.key]: FormattedMessageArgKeyValuePlaceholders.file.placeholderName,
+        },
+    },
 };
 
 export const MessageDefinitions = {
@@ -870,9 +875,9 @@ export const MessageDefinitions = {
     ForbiddenFrameMove,
     FunctionFrameCantDelete,
     PythonInputWarning,
-    GDriveFileSaveFail,
     GDriveConnectToSaveFailed,
     GDriveCantCreateStrypeFolder,
+    GDriveFileAlreadyExists,
 };
 
 //WebUSB listener
@@ -978,15 +983,17 @@ export enum StrypeSyncTarget {
     gd, // Google Drive
 }
 
-export enum GoogleDriveScope {
-    all = "https://www.googleapis.com/auth/drive",
-    appFiles = "https://www.googleapis.com/auth/drive.file",
-    allFilesReadonly = "https://www.googleapis.com/auth/drive.readonly",
+export enum SaveRequestReason {
+    autosave,
+    saveProjectAtLocation, // explicit save at the given location in the dialog
+    saveProjectAtOtherLocation, // explicit save with a change of the given location in the dialog
+    loadProject,
+    unloadPage,
 }
 
-export interface GoogleDriveScopesGrant {
-    scope: GoogleDriveScope,
-    granted: boolean,
+export interface AutoSaveFunction {
+    name: "WS" | "GD",
+    function: (saveReason: SaveRequestReason) => void;
 }
 
 export interface UserDefinedElement {

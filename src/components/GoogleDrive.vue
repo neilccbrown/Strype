@@ -1,7 +1,8 @@
 <template>
     <div>
-        <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="doSaveFile" :dev-key="devKey" :oauth-token="oauthToken"/>
-        <SimpleMsgModalDlg :dlgId="loginErrorModalDlgId"/>
+        <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="savePickedFolder" @nonStrypeFilePicked="onNonStrypeFilePicked" dev-key="AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E" :oauth-token="oauthToken"/>
+        <SimpleMsgModalDlg :dlgId="loginErrorModalDlgId" :hideActionListener="signIn"/>
+        <SimpleMsgModalDlg :dlgId="nonStrypeFilePickedModalDlgId" :hideActionListener="loadFile" />
     </div>
 </template>
 
@@ -12,10 +13,10 @@ import {useStore} from "@/store/store";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import i18n from "@/i18n";
-import { CustomEventTypes, getAppSimpleMsgDlgId, SaveRequestReason } from "@/helpers/editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
 import { strypeFileExtension } from "@/helpers/common";
-import { GoogleDriveScope, GoogleDriveScopesGrant, MessageDefinitions, StrypeSyncTarget } from "@/types/types";
-import { BvModalEvent } from "bootstrap-vue";
+import { FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
+import { cloneDeep } from "lodash";
 
 export default Vue.extend({
     name: "GoogleDrive",
@@ -29,23 +30,18 @@ export default Vue.extend({
         return {
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
-            // Google Drive scopes used within Strype with their grant statutus
-            googleDriveScopesGrants: [{scope: GoogleDriveScope.all, granted: false}, {scope: GoogleDriveScope.allFilesReadonly, granted: false}, {scope: GoogleDriveScope.appFiles, granted: false}] as GoogleDriveScopesGrant[],
             currentAction: null as "load" | "save" | null, // flag the request current action for async workflow;
-            loadedFileCreatedByStrype: false,
             saveReason: SaveRequestReason.autosave, // flag the reason of the save action
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project (we need to keep it live for autosave)
         };
     },
 
     computed: {
-        ...mapStores(useStore),
-
-        devKey(): string {
-            return "AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E";
+        ...mapStores(useStore),    
+        
+        googleDriveScope(): string {
+            return "https://www.googleapis.com/auth/drive";
         },
-
-       
 
         googleDriveFilePickerComponentId(): string {
             return "googleDriveFilePickerComponent";
@@ -55,8 +51,8 @@ export default Vue.extend({
             return "gdLoginErrorModalDlg";
         },
 
-        signedIn(): boolean {
-            return this.appStore.syncTarget == StrypeSyncTarget.gd;
+        nonStrypeFilePickedModalDlgId(): string {
+            return "gdNonStrypeFilePickedModalDlg";
         },
 
         saveFileId: {
@@ -92,14 +88,6 @@ export default Vue.extend({
             tag.async = true;
             document.head.appendChild(tag);
         });
-
-        // Register the event listener for the dialog here
-        this.$root.$on("bv::modal::hide", this.onHideLoginModalDlg);  
-    },
-
-    beforeDestroy(){
-        // Remove the event listener for the dialog here, just in case...
-        this.$root.$off("bv::modal::hide", this.onHideLoginModalDlg);
     },
 
     methods: {
@@ -110,10 +98,8 @@ export default Vue.extend({
         
         // After Google API loaded, initialise client:
         gapiStart() {
-            //const apiKey = this.devKey;
             gapi.client.init({
             }).then(function (response) {
-                //gapi.client.setApiKey(apiKey);
                 console.log("GAPI loaded");
             }, function (reason) {
                 console.log("GAPI Error: " + reason.result.error.message);
@@ -124,41 +110,15 @@ export default Vue.extend({
         onGSILoad() {
             this.client = google.accounts.oauth2.initTokenClient({
                 client_id: "802295052786-h65netp8r9961pekqnhnt3oapcb9o8ji.apps.googleusercontent.com",
-                scope: this.googleDriveScopesGrants.flatMap((scopeGrant) => scopeGrant.scope).join(" "),
+                scope: this.googleDriveScope,
                 // Note: this callback is after *sign-in* (happens on button press), NOT on simply loading the client:
                 callback: (response: google.accounts.oauth2.TokenResponse) => {
-                    console.log("ON GSI LOAD");
-                    console.log(JSON.stringify(response));
-                    // We check the permission to the scopes given (and keep them flagged in data). 
-                    this.googleDriveScopesGrants.forEach((scopeGrant) => (scopeGrant.granted = google.accounts.oauth2.hasGrantedAnyScope(response,scopeGrant.scope)));
-                    console.log(JSON.stringify(this.googleDriveScopesGrants));
-                    // If "all" is granted we can proceed without any warning
-                    if(!(this.googleDriveScopesGrants.find((scopeGrant) => scopeGrant.scope == GoogleDriveScope.all)?.granted)){
-                        // "all" isn't granted: if any other scope is granted, then we alert the user and stop the authentication as nothing can be done on Drive
-                        // otherwise, we show a warning message that indicates the limitations caused by the lack of permissions.
-                        const isAppFilesGranted = this.googleDriveScopesGrants.find((scopeGrant) => scopeGrant.scope == GoogleDriveScope.appFiles)?.granted;
-                        const isAllFilesReadOnlyGranted = this.googleDriveScopesGrants.find((scopeGrant) => scopeGrant.scope == GoogleDriveScope.allFilesReadonly)?.granted;
-                        if(!isAppFilesGranted && !isAllFilesReadOnlyGranted){
-                            this.oauthToken = null;
-                            this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdrivePermissionsNotMet") as string;
-                            this.$root.$emit("bv::show::modal", this.loginErrorModalDlgId);
-                            return;  
-                        }
-                        
-                        // Other cases: let's set the message for the configuration when only the allFileReadonly permission is granted:
-                        // in that configuration, users can load any files of Drive, but won't be able to sync -- that's a read only mode.
-                        let errorMessageName = "errorMessage.gdrivePermissionAllFilesReadOnly";
-                        if(isAppFilesGranted && isAllFilesReadOnlyGranted){
-                            // In that configuration, users can load any file, but will only be able to sync files written by Strype to Drive
-                            errorMessageName = "errorMessage.gdrivePermissionOnlySyncStrypeFiles";
-                        }
-                        else if(isAppFilesGranted){
-                            // In that configuration, users can only load and sync files written by Strype to Drive 
-                            errorMessageName = "errorMessage.gdrivePermissionOnlyStrypeFiles";
-                        }        
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t(errorMessageName) as string;
-                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());                
-                    }
+                    // We check the permission is given to the scope required by Strype. If not given, show message.
+                    if(!google.accounts.oauth2.hasGrantedAllScopes(response, this.googleDriveScope)) {
+                        this.oauthToken = null;
+                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdrivePermissionsNotMet") as string;
+                        this.$root.$emit("bv::show::modal", this.loginErrorModalDlgId);
+                    }                   
                              
                     if (response && response.error == undefined) {
                         this.oauthToken = response.access_token;
@@ -186,14 +146,13 @@ export default Vue.extend({
         // After signing in or signed out:
         updateSignInStatus(signed: boolean) {
             if(signed){
-                // If Strype only gets the scope to read files only, we will never be able to 
-            }
+                this.$root.$emit(CustomEventTypes.addFunctionToEditorAutoSave, {name: "GD", function: (saveReason: SaveRequestReason) => this.saveFile(saveReason)});
+            }  
             else{
                 // If signing fails, reset to no sync
                 this.appStore.syncTarget = StrypeSyncTarget.none; 
-            }   
-            
-            this.$root.$emit((signed) ? CustomEventTypes.addFunctionToEditorAutoSave : CustomEventTypes.removeFunctionToEditorAutoSave, (saveReason: SaveRequestReason) => this.saveFile(saveReason));
+                this.$root.$emit(CustomEventTypes.removeFunctionToEditorAutoSave, "GD");
+            }            
         },
 
         // Test the connection is still valid, and allow callbacks for success or failure of the test
@@ -202,7 +161,7 @@ export default Vue.extend({
             xhr.open("GET",
                 "https://www.googleapis.com/drive/v3/about?fields=user&" +
                 "access_token=" + this.oauthToken);
-            xhr.onreadystatechange = function (e) {
+            xhr.onreadystatechange = function (e) {                
                 if(xhr.readyState == xhr.DONE) {
                     if(JSON.parse(xhr.response)["user"]){
                         onSuccessCallback();
@@ -213,12 +172,6 @@ export default Vue.extend({
                 }
             };
             xhr.send(null);
-        },
-
-        onHideLoginModalDlg(event: BvModalEvent, dlgId: string) {
-            if(dlgId == this.loginErrorModalDlgId){
-                this.signIn();
-            }
         },
 
         loadFile() {
@@ -241,8 +194,31 @@ export default Vue.extend({
 
         doLoadFile() {
             if(this.oauthToken != null){
-                // Method called to trigger the file load -- this would be called after we made sure the connection to Google Drive is (still) valid
-                (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false);
+                // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
+                // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
+                // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
+                this.checkDriveStrypeFolder(false, (strypeFolderId) => {
+                    if(this.appStore.strypeProjectLocation){
+                        gapi.client.request({
+                            path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
+                            method: "GET",
+                        }).then((response) => {
+                            // Folder is found, we get the name
+                            this.appStore.strypeProjectLocationAlias = JSON.parse(response.body).name;
+                        }, () => {
+                            // Folder not found, we set Strype as default folder if it exists
+                            this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
+                            this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
+                        });
+                    }
+                    else{
+                        this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
+                        this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
+                    }
+
+                    // Method called to trigger the file load -- this would be called after we made sure the connection to Google Drive is (still) valid
+                    (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false);
+                });
             }
         },
 
@@ -254,7 +230,6 @@ export default Vue.extend({
             // In any case, we check that the given location (if provided) still exists. We set the alias (name of the folder) here.
             // If the folder doesn't exist, for all reasons for saving, we reset the Strype project location flags in the store (subsequent code will handle what to do)
             if(this.appStore.strypeProjectLocation){
-                console.log("in save, with a location " + this.appStore.strypeProjectLocation);
                 gapi.client.request({
                     path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
                     method: "GET",
@@ -262,7 +237,6 @@ export default Vue.extend({
                     // Folder is found, we get the name
                     this.appStore.strypeProjectLocationAlias = JSON.parse(response.body).name;
                 }, (reason) => {
-                    console.log(JSON.stringify(reason));
                     // Connection issue?
                     if(reason.status == 401 || reason.status == 403){
                         this.proceedFailedConnectionCheckOnSave();
@@ -277,83 +251,63 @@ export default Vue.extend({
                 });
             }            
 
-            // When an explicit save is requested, it acts as a "save as" and we generate a new file in Google Drive
-            if(saveReason == SaveRequestReason.saveProject){
-                this.saveFileId = undefined;
+            // When an explicit save is requested, it acts as a "save as" and we generate a new file in Google Drive.
+            // In any other case, we only save a file if there is a save file id set
+            if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
                 // For this case, we ask for the location (with /Strype as the default location -- which is created if non existant)
-                // Note that we need to specify the parent folder of the search (root folder) otherwise we would also get subfolders; and don't get trashed folders 
-                // (that will also discard shared folders, so we don't need to check the writing rights...)
-                gapi.client.request({
-                    path: "https://www.googleapis.com/drive/v3/files",
-                    params: {"q": "mimeType='application/vnd.google-apps.folder' and name='Strype' and parents='root' and trashed=false"},
-                }).then((response) => {
-                    // Check if the response returns a folder. As Google Drive allows entries with same name, it is possible that several "Strype" folder exists; we will use the first one.
-                    const filesArray: {id: string}[] = JSON.parse(response.body).files;
-                    if(filesArray.length > 0){
-                        // If the Strype root folder exists, then we make it the location reference if none is defined yet.
-                        if(this.appStore.strypeProjectLocation == undefined){
-                            this.appStore.strypeProjectLocation = filesArray[0].id;
-                            this.appStore.strypeProjectLocationAlias = "Strype";
-                        } 
+                this.checkDriveStrypeFolder(true, (strypeFolderId: string | null)=> {
+                    // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
+                    if(strypeFolderId != null && this.appStore.strypeProjectLocation == undefined){
+                        // No location is set, we set the Strype folder
+                        this.appStore.strypeProjectLocation = strypeFolderId;
+                        this.appStore.strypeProjectLocationAlias = "Strype";
+                    }
+
+                    // The autosave method may not exist (the case when a user has loaded a read-only Drive project, then wants to save: sync is off, but connection probably still maintained)
+                    this.$root.$emit(CustomEventTypes.addFunctionToEditorAutoSave, {name: "GD", function: (saveReason: SaveRequestReason) => this.saveFile(saveReason)});
+
+                    if(saveReason == SaveRequestReason.saveProjectAtOtherLocation){
+                        (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(true);
+                        // Save will be done after the file has been picked.   
                     }
                     else{
-                        // If the Strype root folder doesn't exist in the user's Drive, we create one.
-                        const body = JSON.stringify({
-                            "name": "Strype",
-                            "mimeType": "application/vnd.google-apps.folder",
-                        });
-                        gapi.client.request({
-                            path: "https://www.googleapis.com/drive/v3/files",
-                            method: "POST",
-                            params: {"uploadType": "media"},
-                            body: body,
-                        }).then((resp) => {
-                            console.log(resp);
-                            // Save the save file ID as the reference location
-                            console.log("created file with id " + JSON.parse(resp.body).id);
-                            this.appStore.strypeProjectLocation = JSON.parse(resp.body).id; 
-                            this.appStore.strypeProjectLocationAlias = "Strype";
-                        },
-                        (reason) => {
-                            // If the Strype folder cound't be created, we alert the user (temporary message banner) but we proceed with the save file workflow1
-                            console.log("failed creating folder " + JSON.stringify(reason));
-                            this.appStore.currentMessage = MessageDefinitions.GDriveCantCreateStrypeFolder;
-                            setTimeout(() => this.appStore.currentMessage = MessageDefinitions.NoMessage, 3000);  
-                        });
+                        this.lookForAvailableProjectFileName(this.doSaveFile);
                     }
-                    // Show the file picker to select a folder (with default location)
-                    (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(true);
-                    // Save will be done after the file has been picked.                   
-                },(reason) => {
-                    // If the login to the Google failed (or the user wasn't logged in) we try again
-                    if(reason.status == 401 || reason.status == 403){
-                        this.proceedFailedConnectionCheckOnSave();
-                    }
-                });
+                }, this.proceedFailedConnectionCheckOnSave);
             }
-            else{
-                this.doSaveFile();
+            else {
+                if(this.saveFileId){
+                    this.doSaveFile();
+                }
+                else{
+                    // Notify the application that if we were saving for loading now we are done
+                    if(this.saveReason == SaveRequestReason.loadProject)                     {
+                        this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                    }      
+                }
             }
         },
 
         doSaveFile(){
+            const isExplictSave = (this.saveReason == SaveRequestReason.saveProjectAtLocation || this.saveReason == SaveRequestReason.saveProjectAtOtherLocation);
+            if(isExplictSave){
+                this.saveFileId = undefined;
+            }
             const fileContent = this.appStore.generateStateJSONStrWithCheckpoint();   
             // The file name depends on the context: normal save, we use the filed this.saveName that is in line with what the user provided in the input field
-            // while when do autosave etc, we use th PROJET saved name in the store.
-            const fullFileName = ((this.saveReason == SaveRequestReason.saveProject) ? this.saveFileName  : this.appStore.projectName) + "." + strypeFileExtension;        
+            // while when do autosave etc, we use th PROJECT saved name in the store.
+            const fullFileName = ((isExplictSave) ? this.saveFileName  : this.appStore.projectName) + "." + strypeFileExtension;        
             // Using this example: https://stackoverflow.com/a/38475303/412908
             // Arbitrary long string:
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const body : string[] = [];
-            console.log("ready to save file " + fullFileName + " in parent " + this.appStore.strypeProjectLocation);
             // Prepare the request body parameters. Note that we only set the parent ID for explicit save
             const bodyReqParams: {name: string, mimeType: string, parents?: [string]} = 
                 {
                     name: fullFileName,
                     mimeType: "application/strype",
                 };
-            if(this.saveReason == SaveRequestReason.saveProject && this.appStore.strypeProjectLocation){
-                console.log("setting parents to "+this.appStore.strypeProjectLocation.toString());
+            if(isExplictSave && this.appStore.strypeProjectLocation){
                 bodyReqParams.parents = [this.appStore.strypeProjectLocation.toString()];
             }
             body.push("Content-Type: application/json; charset=UTF-8\n\n" + JSON.stringify(bodyReqParams) + "\n");
@@ -374,8 +328,9 @@ export default Vue.extend({
                     this.saveFileId = JSON.parse(resp.body)["id"];
                     // Set the sync target 
                     this.appStore.syncTarget = StrypeSyncTarget.gd;
+                    this.appStore.isEditorContentModified = false;
                     // Set the project name when we have made an explicit saving
-                    if(this.saveReason == SaveRequestReason.saveProject){
+                    if(isExplictSave){
                         this.appStore.projectName = this.saveFileName;
                     }                    
                     // Notify the application that if we were saving for loading now we are done
@@ -384,7 +339,6 @@ export default Vue.extend({
                     }                
                 },
                 (reason) => {
-                    console.log(JSON.stringify(reason));
                     // If we have an authorised error (for example, timed-out connexion) we should disconnect and warn the users
                     // (not to sure why rawResp.status doesn't give the right stuff, but based on debugging, this works...)
                     if(reason.status == 401){
@@ -392,19 +346,10 @@ export default Vue.extend({
                     }
                     if(reason.status == 404 && this.saveFileId != undefined){
                         // We assume something went wrong regarding saving against the specified file id.
-                        // Actions to take depeding on the reason for saving:
-                        // autosave --> show a message banner indicating we will save on a new file at the next sync
-                        // normal + loading + unload--> show a modal and stop sync
-                        if(this.saveReason == SaveRequestReason.autosave){
-                            const message = MessageDefinitions.GDriveFileSaveFail;
-                            this.appStore.currentMessage = message;
-                        }
-                        else{
-                            this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.GDriveSaveFailed") as string;
-                            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
-                            this.updateSignInStatus(false);
-                            this.appStore.syncTarget = StrypeSyncTarget.none;
-                        }
+                        // We show a modal and stop sync
+                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.GDriveSaveFailed") as string;
+                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                        this.updateSignInStatus(false);
                     }
                 }
             );   
@@ -438,35 +383,155 @@ export default Vue.extend({
         },
         
         loadPickedFileId(id : string, fileName: string) : void {
-            // First retrieve the file meta data, particularly if Strype created the file in Drive to adapt the autosave mechanism according the user's given scope permissions
-            gapi.client.request({
-                path: "https://www.googleapis.com/drive/v3/files/" + id,
-                method: "GET",
-                params: {fields: "isAppAuthorized"},
-            }).execute((resp) => {
-                console.log("GOT FILE data");
-                console.log(JSON.stringify(resp));
-                this.loadedFileCreatedByStrype = resp.isAppAuthorized;
-                console.log(" now we have");
-                console.log(this.loadedFileCreatedByStrype);
-            });
-            // Then we can retrieve the file content and load it in the editor
             gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files/" + id,
                 method: "GET",
                 params: {alt: "media"},
             }).execute((resp) => {
+                // Some flags in the store SHOULD NOT BE lost when we load a file, so we make a backup of those here:
+                const strypeLocation = this.appStore.strypeProjectLocation;
+                const strypeLocationAlias = this.appStore.strypeProjectLocationAlias;
+                // Load the file content in the editor
                 this.appStore.setStateFromJSONStr(
                     {
                         stateJSONStr: JSON.stringify(resp),
-                    }
+                        callBack: (setStateSuccess: boolean) => {
+                            // Only update things if we could set the new state
+                            if(setStateSuccess){
+                                this.saveFileId = id;
+                                this.appStore.syncTarget = StrypeSyncTarget.gd;
+                                // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
+                                const fileNameNoExt = fileName.substring(0, fileName.lastIndexOf("."));
+                                this.appStore.projectName = fileNameNoExt;
+                                this.saveFileName = fileNameNoExt;
+                                // Restore the fields we backed up before loading
+                                this.appStore.strypeProjectLocation = strypeLocation;
+                                this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
+                            }
+                        },
+                    }                    
                 );
-                this.saveFileId = id;
-                this.appStore.syncTarget = StrypeSyncTarget.gd;
-                // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
-                const fileNameNoExt = fileName.substring(0, fileName.lastIndexOf("."));
-                this.appStore.projectName = fileNameNoExt;
-                this.saveFileName = fileNameNoExt;
+
+                // We check that the file has write access. If it doesn't we shouldn't propose the sync anymore.
+                gapi.client.request({
+                    path: "https://www.googleapis.com/drive/v3/files/" + id,
+                    method: "GET",
+                    params: {fields: "capabilities/canEdit"},
+                }).execute((resp) => {
+                    if(!resp["capabilities"]["canEdit"]){
+                        this.saveFileId = undefined;
+                        this.updateSignInStatus(false);
+                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveReadOnly") as string;
+                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    }
+                });
+            });
+        },
+
+        savePickedFolder(){
+            // Doesn't matter the extact nature of the reason for saving, as long as we specify one of the 2 values for explicit saving.
+            // (necessary as autosave may have been triggered in between)
+            this.saveReason = SaveRequestReason.saveProjectAtLocation;
+            this.lookForAvailableProjectFileName(this.doSaveFile);
+        },
+
+        onNonStrypeFilePicked(){
+            // When a non-Strype file was picked to load, we notify the user on a modal dialog, and trigger the Drive picker again
+            this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveWrongFile") as string;
+            this.$root.$emit("bv::show::modal", this.nonStrypeFilePickedModalDlgId);
+        },
+
+        checkDriveStrypeFolder(createIfNone: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => void, failedConnectionCallBack?: () => void) {
+            // Check if the Strype folder exists on the Drive. If not, we create it if createIfNone is set to true.
+            // Returns the file ID or null if the file couldn't be found/created.
+            // Note that we need to specify the parent folder of the search (root folder) otherwise we would also get subfolders; and don't get trashed folders 
+            // (that will also discard shared folders, so we don't need to check the writing rights...)
+            let strypeFolderId: string | null = null;
+            gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files",
+                params: {"q": "mimeType='application/vnd.google-apps.folder' and name='Strype' and parents='root' and trashed=false"},
+            }).then((response) => {
+                // Check if the response returns a folder. As Google Drive allows entries with same name, it is possible that several "Strype" folder exists; we will use the first one.
+                const filesArray: {id: string}[] = JSON.parse(response.body).files;
+                if(filesArray.length > 0){
+                    // If the Strype root folder exists, then we make it the location reference if none is defined yet.
+                    strypeFolderId = filesArray[0].id;
+                    // Continue with callback method after check is done
+                    checkFolderDoneCallBack(strypeFolderId);
+                }
+                else if(createIfNone){
+                    // If the Strype root folder doesn't exist in the user's Drive, we create one when requested
+                    const body = JSON.stringify({
+                        "name": "Strype",
+                        "mimeType": "application/vnd.google-apps.folder",
+                    });
+                    gapi.client.request({
+                        path: "https://www.googleapis.com/drive/v3/files",
+                        method: "POST",
+                        params: {"uploadType": "media"},
+                        body: body,
+                    }).then((resp) => {
+                        strypeFolderId = JSON.parse(resp.body).id; 
+                        // Continue with callback method after check is done
+                        checkFolderDoneCallBack(strypeFolderId);
+                    },
+                    (reason) => {
+                        // If the Strype folder cound't be created, we alert the user (temporary message banner) but we proceed with the save file workflow1
+                        this.appStore.currentMessage = MessageDefinitions.GDriveCantCreateStrypeFolder;
+                        setTimeout(() => this.appStore.currentMessage = MessageDefinitions.NoMessage, 3000);  
+                        // Continue with callback method after check is done
+                        checkFolderDoneCallBack(strypeFolderId);
+                    });
+                }
+                else{
+                    // Continue with callback method after check is done
+                    checkFolderDoneCallBack(strypeFolderId);
+                }
+
+            },(reason) => {
+                // If the login to the Google failed (or the user wasn't logged in), handle it via the callback
+                if(failedConnectionCallBack && (reason.status == 401 || reason.status == 403)){
+                    failedConnectionCallBack();
+                }
+            });
+        },
+
+        lookForAvailableProjectFileName(onSuccessCallback: () => void){
+            // We check if the currently suggested file name is not already used in the location we save the file.
+            // If it is we'll change the file name to "<fileName> (n)" with n being the next copy incremental available value.
+            // (note: it seems that searching against regex isn't supported. cf https://developers.google.com/drive/api/guides/ref-search-terms,
+            // the matching works in a very strange way, on a prefix and word basis, but yet I get results I didn't expect, so better double check on the results to make sure).
+            gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files",
+                params: {"q": "name contains '*.spy' and parents='" + ((this.appStore.strypeProjectLocation) ? this.appStore.strypeProjectLocation : "root") + "' and trashed=false"},
+            }).then((response) => {
+                let maxCurrentCopyIterator = 1;
+                let hasAlreadyFile = false;
+                const filesArray: {name: string}[] = JSON.parse(response.body).files;
+                filesArray.forEach((file) => {
+                    hasAlreadyFile ||= (file.name == (this.saveFileName + "." + strypeFileExtension));
+                    // Look for potential copies if that file name starts with the given file name
+                    if(file.name.startsWith(this.saveFileName)){
+                        const copyIncrementFileMatch = file.name.substring(this.saveFileName.length).match(new RegExp("^ \\((\\d+)\\)\\." + strypeFileExtension + "$"));
+                        if(copyIncrementFileMatch != null && parseInt(copyIncrementFileMatch[1]) > maxCurrentCopyIterator){
+                            maxCurrentCopyIterator = parseInt(copyIncrementFileMatch[1]);
+                        }
+                    }
+                });
+
+                if(hasAlreadyFile){
+                    this.saveFileName += (" (" + (maxCurrentCopyIterator + 1) + ")");
+                    const message = cloneDeep(MessageDefinitions.GDriveFileAlreadyExists);
+                    const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.file.key] = msgObj.args.file.replace(FormattedMessageArgKeyValuePlaceholders.file.placeholderName, this.saveFileName);
+                    this.appStore.currentMessage = message;
+                    setTimeout(() => this.appStore.currentMessage = MessageDefinitions.NoMessage, 3000);  
+                }
+                
+                onSuccessCallback();
+            },(reason) => {
+                // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
+                this.proceedFailedConnectionCheckOnSave();
             });
         },
     },

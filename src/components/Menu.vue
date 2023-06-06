@@ -25,19 +25,23 @@
                 <label v-t="'appMessage.loadToTarget'" :for="loadProjectProjectSelectId" class="load-save-label"/>
                 <select :name="loadProjectProjectSelectId" :ref="loadProjectProjectSelectId">
                     <option :value="syncFSValue" v-t="'appMessage.targetFS'" :selected="getSyncTargetStatus(syncFSValue)"/>
-                    <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive&trade;</option>
+                    <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive</option>
                 </select>
             </ModalDlg>
             <a :id="saveProjectLinkId" v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
             <ModalDlg :dlgId="saveProjectModalDlgId">
                 <label v-t="'appMessage.fileName'" class="load-save-label"/>
                 <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text"/>  
-                <br/><br/>       
+                <div v-show="showGDSaveLocation">
+                    <label v-t="'appMessage.gdriveLocation'" class="load-save-label"/>
+                    <span class="load-save-label">{{currentDriveLocation}}</span>
+                    <b-button v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
+                    </div>
+                <br/>    
                 <label v-t="'appMessage.saveToTarget'" :for="saveProjectProjectSelectId" class="load-save-label" />
-                <select :name="saveProjectProjectSelectId" :ref="saveProjectProjectSelectId">
+                <select :name="saveProjectProjectSelectId" :ref="saveProjectProjectSelectId" @change="onSaveTargetSelectChange">
                     <option :value="syncFSValue" v-t="'appMessage.targetFS'" :selected="getSyncTargetStatus(syncFSValue)" />
-                    <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive&trade;</option>
-                    <option v-if="isSyncingToGoogleDrive" value="gdnew">New GD test</option>
+                    <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive</option>
                 </select>
             </ModalDlg>
             <div class="menu-separator-div"></div>
@@ -110,8 +114,8 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension} from "@/helpers/common";
-import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, StrypeSyncTarget } from "@/types/types";
-import { CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorMenuUIID, getFrameUIID, SaveRequestReason } from "@/helpers/editor";
+import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
+import { CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorMenuUIID, getFrameUIID } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -141,6 +145,9 @@ export default Vue.extend({
             currentTabindexValue: 0,
             // The current selection for the sync target (local to this component, not in the store)            
             localSyncTarget: StrypeSyncTarget.fs,
+            showGDSaveLocation: false,
+            // Flag to know if a request to change with a different folder location for Googe Drive has been requested
+            saveAtOtherLocation: false, 
         };
     },
 
@@ -215,6 +222,11 @@ export default Vue.extend({
             return "save-strype-project-modal-dlg";
         },
 
+        currentDriveLocation(): string {
+            const currentLocation = this.appStore.strypeProjectLocationAlias??"";
+            return (currentLocation.length > 0) ? (this.$i18n.t("appMessage.folderX", {folder: currentLocation}) as string) : "Strype";
+        },
+
         saveFileNameInputId(): string {
             return "saveStrypeFileNameInput";
         },
@@ -281,15 +293,29 @@ export default Vue.extend({
             return target == this.appStore.syncTarget;
         },
 
+        getTargetSelectVal(isActionSave: boolean): number {
+            // Get the target selected in a target select HTML element; 
+            // of the "save" action popup if isActionSave is true, of the "load" action popup otherwise
+            const refId = (isActionSave) ? this.saveProjectProjectSelectId : this.loadProjectProjectSelectId;
+            return parseInt((this.$refs[refId] as HTMLSelectElement).value);
+        },
+
+        onSaveTargetSelectChange(){
+            this.showGDSaveLocation = (this.getTargetSelectVal(true) == this.syncGDValue);
+        },
+
         onStrypeMenuShownModalDlg(event: BvModalEvent, dlgId: string) {
             // This method handles the workflow of the "save file" menu entry related dialog
             this.showMenu = false;
             if(dlgId == this.saveProjectModalDlgId){
+                this.saveAtOtherLocation = false;
                 // After the above event is emitted, the Strype menu is closed and the focus is given back to the editor.
                 // We want to give the focus back to the modal dialog input field and set its value.
                 // Maybe because of internal Bootstrap behaviour, can't give focus to the input right now or in next ticks
-                // so we wait a bit to generate a focus/click in the input
+                // so we wait a bit to generate a focus/click in the input.
+                // We also check which target is selected to update target-depend UI in the modal.
                 setTimeout(() => {
+                    this.onSaveTargetSelectChange();
                     (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value = this.appStore.projectName;
                     document.getElementById(this.saveFileNameInputId)?.focus();
                     document.getElementById(this.saveFileNameInputId)?.click();
@@ -304,7 +330,7 @@ export default Vue.extend({
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){
                     // We force saving the current project anyway just in case
-                    this.localSyncTarget = parseInt((this.$refs[this.loadProjectProjectSelectId] as HTMLSelectElement).value);
+                    this.localSyncTarget = this.getTargetSelectVal(false);
                     this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.loadProject);
                     // The remaining parts of the loading process will be only done once saving is complete (cd loadProjec())                    
                 }
@@ -318,7 +344,7 @@ export default Vue.extend({
                         saveFileName = this.$i18n.t("defaultProjName") as string;
                     }
                     
-                    const selectValue = parseInt((this.$refs[this.saveProjectProjectSelectId] as HTMLSelectElement).value);
+                    const selectValue = this.getTargetSelectVal(true);
                     if(selectValue != StrypeSyncTarget.gd ){
                         if(!canBrowserSaveFilePicker && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
@@ -338,12 +364,23 @@ export default Vue.extend({
                             saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), saveFileName + "." + strypeFileExtension);
                         }
                     }
-                    else {           
+                    else {          
+                        // If we were already syncing to Google Drive, we save the current file now
+                        if(this.isSyncingToGoogleDrive){
+                            this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.autosave);
+                        }
+                        const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
                         (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFileName = saveFileName;
-                        (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFile(SaveRequestReason.saveProject);
+                        (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFile(saveReason);
                     }
                 }
             }
+        },
+
+        onSaveDiffLocationClick(){
+            // When the button to save at a different location is called, we trigger the hiding of the modal dialog and and set the right flag about saving
+            this.saveAtOtherLocation = true;
+            this.$root.$emit("bv::hide::modal", this.saveProjectModalDlgId);
         },
 
         loadProject(){
@@ -384,6 +421,7 @@ export default Vue.extend({
                                 this.appStore.setStateFromJSONStr( 
                                     {
                                         stateJSONStr: content,
+                                        callBack: () => {},
                                     }
                                 );
                                 emitPayload.requestAttention=false;
@@ -395,6 +433,7 @@ export default Vue.extend({
                             (reason) => this.appStore.setStateFromJSONStr( 
                                 {
                                     stateJSONStr: "",
+                                    callBack: () => {},
                                     errorReason: reason,
                                 }
                             )
@@ -471,11 +510,6 @@ export default Vue.extend({
                 this.currentTabindexValue = ((newTabindexValue % this.retrievedTabindexesCount) + this.retrievedTabindexesCount) % this.retrievedTabindexesCount;
                 (document.querySelector(".bm-menu  [tabindex='" + this.currentTabindexValue + "']") as HTMLElement).focus();
             }
-        },
-
-        onActionPerformed(){
-            // When a menu action is performed, we close the menu
-            this.showMenu = false;
         },
 
         performUndoRedo(isUndo: boolean): void {
