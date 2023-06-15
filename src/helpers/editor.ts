@@ -3,8 +3,10 @@ import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition } from "./storeMethods";
+import { strypeFileExtension } from "./common";
 
 export const undoMaxSteps = 200;
+export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
 export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
@@ -12,6 +14,11 @@ export enum CustomEventTypes {
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
+    addFunctionToEditorAutoSave = "addToAutoSaveFunction",
+    removeFunctionToEditorAutoSave = "rmToAutoSaveFunction",
+    requestEditorAutoSaveNow = "requestAutoSaveNow",
+    saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
+    noneStrypeFilePicked = "nonStrypeFilePicked",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
@@ -31,6 +38,14 @@ export function getFrameUIID(frameId: number): string{
 
 export function getFrameHeaderUIID(frameId: number): string{
     return "frameHeader_" + frameId;
+}
+
+export function getAppSimpleMsgDlgId(): string {
+    return "appSimpleMsgModalDlg";
+}
+
+export function getImportDiffVersionModalDlgId(): string {
+    return "importDiffVersionModalDlg";
 }
 
 function retrieveFrameIDfromUIID(uiid: string): number {
@@ -253,10 +268,6 @@ export function getEditorMenuUIID(): string {
     return "showHideMenu";
 } 
 
-export function getEditorButtonsContainerUIID(): string {
-    return "editorButtonsContainer";
-}
-
 export function getMenuLeftPaneUIID(): string {
     return "menu-bar";
 }
@@ -289,7 +300,7 @@ export function getAcContextPathId(slotId: string): string{
     return slotId+"_AcContextPathSpan";
 }
 
-export const fileImportSupportedFormats: string[] = ["spy"];
+export const fileImportSupportedFormats: string[] = [strypeFileExtension];
 
 // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
 // by an error class on a frame ("frameDiv" + "error") or an editable slot ("labelSlot-input" + "errorSlot").

@@ -1,5 +1,6 @@
 {
-    "appName":"Strype editor",
+    "defaultProjName":"My project",
+    "strypeFileDesc":"Strype project file",
     "frame":{
         "defaultText":{
             "condition":"condition ",
@@ -54,24 +55,24 @@
         "uploadEditorFileSuccess":"The editor file upload is successful. Your code has been loaded.",
         "forbiddenFrameMove":"The selected frame(s) cannot be moved because it results in illegal code.",
         "functionFrameCantDelete":"A function definition frame cannot be deleted from this caret position when content is not empty.",
-        "pythonInputWarning":"Warning: in Chrome/Safari, the stdout console may not update between consecutive calls to 'input'"
+        "pythonInputWarning":"Warning: in Chrome/Safari, the stdout console may not update between consecutive calls to 'input'",
+        "gdriveConnectToSaveFailed":"The connection to Google Drive has been lost. The synchronisation with Google Drive is stopped, latest changes may not have been saved.",
+        "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive.",
+        "gdriveFileAlreadyExists":"A project with the same name already exists in the Drive location. Strype saved your project with this name \"{file}\"."
     },
     "buttonLabel":{
         "undo":"Undo",
         "yes":"Yes",
         "no":"No",
         "ok":"OK",
-        "uploadToMicrobit":"Upload to micro:bit",
+        "cancel":"Cancel",
+        "runOnMicrobit":"Run on micro:bit",
         "sendToMicrobit":"Send to micro:bit",
-        "downloadHex":"Convert to Hex file",
-        "downloadPython":"Convert to Python file",
-        "signInToGoogle":"Sign-in with Google",
-        "saveToGoogleDrive":"Save to Google Drive",
-        "pickFromGoogleDrive":"Load from Google Drive",
         "startCoding":"Start Coding!",
         "addCodeExtract":"&larr; Add to code",
         "showMore":"show more",
-        "showLess":"show less"
+        "showLess":"show less",
+        "saveDiffLocation":"Save elsewhere"
     },
     "action": {
         "uploadingToMicrobit":"Uploading to micro:bit ...",
@@ -87,11 +88,18 @@
         "errorTitle":"Error!",
         "errorUserDefinedFuncMsg":"User-defined function\nthis function definition contains errors",
         "errorUserDefinedVarMsg":"User-defined variable\none of the assigments for this variable contains errors",
-        "EOFError": "This frame cannot be empty."
+        "EOFError": "This frame cannot be empty.",
+        "GDriveSaveFailed":"Strype coud not saved to Google Drive. Your latest changes may have not been saved, and the sync has been turned off.",
+        "fileNameError":"Project / File name can only contains letters, numbers, spaces, hyphens or parentheses",
+        "gdriveConnectionSaveToLoadProjFailed":"Could not connect to Google Drive when trying to save the current project. Try to sign-in again to load another project.",
+        "gdriveConnectionSaveToUnloadPageFailed":"Could not connect to Google Drive when trying to save the current project.Try to sign-in again to save the current project before leaving Strype.",
+        "gdrivePermissionsNotMet":"Strype requires at least one access permission to use Googe Drive.",
+        "gdriveReadOnly":"This Drive file is read-only, syncing to Drive has been turned off.",
+        "gdriveWrongFile":"Please select a Strype file (extension \".spy\")."
     },
     "appMessage": {
         "editorFileUpload":"Uploading your file to the editor...",
-        "editorConfirmChangeCode":"Current editor's content will be permanently lost.\nDo you want to continue?",
+        "editorConfirmChangeCode":"Current editor's content will be permanently lost.",
         "editorFileUploadWrongVersion":"This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
         "enableInnerDisabledFrameConfirm":"This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?",
         "importsContainer":"Imports:",
@@ -100,10 +108,18 @@
         "preCompiledErrorNeedFix":"Please fix existing errors first.",
         "noWebUSB":"This browser does not support webUSB connections. Please use a browser such as Google Chrome.",
         "emptyCodeError":"The code cannot be empty.",
-        "enterFileNameTitle":"Enter File Name",
-        "enterFileNameLabel":"Enter the file name you would like to save as:",
-        "exportFileProjectName":"Project / File name to save as:",
-        "fileNameError":"Project / File name can only contains letters, numbers, spaces, hyphens or parentheses"
+        "loadToTarget":"Load from",
+        "saveToTarget":"Save to",
+        "targetFS":"this device",
+        "fileName":"File Name:",
+        "autosaveGDrive":"Saved",
+        "autoSaveGDriveTooltip":"Project will automatically be saved to Google Drive every {freq} minutes.",
+        "selectFolder":"Select a folder",
+        "selectStrypeFile":"Select a Strype project",
+        "folderX":"\"{folder}\" folder",
+        "gdriveLocation":"Location:",
+        "gdriveAllStrypeFiles":"All Strype files",
+        "gdriveTab":"My Drive"
     },
     "contextMenu": {
         "cut":"Cut",
@@ -121,9 +137,12 @@
         "deleteOuter":"Delete Outer"
     },
     "appMenu": {
-        "defaultProjName":"My project",
-        "loadProject":"Load project",
-        "saveProject":"Save project",
+        "downloadHex":"Convert to Hex file",
+        "downloadPython":"Convert to Python file",
+        "loadProject":"Load",
+        "loadProjectTooltip":"Load a project from this device or from Google Drive",
+        "saveProject":"Save",
+        "saveProjectTooltip":"Save a project to this device or to Google Drive",
         "resetProject":"Reset",
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
@@ -479,7 +498,7 @@
         "1":"Explore micro:bit"
     },
     "console": {
-        "run":"Run Code",
+        "run":"Run",
         "runtimeErrorConsole": "Runtime error",
         "runtimeErrorEditableSlotHeader": "Frame runtime error!",
         "expand":"Expand",

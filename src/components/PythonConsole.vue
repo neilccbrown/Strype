@@ -30,7 +30,7 @@ import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
-import { CustomEventTypes, getFrameUIID, hasEditorCodeErrors } from "@/helpers/editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId, getFrameUIID, hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
 
 export default Vue.extend({
@@ -56,12 +56,8 @@ export default Vue.extend({
             this.$nextTick(() => {
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
                 if(hasEditorCodeErrors()) {
-                    Vue.$confirm({
-                        message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-                        button: {
-                            yes: i18n.t("buttonLabel.ok"),
-                        },
-                    });    
+                    this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                     return;
                 }
 
@@ -94,7 +90,7 @@ export default Vue.extend({
                 this.appStore.ignoreKeyEvent = true;
             }
             if(event.key.toLowerCase() == "enter" && event.type == "keyup"){
-                // With Safari, we don't get the focus back to the editor, so we need to explicitly give it to the right element.console.log("here with "+ document.activeElement);
+                // With Safari, we don't get the focus back to the editor, so we need to explicitly give it to the right element.
                 document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus(); 
             }
         },

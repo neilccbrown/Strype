@@ -1,5 +1,5 @@
 {
-    "appName":"Επεξεργαστής Strype",
+    "defaultProjName":"Το πρόγραμμα μου",
     "messageBannerMessage": {
         "deleteLargeCode":"Διαγράψατε ένα μεγάλο κομμάτι κώδικα. Έαν έγινε καταλάθος μπορείτε να:",
         "uploadSuccessMicrobit":"Κωδικας μεταφορτόφηκε στο micro:bit",
@@ -17,10 +17,7 @@
         "yes":"Ναι",
         "no":"Όχι",
         "ok":"Εντάξει",
-        "uploadToMicrobit":"Μεταφόρτωση στο micro:bit",
         "sendToMicrobit":"Αποστόλη στο micro:bit",
-        "downloadHex":"Μετατροπή σε Εξαδικό αρχείο",
-        "downloadPython":"Μετατροπή σε Αρχείο Python",
         "startCoding":"Ξεκίνα να προγραμματίζεις!",
         "addCodeExtract":"&larr; Εισαγωγή στον κόδικα",
         "showMore":"Περισσότερα",
@@ -41,7 +38,7 @@
     },
     "appMessage": {
         "editorFileUpload":"Μεταφόρτωση αρχείου στο Strype",
-        "editorConfirmChangeCode":"Ο κώδικας θα χαθεί. \nΕπιθυμείτε να συνεχίσετε?",
+        "editorConfirmChangeCode":"Ο κώδικας θα χαθεί.",
         "editorFileUploadWrongVersion":"Ο εισαγώμενος κώδικας προέρχεται απο παλαιότερη έκδοση του Strype.\nΗ εισαγωγή του μπορεί να προκαλέσει σφάλαματα.\nΕπιθυμείτε να συνεχίσετε?",
         "enableInnerDisabledFrameConfirm":"Αυτή η ενέργεια θα ενεργοποιείσει όλα τα απενεργοποιημένα πλαίσια του κομματιτού στο οποίο ανήκει αυτό το πλαίσιο.\n Επιθυμείται να συνεχίσετε?",
         "importsContainer":"Εισαγωγές:",
@@ -63,9 +60,8 @@
         "delete":"Διαγραφή"
     },
     "appMenu": {
-        "defaultProjName":"Το πρόγραμμα μου",
-        "loadProject":"Φόρτοση προγραμματος",
-        "saveProject":"Αποθήκευση προγραμματος",
+        "downloadHex":"Μετατροπή σε Εξαδικό αρχείο",
+        "downloadPython":"Μετατροπή σε Αρχείο Python",
         "prefs":"Ρυθμίσεις",
         "lang":"Γλώσσα: "
     },
@@ -383,7 +379,7 @@
         "1":"Explore micro:bit"
     },
     "console": {
-        "run":"Εκτέλεση Κώδικα",
+        "run":"Εκτέλεση",
         "expand":"Μεγέθυνση"
     }
 }

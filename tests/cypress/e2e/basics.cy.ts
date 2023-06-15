@@ -1,5 +1,6 @@
 import * as path from "path";
 import {expect} from "chai";
+import i18n from "@/i18n";
 
 /**
  * A CodeMatch can be an exact string to match a single line frame,
@@ -185,7 +186,9 @@ function checkCodeEquals(codeLines : CodeMatch[]) : void {
     })));
     const downloadsFolder = Cypress.config("downloadsFolder");
     cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
-    cy.contains("Convert to Python file").click();
+    // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
+    cy.get("button#showHideMenu").click();
+    cy.contains(i18n.t("appMenu.downloadPython") as string).click();
     
     cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
         expectMatchRegex(p.split("\n").map((l) => l.trimEnd()),
@@ -239,7 +242,7 @@ beforeEach(() => {
 describe("Translation tests", () => {
     it("Translates correctly", () => {
         // Starts as English:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, ["Imports:", "Function definitions:", "My code:"]));
+        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
         cy.get("select#appLangSelect").should("have.value", "en");
 
         // Swap to French and check it worked:
@@ -248,11 +251,11 @@ describe("Translation tests", () => {
         cy.get("select#appLangSelect").should("have.value", "fr");
 
         // check that the sections are present and translated:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, ["Imports :", "Définitions de fonctions :", "Mon code :"]));
+        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
     });
     it("Resets translation properly", () => {
         // Should be back to English:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, ["Imports:", "Function definitions:", "My code:"]));
+        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
         cy.get("select#appLangSelect").should("have.value", "en");
     });
 });

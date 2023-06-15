@@ -1,9 +1,12 @@
 <template>
-    <button type="button" @click="startPicking" v-t="'buttonLabel.pickFromGoogleDrive'" class="btn btn-secondary cmd-button"/>
+    <div/>
 </template>
 <script lang="ts">
 import Vue from "vue";
 import {useStore} from "@/store/store";
+import { mapStores } from "pinia";
+import { strypeFileExtension } from "@/helpers/common";
+import { CustomEventTypes } from "@/helpers/editor";
 
 // Derived from https://medium.com/timeless/google-picker-with-vue-2a39de7f36e
 
@@ -17,31 +20,120 @@ export default Vue.extend({
             required: false,
         },
     },
+
+    computed:{
+        ...mapStores(useStore),
+    },
+
+    data: function() {
+        return {
+            isSaveAction: false,
+        };
+    },
         
     // We don't import the Google scripts in this component because we rely on the parent GoogleDrive component having done it.
 
     methods: {
-        startPicking() {
-            gapi.load("picker", () => this.createPicker());
+        startPicking(isSaveAction: boolean) {
+            this.isSaveAction = isSaveAction;
+            gapi.load("picker", () => {
+                this.createPicker();
+            });
         },
         
         createPicker() {
-            const docsView = new google.picker.DocsView();
-            docsView.setMimeTypes("application/strype");
-            const picker = new google.picker.PickerBuilder()
+            // We create views for the picker:
+            const docsViews: google.picker.DocsView[] = [];
+            
+            // View 1: Strype/current folder view (load only)
+            if(!this.isSaveAction && this.appStore.strypeProjectLocation != undefined){
+                const inFolderDocsView = new google.picker.DocsView();
+                inFolderDocsView.setParent(this.appStore.strypeProjectLocation.toString());
+                inFolderDocsView.setIncludeFolders(true);
+                // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
+                (inFolderDocsView as any).setLabel((this.$i18n.t("appMessage.folderX", {folder: this.appStore.strypeProjectLocationAlias}) as string));
+                docsViews.push(inFolderDocsView);
+            }
+
+            // View 2: All Strype files (*.spy) view (load only)
+            if(!this.isSaveAction) {
+                const allStrypeDocsView = new google.picker.DocsView();
+                // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
+                (allStrypeDocsView as any).setQuery("title:*.spy");
+                (allStrypeDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveAllStrypeFiles") as string));
+                allStrypeDocsView.setIncludeFolders(true);
+                docsViews.push(allStrypeDocsView);
+            }
+
+            // View 3 or 4: Shared with me view (added to the list of view later with position depending on the action)
+            const sharedDocsView = new google.picker.DocsView();
+            sharedDocsView.setSelectFolderEnabled(this.isSaveAction);
+            if(this.isSaveAction){
+                sharedDocsView.setMimeTypes("application/vnd.google-apps.folder");
+            }    
+            sharedDocsView.setOwnedByMe(false);
+            sharedDocsView.setIncludeFolders(true);
+            
+            // View 4 or 3: My Drive view (added to the list of view later with position depending on the action)
+            // This view is required to allow users to nagivate in their Drive: with View 1, we cannot nagivate outside the given parent folder,
+            // so we need a way to allow users getting there.
+            const rootDocsView = new google.picker.DocsView();
+            rootDocsView.setSelectFolderEnabled(this.isSaveAction);
+            rootDocsView.setIncludeFolders(true);
+            rootDocsView.setParent("root");
+            if(this.isSaveAction){
+                rootDocsView.setMimeTypes("application/vnd.google-apps.folder");
+            }    
+            // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
+            (rootDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveTab") as string));
+
+            // Add views at 3rd and 4th positions depending on the action
+            docsViews.push((this.isSaveAction) ? rootDocsView : sharedDocsView);
+            docsViews.push((this.isSaveAction) ? sharedDocsView : rootDocsView);
+
+            // Construct the picker
+            const pickerBuilder = new google.picker.PickerBuilder()
                 .disableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-                .addView(docsView)
+                .disableFeature(google.picker.Feature.NAV_HIDDEN)
                 .setLocale(useStore().appLang)
                 .setOAuthToken(this.oauthToken)
                 .setDeveloperKey(this.devKey)
                 .setCallback(this.pickerCallback)
-                .build();
-            picker.setVisible(true);
+                .setTitle(this.$i18n.t((this.isSaveAction) ? "appMessage.selectFolder" : "appMessage.selectStrypeFile") as string);        
+            docsViews.forEach((view) => pickerBuilder.addView(view));  
+            pickerBuilder.build().setVisible(true);
         },
 
         async pickerCallback(data : google.picker.ResponseObject) {
             if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
-                this.$emit("picked", data[google.picker.Response.DOCUMENTS][0][google.picker.Document.ID]);
+                const fileId = data[google.picker.Response.DOCUMENTS][0][google.picker.Document.ID];
+                const fileName = data[google.picker.Response.DOCUMENTS][0][google.picker.Document.NAME];
+                const fileParentId = data[google.picker.Response.DOCUMENTS][0][google.picker.Document.PARENT_ID];
+                // For a file selection, we check that the file is accepted by Strype
+                if(!this.isSaveAction && !fileName.endsWith("." + strypeFileExtension)){
+                    // The file isn't a Strype file: send event to handle what to do
+                    this.$emit(CustomEventTypes.noneStrypeFilePicked);
+                    return;
+                }
+                // Update the location of the Strype project within the Drive
+                this.appStore.strypeProjectLocation = (this.isSaveAction) 
+                    ? fileId// the folder selected is where we are now in Drive
+                    : fileParentId; // the folder selected's parent is where are now in Drive
+                // We set the location alias here too (if we are retrieving a folder, that's the folder name, otherwise we need an extra request to get the file parent's name)
+                if(this.isSaveAction){
+                    this.appStore.strypeProjectLocationAlias = fileName;
+                }
+                else{
+                    // Get the location alias name 
+                    gapi.client.request({
+                        path: "https://www.googleapis.com/drive/v3/files/" + fileParentId,
+                        method: "GET",
+                    }).execute((resp) => {
+                        this.appStore.strypeProjectLocationAlias = resp["name"];
+                    });
+                }
+                const emitEvent = (this.isSaveAction) ? "picked-folder" : "picked-file";
+                this.$emit(emitEvent, fileId, fileName);
             }
         },
     },

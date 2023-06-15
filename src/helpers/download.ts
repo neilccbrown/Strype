@@ -1,12 +1,13 @@
 import { saveAs } from "file-saver";
 import { compileBlob } from "./compile";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
-import i18n from "@/i18n";
-import Vue from "vue";
+import {vm} from "@/main";
 import { useStore } from "@/store/store";
 import { MessageDefinitions } from "@/types/types";
+import { getAppSimpleMsgDlgId } from "./editor";
+import i18n from "@/i18n";
 
-export function downloadHex() : void {
+export function downloadHex(showImagePopup?: boolean): void {
     const parserElements = parseCodeAndGetParseElements(true);
     let succeeded = !parserElements.hasErrors;
     if(succeeded){
@@ -19,31 +20,23 @@ export function downloadHex() : void {
         }
     }
 
-    //We show the image only if the download has succeeded
-    if(succeeded){
+    //We show the image only if the download has succeeded, and we request one to be shown
+    if(!succeeded){
+        // Notify the user of any detected errors in the code
+        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+        vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+    }
+    else if (showImagePopup){
         useStore().currentMessage = MessageDefinitions.DownloadHex;
-    } 
-    else{
-        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-        Vue.$confirm({
-            message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-            button: {
-                yes: i18n.t("buttonLabel.ok"),
-            },
-        });    
     }
 }
 
 export function downloadPython() : void {
     const parserElements = parseCodeAndGetParseElements(false);
     if (parserElements.hasErrors) {
-        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-        Vue.$confirm({
-            message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-            button: {
-                yes: i18n.t("buttonLabel.ok"),
-            },
-        });
+        // Notify the user of any detected errors in the code
+        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+        vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
         return;
     }
 

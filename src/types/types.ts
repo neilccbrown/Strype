@@ -685,6 +685,7 @@ export interface FormattedMessageArgKeyValuePlaceholder {
 export const FormattedMessageArgKeyValuePlaceholders: {[id: string]: FormattedMessageArgKeyValuePlaceholder} = {
     error: {key:"errorMsg", placeholderName : "{error_placeholder}"},
     list: {key:"list", placeholderName : "{list_placeholder}"},
+    file: {key: "file", placeholderName: "{file_name}"},
 };
 
 export interface FormattedMessage {
@@ -727,6 +728,9 @@ export const MessageTypes = {
     forbiddenFrameMove: "forbiddenFrameMove",
     functionFrameCantDelete: "functionFrameCantDelete",
     pythonInputWarning: "pythonInputWarning",
+    gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
+    gdriveCantCreateStrypeFolder:"gdriveCantCreateStrypeFolder",
+    gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
 };
 
 //empty message
@@ -739,10 +743,10 @@ const NoMessage: MessageDefinition = {
 
 //message for large deletation (undo)
 const LargeDeletion: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.largeDeletion,
     message: "messageBannerMessage.deleteLargeCode",
     buttons:[{label: "buttonLabel.undo", action:MessageDefinedActions.undo}],
-    path: imagePaths.empty,
 };
 
 //download hex message
@@ -755,15 +759,14 @@ const DownloadHex: MessageDefinition = {
 
 //message for upload code success in microbit progress
 const UploadSuccessMicrobit: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.uploadSuccessMicrobit,
     message: "messageBannerMessage.uploadSuccessMicrobit",
-    buttons:[],
-    path: imagePaths.empty,
-
 };
 
 //message for upload code failure in microbit progress
 const UploadFailureMicrobit: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.uploadSuccessMicrobit,
     message: {
         path: "messageBannerMessage.uploadFailureMicrobit",
@@ -771,23 +774,19 @@ const UploadFailureMicrobit: MessageDefinition = {
             [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
         },
     },
-    buttons:[],
-    path: imagePaths.empty,
 };
 
 //messages to inform the user there is no undo/redo to perfom
 const NoUndo: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.noUndo,
     message: "messageBannerMessage.noUndo",
-    buttons:[],
-    path: imagePaths.empty,
 };
 
 const NoRedo: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.noRedo,
     message: "messageBannerMessage.noRedo",
-    buttons:[],
-    path: imagePaths.empty,
 };
 
 const UploadEditorFileError: MessageDefinition = {
@@ -815,31 +814,51 @@ const UploadEditorFileNotSupported: MessageDefinition = {
 };
 
 const UploadEditorFileSuccess: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.noRedo,
     message: "messageBannerMessage.uploadEditorFileSuccess",
-    buttons:[],
-    path: imagePaths.empty,
 };
 
 const ForbiddenFrameMove: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.forbiddenFrameMove,
     message: "messageBannerMessage.forbiddenFrameMove",
-    buttons: [],
-    path: imagePaths.empty,
 };
 
 const FunctionFrameCantDelete: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.functionFrameCantDelete,
     message: "messageBannerMessage.functionFrameCantDelete",
-    buttons: [],
-    path: imagePaths.empty,
 };
 
 const PythonInputWarning: MessageDefinition = {
+    ...NoMessage,
     type: MessageTypes.pythonInputWarning,
     message: "messageBannerMessage.pythonInputWarning",
-    buttons: [],
-    path: imagePaths.empty,
+};
+
+const GDriveConnectToSaveFailed: MessageDefinition = {
+    type: MessageTypes.gdriveConnectToSaveFailed,
+    message: "messageBannerMessage.gdriveConnectToSaveFailed",
+    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    path: imagePaths.empty,    
+};
+
+const GDriveCantCreateStrypeFolder: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.gdriveCantCreateStrypeFolder,
+    message: "messageBannerMessage.gdriveCantCreateStrypeFolder",
+};
+
+const GDriveFileAlreadyExists: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.gdriveFileAlreadyExists,
+    message: {
+        path: "messageBannerMessage.gdriveFileAlreadyExists",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.file.key]: FormattedMessageArgKeyValuePlaceholders.file.placeholderName,
+        },
+    },
 };
 
 export const MessageDefinitions = {
@@ -856,6 +875,9 @@ export const MessageDefinitions = {
     ForbiddenFrameMove,
     FunctionFrameCantDelete,
     PythonInputWarning,
+    GDriveConnectToSaveFailed,
+    GDriveCantCreateStrypeFolder,
+    GDriveFileAlreadyExists,
 };
 
 //WebUSB listener
@@ -955,6 +977,25 @@ export enum StrypePlatform {
     microbit = "mb",
 }
 
+export enum StrypeSyncTarget {
+    none, // Nothing set up (note that auto save is always available on WebStores)
+    fs, // The local file system (note that this is only for us to know saving has been requested once, there is NO auto-sync to the local FS)
+    gd, // Google Drive
+}
+
+export enum SaveRequestReason {
+    autosave,
+    saveProjectAtLocation, // explicit save at the given location in the dialog
+    saveProjectAtOtherLocation, // explicit save with a change of the given location in the dialog
+    loadProject,
+    unloadPage,
+}
+
+export interface AutoSaveFunction {
+    name: "WS" | "GD", // The autosave destination: "WS" for the webstore, or "GD" for Google Drive.
+    function: (saveReason: SaveRequestReason) => void;
+}
+
 export interface UserDefinedElement {
     name: string;
     isFunction: boolean;
@@ -1020,3 +1061,10 @@ export interface CodeMatchIterable {
     hasMatches: boolean,
     iteratorMatches?: IterableIterator<RegExpMatchArray>
 }
+
+export interface MIMEDesc {
+    description: string,
+    accept: {[MIME: string]: string[]}
+}
+
+export type ProjectLocation = (undefined | string | FileSystemFileHandle);

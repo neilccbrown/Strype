@@ -39,8 +39,7 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
 
 function testInsert(insertion : string, result : string) : void {
     it("Tests " + insertion, () => {
-        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-        cy.contains("Convert to Python file").click();
+        focusEditor();
         cy.get("body").type("i");
         assertState("{$}");
         cy.get("body").type(" " + insertion);
@@ -122,10 +121,14 @@ function focusSlotId(originalId : string) {
     }
 }
 
+function focusEditor(): void {
+    // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
+    cy.get("body").type("{esc}");
+}
+
 function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
     it("Tests " + multiInsertion, () => {
-        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-        cy.contains("Convert to Python file").click();
+        focusEditor();
         
         const startNest = multiInsertion.indexOf("{");
         const endNest = multiInsertion.indexOf("}", startNest);
@@ -162,8 +165,7 @@ function testMultiInsert(multiInsertion : string, firstResult : string, secondRe
 
 function testInsertExisting(original : string, toInsert : string, expectedResult : string) : void {
     it("Tests " + original, () => {
-        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-        cy.contains("Convert to Python file").click();
+        focusEditor();
         
         const cursorIndex = original.indexOf("$");
         expect(cursorIndex).to.not.equal(-1);
@@ -192,8 +194,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string, testB
     const bkspIndex = originalInclBksp.indexOf("\b");
     if (testBackspace) {
         it("Tests Backspace " + originalInclBksp.replace("\b", "\\b"), () => {
-            // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-            cy.contains("Convert to Python file").click();
+            focusEditor();
             
             expect(bkspIndex).to.not.equal(-1);
             const before = originalInclBksp.substring(0, bkspIndex);
@@ -226,8 +227,7 @@ function testBackspace(originalInclBksp : string, expectedResult : string, testB
     }
     if (bkspIndex > 0 && testDelete) {
         it("Tests Delete " + originalInclBksp.replace("\b", "\\b"), () => {
-            // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-            cy.contains("Convert to Python file").click();
+            focusEditor();
             
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
@@ -279,8 +279,7 @@ beforeEach(() => {
 
 describe("Test brackets", () => {
     it("Tests brackets", () => {
-        // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-        cy.contains("Convert to Python file").click();
+        focusEditor();
         
         testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
     });

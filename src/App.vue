@@ -1,6 +1,5 @@
 <template>
     <div id="app" class="container-fluid">
-        <vue-confirm-dialog />
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
@@ -63,6 +62,10 @@
             </div>
             <Commands :id="commandsContainerId" class="col-4 noselect" />
         </div>
+        <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
+        <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
+            <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
+        </ModalDlg>
     </div>
 </template>
 
@@ -75,11 +78,15 @@ import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
+import ModalDlg from "@/components/ModalDlg.vue";
+import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { useStore } from "@/store/store";
-import { AppEvent, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex } from "./helpers/editor";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId } from "./helpers/editor";
+/* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
+/* FITRUE_isMicrobit */
 import { mapStores } from "pinia";
 import Draggable from "vuedraggable";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -98,6 +105,8 @@ export default Vue.extend({
         Commands,
         Menu,
         Draggable,
+        ModalDlg,
+        SimpleMsgModalDlg,
     },
 
     data: function() {
@@ -109,7 +118,7 @@ export default Vue.extend({
             autoSaveTimerId: -1,
             resetStrypeProjectFlag:false,
             isLargePythonConsole: false,
-            autoSaveState: () => {},
+            autoSaveState: [] as AutoSaveFunction[],
         };
     },
 
@@ -168,10 +177,18 @@ export default Vue.extend({
                 },
             };
         },
+
+        simpleMsgModalDlgId(): string{
+            return getAppSimpleMsgDlgId();
+        },
+
+        importDiffVersionModalDlgId(): string {
+            return getImportDiffVersionModalDlgId();
+        },
     },
 
     created() {
-        this.autoSaveState = () => this.autoSaveStateToWebLocalStorage();
+        this.autoSaveState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -191,7 +208,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                this.autoSaveState();
+                this.autoSaveState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -205,7 +222,7 @@ export default Vue.extend({
             }
         });
 
-        // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 5 minutes
+        // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
 
         // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
@@ -231,7 +248,7 @@ export default Vue.extend({
         document.addEventListener(CustomEventTypes.pythonConsoleDisplayChanged, (event) => {
             this.isLargePythonConsole = (event as CustomEvent).detail;
         });
-        /* IFTRUE_isPurePython */
+        /* FITRUE_isPurePython */
 
         /* IFTRUE_isMicrobit */
         // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
@@ -265,6 +282,7 @@ export default Vue.extend({
                 this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
+                        callBack: () => {},
                         showMessage: false,
                         readCompressed: true,
                     }
@@ -272,24 +290,51 @@ export default Vue.extend({
             }
         }
         
-        this.$root.$on("setAutoSaveFunction", (f: () => void) => {
-            this.autoSaveState = f;
-            // We will save on a timer but we should also save now so we're up to date:
-            this.autoSaveState();
+        this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (asf: AutoSaveFunction) => {
+            // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
+            // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
+            // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
+            window.clearInterval(this.autoSaveTimerId);
+            const asfEntry = this.autoSaveState.find((asfEntry) => (asfEntry.name == asf.name));
+            if(asfEntry){
+                // There is already some function set for that type of autosave, we just update the function
+                asfEntry.function = asf.function;
+            }
+            else{
+                // Nothing yet set for this type of autosave, we add the entry this.autoSaveState
+                this.autoSaveState.push(asf);
+            }
+            this.setAutoSaveState();
         });
+
+        this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (asfName: string) => {           
+            const toDeleteIndex = this.autoSaveState.findIndex((asf) => asf.name == asfName);
+            if(toDeleteIndex > -1){
+                window.clearInterval(this.autoSaveTimerId);
+                this.autoSaveState.splice(toDeleteIndex, 1);
+                this.setAutoSaveState();
+            }            
+        });
+
+        // Listen to event for requesting the autosave now
+        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => this.autoSaveState.forEach((asf) => asf.function(saveReason)));
     },
 
     methods: {
         setAutoSaveState() {
             this.autoSaveTimerId = window.setInterval(() => {
-                this.autoSaveState();
-            }, 300000);
+                this.autoSaveState.forEach((asf) => asf.function(SaveRequestReason.autosave));
+            }, autoSaveFreqMins * 60000);
         },
         
-        autoSaveStateToWebLocalStorage() : void {
+        autoSaveStateToWebLocalStorage(reason: SaveRequestReason) : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
+                // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                if(reason==SaveRequestReason.loadProject && this.autoSaveState.length == 1){
+                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                }
             }
         },
 

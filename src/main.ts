@@ -7,7 +7,6 @@ import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue/dist/bootstrap-vue.css";
 import "vue-simple-context-menu/dist/vue-simple-context-menu.css";
 import vBlur from "v-blur";
-import VueConfirmDialog from "vue-confirm-dialog";
 import { StrypePlatform } from "./types/types";
 
 Vue.config.productionTip = false;
@@ -28,17 +27,14 @@ Vue.use(BootstrapVue);
 // Use v-blur
 Vue.use(vBlur);
 
-// Use vue-confirm-dialog
-Vue.use(VueConfirmDialog);
-
 // Use a Pinia store (instead of Vuex store, because it handles type inferrence better)
 Vue.use(PiniaVuePlugin);
 const pinia = createPinia();
 Vue.config.productionTip = false;
 
-new Vue({
+export const vm = new Vue({
     pinia,
     i18n,
     render: (h) => h(App),
-}).$mount("#app");
-
+});
+vm.$mount("#app");

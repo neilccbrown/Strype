@@ -5,7 +5,8 @@ import * as PartialFlashingJS from "./partial-flashing";
 import { useStore } from "@/store/store"; 
 import Compiler from "@/compiler/compiler";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
-import Vue from "vue";
+import { getAppSimpleMsgDlgId } from "./editor";
+import { vm } from "@/main";
 import i18n from "@/i18n";
 
 export function flash(callerData: Record<string, any>) : void {
@@ -15,13 +16,9 @@ export function flash(callerData: Record<string, any>) : void {
     const parserElements = parseCodeAndGetParseElements(true);
     if (parserElements.hasErrors) {
         proceed = false;
-        //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-        Vue.$confirm({
-            message: i18n.t("appMessage.preCompiledErrorNeedFix") as string,
-            button: {
-                yes: i18n.t("buttonLabel.ok"),
-            },
-        });    
+        // Notify the user of any detected errors in the code
+        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+        vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
     }
                
     if(proceed){
@@ -58,13 +55,9 @@ export function flash(callerData: Record<string, any>) : void {
             flashData(webUSBListener, parserElements.compiler);
         }
         else {
-            //a "fake" confirm, just to use the nicer version from Vue. It really still behaves as an alert.
-            Vue.$confirm({
-                message: i18n.t("appMessage.noWebUSB") as string,
-                button: {
-                    yes: i18n.t("buttonLabel.ok"),
-                },
-            });    
+            // Notify the user of WebUSB is not available
+            useStore().simpleModalDlgMsg = i18n.t("appMessage.noWebUSB") as string;
+            vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
         }
     }
 }

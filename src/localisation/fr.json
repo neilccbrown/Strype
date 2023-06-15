@@ -1,5 +1,6 @@
 {
-    "appName":"Éditeur Strype",
+    "defaultProjName":"Mon projet",
+    "strypeFileDesc":"Fichier de projet Strype",
     "frame":{
         "defaultText":{
             "condition":"condition ",
@@ -54,21 +55,24 @@
         "uploadEditorFileSuccess":"Le chargement de fichier pour l'éditeur a été réalisé avec succès. Votre code a été chargé.",
         "forbiddenFrameMove":"Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné.",
         "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
-        "pythonInputWarning":"Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'."
+        "pythonInputWarning":"Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'.",
+        "gdriveConnectToSaveFailed":"La connexion à Google Drive a été perdue. La synchronisation avec Google Drive est interrompue, les dernières modifications n'ont peut-être pas été sauvegardées.",
+        "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive.",
+        "gdriveFileAlreadyExists":"Un projet du même nom existe déjà dans l'emplacement de Drive. Strype a sauvegardé votre projet avec le nom \"{file}\"."
     },
     "buttonLabel":{
         "undo":"Annuler",
         "yes":"Oui",
         "no":"Non",
         "ok":"OK",
-        "uploadToMicrobit":"Envoyer vers micro:bit",
+        "cancel":"Annuler",
+        "runOnMicrobit":"Exécuter sur micro:bit",
         "sendToMicrobit":"Envoyer vers micro:bit",
-        "downloadHex":"Convertir vers Hex",
-        "downloadPython":"Convertir vers Python",
         "startCoding":"Codez !",
         "addCodeExtract":"Ajouter au code",
         "showMore":"montrer plus",
-        "showLess":"montrer moins"
+        "showLess":"montrer moins",
+        "saveDiffLocation":"Enregister ailleurs"
     },
     "action": {
       "uploadingToMicrobit":"Envoi en cours vers micro:bit ...",
@@ -84,11 +88,18 @@
       "errorTitle":"Erreur !",
       "errorUserDefinedFuncMsg":"Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
       "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
-      "EOFError": "Ce cadre ne peut pas être vide."
+      "EOFError": "Ce cadre ne peut pas être vide.",
+      "GDriveSaveFailed":"Strype coud not saved to Google Drive. Your latest changes may have not been saved, and the sync has been turned off.",
+      "fileNameError":"Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
+      "gdriveConnectionSaveToLoadProjFailed":"Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour charger un autre projet.",
+      "gdriveConnectionSaveToUnloadPageFailed":"Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour sauvegarder le project actuel avant de quitter Strype.",
+      "gdrivePermissionsNotMet":"Strype nécessite au moins une permission d'accès pour utiliser Google Drive.",
+      "gdriveReadOnly":"Ce fichier Drive est en lecture seule. La synchronisation a été désactivée.",
+      "gdriveWrongFile":"Veullez sélectionner un ficher Strype (extension \".spy\")."
     },
     "appMessage": {
       "editorFileUpload":"Chargement de votre fichier dans l'éditeur...",
-      "editorConfirmChangeCode":"Le contenu actuel de l'éditeur sera définitivement perdu.\nSouhaitez-vous continuer ?",
+      "editorConfirmChangeCode":"Le contenu actuel de l'éditeur sera définitivement perdu.",
       "editorFileUploadWrongVersion":"Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
       "enableInnerDisabledFrameConfirm":"Cette action activera le groupe entier de cadres désactivés auquel ce cadre appartient.\nSouhaitez-vous continuer ?",
       "importsContainer":"Imports :",
@@ -97,10 +108,18 @@
       "preCompiledErrorNeedFix":"Veuillez d'abord corriger les erreurs existantes.",
       "noWebUSB":"Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
       "emptyCodeError":"Le code ne peut pas être vide.",
-      "enterFileNameTitle":"Entrez le nom de fichier",
-      "enterFileNameLabel":"Entrez le nom de fichier que vous voulez sauvegarder :",
-      "exportFileProjectName": "Nom de projet / fichier à sauvegarder :",
-      "fileNameError":"Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses."
+      "loadToTarget":"Charer à partir de",
+      "saveToTarget":"Enregister vers",
+      "targetFS":"cet ordinateur",
+      "fileName":"Nom de fichier :",
+      "autosaveGDrive":"Enregistré",
+      "autoSaveGDriveTooltip":"Le projet sera automatiquement enregistré dans Google Drive toutes les {freq} minutes.",
+      "selectFolder":"Sélectionnez un dossier",
+      "selectStrypeFile":"Sélectionnez un projet Strype",
+      "folderX":"Dossier \"{folder}\"",
+      "gdriveLocation":"Emplacement :",
+      "gdriveAllStrypeFiles":"Tous les fichiers Strype",
+      "gdriveTab":"Mon Drive"
     },
     "contextMenu": {
       "cut":"Couper",
@@ -118,9 +137,12 @@
       "deleteOuter":"Supprimer externe(s)"
     },
     "appMenu": {
-      "defaultProjName":"Mon projet",
-      "loadProject":"Charger un projet",
-      "saveProject":"Sauvegarder ce projet",
+      "downloadHex":"Convertir vers Hex",
+      "downloadPython":"Convertir vers Python",
+      "loadProject":"Charger",
+      "loadProjectTooltip":"Charger un projet depuis cet appareil ou depuis Google Drive",
+      "saveProject":"Sauvegarder",
+      "saveProjectTooltip":"Sauvegarder un projet vers cet appareil ou vers Google Drive",
       "resetProject":"Réinitialiser",
       "resetProjectTooltip":"Réinitialiser l'éditeur avec le projet par default de Strype",
       "prefs":"Préférences",
@@ -142,7 +164,7 @@
     },
   
     "console": {
-        "run":"Exécuter le code ",
+        "run":"Exécuter",
         "runtimeErrorConsole": "Erreur d'exécution",
         "runtimeErrorEditableSlotHeader": "Erreur d'exécution de cadre!",
         "expand":"Agrandir",
