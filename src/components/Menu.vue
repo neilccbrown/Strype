@@ -316,9 +316,10 @@ export default Vue.extend({
                 // We also check which target is selected to update target-depend UI in the modal.
                 setTimeout(() => {
                     this.onSaveTargetSelectChange();
-                    (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value = this.appStore.projectName;
-                    document.getElementById(this.saveFileNameInputId)?.focus();
-                    document.getElementById(this.saveFileNameInputId)?.click();
+                    const saveFileNameInputElement = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement);
+                    saveFileNameInputElement.value = this.appStore.projectName;
+                    saveFileNameInputElement.focus();
+                    saveFileNameInputElement.click();
                 }, 500);           
             }
         },

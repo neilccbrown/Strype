@@ -992,7 +992,7 @@ export enum SaveRequestReason {
 }
 
 export interface AutoSaveFunction {
-    name: "WS" | "GD",
+    name: "WS" | "GD", // The autosave destination: "WS" for the webstore, or "GD" for Google Drive.
     function: (saveReason: SaveRequestReason) => void;
 }
 

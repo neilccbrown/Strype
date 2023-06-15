@@ -50,6 +50,7 @@ export default Vue.extend({
                 const inFolderDocsView = new google.picker.DocsView();
                 inFolderDocsView.setParent(this.appStore.strypeProjectLocation.toString());
                 inFolderDocsView.setIncludeFolders(true);
+                // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
                 (inFolderDocsView as any).setLabel((this.$i18n.t("appMessage.folderX", {folder: this.appStore.strypeProjectLocationAlias}) as string));
                 docsViews.push(inFolderDocsView);
             }
@@ -57,6 +58,7 @@ export default Vue.extend({
             // View 2: All Strype files (*.spy) view (load only)
             if(!this.isSaveAction) {
                 const allStrypeDocsView = new google.picker.DocsView();
+                // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
                 (allStrypeDocsView as any).setQuery("title:*.spy");
                 (allStrypeDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveAllStrypeFiles") as string));
                 allStrypeDocsView.setIncludeFolders(true);
@@ -82,6 +84,7 @@ export default Vue.extend({
             if(this.isSaveAction){
                 rootDocsView.setMimeTypes("application/vnd.google-apps.folder");
             }    
+            // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
             (rootDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveTab") as string));
 
             // Add views at 3rd and 4th positions depending on the action

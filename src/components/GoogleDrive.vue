@@ -510,7 +510,8 @@ export default Vue.extend({
                 const filesArray: {name: string}[] = JSON.parse(response.body).files;
                 filesArray.forEach((file) => {
                     hasAlreadyFile ||= (file.name == (this.saveFileName + "." + strypeFileExtension));
-                    // Look for potential copies if that file name starts with the given file name
+                    // Look for potential copies if that file name starts with the given file name 
+                    // (we look up for all *suffixes* as " (n).spy" following the file/project name, where n is a number - we will increment from the largest number value found)
                     if(file.name.startsWith(this.saveFileName)){
                         const copyIncrementFileMatch = file.name.substring(this.saveFileName.length).match(new RegExp("^ \\((\\d+)\\)\\." + strypeFileExtension + "$"));
                         if(copyIncrementFileMatch != null && parseInt(copyIncrementFileMatch[1]) > maxCurrentCopyIterator){
