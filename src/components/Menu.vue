@@ -355,7 +355,7 @@ export default Vue.extend({
                         }
                         // Save the JSON file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
                         if(canBrowserSaveFilePicker){
-                            saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, (fileHandle: FileSystemFileHandle) => {
+                            saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, this.appStore.generateStateJSONStrWithCheckpoint(), (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;
                                 this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
                                 this.appStore.syncTarget = StrypeSyncTarget.fs;
@@ -397,9 +397,30 @@ export default Vue.extend({
                 if(canBrowserOpenFilePicker){
                     openFile(this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, (fileHandles: FileSystemFileHandle[]) => {
                         // We select 1 file so we can get the first element of the returned array
-                        this.appStore.strypeProjectLocation = fileHandles[0];
-                        this.appStore.projectName = fileHandles[0].name.substring(0, fileHandles[0].name.lastIndexOf("."));
-                        this.appStore.syncTarget = StrypeSyncTarget.fs;
+                        // We need to get the file content (hope for the best) and update the store
+                        fileHandles[0].getFile().then((file: File) => {
+                            const emitPayload: AppEvent = {requestAttention: true};
+                            emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
+                            this.$emit("app-showprogress", emitPayload);
+                            const reader = new FileReader();
+                            reader.addEventListener("load", () => {
+                                this.appStore.setStateFromJSONStr( 
+                                    {
+                                        stateJSONStr: reader.result as string,
+                                        callBack: (succceded) => {
+                                            if(succceded){
+                                                this.appStore.strypeProjectLocation = fileHandles[0];
+                                                this.appStore.projectName = fileHandles[0].name.substring(0, fileHandles[0].name.lastIndexOf("."));
+                                                this.appStore.syncTarget = StrypeSyncTarget.fs;
+                                            }
+                                        },
+                                    }
+                                );
+                                emitPayload.requestAttention=false;
+                                this.$emit("app-showprogress", emitPayload);  
+                            });
+                            reader.readAsText(file);
+                        });
                     });                        
                 }
                 else{
