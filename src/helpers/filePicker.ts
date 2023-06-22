@@ -31,7 +31,7 @@ export function saveFile(suggestedFileName: string, mimeTypesArray: MIMEDesc[], 
 
         // Call the success callback method
         onSuccess(fileSysHandle);
-    }, () => console.log("failed..."));
+    }, (reason: any) => console.log("Save with showFilePicker failed with reason:\n" + reason));
 }
 
 export function openFile(mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocation, onSuccess: (fileHandles: FileSystemFileHandle[]) => void): void{
@@ -40,5 +40,6 @@ export function openFile(mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocat
         startInFolder: startInFolder,
     };
  
-    noTypedWindow.showOpenFilePicker(options).then((fileSysHandles: FileSystemFileHandle[]) => onSuccess(fileSysHandles), () => console.log("failed..."));
+    noTypedWindow.showOpenFilePicker(options).then((fileSysHandles: FileSystemFileHandle[]) => onSuccess(fileSysHandles),
+        (reason: any) => console.log("Load with showFilePicker failed with reason:\n" + reason));
 }
