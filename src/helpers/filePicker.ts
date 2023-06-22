@@ -13,14 +13,25 @@ const noTypedWindow = window as any;
 export const canBrowserOpenFilePicker = (noTypedWindow.showOpenFilePicker != undefined);
 export const canBrowserSaveFilePicker = (noTypedWindow.showSaveFilePicker != undefined);
 
-export function saveFile(suggestedFileName: string, mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocation, onSuccess: (fileHandle: FileSystemFileHandle) => void): void{
+export function saveFile(suggestedFileName: string, mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocation, fileContent: string, onSuccess: (fileHandle: FileSystemFileHandle) => void): void{
     const options = {
         suggestedName: suggestedFileName,
         types: mimeTypesArray,
         startInFolder: startInFolder,
     };
 
-    noTypedWindow.showSaveFilePicker(options).then((fileSysHandle: FileSystemFileHandle) => onSuccess(fileSysHandle), () => console.log("failed..."));
+    noTypedWindow.showSaveFilePicker(options).then((fileSysHandle: FileSystemFileHandle) => {
+        // Write the file content (we hope for the best)
+        // Because of some issue with the description of FileSystemFileHandle and FileSystemWritebaleFileStream, we need to case the objects of these type to any
+        let fsStream: any;
+        (fileSysHandle as any).createWritable().then((stream: any) => {
+            fsStream = stream;
+            stream.write(fileContent).then(() => fsStream?.close());
+        });
+
+        // Call the success callback method
+        onSuccess(fileSysHandle);
+    }, (reason: any) => console.log("Save with showFilePicker failed with reason:\n" + reason));
 }
 
 export function openFile(mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocation, onSuccess: (fileHandles: FileSystemFileHandle[]) => void): void{
@@ -29,5 +40,6 @@ export function openFile(mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocat
         startInFolder: startInFolder,
     };
  
-    noTypedWindow.showOpenFilePicker(options).then((fileSysHandles: FileSystemFileHandle[]) => onSuccess(fileSysHandles), () => console.log("failed..."));
+    noTypedWindow.showOpenFilePicker(options).then((fileSysHandles: FileSystemFileHandle[]) => onSuccess(fileSysHandles),
+        (reason: any) => console.log("Load with showFilePicker failed with reason:\n" + reason));
 }
