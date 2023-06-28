@@ -30,7 +30,7 @@ import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
-import { CustomEventTypes, getAppSimpleMsgDlgId, getFrameUIID, hasEditorCodeErrors } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getAppSimpleMsgDlgId, getFrameUIID, hasEditorCodeErrors } from "@/helpers/editor";
 import i18n from "@/i18n";
 
 export default Vue.extend({
@@ -53,7 +53,8 @@ export default Vue.extend({
     methods: {
         runCodeOnPyConsole() {
             // Before doing anything, we make sure there are no errors found in the code
-            this.$nextTick(() => {
+            // We DELAY the action to make sure every other UI actions has been done, notably the error checking from LabelSlotsStructure.
+            setTimeout(() => {
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
                 if(hasEditorCodeErrors()) {
                     this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string;
@@ -71,7 +72,13 @@ export default Vue.extend({
                 runPythonConsole(console, userCode, parser.getFramePositionMap());
                 // Make sure there is no document selection for our editor
                 this.appStore.setSlotTextCursors(undefined, undefined);
-            });           
+                // We make sure the number of errors shown in the interface is in line with the current state of the code
+                // As the UI should update first, we do it in the next tick
+                this.$nextTick().then(() => {
+                    checkEditorCodeErrors();
+                    this.appStore.errorCount = countEditorCodeErrors();
+                }); 
+            }, 1000);           
         },
 
         onFocus(): void {

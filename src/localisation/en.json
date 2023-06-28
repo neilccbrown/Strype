@@ -119,7 +119,8 @@
         "folderX":"\"{folder}\" folder",
         "gdriveLocation":"Location:",
         "gdriveAllStrypeFiles":"All Strype files",
-        "gdriveTab":"My Drive"
+        "gdriveTab":"My Drive",
+        "editorErrors":"Errors"
     },
     "contextMenu": {
         "cut":"Cut",

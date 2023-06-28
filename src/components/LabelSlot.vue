@@ -67,7 +67,7 @@ import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResult
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
 import LabelSlotsStructureVue from "./LabelSlotsStructure.vue";
@@ -453,8 +453,8 @@ export default Vue.extend({
                         this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
                     }
 
-                    // And check for errors on the frame
-                    checkCodeErrorsForFrame(this.frameId);
+                    // And check for precompiled errors on the frame, and TP errors on the whole code
+                    checkCodeErrors(this.frameId);
 
                     // Make sure there is no longer a selection
                     this.appStore.setSlotTextCursors(undefined, undefined);

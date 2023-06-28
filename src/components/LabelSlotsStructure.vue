@@ -40,7 +40,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
-import { checkCodeErrorsForFrame, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 
 export default Vue.extend({
     name: "LabelSlotsStructure.vue",
@@ -246,8 +246,6 @@ export default Vue.extend({
                                                 // Save changes only when arrived here (for undo/redo)
                                                 this.appStore.saveStateChanges(stateBeforeChanges);
                                             }));
-                                            
-                                        
                                         });                                        
                                     }
                                     else{
@@ -381,7 +379,7 @@ export default Vue.extend({
             setTimeout(() => {
                 // Need to check if frame still exists because it may have been deleted after blurring:
                 if(this.frameId != ((this.appStore.focusSlotCursorInfos?.slotInfos.frameId)??-1) && this.appStore.lastBlurredFrameId in this.appStore.frameObjects){
-                    checkCodeErrorsForFrame(this.appStore.lastBlurredFrameId);
+                    checkCodeErrors(this.appStore.lastBlurredFrameId);
                 }
             }, 200);
         },

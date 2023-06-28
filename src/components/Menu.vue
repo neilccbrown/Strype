@@ -81,14 +81,14 @@
                 class="editor-file-input"
             /> 
         </div>
-        <div class="undoredo-div">
+        <div class="menu-icons-div">
             <div class="menu-icon-div">
                 <input 
                     type="image" 
                     :src="undoImagePath"
                     :disabled="isUndoDisabled"
                     @click="performUndoRedo(true)"
-                    class="undoredo-img"
+                    class="menu-icon-entry"
                     :title="this.$i18n.t('contextMenu.undo')"
                 />
             </div>
@@ -98,11 +98,16 @@
                     :src="redoImagePath"
                     :disabled="isRedoDisabled"
                     @click="performUndoRedo(false)"
-                    class="undoredo-img"
+                    class="menu-icon-entry"
                     :title="this.$i18n.t('contextMenu.redo')"
                 />
             </div>
         </div> 
+        <div v-if="errorCount > 0" class="menu-icons-div">
+            <i :class="{'fas fa-chevron-up menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex <= 0 )}" @mousedown="navigateToErrorRequested=true" @click="goToError($event, false)"/>
+            <span class="menu-icon-entry menu-icon-centered-entry error-count-span" :title="$t('appMessage.editorErrors')">{{errorCount}}</span>
+            <i :class="{'fas fa-chevron-down menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex >= errorCount - 1)}" @click="goToError($event, true)"/>
+        </div>
         <a id="feedbackLink" href="/feedback" target="_blank"><i class="far fa-comment" :title="$t('action.feedbackLink')"></i></a>
     </div>
 </template>
@@ -114,8 +119,8 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension} from "@/helpers/common";
-import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import { CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorMenuUIID, getFrameUIID } from "@/helpers/editor";
+import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUIID, getFrameUIID, getLabelSlotUIID, getNearestErrorIndex, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -123,6 +128,7 @@ import { downloadHex, downloadPython } from "@/helpers/download";
 import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
+import { watch } from "@vue/composition-api";
 
 //////////////////////
 //     Component    //
@@ -147,7 +153,11 @@ export default Vue.extend({
             localSyncTarget: StrypeSyncTarget.fs,
             showGDSaveLocation: false,
             // Flag to know if a request to change with a different folder location for Googe Drive has been requested
-            saveAtOtherLocation: false, 
+            saveAtOtherLocation: false,
+            // Indicator of the error index that is currently being looked at (0-based index, and reset when errors are regenerated)
+            currentErrorNavIndex: -1,
+            // Flag indicating if navigating to an error has been triggered by the user: used to inhibit reactive changes
+            navigateToErrorRequested: false,
         };
     },
 
@@ -172,6 +182,16 @@ export default Vue.extend({
         
         // Event listener for saving project action completion
         this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.loadProject);
+
+        // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
+        // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
+        watch([() => this.errorCount, () => this.appStore.isEditing, () => this.appStore.currentFrame.id, () => this.appStore.currentFrame.caretPosition, () => this.appStore.anchorSlotCursorInfos], () => {
+            if(!this.navigateToErrorRequested){
+                this.$nextTick(() => {
+                    this.currentErrorNavIndex = (this.errorCount > 0) ? getNearestErrorIndex() : -1;
+                });
+            }
+        });
     },
 
     beforeDestroy(){
@@ -254,6 +274,10 @@ export default Vue.extend({
 
         redoImagePath(): string {
             return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.svg") : require("@/assets/images/redo.svg");
+        },
+
+        errorCount(): number{
+            return this.appStore.errorCount ?? countEditorCodeErrors();
         },
 
         acceptedInputFileFormat(): string {
@@ -544,6 +568,37 @@ export default Vue.extend({
                 this.currentTabindexValue = el.tabIndex;
             }
         },
+
+        
+        goToError(event: MouseEvent, toNext: boolean){
+            // Move to the next error (if toNext is true) or the previous error (if toNext is false) when the user clicks on the navigation icon.
+            // If the icon is "disabled" we do nothing.
+            if(!(event.target as HTMLElement).classList.contains("error-nav-disabled")){
+                this.$nextTick(() => {
+                    const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
+                    this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
+                    const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
+                    errorElement.scrollTo(0, 420);
+
+                    // We focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
+                    // we put the focus in the first slot that is editable.
+                    const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
+                        ? parseLabelSlotUIID(errorElement.id)
+                        : {frameId: parseFrameHeaderUIID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
+                    const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
+                    this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
+                    setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
+                    // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
+                    if(isElementUIIDFrameHeader(errorElement.id)){
+                        document.getElementById(getLabelSlotUIID(errorSlotInfos))?.click();
+                    }
+                    else{
+                        errorElement.click();
+                    }
+                    this.navigateToErrorRequested = false;
+                });
+            }     
+        },
     },
 });
 </script>
@@ -595,15 +650,20 @@ export default Vue.extend({
     color: black;
 }
 
-.undoredo-div {
+.menu-icons-div {
     margin-top: 20px;
 }
 
-.undoredo-img {
+.menu-icon-entry {
     width: 24px;
     height: 24px;
     display: block;
     margin: auto;
+}
+
+.menu-icon-centered-entry {
+    text-align: center;
+    height: auto;
 }
 
 .load-project-lost-span{
@@ -612,6 +672,22 @@ export default Vue.extend({
 
 .load-save-label {
     margin-right: 5px;
+}
+
+.error-nav-enabled {
+    color: #d66;
+    cursor: pointer;
+}
+
+.error-nav-disabled {
+    color: #6c757d;
+    cursor: default;
+}
+
+.error-count-span {
+    color: white;
+    background-color: #d66;
+    border-radius: 50%;
 }
 
 #feedbackLink {

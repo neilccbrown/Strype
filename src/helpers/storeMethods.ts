@@ -4,7 +4,8 @@ import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
 import { BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
-import { getLabelSlotUIID, getMatchingBracket, parseLabelSlotUIID } from "./editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUIID, getMatchingBracket, parseLabelSlotUIID } from "./editor";
+import { nextTick } from "@vue/composition-api";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -717,7 +718,7 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
 
-export const checkCodeErrors = (slotInfos: SlotInfos): void => {
+export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     // This method for checking errors is called when a frame has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
     // we clear the errors completely for that frame/slot before we check the errors again for it.
@@ -756,33 +757,16 @@ export const checkCodeErrors = (slotInfos: SlotInfos): void => {
         );
         useStore().addPreCompileErrors(getLabelSlotUIID(slotInfos));
     }
-
-    // We check Python error (with TigerPython) for this portion of code only.
-    // NOTE: at this stage, the TigerPython errors for this portion of code HAVE BEEN cleared on the SLOT only.
-    // If we are on a joint element, we check the whole joint siblings from root to last joint, otherwise, the single current line suffice.
-    const isJoinFrame = (frameObject.jointParentId > 0);
-    //we need to find out what is the next frame to provide a stop value
-    const availablePositions = getAvailableNavigationPositions();
-    const listOfCaretPositions = availablePositions.filter(((e)=> !e.isSlotNavigationPosition));
-    const caretPosition = (frameObject.frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
-    const currentCaretIndex = listOfCaretPositions.findIndex((e) => e.frameId===slotInfos.frameId && e.caretPosition === caretPosition);
-    const nextCaretId =  (isJoinFrame) 
-        ?  listOfCaretPositions[listOfCaretPositions.findIndex((e) => e.frameId===frameObject.jointParentId && !e.isSlotNavigationPosition && e.caretPosition === CaretPosition.below) + 1]?.frameId??-100
-        : (listOfCaretPositions[currentCaretIndex + ((caretPosition == CaretPosition.body && frameObject.childrenIds.length == 0) ? 2 : 1)]?.frameId??-100);
-    const startFrameId = (isJoinFrame) ? frameObject.jointParentId : slotInfos.frameId;
-    const parser = new Parser(true);
-    const portionOutput = parser.parse(startFrameId, nextCaretId);
-    parser.getErrorsFormatted(portionOutput);
 };
 
-export function checkCodeErrorsForFrame(frameId: number): void {
+export function checkPrecompiledErrorsForFrame(frameId: number): void {
     // We wil need to recreate the slot ID while parsing each slots of the frame to check errors on them
     // so we use the FlatSlotBase generator (only on that frame), and apply the error checks for each flat slot
     // ONLY on code type slots
     Object.values(useStore().frameObjects[frameId].labelSlotsDict).forEach((labelSlotStruct, labelSlotsIndex) => {
         generateFlatSlotBases(labelSlotStruct.slotStructures, "", (flatSlot: FlatSlotBase) => {
             if(isSlotCodeType(flatSlot.type)){
-                checkCodeErrors({
+                checkPrecompiledErrorsForSlot({
                     frameId: frameId,
                     labelSlotsIndex: labelSlotsIndex,
                     slotId: flatSlot.id,
@@ -799,25 +783,22 @@ export function checkCodeErrorsForFrame(frameId: number): void {
     });
 }
 
-export function clearAllFrameErrors(frameId: number): void {
-    // We wil need to recreate the slot ID while parsing each slots of the frame to clear precompiled errors
-    // so we use the FlatSlotBase generator (only on that frame), and remove the compiled errors for each flat slot
-    Object.values(useStore().frameObjects[frameId].labelSlotsDict).forEach((labelSlotStruct, labelSlotsIndex) => {
-        // We only keep the erroneous slots
-        generateFlatSlotBases(labelSlotStruct.slotStructures, "", (flatSlot: FlatSlotBase) => {
-            if((flatSlot.error?.length??0) > 0){
-                const erroneousSlot = retrieveSlotFromSlotInfos({frameId: frameId, labelSlotsIndex: labelSlotsIndex, slotId: flatSlot.id, slotType: flatSlot.type});
-                Vue.set(erroneousSlot, "error", "");
-                Vue.delete(erroneousSlot, "errorTitle");                            
-                  
-                // Delete precompiled errors for that slot
-                useStore().removePreCompileErrors(getLabelSlotUIID({
-                    frameId: frameId,
-                    labelSlotsIndex: labelSlotsIndex,
-                    slotId: flatSlot.id,
-                    slotType: flatSlot.type,
-                })); 
-            }
-        });
-    });
+export function checkCodeErrors(frameIdForPrecompiled?: number): void {
+    // Clear all errors first.
+    // We do this in two pass: 
+    //   1) check for the UI pre-compiled errors for each frame unless if a specific frame is specified, then we check that frame only
+    const frameArray = ((frameIdForPrecompiled) ? [frameIdForPrecompiled.toString()] : Object.keys(useStore().frameObjects));
+    for(const frameId of frameArray){
+        checkPrecompiledErrorsForFrame(parseInt(frameId));
+    } 
+    //  2) check for TP errors for the whole code
+    const parser = new Parser(true);
+    parser.getErrorsFormatted(parser.parse());
+
+    // We make sure the number of errors shown in the interface is in line with the current state of the code
+    // As the UI should update first, we do it in the next tick
+    nextTick().then(() => {
+        checkEditorCodeErrors();
+        useStore().errorCount = countEditorCodeErrors();
+    }); 
 }
