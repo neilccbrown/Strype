@@ -347,7 +347,7 @@ export default Vue.extend({
             useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
 
             // Make sure we're visible in the viewport properly
-            document.getElementById(getLabelSlotUIID(this.coreSlotInfo))?.scrollIntoView();
+            document.getElementById(getLabelSlotUIID(this.coreSlotInfo))?.scrollIntoView({block: "center"});
 
             this.updateAC();
         },
