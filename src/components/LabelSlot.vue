@@ -70,6 +70,7 @@ import { mapStores } from "pinia";
 import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
+import LabelSlotsStructureVue from "./LabelSlotsStructure.vue";
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -906,7 +907,9 @@ export default Vue.extend({
                         this.appStore.bypassEditableSlotBlurErrorCheck = false;
 
                         // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                        this.$emit("requestSlotsRefactoring", slotUIID, stateBeforeChanges);
+                        // (in this scenario, we don't emit a "requestSlotsRefactoring" event, because if we delete using backspace, "this" component will actually not exist anymore
+                        // and it looks like Vue will pick that up and not fire the listener.)
+                        (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(slotUIID, stateBeforeChanges);
                     });                                
                 }
                 else{
