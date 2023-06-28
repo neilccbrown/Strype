@@ -1,6 +1,6 @@
 <template>
     <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
-    <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1">
+    <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1" @mousedown.self.stop.prevent>
         <GoogleDrive :ref="googleDriveComponentId" />
         <Slide 
             :isOpen="showMenu"
@@ -104,9 +104,9 @@
             </div>
         </div> 
         <div v-if="errorCount > 0" class="menu-icons-div">
-            <i :class="{'fas fa-chevron-up menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex <= 0 )}" @mousedown="navigateToErrorRequested=true" @click="goToError($event, false)"/>
-            <span class="menu-icon-entry menu-icon-centered-entry error-count-span" :title="$t('appMessage.editorErrors')">{{errorCount}}</span>
-            <i :class="{'fas fa-chevron-down menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex >= errorCount - 1)}" @click="goToError($event, true)"/>
+            <i :class="{'fas fa-chevron-up menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex <= 0 )}" @mousedown.self.stop.prevent="navigateToErrorRequested=true" @click="goToError($event, false)"/>
+            <span class="menu-icon-entry menu-icon-centered-entry error-count-span" :title="$t('appMessage.editorErrors')" @mousedown.self.stop.prevent>{{errorCount}}</span>
+            <i :class="{'fas fa-chevron-down menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex >= errorCount - 1)}" @mousedown.self.stop.prevent="navigateToErrorRequested=true" @click="goToError($event, true)"/>
         </div>
         <a id="feedbackLink" href="/feedback" target="_blank"><i class="far fa-comment" :title="$t('action.feedbackLink')"></i></a>
     </div>
