@@ -85,7 +85,7 @@
         "stateWrongPlatform":"the file was generated from a different Strype platform that the current Strype platform",
         "stateWrongFrameTypeName":"a problem occured while retrieving the frames' types",
         "emptyEditableSlot":"Input slot cannot be empty",
-        "errorTitle":"Error!",
+        "errorTitle":"Error",
         "errorUserDefinedFuncMsg":"User-defined function\nthis function definition contains errors",
         "errorUserDefinedVarMsg":"User-defined variable\none of the assigments for this variable contains errors",
         "EOFError": "This frame cannot be empty.",
@@ -501,7 +501,6 @@
     "console": {
         "run":"Run",
         "runtimeErrorConsole": "Runtime error",
-        "runtimeErrorEditableSlotHeader": "Frame runtime error!",
         "expand":"Expand",
         "collapse":"Collapse"
     }

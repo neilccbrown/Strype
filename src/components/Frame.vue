@@ -49,7 +49,7 @@
                 <b-popover
                     v-if="hasRuntimeError"
                     :target="frameHeaderId"
-                    :title="$t('console.runtimeErrorEditableSlotHeader')"
+                    :title="$t('console.runtimeErrorConsole')"
                     triggers="hover focus"
                     :content="runTimeErrorMessage"
                     custom-class="error-popover"

@@ -1119,6 +1119,11 @@ export default Vue.extend({
     white-space: pre-line !important;
 }
 
+// modification of default bootstrap popover classes
+.popover-header {
+    color: #d66;
+}
+
 .ac {
     position: absolute;
     left: 0px;
