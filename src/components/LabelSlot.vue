@@ -34,11 +34,12 @@
                
         <b-popover
             v-if="erroneous()"
+            ref="errorPopover"
             :target="UIID"
             :title="errorHeader"
-            triggers="hover focus"
+            triggers="hover"
             :content="errorMessage"
-            custom-class="error-popover"
+            custom-class="error-popover modified-title-popover"
             placement="bottom"
         >
         </b-popover>
@@ -71,6 +72,7 @@ import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getS
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
 import LabelSlotsStructureVue from "./LabelSlotsStructure.vue";
+import { BPopover } from "bootstrap-vue";
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -350,6 +352,11 @@ export default Vue.extend({
             document.getElementById(getLabelSlotUIID(this.coreSlotInfo))?.scrollIntoView({block: "center"});
 
             this.updateAC();
+
+            // As we receive focus, we show the error popover if required. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+            if(this.erroneous()){
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit("open");
+            }
         },
         
         updateAC() : void {
@@ -426,6 +433,9 @@ export default Vue.extend({
                     if(!keepIgnoreKeyEventFlagOn){
                         this.appStore.ignoreKeyEvent = false;
                     }
+
+                    // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+                    (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
                 }
             }
         },
@@ -1117,11 +1127,6 @@ export default Vue.extend({
     // Nedded for the code to understand the formated errors which split multiple
     // errors with \n
     white-space: pre-line !important;
-}
-
-// modification of default bootstrap popover classes
-.popover-header {
-    color: #d66;
 }
 
 .ac {

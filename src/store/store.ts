@@ -81,6 +81,8 @@ export const useStore = defineStore("app", {
 
             errorCount: 0,
 
+            wasLastRuntimeErrorFrameId: undefined as number | undefined,
+
             diffToPreviousState: [] as ObjectPropertyDiff[][],
 
             diffToNextState: [] as ObjectPropertyDiff[][],
@@ -1260,6 +1262,7 @@ export const useStore = defineStore("app", {
 
             // We check the errors in the code applied to the that new state
             nextTick().then(() => {
+                this.wasLastRuntimeErrorFrameId = undefined,
                 checkEditorCodeErrors();
                 useStore().errorCount = countEditorCodeErrors();
             }); 
@@ -2191,6 +2194,9 @@ export const useStore = defineStore("app", {
                     const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
                     setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
+                    if(focusCursorInfos){
+                        document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                    }
                 });
                 
                 // As we may have moved from a blue caret position, we make sure that we are always setting the caret position to the next available caret position possible.

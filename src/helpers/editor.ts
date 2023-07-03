@@ -356,6 +356,10 @@ export function hasEditorCodeErrors(): boolean {
     return countEditorCodeErrors() > 0;
 }
 
+export function hasPrecompiledCodeError(): boolean {
+    return hasEditorCodeErrors() && !errorHTMLElements?.some((element) => isElementUIIDFrameHeader(element.id));                                                                    
+}
+
 // This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot an frame header)
 // We return the "full" index (of the error list) if the current position is ON an error, otherwise "semi" indexes that will allow navigating the errors properly:
 // for example if the current position is before the first error, the index is -0.5 so we can still go down and reach error indexed 0

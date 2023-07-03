@@ -86,6 +86,7 @@
         "stateWrongFrameTypeName":"a problem occured while retrieving the frames' types",
         "emptyEditableSlot":"Input slot cannot be empty",
         "errorTitle":"Error",
+        "pastFrameErrTitle": "Runtime error at last run",
         "errorUserDefinedFuncMsg":"User-defined function\nthis function definition contains errors",
         "errorUserDefinedVarMsg":"User-defined variable\none of the assigments for this variable contains errors",
         "EOFError": "This frame cannot be empty.",

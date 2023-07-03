@@ -45,14 +45,17 @@
                     :class="{'frame-header': true, error: hasRuntimeError}"
                     :style="frameMarginStyle['header']"
                     :frameAllowChildren="allowChildren"
+                    :erroneous="hasRuntimeError"
+                    :wasLastRuntimeError="wasLastRuntimeError"
                 />
                 <b-popover
-                    v-if="hasRuntimeError"
+                    v-if="hasRuntimeError || wasLastRuntimeError"
+                    ref="errorPopover"
                     :target="frameHeaderId"
-                    :title="$t('console.runtimeErrorConsole')"
-                    triggers="hover focus"
-                    :content="runTimeErrorMessage"
-                    custom-class="error-popover"
+                    :title="$t((hasRuntimeError) ? 'console.runtimeErrorConsole' : 'errorMessage.pastFrameErrTitle')"
+                    triggers="hover"
+                    :content="(hasRuntimeError) ? runTimeErrorMessage : runtimeErrorAtLastRunMsg"
+                    :custom-class="(hasRuntimeError) ? 'error-popover modified-title-popover': 'error-popover'"
                     placement="left"
                 >
                 </b-popover>
@@ -104,6 +107,7 @@ import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
 import { mapStores } from "pinia";
+import { BPopover } from "bootstrap-vue";
 
 //////////////////////
 //     Component    //
@@ -151,6 +155,9 @@ export default Vue.extend({
             // And an associated observer used to check when the menu made hidden to change the flag above
             // we only set the observer later as we need to access other data within the observer
             contextMenuObserver: new MutationObserver(() => {return}), 
+            // We keep a data property for frame run time error, even if that's a duplication, we need to keep it because
+            // when the error in the frame is lifted, the error message disappear, and we need to use it in the popup
+            runtimeErrorAtLastRunMsg: "",
         }
     },
 
@@ -192,6 +199,10 @@ export default Vue.extend({
 
         hasRuntimeError(): boolean {
             return (this.runTimeErrorMessage.length > 0);
+        },
+
+        wasLastRuntimeError(): boolean {
+            return this.appStore.wasLastRuntimeErrorFrameId == this.frameId;
         },
 
         deletableFrame(): boolean{
@@ -245,7 +256,33 @@ export default Vue.extend({
             // Contrary to isDragTop, this property is set whenever dragging is happening, not just for the 
             // dragged elements. We need that to control some CSS rendering of the cursors.
             return this.appStore.isDraggingFrame;
-        }   
+        },   
+
+        isInFrameWithKeyboard(): boolean {
+            console.log("for frame " + this.frameId);
+            console.log(this.appStore.currentFrame.id == this.frameId);
+            return (this.appStore.currentFrame.id == this.frameId && this.appStore.isEditing);
+        },
+    },
+
+    watch:{
+        runTimeErrorMessage(oldValue: string, newValue: string) {
+            if(oldValue.length > 0 && newValue.length == 0) {
+                this.runtimeErrorAtLastRunMsg = oldValue;
+            }
+        },
+
+        isInFrameWithKeyboard(isInFrame: boolean, wasInFrame: boolean) {
+            // If we just got the text cursor, and there is/was a runtime error in the frame, we show the popup
+            if(!wasInFrame && isInFrame && (this.hasRuntimeError || this.wasLastRuntimeError)){
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit("open");
+            }
+
+            // If we lost the text cursor, and there is/was a runtime error in the frame, we hide the popup
+            if(wasInFrame && !isInFrame){
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+            }
+        },
     },
 
     mounted() {
@@ -866,10 +903,17 @@ export default Vue.extend({
 
 .frame-header {
     border-radius: 5px;
+    display: flex; 
+    justify-content: space-between;
 }
 
 .error {
     border: 2px solid #d66 !important;
+}
+
+// modification of default bootstrap popover classes
+.modified-title-popover .popover-header {
+    color: #d66;
 }
 
 // This should be ".frameDiv:hover" but drag and drop is messing things up

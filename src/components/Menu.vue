@@ -185,6 +185,7 @@ export default Vue.extend({
 
         // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
         // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
+        // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
         watch([() => this.errorCount, () => this.appStore.isEditing, () => this.appStore.currentFrame.id, () => this.appStore.currentFrame.caretPosition, () => this.appStore.anchorSlotCursorInfos], () => {
             if(!this.navigateToErrorRequested){
                 this.$nextTick(() => {
@@ -575,6 +576,13 @@ export default Vue.extend({
             // If the icon is "disabled" we do nothing.
             if(!(event.target as HTMLElement).classList.contains("error-nav-disabled")){
                 this.$nextTick(() => {
+                    // If we are currently in a slot, we need to make sure that that slot gets notified of the caret lost
+                    if(this.appStore.focusSlotCursorInfos){
+                        document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                            ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
+                    }
+                    
+                    // Then we can focus the next error
                     const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
                     this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
                     const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
