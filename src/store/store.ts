@@ -6,7 +6,7 @@ import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegr
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, resetEditorErrors } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -1263,9 +1263,12 @@ export const useStore = defineStore("app", {
             // We check the errors in the code applied to the that new state
             nextTick().then(() => {
                 this.wasLastRuntimeErrorFrameId = undefined,
-                resetEditorErrors();
                 checkEditorCodeErrors();
-                useStore().errorCount = countEditorCodeErrors();
+                // To make sure that the error navigator gets updated properly (reactivity) we first set the error count to -1 and then count again in next tick so it notified
+                // because when we load a file, we update the error count value in the state but this error check won't be notified if there are actually
+                // still the same number of errors...
+                useStore().errorCount = -1;
+                nextTick().then(() => useStore().errorCount = countEditorCodeErrors());                
             }); 
         },
 

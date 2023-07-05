@@ -316,10 +316,6 @@ export const fileImportSupportedFormats: string[] = [strypeFileExtension];
 // by an error class on a frame header ("frameHearder_<frameId> + "error") or an editable slot ("labelSlot-input" + "errorSlot").
 let errorHTMLElements: HTMLElement[]  | null = null;
 
-export function resetEditorErrors(): void {
-    errorHTMLElements = null;
-}
-
 export function checkEditorCodeErrors(): void{
     // Clear or construcct the current list first
     if(errorHTMLElements == null){
