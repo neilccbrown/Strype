@@ -33,8 +33,7 @@ import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import { CaretPosition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
-import $ from "jquery";
-import { getCaretUIID, getEditorMiddleUIID } from "@/helpers/editor";
+import { getCaretUIID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -105,13 +104,11 @@ export default Vue.extend({
     updated() {
         // Ensure the caret (during navigation) is visible in the page viewport
         if(this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
-            const caretContainerEltRect = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId)?.getBoundingClientRect();
+            const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
+            const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
             //is caret outside the viewport?
             if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
-                //scroll the UI up/down depending on the direction we're going
-                const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
-                const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
-                $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + scrollStep);
+                caretContainerElement?.scrollIntoView({block:"center"});
             }
         }        
     },

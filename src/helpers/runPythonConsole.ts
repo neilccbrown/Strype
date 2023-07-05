@@ -112,7 +112,6 @@ function sInput(prompt: string) {
 // and providing the code (usually, user defined code) and the text area to display the output
 export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode: string, lineFrameMapping: LineAndSlotPositions): void{
     consoleTextArea = aConsoleTextArea;
-    consoleTextArea.value = ""; 
     Sk.pre = consoleTextArea.id;
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true});
     const myPromise = Sk.misceval.asyncToPromise(function() {
@@ -143,10 +142,10 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.t("errorMessage.EOFError") as string;
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
-            consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") +" >");
-
+            consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") + ": " + noLineSkulptErrStr + " >");
             // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
-            Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);            
+            Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
+            useStore().wasLastRuntimeErrorFrameId = frameId;         
         }
         else{
             // In case we couldn't get the line and the frame correctly, we just display a simple message

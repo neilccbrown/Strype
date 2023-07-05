@@ -85,7 +85,8 @@
       "stateWrongPlatform":"le fichier a été créé à partir d'une differente plateforme Strype que la plateforme Strype actuelle",
       "stateWrongFrameTypeName":"un problème est survenu lors de la récupération des types de cadres",
       "emptyEditableSlot":"Le champ de saisie ne peut pas être vide",
-      "errorTitle":"Erreur !",
+      "errorTitle":"Erreur",
+      "pastFrameErrTitle": "Erreur d'exécution lors de la dernière exécution",
       "errorUserDefinedFuncMsg":"Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
       "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
       "EOFError": "Ce cadre ne peut pas être vide.",
@@ -119,7 +120,8 @@
       "folderX":"Dossier \"{folder}\"",
       "gdriveLocation":"Emplacement :",
       "gdriveAllStrypeFiles":"Tous les fichiers Strype",
-      "gdriveTab":"Mon Drive"
+      "gdriveTab":"Mon Drive",
+      "editorErrors":"Erreurs"
     },
     "contextMenu": {
       "cut":"Couper",
@@ -166,7 +168,6 @@
     "console": {
         "run":"Exécuter",
         "runtimeErrorConsole": "Erreur d'exécution",
-        "runtimeErrorEditableSlotHeader": "Erreur d'exécution de cadre!",
         "expand":"Agrandir",
         "collapse":"Réduire"
     }

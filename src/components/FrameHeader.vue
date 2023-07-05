@@ -1,25 +1,28 @@
 <template>
     <div>
-        <div
-            class="next-to-eachother"
-            v-for="(item, index) in labels"
-            :key="item.label + frameId"
-        >
-            <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
-            <div 
-                style="font-weight: 600;"
-                :class="{'next-to-eachother': true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0),'frameColouredLabel': !isCommentFrame}"
-                v-html="item.label"
+        <div>
+            <div
+                class="next-to-eachother"
+                v-for="(item, index) in labels"
+                :key="item.label + frameId"
             >
+                <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
+                <div 
+                    style="font-weight: 600;"
+                    :class="{'next-to-eachother': true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0),'frameColouredLabel': !isCommentFrame}"
+                    v-html="item.label"
+                >
+                </div>
+                <LabelSlotsStructure 
+                    v-if="areSlotsShown(item)"
+                    :isDisabled="isDisabled"
+                    :default-text="item.defaultText"
+                    :frameId="frameId"
+                    :labelIndex="index"
+                />
             </div>
-            <LabelSlotsStructure 
-                v-if="areSlotsShown(item)"
-                :isDisabled="isDisabled"
-                :default-text="item.defaultText"
-                :frameId="frameId"
-                :labelIndex="index"
-            />
         </div>
+        <i v-if="wasLastRuntimeError" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
     </div>
 </template>
 
@@ -51,6 +54,8 @@ export default Vue.extend({
         frameType: String,
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
+        erroneous: Boolean,
+        wasLastRuntimeError: Boolean,
     },
 
     computed:{
@@ -82,15 +87,24 @@ export default Vue.extend({
     display: none;
 }
 
-.leftMargin{
+.leftMargin {
     margin-left: 2px;
 }
 
-.rightMargin{
+.rightMargin {
     margin-right: 2px;
 }
 
-.frameColouredLabel{
+.frameColouredLabel {
     color: rgb(2, 33, 168);
+}
+
+.runtime-err-icon {
+    margin: 7px 2px 0px 2px;
+    color:#d66;
+}
+
+.runtime-past-err-icon {
+    color:#706e6e;
 }
 </style>

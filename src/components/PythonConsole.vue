@@ -30,8 +30,9 @@ import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
-import { CustomEventTypes, getAppSimpleMsgDlgId, getFrameUIID, hasEditorCodeErrors } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
 import i18n from "@/i18n";
+import { SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
 export default Vue.extend({
     name: "PythonConsole",
@@ -52,17 +53,21 @@ export default Vue.extend({
 
     methods: {
         runCodeOnPyConsole() {
+            const console = this.$refs.pythonConsole as HTMLTextAreaElement;
+            console.value = "";
+            this.appStore.wasLastRuntimeErrorFrameId =  undefined;
+
             // Before doing anything, we make sure there are no errors found in the code
-            this.$nextTick(() => {
+            // We DELAY the action to make sure every other UI actions has been done, notably the error checking from LabelSlotsStructure.
+            setTimeout(() => {
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
-                if(hasEditorCodeErrors()) {
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string;
-                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                if(hasPrecompiledCodeError()) {
+                    this.$nextTick().then(() => {
+                        this.reachFirstError();                        
+                    }); 
                     return;
                 }
 
-                const console = this.$refs.pythonConsole as HTMLTextAreaElement;
-                console.value = "";
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
@@ -71,7 +76,17 @@ export default Vue.extend({
                 runPythonConsole(console, userCode, parser.getFramePositionMap());
                 // Make sure there is no document selection for our editor
                 this.appStore.setSlotTextCursors(undefined, undefined);
-            });           
+                // We make sure the number of errors shown in the interface is in line with the current state of the code
+                // As the UI should update first, we do it in the next tick
+                this.$nextTick().then(() => {
+                    checkEditorCodeErrors();
+                    this.appStore.errorCount = countEditorCodeErrors();
+                    // If there is an error, we reach it
+                    if(this.appStore.errorCount > 0){
+                        this.reachFirstError();
+                    }
+                }); 
+            }, 1000);           
         },
 
         onFocus(): void {
@@ -99,6 +114,32 @@ export default Vue.extend({
             this.isLargeConsole = !this.isLargeConsole;
             // Other parts of the UI need to be updated when the console default size is changed, so we emit an event
             document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonConsoleDisplayChanged, {detail: this.isLargeConsole}));
+        },
+
+        reachFirstError(): void {
+            this.$nextTick(() => {
+                // We should get only the run time error here, or at least 1 precompiled error
+                // but for sanity check, we make sure it's still there
+                const errors = getEditorCodeErrorsHTMLElements();
+                if(errors && errors.length > 0){
+                    const errorElement = errors[0];
+                    // We focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
+                    // we put the focus in the first slot that is editable.
+                    const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
+                        ? parseLabelSlotUIID(errorElement.id)
+                        : {frameId: parseFrameHeaderUIID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
+                    const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
+                    this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
+                    setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
+                    // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
+                    if(isElementUIIDFrameHeader(errorElement.id)){
+                        document.getElementById(getLabelSlotUIID(errorSlotInfos))?.click();
+                    }
+                    else{
+                        errorElement.click();
+                    }
+                }
+            });
         },
     },
 

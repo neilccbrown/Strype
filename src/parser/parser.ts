@@ -214,15 +214,19 @@ export default class Parser {
                     let labelSlotsIndex = -1;
                     let slotId: string | undefined = undefined;
                     let slotType: SlotType = SlotType.code;
-                    Object.entries(this.framePositionMap[error.line].labelSlotStartLengths).forEach((labelSlotStartLengthsEntry) => 
-                        labelSlotStartLengthsEntry[1].slotStarts.forEach((slotStart, index) => {
-                            if(slotStart <= error.offset && (slotStart + labelSlotStartLengthsEntry[1].slotLengths[index]) >= error.offset){
+                    Object.entries(this.framePositionMap[error.line].labelSlotStartLengths).forEach((labelSlotStartLengthsEntry, labelSlotStartLengthsEntryIndex) => 
+                        labelSlotStartLengthsEntry[1].slotStarts.forEach((slotStart, slotStartIndex) => {
+                        // As we add a line extra space at every end of a line, it is possible that for the last slot of the frame, the error is found to be at the very end
+                        // so for that very last slot, we add an extra unit of length to solve the problem that the error offset is found at the end of the line
+                            const endOfLineOffset = (labelSlotStartLengthsEntryIndex == Object.keys(this.framePositionMap[error.line].labelSlotStartLengths).length - 1 && slotStartIndex == labelSlotStartLengthsEntry[1].slotStarts.length - 1) 
+                                ? 1 : 0;
+                            if(slotStart <= error.offset && (slotStart + labelSlotStartLengthsEntry[1].slotLengths[slotStartIndex] + endOfLineOffset) >= error.offset){
                                 labelSlotsIndex = parseInt(labelSlotStartLengthsEntry[0]);
-                                slotId = labelSlotStartLengthsEntry[1].slotIds[index];
-                                slotType = labelSlotStartLengthsEntry[1].slotTypes[index];
+                                slotId = labelSlotStartLengthsEntry[1].slotIds[slotStartIndex];
+                                slotType = labelSlotStartLengthsEntry[1].slotTypes[slotStartIndex];
                             }
                         }));
-                        
+
                     // Only show error if we have found the slot
                     if(labelSlotsIndex > -1 && slotId !== undefined){
                         useStore().setSlotErroneous({

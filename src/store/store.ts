@@ -2,17 +2,18 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, AcResultsWithModule, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkCodeErrorsForFrame, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, clearAllFrameErrors, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep} from "lodash";
 import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
+import { nextTick } from "@vue/composition-api";
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -77,6 +78,10 @@ export const useStore = defineStore("app", {
             currentMessage: MessageDefinitions.NoMessage,
 
             preCompileErrors: [] as string[],
+
+            errorCount: 0,
+
+            wasLastRuntimeErrorFrameId: undefined as number | undefined,
 
             diffToPreviousState: [] as ObjectPropertyDiff[][],
 
@@ -756,7 +761,7 @@ export const useStore = defineStore("app", {
             );
         },
 
-        changeCaretWithKeyboard(key: string, isLevelScopeChange?: boolean) {    
+        changeCaretWithKeyboard(key: string, isLevelScopeChange?: boolean) {  
             const currId = this.currentFrame.id;
             const currPosition = this.currentFrame.caretPosition;
 
@@ -1254,6 +1259,17 @@ export const useStore = defineStore("app", {
             // If the sync target property did not exist in the saved stated, we set it up to the default value
             this.syncTarget = StrypeSyncTarget.none;
             this.isEditorContentModified = false;
+
+            // We check the errors in the code applied to the that new state
+            nextTick().then(() => {
+                this.wasLastRuntimeErrorFrameId = undefined,
+                checkEditorCodeErrors();
+                // To make sure that the error navigator gets updated properly (reactivity) we first set the error count to -1 and then count again in next tick so it notified
+                // because when we load a file, we update the error count value in the state but this error check won't be notified if there are actually
+                // still the same number of errors...
+                useStore().errorCount = -1;
+                nextTick().then(() => useStore().errorCount = countEditorCodeErrors());                
+            }); 
         },
 
         saveStateChanges(previousState: Record<string, unknown>) {
@@ -1435,47 +1451,9 @@ export const useStore = defineStore("app", {
                         $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + scrollStep);
                     }     
                 });
-               
 
-                //Finally, if there is a change on an editable slot, we trigger an error check for that slot/slot context
-                //to make sure that the update on the editable slot is coherent with errors shown
-                const checkErrorChangeEntry: ObjectPropertyDiff|undefined = changeList
-                    .find((changeEntry: ObjectPropertyDiff) => (changeEntry.propertyPathWithArrayFlag.match(/\.labelSlotsDict_false\..*\.code$/)?.length??0) > 0);
-                if(checkErrorChangeEntry){
-                    // Retrieve the elements we need to check an error regarding that slot
-                    const changePath = checkErrorChangeEntry.propertyPathWithArrayFlag;
-                    // *frame id* --> "frameObjects_false.<frameID>_false.xxxxx"
-                    let indexOfPrefix = "frameObjects_false.".length;
-
-                    const frameId = parseInt(changePath.substring(indexOfPrefix, changePath.indexOf("_", indexOfPrefix))); 
-                    // *label index* --> "xxxxx.labelSlotsDict_false.<index>_false.yyyy"
-                    indexOfPrefix = changePath.indexOf(".labelSlotsDict_false.") + ".labelSlotsDict_false.".length; 
-                    const labelSlotsIndex = parseInt(changePath.substring(indexOfPrefix, changePath.indexOf("_", indexOfPrefix)));
-                    // Now that we have the frame ID and the labelSlotS index,we keep parsing the change entry path to find the slot ID of the slot we are looking for
-                    let foundSlot = false;
-                    let slotId = "";
-                    const fieldsPrefix = ".fields_true.";
-                    // *root slot structure* --> yyy.slotStructures_false.fields_true.<levelIndex>_false.zzz (note that we always check for fields, as operator and brackets won't generate errors)
-                    indexOfPrefix = changePath.indexOf(".slotStructures_false.fields_true.") + ".slotStructures_false.fields_true.".length; 
-                    do{
-                        slotId = slotId + ((slotId.length > 0) ? "," :"") + changePath.substring(indexOfPrefix, Math.max(changePath.indexOf("_", indexOfPrefix), changePath.indexOf("_true.code")));
-                        // if we have deeper levels to check, we will find "fields_true" again in the next bits of the path
-                        indexOfPrefix = changePath.indexOf(fieldsPrefix, indexOfPrefix) + fieldsPrefix.length; 
-                        foundSlot = (indexOfPrefix == fieldsPrefix.length - 1); // as if the indexOf() above failed, it would return -1
-                    } while(!foundSlot);
-                     
-                    //now check the errors
-                    checkCodeErrors({
-                        frameId: frameId,
-                        labelSlotsIndex: labelSlotsIndex,
-                        slotId: slotId,
-                        code: checkErrorChangeEntry.value,
-                        //all other fields values aren't important for the method we call
-                        initCode: "",
-                        isFirstChange: true,
-                        slotType: SlotType.code,
-                    });
-                }
+                //Finally, for sanity check, we check errors on the whole code after changes have been applied
+                checkCodeErrors();
 
                 // Keep the arrays of changes in sync with undo/redo sequences
                 // The state reference is sightly modified for using the critical positions that will be required for redo                
@@ -1537,12 +1515,8 @@ export const useStore = defineStore("app", {
                 );
 
                 // If disabling [resp. enabling], we also need to remove [resp. add] potential errors of empty editable slots
-                if(payload.isDisabling){
-                    clearAllFrameErrors(frameId);                                
-                } 
-                else{
-                    checkCodeErrorsForFrame(frameId);
-                }                 
+                // As disabling a frame could impact other places of the code, we actually just run for error checks on the code itself.
+                checkCodeErrors();       
             });
         },
 
@@ -1718,7 +1692,7 @@ export const useStore = defineStore("app", {
             this.saveStateChanges(stateBeforeChanges);
         },
 
-        validateSlot(frameSlotInfos: SlotInfos) {  
+        validateSlot(frameSlotInfos: SlotInfos) {
             this.isEditing = false;
 
             if(this.frameObjects[frameSlotInfos.frameId]){
@@ -2066,6 +2040,9 @@ export const useStore = defineStore("app", {
 
             //clear the selection of frames
             this.unselectAllFrames();
+
+            // Check for errors in the code that might have changed based on this deletion
+            checkCodeErrors();
                        
             //save state changes
             if(!ignoreBackState){
@@ -2221,6 +2198,9 @@ export const useStore = defineStore("app", {
                     const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
                     setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
+                    if(focusCursorInfos){
+                        document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                    }
                 });
                 
                 // As we may have moved from a blue caret position, we make sure that we are always setting the caret position to the next available caret position possible.
@@ -2239,7 +2219,10 @@ export const useStore = defineStore("app", {
                 this.setSlotTextCursors(undefined, undefined);
        
                 // The new caret
-                this.currentFrame.caretPosition = nextPosition.caretPosition as CaretPosition;                
+                this.currentFrame.caretPosition = nextPosition.caretPosition as CaretPosition;
+                
+                // And since we just left a frame, we check errors
+                checkCodeErrors();             
             }
 
             //In any case change the current frame

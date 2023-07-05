@@ -2,7 +2,7 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
-import { getAboveFrameCaretPosition } from "./storeMethods";
+import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 
 export const undoMaxSteps = 200;
@@ -37,7 +37,17 @@ export function getFrameUIID(frameId: number): string{
 }
 
 export function getFrameHeaderUIID(frameId: number): string{
+    // Change parseFrameHeaderUIID and isElementUIIDFrameHeaderDiv if this changes
     return "frameHeader_" + frameId;
+}
+
+export function parseFrameHeaderUIID(frameHeaderUIID: string): number{
+    // Cf. getFrameHeaderUIID for the ID template
+    return parseInt(frameHeaderUIID.substring(frameHeaderUIID.indexOf("_") + 1));
+}
+
+export function isElementUIIDFrameHeader(frameHeaderUIID: string): boolean {
+    return frameHeaderUIID.match(/^frameHeader_(-?\d+)$/) != null;
 }
 
 export function getAppSimpleMsgDlgId(): string {
@@ -303,18 +313,111 @@ export function getAcContextPathId(slotId: string): string{
 export const fileImportSupportedFormats: string[] = [strypeFileExtension];
 
 // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
-// by an error class on a frame ("frameDiv" + "error") or an editable slot ("labelSlot-input" + "errorSlot").
-export function hasEditorCodeErrors(): boolean {
+// by an error class on a frame header ("frameHearder_<frameId> + "error") or an editable slot ("labelSlot-input" + "errorSlot").
+let errorHTMLElements: HTMLElement[]  | null = null;
+
+export function checkEditorCodeErrors(): void{
+    // Clear or construcct the current list first
+    if(errorHTMLElements == null){
+        errorHTMLElements = [];
+    }
+    else{
+        (errorHTMLElements as HTMLElement[]).splice(0, (errorHTMLElements as HTMLElement[]).length);
+    }
+
+    // Then look up errors based on CSS
     const erroneousHTMLElements = [...document.getElementsByClassName("error"), ...document.getElementsByClassName("errorSlot")];
     if(erroneousHTMLElements.length > 0){
-        let hasErrors = false;
         for(const erroneousHTMLElement of erroneousHTMLElements) {
-            hasErrors = hasErrors || erroneousHTMLElement.className.includes("frameDiv") 
-                || erroneousHTMLElement.className.includes("labelSlot-input");
+            if(erroneousHTMLElement.classList.contains("labelSlot-input") || erroneousHTMLElement.classList.contains("frame-header")){
+                errorHTMLElements.push(erroneousHTMLElement as HTMLElement);
+            }
         }
-        return hasErrors;
     }
-    return false; 
+}
+
+export function getEditorCodeErrorsHTMLElements(): HTMLElement[] {
+    if(errorHTMLElements == null){
+        // If we never checked errors, we do it at this stage
+        checkEditorCodeErrors();
+    }
+
+    return (errorHTMLElements as HTMLElement[]);
+}
+
+export function countEditorCodeErrors(): number {
+    if(errorHTMLElements == null){
+        // If we never checked errors, we do it at this stage
+        checkEditorCodeErrors();
+    }
+    return (errorHTMLElements as HTMLElement[]).length;
+}
+
+export function hasEditorCodeErrors(): boolean {
+    return countEditorCodeErrors() > 0;
+}
+
+export function hasPrecompiledCodeError(): boolean {
+    return hasEditorCodeErrors() && !errorHTMLElements?.some((element) => isElementUIIDFrameHeader(element.id));                                                                    
+}
+
+// This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot an frame header)
+// We return the "full" index (of the error list) if the current position is ON an error, otherwise "semi" indexes that will allow navigating the errors properly:
+// for example if the current position is before the first error, the index is -0.5 so we can still go down and reach error indexed 0
+export function getNearestErrorIndex(): number {
+    if(errorHTMLElements == null){
+        // If we never checked errors, we do it at this stage
+        checkEditorCodeErrors();
+    }
+    
+    const errorsElmtIds = (errorHTMLElements as HTMLElement[]).flatMap((elmt) => elmt.id);
+    const isEditing = useStore().isEditing;
+
+    // Get the slot currently being edited: we check first if that's one of the error so it would be a "real" index of the error array
+    // if it's not, then we'll find in between which 2 errors we're in and use a "semi" index
+    const currentFocusedElementId = (isEditing) 
+        ? getLabelSlotUIID(useStore().anchorSlotCursorInfos?.slotInfos as SlotCoreInfos) 
+        : getCaretUIID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
+    // Case 1: we are in a slot that is erroneous, or in a slot of an erroneous frame
+    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUIID(useStore().anchorSlotCursorInfos?.slotInfos.frameId as number)))){
+        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUIID(useStore().anchorSlotCursorInfos?.slotInfos.frameId as number));
+    }
+    else{
+        // Case 2: not in an error, we find out our relative position to the list of errors
+        const allCaretPositions = getAvailableNavigationPositions();
+        // Get all position indexes (we use one single array for simplication, the current slot or frame caret is put AT THE END of the array)
+        const allPosIndexes:number[] = [];
+        [...errorsElmtIds, currentFocusedElementId].forEach((elementId) => {
+            const isElementEditableSlot = isElementEditableLabelSlotInput(document.getElementById(elementId));
+            const isElementFrameHeader = isElementUIIDFrameHeader(elementId);
+            // Look the position of a slot (an error or the currently focused slot, or the first slot of an erroneous frame)
+            if(isElementEditableSlot || isElementFrameHeader){
+                const slotInfos: SlotCoreInfos = (isElementEditableSlot) 
+                    ? parseLabelSlotUIID(elementId)
+                    : {frameId: parseFrameHeaderUIID(elementId), slotId: "0", labelSlotsIndex: 0, slotType: SlotType.code};
+                allPosIndexes.push(allCaretPositions.findIndex((navPos) => navPos.isSlotNavigationPosition && navPos.frameId == slotInfos.frameId 
+                && navPos.labelSlotsIndex == slotInfos.labelSlotsIndex && navPos.slotId == slotInfos.slotId 
+                && navPos.slotType == slotInfos.slotType));
+            }
+            // Look for the position of the current focused blue caret (because if we have an element that is the caret it can only be the current blue caret, there is no errors on a blue caret...)
+            else{
+                allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == useStore().currentFrame.id && navPos.caretPosition == useStore().currentFrame.caretPosition));
+            }
+        });
+        
+        // If we are not editing, we add the position of the caret at the end of the array (since we would have skipped pushing a value as currentFocusedElementId would be empty)
+        const currentFocusedPosIndex = allPosIndexes.pop() as number;
+        if(currentFocusedPosIndex < allPosIndexes[0]){
+            return -0.5;
+        }
+        else if (currentFocusedPosIndex > allPosIndexes[allPosIndexes.length - 1]){
+            return allPosIndexes.length;
+        }
+        else{
+            const nextErrorPosIndex = allPosIndexes.findIndex((posIndex) => posIndex > currentFocusedPosIndex) as number;
+            return nextErrorPosIndex - 0.5;
+        }            
+    }
 }
 
 // Helper function to generate the frame commands on demand. 

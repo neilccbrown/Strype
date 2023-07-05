@@ -34,11 +34,12 @@
                
         <b-popover
             v-if="erroneous()"
+            ref="errorPopover"
             :target="UIID"
             :title="errorHeader"
-            triggers="hover focus"
+            triggers="hover"
             :content="errorMessage"
-            custom-class="error-popover"
+            custom-class="error-popover modified-title-popover"
             placement="bottom"
         >
         </b-popover>
@@ -67,9 +68,11 @@ import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResult
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrorsForFrame, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
+import LabelSlotsStructureVue from "./LabelSlotsStructure.vue";
+import { BPopover } from "bootstrap-vue";
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -346,9 +349,14 @@ export default Vue.extend({
             useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
 
             // Make sure we're visible in the viewport properly
-            document.getElementById(getLabelSlotUIID(this.coreSlotInfo))?.scrollIntoView();
+            document.getElementById(getLabelSlotUIID(this.coreSlotInfo))?.scrollIntoView({block: "center"});
 
             this.updateAC();
+
+            // As we receive focus, we show the error popover if required. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+            if(this.erroneous()){
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit("open");
+            }
         },
         
         updateAC() : void {
@@ -425,6 +433,9 @@ export default Vue.extend({
                     if(!keepIgnoreKeyEventFlagOn){
                         this.appStore.ignoreKeyEvent = false;
                     }
+
+                    // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+                    (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
                 }
             }
         },
@@ -452,8 +463,8 @@ export default Vue.extend({
                         this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
                     }
 
-                    // And check for errors on the frame
-                    checkCodeErrorsForFrame(this.frameId);
+                    // And check for precompiled errors on the frame, and TP errors on the whole code
+                    checkCodeErrors(this.frameId);
 
                     // Make sure there is no longer a selection
                     this.appStore.setSlotTextCursors(undefined, undefined);
@@ -906,7 +917,9 @@ export default Vue.extend({
                         this.appStore.bypassEditableSlotBlurErrorCheck = false;
 
                         // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                        this.$emit("requestSlotsRefactoring", slotUIID, stateBeforeChanges);
+                        // (in this scenario, we don't emit a "requestSlotsRefactoring" event, because if we delete using backspace, "this" component will actually not exist anymore
+                        // and it looks like Vue will pick that up and not fire the listener.)
+                        (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(slotUIID, stateBeforeChanges);
                     });                                
                 }
                 else{
