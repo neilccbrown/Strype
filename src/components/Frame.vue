@@ -258,15 +258,16 @@ export default Vue.extend({
             return this.appStore.isDraggingFrame;
         },   
 
-        isInFrameWithKeyboard(): boolean {
-            console.log("for frame " + this.frameId);
-            console.log(this.appStore.currentFrame.id == this.frameId);
+        isInFrameWithKeyboard(): boolean {            
             return (this.appStore.currentFrame.id == this.frameId && this.appStore.isEditing);
         },
     },
 
     watch:{
         runTimeErrorMessage(oldValue: string, newValue: string) {
+            // As the error message will be cleared when the frame rror is cleared, we need to keep a backup of that message when
+            // the error message is changed from some value to none.
+            // We don't need to worry about the other changes because the error popup display logics uses other flags than the messages.
             if(oldValue.length > 0 && newValue.length == 0) {
                 this.runtimeErrorAtLastRunMsg = oldValue;
             }

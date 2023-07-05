@@ -582,7 +582,9 @@ export default Vue.extend({
                             ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
                     }
                     
-                    // Then we can focus the next error
+                    // Then we can focus the next error, note that depending on where we are in the editor (between frame with the blue cursor, or in a slot of a frame)
+                    // we want to reach the nearest error. Therefore, to be able to navigate the error, we may have a current error index set to a MID WAY value (eg. 1.5 if we are between the 2nd and 3rd errors)
+                    // so we check if the index is "full" (i.e. as an integer) or mid way (i.e. as a decimal value) and we move to the next error by incrementing by +/-1 or +/- 0.5 depending on the current index being "full" or not.
                     const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
                     this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
                     const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
