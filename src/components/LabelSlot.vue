@@ -930,6 +930,7 @@ export default Vue.extend({
                     const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
                     const inputSpanFieldContent = inputSpanField.textContent ?? "";
                     let newTextCursorPos = selectionStart;
+                    let resultingSlotUIID = this.UIID;
                     if(selectionEnd != selectionStart || isSelectingMultiSlots){
                         // We are deleting a selection. We need to see if we are also deleting slots (case B) or just text within one slot (case A).
                         // It doesn't matter if we are using "del" or "backspace", the result is the same.
@@ -950,7 +951,8 @@ export default Vue.extend({
                                 const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
                                 const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                                 const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newCursorPosition};
-                                document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                                resultingSlotUIID = getLabelSlotUIID(newCurrentSlotInfoWithType);
+                                document.getElementById(resultingSlotUIID)?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                                 setDocumentSelection(slotCursorInfos, slotCursorInfos);
                                 this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
                             });
@@ -969,7 +971,8 @@ export default Vue.extend({
                     }
 
                     // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                    this.$nextTick(() => this.$emit("requestSlotsRefactoring", this.UIID, stateBeforeChanges));
+                    // As we deleted some slots, we need to call the refactoring on the resulting focused slot: that is 
+                    this.$nextTick(() => (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(resultingSlotUIID, stateBeforeChanges));
                 }
             }            
         },
