@@ -1,4 +1,3 @@
-
 import { MIMEDesc, ProjectLocation } from "@/types/types";
 
 /**
