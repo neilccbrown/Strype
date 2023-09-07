@@ -418,7 +418,6 @@ export default Vue.extend({
 
         handleDocumentSelectionChange(){
             // When the selection has changed, we update the cursor infos in the store.
-            // TODO with multi slots selection, this code WILL need changes as the way to retrieve the nodes isn't checked
             const docSelection = document.getSelection();
             if(docSelection){
                 let anchorSpanElement = docSelection?.anchorNode?.parentElement;
@@ -475,9 +474,9 @@ export default Vue.extend({
                     const hasStringSelected = (focusSlotCursorInfos.slotInfos.slotType == SlotType.string || anchorSlotCursorInfos.slotInfos.slotType == SlotType.string);
                     const isSelectionNotAllowed = (focusLevel != anchorLevel) || sameLevelDiffParents
                         || (hasStringSelected && focusSlotCursorInfos.slotInfos.slotId != anchorSlotCursorInfos.slotInfos.slotId);
+                    let amendedSelectionFocusCursorSlotInfos = cloneDeep(anchorSlotCursorInfos) as SlotCursorInfos;
                     if(isSelectionNotAllowed) {
                         const forwardSelection = ((getSelectionCursorsComparisonValue() as number) < 0);
-                        let amendedSelectionFocusCursorSlotInfos = cloneDeep(anchorSlotCursorInfos) as SlotCursorInfos;
                         // Case A: problem with string selection :
                         // if the anchor is a string we reach the beginning or the end of that string depending on the selection direction
                         // if the anchor is not a string then we stop just before or after the target string depending on the selection direction
@@ -505,11 +504,15 @@ export default Vue.extend({
                                 amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? closestAncestorNeighbourSlot.code.length : 0;
                             } 
                         }
-                        
-                        // Update the selection now 
-                        this.appStore.setSlotTextCursors(anchorSlotCursorInfos, amendedSelectionFocusCursorSlotInfos);
-                        setDocumentSelection(anchorSlotCursorInfos, amendedSelectionFocusCursorSlotInfos);
                     }
+
+                    // Update the selection now 
+                    const focusCursorInfoToUse = (isSelectionNotAllowed) ? amendedSelectionFocusCursorSlotInfos : focusSlotCursorInfos;
+                    this.appStore.setSlotTextCursors(anchorSlotCursorInfos, focusCursorInfoToUse);
+                    setDocumentSelection(anchorSlotCursorInfos, focusCursorInfoToUse);
+                    // Explicitly set the focused property to the focused slot
+                    this.appStore.setFocusEditableSlot({frameSlotInfos: focusCursorInfoToUse.slotInfos, 
+                        caretPosition: (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below});
                 }
             });     
         },
