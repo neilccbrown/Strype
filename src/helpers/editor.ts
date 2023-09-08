@@ -857,7 +857,6 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
     // (this is for example when de-stringify a string content)
     if(flags && flags.isInsideString){
         const escapedQuote = "\\" + codeLiteral.charAt(0);
-        // /(?<!\\)\\["']/g, (match) => match.charAt(1));
         codeLiteral = codeLiteral.substring(1, codeLiteral.length - 1).replaceAll(escapedQuote, (match) => match.charAt(1));
     }
 
@@ -967,12 +966,14 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             // Retrieve the start and end of the quotes (if no ending quote is found, we consider the termination is at the end of the code literal)
             const openingQuoteIndex = blankedStringCodeLiteral.match(quotesMatchPattern)?.index??0;
             const openingQuoteValue =  blankedStringCodeLiteral[openingQuoteIndex];
-            const closingQuoteIndex = openingQuoteIndex + 1 + (blankedStringCodeLiteral.substring(openingQuoteIndex + 1).match(openingQuoteValue)?.index??blankedStringCodeLiteral.length);
+            const closingQuoteIndex = openingQuoteIndex + 1 + (blankedStringCodeLiteral.substring(openingQuoteIndex + 1).match(openingQuoteValue)?.index??blankedStringCodeLiteral.substring(openingQuoteIndex + 1).length);
             // Similar to brackets, we can now split the code by what is before the string, the string itself, and what is after
             // Note that if have known placeholders for the string quotes in the code, we need to take them into consideration at this stage
             const beforeStringCode = codeLiteral.substring(0, openingQuoteIndex);
-            const quoteTokenLength = (flags?.skipStringEscape) ? STRING_SINGLEQUOTE_PLACERHOLDER.length : 1;
-            const stringContentCode = codeLiteral.substring(openingQuoteIndex + quoteTokenLength, closingQuoteIndex - (quoteTokenLength - 1));
+            const quoteTokenLength = (flags?.skipStringEscape && codeLiteral.charAt(openingQuoteIndex) != openingQuoteValue) ? STRING_SINGLEQUOTE_PLACERHOLDER.length : 1;
+            const parsingStringContentRes = getParsingStringContentAndFocusOffset(openingQuoteValue,codeLiteral.substring(openingQuoteIndex + quoteTokenLength, closingQuoteIndex - (quoteTokenLength - 1)));
+            const stringContentCode = parsingStringContentRes.parsedContent;
+            cursorOffset += parsingStringContentRes.cursorOffset;
             // same logic as brackets for subsequent code: cf. above
             let afterStringCode = codeLiteral.substring(closingQuoteIndex + 1);
             if(afterStringCode.length > 0){
@@ -1110,6 +1111,35 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     });
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
+};
+
+const getParsingStringContentAndFocusOffset = (quote: string, content: string): {parsedContent: string, cursorOffset: number} => {
+    // This methods parsed the content of a string literal: it detects if there are some quotes placeholders within the content,
+    // and replace them according to the string quote used to delimit this literal.
+    // The situation of string quotes placeholders inside a string literal content can happen when the user has selected a string and wrap it with another type of quote:
+    // the outer placeholders will be turned to the appropriate quotes, but the inner ones won't, so we do it here.
+    // It also parses inner potential quotes.
+    // Here is an example with all these cases happening
+    // Initial string was : 
+    //  "this is Strype's string"
+    // User wrapped and we are at the stage of parsing the literal code, we have :
+    //  ‘$strype_StrDbQuote_placeholder$this is Strype's string$strype_StrDbQuote_placeholder$’
+    // We need to have:
+    //  ‘"this is Strype\'s string"’
+    const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
+    let cursorOffset = 0;
+    content = content.replaceAll(new RegExp(quotesPlaceholdersExp, "g"), (placeholder) => {
+        return (placeholder == STRING_DOUBLEQUOTE_PLACERHOLDER) ? "\"" : "'";
+    });
+    
+    // We look for UNESCAPTED quotes inside the string literal
+    const unescaptedQuoteExp = "(?<!\\\\)(?:\\\\{2})*" + ((quote == "'") ? "'" : "\"");
+    content = content.replaceAll(new RegExp(unescaptedQuoteExp,"g"), (unescQuote) => {
+        cursorOffset++;
+        return "\\" + unescQuote[unescQuote.length - 1];
+    });
+
+    return {parsedContent: content, cursorOffset: cursorOffset};
 };
 
 /**
