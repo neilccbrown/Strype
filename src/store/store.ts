@@ -2192,8 +2192,15 @@ export const useStore = defineStore("app", {
                 
                 // Restore the text cursor, the anchor is the same as the focus if we are not selecting text
                 // (as the slot may have not yet be renderered in the UI, for example when adding a new frame, we do it later)
+                // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
+                // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
                 Vue.nextTick(() => {
-                    const textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
+                    if(isCommentFrame && (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
+                        textCursorPos--;
+                    }
+                  
                     const anchorCursorInfos = (payload.isShiftKeyHold && payload.key != "Tab") ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
                     const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);

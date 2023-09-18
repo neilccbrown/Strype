@@ -9,8 +9,8 @@
             @click.stop="onGetCaret"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
-            @keydown.up.prevent.stop="onUDKeyDown($event)"
-            @keydown.down.prevent.stop="onUDKeyDown($event)"
+            @keydown.up="onUDKeyDown($event)"
+            @keydown.down="onUDKeyDown($event)"
             @keydown.prevent.stop.esc
             @keyup.esc="onEscKeyUp($event)"
             @keydown.prevent.stop.enter
@@ -64,7 +64,7 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER } from "@/helpers/editor";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -442,20 +442,37 @@ export default Vue.extend({
 
         onUDKeyDown(event: KeyboardEvent) {
             this.appStore.isSelectingMultiSlots = false; // reset the flag
-            //if a key modifier (ctrl, shift or meta) is pressed, we don't do anything special
+            const isArrowUp = (event.key == "ArrowUp");
+           
+            // Check if we can reach another VISUAL line in a comment (this method returns false if we're not in a comment frame)
+            const canReachAnotherCommentLine = checkCanReachAnotherCommentLine((this.frameType == AllFrameTypesIdentifier.comment), isArrowUp, document.getElementById(getLabelSlotUIID(this.coreSlotInfo)) as HTMLSpanElement); /*&& isCommentFrame && ((isArrowUp && slotContentToCursor.includes("\n")) || (!isArrowUp && slotContentAfterCursor.includes("\n")))*/
+           
+            // When no key modifier is hit, we either navigate in A/C or leave the frame or move to another line of text for comments, depending on the context
+            // Everything is handled manually except when navigating within a comment.
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
                 // If the AutoCompletion is on we just browse through it's contents
                 // The `results` check, prevents `changeSelection()` when there are no results matching this token
                 // And instead, since there is no AC list to show, moves to the next slot
                 if(this.showAC && this.acRequested && (this.$refs.AC as any)?.areResultsToShow()) {
-                    (this.$refs.AC as any).changeSelection((event.key === "ArrowUp")?-1:1);
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    event.preventDefault();
+                    (this.$refs.AC as any).changeSelection((isArrowUp)?-1:1);
+                }
+                else if(canReachAnotherCommentLine){
+                    // We are in a comment, and in a line that is VISUALLY (in the browser) not the first (if we go up) or not the last (if we go down):
+                    // we let the browser handle the selection change nativately
+                    return;
                 }
                 // Else we move the caret
                 else {  
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    event.preventDefault();
                     // In any case the focus is lost, and the caret is shown (visually below by default)
                     this.onLoseCaret();
                     //If the up arrow is pressed you need to move the caret as well.
-                    if( event.key === "ArrowUp" ) {
+                    if(isArrowUp) {
                         this.appStore.changeCaretPosition(event.key);
                     }
                     else{
@@ -472,6 +489,10 @@ export default Vue.extend({
 
                     this.appStore.ignoreKeyEvent = true;
                 }
+            }
+            else if(event.shiftKey && canReachAnotherCommentLine){
+                // We are in a comment and do a selection using up or down keys that won't lead outside the comment, we leave the browser handle it natively
+                return;
             }
         },
         
@@ -530,16 +551,43 @@ export default Vue.extend({
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
                 this.acItemClicked(document.querySelector(".selectedAcItem")?.id??"");
             }
-            // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot
+            // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot,
+            // except for comment frame that will generate a line return when Control/Shift is combined with Enter
             else {
+                if(this.frameType == AllFrameTypesIdentifier.comment && (event.shiftKey || event.ctrlKey)){
+                    const isAnchorBeforeFocus = (getSelectionCursorsComparisonValue()??0) <= 0;
+                    const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos as SlotCursorInfos;
+                    const startSlotCursorInfos = (isAnchorBeforeFocus) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos : focusSlotCursorInfos;
+                    const endSlotCursorInfos = (isAnchorBeforeFocus) ? focusSlotCursorInfos : this.appStore.anchorSlotCursorInfos as SlotCursorInfos;
+                    const inputSpanField = document.getElementById(getLabelSlotUIID(focusSlotCursorInfos.slotInfos)) as HTMLSpanElement;
+                    // When we add the line return, we check that if we are adding it at the end of the comment, we double that line return:
+                    // span do not render a line break that isn't followed by something. So we use this workaround to visually show a line return.
+                    // (The text cursor will never be able to be past that terminating line feed so it doesn't offset the navigation from the user's point of view)
+                    const inputSpanFieldContent = (inputSpanField.textContent ?? "").substring(0, startSlotCursorInfos.cursorPos)
+                        + "\n" 
+                        + ((endSlotCursorInfos.cursorPos == (inputSpanField.textContent??"").length) ? "\n" : (inputSpanField.textContent ?? "").substring(endSlotCursorInfos.cursorPos));
+                    this.appStore.setFrameEditableSlotContent(
+                        {
+                            ...focusSlotCursorInfos.slotInfos,
+                            code: inputSpanFieldContent,
+                            initCode: this.initCode,
+                            isFirstChange: this.isFirstChange,
+                        }
+                    ).then(() => {
+                        const slotCursorInfos = {...focusSlotCursorInfos, cursorPos: startSlotCursorInfos.cursorPos + 1};
+                        setDocumentSelection(slotCursorInfos, slotCursorInfos);
+                    }); 
+                }
+                else{
                 // Same as hitting arrow down
-                const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
-                this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
-                document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
-                    new KeyboardEvent("keydown", {
-                        key: "ArrowDown",
-                    })
-                );
+                    const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
+                    this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
+                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                        new KeyboardEvent("keydown", {
+                            key: "ArrowDown",
+                        })
+                    );
+                }
             }
             this.showAC = this.debugAC;
             this.acRequested = false;
@@ -833,12 +881,15 @@ export default Vue.extend({
         onCodePasteImpl(content : string) {
             // Save the current state
             const stateBeforeChanges = cloneDeep(this.appStore.$state);
+
             // Pasted code is done in several steps:
             // 0) clean up the content
             // 1) correct the code literal if needed (for example pasting "(a" will result in pasting "(a)")
             // 2) add the corrected code at the current location 
             // 3) set the text cursor at the right location       
             // 4) check if the slots need to be refactorised
+            // (note: we do not make text treatment for comment frames, except for transforming \r\n to \n)
+            const isCommentFrame = (this.frameType == AllFrameTypesIdentifier.comment);
             const inputSpanField = document.getElementById(this.UIID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UIID);
             if(inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
@@ -849,31 +900,36 @@ export default Vue.extend({
                 // we also then replace the styled quotes appropriately
                 // TODO: Strype is too permissive at the moment with copy/paste: we can't detect the difference between what comes from us and outside
                 // and if the line returns are line returns or coming from the UI (slots). For the moment, do as if we can only work from the UI.
-                content = content.trim();
-                content = content
-                    .replaceAll(new RegExp(UIDoubleQuotesCharacters[0]+"\r?\n","g"), stringDoubleQuoteChar)
-                    .replaceAll(new RegExp("(\r)?\n"+UIDoubleQuotesCharacters[1],"g"), stringDoubleQuoteChar)
-                    .replaceAll(new RegExp(UISingleQuotesCharacters[0]+"\r?\n","g"), stringSingleQuoteChar)
-                    .replaceAll(new RegExp("\r?\n"+UISingleQuotesCharacters[1],"g"), stringSingleQuoteChar)
-                    .replaceAll(/\r?\n/g,"");
-          
-                // part 1 - note that if we are in a string, we just copy as is except for the quotes that must be parsed
                 let cursorOffset = 0;
                 let correctedPastedCode = "";
-                if(this.slotType == SlotType.string){
-                    const regex = (this.stringQuote =="\"")
-                        ? /(^|[^\\])(")/g
-                        : /(^|[^\\])(')/g;
-                    correctedPastedCode = content.replaceAll(regex, (match) => {
-                        cursorOffset--;
-                        return match[0]??"";
-                    });
+                if(isCommentFrame){
+                    correctedPastedCode = content.replaceAll(/(\r\n)/g, "\n");
                 }
                 else{
-                    const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content);
-                    const parser = new Parser();
-                    correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
-                    cursorOffset = tempcursorOffset;
+                    content = content.trim();
+                    content = content
+                        .replaceAll(new RegExp(UIDoubleQuotesCharacters[0]+"\r?\n","g"), stringDoubleQuoteChar)
+                        .replaceAll(new RegExp("(\r)?\n"+UIDoubleQuotesCharacters[1],"g"), stringDoubleQuoteChar)
+                        .replaceAll(new RegExp(UISingleQuotesCharacters[0]+"\r?\n","g"), stringSingleQuoteChar)
+                        .replaceAll(new RegExp("\r?\n"+UISingleQuotesCharacters[1],"g"), stringSingleQuoteChar)
+                        .replaceAll(/\r?\n/g,"");
+                
+                    // part 1 - note that if we are in a string, we just copy as is except for the quotes that must be parsed
+                    if(this.slotType == SlotType.string){
+                        const regex = (this.stringQuote =="\"")
+                            ? /(^|[^\\])(")/g
+                            : /(^|[^\\])(')/g;
+                        correctedPastedCode = content.replaceAll(regex, (match) => {
+                            cursorOffset--;
+                            return match[0]??"";
+                        });
+                    }
+                    else{
+                        const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content);
+                        const parser = new Parser();
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
+                        cursorOffset = tempcursorOffset;
+                    }
                 }
                 // part 2
                 inputSpanField.textContent = inputSpanField.textContent.substring(0, selectionStart)
@@ -1116,7 +1172,7 @@ export default Vue.extend({
     padding: 0px 0px;
     outline: none;
     cursor: text;
-    white-space: pre;
+    white-space: pre-wrap;
     user-select: text;
     min-width: 3px;
 }
@@ -1154,6 +1210,7 @@ export default Vue.extend({
 
 .comment-slot {
     color: #97971E !important;
+    margin-right: 2px;
 }
 // end classes for slot type
 

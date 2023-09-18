@@ -286,8 +286,9 @@ export default Vue.extend({
                     }));
             }
             // Let through various shortcuts like Ctrl-A, Ctrl-C, etc, so that they trigger the in-built
-            // actions of selectAll, copy, etc:
-            if (!event.ctrlKey && !event.metaKey) {
+            // actions of selectAll, copy, etc; as well as up & down IF WE ARE IN A COMMENT FRAME.
+            if (!event.ctrlKey && !event.metaKey && 
+                !((this.appStore.frameObjects[this.frameId].frameType.type === AllFrameTypesIdentifier.comment) && (event.key == "ArrowUp" || event.key == "ArrowDown" ) )) {
                 event.preventDefault();
             }
         },
@@ -309,10 +310,13 @@ export default Vue.extend({
             if(this.appStore.focusSlotCursorInfos){
                 const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;
                 const spanInput = document.getElementById(getLabelSlotUIID(slotInfos)) as HTMLSpanElement;
+                const spanInputContent = spanInput.textContent ?? "";
+                const isCommentFrame = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment);
 
                 // If we're trying to go off the bounds of this slot
+                // For comments, if there is a terminating line return, we do not allow the cursor to be past it (cf LabelSlot.vue onEnterOrTabKeyUp() for why)
                 if((cursorPos == 0 && event.key==="ArrowLeft") 
-                        || (cursorPos === ((spanInput.textContent?.length)??0) && event.key==="ArrowRight")) {
+                        || ((cursorPos === spanInputContent.length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     this.appStore.isSelectingMultiSlots = event.shiftKey;
                     this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {

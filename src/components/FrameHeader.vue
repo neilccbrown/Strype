@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div>
+        <div class="frame-header-div">
             <div
                 class="next-to-eachother"
                 v-for="(item, index) in labels"
@@ -9,7 +9,7 @@
                 <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
                 <div 
                     style="font-weight: 600;"
-                    :class="{'next-to-eachother': true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0),'frameColouredLabel': !isCommentFrame}"
+                    :class="{'next-to-eachother frame-keyword': true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0),'frameColouredLabel': !isCommentFrame}"
                     v-html="item.label"
                 >
                 </div>
@@ -79,8 +79,17 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+.frame-header-div {
+    display: flex;
+    width: 100%;
+}
+
+.frame-keyword {
+    margin-top: 1px; // to align the keyword with the slots (that has 1 px border)
+}
+
 .next-to-eachother {
-    display: inline-block;
+    display: flex;
 }
 
 .hidden {
