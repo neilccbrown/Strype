@@ -83,6 +83,7 @@ import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
+import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 /* IFTRUE_isPurePython */
 import PythonConsole from "@/components/PythonConsole.vue";
 import { isMacOSPlatform } from "@/helpers/common";
@@ -239,7 +240,7 @@ export default Vue.extend({
                 const isEditing = this.appStore.isEditing;
 
                 //prevent default scrolling and navigation
-                if (!isEditing && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab"].includes(event.key)) {
+                if (!isEditing && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
                     if(this.appStore.ignoreKeyEvent){
                         this.appStore.ignoreKeyEvent = false;
                         return;
@@ -254,6 +255,21 @@ export default Vue.extend({
                             this.appStore.changeCaretPosition(event.key, ((event.ctrlKey && !isMacOSPlatform()) || (event.altKey && isMacOSPlatform())));
                         }
                     }
+                    else if(event.key == "Home" || event.key == "End"){
+                        // For the "home" and "end" key, we move the blue caret to the first or last position of the current main section the caret is in.
+                        // This is overriding the natural browser behaviour that scrolls to the top or bottom of the page (at least with Chrome)
+                        event.stopImmediatePropagation();
+                        event.stopPropagation();
+                        event.preventDefault();
+                        // Look for the section we're in
+                        const sectionId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
+                        // Update the caret to the first/last position within this section
+                        const isMovingHome = (event.key == "Home");
+                        const isSectionEmpty = (this.appStore.frameObjects[sectionId].childrenIds.length == 0);
+                        const newCaretId = (isMovingHome || isSectionEmpty) ? sectionId : this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
+                        const newCaretPosition = (isMovingHome || isSectionEmpty) ? CaretPosition.body : CaretPosition.below;
+                        this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
+                    }    
                     else{
                         // At this stage, tab and left/right arrows are handled only if not editing: editing cases are directly handled by LabelSlotsStructure.
                         // We start by getting from the DOM all the available caret and editable slot positions
@@ -328,7 +344,7 @@ export default Vue.extend({
             }
             else {
                 if(!isEditing && !this.appStore.isAppMenuOpened){
-                    //cases when there is no editing:
+                    // Cases when there is no editing:
                     if(!(event.ctrlKey || event.metaKey)){
                         if(event.key == "Delete" || event.key == "Backspace"){
                             if(!ignoreKeyEvent){

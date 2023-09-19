@@ -227,6 +227,15 @@ export const getParent = (currentFrame: FrameObject): number => {
     return parentId;
 };
 
+export const getFrameSectionIdFromFrameId = (frameId: number): number => {
+    // Retrieve the id of the frame section (imports, function definitions or main code) of frame given its id.   
+    let parentId = frameId;
+    while(parentId > 0){
+        parentId = getParent(useStore().frameObjects[frameId]);
+    }    
+    return parentId;
+};
+
 // Checks if it is a joint Frame or not and returns JointParent OR Parent respectively
 export const getParentOrJointParent = (frameId: number): number  => {
     const isJointFrame = useStore().frameObjects[frameId].frameType.isJointFrame;

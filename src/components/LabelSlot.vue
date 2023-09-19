@@ -630,6 +630,12 @@ export default Vue.extend({
                 return;
             }
 
+            // Manage the handling of home/end and page up/page down keys
+            if(["PageUp", "PageDown", "Home", "End"].includes(event.key)){
+                this.handleFastUDNavKeys(event);
+                return;
+            }
+
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
@@ -885,6 +891,39 @@ export default Vue.extend({
             
             // Refactor the slots after the changes have been performed
             (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(getLabelSlotUIID(focusSlotCursorInfos.slotInfos), stateBeforeChanges);
+        },
+
+        handleFastUDNavKeys(event: KeyboardEvent){
+            // If we are in a comment, we let the browser handling the key events.
+            // Otherwise, the following rules apply:
+            // Home/End move the text cursor to the start/end of the "block" unit of the code, for example the start of a slot bracketed structure
+            // PageUp/PageDown: do nothing
+            if(this.frameType == AllFrameTypesIdentifier.comment){
+                return;
+            }
+            else if(event.key == "Home" || event.key == "End"){
+                // Find which bounds we should target (which bound in the current level based on the key, and also the bound based on current text cursor position)
+                const moveToHome = (event.key === "Home");
+                const isSelecting = event.shiftKey;
+                const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
+                // First focus: it will change to one end of the current level depending on the direction we're going
+                const newFocusSlotId = (moveToHome) 
+                    ? ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0")
+                    : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1)));
+                console.log(newFocusSlotId);
+                const newFocusSlotType = evaluateSlotType(retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
+                const newFocusSlotCoreInfo =  {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
+                const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
+                // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
+                const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos}; 
+                // Set the new bounds
+                this.$nextTick(() => {
+                    document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotLostCaret));
+                    document.getElementById(getLabelSlotUIID(newFocusSlotCoreInfo))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                    setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+                    this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+                });
+            }
         },
 
         onCodePaste(event: CustomEvent) {
