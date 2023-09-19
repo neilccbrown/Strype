@@ -111,6 +111,10 @@ export function isLabelSlotEditable(type: SlotType): boolean {
     return !isSlotBracketType(type) && !isSlotQuoteType(type) && type != SlotType.operator;
 }
 
+export function getACLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
+    return getLabelSlotUIID(slotCoreInfos) + "_AutoCompletion";
+}
+
 export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement): number {
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the start of the selection.

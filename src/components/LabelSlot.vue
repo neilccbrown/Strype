@@ -1,5 +1,5 @@
 <template>
-    <div :id="'div_'+UIID" :class="{'next-to-eachother labelSlot-container': true, nohover: isDraggingFrame}">
+    <div :id="'div_'+UIID" :class="{'labelSlot-container': true, nohover: isDraggingFrame}">
         <span
             autocomplete="off"
             spellcheck="false"
@@ -51,8 +51,8 @@
             :context.sync="contextAC"
             :token.sync="tokenAC"
             ref="AC"
-            :key="UIID+'_Autocompletion'"
-            :id="UIID+'_Autocompletion'"
+            :key="AC_UIID"
+            :id="AC_UIID"
             :cursorPosition="cursorPosition"
             :isImportFrame="isImportFrame()"
             @acItemClicked="acItemClicked"
@@ -64,7 +64,7 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine } from "@/helpers/editor";
+import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUIID } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -106,6 +106,15 @@ export default Vue.extend({
             if(areSlotCoreInfosEqual(this.appStore.focusSlotCursorInfos.slotInfos, this.coreSlotInfo) && prevTextContent === this.code){
                 setDocumentSelection(this.appStore.anchorSlotCursorInfos, this.appStore.focusSlotCursorInfos);
             }
+        }
+    },
+
+    mounted(){
+        // To make sure the a/c component shows just below the spans, we set its top position here based on the span height.
+        const spanH = document.getElementById(this.UIID)?.clientHeight;
+        const acElement = document.getElementById(this.AC_UIID);
+        if(spanH && acElement){
+            acElement.style.top = (spanH + "px");
         }
     },
 
@@ -218,6 +227,10 @@ export default Vue.extend({
 
         UIID(): string {
             return getLabelSlotUIID(this.coreSlotInfo);
+        },
+
+        AC_UIID(): string {
+            return getACLabelSlotUIID(this.coreSlotInfo);
         },
 
         errorMessage(): string{
