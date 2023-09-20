@@ -20,11 +20,11 @@
                                         v-for="addFrameCommand in addFrameCommands"
                                         :key="addFrameCommand[0].type.type"
                                         :type="addFrameCommand[0].type.type"
-                                        :shortcut="addFrameCommand[0].shortcut"
+                                        :shortcut="addFrameCommand[0].shortcuts[0]"
                                         :symbol="
                                             addFrameCommand[0].symbol !== undefined
                                                 ? addFrameCommand[0].symbol
-                                                : addFrameCommand[0].shortcut
+                                                : addFrameCommand[0].shortcuts[0]
                                         "
                                         :description="addFrameCommand[0].description"
                                         :tooltip="addFrameCommand[0].tooltip"
@@ -112,7 +112,8 @@ export default Vue.extend({
             showProgress: false,
             progressPercent: 0,
             uploadThroughUSB: false,
-            frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language)
+            frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
+            keydownStr: "", // this is required to be check keyboard values on keyup, because on international keyboards, the value returned on keyup is different than keydown's
         };
     },
 
@@ -217,6 +218,7 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
+                this.keydownStr = event.key;
                 //if we requested to log keystroke, display the keystroke event in an unobtrusive location
                 //when editing, we don't show the keystroke for basic keys (like [a-zA-Z0-1]), only those whose key value is longer than 1
                 if(this.appStore.showKeystroke && (!this.appStore.isEditing || event.key.match(/^.{2,}$/))){
@@ -357,10 +359,14 @@ export default Vue.extend({
                             }
                         }
                         //add the frame in the editor if allowed
-                        else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined){
+                        else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined || Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == this.keydownStr.toLowerCase()) !== undefined){
                             if(!ignoreKeyEvent){
+                                // We can add the frame by its original shortcut or hidden one
+                                const isOriginalShortcut = (this.addFrameCommands[event.key.toLowerCase()] != undefined);
                                 this.appStore.addFrameWithCommand(
-                                    this.addFrameCommands[event.key.toLowerCase()][0].type
+                                    (isOriginalShortcut) 
+                                        ? this.addFrameCommands[event.key.toLowerCase()][0].type
+                                        : (Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == this.keydownStr.toLowerCase()) as AddFrameCommandDef[])[0].type
                                 );
                             }
                             else{

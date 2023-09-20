@@ -456,14 +456,14 @@ export function generateAllFrameCommandsDefs():void {
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.if),
                 description: "if",
-                shortcut: "i",
+                shortcuts: ["i"],
                 tooltip:i18n.t("frame.if_detail") as string,
                 index: 0,
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.import),
                 description: "import",
-                shortcut: "i",
+                shortcuts: ["i"],
                 tooltip:i18n.t("frame.import_detail") as string,
                 index:1,
             },
@@ -472,26 +472,26 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.elif),
             description: "elif",
             tooltip:i18n.t("frame.elif_detail") as string,
-            shortcut: "l",
+            shortcuts: ["l"],
         }],
         "e": [{
             type: getFrameDefType(AllFrameTypesIdentifier.else),
             description: "else",
             tooltip:i18n.t("frame.else_detail") as string,
-            shortcut: "e",
+            shortcuts: ["e"],
         }],
         "f": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.for),
                 description: "for",
-                shortcut: "f",
+                shortcuts: ["f"],
                 tooltip:i18n.t("frame.for_detail") as string,
                 index: 0,
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
                 description: i18n.t("frame.funcdef_desc") as string,
-                shortcut: "f",
+                shortcuts: ["f"],
                 tooltip:i18n.t("frame.funcdef_detail") as string,
                 index: 1,
             },
@@ -499,7 +499,7 @@ export function generateAllFrameCommandsDefs():void {
                 type: getFrameDefType(AllFrameTypesIdentifier.fromimport),
                 description: "from...import",
                 tooltip:i18n.t("frame.fromimport_detail") as string,
-                shortcut: "f",
+                shortcuts: ["f"],
                 index:2,
             },
         ],
@@ -507,37 +507,37 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.while),
             description: "while",
             tooltip:i18n.t("frame.while_detail") as string,
-            shortcut: "w",
+            shortcuts: ["w"],
         }],
         "b" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.break),
             description: "break",
             tooltip:i18n.t("frame.break_detail") as string,
-            shortcut: "b",
+            shortcuts: ["b"],
         }],
         "u" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.continue),
             description: "continue",
             tooltip:i18n.t("frame.continue_detail") as string,
-            shortcut: "u",
+            shortcuts: ["u"],
         }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
             description: i18n.t("frame.varassign_desc") as string,
             tooltip:i18n.t("frame.varassign_detail") as string,
-            shortcut: "=",
+            shortcuts: ["="],
         }],
         " ": [{
             type: getFrameDefType(AllFrameTypesIdentifier.empty),
             description: i18n.t("frame.funccall_desc") as string,
-            shortcut: " ",
+            shortcuts: [" "],
             tooltip:i18n.t("frame.funccall_detail") as string,
             symbol: "⌴",//"␣"
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
             description: i18n.t("frame.blank_desc") as string,
-            shortcut: "\x13",
+            shortcuts: ["\x13"],
             tooltip:i18n.t("frame.blank_detail") as string,
             symbol: "↵",
         }],
@@ -545,49 +545,49 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.return),
             description: "return",
             tooltip:i18n.t("frame.return_detail") as string,
-            shortcut: "r",
+            shortcuts: ["r"],
         }],
         "c": [{
             type: getFrameDefType(AllFrameTypesIdentifier.comment),
             description: i18n.t("frame.comment_desc") as string,
             tooltip:i18n.t("frame.comment_detail") as string,
-            shortcut: "c",
+            shortcuts: ["c", "#"],
         }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),
             description: "try",
             tooltip:i18n.t("frame.try_detail") as string,
-            shortcut: "t",
+            shortcuts: ["t"],
         }],
         "a" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.raise),
             description: "raise",
             tooltip:i18n.t("frame.raise_detail") as string,
-            shortcut: "a",
+            shortcuts: ["a"],
         }],
         "x": [{
             type: getFrameDefType(AllFrameTypesIdentifier.except),
             description: "except",
             tooltip:i18n.t("frame.except_detail") as string,
-            shortcut: "x",
+            shortcuts: ["x"],
         }],
         "n": [{
             type: getFrameDefType(AllFrameTypesIdentifier.finally),
             description: "finally",
             tooltip:i18n.t("frame.finally_detail") as string,
-            shortcut: "n",
+            shortcuts: ["n"],
         }],
         "h": [{
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
             tooltip:i18n.t("frame.with_detail") as string,
-            shortcut: "h",
+            shortcuts: ["h"],
         }],
         "g": [{
             type: getFrameDefType(AllFrameTypesIdentifier.global),
             description: "global",
             tooltip: i18n.t("frame.global_detail") as string,
-            shortcut: "g",
+            shortcuts: ["g"],
         }],
     };
 
@@ -611,7 +611,7 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     if(allFrameCommandsDefs === undefined){
         generateAllFrameCommandsDefs();
     }
-    const shortcutCommands = Object.values(allFrameCommandsDefs as {[id: string]: AddFrameCommandDef[]}).flat().filter((command) => command.shortcut === shortcut);
+    const shortcutCommands = Object.values(allFrameCommandsDefs as {[id: string]: AddFrameCommandDef[]}).flat().filter((command) => command.shortcuts[0] == shortcut);
     if(shortcutCommands.length > 0) {
         if(index) {
             if(index < shortcutCommands.length) {
