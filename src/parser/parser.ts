@@ -207,7 +207,7 @@ export default class Parser {
             })}`;
 
             
-            // For each error, show red border around its input in the UI
+            // For each error, show red wiggles below its input in the UI
             errors.forEach((error: ErrorInfo) => {
                 if(this.framePositionMap[error.line] !== undefined) {
                     // Look up in which slot the error should be shown (where the error offset is slotStart[i]<= offset AND slotStart[i] + slotLength[i] >= offset)
@@ -216,14 +216,18 @@ export default class Parser {
                     let slotType: SlotType = SlotType.code;
                     Object.entries(this.framePositionMap[error.line].labelSlotStartLengths).forEach((labelSlotStartLengthsEntry, labelSlotStartLengthsEntryIndex) => 
                         labelSlotStartLengthsEntry[1].slotStarts.forEach((slotStart, slotStartIndex) => {
-                        // As we add a line extra space at every end of a line, it is possible that for the last slot of the frame, the error is found to be at the very end
-                        // so for that very last slot, we add an extra unit of length to solve the problem that the error offset is found at the end of the line
+                            // As we add a line extra space at every end of a line, it is possible that for the last slot of the frame, the error is found to be at the very end
+                            // so for that very last slot, we add an extra unit of length to solve the problem that the error offset is found at the end of the line
                             const endOfLineOffset = (labelSlotStartLengthsEntryIndex == Object.keys(this.framePositionMap[error.line].labelSlotStartLengths).length - 1 && slotStartIndex == labelSlotStartLengthsEntry[1].slotStarts.length - 1) 
                                 ? 1 : 0;
                             if(slotStart <= error.offset && (slotStart + labelSlotStartLengthsEntry[1].slotLengths[slotStartIndex] + endOfLineOffset) >= error.offset){
+                                // We do not allow an error to be shown on an operator. If that happens (for example the case of the "Unexcepted end of line or input" error if line ends with operator, and next is if frame)
+                                // then we show the error on the following slot (an operator is always followed by something).
+                                const isErrorOnOperator = (labelSlotStartLengthsEntry[1].slotTypes[slotStartIndex] == SlotType.operator);
                                 labelSlotsIndex = parseInt(labelSlotStartLengthsEntry[0]);
-                                slotId = labelSlotStartLengthsEntry[1].slotIds[slotStartIndex];
-                                slotType = labelSlotStartLengthsEntry[1].slotTypes[slotStartIndex];
+                                const slotStartIndexToUse = (isErrorOnOperator) ? slotStartIndex + 1 : slotStartIndex;
+                                slotId = labelSlotStartLengthsEntry[1].slotIds[slotStartIndexToUse];
+                                slotType = labelSlotStartLengthsEntry[1].slotTypes[slotStartIndexToUse];
                             }
                         }));
 

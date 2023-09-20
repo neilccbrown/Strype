@@ -404,11 +404,11 @@ export function getNearestErrorIndex(): number {
     // Get the slot currently being edited: we check first if that's one of the error so it would be a "real" index of the error array
     // if it's not, then we'll find in between which 2 errors we're in and use a "semi" index
     const currentFocusedElementId = (isEditing) 
-        ? getLabelSlotUIID(useStore().anchorSlotCursorInfos?.slotInfos as SlotCoreInfos) 
+        ? getLabelSlotUIID(useStore().focusSlotCursorInfos?.slotInfos as SlotCoreInfos) 
         : getCaretUIID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
     // Case 1: we are in a slot that is erroneous, or in a slot of an erroneous frame
-    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUIID(useStore().anchorSlotCursorInfos?.slotInfos.frameId as number)))){
-        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUIID(useStore().anchorSlotCursorInfos?.slotInfos.frameId as number));
+    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUIID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number)))){
+        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUIID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number));
     }
     else{
         // Case 2: not in an error, we find out our relative position to the list of errors
