@@ -435,7 +435,7 @@ export default Vue.extend({
                         anchorSpanElement = anchorSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
                     }
                 }
-                if(focusSpanElement?.tagName.toLowerCase() == "div" && focusSpanElement.className.includes(" labelSlot-container")){
+                if(focusSpanElement?.tagName.toLowerCase() == "div"){
                     if(focusSpanElement.className.match(/(^| )labelSlot-container($| )/) != null){
                         // The most common case
                         focusSpanElement = focusSpanElement.firstElementChild as HTMLSpanElement;
