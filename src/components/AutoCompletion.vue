@@ -229,16 +229,14 @@ export default Vue.extend({
                 console.log("Error on  Types");
             }
 
+            const myFunctionsModuleLabel = i18n.t("autoCompletion.myFunctions") as string;
+            const myVariablesModuleLabel = i18n.t("autoCompletion.myVariables") as string;
+   
             // Append the Python results,docs and types to the lists IFF there is no context
             if(this.context === "" && !this.isImportFrame) {
-
                 // The list of results might not include some the user-defined functions and variables because the user code can't compile. 
                 // If so, we should still allow them to displayed (for the best we can retrieve) for simple basic autocompletion functionality.
-
                 const userDefinedFuncVars = this.appStore.retrieveUserDefinedElements; 
-                const myFunctionsModuleLabel = i18n.t("autoCompletion.myFunctions") as string;
-                const myVariablesModuleLabel = i18n.t("autoCompletion.myVariables") as string;
-   
                 userDefinedFuncVars.forEach((userDefItem) => {
                     if(userDefItem.isFunction) {
                         //If module has not been created, create it
@@ -284,7 +282,12 @@ export default Vue.extend({
                 if((parsedResults[module].length??0) > 0){
                     // For each module we create an indexed list with all the results
                     // We filter first, as if we have a block without a name (i.e. funct with empty mame) we should exclude these
-                    const listOfElements: AcResultType[] = parsedResults[module].filter((e) => e!=="").map( (element,i) => {
+                    // Also, we hide the entries starting with "__" in modules that are not user defined bits, unless the "_" has been typed for autocompletion
+                    // (note that in the root context, we won't have any of these entries as they were already filtered out in acManager.ts)
+                    const showSpecialEntries = (module == myFunctionsModuleLabel || module == myVariablesModuleLabel || this.token.startsWith("_"));
+                    const listOfElements: AcResultType[] = parsedResults[module].filter((e) => {
+                        return e!=="" && (showSpecialEntries || (!showSpecialEntries && !e.startsWith("_")));
+                    }).map( (element,i) => {
                         // We are not assigning the indexes at that stage as we will need to sort first
                         // the version is retrieved from the version json object (for microbit), if no version is found, we set 1
                         return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i], version:(_.get(this.acVersions, acContextPath+"."+element) as number)??1};

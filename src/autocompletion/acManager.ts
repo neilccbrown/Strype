@@ -13,6 +13,8 @@ const INDENT = "    ";
 
 let currentACContext= "_temp_AC_context_";
 
+const STRYPE_LIB_TO_HIDE_PREFIX = "__StrypePythonKW__";
+
 export function resetCurrentContextAC(): void {
     currentACContext = "_temp_AC_context_";
 }
@@ -153,9 +155,9 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     const jsonStringifiedContext = JSON.stringify(contextAC);
 
 
-    let inspectionCode ="from browser import document as __document, console as __console\n";
+    let inspectionCode ="from browser import document as " +STRYPE_LIB_TO_HIDE_PREFIX + "document, console as "+ STRYPE_LIB_TO_HIDE_PREFIX + "console\n";
     // import json for formatting the content to be later parsed in JSON properly
-    inspectionCode += "import json as __json\n";
+    inspectionCode += "import json as " + STRYPE_LIB_TO_HIDE_PREFIX + "json\n";
     
     /* IFTRUE_isMicrobit */
     inspectionCode += "import sys as __sys\n"+
@@ -185,8 +187,8 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
             /* IFTRUE_isPurePython */
             // We first get all the contents of stdlib
             inspectionCode += "\n"+INDENT+"namesForAutocompletion = globals().get('__BRYTHON__')['stdlib']";
-            // Then we strip the ones starting with '_' and the ones that are like 'a.b.c'
-            inspectionCode += "\n"+INDENT+"namesForAutocompletion = [name for name in namesForAutocompletion if not name.startswith('_') and len(name.split('.'))<2]";    
+            // Then we strip the ones that are like 'a.b.c'
+            inspectionCode += "\n"+INDENT+"namesForAutocompletion = [name for name in namesForAutocompletion if len(name.split('.'))<2]";    
             /* FITRUE_isPurePython */    
             
             contextAC = "";
@@ -202,9 +204,10 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+"try:";
         // append the line that removes useless names and saves them to the results
         // we also need to remove validContext so that we don't get it in the results
-        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('__') and not name.startswith('$$') and name!='validContext']";
+        // and explicitely remove "__builtins__", "__annotations__", "__doc__", and "__name__" from the root listing
+        inspectionCode += "\n"+INDENT+INDENT+"results = [name for name in namesForAutocompletion if not name.startswith('"+STRYPE_LIB_TO_HIDE_PREFIX+"') and not name.startswith('$$') and name!='validContext'"+
+            ((contextAC.length == 0) ? " and name not in ['__builtins__', '__annotations__', '__doc__', '__name__'] " : "")+"]";
         // If there are no results, we notify the hidden span that there is no AC available
-        
         inspectionCode += "\n"+INDENT+INDENT+"resultsWithModules={}";
         inspectionCode += "\n"+INDENT+INDENT+"if(len(results)>0):";
         //We are creating a Dictionary with tuples of {module: [list of results]}
@@ -213,8 +216,9 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         // 1) $exec_XXX --> user defined methods
         // 2) builtins --> user defined variable
         // 3) Any other imported library
-        // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue) 
+        // 4) Python/Brython builtins (these are added at the next stage, on AutoCompletion.vue)
         inspectionCode += "\n"+INDENT+INDENT+INDENT+"for name in results:";
+        
         // in case the contextAC is not empty, this is the 'module'
         // otherwise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
         // if not, the we retrieve the module name with globals().get(name).__module__
@@ -246,13 +250,13 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"tups[indexOfMyVariables], tups[0] = tups[0], tups[indexOfMyVariables]";
         // Convert back to dictionary!
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"resultsWithModules = dict(tups)";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+"__console.log('exception1', e)";
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text = __json.dumps(resultsWithModules)";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+"except Exception as e:\n"+INDENT+INDENT+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"console.log('exception1', e)";
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+acSpanId+"'].text = "+STRYPE_LIB_TO_HIDE_PREFIX+"json.dumps(resultsWithModules)";
         // If there are no results
         inspectionCode += "\n"+INDENT+INDENT+"else:";
         // We empty any previous results so that the AC won't be shown
-        inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acSpanId+"'].text =''";
-        inspectionCode += "\n"+INDENT+"except Exception as e2:\n"+INDENT+INDENT+"__console.log('exception2', e2)"; 
+        inspectionCode += "\n"+INDENT+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+acSpanId+"'].text =''";
+        inspectionCode += "\n"+INDENT+"except Exception as e2:\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"console.log('exception2', e2)"; 
 
         /*
         *       STEP 2 : Get the documentation for each one of the results
@@ -299,34 +303,34 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+"finally:";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"sys.stdout = old_stdout";
         inspectionCode += "\n"+INDENT+INDENT+INDENT+INDENT+INDENT+INDENT+"mystdout.close()";
-        inspectionCode += "\n"+INDENT+INDENT+"__document['"+documentationSpanId+"'].text = __json.dumps(documentation);";
-        inspectionCode += "\n"+INDENT+INDENT+"__document['"+typesSpanId+"'].text = __json.dumps(types);";
+        inspectionCode += "\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+documentationSpanId+"'].text = "+STRYPE_LIB_TO_HIDE_PREFIX+"json.dumps(documentation);";
+        inspectionCode += "\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+typesSpanId+"'].text = "+STRYPE_LIB_TO_HIDE_PREFIX+"json.dumps(types);";
 
         // we store the context *path* obtained by checking the type of the context with Python, or leave empty if no context.
         // it will be used in the AutoCompletion component to check versions
-        inspectionCode += "\n"+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = ''";
+        inspectionCode += "\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+acContextPathSpanId+"'].text = ''";
         if(contextAC.length > 0){
             // if there is a context,  we get the context path from 
             // - self value if that's a module,
             // - type() that returns the type as "<class 'xxx'>"
             inspectionCode += "\n"+INDENT+INDENT+"if str(globals().get("+jsonStringifiedContext+")).startswith('<module '):";
-            inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = "+jsonStringifiedContext;
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+acContextPathSpanId+"'].text = "+jsonStringifiedContext;
             inspectionCode += "\n"+INDENT+INDENT+"elif str(type("+contextAC+")).startswith('<class \\''):";
-            inspectionCode += "\n"+INDENT+INDENT+INDENT+"__document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
+            inspectionCode += "\n"+INDENT+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]";
         }
 
-        inspectionCode += "\n"+INDENT+"except Exception as e3:\n"+INDENT+INDENT+"__console.log('exception3', e3)";
+        inspectionCode += "\n"+INDENT+"except Exception as e3:\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"console.log('exception3', e3)";
     }
 
     // Fake a click to the hidden span to trigger the AC window to show
     // This must be done by Brython to be sure that the AC and documentation
     // have had time to load.
     inspectionCode += "\ntry:";
-    inspectionCode += "\n"+INDENT+"if len(__document.get(id='"+((regenerateAC) ? acSpanId : reshowResultsId)+"')) > 0:";   
+    inspectionCode += "\n"+INDENT+"if len("+STRYPE_LIB_TO_HIDE_PREFIX+"document.get(id='"+((regenerateAC) ? acSpanId : reshowResultsId)+"')) > 0:";   
     inspectionCode += "\n"+INDENT+INDENT+"from browser import window";
     inspectionCode += "\n"+INDENT+INDENT+"event = window.MouseEvent.new('click')";
-    inspectionCode += "\n"+INDENT+INDENT+"__document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)";
-    inspectionCode += "\nexcept Exception as e4:\n"+INDENT+"__console.log('exception4', e4)";
+    inspectionCode += "\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+((regenerateAC) ? acSpanId : reshowResultsId)+"'].dispatchEvent(event)";
+    inspectionCode += "\nexcept Exception as e4:\n"+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"console.log('exception4', e4)";
     
     // We need to put the user code before, so that the inspection can work on the code's results
     storeCodeToDOM((regenerateAC) ? (userCode + inspectionCode) : inspectionCode);
