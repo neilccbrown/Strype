@@ -35,7 +35,7 @@ export default class Parser {
     private line = 0;
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
-    private excludeLoops = false;
+    private excludeLoopsAndComments = false;
     private ignoreCheckErrors = false;
 
     constructor(ignoreCheckErrors?: boolean){
@@ -52,7 +52,7 @@ export default class Parser {
             return "";
         }
 
-        const passBlock = this.excludeLoops && getLoopFramesTypeIdentifiers().includes(block.frameType.type);
+        const passBlock = this.excludeLoopsAndComments && getLoopFramesTypeIdentifiers().includes(block.frameType.type);
         // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
         const conditionalIndent = (passBlock) ? "" : INDENT;
 
@@ -76,10 +76,19 @@ export default class Parser {
     private parseStatement(statement: FrameObject, indentation = ""): string {
         let output = indentation;
         const labelSlotsPositionLengths: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
-
-        if(this.checkIfFrameHasError(statement) || (statement.frameType.type === AllFrameTypesIdentifier.comment) 
-            || (statement.frameType.type === AllFrameTypesIdentifier.empty && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#")) ) {
+        
+        if(this.checkIfFrameHasError(statement)){
             return "";
+        }
+
+        // Comments are treated separately for 2 reasons: 1) when we are parsing for a/c we don't want to parse the comments because they mess up with the try block surrounding the lines of code,
+        // and 2) we need to check if the comment is multilines for setting the right comment indicator (''' instead of #). A comment is always a single slot so there is no extra logic to consider.
+        if((statement.frameType.type === AllFrameTypesIdentifier.comment) 
+        || (statement.frameType.type === AllFrameTypesIdentifier.empty && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
+            const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+            return (this.excludeLoopsAndComments)
+                ? ""
+                : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)) + "'''\n") : (indentation + "#" + commentContent + "\n"));
         }
             
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {
@@ -155,7 +164,7 @@ export default class Parser {
         return output;
     }
 
-    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoops?: boolean): string {
+    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndComments?: boolean): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -164,8 +173,8 @@ export default class Parser {
             this.stopAtFrameId = stopAtFrameId;
         }
 
-        if(excludeLoops){
-            this.excludeLoops = excludeLoops;
+        if(excludeLoopsAndComments){
+            this.excludeLoopsAndComments = excludeLoopsAndComments;
         }
 
         //console.time();
