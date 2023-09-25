@@ -1018,7 +1018,7 @@ export default Vue.extend({
                 const isSelectingMultiSlots = !areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos);
 
                 // Without selection, a slot will be removed when the text caret is at the end of a slot and there is no text selection
-                // we delete slots only when there is an operator between the current slot, and the next flat (UI) slot.      
+                // we delete slots only when there is a single operator between the current slot, and the next flat (UI) slot.      
                 if(!isSelectingMultiSlots && (selectionStart == selectionEnd) 
                     && ((isForwardDeletion && focusSlotCursorInfos.cursorPos == this.code.length && nextSlotInfos) || (!isForwardDeletion && focusSlotCursorInfos.cursorPos == 0 && previousSlotInfos))){
                     this.appStore.bypassEditableSlotBlurErrorCheck = true;
@@ -1029,30 +1029,46 @@ export default Vue.extend({
                     const referenceCursorPos = (isDeletingFromString) 
                         ? 0 
                         : focusSlotCursorInfos.cursorPos;
-                    const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);
-                    
-                    // Restore the text cursor position (need to wait for reactive changes)
-                    this.$nextTick(() => {
-                        const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                        const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
-                        let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
-                        const slotUIID = getLabelSlotUIID(newSlotInfos); 
-                        const inputSpanField = document.getElementById(slotUIID) as HTMLSpanElement;
-                        const newTextCursorPos = (isForwardDeletion) 
-                            ? referenceCursorPos + cursorPosOffset 
-                            : ((inputSpanField.textContent??"").length - cursorPosOffset - backDeletionCharactersToRetainCount); 
-                        const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
-                        const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newTextCursorPos};
-                        document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
-                        setDocumentSelection(slotCursorInfos, slotCursorInfos);
-                        this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
-                        this.appStore.bypassEditableSlotBlurErrorCheck = false;
 
-                        // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
-                        // (in this scenario, we don't emit a "requestSlotsRefactoring" event, because if we delete using backspace, "this" component will actually not exist anymore
-                        // and it looks like Vue will pick that up and not fire the listener.)
-                        (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(slotUIID, stateBeforeChanges);
-                    });                                
+                    // Check whether we are deleting only 1 part of a double operator or the whole operator
+                    const {parentId: currentSlotParentId, slotIndex: currentSlotIndex} = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId);
+                    const neighbourOperatorSlotIndex = (isForwardDeletion) ? currentSlotIndex : currentSlotIndex -1;
+                    const neighbourOperatorSlot = retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: getSlotIdFromParentIdAndIndexSplit(currentSlotParentId, neighbourOperatorSlotIndex), slotType: SlotType.operator});
+                    const neighbourOperatorSlotContent = (neighbourOperatorSlot!= undefined) ? (neighbourOperatorSlot as BaseSlot).code : "s";
+                    if(neighbourOperatorSlotContent.includes(" ") || operators.filter((operator) => operator.length == 2).includes(neighbourOperatorSlotContent)){
+                        // We have a double operator: if we are in a keyword/symbolic operator, we remove the first or second word/symbol depending the direction of deletion
+                        const newOperatorContent = (isForwardDeletion) 
+                            ? ((neighbourOperatorSlotContent.includes(" ")) ? neighbourOperatorSlotContent.substring(neighbourOperatorSlotContent.indexOf(" ") + 1) : neighbourOperatorSlotContent[1])
+                            : ((neighbourOperatorSlotContent.includes(" ")) ? neighbourOperatorSlotContent.substring(0, neighbourOperatorSlotContent.indexOf(" ")) : neighbourOperatorSlotContent[0]);
+                        (neighbourOperatorSlot as BaseSlot).code = newOperatorContent;
+                        // We don't actually require slot to be regenerated, but we need to mark the action for undo/redo
+                        this.$nextTick(() => (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(this.UIID, stateBeforeChanges));
+                    }
+                    else{
+                        const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);
+                        // Restore the text cursor position (need to wait for reactive changes)
+                        this.$nextTick(() => {
+                            const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
+                            const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                            let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                            const slotUIID = getLabelSlotUIID(newSlotInfos); 
+                            const inputSpanField = document.getElementById(slotUIID) as HTMLSpanElement;
+                            const newTextCursorPos = (isForwardDeletion) 
+                                ? referenceCursorPos + cursorPosOffset 
+                                : ((inputSpanField.textContent??"").length - cursorPosOffset - backDeletionCharactersToRetainCount); 
+                            const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
+                            const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newTextCursorPos};
+                            document.getElementById(getLabelSlotUIID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                            setDocumentSelection(slotCursorInfos, slotCursorInfos);
+                            this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);
+                            this.appStore.bypassEditableSlotBlurErrorCheck = false;
+
+                            // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
+                            // (in this scenario, we don't emit a "requestSlotsRefactoring" event, because if we delete using backspace, "this" component will actually not exist anymore
+                            // and it looks like Vue will pick that up and not fire the listener.)
+                            (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(slotUIID, stateBeforeChanges);
+                        });
+                    }
                 }
                 else{
                     // We are deleting some code, several cases can happen:
