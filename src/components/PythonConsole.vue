@@ -55,8 +55,12 @@ export default Vue.extend({
         runCodeOnPyConsole() {
             const console = this.$refs.pythonConsole as HTMLTextAreaElement;
             console.value = "";
+            // Make sure the text area is disabled when we run the code
+            console.disabled = true;
             this.appStore.wasLastRuntimeErrorFrameId =  undefined;
-
+            // Make sure there is no document selection for our editor
+            this.appStore.setSlotTextCursors(undefined, undefined);
+                
             // Before doing anything, we make sure there are no errors found in the code
             // We DELAY the action to make sure every other UI actions has been done, notably the error checking from LabelSlotsStructure.
             setTimeout(() => {
@@ -74,8 +78,6 @@ export default Vue.extend({
                 storeCodeToDOM(userCode);
                 // Trigger the actual console launch
                 runPythonConsole(console, userCode, parser.getFramePositionMap());
-                // Make sure there is no document selection for our editor
-                this.appStore.setSlotTextCursors(undefined, undefined);
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // As the UI should update first, we do it in the next tick
                 this.$nextTick().then(() => {
