@@ -219,7 +219,7 @@ export default Vue.extend({
                                                 // LHS can only be a single field slot
                                                 0: {
                                                     slotStructures:{
-                                                        fields: [{code: uiLiteralCode.substring(0, uiLiteralCode.indexOf("="))}],
+                                                        fields: [{code: uiLiteralCode.substring(0, uiLiteralCode.indexOf("=")).trim()}],
                                                         operators: []},
                                                 },
                                                 //RHS are the other fields and operators
