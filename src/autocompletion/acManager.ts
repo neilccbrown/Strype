@@ -160,14 +160,13 @@ function prepareBrythonCode(regenerateAC: boolean, userCode: string, contextAC: 
     inspectionCode += "import json as " + STRYPE_LIB_TO_HIDE_PREFIX + "json\n";
     
     /* IFTRUE_isMicrobit */
-    inspectionCode += "import sys as __sys\n"+
-    "import __osMB\n"+
-    "import __timeMB\n"+
-    "import __random\n"+
-    "__sys.modules['os'] = __osMB\n"+
-    "__sys.modules['time'] = __timeMB\n"+
-    "__sys.modules['random'] = __random\n";
-
+    inspectionCode += "import sys as " + STRYPE_LIB_TO_HIDE_PREFIX  + "sys\n"+
+    "import " + STRYPE_LIB_TO_HIDE_PREFIX + "osMB\n"+
+    "import " + STRYPE_LIB_TO_HIDE_PREFIX + "timeMB\n"+
+    "import " + STRYPE_LIB_TO_HIDE_PREFIX + "random\n"+
+    STRYPE_LIB_TO_HIDE_PREFIX + "sys.modules['os'] = " + STRYPE_LIB_TO_HIDE_PREFIX + "osMB\n"+
+    STRYPE_LIB_TO_HIDE_PREFIX + "sys.modules['time'] = " + STRYPE_LIB_TO_HIDE_PREFIX + "timeMB\n"+
+    STRYPE_LIB_TO_HIDE_PREFIX + "sys.modules['random'] = " + STRYPE_LIB_TO_HIDE_PREFIX + "random\n";
     /* FITRUE_isMicrobit */
 
     if(regenerateAC){
