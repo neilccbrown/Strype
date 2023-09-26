@@ -384,6 +384,7 @@ export default Vue.extend({
                 // Need to check if frame still exists because it may have been deleted after blurring:
                 if(this.frameId != ((this.appStore.focusSlotCursorInfos?.slotInfos.frameId)??-1) && this.appStore.lastBlurredFrameId in this.appStore.frameObjects){
                     checkCodeErrors(this.appStore.lastBlurredFrameId);
+                    this.appStore.lastAddedFrameIds = -1;
                 }
             }, 200);
         },

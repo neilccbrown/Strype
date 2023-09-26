@@ -241,7 +241,7 @@ export default class Parser {
                         }));
 
                     // Only show error if we have found the slot
-                    if(labelSlotsIndex > -1 && slotId !== undefined){
+                    if(labelSlotsIndex > -1 && slotId !== undefined && useStore().lastAddedFrameIds != this.framePositionMap[error.line].frameId){
                         useStore().setSlotErroneous({
                             frameId: this.framePositionMap[error.line].frameId,
                             labelSlotsIndex: labelSlotsIndex,
