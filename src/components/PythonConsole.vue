@@ -186,12 +186,12 @@ export default Vue.extend({
         color: white;
         flex-grow: 2;
         font-size: 17px;
+        tab-size: 8;
+        font-family: monospace;
     }
 
     #pythonConsole:disabled {
         -webkit-text-fill-color: #ffffff; // Required for Safari
         color: white;
-        tab-size: 8;
-        font-family: monospace;
     }
 </style>
