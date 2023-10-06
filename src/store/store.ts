@@ -53,6 +53,8 @@ export const useStore = defineStore("app", {
             lastCriticalActionPositioning: {lastCriticalCaretPosition: {id: -3, caretPosition: CaretPosition.body}, lastCriticalSlotCursorInfos: undefined} as {lastCriticalCaretPosition: CurrentFrame, lastCriticalSlotCursorInfos?: SlotCursorInfos},
 
             lastBlurredFrameId: -1, // Used to keep trace of which frame had focus to check is we moved out the frame when clicking somewhere (for errors checking)
+
+            lastAddedFrameIds: -1, // Used to keep trace of which frame has just been added into the editor (for error checking)
  
             isDraggingFrame: false, // Indicates whether drag and drop of frames is in process
 
@@ -100,6 +102,8 @@ export const useStore = defineStore("app", {
             potentialDeleteFrameIds:[] as number[],
 
             potentialDeleteIsOuter: false,
+
+            isWrappingFrame: false, // Flag to know when we are doing a frame wrapping action
 
             // Keeps a copy of the state when 2-steps operations are performed and we need to know the previous state (to clear after use!)
             stateBeforeChanges : {} as  {[id: string]: any}, 
@@ -565,7 +569,7 @@ export const useStore = defineStore("app", {
             // Note: the slots we look at can only be 1 single code since they are LHS or function name slots.
             return Object.values(state.frameObjects).filter((frame: FrameObject) => (frame.id !== state.currentFrame.id 
                 && (frame.frameType.type === AllFrameTypesIdentifier.funcdef || frame.frameType.type === AllFrameTypesIdentifier.varassign)))
-                .map((frame: FrameObject) => ({name: (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
+                .map((frame: FrameObject) => ({name: (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.trim(),
                     isFunction: frame.frameType.type === AllFrameTypesIdentifier.funcdef}) as UserDefinedElement);
         },
 
@@ -1516,7 +1520,10 @@ export const useStore = defineStore("app", {
 
                 // If disabling [resp. enabling], we also need to remove [resp. add] potential errors of empty editable slots
                 // As disabling a frame could impact other places of the code, we actually just run for error checks on the code itself.
-                checkCodeErrors();       
+                // We don't need to check errors if we are wrapping a frame (because expect users to type something in the wrapping frame's slots, or get out of them which would check errors then)
+                if(!this.isWrappingFrame){
+                    checkCodeErrors();       
+                }
             });
         },
 
@@ -1888,6 +1895,7 @@ export const useStore = defineStore("app", {
             availablePositions.splice(indexOfCurrent+1,0,...newFramesCaretPositions);
 
             if (this.selectedFrames.length > 0 && frame.allowChildren) {
+                this.isWrappingFrame = true;
                 this.copySelection();
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
                 this.deleteFrames("Delete");
@@ -1907,6 +1915,7 @@ export const useStore = defineStore("app", {
                 }
                 await Vue.nextTick();
                 availablePositions = getAvailableNavigationPositions();
+                this.isWrappingFrame = false;
             }
             else {
                 this.unselectAllFrames();
@@ -1930,6 +1939,7 @@ export const useStore = defineStore("app", {
                     if(frameHeaderDiv && frameHeaderBoundingRect && (frameHeaderBoundingRect.top + frameHeaderBoundingRect.height > document.documentElement.clientHeight)){
                         document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
                     }
+                    this.lastAddedFrameIds = newFrame.id;
                 }
             );
         },
@@ -2042,8 +2052,11 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
 
             // Check for errors in the code that might have changed based on this deletion
-            checkCodeErrors();
-                       
+            // (except if we are wrapping frames, we don't need to check at this stage, it will be done later after the user's edition)
+            if(!this.isWrappingFrame){
+                checkCodeErrors();
+            }
+
             //save state changes
             if(!ignoreBackState){
                 this.saveStateChanges(stateBeforeChanges);
@@ -2192,8 +2205,15 @@ export const useStore = defineStore("app", {
                 
                 // Restore the text cursor, the anchor is the same as the focus if we are not selecting text
                 // (as the slot may have not yet be renderered in the UI, for example when adding a new frame, we do it later)
+                // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
+                // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
                 Vue.nextTick(() => {
-                    const textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
+                    if(isCommentFrame && (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
+                        textCursorPos--;
+                    }
+                  
                     const anchorCursorInfos = (payload.isShiftKeyHold && payload.key != "Tab") ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
                     const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);

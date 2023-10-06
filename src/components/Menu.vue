@@ -526,9 +526,11 @@ export default Vue.extend({
                 this.currentTabindexValue = 0;                
             }
             else {
-                // Bring the focus back to the editor
-                document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus();
-                this.appStore.ignoreKeyEvent = false;                
+                // Bring the focus back to the editor if the menu was opened (because this can be called when "esc" is hit elsewhere (burger menu behaviour))
+                if(this.appStore.isAppMenuOpened){
+                    document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus();
+                    this.appStore.ignoreKeyEvent = false;
+                }                
             }
             this.appStore.isAppMenuOpened = isMenuOpening;
             this.showMenu = isMenuOpening;

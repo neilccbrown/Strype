@@ -111,6 +111,10 @@ export function isLabelSlotEditable(type: SlotType): boolean {
     return !isSlotBracketType(type) && !isSlotQuoteType(type) && type != SlotType.operator;
 }
 
+export function getACLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
+    return getLabelSlotUIID(slotCoreInfos) + "_AutoCompletion";
+}
+
 export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement): number {
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the start of the selection.
@@ -258,6 +262,30 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
 }
 
 
+// We want to know if the cursor position in a comment frame will still allow for moving that cursor up/down within the frame or need to be interpreted as an "exit" out the frame.
+// A naive way of approaching this would be to check the line returns (\n) before/after the cursor, but this is not reliable because the text content associated with the span
+// element will not necessarily be represented exactly in the same way on the browser (because of text wrapping) -- and there is no easy way to retrieve the text AS IT IS PRESENTED.
+// However, we can check the bounds of the current selection to help us find where we are in the span, and therefore know if we're in the top/last VISUALLY SHOWING line of the text
+// Based on https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
+export function checkCanReachAnotherCommentLine(isCommentFrame: boolean, isArrowUp: boolean, commentSpanElement: HTMLSpanElement): boolean{
+    // If we're not in a comment, just don't check
+    const currentDocSelection = document.getSelection();
+    if(isCommentFrame && currentDocSelection){
+        const commentSpanRect = commentSpanElement.getClientRects()[0];
+        const commentSelectionRects = currentDocSelection.getRangeAt(0).getClientRects();
+        // When there is nothing in the comment, the range may have no rectangles, then we clearly can return false
+        if(commentSelectionRects[0]){
+            const lineheight = commentSelectionRects[0].height;
+            // The weird case when we are below an empty line
+            const firstRect = (commentSelectionRects.length == 2 && currentDocSelection.getRangeAt(0).collapsed) ? commentSelectionRects[1] : commentSelectionRects[0];
+            const isInFirstVisualLine = (firstRect.top - commentSpanRect.top) < lineheight;
+            const isInLastVisualLine = (commentSpanRect.bottom - commentSelectionRects[commentSelectionRects.length - 1].bottom) < lineheight;
+            return ((isArrowUp) ? !isInFirstVisualLine : !isInLastVisualLine);
+        }
+    }
+    return false;
+}
+
 export function getFrameContextMenuUIID(frameUIID: string): string {
     return frameUIID + "frameContextMenu";
 }
@@ -376,11 +404,11 @@ export function getNearestErrorIndex(): number {
     // Get the slot currently being edited: we check first if that's one of the error so it would be a "real" index of the error array
     // if it's not, then we'll find in between which 2 errors we're in and use a "semi" index
     const currentFocusedElementId = (isEditing) 
-        ? getLabelSlotUIID(useStore().anchorSlotCursorInfos?.slotInfos as SlotCoreInfos) 
+        ? getLabelSlotUIID(useStore().focusSlotCursorInfos?.slotInfos as SlotCoreInfos) 
         : getCaretUIID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
     // Case 1: we are in a slot that is erroneous, or in a slot of an erroneous frame
-    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUIID(useStore().anchorSlotCursorInfos?.slotInfos.frameId as number)))){
-        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUIID(useStore().anchorSlotCursorInfos?.slotInfos.frameId as number));
+    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUIID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number)))){
+        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUIID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number));
     }
     else{
         // Case 2: not in an error, we find out our relative position to the list of errors
@@ -428,14 +456,14 @@ export function generateAllFrameCommandsDefs():void {
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.if),
                 description: "if",
-                shortcut: "i",
+                shortcuts: ["i"],
                 tooltip:i18n.t("frame.if_detail") as string,
                 index: 0,
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.import),
                 description: "import",
-                shortcut: "i",
+                shortcuts: ["i"],
                 tooltip:i18n.t("frame.import_detail") as string,
                 index:1,
             },
@@ -444,26 +472,26 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.elif),
             description: "elif",
             tooltip:i18n.t("frame.elif_detail") as string,
-            shortcut: "l",
+            shortcuts: ["l"],
         }],
         "e": [{
             type: getFrameDefType(AllFrameTypesIdentifier.else),
             description: "else",
             tooltip:i18n.t("frame.else_detail") as string,
-            shortcut: "e",
+            shortcuts: ["e"],
         }],
         "f": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.for),
                 description: "for",
-                shortcut: "f",
+                shortcuts: ["f"],
                 tooltip:i18n.t("frame.for_detail") as string,
                 index: 0,
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
                 description: i18n.t("frame.funcdef_desc") as string,
-                shortcut: "f",
+                shortcuts: ["f"],
                 tooltip:i18n.t("frame.funcdef_detail") as string,
                 index: 1,
             },
@@ -471,7 +499,7 @@ export function generateAllFrameCommandsDefs():void {
                 type: getFrameDefType(AllFrameTypesIdentifier.fromimport),
                 description: "from...import",
                 tooltip:i18n.t("frame.fromimport_detail") as string,
-                shortcut: "f",
+                shortcuts: ["f"],
                 index:2,
             },
         ],
@@ -479,37 +507,37 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.while),
             description: "while",
             tooltip:i18n.t("frame.while_detail") as string,
-            shortcut: "w",
+            shortcuts: ["w"],
         }],
         "b" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.break),
             description: "break",
             tooltip:i18n.t("frame.break_detail") as string,
-            shortcut: "b",
+            shortcuts: ["b"],
         }],
         "u" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.continue),
             description: "continue",
             tooltip:i18n.t("frame.continue_detail") as string,
-            shortcut: "u",
+            shortcuts: ["u"],
         }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
             description: i18n.t("frame.varassign_desc") as string,
             tooltip:i18n.t("frame.varassign_detail") as string,
-            shortcut: "=",
+            shortcuts: ["="],
         }],
         " ": [{
             type: getFrameDefType(AllFrameTypesIdentifier.empty),
             description: i18n.t("frame.funccall_desc") as string,
-            shortcut: " ",
+            shortcuts: [" "],
             tooltip:i18n.t("frame.funccall_detail") as string,
             symbol: "⌴",//"␣"
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
             description: i18n.t("frame.blank_desc") as string,
-            shortcut: "\x13",
+            shortcuts: ["\x13"],
             tooltip:i18n.t("frame.blank_detail") as string,
             symbol: "↵",
         }],
@@ -517,49 +545,49 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.return),
             description: "return",
             tooltip:i18n.t("frame.return_detail") as string,
-            shortcut: "r",
+            shortcuts: ["r"],
         }],
         "c": [{
             type: getFrameDefType(AllFrameTypesIdentifier.comment),
             description: i18n.t("frame.comment_desc") as string,
             tooltip:i18n.t("frame.comment_detail") as string,
-            shortcut: "c",
+            shortcuts: ["c", "#"],
         }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),
             description: "try",
             tooltip:i18n.t("frame.try_detail") as string,
-            shortcut: "t",
+            shortcuts: ["t"],
         }],
         "a" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.raise),
             description: "raise",
             tooltip:i18n.t("frame.raise_detail") as string,
-            shortcut: "a",
+            shortcuts: ["a"],
         }],
         "x": [{
             type: getFrameDefType(AllFrameTypesIdentifier.except),
             description: "except",
             tooltip:i18n.t("frame.except_detail") as string,
-            shortcut: "x",
+            shortcuts: ["x"],
         }],
         "n": [{
             type: getFrameDefType(AllFrameTypesIdentifier.finally),
             description: "finally",
             tooltip:i18n.t("frame.finally_detail") as string,
-            shortcut: "n",
+            shortcuts: ["n"],
         }],
         "h": [{
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
             tooltip:i18n.t("frame.with_detail") as string,
-            shortcut: "h",
+            shortcuts: ["h"],
         }],
         "g": [{
             type: getFrameDefType(AllFrameTypesIdentifier.global),
             description: "global",
             tooltip: i18n.t("frame.global_detail") as string,
-            shortcut: "g",
+            shortcuts: ["g"],
         }],
     };
 
@@ -583,7 +611,7 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     if(allFrameCommandsDefs === undefined){
         generateAllFrameCommandsDefs();
     }
-    const shortcutCommands = Object.values(allFrameCommandsDefs as {[id: string]: AddFrameCommandDef[]}).flat().filter((command) => command.shortcut === shortcut);
+    const shortcutCommands = Object.values(allFrameCommandsDefs as {[id: string]: AddFrameCommandDef[]}).flat().filter((command) => command.shortcuts[0] == shortcut);
     if(shortcutCommands.length > 0) {
         if(index) {
             if(index < shortcutCommands.length) {
@@ -696,7 +724,7 @@ export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
  * Operator and brackets related content
  */
 // For Strype, we ignore the following double/triple operators += -= /= *= %= //= **= &= |= ^= >>= <<= 
-export const operators = [".","+","-","/","*","%","//","**","&","|","~","^",">>","<<",
+export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",">>","<<",
     "==","=","!=",">=","<=","<",">",","];
 // Note that for those textual operator keywords, we only have space surrounding the single words: double words don't need
 // as they will always come from a combination of writing one word then the other (the first will be added as operator)
@@ -857,7 +885,6 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
     // (this is for example when de-stringify a string content)
     if(flags && flags.isInsideString){
         const escapedQuote = "\\" + codeLiteral.charAt(0);
-        // /(?<!\\)\\["']/g, (match) => match.charAt(1));
         codeLiteral = codeLiteral.substring(1, codeLiteral.length - 1).replaceAll(escapedQuote, (match) => match.charAt(1));
     }
 
@@ -967,12 +994,14 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             // Retrieve the start and end of the quotes (if no ending quote is found, we consider the termination is at the end of the code literal)
             const openingQuoteIndex = blankedStringCodeLiteral.match(quotesMatchPattern)?.index??0;
             const openingQuoteValue =  blankedStringCodeLiteral[openingQuoteIndex];
-            const closingQuoteIndex = openingQuoteIndex + 1 + (blankedStringCodeLiteral.substring(openingQuoteIndex + 1).match(openingQuoteValue)?.index??blankedStringCodeLiteral.length);
+            const closingQuoteIndex = openingQuoteIndex + 1 + (blankedStringCodeLiteral.substring(openingQuoteIndex + 1).match(openingQuoteValue)?.index??blankedStringCodeLiteral.substring(openingQuoteIndex + 1).length);
             // Similar to brackets, we can now split the code by what is before the string, the string itself, and what is after
             // Note that if have known placeholders for the string quotes in the code, we need to take them into consideration at this stage
             const beforeStringCode = codeLiteral.substring(0, openingQuoteIndex);
-            const quoteTokenLength = (flags?.skipStringEscape) ? STRING_SINGLEQUOTE_PLACERHOLDER.length : 1;
-            const stringContentCode = codeLiteral.substring(openingQuoteIndex + quoteTokenLength, closingQuoteIndex - (quoteTokenLength - 1));
+            const quoteTokenLength = (flags?.skipStringEscape && codeLiteral.charAt(openingQuoteIndex) != openingQuoteValue) ? STRING_SINGLEQUOTE_PLACERHOLDER.length : 1;
+            const parsingStringContentRes = getParsingStringContentAndFocusOffset(openingQuoteValue,codeLiteral.substring(openingQuoteIndex + quoteTokenLength, closingQuoteIndex - (quoteTokenLength - 1)));
+            const stringContentCode = parsingStringContentRes.parsedContent;
+            cursorOffset += parsingStringContentRes.cursorOffset;
             // same logic as brackets for subsequent code: cf. above
             let afterStringCode = codeLiteral.substring(closingQuoteIndex + 1);
             if(afterStringCode.length > 0){
@@ -1110,6 +1139,35 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     });
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
+};
+
+const getParsingStringContentAndFocusOffset = (quote: string, content: string): {parsedContent: string, cursorOffset: number} => {
+    // This methods parsed the content of a string literal: it detects if there are some quotes placeholders within the content,
+    // and replace them according to the string quote used to delimit this literal.
+    // The situation of string quotes placeholders inside a string literal content can happen when the user has selected a string and wrap it with another type of quote:
+    // the outer placeholders will be turned to the appropriate quotes, but the inner ones won't, so we do it here.
+    // It also parses inner potential quotes.
+    // Here is an example with all these cases happening
+    // Initial string was : 
+    //  "this is Strype's string"
+    // User wrapped and we are at the stage of parsing the literal code, we have :
+    //  ‘$strype_StrDbQuote_placeholder$this is Strype's string$strype_StrDbQuote_placeholder$’
+    // We need to have:
+    //  ‘"this is Strype\'s string"’
+    const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
+    let cursorOffset = 0;
+    content = content.replaceAll(new RegExp(quotesPlaceholdersExp, "g"), (placeholder) => {
+        return (placeholder == STRING_DOUBLEQUOTE_PLACERHOLDER) ? "\"" : "'";
+    });
+    
+    // We look for UNESCAPTED quotes inside the string literal
+    const unescaptedQuoteExp = "(?<!\\\\)(?:\\\\{2})*" + ((quote == "'") ? "'" : "\"");
+    content = content.replaceAll(new RegExp(unescaptedQuoteExp,"g"), (unescQuote) => {
+        cursorOffset++;
+        return "\\" + unescQuote[unescQuote.length - 1];
+    });
+
+    return {parsedContent: content, cursorOffset: cursorOffset};
 };
 
 /**
