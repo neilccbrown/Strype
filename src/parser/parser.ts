@@ -88,7 +88,7 @@ export default class Parser {
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
             return (this.excludeLoopsAndComments)
                 ? ""
-                : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)) + "'''\n") : (indentation + "#" + commentContent + "\n"));
+                : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
         }
             
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {
