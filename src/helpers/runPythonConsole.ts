@@ -146,7 +146,7 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.t("errorMessage.EOFError") as string;
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
-            consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") + ": " + noLineSkulptErrStr + " >");
+            consoleTextArea.value += ("< " + noLineSkulptErrStr + " >");
             // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
             Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
             useStore().wasLastRuntimeErrorFrameId = frameId;         
