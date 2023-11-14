@@ -14,6 +14,10 @@ declare const Sk: any;
 // The function used for "output" from Skulpt, to be registered against the Skulpt object
 function outf(text: string) { 
     consoleTextArea.value = consoleTextArea.value + text; 
+    // Scroll to bottom:
+    Vue.nextTick(() => {
+        consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
+    });
 }
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
@@ -151,5 +155,9 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             // In case we couldn't get the line and the frame correctly, we just display a simple message
             consoleTextArea.value += ("< " + skulptErrStr + " >");
         }
+        // We will have added text either way, now scroll to bottom:
+        Vue.nextTick(() => {
+            consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
+        });
     });
 }

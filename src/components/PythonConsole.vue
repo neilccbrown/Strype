@@ -194,4 +194,16 @@ export default Vue.extend({
         -webkit-text-fill-color: #ffffff; // Required for Safari
         color: white;
     }
+
+    // Mac Safari: always show scrollbar (when content is large enough to require one), and make it light
+    #pythonConsole::-webkit-scrollbar {
+        width: 8px;
+    }    
+    #pythonConsole::-webkit-scrollbar-track {
+        background: #0a090c;
+    }
+    #pythonConsole::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 5px;
+    }
 </style>
