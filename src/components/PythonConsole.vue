@@ -2,7 +2,7 @@
 <template>
     <div :class="{largeConsoleDiv: isLargeConsole}">
         <div id="consoleControlsDiv">           
-            <button @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')"></button>
+            <button @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')" v-bind:title="$t('console.run') + ' (Ctrl+Enter)'"></button>
             <button @click="toggleConsoleDisplay">
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
                 {{this.consoleDisplayCtrlLabel}}
