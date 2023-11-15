@@ -117,7 +117,10 @@ export default class Parser {
     
         this.framePositionMap[this.line] =  {frameId: statement.id, labelSlotStartLengths: labelSlotsPositionLengths};
         
-        this.line += 1;
+        // We increment the line by 1 (next line) except when we are in an EMPTY block frame, as the empty "body" is replaced by "pass" in the parser,
+        // that should be counted as a line (so we increment by 2)
+        const incrementValue = (statement.frameType.allowChildren && statement.childrenIds.length == 0) ? 2 : 1;
+        this.line += incrementValue;
 
         return output;
     }
