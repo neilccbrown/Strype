@@ -49,12 +49,9 @@ module.exports = {
             .use("vue-loader")
             .loader("js-conditional-compile-loader")
             .options( {
-                // the following are from the library js-conditional-compile-loader
-                //isDebug: process.env.NODE_ENV === "development", // optional, this expression is default  /* IFDEBUG  CODE  FIDEBUG */
-                // isDebug: process.env.VUE_APP_PYTHON_OR_MICROBIT === "python",
-                isPurePython: process.env.npm_config_python,//process.env.VUE_APP_PYTHON_OR_MICROBIT === "python",
-                isMicrobit: process.env.npm_config_microbit,//process.env.VUE_APP_PYTHON_OR_MICROBIT === "microbit",
-                // envTest: process.env.ENV_CONFIG === "test", // any prop name you want, used for /* IFTRUE_evnTest ...js code... FITRUE_evnTest */
+                // the following are from the library js-conditional-compile-loader https://github.com/hzsrc/js-conditional-compile-loader
+                isPurePython: process.env.npm_config_python,
+                isMicrobit: process.env.npm_config_microbit,              
             });
         config.module
             .rule("conditionalCompilerTS")

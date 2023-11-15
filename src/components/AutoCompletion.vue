@@ -282,10 +282,14 @@ export default Vue.extend({
                 if((parsedResults[module].length??0) > 0){
                     // For each module we create an indexed list with all the results
                     // We filter first, as if we have a block without a name (i.e. funct with empty mame) we should exclude these
-                    // Also, we hide the entries starting with "__" in modules that are not user defined bits, unless the "_" has been typed for autocompletion
+                    // Also, we hide the entries starting with "__" in modules that are not user defined bits, unless the "_" has been typed for autocompletion or we're on the microbit version
                     // (be careful to remove the entries once the mapping is done, so indexing based on the original results isn't offset)
                     // (note that in the root context, we won't have any of these entries as they were already filtered out in acManager.ts)
-                    const showSpecialEntries = (module == myFunctionsModuleLabel || module == myVariablesModuleLabel || this.token.startsWith("_"));
+                    let isPurePython = true;
+                    /* IFTRUE_isMicrobit */
+                    isPurePython = false;
+                    /* FITRUE_isMicrobit */
+                    const showSpecialEntries = (module == myFunctionsModuleLabel || module == myVariablesModuleLabel || (isPurePython && this.token.startsWith("_"))) ;
                     const listOfElements: AcResultType[] = parsedResults[module].map( (element,i) => {
                         // We are not assigning the indexes at that stage as we will need to sort first
                         // the version is retrieved from the version json object (for microbit), if no version is found, we set 1
