@@ -662,13 +662,13 @@ export default Vue.extend({
             // pressing "=" or space keys move to RHS editable slot (but we allow the a/c to be activated)
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
-            if(this.labelSlotsIndex === 0 && !hasTextSelection && selectionStart === inputSpanFieldContent.length &&
+            if(this.labelSlotsIndex === 0 && !hasTextSelection  &&
                 ((((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.varassign) || 
                 (((event.key === "(" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.funcdef))){
-                // Simulate a right arrow key press to make sure we go to the next slot
+                // Simulate a tab key press to make sure we go to the next slot
                 document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                     new KeyboardEvent(event.type, {
-                        key: "ArrowRight",
+                        key: "Tab",
                     })
                 );
                 event.preventDefault();
