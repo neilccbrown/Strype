@@ -6,7 +6,7 @@ import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegr
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUIID } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -1934,9 +1934,16 @@ export const useStore = defineStore("app", {
                     //save state changes
                     this.saveStateChanges(stateBeforeChanges);
                     // To make sure we are showing the newly added frame, we scroll into view if needed
-                    const frameHeaderDiv = document.getElementById(getFrameHeaderUIID(newFrame.id));
-                    const frameHeaderBoundingRect = frameHeaderDiv?.getBoundingClientRect();
-                    if(frameHeaderDiv && frameHeaderBoundingRect && (frameHeaderBoundingRect.top + frameHeaderBoundingRect.height > document.documentElement.clientHeight)){
+                    
+                    const targetDiv =
+                        (this.currentFrame && this.currentFrame.caretPosition !== CaretPosition.none) ?
+                            // If frame cursor is focused (e.g. after adding blank frame, or try), scroll to that:
+                            document.getElementById(getCaretUIID(this.currentFrame.caretPosition, this.currentFrame.id))
+                            // Otherwise scroll to the frame header (e.g. for method call, if, while):
+                            : document.getElementById(getFrameHeaderUIID(newFrame.id));
+                    
+                    const targetBoundingRect = targetDiv?.getBoundingClientRect();
+                    if (targetDiv && targetBoundingRect && (targetBoundingRect.top + targetBoundingRect.height > document.documentElement.clientHeight)) {
                         document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
                     }
                     this.lastAddedFrameIds = newFrame.id;

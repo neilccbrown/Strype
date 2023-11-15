@@ -14,6 +14,10 @@ declare const Sk: any;
 // The function used for "output" from Skulpt, to be registered against the Skulpt object
 function outf(text: string) { 
     consoleTextArea.value = consoleTextArea.value + text; 
+    // Scroll to bottom:
+    Vue.nextTick(() => {
+        consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
+    });
 }
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
@@ -142,7 +146,7 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.t("errorMessage.EOFError") as string;
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
-            consoleTextArea.value += ("< "+ i18n.t("console.runtimeErrorConsole") + ": " + noLineSkulptErrStr + " >");
+            consoleTextArea.value += ("< " + noLineSkulptErrStr + " >");
             // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
             Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
             useStore().wasLastRuntimeErrorFrameId = frameId;         
@@ -151,5 +155,9 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             // In case we couldn't get the line and the frame correctly, we just display a simple message
             consoleTextArea.value += ("< " + skulptErrStr + " >");
         }
+        // We will have added text either way, now scroll to bottom:
+        Vue.nextTick(() => {
+            consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
+        });
     });
 }

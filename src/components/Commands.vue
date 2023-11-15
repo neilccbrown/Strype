@@ -50,7 +50,7 @@
         <span id="keystrokeSpan"></span>
 
         /* IFTRUE_isPurePython
-        <python-console class="run-code-container"/>
+        <python-console class="run-code-container" ref="pythonConsoleComponent"/>
         FITRUE_isPurePython */
         /* IFTRUE_isMicrobit      
         <div class="run-code-container">  
@@ -237,6 +237,11 @@ export default Vue.extend({
                     this.appStore.undoRedo((event.key.toLowerCase() === "z"));
                     event.preventDefault();
                     return;
+                }
+                
+                // If ctrl-enter/cmd-enter is pressed, run the code: 
+                if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter" && this.$refs.pythonConsoleComponent) {
+                    (this.$refs.pythonConsoleComponent as InstanceType<typeof PythonConsole>).runCodeOnPyConsole();
                 }
 
                 const isEditing = this.appStore.isEditing;

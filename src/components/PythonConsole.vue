@@ -2,7 +2,7 @@
 <template>
     <div :class="{largeConsoleDiv: isLargeConsole}">
         <div id="consoleControlsDiv">           
-            <button @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')"></button>
+            <button @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')" :title="$t('console.run') + ' (Ctrl+Enter)'"></button>
             <button @click="toggleConsoleDisplay">
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
                 {{this.consoleDisplayCtrlLabel}}
@@ -193,5 +193,17 @@ export default Vue.extend({
     #pythonConsole:disabled {
         -webkit-text-fill-color: #ffffff; // Required for Safari
         color: white;
+    }
+
+    // Mac Safari: always show scrollbar (when content is large enough to require one), and make it light
+    #pythonConsole::-webkit-scrollbar {
+        width: 8px;
+    }    
+    #pythonConsole::-webkit-scrollbar-track {
+        background: #0a090c;
+    }
+    #pythonConsole::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 5px;
     }
 </style>
