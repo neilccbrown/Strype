@@ -382,7 +382,7 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
 
     // Example found while pasting from BlueJ (double escaped here)
     testInsert("foo(c=='\\\\' or c=='\"' or c=='\\'')",
-        "{foo}_({c}=={}_‘\\\\’_{} or {c}=={}_‘\"’_{} or {c}=={}_‘\\'’_{})_{$}");
+        "{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{})_{$}");
 
     // Deletion:
     testBackspace("\"a\bb\"", "{}_“$b”_{}");
@@ -392,9 +392,8 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
 });
 
 describe("Stride TestExpressionSlot.testOvertype()", () => {
-    // Opening bracket just before one does not overtype in Strype at the moment:
     testInsertExisting("$()", "move", "{move$}_({})_{}");
-    testInsertExisting("move$()", "(",  "{move}_({$})_{}_({})_{}");
+    testInsertExisting("move$()", "(",  "{move}_({$})_{}");
 
     testInsertExisting("$\"bye\"", "\"hi\"+", "{}_“hi”_{}+{$}_“bye”_{}");
     testInsertExisting("\"hi$\"", "\"",  "{}_“hi”_{$}");
