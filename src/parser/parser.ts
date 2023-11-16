@@ -86,6 +86,10 @@ export default class Parser {
         if((statement.frameType.type === AllFrameTypesIdentifier.comment) 
         || (statement.frameType.type === AllFrameTypesIdentifier.empty && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+            // Before returning, we update the line counter used for the frame mapping in the parser:
+            // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines-1 + 2 for the multi quotes
+            // (for UI purpose our multiline comments content always terminates with an extra line return so we need to discard it)
+            this.line += ((this.excludeLoopsAndComments) ? 1 : ((commentContent.includes("\n")) ? 1 + commentContent.split("\n").length : 1));
             return (this.excludeLoopsAndComments)
                 ? ""
                 : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
@@ -117,7 +121,10 @@ export default class Parser {
     
         this.framePositionMap[this.line] =  {frameId: statement.id, labelSlotStartLengths: labelSlotsPositionLengths};
         
-        this.line += 1;
+        // We increment the line by 1 (next line) except when we are in an EMPTY block frame, as the empty "body" is replaced by "pass" in the parser,
+        // that should be counted as a line (so we increment by 2)
+        const incrementValue = (statement.frameType.allowChildren && statement.childrenIds.length == 0) ? 2 : 1;
+        this.line += incrementValue;
 
         return output;
     }

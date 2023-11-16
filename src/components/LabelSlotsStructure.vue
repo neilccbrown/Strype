@@ -41,6 +41,7 @@ import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
 import { checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { cloneDeep } from "lodash";
 
 export default Vue.extend({
     name: "LabelSlotsStructure.vue",
@@ -203,7 +204,11 @@ export default Vue.extend({
                                     // We check if changes trigger the conversion of an empty frame to a varassign frame (i.e. an empty frame contains a variable assignment
                                     // If not, we set the new cursor right now
                                     // We also check here if the changes trigger the conversion of an empty frame to a varassign frame (i.e. an empty frame contains a variable assignment)
-                                    if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && uiLiteralCode.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=(([^=].*)|$)/) != null){
+                                    // We do not allow a conversion if the focus isn't inside a slot of level 1.
+                                    const isEqualSymbolAtFocus = (uiLiteralCode.charAt(focusCursorAbsPos - 1) == "=");
+                                    if(isEqualSymbolAtFocus && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && uiLiteralCode.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=(([^=].*)|$)/) != null){
+                                        // Keep information on where we were so we can split the frame properly
+                                        const breakAtSlotIndex = parseInt(this.appStore.focusSlotCursorInfos?.slotInfos.slotId as string);
                                         this.appStore.setSlotTextCursors(undefined, undefined);
 
                                         this.$nextTick(() => {
@@ -214,19 +219,20 @@ export default Vue.extend({
                                             }
                         
                                             // Change the type of frame to varassign and adapt the content
-                                            Vue.set(this.appStore.frameObjects[this.frameId],"frameType", getFrameDefType(AllFrameTypesIdentifier.varassign));                       
+                                            // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
+                                            Vue.set(this.appStore.frameObjects[this.frameId],"frameType", cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign)));   
                                             const newContent: { [index: number]: LabelSlotsContent} = {
-                                                // LHS can only be a single field slot
+                                                // LHS 
                                                 0: {
                                                     slotStructures:{
-                                                        fields: [{code: uiLiteralCode.substring(0, uiLiteralCode.indexOf("=")).trim()}],
-                                                        operators: []},
+                                                        fields: parsedCodeRes.slots.fields.slice(0,breakAtSlotIndex + 1),
+                                                        operators: parsedCodeRes.slots.operators.slice(0,breakAtSlotIndex)},
                                                 },
                                                 //RHS are the other fields and operators
                                                 1: {
                                                     slotStructures:{
-                                                        fields: parsedCodeRes.slots.fields.slice(1),
-                                                        operators: parsedCodeRes.slots.operators.slice(1),
+                                                        fields: parsedCodeRes.slots.fields.slice(breakAtSlotIndex + 1),
+                                                        operators: parsedCodeRes.slots.operators.slice(breakAtSlotIndex + 1),
                                                     },
                                                 }, 
                                             };
