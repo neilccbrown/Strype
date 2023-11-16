@@ -1,6 +1,6 @@
 <template>
     <div 
-        class="caret-container"
+        :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer}"
         @click.exact.prevent.stop="toggleCaret()"
         @click.shift.exact.prevent.stop="frameSelection()"
         @contextmenu.prevent.stop="handleClick($event, 'paste')"
@@ -31,7 +31,7 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import { CaretPosition } from "@/types/types";
+import { AllFrameTypesIdentifier, CaretPosition } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
 import { getCaretUIID } from "@/helpers/editor";
 import { mapStores } from "pinia";
@@ -62,31 +62,46 @@ export default Vue.extend({
         isEditing(): boolean {
             return this.appStore.isEditing;
         },
+
         isInvisible(): boolean {
             // The caret is only visible when editing is off, 
             // and either one frame is currently selected 
             // OR a frame is hovered during drag & drop of frames
             return !(!this.isEditing && (this.caretVisibility === this.caretAssignedPosition || this.appStore.isDraggingFrame) ); 
         },
+
+        isStaticCaretContainer(): boolean {
+            // Function definition frames are spaced, so we keep the caret container static (with the caret height) 
+            // for such frames (meaning if there are more than 1 frame, all but last caret container should be static)
+            const frameType = this.appStore.frameObjects[this.frameId].frameType.type;
+            const parentFrame = this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].parentId];
+            return (frameType == AllFrameTypesIdentifier.funcdef && this.caretAssignedPosition == CaretPosition.below &&
+             parentFrame.childrenIds.length > 1 && parentFrame.childrenIds.at(-1) != this.frameId);
+        },
+
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
         },
+
         uiid(): string {
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
         },
         caretUIID(): string {
             return getCaretUIID(this.caretAssignedPosition, this.frameId);
         },
+
         pasteAvailable(): boolean {
             return this.appStore.isCopiedAvailable;
         },
+
         pasteOption(): Record<string, string>[] {
             return this.pasteAvailable? [{name: this.$i18n.t("contextMenu.paste") as string, method: "paste"}] : [{}];
         },
         allowContextMenu(): boolean {
             return this.appStore.contextMenuShownId === this.uiid; 
         },
+
         isCaretBlurred(): boolean {
             //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
             return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !this.appStore.canAddFrameBelowDisabled(this.frameId) : true);
@@ -196,6 +211,10 @@ export default Vue.extend({
 .caret-container {
     padding-top: 0px;
     padding-bottom: 0px;
+}
+
+.static-caret-container{
+    height: $caret-height;
 }
 
 .caret-container:hover{
