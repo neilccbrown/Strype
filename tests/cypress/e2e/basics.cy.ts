@@ -187,8 +187,9 @@ function checkCodeEquals(codeLines : CodeMatch[]) : void {
     const downloadsFolder = Cypress.config("downloadsFolder");
     cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
     // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
-    cy.get("button#showHideMenu").click();
-    cy.contains(i18n.t("appMenu.downloadPython") as string).click();
+    // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
+    cy.get("button#showHideMenu").click({force: true}); 
+    cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
     
     cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
         expectMatchRegex(p.split("\n").map((l) => l.trimEnd()),
