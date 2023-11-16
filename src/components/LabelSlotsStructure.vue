@@ -41,6 +41,7 @@ import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
 import { checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { cloneDeep } from "lodash";
 
 export default Vue.extend({
     name: "LabelSlotsStructure.vue",
@@ -218,7 +219,8 @@ export default Vue.extend({
                                             }
                         
                                             // Change the type of frame to varassign and adapt the content
-                                            Vue.set(this.appStore.frameObjects[this.frameId],"frameType", getFrameDefType(AllFrameTypesIdentifier.varassign));   
+                                            // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
+                                            Vue.set(this.appStore.frameObjects[this.frameId],"frameType", cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign)));   
                                             const newContent: { [index: number]: LabelSlotsContent} = {
                                                 // LHS 
                                                 0: {
