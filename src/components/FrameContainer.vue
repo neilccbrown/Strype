@@ -159,11 +159,9 @@ export default Vue.extend({
         containerStyle(): Record<string, string> {
             return {
                 "display": (this.isCollapsed) ? "none" : "block",
-                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type) 
+                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.FuncDefContainerDefinition.type) 
                     ? getFrameDefType(AllFrameTypesIdentifier.import).colour
-                    : (this.frameType.type === FrameContainersDefinitions.FuncDefContainerDefinition.type)
-                        ? getFrameDefType(AllFrameTypesIdentifier.funcdef).colour
-                        : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
+                    : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
             };
         },
     },

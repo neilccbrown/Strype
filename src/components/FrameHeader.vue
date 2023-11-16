@@ -97,11 +97,11 @@ export default Vue.extend({
 }
 
 .leftMargin {
-    margin-left: 2px;
+    margin-left: 4px;
 }
 
 .rightMargin {
-    margin-right: 2px;
+    margin-right: 4px;
 }
 
 .frameColouredLabel {

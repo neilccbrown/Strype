@@ -206,7 +206,7 @@ export default Vue.extend({
                                     // We also check here if the changes trigger the conversion of an empty frame to a varassign frame (i.e. an empty frame contains a variable assignment)
                                     // We do not allow a conversion if the focus isn't inside a slot of level 1.
                                     const isEqualSymbolAtFocus = (uiLiteralCode.charAt(focusCursorAbsPos - 1) == "=");
-                                    if(isEqualSymbolAtFocus && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && uiLiteralCode.match(/^([^+\-*/%^!=<>&|\s()]*)(\s*)=(([^=].*)|$)/) != null){
+                                    if(isEqualSymbolAtFocus && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // Keep information on where we were so we can split the frame properly
                                         const breakAtSlotIndex = parseInt(this.appStore.focusSlotCursorInfos?.slotInfos.slotId as string);
                                         this.appStore.setSlotTextCursors(undefined, undefined);

@@ -786,10 +786,10 @@ export default Vue.extend({
                     || isBracket
                     || isStringQuote
                     ){
-                    // If we are in the LHS of a function definition, of a variable assignment, of a for; or in an import, then we just don't allow 
-                    // the operator, bracket or quote
-                        const forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.varassign, AllFrameTypesIdentifier.for].includes(this.frameType) 
-                        && this.labelSlotsIndex == 0
+                    // If we are in the LHS of a function definition, of a for; or in an import, then we just don't allow 
+                    // the operator, bracket or quote 
+                        const forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for].includes(this.frameType)
+                            && this.labelSlotsIndex == 0
                         || this.frameType == AllFrameTypesIdentifier.import;
                         insertKey = !forbidOperator;
                         if(!forbidOperator){
