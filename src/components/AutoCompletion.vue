@@ -295,7 +295,7 @@ export default Vue.extend({
                         // the version is retrieved from the version json object (for microbit), if no version is found, we set 1
                         return {acResult: element, documentation: parsedDoc[module][i], type:(parsedTypes[module]??[])[i], version:(_.get(this.acVersions, acContextPath+"."+element) as number)??1};
                     }).filter((e) => {
-                        return e.acResult!=="" && (showSpecialEntries || (!showSpecialEntries && !e.acResult.startsWith("_")));
+                        return e.acResult!=="" && (showSpecialEntries || !e.acResult.startsWith("_"));
                     });
                     // Sort is done as a seperate step, as it is more efficient to join the lists (parsedResults, parsedDoc and parsedTypes) first
                     // and then sort, instead of sorting first, as this would require to sort one list and based on this sorting, sort the others as well

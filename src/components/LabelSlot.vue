@@ -65,10 +65,10 @@ import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUIID } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot} from "@/types/types";
 import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
 import LabelSlotsStructureVue from "./LabelSlotsStructure.vue";
@@ -658,13 +658,32 @@ export default Vue.extend({
             const hasTextSelection = (this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos && slotSelectionCursorComparisonValue != 0) ?? false;
             let refactorFocusSpanUIID = this.UIID; // by default the focus stays where we are
 
-            // If the frame is a variable assignment frame and we are in the left hand side editable slot,
+            // If the frame is a variable assignment frame and we are in a top level slot of the left hand side editable slot,
             // pressing "=" or space keys move to RHS editable slot (but we allow the a/c to be activated)
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
-            if(this.labelSlotsIndex === 0 && !hasTextSelection  &&
-                ((((event.key === "=" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.varassign) || 
-                (((event.key === "(" || event.key === " ") && !event.ctrlKey) && this.frameType === AllFrameTypesIdentifier.funcdef))){
+            if(this.labelSlotsIndex === 0 && this.slotId.indexOf(",") == -1 && !hasTextSelection  &&
+                (event.key === "=" || event.key === " ") && !event.ctrlKey && this.frameType === AllFrameTypesIdentifier.varassign){
+                // Go to the first slot of the labelIndex 1 structure of the frame (first slot of the RHS)
+                this.appStore.setSlotTextCursors(undefined, undefined);
+                this.$nextTick(() => {    
+                    // Remove the focus
+                    const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
+                    if(focusedSlot){
+                        focusedSlot.focused = false;
+                    }
+                    const rhsFocusSlotCursorInfos: SlotCursorInfos = {slotInfos: {...this.coreSlotInfo, labelSlotsIndex: 1, slotId: "0"}, cursorPos: 0};
+                    (retrieveSlotFromSlotInfos(rhsFocusSlotCursorInfos.slotInfos) as BaseSlot).focused = true;
+                    this.appStore.setSlotTextCursors(rhsFocusSlotCursorInfos, rhsFocusSlotCursorInfos);
+                    setDocumentSelection(rhsFocusSlotCursorInfos,rhsFocusSlotCursorInfos);                    
+                });               
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            // If the frame is a function definition and we are in the name slot,
+            // pressing "(" or space keys move to the next slot (between the brackets)
+            else if(this.labelSlotsIndex === 0 && !hasTextSelection  &&
+                (event.key === "(" || event.key === " ") && !event.ctrlKey && this.frameType === AllFrameTypesIdentifier.funcdef){
                 // Simulate a tab key press to make sure we go to the next slot
                 document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                     new KeyboardEvent(event.type, {
