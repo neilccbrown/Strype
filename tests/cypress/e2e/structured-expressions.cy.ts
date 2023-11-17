@@ -111,16 +111,6 @@ function reachFrameLabelSlot(targetSlotSpanID: string, goLeft: boolean): boolean
     return reachedTarget;
 }
 
-function focusSlotId(originalId : string) {
-    // Sometimes slots can change type, which is encoded in the ID, so we want to ignore that when selecting
-    // (and it won't be possible to pick another ID by accident, as the other parts are still unique when assembled):
-    const labelSlotUIIDRegex = /^input_frame_(\d+)_label_(\d+)_/;
-    const ms = originalId.match(labelSlotUIIDRegex);
-    if (ms != null) {
-        cy.get("#labelSlotsStruct" + ms[1] + "_" + ms[2]).focus();
-    }
-}
-
 function focusEditor(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
@@ -182,7 +172,13 @@ function testInsertExisting(original : string, toInsert : string, expectedResult
             if (after.length > 0) {
                 cy.get("body").type(after);
             }
-            focusSlotId(posToInsert.id);
+            // Focus doesn't work, instead let's move the caret until we are in the right slot
+            withSelection((newPosToInsert) => {
+                if(newPosToInsert.id != posToInsert.id){
+                    reachFrameLabelSlot( posToInsert.id, true);
+                }
+            });
+            
             moveToPositionThen(posToInsert.cursorPos, () => {
                 cy.get("body").type(toInsert);
                 assertState(expectedResult);
@@ -386,7 +382,7 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
 
     // Example found while pasting from BlueJ (double escaped here)
     testInsert("foo(c=='\\\\' or c=='\"' or c=='\\'')",
-        "{foo}_({c}=={}_‘\\\\’_{} or {c}=={}_‘\"’_{} or {c}=={}_‘\\'’_{})_{$}");
+        "{foo}_({c}=={}_‘\\\\’_{}or{c}=={}_‘\"’_{}or{c}=={}_‘\\'’_{})_{$}");
 
     // Deletion:
     testBackspace("\"a\bb\"", "{}_“$b”_{}");
@@ -396,9 +392,8 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
 });
 
 describe("Stride TestExpressionSlot.testOvertype()", () => {
-    // Opening bracket just before one does not overtype in Strype at the moment:
     testInsertExisting("$()", "move", "{move$}_({})_{}");
-    testInsertExisting("move$()", "(",  "{move}_({$})_{}_({})_{}");
+    testInsertExisting("move$()", "(",  "{move}_({$})_{}");
 
     testInsertExisting("$\"bye\"", "\"hi\"+", "{}_“hi”_{}+{$}_“bye”_{}");
     testInsertExisting("\"hi$\"", "\"",  "{}_“hi”_{$}");
@@ -558,7 +553,7 @@ describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
         "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
 });
 
-describe.only("Test word operators", () => {
+describe("Test word operators", () => {
     testInsert("a or ", "{a}or{$}");
     testInsert("a or b", "{a}or{b$}");
     testInsert("or b", "{}or{b$}");
