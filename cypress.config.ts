@@ -7,6 +7,7 @@ export default defineConfig({
     screenshotsFolder: "tests/cypress/screenshots",
     videosFolder: "tests/cypress/videos",
     e2e: {
+        experimentalMemoryManagement: true,
         specPattern: "tests/cypress/e2e/**/*.cy.{js,jsx,ts,tsx}",
         supportFile: false,
         // Inspired by https://docs.cypress.io/api/plugins/configuration-api#Usage
