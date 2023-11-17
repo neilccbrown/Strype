@@ -117,7 +117,7 @@ function sInput(prompt: string) {
 export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode: string, lineFrameMapping: LineAndSlotPositions): void{
     consoleTextArea = aConsoleTextArea;
     Sk.pre = consoleTextArea.id;
-    Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true});
+    Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100});
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);
     });
