@@ -2,7 +2,7 @@
 <template>
     <div :class="{largeConsoleDiv: isLargeConsole}">
         <div id="consoleControlsDiv">           
-            <button @click="runCodeOnPyConsole" v-html="'▶ '+$t('console.run')" :title="$t('console.run') + ' (Ctrl+Enter)'"></button>
+            <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
             <button @click="toggleConsoleDisplay">
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
                 {{this.consoleDisplayCtrlLabel}}
@@ -34,12 +34,19 @@ import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getEdit
 import i18n from "@/i18n";
 import { SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
+enum RunningState {
+    NotRunning,
+    Running,
+    RunningAwaitingStop,
+}
+
 export default Vue.extend({
     name: "PythonConsole",
 
     data: function() {
         return {
             isLargeConsole: false,
+            runningState: RunningState.NotRunning,
         };
     },
 
@@ -49,9 +56,37 @@ export default Vue.extend({
         consoleDisplayCtrlLabel(): string {
             return " " + ((this.isLargeConsole) ? i18n.t("console.collapse") as string : i18n.t("console.expand") as string);           
         },
+        consoleRunLabel(): string {
+            switch (this.runningState) {
+            case RunningState.NotRunning:
+                return "▶ " + i18n.t("console.run");
+            case RunningState.Running:
+                return "◼ " + i18n.t("console.stop");
+            case RunningState.RunningAwaitingStop:
+                return i18n.t("console.stopping") as string;
+            }
+            return "";
+        },
     },
 
     methods: {
+        runClicked() {
+            switch (this.runningState) {
+            case RunningState.NotRunning:
+                this.runningState = RunningState.Running;
+                this.runCodeOnPyConsole();
+                return;
+            case RunningState.Running:
+                // Skulpt checks this property regularly while running, via a callback,
+                // so just setting the variable is enough to "request" a stop 
+                this.runningState = RunningState.RunningAwaitingStop;
+                return;
+            case RunningState.RunningAwaitingStop:
+                // Nothing more we can do at the moment, just waiting for Skulpt to see it
+                return;
+            }
+        },
+        
         runCodeOnPyConsole() {
             const console = this.$refs.pythonConsole as HTMLTextAreaElement;
             console.value = "";
@@ -77,7 +112,7 @@ export default Vue.extend({
                 parser.getErrorsFormatted(userCode);
                 storeCodeToDOM(userCode);
                 // Trigger the actual console launch
-                runPythonConsole(console, userCode, parser.getFramePositionMap());
+                runPythonConsole(console, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // As the UI should update first, we do it in the next tick
                 this.$nextTick().then(() => {
