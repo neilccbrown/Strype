@@ -112,9 +112,7 @@ export default Vue.extend({
                 parser.getErrorsFormatted(userCode);
                 storeCodeToDOM(userCode);
                 // Trigger the actual console launch
-                runPythonConsole(console, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => {
-                    this.runningState = RunningState.NotRunning;
-                });
+                runPythonConsole(console, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // As the UI should update first, we do it in the next tick
                 this.$nextTick().then(() => {
