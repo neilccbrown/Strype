@@ -114,15 +114,23 @@ function sInput(prompt: string) {
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
-export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode: string, lineFrameMapping: LineAndSlotPositions): void{
+export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
     consoleTextArea = aConsoleTextArea;
     Sk.pre = consoleTextArea.id;
-    Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100});
+    Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);
-    });
+    }, {
+        // handle a suspension of the executing code
+        // "*" says handle all types of suspensions
+        "*": () => {
+            if (!keepRunning()) {
+                throw i18n.t("console.stopButtonPressed");
+            }
+        }});
     // Show error in Python console if error happens
     myPromise.then(() => {
+        executionFinished();
         return;
     },
     (err: any) => {
@@ -155,6 +163,7 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
             // In case we couldn't get the line and the frame correctly, we just display a simple message
             consoleTextArea.value += ("< " + skulptErrStr + " >");
         }
+        executionFinished();
         // We will have added text either way, now scroll to bottom:
         Vue.nextTick(() => {
             consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
