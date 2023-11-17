@@ -61,7 +61,7 @@ export default Vue.extend({
             case RunningState.NotRunning:
                 return "▶ " + i18n.t("console.run");
             case RunningState.Running:
-                return "⏹ " + i18n.t("console.stop");
+                return "◼ " + i18n.t("console.stop");
             case RunningState.RunningAwaitingStop:
                 return i18n.t("console.stopping") as string;
             }
