@@ -26,7 +26,6 @@
 <script lang="ts">
 import Vue from "vue";
 import { useStore } from "@/store/store";
-import { storeCodeToDOM } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
@@ -110,7 +109,6 @@ export default Vue.extend({
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
-                storeCodeToDOM(userCode);
                 // Trigger the actual console launch
                 runPythonConsole(console, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
