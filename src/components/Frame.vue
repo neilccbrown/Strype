@@ -127,8 +127,8 @@ export default Vue.extend({
         if (components !== undefined) {
             /* eslint-disable */
             components.FrameBody = require("@/components/FrameBody.vue").default;
-            /* eslint-disable */
             components.JointFrames = require("@/components/JointFrames.vue").default;
+            /* eslint-enable */
         }
     },
 
@@ -154,11 +154,13 @@ export default Vue.extend({
             contextMenuEnforcedSelect: false,
             // And an associated observer used to check when the menu made hidden to change the flag above
             // we only set the observer later as we need to access other data within the observer
-            contextMenuObserver: new MutationObserver(() => {return}), 
+            contextMenuObserver: new MutationObserver(() => {
+                return;
+            }), 
             // We keep a data property for frame run time error, even if that's a duplication, we need to keep it because
             // when the error in the frame is lifted, the error message disappear, and we need to use it in the popup
             runtimeErrorAtLastRunMsg: "",
-        }
+        };
     },
 
     computed: {
@@ -173,15 +175,38 @@ export default Vue.extend({
         },
 
         frameStyle(): Record<string, string> {
-            return {
+            const baseStylePart = {
                 "background-color": `${this.getFrameBgColor()} !important`,
                 "color": (this.frameType.type === AllFrameTypesIdentifier.comment) ? "#97971E !important" : "#000 !important",
             };
+            
+            // We want to offset (non joint) block frames when they are stacking on top of each other,
+            // to avoid the visual effect of a double border where they are stacked.
+            // Note that function definition frames do not need to be included in the checkup, they are split in the UI
+            if(this.frameType.allowChildren && !this.frameType.isJointFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef){
+                const parentFrameId = getParentOrJointParent(this.frameId);
+                const parentChildrenIds = this.appStore.frameObjects[parentFrameId].childrenIds;
+                const positionIndex = parentChildrenIds.indexOf(this.frameId);
+                let offsetValue  = 0, lookAbove = true;
+                while(lookAbove){
+                    lookAbove = (positionIndex + offsetValue) > 0 && // there is something above
+                        this.appStore.frameObjects[parentChildrenIds[positionIndex + offsetValue -1]].frameType.allowChildren && // above is another block
+                        !(this.appStore.currentFrame.id == parentChildrenIds[positionIndex + offsetValue -1] && this.appStore.currentFrame.caretPosition == CaretPosition.below); // and there is no caret in between
+                    if(lookAbove){
+                        offsetValue--;
+                    }
+                }
+                if(offsetValue != 0){
+                    return {"transform": `translate(0px, ${offsetValue}px)`, ...baseStylePart};
+                }
+            }
+
+            return baseStylePart;
         },
 
         frameMarginStyle(): Record<string, Record<string, string>> {
             return {"header": (this.isJointFrame)? {"margin-left": "5px"} : {"margin-left": "6px"},
-                    "body": {...(this.isJointFrame)? {"margin-left": "28px"} : {"margin-left": "30px"}, "margin-right": "28px"}}
+                "body": {...(this.isJointFrame)? {"margin-left": "28px"} : {"margin-left": "30px"}, "margin-right": "28px"}};
         },
 
         frameSelectedCssClass(): string {
@@ -301,7 +326,7 @@ export default Vue.extend({
                     }
                 });
             });
-            this.contextMenuObserver.observe(contextMenuContainer,{attributes: true, attributeFilter: ['style']});
+            this.contextMenuObserver.observe(contextMenuContainer,{attributes: true, attributeFilter: ["style"]});
         }
 
         // The frame header can listen for events from the editable slots focus to manage header level error messages
@@ -423,9 +448,9 @@ export default Vue.extend({
                     // we just remove all paste menu entries (and the divider following them)
                     const pasteOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "pasteAbove");
                     this.frameContextMenuOptions.splice(
-                            pasteOptionContextMenuPos,
-                            3 //2 paste menu entries + divider
-                        );
+                        pasteOptionContextMenuPos,
+                        3 //2 paste menu entries + divider
+                    );
                     canPasteAboveFrame = false;
                     canPasteBelowFrame = false;
                 }
@@ -624,7 +649,7 @@ export default Vue.extend({
             // therefore, another approach is to check that the clicked object is either the frame object (as done before) or find what it's nearest parent and get its ID.
             let frameDivParent = clickedDiv;
             while(!isIdAFrameId(frameDivParent.id)){
-                frameDivParent = frameDivParent.parentElement as HTMLDivElement
+                frameDivParent = frameDivParent.parentElement as HTMLDivElement;
             }            
             if(frameDivParent.id !== this.uiid){
                 return;
@@ -788,21 +813,21 @@ export default Vue.extend({
             // Perform a paste above this frame
             const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
             if(this.appStore.isSelectionCopied){
-                    this.appStore.pasteSelection(
-                        {
-                            clickedFrameId: caretNavigationPositionAbove.frameId,
-                            caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
-                        }
-                    );
-                }
-                else {
-                    this.appStore.pasteFrame(
-                        {
-                            clickedFrameId: caretNavigationPositionAbove.frameId,
-                            caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
-                        }
-                    );
-                }
+                this.appStore.pasteSelection(
+                    {
+                        clickedFrameId: caretNavigationPositionAbove.frameId,
+                        caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
+                    }
+                );
+            }
+            else {
+                this.appStore.pasteFrame(
+                    {
+                        clickedFrameId: caretNavigationPositionAbove.frameId,
+                        caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
+                    }
+                );
+            }
         },
 
         pasteBelow(): void {
@@ -887,7 +912,7 @@ export default Vue.extend({
 
         deleteOuter(): void {
             this.appStore.deleteOuterFrames(this.frameId);
-        }
+        },
     },
 });
 </script>
