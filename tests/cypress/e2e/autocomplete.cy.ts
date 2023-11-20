@@ -1,4 +1,5 @@
-require('cypress-terminal-report/src/installLogsCollector')();
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require("cypress-terminal-report/src/installLogsCollector")();
 
 // Must clear all local storage between tests to reset the state:
 beforeEach(() => {
