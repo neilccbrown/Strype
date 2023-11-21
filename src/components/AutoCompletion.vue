@@ -100,6 +100,7 @@ import _ from "lodash";
 import moduleDescription from "@/autocompletion/microbit.json";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
+import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 
 //////////////////////
 export default Vue.extend({
@@ -186,11 +187,18 @@ export default Vue.extend({
             }
             else {
                 // TODO support non-module autocomplete, through Skulpt
-                this.acResults = {};
+                this.acResults = {"": []};
                 /* IFTRUE_isPurePython */
                 // Pick up built-in Python functions and types:
-                this.acResults[""] = Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type !== "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation, type: pythonBuiltins[k].type, version: 0})); 
+                this.acResults[""].push(...Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type !== "module").map((k) => ({
+                    acResult: k,
+                    documentation: pythonBuiltins[k].documentation,
+                    type: pythonBuiltins[k].type,
+                    version: 0,
+                })));
                 /* FITRUE_isPurePython */
+                this.acResults[""].push(...getAllEnabledUserDefinedFunctions().map((f) => ({acResult: f.name, documentation: f.documentation, type: "function", version: 0})));
+                
             }
             this.showSuggestionsAC(token);
         },

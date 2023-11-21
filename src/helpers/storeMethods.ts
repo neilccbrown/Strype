@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUIID, getMatchingBracket, parseLabelSlotUIID } from "./editor";
 import { nextTick } from "@vue/composition-api";
@@ -811,4 +811,8 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
         checkEditorCodeErrors();
         useStore().errorCount = countEditorCodeErrors();
     }); 
+}
+
+export function getAllEnabledUserDefinedFunctions() : {name: string, documentation: string}[] {
+    return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled).map((f) => ({name: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code, documentation: ""}));
 }
