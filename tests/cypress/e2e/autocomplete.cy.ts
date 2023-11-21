@@ -136,3 +136,30 @@ describe("Modules", () => {
         });
     });
 });
+describe("User-defined items", () => {
+    it("Offers auto-complete for user-defined functions", () => {
+        focusEditorAC();
+        // Must wait for Brython to fully initialise:
+        cy.wait(1000);
+        cy.get("body").type("{uparrow}ffoo{downarrow}{downarrow}{downarrow} ");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " .popupContainer").contains("foo");
+        });
+    });
+
+    it("Offers auto-complete for user-defined variables", () => {
+        focusEditorAC();
+        // Must wait for Brython to fully initialise:
+        cy.wait(1000);
+        cy.get("body").type("=myVar=23{enter} ");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " .popupContainer").contains("myVar");
+        });
+    });
+});
