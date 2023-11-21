@@ -187,6 +187,10 @@ export default Vue.extend({
             else {
                 // TODO support non-module autocomplete, through Skulpt
                 this.acResults = {};
+                /* IFTRUE_isPurePython */
+                // Pick up built-in Python functions and types:
+                this.acResults[""] = Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type !== "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation, type: pythonBuiltins[k].type, version: 0})); 
+                /* FITRUE_isPurePython */
             }
             this.showSuggestionsAC(token);
         },
