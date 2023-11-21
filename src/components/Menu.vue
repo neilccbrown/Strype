@@ -411,6 +411,7 @@ export default Vue.extend({
                         }
                         else{
                             saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), saveFileName + "." + strypeFileExtension);
+                            this.appStore.syncTarget = StrypeSyncTarget.fs;
                         }
                     }
                     else {          
