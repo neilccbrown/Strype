@@ -1,4 +1,4 @@
-export const brythonBuiltins = 
+export const pythonBuiltins : Record<string, { type: string, documentation: string }> = 
 {
     "ArithmeticError": {type:"type", documentation:"Base class for arithmetic errors.\n"},
     "AssertionError": {type:"type", documentation:"Assertion failed.\n"},

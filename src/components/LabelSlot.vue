@@ -49,7 +49,6 @@
             :class="{ac: true, hidden: !acRequested}"
             :slotId="UIID"
             :context.sync="contextAC"
-            :token.sync="tokenAC"
             ref="AC"
             :key="AC_UIID"
             :id="AC_UIID"
@@ -402,7 +401,10 @@ export default Vue.extend({
                 }
 
                 this.$nextTick(() => {
-                    this.getACresultsFromBrython();
+                    const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
+                    if (ac) {
+                        ac.updateAC(isImportFrame, this.tokenAC);
+                    }
                 });
             }
         },
