@@ -28,7 +28,8 @@
                     <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive</option>
                 </select>
             </ModalDlg>
-            <a :id="saveProjectLinkId" v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
+            <a :id="saveProjectLinkId" v-if="showMenu" class="strype-menu-link strype-menu-item" v-on="isSynced ? {click: saveCurrentProject}:{}" v-b-modal="saveLinkModalName" v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
+            <a v-if="showMenu && isSynced" class="strype-menu-link strype-menu-item" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'" :title="$t('appMenu.saveAsProjectTooltip')"/>
             <ModalDlg :dlgId="saveProjectModalDlgId">
                 <label v-t="'appMessage.fileName'" class="load-save-label"/>
                 <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text"/>  
@@ -166,12 +167,16 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                //handle the Ctrl/Meta + S command for saving the project
+                //handle the Ctrl/Meta + S command for saving the project, we need to programmatically open the menu, and wait a bit it has opened 
+                //before triggering the save action
                 if(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey)){
-                    document.getElementById(this.saveProjectLinkId)?.click();
                     event.stopImmediatePropagation();
                     event.preventDefault();
-                    this.toggleMenuOnOff(null);
+                    this.toggleMenuOnOff(new Event(""));
+                    setTimeout(() => {
+                        document.getElementById(this.saveProjectLinkId)?.click();
+                        this.toggleMenuOnOff(null);
+                    }, 500);
                 }
             }
         );
@@ -221,6 +226,14 @@ export default Vue.extend({
 
         saveProjectProjectSelectId(): string {
             return "saveProjectProjectSelect";
+        },
+
+        isSynced(): boolean {
+            return this.appStore.syncTarget != StrypeSyncTarget.none;
+        },
+
+        saveLinkModalName(): string {
+            return (!this.isSynced) ? "save-strype-project-modal-dlg" : "";
         },
 
         syncFSValue(): StrypeSyncTarget {
@@ -321,12 +334,22 @@ export default Vue.extend({
         getTargetSelectVal(isActionSave: boolean): number {
             // Get the target selected in a target select HTML element; 
             // of the "save" action popup if isActionSave is true, of the "load" action popup otherwise
+            // In the case we do not use the dialog popup ("Save" action when synced), then we keep current synced destination
             const refId = (isActionSave) ? this.saveProjectProjectSelectId : this.loadProjectProjectSelectId;
+            if(!this.$refs[refId]){
+                return this.appStore.syncTarget;
+            }
             return parseInt((this.$refs[refId] as HTMLSelectElement).value);
         },
 
         onSaveTargetSelectChange(){
             this.showGDSaveLocation = (this.getTargetSelectVal(true) == this.syncGDValue);
+        },
+
+        saveCurrentProject(){
+            // This method is called when sync is activated, and bypass the "save as" dialog we show to change the project name/location.
+            // (note that the @click event in the template already checks if we are synced)
+            this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.saveProjectModalDlgId, this.appStore.projectName);
         },
 
         onStrypeMenuShownModalDlg(event: BvModalEvent, dlgId: string) {
@@ -349,7 +372,7 @@ export default Vue.extend({
             }
         },
 
-        onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string) {
+        onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string) {
             // This method handles the workflow after acting on any modal dialog of the Strype menu entries.
             // For all cases, if there is no confirmation, nothing special happens.
             if(event.trigger == "ok" || event.trigger == "event"){
@@ -365,7 +388,7 @@ export default Vue.extend({
                     // User has been given a chance to give the file a specifc name,
                     // we check that the name doesn't contain illegal characters (we are a bit restricive here) for file saving
                     // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
-                    let saveFileName = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
+                    let saveFileName = (forcedProjectName) ? forcedProjectName : (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
                     if(saveFileName.length == 0){
                         saveFileName = this.$i18n.t("defaultProjName") as string;
                     }
