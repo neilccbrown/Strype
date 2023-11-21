@@ -135,6 +135,40 @@ describe("Modules", () => {
             cy.get(acIDSel + " .popupContainer").contains("ArithmeticError").should("not.exist");
         });
     });
+
+    it("Offers auto-completion for imported modules with a from import *", () => {
+        // This test currently fails so we ignore the failure, but it would be nice to make it pass once we swap to Skulpt:
+        Cypress.on("fail", (err, runnable) => {
+            return false;
+        });
+        
+        focusEditorAC();
+        // Must wait for Brython to fully initialise:
+        cy.wait(1000);
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        cy.get("body").type("tim");
+        cy.get("body").type("{enter}{rightarrow}");
+        cy.get("body").type("*");
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            // Microbit and Python have different items in the time module, so pick accordingly:
+            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            // Should have time related queries, but not the standard completions:
+            cy.get(acIDSel + " .popupContainer").contains(target);
+            cy.get(acIDSel + " .popupContainer").contains("sleep");
+            cy.get(acIDSel + " .popupContainer").contains("abs");
+            cy.get(acIDSel + " .popupContainer").contains("ArithmeticError");
+            cy.get("body").type(target.at(0) || "");
+            cy.get(acIDSel + " .popupContainer").contains(target);
+            cy.get(acIDSel + " .popupContainer").contains("sleep").should("not.exist");
+            cy.get(acIDSel + " .popupContainer").contains("abs").should("not.exist");
+            cy.get(acIDSel + " .popupContainer").contains("ArithmeticError").should("not.exist");
+        });
+    });
 });
 describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions", () => {
@@ -160,6 +194,25 @@ describe("User-defined items", () => {
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             cy.get(acIDSel + " .popupContainer").contains("myVar");
+        });
+    });
+
+    it("Offers auto-complete for items on user-defined variables", () => {
+        focusEditorAC();
+        // Must wait for Brython to fully initialise:
+        cy.wait(1000);
+        cy.get("body").type("=myVar=\"hi{enter} myVar.");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " .popupContainer").contains("lower");
+            cy.get(acIDSel + " .popupContainer").contains("upper");
+            cy.get(acIDSel + " .popupContainer").contains("divmod").should("not.exist");
+            cy.get("body").type("u");
+            cy.get(acIDSel + " .popupContainer").contains("lower").should("not.exist");
+            cy.get(acIDSel + " .popupContainer").contains("upper");
+            cy.get(acIDSel + " .popupContainer").contains("divmod").should("not.exist");
         });
     });
 
