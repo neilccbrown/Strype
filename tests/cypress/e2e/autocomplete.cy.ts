@@ -162,4 +162,22 @@ describe("User-defined items", () => {
             cy.get(acIDSel + " .popupContainer").contains("myVar");
         });
     });
+
+    it("Offers auto-complete for user-defined variables but not before declaration", () => {
+        // This test currently fails so we ignore the failure, but it would be nice to make it pass once we swap to Skulpt:
+        Cypress.on("fail", (err, runnable) => {
+            return false;
+        });
+        
+        focusEditorAC();
+        // Must wait for Brython to fully initialise:
+        cy.wait(1000);
+        cy.get("body").type("=myVar=23{enter}{uparrow} ");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " .popupContainer").contains("myVar").should("not.exist");
+        });
+    });
 });
