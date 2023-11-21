@@ -187,17 +187,11 @@ export default Vue.extend({
                 const parentFrameId = getParentOrJointParent(this.frameId);
                 const parentChildrenIds = this.appStore.frameObjects[parentFrameId].childrenIds;
                 const positionIndex = parentChildrenIds.indexOf(this.frameId);
-                let offsetValue  = 0, lookAbove = true;
-                while(lookAbove){
-                    lookAbove = (positionIndex + offsetValue) > 0 && // there is something above
-                        this.appStore.frameObjects[parentChildrenIds[positionIndex + offsetValue -1]].frameType.allowChildren && // above is another block
-                        !(this.appStore.currentFrame.id == parentChildrenIds[positionIndex + offsetValue -1] && this.appStore.currentFrame.caretPosition == CaretPosition.below); // and there is no caret in between
-                    if(lookAbove){
-                        offsetValue--;
-                    }
-                }
-                if(offsetValue != 0){
-                    return {"transform": `translate(0px, ${offsetValue}px)`, ...baseStylePart};
+                const isBlockFrameStacked = positionIndex > 0 && // there is something above
+                        this.appStore.frameObjects[parentChildrenIds[positionIndex - 1]].frameType.allowChildren && // above is another block
+                        !(this.appStore.currentFrame.id == parentChildrenIds[positionIndex - 1] && this.appStore.currentFrame.caretPosition == CaretPosition.below); // and there is no caret in between
+                if(isBlockFrameStacked){
+                    return {"margin-top": "-1px", ...baseStylePart};
                 }
             }
 
