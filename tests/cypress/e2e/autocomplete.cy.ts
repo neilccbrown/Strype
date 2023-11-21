@@ -55,3 +55,56 @@ describe("Built-ins", () => {
         });
     });
 });
+
+describe("Modules", () => {
+    it("Offers auto-complete in import frames", () => {
+        focusEditorAC();
+        // Must wait for Brython to fully initialise:
+        cy.wait(1000);
+        cy.get("body").type("{uparrow}{uparrow}i");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            if (Cypress.env("mode") == "microbit") {
+                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                cy.get(acIDSel + " .popupContainer").contains("machine");
+                cy.get(acIDSel + " .popupContainer").contains("microbit");
+                cy.get(acIDSel + " .popupContainer").contains("random");
+                cy.get(acIDSel + " .popupContainer").contains("time");
+                // Once we type "m", should show things beginning with M but not the others:
+                cy.get("body").type("m");
+                cy.wait(500);
+                cy.get(acIDSel + " .popupContainer").contains("machine");
+                cy.get(acIDSel + " .popupContainer").contains("microbit");
+                cy.get(acIDSel + " .popupContainer").contains("random").should("not.exist");
+                cy.get(acIDSel + " .popupContainer").contains("time").should("not.exist");
+                // Once we type "i", should show things beginning with MI but not the others:
+                cy.get("body").type("i");
+                cy.get(acIDSel + " .popupContainer").contains("machine").should("not.exist");
+                cy.get(acIDSel + " .popupContainer").contains("microbit");
+                cy.get(acIDSel + " .popupContainer").contains("random").should("not.exist");
+                cy.get(acIDSel + " .popupContainer").contains("time").should("not.exist");
+            }
+            else {
+                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                cy.get(acIDSel + " .popupContainer").contains("antigravity");
+                cy.get(acIDSel + " .popupContainer").contains("array");
+                cy.get(acIDSel + " .popupContainer").contains("uuid");
+                cy.get(acIDSel + " .popupContainer").contains("webbrowser");
+                // Once we type "a", should show things beginning with A but not the others:
+                cy.get("body").type("a");
+                cy.wait(500);
+                cy.get(acIDSel + " .popupContainer").contains("antigravity");
+                cy.get(acIDSel + " .popupContainer").contains("array");
+                cy.get(acIDSel + " .popupContainer").contains("uuid").should("not.exist");
+                cy.get(acIDSel + " .popupContainer").contains("webbrowser").should("not.exist");
+                // Once we type "r", should show things beginning with AR but not the others:
+                cy.get("body").type("r");
+                cy.get(acIDSel + " .popupContainer").contains("antigravity").should("not.exist");
+                cy.get(acIDSel + " .popupContainer").contains("array");
+                cy.get(acIDSel + " .popupContainer").contains("uuid").should("not.exist");
+                cy.get(acIDSel + " .popupContainer").contains("webbrowser").should("not.exist");
+            }
+        });
+    });
+});
