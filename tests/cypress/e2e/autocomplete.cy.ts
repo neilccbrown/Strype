@@ -107,4 +107,32 @@ describe("Modules", () => {
             }
         });
     });
+    
+    it("Offers auto-completion for imported modules", () => {
+        focusEditorAC();
+        // Must wait for Brython to fully initialise:
+        cy.wait(1000);
+        cy.get("body").type("{uparrow}{uparrow}i");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        cy.get("body").type("tim");
+        cy.get("body").type("{enter}{rightarrow}");
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" time.{ctrl} ");
+        withAC((acIDSel) => {
+            // Microbit and Python have different items in the time module, so pick accordingly:
+            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            // Should have time related queries, but not the standard completions:
+            cy.get(acIDSel + " .popupContainer").contains(target);
+            cy.get(acIDSel + " .popupContainer").contains("sleep");
+            cy.get(acIDSel + " .popupContainer").contains("abs").should("not.exist");
+            cy.get(acIDSel + " .popupContainer").contains("ArithmeticError").should("not.exist");
+            cy.get("body").type(target.at(0) || "");
+            cy.get(acIDSel + " .popupContainer").contains(target);
+            cy.get(acIDSel + " .popupContainer").contains("sleep").should("not.exist");
+            cy.get(acIDSel + " .popupContainer").contains("abs").should("not.exist");
+            cy.get(acIDSel + " .popupContainer").contains("ArithmeticError").should("not.exist");
+        });
+    });
 });
