@@ -147,11 +147,6 @@ describe("Modules", () => {
     });
 
     it("Offers auto-completion for imported modules with a from import *", () => {
-        // This test currently fails so we ignore the failure, but it would be nice to make it pass once we swap to Skulpt:
-        Cypress.on("fail", (err, runnable) => {
-            return false;
-        });
-        
         focusEditorAC();
         // Must wait for Brython to fully initialise:
         cy.wait(1000);
