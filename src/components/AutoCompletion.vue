@@ -182,7 +182,7 @@ export default Vue.extend({
                 this.acResults = {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: "", type: "", version: 0}))};
                 /* FITRUE_isMicrobit */
                 /* IFTRUE_isPurePython */
-                this.acResults = {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation, type: pythonBuiltins[k].type, version: 0}))};
+                this.acResults = {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: pythonBuiltins[k].type, version: 0}))};
                 /* FITRUE_isPurePython */
             }
             else {
@@ -192,11 +192,12 @@ export default Vue.extend({
                 // Pick up built-in Python functions and types:
                 this.acResults[""].push(...Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type !== "module").map((k) => ({
                     acResult: k,
-                    documentation: pythonBuiltins[k].documentation,
+                    documentation: pythonBuiltins[k].documentation||"",
                     type: pythonBuiltins[k].type,
                     version: 0,
                 })));
                 /* FITRUE_isPurePython */
+                // Add user-defined functions:
                 this.acResults[""].push(...getAllEnabledUserDefinedFunctions().map((f) => ({acResult: f.name, documentation: f.documentation, type: "function", version: 0})));
                 
             }
