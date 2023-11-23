@@ -28,8 +28,8 @@
                     <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive</option>
                 </select>
             </ModalDlg>
-            <a :id="saveProjectLinkId" v-if="showMenu" class="strype-menu-link strype-menu-item" v-on="isSynced ? {click: saveCurrentProject}:{}" v-b-modal="saveLinkModalName" v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
-            <a v-if="showMenu && isSynced" class="strype-menu-link strype-menu-item" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'" :title="$t('appMenu.saveAsProjectTooltip')"/>
+            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-on="isSynced ? {click: saveCurrentProject}:{}" v-b-modal="saveLinkModalName" v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
+            <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'" :title="$t('appMenu.saveAsProjectTooltip')"/>
             <ModalDlg :dlgId="saveProjectModalDlgId">
                 <label v-t="'appMessage.fileName'" class="load-save-label"/>
                 <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text"/>  
@@ -167,16 +167,11 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                //handle the Ctrl/Meta + S command for saving the project, we need to programmatically open the menu, and wait a bit it has opened 
-                //before triggering the save action
+                //handle the Ctrl/Meta + S command for saving the project
                 if(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey)){
                     event.stopImmediatePropagation();
                     event.preventDefault();
-                    this.toggleMenuOnOff(new Event(""));
-                    setTimeout(() => {
-                        document.getElementById(this.saveProjectLinkId)?.click();
-                        this.toggleMenuOnOff(null);
-                    }, 500);
+                    document.getElementById(this.saveProjectLinkId)?.click();
                 }
             }
         );
@@ -350,6 +345,7 @@ export default Vue.extend({
             // This method is called when sync is activated, and bypass the "save as" dialog we show to change the project name/location.
             // (note that the @click event in the template already checks if we are synced)
             this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.saveProjectModalDlgId, this.appStore.projectName);
+            this.showMenu = false;
         },
 
         onStrypeMenuShownModalDlg(event: BvModalEvent, dlgId: string) {
@@ -415,9 +411,13 @@ export default Vue.extend({
                         }
                     }
                     else {          
-                        // If we were already syncing to Google Drive, we save the current file now
+                        // If we were already syncing to Google Drive, we save the current file now.
                         if(this.isSyncingToGoogleDrive){
                             this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.autosave);
+                        }
+                        // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
+                        if(forcedProjectName){
+                            return;
                         }
                         const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
                         (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFileName = saveFileName;
@@ -663,6 +663,11 @@ export default Vue.extend({
     width: 100%;
     outline: none;
     border: $strype-menu-entry-border;
+}
+
+.strype-menu-link.disabled{
+    color: #c5c4c1;
+    cursor: default;
 }
 
 .strype-menu-item {
