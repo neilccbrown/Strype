@@ -158,7 +158,7 @@ describe("Modules", () => {
         cy.get("body").type("tim");
         cy.get("body").type("{enter}{rightarrow}");
         // Put * in the second bit, then back down to main section, make a function frame and hit auto-complete:
-        cy.get("body").type("*");
+        cy.get("body").type("*{rightarrow}");
         cy.get("body").type("{downarrow}{downarrow}");
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
