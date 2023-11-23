@@ -60,31 +60,6 @@
             </div>
 
         </div>
-        <span 
-            :id="documentationSpanID"
-            :key="documentationSpanID"
-            class="hidden"
-        > 
-        </span>
-        <span 
-            :id="typesSpanID"
-            :key="typesSpanID"
-            class="hidden"
-        > 
-        </span>
-        <span 
-            :id="reshowResultsID"
-            :key="reshowResultsID"
-            class="hidden"
-            @click="showSuggestionsAC"
-        > 
-        </span>
-        <span 
-            :id="acContextPathSpanID"
-            :key="acContextPathSpanID"
-            class="hidden"
-        > 
-        </span>
     </div>
 </template>
 
@@ -95,12 +70,15 @@ import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
-import { getAcContextPathId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId } from "@/helpers/editor";
 import _ from "lodash";
 import moduleDescription from "@/autocompletion/microbit.json";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
+import { prepareSkulptCode } from "@/autocompletion/acManager";
+import Parser from "@/parser/parser";
+declare const Sk: any;
+
 
 //////////////////////
 export default Vue.extend({
@@ -117,7 +95,6 @@ export default Vue.extend({
             type: Object,
             default: () => DefaultCursorPosition,
         },
-        context: String,
     },
 
     data: function() {
@@ -136,22 +113,6 @@ export default Vue.extend({
 
         UIID(): string {
             return "popupAC" + this.slotId;
-        },
-
-        reshowResultsID(): string {
-            return getReshowResultsId(this.slotId);
-        },
-
-        documentationSpanID(): string {
-            return getDocumentationSpanId(this.slotId);
-        },
-
-        typesSpanID(): string {
-            return getTypesSpanId(this.slotId);
-        },
-
-        acContextPathSpanID(): string {
-            return getAcContextPathId(this.slotId);
         },
 
         acVersions(): Record<string, any> {
@@ -175,33 +136,61 @@ export default Vue.extend({
         },
     },
 
-    methods: {  
-        updateAC(isImportFrame : boolean, token : string): void {
-            if (isImportFrame) {
-                /* IFTRUE_isMicrobit */
-                this.acResults = {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: "", type: "", version: 0}))};
-                /* FITRUE_isMicrobit */
-                /* IFTRUE_isPurePython */
-                this.acResults = {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: pythonBuiltins[k].type, version: 0}))};
-                /* FITRUE_isPurePython */
+    methods: {
+        updateACForImport(token: string) : void {
+            /* IFTRUE_isMicrobit */
+            this.acResults = {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: "", type: "", version: 0}))};
+            /* FITRUE_isMicrobit */
+            /* IFTRUE_isPurePython */
+            this.acResults = {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: pythonBuiltins[k].type, version: 0}))};
+            /* FITRUE_isPurePython */
+            this.showSuggestionsAC(token);
+        },
+      
+        updateAC(frameId: number, token : string, context: string): void {
+            this.acResults = {"": []};
+            if (context !== "") {
+                // There is context, ask Skulpt for a dir() of that context
+                const parser = new Parser();
+                const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
+                const codeToRun = prepareSkulptCode(userCode, context);
+                Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
+                const myPromise = Sk.misceval.asyncToPromise(function() {
+                    return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
+                }, {});
+                // Show error in Python console if error happens
+                myPromise.then(() => {
+                    this.acResults = Sk.ffi.remapToJs(Sk.globals["ac"]);
+                    //console.log("AC Results: " + JSON.stringify(this.acResults));
+                    this.showSuggestionsAC(token);
+                },
+                (err: any) => {
+                    console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
+                });
+                // Everything else will happen in the callback once Skulpt finishes
             }
             else {
-                // TODO support non-module autocomplete, through Skulpt
-                this.acResults = {"": []};
+                // No context, just ask for all built-ins and user functions:
+              
                 /* IFTRUE_isPurePython */
                 // Pick up built-in Python functions and types:
                 this.acResults[""].push(...Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type !== "module").map((k) => ({
                     acResult: k,
-                    documentation: pythonBuiltins[k].documentation||"",
+                    documentation: pythonBuiltins[k].documentation || "",
                     type: pythonBuiltins[k].type,
                     version: 0,
                 })));
                 /* FITRUE_isPurePython */
                 // Add user-defined functions:
-                this.acResults[""].push(...getAllEnabledUserDefinedFunctions().map((f) => ({acResult: f.name, documentation: f.documentation, type: "function", version: 0})));
+                this.acResults[""].push(...getAllEnabledUserDefinedFunctions().map((f) => ({
+                    acResult: f.name,
+                    documentation: f.documentation,
+                    type: "function",
+                    version: 0,
+                })));
                 
+                this.showSuggestionsAC(token);
             }
-            this.showSuggestionsAC(token);
         },
 
         showSuggestionsAC(token : string): void {
@@ -212,7 +201,6 @@ export default Vue.extend({
             // At this stage and since after filtering we have ended up with the final list, we are going to
             // index the results, in order to be able to browse through it with the keys and show the selected.
             let lastIndex=0;
-            let acContextPath = (document.getElementById(this.acContextPathSpanID) as HTMLSpanElement)?.textContent??"";
             for (const module in this.acResults) {
                 // Filter the list based on the token
                 const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
@@ -228,10 +216,7 @@ export default Vue.extend({
                     //4) there is no acContextPath and the acResult is not an imported module: there would not be a version so we just use an empty context
                     //(*) which means that the module variable is either empty or "imported modules".
                     let contextPath;
-                    if(acContextPath.length > 0){
-                        contextPath = acContextPath + "." + e.acResult;
-                    }
-                    else if(moduleDescription.modules.includes(module)){
+                    if(moduleDescription.modules.includes(module)){
                         contextPath = module + "." + e.acResult;
                     }
                     else{
@@ -241,6 +226,7 @@ export default Vue.extend({
                 });
                 lastIndex += filteredResults.length;    
             }    
+            //console.log("Results: " + JSON.stringify(this.resultsToShow));
 
             //if there are resutls
             if(this.areResultsToShow()) {

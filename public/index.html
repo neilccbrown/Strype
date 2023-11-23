@@ -11,8 +11,6 @@
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/v4-shims.css">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/brython@3.11.2/brython.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/brython@3.11.2/brython_stdlib.js"></script>
   <script src="<%= BASE_URL %>js/skulpt.min.js"></script>
   <script src="<%= BASE_URL %>js/skulpt-stdlib.js"></script>
   
@@ -20,21 +18,11 @@
   <title>Strype</title>
 </head>
 
-<body onload="brython()">
+<body>
   <noscript>
     <strong>We're sorry but Strype doesn't work properly without JavaScript enabled.
         Please enable it to continue.</strong>
   </noscript>
-  
-  <div id="loadAC"></div>
-  <script type="text/python3">
-from browser import document
-
-def loadAC(__ev):
-    exec(document['userCode'].value, {'__name__':'__main__'})
-      
-document["loadAC"].bind("click", loadAC)
-    </script>
 
   <div id="app"></div>
   <!-- built files will be auto injected -->
