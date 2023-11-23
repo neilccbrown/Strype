@@ -75,7 +75,7 @@ import moduleDescription from "@/autocompletion/microbit.json";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
-import { prepareSkulptCode } from "@/autocompletion/acManager";
+import { getAllUserDefinedVariablesUpTo, prepareSkulptCode } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
@@ -181,11 +181,20 @@ export default Vue.extend({
                     version: 0,
                 })));
                 /* FITRUE_isPurePython */
+              
                 // Add user-defined functions:
                 this.acResults[""].push(...getAllEnabledUserDefinedFunctions().map((f) => ({
                     acResult: f.name,
                     documentation: f.documentation,
                     type: "function",
+                    version: 0,
+                })));
+                
+                // Add user-defined variables:
+                this.acResults[""].push(...Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
+                    acResult: f,
+                    documentation: "",
+                    type: "variable",
                     version: 0,
                 })));
                 

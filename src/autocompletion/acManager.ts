@@ -1,8 +1,9 @@
-import { CodeMatchIterable } from "@/types/types";
+import {AllFrameTypesIdentifier, BaseSlot, CodeMatchIterable, FrameObject} from "@/types/types";
 import { operators, keywordOperatorsWithSurroundSpaces, STRING_SINGLEQUOTE_PLACERHOLDER, STRING_DOUBLEQUOTE_PLACERHOLDER } from "@/helpers/editor";
 
 import i18n from "@/i18n";
 import _ from "lodash";
+import {useStore} from "@/store/store";
 
 const INDENT = "    ";
 
@@ -415,4 +416,57 @@ export function getCandidatesForAC(slotCode: string, frameId: number): {tokenAC:
     */
 
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
+}
+
+function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], frameId: number) : { found : Set<string>, complete: boolean} {
+    const soFar = new Set<string>();
+    for (const frame of framesForParentId) {
+        if (frameId == frame.id) {
+            return {found: soFar, complete: true};
+        }
+        if (frame.frameType.type === AllFrameTypesIdentifier.varassign) {
+            // We may have all sorts on the LHS.  We want any slots which are plain,
+            // and which are adjoined by either the beginning of the slot, the end,
+            // or a comma
+            let validOpBefore = true;
+            const ops = frame.labelSlotsDict[0].slotStructures.operators;
+            const fields = frame.labelSlotsDict[0].slotStructures.fields;
+            for (let i = 0; i < fields.length; i++) {
+                const validOpAfter = i == fields.length - 1 || ops[i].code === ",";
+                if ((fields[i] as BaseSlot).code) {
+                    if (validOpBefore && validOpAfter) {
+                        soFar.add((fields[i] as BaseSlot).code);
+                    }
+                }
+                validOpBefore = validOpAfter;
+            }
+        }
+        // Now go through children:
+        for (const childrenId of frame.childrenIds) {
+            const childFrame = useStore().frameObjects[childrenId];
+            const childResult = getAllUserDefinedVariablesWithinUpTo([childFrame], frameId);
+            childResult.found.forEach((item) => soFar.add(item));
+            if (childResult.complete) {
+                return {found: soFar, complete : true};
+            }
+        }
+    }
+    return {found: soFar, complete: false};
+}
+
+export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
+    // First we need to go up the tree, to find the top-most parent (either top-level frames or a user-defined function)
+    let curFrameId = frameId;
+    for (;;) {
+        const parentId = useStore().frameObjects[curFrameId].parentId;
+        if (parentId == -2) {
+            // It's a user-defined function, process accordingly
+            return getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(curFrameId), frameId).found;
+        }
+        else if (parentId <= 0) {
+            // Reached top-level, go backwards from here:
+            return getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(parentId), frameId).found;
+        }
+        curFrameId = parentId;
+    }
 }
