@@ -1,4 +1,4 @@
-import {AllFrameTypesIdentifier, BaseSlot, CodeMatchIterable, FrameObject} from "@/types/types";
+import {AcResultsWithModule, AllFrameTypesIdentifier, BaseSlot, CodeMatchIterable, FrameObject} from "@/types/types";
 import { operators, keywordOperatorsWithSurroundSpaces, STRING_SINGLEQUOTE_PLACERHOLDER, STRING_DOUBLEQUOTE_PLACERHOLDER } from "@/helpers/editor";
 
 import i18n from "@/i18n";
@@ -454,6 +454,7 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
     return {found: soFar, complete: false};
 }
 
+declare const Sk: any;
 export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     // First we need to go up the tree, to find the top-most parent (either top-level frames or a user-defined function)
     let curFrameId = frameId;
@@ -469,4 +470,37 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
         }
         curFrameId = parentId;
     }
+}
+
+export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[] {
+    const soFar : Promise<AcResultsWithModule>[] = [];
+    const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
+    for (let i = 0; i < imports.length; i++) {
+        const frame = imports[i];
+        if (!frame.isDisabled && frame.frameType.type === AllFrameTypesIdentifier.fromimport) {
+            if (frame.labelSlotsDict[1].slotStructures.operators.length == 1 && frame.labelSlotsDict[1].slotStructures.operators[0].code === "*") {
+                // Have to get everything out of module
+                // TODO cache these results to avoid re-running Skulpt for imports that never change
+                const module = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+                const codeToRun = prepareSkulptCode("import " + module + "\n", module);
+                Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
+                soFar.push(Sk.misceval.asyncToPromise(function() {
+                    return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
+                }, {}).then(() => {
+                    const all = Sk.ffi.remapToJs(Sk.globals["ac"]) as AcResultsWithModule;
+                    // Because it's imported as "from", put it in default module:
+                    all[""] = all[module];
+                    delete all[module];
+                    return all;
+                }));
+            }
+            else {
+                // Just take those items, split by commas:
+                for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
+                    soFar.push(Promise.resolve({"": [{acResult: (f as BaseSlot).code.trim(), documentation: "", type: "", version: 0}]}));
+                }
+            }
+        }
+    }
+    return soFar;
 }

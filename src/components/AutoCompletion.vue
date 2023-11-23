@@ -75,7 +75,7 @@ import moduleDescription from "@/autocompletion/microbit.json";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
-import { getAllUserDefinedVariablesUpTo, prepareSkulptCode } from "@/autocompletion/acManager";
+import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, prepareSkulptCode } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
@@ -198,7 +198,15 @@ export default Vue.extend({
                     version: 0,
                 })));
                 
-                this.showSuggestionsAC(token);
+                // Add any items imported via a "from ... import ..." frame
+                Promise.all(getAllExplicitlyImportedItems()).then((exportedPerModule : AcResultsWithModule[]) => {
+                    for (const exportedOneModule of exportedPerModule) {
+                        for (const mod of Object.keys(exportedOneModule)) {
+                            this.acResults[mod].push(...(exportedOneModule[mod] as AcResultType[]));
+                        }
+                    }
+                    this.showSuggestionsAC(token);
+                });
             }
         },
 
