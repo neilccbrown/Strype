@@ -4,6 +4,8 @@ import { operators, keywordOperatorsWithSurroundSpaces, STRING_SINGLEQUOTE_PLACE
 import i18n from "@/i18n";
 import _ from "lodash";
 import {useStore} from "@/store/store";
+import microbitModuleDescription from "@/autocompletion/microbit.json";
+
 
 const INDENT = "    ";
 
@@ -150,18 +152,6 @@ export function prepareSkulptCode(userCode: string, contextAC: string): string {
     
     let inspectionCode = "ac = 'Error'\n";
     
-    /* IFTRUE_isMicrobit */
-    inspectionCode += `
-import sys as ${hide}sys
-import ${hide}osMB
-import ${hide}timeMB
-import ${hide}random
-${hide}sys.modules['os'] = ${hide}osMB
-${hide}sys.modules['time'] = ${hide}timeMB
-${hide}sys.modules['random'] = ${hide}random
-        `;
-    /* FITRUE_isMicrobit */
-
     inspectionCode += `
 #
 # STEP 1 : Run the code and get the AC results
@@ -472,16 +462,46 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     }
 }
 
+function getAllMicrobitItems(api: any[]) : string[] {
+    const r : string[] = [];
+    for (let i = 0; i < api.length; i++) {
+        const code = api[i].codePortion as string;
+        if (code.endsWith(".") || code === "") {
+            r.push(...getAllMicrobitItems(api[i].children).map((c) => code + c));
+        }
+        else {
+            // Get rid of anything past the opening bracket:
+            const bracket = code.indexOf("(");
+            r.push(bracket == -1 ? code : code.substring(0, bracket));
+        }
+    }
+    return r;
+}
+
 export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[] {
     const soFar : Promise<AcResultsWithModule>[] = [];
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
     for (let i = 0; i < imports.length; i++) {
         const frame = imports[i];
         if (!frame.isDisabled && frame.frameType.type === AllFrameTypesIdentifier.fromimport) {
-            if (frame.labelSlotsDict[1].slotStructures.operators.length == 1 && frame.labelSlotsDict[1].slotStructures.operators[0].code === "*") {
+            // This works around issue #198; * can currently be a single operator or single field:
+            if ((frame.labelSlotsDict[1].slotStructures.operators.length == 1 && frame.labelSlotsDict[1].slotStructures.operators[0].code === "*")
+                || (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*")) {
+                const module = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+                /* IFTRUE_isMicrobit */
+                // For microbit, things work differently.  We can't ask Skulpt because Skulpt doesn't
+                // know about the microbit modules.  We instead must consult our own module description:
+                if (module === "microbit") {
+                    const allItems = getAllMicrobitItems(microbitModuleDescription.api);
+                    for (let j = 0; j < allItems.length; j++) {
+                        soFar.push(Promise.resolve({"": [{acResult: allItems[j], documentation: "", type: "", version: 0}]}));
+                    }
+                }
+                /* FITRUE_isMicrobit */
+
+                /* IFTRUE_isPurePython */
                 // Have to get everything out of module
                 // TODO cache these results to avoid re-running Skulpt for imports that never change
-                const module = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
                 const codeToRun = prepareSkulptCode("import " + module + "\n", module);
                 Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
                 soFar.push(Sk.misceval.asyncToPromise(function() {
@@ -493,6 +513,7 @@ export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[]
                     delete all[module];
                     return all;
                 }));
+                /* FITRUE_isPurePython */
             }
             else {
                 // Just take those items, split by commas:
