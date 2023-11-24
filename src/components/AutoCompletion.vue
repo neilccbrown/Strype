@@ -71,7 +71,6 @@ import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import _ from "lodash";
-import moduleDescription from "@/autocompletion/microbit.json";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
@@ -116,7 +115,7 @@ export default Vue.extend({
         },
 
         acVersions(): Record<string, any> {
-            return moduleDescription.versions;
+            return microbitModuleDescription.versions;
         },
 
         popupPosition(): Record<string, string> {
@@ -233,7 +232,7 @@ export default Vue.extend({
                     //4) there is no acContextPath and the acResult is not an imported module: there would not be a version so we just use an empty context
                     //(*) which means that the module variable is either empty or "imported modules".
                     let contextPath;
-                    if(moduleDescription.modules.includes(module)){
+                    if(microbitModuleDescription.modules.includes(module)){
                         contextPath = module + "." + e.acResult;
                     }
                     else{
