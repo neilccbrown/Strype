@@ -16,7 +16,7 @@
             <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <div class="menu-separator-div"></div>
             <!-- load/save section -->
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg v-t="'appMenu.loadProject'" :title="$t('appMenu.loadProjectTooltip')"/>
+            <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg v-t="'appMenu.loadProject'" :title="$t('appMenu.loadProjectTooltip')"/>
             <ModalDlg :dlgId="loadProjectModalDlgId">
                 <div v-if="changesNotSavedOnLoad">
                     <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
@@ -167,11 +167,13 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                //handle the Ctrl/Meta + S command for saving the project
-                if(event.key.toLowerCase() === "s" && (event.metaKey || event.ctrlKey)){
+                //handle the Ctrl/Meta + O for opening a project, and Ctrl/Meta + S command for saving the project
+                if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey)){
                     event.stopImmediatePropagation();
                     event.preventDefault();
-                    document.getElementById(this.saveProjectLinkId)?.click();
+                    (event.key.toLowerCase() === "s") 
+                        ? document.getElementById(this.saveProjectLinkId)?.click() 
+                        :  document.getElementById(this.loadProjectLinkId)?.click();
                 }
             }
         );
@@ -237,6 +239,10 @@ export default Vue.extend({
 
         syncGDValue(): StrypeSyncTarget {
             return StrypeSyncTarget.gd;
+        },
+
+        loadProjectLinkId(): string {
+            return "loadProjectLink";
         },
 
         loadProjectModalDlgId(): string {
