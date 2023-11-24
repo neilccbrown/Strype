@@ -383,7 +383,7 @@ export default Vue.extend({
                     // We force saving the current project anyway just in case
                     this.localSyncTarget = this.getTargetSelectVal(false);
                     this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.loadProject);
-                    // The remaining parts of the loading process will be only done once saving is complete (cd loadProjec())                    
+                    // The remaining parts of the loading process will be only done once saving is complete (cf loadProject())                    
                 }
                 // Case of "save file"
                 else if(dlgId == this.saveProjectModalDlgId){
@@ -396,7 +396,7 @@ export default Vue.extend({
                     }
                     
                     const selectValue = this.getTargetSelectVal(true);
-                    if(selectValue != StrypeSyncTarget.gd ){
+                    if(selectValue != StrypeSyncTarget.gd){
                         if(!canBrowserSaveFilePicker && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
                             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
@@ -413,6 +413,9 @@ export default Vue.extend({
                         }
                         else{
                             saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), saveFileName + "." + strypeFileExtension);
+                            // We cannot retrieve the file name ultimately set by the user or the browser when it's being saved with a click,
+                            // however we should still at least update the project name with what the user set in our own save as dialog
+                            this.appStore.projectName = saveFileName.trim();
                             this.appStore.syncTarget = StrypeSyncTarget.fs;
                         }
                     }
@@ -464,9 +467,7 @@ export default Vue.extend({
                                         stateJSONStr: reader.result as string,
                                         callBack: (succceded) => {
                                             if(succceded){
-                                                this.appStore.strypeProjectLocation = fileHandles[0];
-                                                this.appStore.projectName = fileHandles[0].name.substring(0, fileHandles[0].name.lastIndexOf("."));
-                                                this.appStore.syncTarget = StrypeSyncTarget.fs;
+                                                this.onFileLoaded(fileHandles[0].name, fileHandles[0]);
                                             }
                                         },
                                     }
@@ -492,20 +493,22 @@ export default Vue.extend({
                     const emitPayload: AppEvent = {requestAttention: true};
                     emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
                     this.$emit("app-showprogress", emitPayload);
+                    // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
+                    const fileName = files[0].name;
                     readFileContent(files[0])
                         .then(
                             (content) => {
                                 this.appStore.setStateFromJSONStr( 
                                     {
                                         stateJSONStr: content,
-                                        callBack: () => {},
+                                        callBack: () => {
+                                            this.onFileLoaded(fileName/*s[0].n*/);
+                                        },
                                     }
                                 );
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
-                                // Update the sync target and remove Drive infos
-                                this.appStore.syncTarget = StrypeSyncTarget.fs;
-                                this.appStore.currentGoogleDriveSaveFileId = undefined;
+                                
                             }, 
                             (reason) => this.appStore.setStateFromJSONStr( 
                                 {
@@ -527,6 +530,19 @@ export default Vue.extend({
                 
                 //reset the input file element value to empty (so further changes can be notified)
                 (this.$refs.importFileInput as HTMLInputElement).value = "";
+            }
+        },
+
+        onFileLoaded(fileName: string, fileLocation?: FileSystemFileHandle):void {
+            // Update the sync target details and remove drive infos
+            this.appStore.syncTarget = StrypeSyncTarget.fs;
+            this.appStore.currentGoogleDriveSaveFileId = undefined;
+            
+            // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
+            const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
+            this.appStore.projectName = noExtFileName;
+            if(fileLocation){
+                this.appStore.strypeProjectLocation = fileLocation;
             }
         },
 
