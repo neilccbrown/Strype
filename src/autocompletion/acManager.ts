@@ -1,10 +1,10 @@
-import {AcResultsWithModule, AllFrameTypesIdentifier, BaseSlot, CodeMatchIterable, FrameObject} from "@/types/types";
+import {AcResultsWithModule, AllFrameTypesIdentifier, BaseSlot, CodeMatchIterable, FrameObject, AcResultType} from "@/types/types";
 import { operators, keywordOperatorsWithSurroundSpaces, STRING_SINGLEQUOTE_PLACERHOLDER, STRING_DOUBLEQUOTE_PLACERHOLDER } from "@/helpers/editor";
 
 import i18n from "@/i18n";
 import _ from "lodash";
 import {useStore} from "@/store/store";
-import microbitModuleDescription from "@/autocompletion/microbit.json";
+import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 
 
 const INDENT = "    ";
@@ -462,22 +462,6 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     }
 }
 
-function getAllMicrobitItems(api: any[]) : string[] {
-    const r : string[] = [];
-    for (let i = 0; i < api.length; i++) {
-        const code = api[i].codePortion as string;
-        if (code.endsWith(".") || code === "") {
-            r.push(...getAllMicrobitItems(api[i].children).map((c) => code + c));
-        }
-        else {
-            // Get rid of anything past the opening bracket:
-            const bracket = code.indexOf("(");
-            r.push(bracket == -1 ? code : code.substring(0, bracket));
-        }
-    }
-    return r;
-}
-
 export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[] {
     const soFar : Promise<AcResultsWithModule>[] = [];
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
@@ -491,11 +475,9 @@ export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[]
                 /* IFTRUE_isMicrobit */
                 // For microbit, things work differently.  We can't ask Skulpt because Skulpt doesn't
                 // know about the microbit modules.  We instead must consult our own module description:
-                if (module === "microbit") {
-                    const allItems = getAllMicrobitItems(microbitModuleDescription.api);
-                    for (let j = 0; j < allItems.length; j++) {
-                        soFar.push(Promise.resolve({"": [{acResult: allItems[j], documentation: "", type: "", version: 0}]}));
-                    }
+                const allItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
+                if (allItems) {
+                    soFar.push(Promise.resolve({"": allItems}));
                 }
                 /* FITRUE_isMicrobit */
 

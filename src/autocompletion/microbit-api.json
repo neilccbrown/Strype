@@ -1,0 +1,6556 @@
+{
+    "abc": [
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__instancecheck__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__subclasscheck__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_dump_registry",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "register",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractstaticmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractclassmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_cache_token",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "antigravity": [],
+    "array": [
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "append",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "decode",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "extend",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iadd__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "audio": [],
+    "builtins": [
+        {
+            "acResult": "__trunc__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setattr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__repr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__hash__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__format__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getattribute__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delattr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sizeof__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reduce__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reduce_ex__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reduce_ex__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__dir__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init_subclass__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__call__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__subclasses__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__instancecheck__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__subclasscheck__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__prepare__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "to_bytes",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "from_bytes",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__floordiv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__truediv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__divmod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__radd__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rsub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rfloordiv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rtruediv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rdivmod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rpow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lshift__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rshift__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rand__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rxor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rlshift__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rrshift__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__neg__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pos__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__invert__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__trunc__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ceil__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__floor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__round__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getnewargs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__float__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__int__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__abs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__hash__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__bool__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__index__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__floordiv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__truediv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__divmod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__radd__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rsub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rfloordiv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rtruediv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rdivmod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rpow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getnewargs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__trunc__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ceil__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__floor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__round__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__round__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__neg__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pos__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__int__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__float__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__abs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__hash__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__bool__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "real",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "imag",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__truediv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__radd__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rsub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rpow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rtruediv__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__neg__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pos__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__abs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__hash__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__bool__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "count",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "encode",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "endswith",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "find",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "format",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "index",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isalpha",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isdigit",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "islower",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isspace",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isupper",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "join",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "lower",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "lstrip",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "replace",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "rfind",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "rindex",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "rsplit",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "rstrip",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "split",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "startswith",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "strip",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "upper",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__hash__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__repr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getnewargs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "count",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "decode",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "endswith",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "find",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "index",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isalpha",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isdigit",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "islower",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isspace",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isupper",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "join",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "lower",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "lstrip",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "replace",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "rfind",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "rindex",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "rsplit",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "rstrip",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "split",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "startswith",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "strip",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "upper",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__repr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__hash__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getnewargs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "append",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "decode",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "extend",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__repr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iadd__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__imul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mod__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rand__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rand__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rxor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rxor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getnewargs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "indices",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "count",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "index",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "difference",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "intersection",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isdisjoint",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "issubset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "issuperset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "symmetric_difference",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "union",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class_getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "append",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "extend",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "index",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "count",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "insert",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "remove",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reverse",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sort",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sort",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iadd__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rmul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__imul__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class_getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "popitem",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "setdefault",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "keys",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "values",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "items",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fromkeys",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fromkeys",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class_getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ior__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "add",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "difference",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "difference_update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "discard",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "intersection",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "intersection_update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isdisjoint",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "issubset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "issuperset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "remove",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "symmetric_difference",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "symmetric_difference_update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "union",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iand__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ior__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__isub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ixor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class_getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class_getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__repr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "getter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "setter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "deleter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__set__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delete__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abs",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "all",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "any",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "bin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "breakpoint",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "callable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "chr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__fspath__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "aiter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "delattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "dir",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "divmod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "divmod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "eval",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "exec",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "getattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "getattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "getattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "getattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "globals",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "hasattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "hash",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "help",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "hex",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "id",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "input",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "iter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "iter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "iter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isinstance",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "issubclass",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isinstance",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "issubclass",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "len",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "locals",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "max",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "max",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "max",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "max",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "max",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "max",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "min",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "min",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "min",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "min",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "min",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "min",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "next",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "next",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "oct",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "open",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "open",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "open",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ord",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "print",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pow__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "repr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "round",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "round",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "round",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "setattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sorted",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sorted",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sum",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sum",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sum",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sum",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__new__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__import__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__str__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__repr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "with_traceback",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "errno": [],
+    "gc": [
+        {
+            "acResult": "enable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "disable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "collect",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_alloc",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_free",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "threshold",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "threshold",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "log": [
+        {
+            "acResult": "set_labels",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "add",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "add",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "delete",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "set_mirroring",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "love": [
+        {
+            "acResult": "badaboom",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "machine": [
+        {
+            "acResult": "unique_id",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "freq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "disable_irq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "enable_irq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "time_pulse_us",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "math": [
+        {
+            "acResult": "acos",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "asin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "atan",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "atan2",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ceil",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copysign",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cos",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "degrees",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "exp",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fabs",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "floor",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fmod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "frexp",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isfinite",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isinf",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isnan",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ldexp",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "log",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "modf",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "radians",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sqrt",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "tan",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "trunc",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.accelerometer": [
+        {
+            "acResult": "get_x",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_y",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_z",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_values",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_strength",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "current_gesture",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_gesture",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "was_gesture",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_gestures",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "set_range",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.audio": [
+        {
+            "acResult": "play",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_playing",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "stop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copyfrom",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.compass": [
+        {
+            "acResult": "calibrate",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_calibrated",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear_calibration",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_x",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_y",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_z",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "heading",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_field_strength",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.display": [
+        {
+            "acResult": "get_pixel",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "set_pixel",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "show",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "scroll",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "on",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "off",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_on",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read_light_level",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.i2c": [
+        {
+            "acResult": "init",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "scan",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.microphone": [
+        {
+            "acResult": "current_event",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "was_event",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_event",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_events",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "set_threshold",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sound_level",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.speaker": [
+        {
+            "acResult": "off",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "on",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.spi": [
+        {
+            "acResult": "init",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write_readinto",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.uart": [
+        {
+            "acResult": "init",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "any",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "readinto",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "readline",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "micropython": [
+        {
+            "acResult": "const",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "opt_level",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "opt_level",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_info",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "qstr_info",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "stack_use",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "heap_lock",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "heap_unlock",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "kbd_intr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "music": [
+        {
+            "acResult": "set_tempo",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_tempo",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "play",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pitch",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "stop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "neopixel": [
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "show",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fill",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "os": [
+        {
+            "acResult": "listdir",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "remove",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "size",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "uname",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "power": [
+        {
+            "acResult": "off",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "deep_sleep",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "radio": [
+        {
+            "acResult": "on",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "off",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "config",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "send_bytes",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "receive_bytes",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "receive_bytes_into",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "send",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "receive",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "receive_full",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "random": [
+        {
+            "acResult": "getrandbits",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "seed",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "randint",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "randrange",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "randrange",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "choice",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "random",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "uniform",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "speech": [
+        {
+            "acResult": "translate",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pronounce",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "say",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sing",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "struct": [
+        {
+            "acResult": "calcsize",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pack",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pack_into",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "unpack",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "unpack_from",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "sys": [
+        {
+            "acResult": "exit",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "print_exception",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "this": [
+        {
+            "acResult": "authors",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "time": [
+        {
+            "acResult": "sleep",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sleep_ms",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sleep_us",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ticks_ms",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ticks_us",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ticks_add",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ticks_diff",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "types": [
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__call__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "replace",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "keys",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "values",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "items",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class_getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getattribute__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setattr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delattr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "close",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "send",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "throw",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "throw",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__aiter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__anext__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "asend",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "athrow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "athrow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "aclose",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "close",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "send",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "throw",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "throw",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__call__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__call__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__call__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__call__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__call__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__call__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "tb_next",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "tb_frame",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "tb_lasti",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "tb_lineno",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__set__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delete__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__get__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__set__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delete__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "new_class",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "resolve_bases",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "new_class",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "prepare_class",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "coroutine",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getattr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__bool__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "typing": [
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "overload",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "final",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "args",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "kwargs",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "no_type_check",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "no_type_check_decorator",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "runtime_checkable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__int__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__float__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__complex__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__bytes__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__index__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__abs__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__round__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__round__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__hash__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "send",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "throw",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "throw",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "close",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "gi_code",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "gi_frame",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "gi_running",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "gi_yieldfrom",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__await__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cr_await",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cr_code",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cr_frame",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cr_running",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "send",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "throw",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "throw",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "close",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__aiter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__anext__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__aiter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__anext__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "asend",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "athrow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "athrow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "aclose",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__aiter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ag_await",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ag_code",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ag_frame",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ag_running",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "index",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "count",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "insert",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "append",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "extend",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reverse",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "remove",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iadd__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isdisjoint",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "add",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "discard",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "remove",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ior__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iand__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ixor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__isub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__len__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rand__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rsub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rxor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rand__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ror__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rsub__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rxor__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__reversed__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__enter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__exit__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__aenter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__aexit__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "items",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "keys",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "values",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "popitem",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "setdefault",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mode",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "name",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "close",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "closed",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fileno",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "flush",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isatty",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "readable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "readline",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "readlines",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "seek",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "seekable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "tell",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "truncate",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "writable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "writelines",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__next__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__enter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__exit__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__enter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "buffer",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "encoding",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "errors",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "line_buffering",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "newlines",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__enter__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "expand",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "group",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "group",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "group",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "groups",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "groups",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "groupdict",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "groupdict",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "start",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "end",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "span",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "regs",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class_getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "search",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "match",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fullmatch",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "split",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "findall",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "finditer",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sub",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sub",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "subn",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "subn",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class_getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_type_hints",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_type_hints",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_origin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_args",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cast",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cast",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cast",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_make",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_asdict",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_asdict",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_replace",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "setdefault",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "items",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "keys",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "values",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ior__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "NewType",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "type_check_only",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_evaluate",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__hash__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__repr__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_typeddict",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "typing_extensions": [
+        {
+            "acResult": "__getitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "runtime_checkable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "final",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "IntVar",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "setdefault",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "items",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "keys",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "values",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_type_hints",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_args",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_origin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__index__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__init__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "args",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "kwargs",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "uarray": [],
+    "ucollections": [],
+    "uerrno": [],
+    "urandom": [],
+    "ustruct": [],
+    "usys": [],
+    "utime": []
+}
