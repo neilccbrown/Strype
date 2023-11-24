@@ -22,9 +22,10 @@
 
 <body onload="brython()">
   <noscript>
-    <strong>We're sorry but Strype doesn't work properly without JavaScript enabled.
+    <strong>We're sorry but Strype doesn't work without JavaScript enabled.
         Please enable it to continue.</strong>
   </noscript>
+  <b id="uncompatibleBrowserSpan" style="display: block; white-space: pre; margin:auto; width: 50%;"></b>
   
   <div id="loadAC"></div>
   <script type="text/python3">
@@ -38,6 +39,23 @@ document["loadAC"].bind("click", loadAC)
 
   <div id="app"></div>
   <!-- built files will be auto injected -->
-</body>
 
+  <script>
+    /**
+     * Root-level scripts to test things for compatibilty. 
+    */
+    browserErrorMessage = "";
+    // Test regex "lookbehind" is supported. Some older browsers (like Safari < 16.4) do not support it.
+    try{
+        const regex = new RegExp("(?<!=)=(?!=)");
+    }
+    catch(error){
+        browserErrorMessage += "Strype is not compatible with your browser.\nUpgrade it or use another browser."
+    }
+
+    if(browserErrorMessage.length > 0){
+        document.getElementById("uncompatibleBrowserSpan").textContent = browserErrorMessage;
+    }
+  </script>
+</body>
 </html>
