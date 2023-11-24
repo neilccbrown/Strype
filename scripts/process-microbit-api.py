@@ -15,6 +15,8 @@ class TreeWalk(ast.NodeVisitor):
         
     def visit_FunctionDef(self, node):
         self.content.append({"acResult": node.name, "type": "function", "documentation": "", "version": 0})
+    def visit_ClassDef(self, node):
+        self.content.append({"acResult": node.name, "type": "class", "documentation": "", "version": 0})
 
 # Either checkout https://github.com/microbit-foundation/micropython-microbit-stubs or do a git pull if directory exists
 if os.path.isdir("temp-scripts/micropython-microbit-stubs"):
