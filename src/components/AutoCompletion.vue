@@ -69,12 +69,11 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
 import { DefaultCursorPosition, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
-import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import { configureSkulptForAutoComplete, getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, prepareSkulptCode } from "@/autocompletion/acManager";
+import { configureSkulptForAutoComplete, getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableModulesForImport, prepareSkulptCode, getBuiltins } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
@@ -137,12 +136,7 @@ export default Vue.extend({
 
     methods: {
         updateACForImport(token: string) : void {
-            /* IFTRUE_isMicrobit */
-            this.acResults = {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: "", type: "", version: 0}))};
-            /* FITRUE_isMicrobit */
-            /* IFTRUE_isPurePython */
-            this.acResults = {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: pythonBuiltins[k].type, version: 0}))};
-            /* FITRUE_isPurePython */
+            this.acResults = getAvailableModulesForImport();
             this.showSuggestionsAC(token);
         },
       
@@ -171,15 +165,8 @@ export default Vue.extend({
             else {
                 // No context, just ask for all built-ins and user functions:
               
-                /* IFTRUE_isPurePython */
                 // Pick up built-in Python functions and types:
-                this.acResults[""].push(...Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type !== "module").map((k) => ({
-                    acResult: k,
-                    documentation: pythonBuiltins[k].documentation || "",
-                    type: pythonBuiltins[k].type,
-                    version: 0,
-                })));
-                /* FITRUE_isPurePython */
+                this.acResults[""].push(...getBuiltins());
               
                 // Add user-defined functions:
                 this.acResults[""].push(...getAllEnabledUserDefinedFunctions().map((f) => ({

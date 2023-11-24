@@ -5,7 +5,8 @@ import i18n from "@/i18n";
 import _ from "lodash";
 import {useStore} from "@/store/store";
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
-
+import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
+import microbitModuleDescription from "@/autocompletion/microbit.json";
 
 const INDENT = "    ";
 
@@ -510,4 +511,28 @@ export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[]
 
 export function configureSkulptForAutoComplete() : void {
     Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
+}
+
+export function getAvailableModulesForImport() : AcResultsWithModule {
+    /* IFTRUE_isMicrobit */
+    return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: "", type: "", version: 0}))};
+    /* FITRUE_isMicrobit */
+    /* IFTRUE_isPurePython */
+    return {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: pythonBuiltins[k].type, version: 0}))};
+    /* FITRUE_isPurePython */
+}
+
+export function getBuiltins() : AcResultType[] {
+    /* IFTRUE_isPurePython */
+    // Pick up built-in Python functions and types:
+    return Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type !== "module").map((k) => ({
+        acResult: k,
+        documentation: pythonBuiltins[k].documentation || "",
+        type: pythonBuiltins[k].type,
+        version: 0,
+    }));
+    /* FITRUE_isPurePython */
+    /* IFTRUE_isMicrobit */
+    return microbitPythonAPI[""];
+    /* FITRUE_isMicrobit */
 }
