@@ -73,8 +73,8 @@ import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
-import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
-import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, prepareSkulptCode } from "@/autocompletion/acManager";
+import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
+import { configureSkulptForAutoComplete, getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, prepareSkulptCode } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
@@ -153,7 +153,7 @@ export default Vue.extend({
                 const parser = new Parser();
                 const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
                 const codeToRun = prepareSkulptCode(userCode, context);
-                Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
+                configureSkulptForAutoComplete();
                 const myPromise = Sk.misceval.asyncToPromise(function() {
                     return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
                 }, {});

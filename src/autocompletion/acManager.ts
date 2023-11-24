@@ -503,7 +503,7 @@ export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[]
                 // Have to get everything out of module
                 // TODO cache these results to avoid re-running Skulpt for imports that never change
                 const codeToRun = prepareSkulptCode("import " + module + "\n", module);
-                Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
+                configureSkulptForAutoComplete();
                 soFar.push(Sk.misceval.asyncToPromise(function() {
                     return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
                 }, {}).then(() => {
@@ -524,4 +524,8 @@ export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[]
         }
     }
     return soFar;
+}
+
+export function configureSkulptForAutoComplete() : void {
+    Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
 }
