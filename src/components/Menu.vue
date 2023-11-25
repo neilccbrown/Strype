@@ -16,7 +16,8 @@
             <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <div class="menu-separator-div"></div>
             <!-- load/save section -->
-            <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg v-t="'appMenu.loadProject'" :title="$t('appMenu.loadProjectTooltip')"/>
+            <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg 
+                v-t="'appMenu.loadProject'" :title="$t('appMenu.loadProjectTooltip')" @click="openLoadProjectModal"/>
             <ModalDlg :dlgId="loadProjectModalDlgId">
                 <div v-if="changesNotSavedOnLoad">
                     <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
@@ -326,6 +327,13 @@ export default Vue.extend({
 
         downloadPython() {
             downloadPython(); 
+        },
+
+        openLoadProjectModal(): void {
+            // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
+            // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
+            // So we open it manually here...
+            this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
         },
 
         getSyncTargetStatus(target: StrypeSyncTarget): boolean {
