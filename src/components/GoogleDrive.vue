@@ -381,8 +381,9 @@ export default Vue.extend({
                     if(reason.status == 401){
                         this.proceedFailedConnectionCheckOnSave();
                     }
-                    if(reason.status == 404 && this.saveFileId != undefined){
+                    else if((reason.status == 404 || reason.status == 403) && this.saveFileId != undefined){
                         // We assume something went wrong regarding saving against the specified file id.
+                        // This can notably happen if the file has been locked in the meantime that we tried to save it.
                         // We show a modal and stop sync
                         this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.GDriveSaveFailed") as string;
                         this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
