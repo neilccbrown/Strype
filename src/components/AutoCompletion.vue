@@ -97,6 +97,11 @@ export default Vue.extend({
 
     data: function() {
         return {
+            // We must keep track of whether our request is still the latest one
+            // If it is not, we should not record our results, because they are now "stale"
+            // and inapplicable.  So we put a number in here that we increment each time
+            // we update:
+            acRequestIndex : 0,
             acResults: {} as AcResultsWithModule,
             resultsToShow: {} as IndexedAcResultWithModule,
             documentation: [] as string[],
@@ -136,11 +141,14 @@ export default Vue.extend({
 
     methods: {
         updateACForImport(token: string) : void {
+            this.acRequestIndex += 1;
             this.acResults = getAvailableModulesForImport();
             this.showSuggestionsAC(token);
         },
       
         updateAC(frameId: number, token : string, context: string): void {
+            this.acRequestIndex += 1;
+            const ourAcRequest = this.acRequestIndex;
             this.acResults = {"": []};
             if (context !== "") {
                 // There is context, ask Skulpt for a dir() of that context
@@ -153,9 +161,10 @@ export default Vue.extend({
                 }, {});
                 // Show error in JS console if error happens
                 myPromise.then(() => {
-                    this.acResults = Sk.ffi.remapToJs(Sk.globals["ac"]);
-                    //console.log("AC Results: " + JSON.stringify(this.acResults));
-                    this.showSuggestionsAC(token);
+                    if (ourAcRequest == this.acRequestIndex) {
+                        this.acResults = Sk.ffi.remapToJs(Sk.globals["ac"]);
+                        this.showSuggestionsAC(token);
+                    }                    
                 },
                 (err: any) => {
                     console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
@@ -186,6 +195,9 @@ export default Vue.extend({
                 
                 // Add any items imported via a "from ... import ..." frame
                 Promise.all(getAllExplicitlyImportedItems()).then((exportedPerModule : AcResultsWithModule[]) => {
+                    if (this.acRequestIndex != ourAcRequest) {
+                        return;
+                    }
                     for (const exportedOneModule of exportedPerModule) {
                         for (const mod of Object.keys(exportedOneModule)) {
                             this.acResults[mod].push(...(exportedOneModule[mod] as AcResultType[]));
@@ -229,6 +241,7 @@ export default Vue.extend({
                 });
                 lastIndex += filteredResults.length;    
             }    
+            //console.log("Results: " + JSON.stringify(this.resultsToShow));
 
             //if there are resutls
             if(this.areResultsToShow()) {
