@@ -483,6 +483,10 @@ export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[]
 
                 /* IFTRUE_isPurePython */
                 // Have to get everything out of module
+                
+                // We make some simple user code that just imports the module, then we ask Skulpt
+                // for autocomplete on that module.  That will tell us what is available on that
+                // module in Skulpt specifically:
                 // TODO cache these results to avoid re-running Skulpt for imports that never change
                 const codeToRun = prepareSkulptCode("import " + module + "\n", module);
                 configureSkulptForAutoComplete();
