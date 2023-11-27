@@ -199,15 +199,15 @@ describe("Modules", () => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, target);
-            checkNoItems(acIDSel, nonAvailable)
+            checkNoItems(acIDSel, nonAvailable);
             checkExactlyOneItem(acIDSel, "sleep");
             checkExactlyOneItem(acIDSel, "abs");
             checkExactlyOneItem(acIDSel, "ArithmeticError");
             cy.get("body").type(target.at(0) || "");
             checkExactlyOneItem(acIDSel, target);
-            checkNoItems(acIDSel, "sleep")
-            checkNoItems(acIDSel, "abs")
-            checkNoItems(acIDSel, "ArithmeticError")
+            checkNoItems(acIDSel, "sleep");
+            checkNoItems(acIDSel, "abs");
+            checkNoItems(acIDSel, "ArithmeticError");
         });
     });
 });
@@ -255,11 +255,11 @@ describe("User-defined items", () => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, "lower");
             checkExactlyOneItem(acIDSel, "upper");
-            checkNoItems(acIDSel, "divmod")
+            checkNoItems(acIDSel, "divmod");
             cy.get("body").type("u");
-            checkNoItems(acIDSel, "lower")
+            checkNoItems(acIDSel, "lower");
             checkExactlyOneItem(acIDSel, "upper");
-            checkNoItems(acIDSel, "divmod")
+            checkNoItems(acIDSel, "divmod");
         });
     });
 
@@ -275,7 +275,7 @@ describe("User-defined items", () => {
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, "abs");
-            checkNoItems(acIDSel, "myVar")
+            checkNoItems(acIDSel, "myVar");
         });
     });
 });
