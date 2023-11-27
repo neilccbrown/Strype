@@ -1,58 +1,201 @@
 {
-    "abc": [
-        {
-            "acResult": "ABCMeta",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abstractmethod",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abstractproperty",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abstractstaticmethod",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abstractclassmethod",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ABC",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_cache_token",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "antigravity": [],
-    "array": [
-        {
-            "acResult": "array",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ],
     "audio": [],
+    "random": [
+        {
+            "acResult": "getrandbits",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "seed",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "randint",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "randrange",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "choice",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "random",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "uniform",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "math": [
+        {
+            "acResult": "acos",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "asin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "atan",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "atan2",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ceil",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "copysign",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cos",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "degrees",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "exp",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fabs",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "floor",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "fmod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "frexp",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isfinite",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isinf",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isnan",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ldexp",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "log",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "modf",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "radians",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sqrt",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "tan",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "trunc",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
     "": [
         {
             "acResult": "_SupportsTrunc",
@@ -277,12 +420,6 @@
             "version": 0
         },
         {
-            "acResult": "divmod",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
             "acResult": "eval",
             "type": "function",
             "documentation": "",
@@ -297,24 +434,6 @@
         {
             "acResult": "filter",
             "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "getattr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "getattr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "getattr",
-            "type": "function",
             "documentation": "",
             "version": 0
         },
@@ -373,30 +492,6 @@
             "version": 0
         },
         {
-            "acResult": "iter",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "iter",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "isinstance",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "issubclass",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
             "acResult": "isinstance",
             "type": "function",
             "documentation": "",
@@ -433,73 +528,7 @@
             "version": 0
         },
         {
-            "acResult": "max",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "max",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "max",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "max",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "max",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
             "acResult": "min",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "min",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "min",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "min",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "min",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "min",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "next",
             "type": "function",
             "documentation": "",
             "version": 0
@@ -512,18 +541,6 @@
         },
         {
             "acResult": "oct",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "open",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "open",
             "type": "function",
             "documentation": "",
             "version": 0
@@ -565,60 +582,6 @@
             "version": 0
         },
         {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
             "acResult": "reversed",
             "type": "class",
             "documentation": "",
@@ -637,18 +600,6 @@
             "version": 0
         },
         {
-            "acResult": "round",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "round",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
             "acResult": "setattr",
             "type": "function",
             "documentation": "",
@@ -656,30 +607,6 @@
         },
         {
             "acResult": "sorted",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sorted",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sum",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sum",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sum",
             "type": "function",
             "documentation": "",
             "version": 0
@@ -877,79 +804,112 @@
             "version": 0
         }
     ],
-    "errno": [],
-    "gc": [
+    "uarray": [],
+    "utime": [],
+    "speech": [
         {
-            "acResult": "enable",
+            "acResult": "translate",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "disable",
+            "acResult": "pronounce",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "collect",
+            "acResult": "say",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "mem_alloc",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "mem_free",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "threshold",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "threshold",
+            "acResult": "sing",
             "type": "function",
             "documentation": "",
             "version": 0
         }
     ],
-    "log": [
+    "this": [
         {
-            "acResult": "set_labels",
+            "acResult": "authors",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "typing_extensions": [
+        {
+            "acResult": "_SpecialForm",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "runtime_checkable",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "add",
+            "acResult": "final",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "add",
+            "acResult": "IntVar",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "delete",
+            "acResult": "_TypedDict",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_type_hints",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "set_mirroring",
+            "acResult": "get_args",
             "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_origin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsIndex",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ParamSpecArgs",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ParamSpecKwargs",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ParamSpec",
+            "type": "class",
             "documentation": "",
             "version": 0
         }
@@ -962,197 +922,243 @@
             "version": 0
         }
     ],
-    "machine": [
+    "microbit.audio": [
         {
-            "acResult": "unique_id",
+            "acResult": "play",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "reset",
+            "acResult": "is_playing",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "freq",
+            "acResult": "stop",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "disable_irq",
-            "type": "function",
+            "acResult": "SoundEffect",
+            "type": "class",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "enable_irq",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "time_pulse_us",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "mem",
+            "acResult": "AudioFrame",
             "type": "class",
             "documentation": "",
             "version": 0
         }
     ],
-    "math": [
+    "microbit.display": [
         {
-            "acResult": "acos",
+            "acResult": "get_pixel",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "asin",
+            "acResult": "set_pixel",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "atan",
+            "acResult": "clear",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "atan2",
+            "acResult": "show",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "ceil",
+            "acResult": "scroll",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "copysign",
+            "acResult": "on",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "cos",
+            "acResult": "off",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "degrees",
+            "acResult": "is_on",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "exp",
+            "acResult": "read_light_level",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.speaker": [
+        {
+            "acResult": "off",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "fabs",
+            "acResult": "on",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.i2c": [
+        {
+            "acResult": "init",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "floor",
+            "acResult": "scan",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "fmod",
+            "acResult": "read",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "frexp",
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.compass": [
+        {
+            "acResult": "calibrate",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "isfinite",
+            "acResult": "is_calibrated",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "isinf",
+            "acResult": "clear_calibration",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "isnan",
+            "acResult": "get_x",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "ldexp",
+            "acResult": "get_y",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "log",
+            "acResult": "get_z",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "modf",
+            "acResult": "heading",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "pow",
+            "acResult": "get_field_strength",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.uart": [
+        {
+            "acResult": "init",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "radians",
+            "acResult": "any",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "sin",
+            "acResult": "read",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "sqrt",
+            "acResult": "readinto",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "tan",
+            "acResult": "readline",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "trunc",
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.spi": [
+        {
+            "acResult": "init",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write_readinto",
             "type": "function",
             "documentation": "",
             "version": 0
@@ -1220,170 +1226,6 @@
             "version": 0
         }
     ],
-    "microbit.audio": [
-        {
-            "acResult": "play",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "is_playing",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "stop",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SoundEffect",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AudioFrame",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.compass": [
-        {
-            "acResult": "calibrate",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "is_calibrated",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "clear_calibration",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_x",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_y",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_z",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "heading",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_field_strength",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.display": [
-        {
-            "acResult": "get_pixel",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "set_pixel",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "clear",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "show",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "scroll",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "on",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "off",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "is_on",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "read_light_level",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.i2c": [
-        {
-            "acResult": "init",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "scan",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "read",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "write",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
     "microbit.microphone": [
         {
             "acResult": "current_event",
@@ -1422,370 +1264,6 @@
             "version": 0
         }
     ],
-    "microbit.speaker": [
-        {
-            "acResult": "off",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "on",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.spi": [
-        {
-            "acResult": "init",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "read",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "write",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "write_readinto",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.uart": [
-        {
-            "acResult": "init",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "any",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "read",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "readinto",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "readline",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "write",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "micropython": [
-        {
-            "acResult": "const",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "opt_level",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "opt_level",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "mem_info",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "qstr_info",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "stack_use",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "heap_lock",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "heap_unlock",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "kbd_intr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "music": [
-        {
-            "acResult": "set_tempo",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_tempo",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "play",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pitch",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "stop",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "reset",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "neopixel": [
-        {
-            "acResult": "NeoPixel",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "os": [
-        {
-            "acResult": "listdir",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "remove",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "size",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "uname_result",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "uname",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "power": [
-        {
-            "acResult": "off",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "deep_sleep",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "radio": [
-        {
-            "acResult": "on",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "off",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "config",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "reset",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "send_bytes",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "receive_bytes",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "receive_bytes_into",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "send",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "receive",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "receive_full",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "random": [
-        {
-            "acResult": "getrandbits",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "seed",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "randint",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "randrange",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "randrange",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "choice",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "random",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "uniform",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "speech": [
-        {
-            "acResult": "translate",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pronounce",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "say",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sing",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
     "struct": [
         {
             "acResult": "calcsize",
@@ -1818,73 +1296,61 @@
             "version": 0
         }
     ],
-    "sys": [
+    "uerrno": [],
+    "usys": [],
+    "os": [
         {
-            "acResult": "exit",
+            "acResult": "listdir",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "print_exception",
+            "acResult": "remove",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "_implementation",
+            "acResult": "size",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "uname_result",
             "type": "class",
             "documentation": "",
             "version": 0
+        },
+        {
+            "acResult": "uname",
+            "type": "function",
+            "documentation": "",
+            "version": 0
         }
     ],
-    "this": [
+    "log": [
         {
-            "acResult": "authors",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "time": [
-        {
-            "acResult": "sleep",
+            "acResult": "set_labels",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "sleep_ms",
+            "acResult": "add",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "sleep_us",
+            "acResult": "delete",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "ticks_ms",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ticks_us",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ticks_add",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ticks_diff",
+            "acResult": "set_mirroring",
             "type": "function",
             "documentation": "",
             "version": 0
@@ -2019,12 +1485,6 @@
         },
         {
             "acResult": "resolve_bases",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "new_class",
             "type": "function",
             "documentation": "",
             "version": 0
@@ -2374,12 +1834,6 @@
             "version": 0
         },
         {
-            "acResult": "get_type_hints",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
             "acResult": "get_origin",
             "type": "function",
             "documentation": "",
@@ -2387,18 +1841,6 @@
         },
         {
             "acResult": "get_args",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "cast",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "cast",
             "type": "function",
             "documentation": "",
             "version": 0
@@ -2446,85 +1888,379 @@
             "version": 0
         }
     ],
-    "typing_extensions": [
+    "urandom": [],
+    "time": [
         {
-            "acResult": "_SpecialForm",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "runtime_checkable",
+            "acResult": "sleep",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "final",
+            "acResult": "sleep_ms",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "IntVar",
+            "acResult": "sleep_us",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "_TypedDict",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_type_hints",
+            "acResult": "ticks_ms",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "get_args",
+            "acResult": "ticks_us",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "get_origin",
+            "acResult": "ticks_add",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "SupportsIndex",
-            "type": "class",
+            "acResult": "ticks_diff",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "radio": [
+        {
+            "acResult": "on",
+            "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "ParamSpecArgs",
-            "type": "class",
+            "acResult": "off",
+            "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "ParamSpecKwargs",
-            "type": "class",
+            "acResult": "config",
+            "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "ParamSpec",
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "send_bytes",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "receive_bytes",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "receive_bytes_into",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "send",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "receive",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "receive_full",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "machine": [
+        {
+            "acResult": "unique_id",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "freq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "disable_irq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "enable_irq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "time_pulse_us",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem",
             "type": "class",
             "documentation": "",
             "version": 0
         }
     ],
-    "uarray": [],
-    "ucollections": [],
-    "uerrno": [],
-    "urandom": [],
+    "sys": [
+        {
+            "acResult": "exit",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "print_exception",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_implementation",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "abc": [
+        {
+            "acResult": "ABCMeta",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractproperty",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractstaticmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractclassmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ABC",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_cache_token",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "errno": [],
     "ustruct": [],
-    "usys": [],
-    "utime": []
+    "gc": [
+        {
+            "acResult": "enable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "disable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "collect",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_alloc",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_free",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "threshold",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "music": [
+        {
+            "acResult": "set_tempo",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_tempo",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "play",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pitch",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "stop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "micropython": [
+        {
+            "acResult": "const",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "opt_level",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_info",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "qstr_info",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "stack_use",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "heap_lock",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "heap_unlock",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "kbd_intr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "array": [
+        {
+            "acResult": "array",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "antigravity": [],
+    "power": [
+        {
+            "acResult": "off",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "deep_sleep",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "ucollections": [],
+    "neopixel": [
+        {
+            "acResult": "NeoPixel",
+            "type": "class",
+            "documentation": "",
+            "version": 0
+        }
+    ]
 }
