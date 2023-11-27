@@ -165,7 +165,6 @@ except Exception as e:
     validContext = False
 # if the previous lines created a problem, that means that the context or the token are not correct and we should stop
 if validContext:
-    # Define the slot id we are talking about
     try:
         # append the line that removes useless names and saves them to the results
         # we also need to remove validContext so that we don't get it in the results
@@ -185,7 +184,7 @@ if validContext:
                 # in case the contextAC is not empty, this is the 'module'
                 # otherwise, if the globals().get(name) is pointing at a (root) module, then we create an 'imported modules' module,
                 # if not, the we retrieve the module name with globals().get(name).__module__
-                # IMPORTANT NOTE ----- this will work fine when the python modules can be imported (i.e. defined in Brython, or added by us for micro:bit)
+                # IMPORTANT NOTE ----- this will work fine when the python modules can be imported (i.e. defined in Skulpt, or added by us for micro:bit)
                 # if a module is defined but is not "reachable", then it won't show in the a/c
                 module = ${jsonStringifiedContext} or globals().get(name).__module__ or ''
                 if ${contextAC.length == 0 ? "True" : "False"}: 
@@ -381,7 +380,7 @@ export function getCandidatesForAC(slotCode: string, frameId: number): {tokenAC:
     let contextAC = "";
     
     // if the string's last character is an operator or symbol that means there is no context and tokenAC
-    // we also try to avoid checking for context and token when the line ends with multiple dots, as it creates a problem to Brython
+    // we also try to avoid checking for context and token when the line ends with multiple dots, as it creates a problem to Skulpt
     if(!stringPlaceholdersParsedSlotCode.substring(codeIndex).endsWith("..") && stringPlaceholdersParsedSlotCode[codeIndex] != "." && !operators.includes(stringPlaceholdersParsedSlotCode[codeIndex])) {
         // we don't want to show the autocompletion if the code at the current position is 
         // after a space that doesn't separate some parts of an operator. In other words,

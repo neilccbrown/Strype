@@ -319,7 +319,7 @@ export default class Parser {
 
         });
         
-        let output = "";                     // the code that will go to Brython
+        let output = "";                     // the code that will go to Skulpt for autocomplete
         let prevIndentation = 0;             // holds the indentation of the previous line
         const openedTryMap = [] as string[]; // For each try opened, we store the white spaces in front of it.
         let tryFromTheUser = false;          // When the except is open no need to add try catch in it.
