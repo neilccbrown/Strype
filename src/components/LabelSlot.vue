@@ -1246,12 +1246,6 @@ export default Vue.extend({
         isImportFrame(): boolean {
             return this.appStore.isImportFrame(this.frameId);
         },
-
-        getACresultsFromBrython(): void {
-            // run the Brython code -to get the AC results- by "clicking" the loadAC
-            const loadAcContainer = document.getElementById("loadAC");
-            loadAcContainer?.click();
-        },
     },
 });
 </script>
