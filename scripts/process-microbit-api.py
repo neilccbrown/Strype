@@ -1,3 +1,12 @@
+# This script is used as a preprocessing step.  It is NOT run live by Strype,
+# but instead run manually via the preprocess:update-microbit-api NPM task.
+# It checks out the microbit foundation's stubs for the microbit API
+# then processes them into a JSON file with all the API details for Strype's
+# autocomplete.  It thus only needs to be re-run if their microbit API
+# has changed.  The resulting file is checked in to Git since it won't change
+# often.  (This script just outputs on stdout; the path of the resulting
+# file is set in package.json where the NPM task is defined.)
+
 import ast
 import json
 import os
