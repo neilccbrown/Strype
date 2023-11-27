@@ -854,7 +854,7 @@ const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
 export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
 export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
-export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean}): {slots: SlotsStructure, cursorOffset: number} => {
+export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string,}): {slots: SlotsStructure, cursorOffset: number} => {
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
     //  {fields: {"", s1, "", "", s2, ""}, operators: ["", "", "+", "", ""] }}
@@ -1005,7 +1005,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         }
         else{
             // 3 - break the code by operatorSlot
-            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, flags?.cursorPos);
+            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, flags?.frameType??"", flags?.cursorPos);
             cursorOffset += operatorCursorOffset;
             resStructSlot.fields = operatorSplitsStruct.fields;
             resStructSlot.operators = operatorSplitsStruct.operators;
@@ -1015,7 +1015,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };
 
-const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: string, cursorPos?:number): {slots: SlotsStructure, cursorOffset: number} => {
+const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: string, frameType: string, cursorPos?:number): {slots: SlotsStructure, cursorOffset: number} => {
     let cursorOffset = 0;
 
     // Before checking the operators, we need "blank" the exception we do not consider operators:
@@ -1048,7 +1048,9 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // "u" flag is necessary for unicode escapes
     const cannotPrecedeKeywordOps = /^(\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|\p{Nl}|\p{Mn}|\p{Mc}|\p{Nd}|\p{Pc}|_)$/u;
     while(hasOperator){
-        const operatorPosList : OpFound[] = allOperators.flatMap((operator : OpDef) => {
+        // When we look for operators, there is one exception: we discard "*" (and "**" why not) when are in a from import frame, we will treat it as text.
+        const isInFromImportFrame = (frameType == AllFrameTypesIdentifier.fromimport);
+        const operatorPosList : OpFound[] = ((isInFromImportFrame) ? allOperators.filter((opDef) => !opDef.match.includes("*")) : allOperators).flatMap((operator : OpDef) => {
             if (operator.keywordOperator) {
                 // "g" flag is necessary to make it obey the lastIndex item as a place to start:
                 const regex = new RegExp(operator.match.trim().replaceAll(" ", "\\s+") + " ", "g");
