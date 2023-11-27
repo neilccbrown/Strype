@@ -48,8 +48,6 @@
             v-if="focused && showAC"
             :class="{ac: true, hidden: !acRequested}"
             :slotId="UIID"
-            :context.sync="contextAC"
-            :token.sync="tokenAC"
             ref="AC"
             :key="AC_UIID"
             :id="AC_UIID"
@@ -64,9 +62,9 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, getAcSpanId , getDocumentationSpanId, getReshowResultsId, getTypesSpanId, getAcContextPathId, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUIID } from "@/helpers/editor";
+import { getLabelSlotUIID, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUIID } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot} from "@/types/types";
-import { getCandidatesForAC, getImportCandidatesForAC, resetCurrentContextAC } from "@/autocompletion/acManager";
+import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
@@ -308,8 +306,6 @@ export default Vue.extend({
         // (the spans don't get focus anymore because the containg editable div grab it)
         onGetCaret(event: MouseEvent): void {
             this.isFirstChange = true;
-            //reset the AC context
-            resetCurrentContextAC();
 
             // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
             // We should have neigbours because brackets, quotes and operators are always surronded by fields, but keep TS happy
@@ -392,18 +388,32 @@ export default Vue.extend({
 
                 //workout the correct context if we are in a code editable slot
                 const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
-                const resultsAC = (isImportFrame)
-                    ? getImportCandidatesForAC(textBeforeCaret, this.frameId, this.labelSlotsIndex, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID))
-                    : getCandidatesForAC(textBeforeCaret, this.frameId, getAcSpanId(this.UIID), getDocumentationSpanId(this.UIID), getTypesSpanId(this.UIID), getReshowResultsId(this.UIID), getAcContextPathId(this.UIID));
-                this.showAC = resultsAC.showAC;
-                this.contextAC = resultsAC.contextAC;
-                if(resultsAC.showAC){
-                    this.tokenAC = resultsAC.tokenAC.toLowerCase();
+                if (isImportFrame) {
+                    this.tokenAC = textBeforeCaret;
+                    this.showAC = true;
+                    this.contextAC = "";
+                    this.$nextTick(() => {
+                        const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
+                        if (ac) {
+                            ac.updateACForImport(this.tokenAC);
+                        }
+                    });
                 }
-
-                this.$nextTick(() => {
-                    this.getACresultsFromBrython();
-                });
+                else {
+                    const resultsAC = getCandidatesForAC(textBeforeCaret, this.frameId);
+                    this.showAC = resultsAC.showAC;
+                    this.contextAC = resultsAC.contextAC;
+                    if (resultsAC.showAC) {
+                        this.tokenAC = resultsAC.tokenAC.toLowerCase();
+                    }
+  
+                    this.$nextTick(() => {
+                        const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
+                        if (ac) {
+                            ac.updateAC(this.frameId, this.tokenAC, this.contextAC);
+                        }
+                    });
+                }
             }
         },
 
@@ -1235,12 +1245,6 @@ export default Vue.extend({
    
         isImportFrame(): boolean {
             return this.appStore.isImportFrame(this.frameId);
-        },
-
-        getACresultsFromBrython(): void {
-            // run the Brython code -to get the AC results- by "clicking" the loadAC
-            const loadAcContainer = document.getElementById("loadAC");
-            loadAcContainer?.click();
         },
     },
 });

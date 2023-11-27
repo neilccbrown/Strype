@@ -37,8 +37,8 @@
             {"name":"ledClear","codePortion":"clear()"},
             {"name":"ledOn","codePortion":"on()"},
             {"name":"ledOff","codePortion":"off()"},
-            {"name":"ledIsOn","codePortion":"display.is_on()"},
-            {"name":"ledReadLight","codePortion":"display.read_light_level()"}]},
+            {"name":"ledIsOn","codePortion":"is_on()"},
+            {"name":"ledReadLight","codePortion":"read_light_level()"}]},
         {"name":"Img","codePortion":"","children": [
             {"name":"ImgBuiltin","codePortion":"Image.", "children":[
                 {"name":"Img01","codePortion":"HEART"},

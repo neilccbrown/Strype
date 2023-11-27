@@ -322,26 +322,6 @@ export function getCommandsRightPaneContainerId(): string {
     return "commandsContainerDiv";
 }
 
-export function getAcSpanId(slotId: string): string {
-    return slotId + "_ResultsSpan";
-}
-
-export function getReshowResultsId(slotId: string): string {
-    return slotId + "_ReshowResults";
-}
-
-export function getDocumentationSpanId(slotId: string): string {
-    return slotId + "_DocumentationSpan";
-}
-
-export function getTypesSpanId(slotId: string): string {
-    return slotId + "_TypesSpan";
-}
-
-export function getAcContextPathId(slotId: string): string{
-    return slotId+"_AcContextPathSpan";
-}
-
 export const fileImportSupportedFormats: string[] = [strypeFileExtension];
 
 // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
