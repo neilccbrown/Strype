@@ -11,6 +11,7 @@
         "lint:check": "vue-cli-service lint --no-fix --max-warnings 0",
         "lint:fix": "vue-cli-service lint",
         "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/localisation/**/*.json'",
+        "preprocess:update-microbit-api": "python scripts/process-microbit-api.py > src/autocompletion/microbit-api.json",
         "serve:https": "HTTPS=true vue-cli-service serve",
         "cy:run:microbit": "cypress run --env mode=microbit",
         "cy:run:python": "cypress run --env mode=python",
