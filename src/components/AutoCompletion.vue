@@ -151,7 +151,7 @@ export default Vue.extend({
                 const myPromise = Sk.misceval.asyncToPromise(function() {
                     return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
                 }, {});
-                // Show error in Python console if error happens
+                // Show error in JS console if error happens
                 myPromise.then(() => {
                     this.acResults = Sk.ffi.remapToJs(Sk.globals["ac"]);
                     //console.log("AC Results: " + JSON.stringify(this.acResults));
@@ -163,7 +163,7 @@ export default Vue.extend({
                 // Everything else will happen in the callback once Skulpt finishes
             }
             else {
-                // No context, just ask for all built-ins and user functions:
+                // No context, just ask for all built-ins, user-defined functions, user-defined variables and everything explicitly imported with "from...import...":
               
                 // Pick up built-in Python functions and types:
                 this.acResults[""].push(...getBuiltins());
@@ -229,7 +229,6 @@ export default Vue.extend({
                 });
                 lastIndex += filteredResults.length;    
             }    
-            //console.log("Results: " + JSON.stringify(this.resultsToShow));
 
             //if there are resutls
             if(this.areResultsToShow()) {
