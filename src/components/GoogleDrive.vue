@@ -3,6 +3,15 @@
         <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="savePickedFolder" @nonStrypeFilePicked="onNonStrypeFilePicked" dev-key="AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E" :oauth-token="oauthToken"/>
         <SimpleMsgModalDlg :dlgId="loginErrorModalDlgId" :hideActionListener="signIn"/>
         <SimpleMsgModalDlg :dlgId="nonStrypeFilePickedModalDlgId" :hideActionListener="loadFile" />
+        <ModalDlg :dlgId="saveExistingGDProjectModalDlgId" :size="saveExistingFileDlgSize" :elementToFocusId="(isFileLocked) ? saveExistingFileCopyButtonId : saveExistingFileOverwriteButtonId">
+            <span style="white-space:pre-wrap">{{$t((isFileLocked)?'appMessage.gdriveLockedFileAlreadyExists':'appMessage.gdriveFileAlreadyExists')}}</span>
+            <!-- in order to allow 3 (customed) buttons, we use the slot "modal-footer" made available by Boostrap for the modal; to simply things, we handle both locked/unlocked files there -->
+            <template #modal-footer-content="{ok, cancel}">
+                <b-button variant="secondary" @click="onSaveGDExistingFileAction(Actions.cancel);cancel()">{{$t('buttonLabel.cancel')}}</b-button>
+                <b-button :id="saveExistingFileCopyButtonId" variant="primary" @click="onSaveGDExistingFileAction(Actions.copy);ok()">{{(isFileLocked)?$t('buttonLabel.ok'):$t('buttonLabel.saveProjectCopy')}}</b-button>
+                <b-button :id="saveExistingFileOverwriteButtonId" v-if="!isFileLocked" variant="primary" @click="onSaveGDExistingFileAction(Actions.overwrite);ok()">{{$t('buttonLabel.overwriteProject')}}</b-button>
+            </template>
+        </ModalDlg>
     </div>
 </template>
 
@@ -12,11 +21,19 @@ import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
+import ModalDlg from "@/components/ModalDlg.vue";
 import i18n from "@/i18n";
-import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { strypeFileExtension } from "@/helpers/common";
-import { FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import { cloneDeep } from "lodash";
+import { BootstrapDlgSize, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
+
+// This enum is used for flaging the action taken when a request to save a file on Google Drive
+// has been done, and a file of the same name already exists on the Drive
+enum Actions{
+    overwrite,
+    copy,
+    cancel
+}
 
 export default Vue.extend({
     name: "GoogleDrive",
@@ -24,6 +41,7 @@ export default Vue.extend({
     components: {
         GoogleDriveFilePicker,
         SimpleMsgModalDlg,
+        ModalDlg,
     },
 
     data: function(){
@@ -33,6 +51,9 @@ export default Vue.extend({
             currentAction: null as "load" | "save" | null, // flag the request current action for async workflow;
             saveReason: SaveRequestReason.autosave, // flag the reason of the save action
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project (we need to keep it live for autosave)
+            isFileLocked: false, // Flag to notify when a file is locked (used for saving);
+            Actions, // this is required to be accessible in the template
+            saveExistingGDProjectInfos: {} as SaveExistingGDProjectInfos,
         };
     },
 
@@ -67,6 +88,22 @@ export default Vue.extend({
         
         enterFileNameLabel(): string {
             return i18n.t("appMessage.enterFileNameLabel") as string;
+        },
+
+        saveExistingGDProjectModalDlgId(): string {
+            return "saveExistingGDProjectModalDlg";
+        },
+
+        saveExistingFileDlgSize(): BootstrapDlgSize {
+            return "lg";
+        },
+
+        saveExistingFileCopyButtonId(): string {
+            return "saveExistingFileCopyButton";
+        },
+        
+        saveExistingFileOverwriteButtonId(): string {
+            return "saveExistingFileOverwriteButton";
         },
     },
 
@@ -296,7 +333,7 @@ export default Vue.extend({
             const fileContent = this.appStore.generateStateJSONStrWithCheckpoint();   
             // The file name depends on the context: normal save, we use the filed this.saveName that is in line with what the user provided in the input field
             // while when do autosave etc, we use th PROJECT saved name in the store.
-            const fullFileName = ((isExplictSave) ? this.saveFileName  : this.appStore.projectName) + "." + strypeFileExtension;        
+            const fullFileName = ((isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject) ? this.saveFileName  : this.appStore.projectName) + "." + strypeFileExtension;        
             // Using this example: https://stackoverflow.com/a/38475303/412908
             // Arbitrary long string:
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
@@ -330,7 +367,7 @@ export default Vue.extend({
                     this.appStore.syncTarget = StrypeSyncTarget.gd;
                     this.appStore.isEditorContentModified = false;
                     // Set the project name when we have made an explicit saving
-                    if(isExplictSave){
+                    if(isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject){
                         this.appStore.projectName = this.saveFileName;
                     }                    
                     // Notify the application that if we were saving for loading now we are done
@@ -498,42 +535,89 @@ export default Vue.extend({
 
         lookForAvailableProjectFileName(onSuccessCallback: () => void){
             // We check if the currently suggested file name is not already used in the location we save the file.
-            // If it is we'll change the file name to "<fileName> (n)" with n being the next copy incremental available value.
             // (note: it seems that searching against regex isn't supported. cf https://developers.google.com/drive/api/guides/ref-search-terms,
             // the matching works in a very strange way, on a prefix and word basis, but yet I get results I didn't expect, so better double check on the results to make sure).
             gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files",
                 params: {"q": "name contains '*.spy' and parents='" + ((this.appStore.strypeProjectLocation) ? this.appStore.strypeProjectLocation : "root") + "' and trashed=false"},
             }).then((response) => {
-                let maxCurrentCopyIterator = 1;
-                let hasAlreadyFile = false;
-                const filesArray: {name: string}[] = JSON.parse(response.body).files;
+                let hasAlreadyFile = false, existingFileId = "";
+                this.isFileLocked = false;
+                const filesArray: {name: string, id: string}[] = JSON.parse(response.body).files;
                 filesArray.forEach((file) => {
-                    hasAlreadyFile ||= (file.name == (this.saveFileName + "." + strypeFileExtension));
-                    // Look for potential copies if that file name starts with the given file name 
-                    // (we look up for all *suffixes* as " (n).spy" following the file/project name, where n is a number - we will increment from the largest number value found)
-                    if(file.name.startsWith(this.saveFileName)){
-                        const copyIncrementFileMatch = file.name.substring(this.saveFileName.length).match(new RegExp("^ \\((\\d+)\\)\\." + strypeFileExtension + "$"));
-                        if(copyIncrementFileMatch != null && parseInt(copyIncrementFileMatch[1]) > maxCurrentCopyIterator){
-                            maxCurrentCopyIterator = parseInt(copyIncrementFileMatch[1]);
-                        }
+                    const listingThisFile = (file.name == (this.saveFileName + "." + strypeFileExtension));
+                    hasAlreadyFile ||= listingThisFile;
+                    if(listingThisFile){
+                        existingFileId = file.id;
                     }
                 });
 
                 if(hasAlreadyFile){
-                    this.saveFileName += (" (" + (maxCurrentCopyIterator + 1) + ")");
-                    const message = cloneDeep(MessageDefinitions.GDriveFileAlreadyExists);
-                    const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.file.key] = msgObj.args.file.replace(FormattedMessageArgKeyValuePlaceholders.file.placeholderName, this.saveFileName);
-                    this.appStore.currentMessage = message;
-                    setTimeout(() => this.appStore.currentMessage = MessageDefinitions.NoMessage, 3000);  
+                    // Check if the file is locked before we propose to overwrite
+                    this.checkIsFileLocked(existingFileId, () => {
+                        // We show a dialog to the user to make their choice about what to do next
+                        this.$root.$emit("bv::show::modal", this.saveExistingGDProjectModalDlgId);                        
+                    }, () => {
+                        // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
+                        this.proceedFailedConnectionCheckOnSave();
+                    });
+
+                    // We do not continue the saving process at this stage: we wait for the user action,
+                    // but we save the bits we need for continuing the process later (initiate the request to copy file to false at this stage)
+                    this.saveExistingGDProjectInfos = {existingFileId: existingFileId, existingFileName: this.saveFileName, resumeProcessCallback: onSuccessCallback, isCopyFileRequested: false};                
+                    return;                    
                 }
-                
+                // Keep on with the flow of actions if everything went smooth so far
                 onSuccessCallback();
             },(reason) => {
                 // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
                 this.proceedFailedConnectionCheckOnSave();
             });
+        },
+
+        checkIsFileLocked(fileId: string, onSuccessCallback: () => void, onFailureCallBack: VoidFunction): void {
+            // Following the addition of a locking file settings in Drive (Sept 2023) we need to check if a file is locked when we want to save.
+            // This method retrieves this property for a given file by its file ID.
+            // It is the responsablity of the caller of that method to provide a valid file ID and have passed authentication.
+            // However, we still handle potential API access issues in this method, hence this methods expects the methods to run in case of success or failure
+            gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files/" + fileId,
+                method: "GET",
+                params: {fields: "contentRestrictions"},
+            }).execute((resp) => {
+                if(resp["error"]){
+                    // An error happened, we call the failure case method
+                    onFailureCallBack();
+                    return;
+                }
+                // Look up the property in the response
+                if(resp["contentRestrictions"] && resp["contentRestrictions"][0] && resp["contentRestrictions"][0]["readOnly"]){
+                    this.isFileLocked = resp["contentRestrictions"][0]["readOnly"];
+                }
+                // Pass on the property value to the success case call back method.
+                onSuccessCallback();
+            });
+        },
+
+        onSaveGDExistingFileAction(action: Actions){
+            // This method processes the user action (based on what dialog button has been clicked) to decide what to do next.
+            // Actions to take are really JUST about the saving workflow: we don't need to worry about dealing with the dialog itself, 
+            // because that is already handles by Bootstrap.
+            if(action == Actions.overwrite){
+                // User chose "overwrite": we do an overwriting save with the existing file Id (on Drive)
+                this.saveReason = SaveRequestReason.overwriteExistingProject;
+                this.saveFileId = this.saveExistingGDProjectInfos.existingFileId;
+                this.saveExistingGDProjectInfos.resumeProcessCallback();
+            }
+            else if(action == Actions.copy){
+                // User chose "copy": we invite the user to choose a new name in the next Vue rendering
+                this.saveExistingGDProjectInfos.isCopyFileRequested = true;
+                this.$nextTick(() => {
+                    this.$root.$emit("bv::show::modal", getSaveAsProjectModalDlg());
+                }); 
+            }
+
+            // If user chose "cancel": we do nothing  
         },
     },
 });

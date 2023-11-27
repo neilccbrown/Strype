@@ -669,6 +669,13 @@ export const EmptyFrameObject: FrameObject = {
 };
 
 /**
+ * Types for Bootstrap related stuff
+ **/ 
+export type BootstrapDlgSize = ("sm" | "lg" | "xl");
+
+export type BootstrapDlgAutoFocusButton = ("ok" | "cancel");
+
+/**
  *  Types for the messages banner
  **/
 
@@ -850,16 +857,6 @@ const GDriveCantCreateStrypeFolder: MessageDefinition = {
     message: "messageBannerMessage.gdriveCantCreateStrypeFolder",
 };
 
-const GDriveFileAlreadyExists: MessageDefinition = {
-    ...NoMessage,
-    type: MessageTypes.gdriveFileAlreadyExists,
-    message: {
-        path: "messageBannerMessage.gdriveFileAlreadyExists",
-        args: {
-            [FormattedMessageArgKeyValuePlaceholders.file.key]: FormattedMessageArgKeyValuePlaceholders.file.placeholderName,
-        },
-    },
-};
 
 export const MessageDefinitions = {
     NoMessage,
@@ -877,7 +874,6 @@ export const MessageDefinitions = {
     PythonInputWarning,
     GDriveConnectToSaveFailed,
     GDriveCantCreateStrypeFolder,
-    GDriveFileAlreadyExists,
 };
 
 //WebUSB listener
@@ -987,8 +983,16 @@ export enum SaveRequestReason {
     autosave,
     saveProjectAtLocation, // explicit save at the given location in the dialog
     saveProjectAtOtherLocation, // explicit save with a change of the given location in the dialog
+    overwriteExistingProject, // explicit save overwerwriting an existing file/project (used for Google Drive only)
     loadProject,
     unloadPage,
+}
+
+export interface SaveExistingGDProjectInfos {
+    existingFileId: string,
+    existingFileName: string
+    isCopyFileRequested: boolean,
+    resumeProcessCallback: VoidFunction,
 }
 
 export interface AutoSaveFunction {

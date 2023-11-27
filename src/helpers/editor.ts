@@ -310,6 +310,10 @@ export function getMenuLeftPaneUIID(): string {
     return "menu-bar";
 }
 
+export function getSaveAsProjectModalDlg():string {
+    return "save-strype-project-modal-dlg";
+}
+
 export function getEditorMiddleUIID(): string {
     return "editorCodeDiv";
 }

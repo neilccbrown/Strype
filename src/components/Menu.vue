@@ -18,7 +18,7 @@
             <!-- load/save section -->
             <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg 
                 v-t="'appMenu.loadProject'" :title="$t('appMenu.loadProjectTooltip')" @click="openLoadProjectModal"/>
-            <ModalDlg :dlgId="loadProjectModalDlgId">
+            <ModalDlg :dlgId="loadProjectModalDlgId" :autoFocusButton="'ok'">
                 <div v-if="changesNotSavedOnLoad">
                     <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
                     <br/>
@@ -31,9 +31,9 @@
             </ModalDlg>
             <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick" v-b-modal="saveLinkModalName" v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
             <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'" :title="$t('appMenu.saveAsProjectTooltip')"/>
-            <ModalDlg :dlgId="saveProjectModalDlgId">
+            <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
                 <label v-t="'appMessage.fileName'" class="load-save-label"/>
-                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text"/>  
+                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus"/>  
                 <div v-show="showGDSaveLocation">
                     <label v-t="'appMessage.gdriveLocation'" class="load-save-label"/>
                     <span class="load-save-label">{{currentDriveLocation}}</span>
@@ -122,7 +122,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUIID, getFrameUIID, getLabelSlotUIID, getNearestErrorIndex, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUIID, getFrameUIID, getLabelSlotUIID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -255,7 +255,7 @@ export default Vue.extend({
         },
 
         saveProjectModalDlgId(): string {
-            return "save-strype-project-modal-dlg";
+            return getSaveAsProjectModalDlg();
         },
 
         currentDriveLocation(): string {
@@ -348,6 +348,9 @@ export default Vue.extend({
         },
 
         getSyncTargetStatus(target: StrypeSyncTarget): boolean {
+            if((this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>)?.saveExistingGDProjectInfos.isCopyFileRequested){
+                return target == StrypeSyncTarget.gd; 
+            }
             return target == this.appStore.syncTarget;
         },
 
@@ -386,7 +389,11 @@ export default Vue.extend({
                 setTimeout(() => {
                     this.onSaveTargetSelectChange();
                     const saveFileNameInputElement = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement);
-                    saveFileNameInputElement.value = this.appStore.projectName;
+                    // If the save as is opened because the user requested to create a copy of a file name, we use the file stored in the save existing file infos
+                    // because if there are consecutive attempts with different names (that all already exist) we want to show the last attempted name
+                    saveFileNameInputElement.value = ((this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>)?.saveExistingGDProjectInfos.isCopyFileRequested) 
+                        ? (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveExistingGDProjectInfos.existingFileName
+                        : this.appStore.projectName;
                     saveFileNameInputElement.focus();
                     saveFileNameInputElement.click();
                 }, 500);           
@@ -395,7 +402,13 @@ export default Vue.extend({
 
         onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string) {
             // This method handles the workflow after acting on any modal dialog of the Strype menu entries.
-            // For all cases, if there is no confirmation, nothing special happens.
+            // For most cases, if there is no confirmation, nothing special happens.
+            // Only exception: if the user cancelled or proceeded to save a file copy following an clash with an existing project name on Google Drive,
+            // we release the flag to indicate we were doing a file copy, to avoid messing up the targets in future calls of a load/save project
+            if(dlgId == this.saveProjectModalDlgId){
+                (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveExistingGDProjectInfos.isCopyFileRequested = false;  
+            }
+
             if(event.trigger == "ok" || event.trigger == "event"){
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){

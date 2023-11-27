@@ -57,8 +57,7 @@
         "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
         "pythonInputWarning":"Attention: avec Chrome/Safari, le contenu de la console de sortie standard peut ne pas être correctement rafraichie lors des appels consécutifs de 'input'.",
         "gdriveConnectToSaveFailed":"La connexion à Google Drive a été perdue. La synchronisation avec Google Drive est interrompue, les dernières modifications n'ont peut-être pas été sauvegardées.",
-        "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive.",
-        "gdriveFileAlreadyExists":"Un projet du même nom existe déjà dans l'emplacement de Drive. Strype a sauvegardé votre projet avec le nom \"{file}\"."
+        "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive."
     },
     "buttonLabel":{
         "undo":"Annuler",
@@ -72,7 +71,9 @@
         "addCodeExtract":"Ajouter au code",
         "showMore":"montrer plus",
         "showLess":"montrer moins",
-        "saveDiffLocation":"Enregister ailleurs"
+        "saveDiffLocation":"Enregister ailleurs",
+        "overwriteProject":"Remplacer",
+        "saveProjectCopy":"Choisir un autre nom"
     },
     "action": {
       "uploadingToMicrobit":"Envoi en cours vers micro:bit ...",
@@ -113,6 +114,8 @@
       "saveToTarget":"Enregister vers",
       "targetFS":"cet ordinateur",
       "fileName":"Nom de fichier :",
+      "gdriveFileAlreadyExists":"Un project du même nom existe déjà à cet emplacement dans Drive.\nVoulez-vous le remplacer ?",
+      "gdriveLockedFileAlreadyExists":"Ce project est verrouillé à cet emplacement dans Drive.\nChoisissez un nouveau nom.",
       "autosaveGDrive":"Enregistré",
       "autoSaveGDriveTooltip":"Le projet sera automatiquement enregistré dans Google Drive toutes les {freq} minutes.",
       "selectFolder":"Sélectionnez un dossier",
