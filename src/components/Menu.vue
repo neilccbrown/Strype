@@ -29,7 +29,7 @@
                     <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive</option>
                 </select>
             </ModalDlg>
-            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-on="isSynced ? {click: saveCurrentProject}:{}" v-b-modal="saveLinkModalName" v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
+            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick" v-b-modal="saveLinkModalName" v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
             <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'" :title="$t('appMenu.saveAsProjectTooltip')"/>
             <ModalDlg :dlgId="saveProjectModalDlgId">
                 <label v-t="'appMessage.fileName'" class="load-save-label"/>
@@ -334,6 +334,17 @@ export default Vue.extend({
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
             this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+        },
+
+        handleSaveMenuClick(): void {
+            // Some problem, like for the load project menu, happens because of changing v-if to v-show (it works first time, but not second time).
+            // So again, we handle things manually for the menu entry click
+            if(this.isSynced){
+                this.saveCurrentProject();
+            }
+            else{
+                this.$root.$emit("bv::show::modal", this.saveProjectModalDlgId);
+            }
         },
 
         getSyncTargetStatus(target: StrypeSyncTarget): boolean {
