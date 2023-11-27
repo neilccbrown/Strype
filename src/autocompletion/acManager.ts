@@ -414,7 +414,7 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
         if (frameId == frame.id) {
             return {found: soFar, complete: true};
         }
-        if (frame.frameType.type === AllFrameTypesIdentifier.varassign) {
+        if (frame.frameType.type === AllFrameTypesIdentifier.varassign && !frame.isDisabled) {
             // We may have all sorts on the LHS.  We want any slots which are plain,
             // and which are adjoined by either the beginning of the slot, the end,
             // or a comma
