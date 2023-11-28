@@ -172,9 +172,8 @@ export default Vue.extend({
                 if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey)){
                     event.stopImmediatePropagation();
                     event.preventDefault();
-                    (event.key.toLowerCase() === "s") 
-                        ? document.getElementById(this.saveProjectLinkId)?.click() 
-                        :  document.getElementById(this.loadProjectLinkId)?.click();
+                    const linkIdToSimulate = (event.key.toLowerCase() === "s") ? this.saveProjectLinkId : this.loadProjectLinkId;
+                    document.getElementById(linkIdToSimulate)?.click();
                 }
             }
         );
@@ -422,7 +421,7 @@ export default Vue.extend({
                     // User has been given a chance to give the file a specifc name,
                     // we check that the name doesn't contain illegal characters (we are a bit restricive here) for file saving
                     // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
-                    let saveFileName = (forcedProjectName) ? forcedProjectName : (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
+                    let saveFileName = forcedProjectName || (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
                     if(saveFileName.length == 0){
                         saveFileName = this.$i18n.t("defaultProjName") as string;
                     }

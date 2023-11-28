@@ -381,7 +381,7 @@ export default Vue.extend({
                     if(reason.status == 401){
                         this.proceedFailedConnectionCheckOnSave();
                     }
-                    else if((reason.status == 404 || reason.status == 403) && this.saveFileId != undefined){
+                    else if((reason.status??400) >= 400 && this.saveFileId != undefined){
                         // We assume something went wrong regarding saving against the specified file id.
                         // This can notably happen if the file has been locked in the meantime that we tried to save it.
                         // We show a modal and stop sync
@@ -592,9 +592,7 @@ export default Vue.extend({
                     return;
                 }
                 // Look up the property in the response
-                if(resp["contentRestrictions"] && resp["contentRestrictions"][0] && resp["contentRestrictions"][0]["readOnly"]){
-                    this.isFileLocked = resp["contentRestrictions"][0]["readOnly"];
-                }
+                this.isFileLocked = (resp.contentRestrictions) ? resp.contentRestrictions[0].readOnly : false;
                 // Pass on the property value to the success case call back method.
                 onSuccessCallback();
             });
