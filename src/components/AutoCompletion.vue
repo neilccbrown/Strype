@@ -13,7 +13,6 @@
                     >
                         <div 
                             class="module"
-                            v-if="resultsToShow[module].length>0"
                             @mousedown.prevent.stop
                             @mouseup.prevent.stop
                         >
@@ -222,6 +221,11 @@ export default Vue.extend({
                 const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
                     element.acResult.toLowerCase().startsWith(token));
 
+                // Don't put empty lists in resultsToShow
+                if (filteredResults.length == 0) {
+                    continue;
+                }
+                
                 // Add the indices and the versions
                 // (the version is retrieved from the version json object (for microbit), if no version is found, we set 1)
                 this.resultsToShow[module] = filteredResults.map((e,i) => {
@@ -247,7 +251,7 @@ export default Vue.extend({
             //if there are resutls
             if(this.areResultsToShow()) {
                 // set the first module as the selected one
-                this.currentModule = Object.keys(this.resultsToShow).filter((e) => this.resultsToShow[e].length>0)[0];
+                this.currentModule = Object.keys(this.resultsToShow)[0];
 
                 this.currentDocumentation = this.getCurrentDocumentation();
                 
@@ -293,7 +297,7 @@ export default Vue.extend({
                 this.selected > this.resultsToShow[this.currentModule][numItemsInCurrModule -1].index
             ){
                 // We want all the (non-zero result) modules
-                const listOfAllModules = Object.keys(this.resultsToShow).filter((e) => this.resultsToShow[e].length>0);
+                const listOfAllModules = Object.keys(this.resultsToShow);
                 const allModulesLength = listOfAllModules.length;
                 const currentModuleIndex = listOfAllModules.indexOf(this.currentModule);
                 // The following frames the newSelectionIndex to the results array (it's like a modulo that works for negative numbers as well)
@@ -308,7 +312,7 @@ export default Vue.extend({
         },
 
         areResultsToShow(): boolean {
-            return Object.values(this.resultsToShow).filter((e) => e.length>0)?.length > 0;
+            return Object.values(this.resultsToShow)?.length > 0;
         },
 
         getACEntryVersion(entry: any): number{
