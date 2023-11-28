@@ -150,7 +150,7 @@ export default Vue.extend({
         updateAC(frameId: number, token : string, context: string): void {
             this.acRequestIndex += 1;
             const ourAcRequest = this.acRequestIndex;
-            this.acResults = {"": []};
+            this.acResults = {};
             if (context !== "") {
                 // There is context, ask Skulpt for a dir() of that context
                 const parser = new Parser();
@@ -176,23 +176,23 @@ export default Vue.extend({
                 // No context, just ask for all built-ins, user-defined functions, user-defined variables and everything explicitly imported with "from...import...":
               
                 // Pick up built-in Python functions and types:
-                this.acResults[""].push(...getBuiltins());
+                this.acResults["Python"] = getBuiltins();
               
                 // Add user-defined functions:
-                this.acResults[""].push(...getAllEnabledUserDefinedFunctions().map((f) => ({
+                this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
                     acResult: f.name,
                     documentation: f.documentation,
                     type: "function",
                     version: 0,
-                })));
+                }));
                 
                 // Add user-defined variables:
-                this.acResults[""].push(...Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
+                this.acResults[this.$i18n.t("autoCompletion.myVariables") as string] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
                     acResult: f,
                     documentation: "",
                     type: "variable",
                     version: 0,
-                })));
+                }));
                 
                 // Add any items imported via a "from ... import ..." frame
                 Promise.all(getAllExplicitlyImportedItems()).then((exportedPerModule : AcResultsWithModule[]) => {
@@ -200,8 +200,8 @@ export default Vue.extend({
                         return;
                     }
                     for (const exportedOneModule of exportedPerModule) {
-                        for (const mod of Object.keys(exportedOneModule)) {
-                            this.acResults[mod].push(...(exportedOneModule[mod] as AcResultType[]));
+                        for (const mod of Object.keys(exportedOneModule)) { 
+                            this.acResults["Python"].push(...(exportedOneModule[mod] as AcResultType[]));
                         }
                     }
                     this.showSuggestionsAC(token);
