@@ -228,22 +228,24 @@ export default Vue.extend({
                 
                 // Add the indices and the versions
                 // (the version is retrieved from the version json object (for microbit), if no version is found, we set 1)
-                this.resultsToShow[module] = filteredResults.map((e,i) => {
-                    //The context path for the ac results version is matched according to those 3 cases:
-                    //1) there is a acContextPath: we just concatenate the acResult of that element,
-                    //2) there is no acContextPath and the acResult is the content of an imported module: the acContext is that module and we append the acResult of that element
-                    //3) there is no acContextPath and the acResult is an imported module*: the path to check is the acResult itself if that is an imported module 
-                    //4) there is no acContextPath and the acResult is not an imported module: there would not be a version so we just use an empty context
-                    //(*) which means that the module variable is either empty or "imported modules".
-                    let contextPath;
-                    if(microbitModuleDescription.modules.includes(module)){
-                        contextPath = module + "." + e.acResult;
-                    }
-                    else{
-                        contextPath = (module.length ==0 || module === (this.$i18n.t("autoCompletion.importedModules") as string))  ? e.acResult : "";
-                    }
-                    return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
-                });
+                this.resultsToShow[module] = filteredResults
+                    .sort((a, b) => a.acResult.localeCompare(b.acResult))
+                    .map((e,i) => {
+                        //The context path for the ac results version is matched according to those 3 cases:
+                        //1) there is a acContextPath: we just concatenate the acResult of that element,
+                        //2) there is no acContextPath and the acResult is the content of an imported module: the acContext is that module and we append the acResult of that element
+                        //3) there is no acContextPath and the acResult is an imported module*: the path to check is the acResult itself if that is an imported module 
+                        //4) there is no acContextPath and the acResult is not an imported module: there would not be a version so we just use an empty context
+                        //(*) which means that the module variable is either empty or "imported modules".
+                        let contextPath;
+                        if(microbitModuleDescription.modules.includes(module)){
+                            contextPath = module + "." + e.acResult;
+                        }
+                        else{
+                            contextPath = (module.length ==0 || module === (this.$i18n.t("autoCompletion.importedModules") as string))  ? e.acResult : "";
+                        }
+                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
+                    });
                 lastIndex += filteredResults.length;    
             }    
             //console.log("Results: " + JSON.stringify(this.resultsToShow));
