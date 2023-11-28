@@ -23,7 +23,7 @@ function withAC(inner : (acIDSel : string) => void) : void {
         // Find the auto-complete corresponding to the currently focused slot:
         const acIDSel = "#" + ed.getAttribute("data-slot-focus-id") + "_AutoCompletion";
         // Should always be sorted:
-        checkAllSectionsInternallySorted(acIDSel);
+        checkAutocompleteSorted(acIDSel);
         // Call the inner function:
         inner(acIDSel);
     });
@@ -51,7 +51,23 @@ function checkNoItems(acIDSel : string, text : string) : void {
     cy.get(acIDSel + " .popupContainer").within(() => cy.findAllByText(text, { exact: true}).should("not.exist"));
 }
 
-function checkAllSectionsInternallySorted(acIDSel: string) : void {
+const MYVARS = "My variables";
+const MYFUNCS = "My functions";
+const BUILTIN = "Python";
+const IMPORTED = "Python";
+
+
+// Checks all sections in the autocomplete are internally sorted (i.e. that the items
+// within that section are in alphabetical order).  Also checks that the sections
+// themselves are in the correct order.
+function checkAutocompleteSorted(acIDSel: string) : void {
+    // Other items (like the names of variables when you do var.) will come out as -1,
+    // which works nicely because they should be first:
+    const intendedOrder : string[] = ["", MYVARS, MYFUNCS, BUILTIN];
+    cy.get(acIDSel + " div.module:not(.empty-results) > em")
+        .then((items) => [...items].map((item) => intendedOrder.indexOf(item.innerText.trim())))
+        .should("be.sorted");
+
     cy.get(acIDSel + " .popupContainer ul > div").each((section) => {
         cy.wrap(section).find("li.popUpItems")
             .then((items) => [...items].map((item) => item.innerText.toLowerCase()))
@@ -59,10 +75,6 @@ function checkAllSectionsInternallySorted(acIDSel: string) : void {
     });
 }
 
-const MYVARS = "My variables";
-const MYFUNCS = "My functions";
-const BUILTIN = "Python";
-const IMPORTED = "Python";
 
 describe("Built-ins", () => {
     it("Has built-ins, that narrow down when you type", () => {
@@ -87,14 +99,14 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "ArithmeticError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
-            checkAllSectionsInternallySorted(acIDSel);
+            checkAutocompleteSorted(acIDSel);
             // Once we type "b", should show things beginning with AB but not the others:
             cy.get("body").type("b");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
-            checkAllSectionsInternallySorted(acIDSel);
+            checkAutocompleteSorted(acIDSel);
             // Check docs are showing (for pure Python, at least):
             if (Cypress.env("mode") != "microbit") {
                 cy.get(acIDSel).contains("Return the absolute value of the argument.");
@@ -127,14 +139,14 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
-                checkAllSectionsInternallySorted(acIDSel);
+                checkAutocompleteSorted(acIDSel);
                 // Once we type "i", should show things beginning with MI but not the others:
                 cy.get("body").type("i");
                 checkNoItems(acIDSel, "machine");
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
-                checkAllSectionsInternallySorted(acIDSel);
+                checkAutocompleteSorted(acIDSel);
             }
             else {
                 cy.get(acIDSel + " .popupContainer").should("be.visible");
@@ -150,14 +162,14 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "uuid");
                 checkNoItems(acIDSel, "webbrowser");
-                checkAllSectionsInternallySorted(acIDSel);
+                checkAutocompleteSorted(acIDSel);
                 // Once we type "r", should show things beginning with AR but not the others:
                 cy.get("body").type("r");
                 checkNoItems(acIDSel, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "uuid");
                 checkNoItems(acIDSel, "webbrowser");
-                checkAllSectionsInternallySorted(acIDSel);
+                checkAutocompleteSorted(acIDSel);
             }
         });
     });
@@ -200,7 +212,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
-            checkAllSectionsInternallySorted(acIDSel);
+            checkAutocompleteSorted(acIDSel);
         });
     });
 
@@ -235,7 +247,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
-            checkAllSectionsInternallySorted(acIDSel);
+            checkAutocompleteSorted(acIDSel);
         });
     });
 });
@@ -288,7 +300,7 @@ describe("User-defined items", () => {
             checkNoItems(acIDSel, "lower");
             checkExactlyOneItem(acIDSel, "myVar", "upper");
             checkNoItems(acIDSel, "divmod");
-            checkAllSectionsInternallySorted(acIDSel);
+            checkAutocompleteSorted(acIDSel);
         });
     });
 
