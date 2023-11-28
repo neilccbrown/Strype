@@ -7,12 +7,13 @@
             >
                 <ul v-show="areResultsToShow()">
                     <div 
-                        v-for="module in Object.keys(resultsToShow)"
+                        v-for="module in sortCategories(Object.keys(resultsToShow))"
                         :key="UIID+module"
                         :data-title="module"
                     >
                         <div 
                             class="module"
+                            v-show="module !== ''"
                             @mousedown.prevent.stop
                             @mouseup.prevent.stop
                         >
@@ -77,7 +78,6 @@ import { configureSkulptForAutoComplete, getAllExplicitlyImportedItems, getAllUs
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
-
 //////////////////////
 export default Vue.extend({
     name: "AutoCompletion",
@@ -140,6 +140,14 @@ export default Vue.extend({
     },
 
     methods: {
+
+        sortCategories(categories : string[]) : string[] {
+            // Other items (like the names of variables when you do var.) will come out as -1,
+            // which works nicely because they should be first:
+            const intendedOrder = ["", this.$i18n.t("autoCompletion.myVariables"), this.$i18n.t("autoCompletion.myFunctions"), "Python"];
+            return categories.sort((a, b) => intendedOrder.indexOf(a) - intendedOrder.indexOf(b));
+        },
+      
         updateACForImport(token: string) : void {
             this.acRequestIndex += 1;
             this.acResults = getAvailableModulesForImport();
