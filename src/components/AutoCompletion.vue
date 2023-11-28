@@ -9,6 +9,7 @@
                     <div 
                         v-for="module in Object.keys(resultsToShow)"
                         :key="UIID+module"
+                        :data-title="module"
                     >
                         <div 
                             class="module"

@@ -30,8 +30,8 @@ function focusEditorAC(): void {
 
 // Given a selector for the auto-complete and text for an item, checks that exactly one item with that text
 // exists in the autocomplete
-function checkExactlyOneItem(acIDSel : string, text : string) : void {
-    cy.get(acIDSel + " .popupContainer").within(() => {
+function checkExactlyOneItem(acIDSel : string, category: string | null, text : string) : void {
+    cy.get(acIDSel + " .popupContainer " + (category == null ? "" : "div[data-title='" + category + "']")).within(() => {
         // Logging; useful in case of failure but we don't want it on by default:
         // cy.findAllByText(text, { exact: true}).each(x => cy.log(x.get()[0].id));
         cy.findAllByText(text, { exact: true}).should("have.length", 1);
@@ -44,6 +44,11 @@ function checkNoItems(acIDSel : string, text : string) : void {
     cy.get(acIDSel + " .popupContainer").within(() => cy.findAllByText(text, { exact: true}).should("not.exist"));
 }
 
+const MYVARS = "My variables";
+const MYFUNCS = "My functions";
+const BUILTIN = "Python";
+const IMPORTED = "Python";
+
 describe("Built-ins", () => {
     it("Has built-ins, that narrow down when you type", () => {
         focusEditorAC();
@@ -55,21 +60,21 @@ describe("Built-ins", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, "abs");
-            checkExactlyOneItem(acIDSel, "ArithmeticError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "ArithmeticError");
             // We had a previous bug with multiple sum items in microbit:
-            checkExactlyOneItem(acIDSel, "sum");
-            checkExactlyOneItem(acIDSel, "ZeroDivisionError");
-            checkExactlyOneItem(acIDSel, "zip");
+            checkExactlyOneItem(acIDSel, BUILTIN, "sum");
+            checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "zip");
             // Once we type "a", should show things beginning with A but not the others:
             cy.get("body").type("a");
-            checkExactlyOneItem(acIDSel, "abs");
-            checkExactlyOneItem(acIDSel, "ArithmeticError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "ArithmeticError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
             // Once we type "b", should show things beginning with AB but not the others:
             cy.get("body").type("b");
-            checkExactlyOneItem(acIDSel, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
@@ -93,43 +98,43 @@ describe("Modules", () => {
         withAC((acIDSel) => {
             if (Cypress.env("mode") == "microbit") {
                 cy.get(acIDSel + " .popupContainer").should("be.visible");
-                checkExactlyOneItem(acIDSel, "machine");
-                checkExactlyOneItem(acIDSel, "microbit");
-                checkExactlyOneItem(acIDSel, "random");
-                checkExactlyOneItem(acIDSel, "time");
+                checkExactlyOneItem(acIDSel, null, "machine");
+                checkExactlyOneItem(acIDSel, null, "microbit");
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkExactlyOneItem(acIDSel, null, "time");
                 checkNoItems(acIDSel, "uuid");
                 // Once we type "m", should show things beginning with M but not the others:
                 cy.get("body").type("m");
                 cy.wait(500);
-                checkExactlyOneItem(acIDSel, "machine");
-                checkExactlyOneItem(acIDSel, "microbit");
+                checkExactlyOneItem(acIDSel, null, "machine");
+                checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
                 // Once we type "i", should show things beginning with MI but not the others:
                 cy.get("body").type("i");
                 checkNoItems(acIDSel, "machine");
-                checkExactlyOneItem(acIDSel, "microbit");
+                checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
             }
             else {
                 cy.get(acIDSel + " .popupContainer").should("be.visible");
-                checkExactlyOneItem(acIDSel, "antigravity");
-                checkExactlyOneItem(acIDSel, "array");
-                checkExactlyOneItem(acIDSel, "uuid");
-                checkExactlyOneItem(acIDSel, "webbrowser");
+                checkExactlyOneItem(acIDSel, null, "antigravity");
+                checkExactlyOneItem(acIDSel, null, "array");
+                checkExactlyOneItem(acIDSel, null, "uuid");
+                checkExactlyOneItem(acIDSel, null, "webbrowser");
                 checkNoItems(acIDSel, "microbit");
                 // Once we type "a", should show things beginning with A but not the others:
                 cy.get("body").type("a");
                 cy.wait(500);
-                checkExactlyOneItem(acIDSel, "antigravity");
-                checkExactlyOneItem(acIDSel, "array");
+                checkExactlyOneItem(acIDSel, null, "antigravity");
+                checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "uuid");
                 checkNoItems(acIDSel, "webbrowser");
                 // Once we type "r", should show things beginning with AR but not the others:
                 cy.get("body").type("r");
                 checkNoItems(acIDSel, "antigravity");
-                checkExactlyOneItem(acIDSel, "array");
+                checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "uuid");
                 checkNoItems(acIDSel, "webbrowser");
             }
@@ -163,14 +168,14 @@ describe("Modules", () => {
             const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             // Should have time related queries, but not the standard completions:
-            checkExactlyOneItem(acIDSel, target);
+            checkExactlyOneItem(acIDSel, null, target);
             checkNoItems(acIDSel, nonAvailable);
-            checkExactlyOneItem(acIDSel, "sleep");
+            checkExactlyOneItem(acIDSel, null, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
             // Type first letter of the target:
             cy.get("body").type(target.at(0) || "");
-            checkExactlyOneItem(acIDSel, target);
+            checkExactlyOneItem(acIDSel, null, target);
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
@@ -198,13 +203,13 @@ describe("Modules", () => {
             const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             // Should have time related queries, but not the standard completions:
-            checkExactlyOneItem(acIDSel, target);
+            checkExactlyOneItem(acIDSel, IMPORTED, target);
             checkNoItems(acIDSel, nonAvailable);
-            checkExactlyOneItem(acIDSel, "sleep");
-            checkExactlyOneItem(acIDSel, "abs");
-            checkExactlyOneItem(acIDSel, "ArithmeticError");
+            checkExactlyOneItem(acIDSel, IMPORTED, "sleep");
+            checkExactlyOneItem(acIDSel, IMPORTED, "abs");
+            checkExactlyOneItem(acIDSel, IMPORTED, "ArithmeticError");
             cy.get("body").type(target.at(0) || "");
-            checkExactlyOneItem(acIDSel, target);
+            checkExactlyOneItem(acIDSel, IMPORTED, target);
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
@@ -223,7 +228,7 @@ describe("User-defined items", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, "foo");
+            checkExactlyOneItem(acIDSel, MYFUNCS, "foo");
         });
     });
 
@@ -238,7 +243,7 @@ describe("User-defined items", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, "myVar");
+            checkExactlyOneItem(acIDSel, MYVARS, "myVar");
         });
     });
 
@@ -253,12 +258,12 @@ describe("User-defined items", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, "lower");
-            checkExactlyOneItem(acIDSel, "upper");
+            checkExactlyOneItem(acIDSel, "myVar", "lower");
+            checkExactlyOneItem(acIDSel, "myVar", "upper");
             checkNoItems(acIDSel, "divmod");
             cy.get("body").type("u");
             checkNoItems(acIDSel, "lower");
-            checkExactlyOneItem(acIDSel, "upper");
+            checkExactlyOneItem(acIDSel, "myVar", "upper");
             checkNoItems(acIDSel, "divmod");
         });
     });
@@ -274,7 +279,7 @@ describe("User-defined items", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
             checkNoItems(acIDSel, "myVar");
         });
     });
