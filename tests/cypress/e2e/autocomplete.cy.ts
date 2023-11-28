@@ -1,6 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
+// Needed for the "be.sorted" assertion:
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+chai.use(require("chai-sorted"));
 
 
 // Must clear all local storage between tests to reset the state:
@@ -18,7 +21,11 @@ function withAC(inner : (acIDSel : string) => void) : void {
     cy.get("#editor").then((eds) => {
         const ed = eds.get()[0];
         // Find the auto-complete corresponding to the currently focused slot:
-        inner("#" + ed.getAttribute("data-slot-focus-id") + "_AutoCompletion");
+        const acIDSel = "#" + ed.getAttribute("data-slot-focus-id") + "_AutoCompletion";
+        // Should always be sorted:
+        checkAllSectionsInternallySorted(acIDSel);
+        // Call the inner function:
+        inner(acIDSel);
     });
 }
 
@@ -42,6 +49,14 @@ function checkExactlyOneItem(acIDSel : string, category: string | null, text : s
 // exists in the autocomplete
 function checkNoItems(acIDSel : string, text : string) : void {
     cy.get(acIDSel + " .popupContainer").within(() => cy.findAllByText(text, { exact: true}).should("not.exist"));
+}
+
+function checkAllSectionsInternallySorted(acIDSel: string) : void {
+    cy.get(acIDSel + " .popupContainer ul > div").each((section) => {
+        cy.wrap(section).find("li.popUpItems")
+            .then((items) => [...items].map((item) => item.innerText.toLowerCase()))
+            .should("be.sorted");
+    });
 }
 
 const MYVARS = "My variables";
@@ -72,12 +87,14 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "ArithmeticError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
+            checkAllSectionsInternallySorted(acIDSel);
             // Once we type "b", should show things beginning with AB but not the others:
             cy.get("body").type("b");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
+            checkAllSectionsInternallySorted(acIDSel);
             // Check docs are showing (for pure Python, at least):
             if (Cypress.env("mode") != "microbit") {
                 cy.get(acIDSel).contains("Return the absolute value of the argument.");
@@ -110,12 +127,14 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
+                checkAllSectionsInternallySorted(acIDSel);
                 // Once we type "i", should show things beginning with MI but not the others:
                 cy.get("body").type("i");
                 checkNoItems(acIDSel, "machine");
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
+                checkAllSectionsInternallySorted(acIDSel);
             }
             else {
                 cy.get(acIDSel + " .popupContainer").should("be.visible");
@@ -131,12 +150,14 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "uuid");
                 checkNoItems(acIDSel, "webbrowser");
+                checkAllSectionsInternallySorted(acIDSel);
                 // Once we type "r", should show things beginning with AR but not the others:
                 cy.get("body").type("r");
                 checkNoItems(acIDSel, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "uuid");
                 checkNoItems(acIDSel, "webbrowser");
+                checkAllSectionsInternallySorted(acIDSel);
             }
         });
     });
@@ -179,6 +200,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
+            checkAllSectionsInternallySorted(acIDSel);
         });
     });
 
@@ -213,6 +235,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
+            checkAllSectionsInternallySorted(acIDSel);
         });
     });
 });
@@ -265,6 +288,7 @@ describe("User-defined items", () => {
             checkNoItems(acIDSel, "lower");
             checkExactlyOneItem(acIDSel, "myVar", "upper");
             checkNoItems(acIDSel, "divmod");
+            checkAllSectionsInternallySorted(acIDSel);
         });
     });
 
