@@ -57,8 +57,7 @@
         "functionFrameCantDelete":"A function definition frame cannot be deleted from this caret position when content is not empty.",
         "pythonInputWarning":"Warning: in Chrome/Safari, the stdout console may not update between consecutive calls to 'input'",
         "gdriveConnectToSaveFailed":"The connection to Google Drive has been lost. The synchronisation with Google Drive is stopped, latest changes may not have been saved.",
-        "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive.",
-        "gdriveFileAlreadyExists":"A project with the same name already exists in the Drive location. Strype saved your project with this name \"{file}\"."
+        "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive."
     },
     "buttonLabel":{
         "undo":"Undo",
@@ -72,7 +71,9 @@
         "addCodeExtract":"&larr; Add to code",
         "showMore":"show more",
         "showLess":"show less",
-        "saveDiffLocation":"Save elsewhere"
+        "saveDiffLocation":"Save elsewhere",
+        "overwriteProject":"Replace",
+        "saveProjectCopy":"Choose new name"
     },
     "action": {
         "uploadingToMicrobit":"Uploading to micro:bit ...",
@@ -92,7 +93,7 @@
         "EOFError": "This frame cannot be empty.",
         "GDriveSaveFailed":"Strype coud not saved to Google Drive. Your latest changes may have not been saved, and the sync has been turned off.",
         "fileNameError":"Project / File name can only contains letters, numbers, spaces, hyphens or parentheses",
-        "gdriveConnectionSaveToLoadProjFailed":"Could not connect to Google Drive when trying to save the current project. Try to sign-in again to load another project.",
+        "gdriveConnectionSaveToLoadProjFailed":"Could not connect to Google Drive when trying to save the current project. Try to sign-in again to open another project.",
         "gdriveConnectionSaveToUnloadPageFailed":"Could not connect to Google Drive when trying to save the current project.Try to sign-in again to save the current project before leaving Strype.",
         "gdrivePermissionsNotMet":"Strype requires at least one access permission to use Googe Drive.",
         "gdriveReadOnly":"This Drive file is read-only, syncing to Drive has been turned off.",
@@ -109,10 +110,12 @@
         "preCompiledErrorNeedFix":"Please fix existing errors first.",
         "noWebUSB":"This browser does not support webUSB connections. Please use a browser such as Google Chrome.",
         "emptyCodeError":"The code cannot be empty.",
-        "loadToTarget":"Load from",
+        "loadToTarget":"Open from",
         "saveToTarget":"Save to",
         "targetFS":"this device",
         "fileName":"File Name:",
+        "gdriveFileAlreadyExists":"A project with the same name already exists in the Drive location.\nWould you like to replace it?",
+        "gdriveLockedFileAlreadyExists":"This project is locked in the Drive location.\nChoose a new name.",
         "autosaveGDrive":"Saved",
         "autoSaveGDriveTooltip":"Project will automatically be saved to Google Drive every {freq} minutes.",
         "selectFolder":"Select a folder",
@@ -141,10 +144,12 @@
     "appMenu": {
         "downloadHex":"Convert to Hex file",
         "downloadPython":"Convert to Python file",
-        "loadProject":"Load",
-        "loadProjectTooltip":"Load a project from this device or from Google Drive",
+        "loadProject":"Open",
+        "loadProjectTooltip":"Open project from this device or from Google Drive",
         "saveProject":"Save",
-        "saveProjectTooltip":"Save a project to this device or to Google Drive",
+        "saveProjectTooltip":"Save project to this device or to Google Drive",
+        "saveAsProject":"Save as...",
+        "saveAsProjectTooltip":"Save as a new project to this device or to Google Drive",
         "resetProject":"Reset",
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
