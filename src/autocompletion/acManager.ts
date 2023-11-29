@@ -1,7 +1,6 @@
 import {AcResultsWithModule, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType} from "@/types/types";
 import { operators, keywordOperatorsWithSurroundSpaces, STRING_SINGLEQUOTE_PLACERHOLDER, STRING_DOUBLEQUOTE_PLACERHOLDER } from "@/helpers/editor";
 
-import i18n from "@/i18n";
 import _ from "lodash";
 import {useStore} from "@/store/store";
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
@@ -192,7 +191,6 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
     return {found: soFar, complete: false};
 }
 
-declare const Sk: any;
 export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     // First we need to go up the tree, to find the top-most parent (either top-level frames or a user-defined function)
     let curFrameId = frameId;
