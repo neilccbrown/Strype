@@ -225,16 +225,16 @@ export function getAllExplicitlyImportedItems() : AcResultType[] {
                 // the contents of the specific module:
                 
                 /* IFTRUE_isMicrobit */
-                const allItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
-                if (allItems) {
-                    soFar.push(...allItems);
+                const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
+                if (allMicrobitItems) {
+                    soFar.push(...allMicrobitItems);
                 }
                 /* FITRUE_isMicrobit */
 
                 /* IFTRUE_isPurePython */
-                const allItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
-                if (allItems) {
-                    soFar.push(...allItems);
+                const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+                if (allSkulptItems) {
+                    soFar.push(...allSkulptItems);
                 }
                 /* FITRUE_isPurePython */
             }
