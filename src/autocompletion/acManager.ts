@@ -536,6 +536,7 @@ export function getBuiltins() : AcResultType[] {
     }));
     /* FITRUE_isPurePython */
     /* IFTRUE_isMicrobit */
-    return microbitPythonAPI[""];
+    // Must return a clone as caller may later modify the list:
+    return [...microbitPythonAPI[""]];
     /* FITRUE_isMicrobit */
 }

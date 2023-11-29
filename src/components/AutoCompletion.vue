@@ -7,12 +7,13 @@
             >
                 <ul v-show="areResultsToShow()">
                     <div 
-                        v-for="module in Object.keys(resultsToShow)"
+                        v-for="module in sortCategories(Object.keys(resultsToShow))"
                         :key="UIID+module"
+                        :data-title="module"
                     >
                         <div 
                             class="module"
-                            v-if="resultsToShow[module].length>0"
+                            v-show="module !== ''"
                             @mousedown.prevent.stop
                             @mouseup.prevent.stop
                         >
@@ -77,7 +78,6 @@ import { configureSkulptForAutoComplete, getAllExplicitlyImportedItems, getAllUs
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
-
 //////////////////////
 export default Vue.extend({
     name: "AutoCompletion",
@@ -97,6 +97,11 @@ export default Vue.extend({
 
     data: function() {
         return {
+            // We must keep track of whether our request is still the latest one
+            // If it is not, we should not record our results, because they are now "stale"
+            // and inapplicable.  So we put a number in here that we increment each time
+            // we update:
+            acRequestIndex : 0,
             acResults: {} as AcResultsWithModule,
             resultsToShow: {} as IndexedAcResultWithModule,
             documentation: [] as string[],
@@ -135,13 +140,24 @@ export default Vue.extend({
     },
 
     methods: {
+
+        sortCategories(categories : string[]) : string[] {
+            // Other items (like the names of variables when you do var.) will come out as -1,
+            // which works nicely because they should be first:
+            const intendedOrder = ["", this.$i18n.t("autoCompletion.myVariables"), this.$i18n.t("autoCompletion.myFunctions"), "Python"];
+            return categories.sort((a, b) => intendedOrder.indexOf(a) - intendedOrder.indexOf(b));
+        },
+      
         updateACForImport(token: string) : void {
+            this.acRequestIndex += 1;
             this.acResults = getAvailableModulesForImport();
             this.showSuggestionsAC(token);
         },
       
         updateAC(frameId: number, token : string, context: string): void {
-            this.acResults = {"": []};
+            this.acRequestIndex += 1;
+            const ourAcRequest = this.acRequestIndex;
+            this.acResults = {};
             if (context !== "") {
                 // There is context, ask Skulpt for a dir() of that context
                 const parser = new Parser();
@@ -153,9 +169,10 @@ export default Vue.extend({
                 }, {});
                 // Show error in JS console if error happens
                 myPromise.then(() => {
-                    this.acResults = Sk.ffi.remapToJs(Sk.globals["ac"]);
-                    //console.log("AC Results: " + JSON.stringify(this.acResults));
-                    this.showSuggestionsAC(token);
+                    if (ourAcRequest == this.acRequestIndex) {
+                        this.acResults = Sk.ffi.remapToJs(Sk.globals["ac"]);
+                        this.showSuggestionsAC(token);
+                    }                    
                 },
                 (err: any) => {
                     console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
@@ -166,29 +183,32 @@ export default Vue.extend({
                 // No context, just ask for all built-ins, user-defined functions, user-defined variables and everything explicitly imported with "from...import...":
               
                 // Pick up built-in Python functions and types:
-                this.acResults[""].push(...getBuiltins());
+                this.acResults["Python"] = getBuiltins();
               
                 // Add user-defined functions:
-                this.acResults[""].push(...getAllEnabledUserDefinedFunctions().map((f) => ({
+                this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
                     acResult: f.name,
                     documentation: f.documentation,
                     type: "function",
                     version: 0,
-                })));
+                }));
                 
                 // Add user-defined variables:
-                this.acResults[""].push(...Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
+                this.acResults[this.$i18n.t("autoCompletion.myVariables") as string] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
                     acResult: f,
                     documentation: "",
                     type: "variable",
                     version: 0,
-                })));
+                }));
                 
                 // Add any items imported via a "from ... import ..." frame
                 Promise.all(getAllExplicitlyImportedItems()).then((exportedPerModule : AcResultsWithModule[]) => {
+                    if (this.acRequestIndex != ourAcRequest) {
+                        return;
+                    }
                     for (const exportedOneModule of exportedPerModule) {
-                        for (const mod of Object.keys(exportedOneModule)) {
-                            this.acResults[mod].push(...(exportedOneModule[mod] as AcResultType[]));
+                        for (const mod of Object.keys(exportedOneModule)) { 
+                            this.acResults["Python"].push(...(exportedOneModule[mod] as AcResultType[]));
                         }
                     }
                     this.showSuggestionsAC(token);
@@ -209,31 +229,39 @@ export default Vue.extend({
                 const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
                     element.acResult.toLowerCase().startsWith(token));
 
+                // Don't put empty lists in resultsToShow
+                if (filteredResults.length == 0) {
+                    continue;
+                }
+                
                 // Add the indices and the versions
                 // (the version is retrieved from the version json object (for microbit), if no version is found, we set 1)
-                this.resultsToShow[module] = filteredResults.map((e,i) => {
-                    //The context path for the ac results version is matched according to those 3 cases:
-                    //1) there is a acContextPath: we just concatenate the acResult of that element,
-                    //2) there is no acContextPath and the acResult is the content of an imported module: the acContext is that module and we append the acResult of that element
-                    //3) there is no acContextPath and the acResult is an imported module*: the path to check is the acResult itself if that is an imported module 
-                    //4) there is no acContextPath and the acResult is not an imported module: there would not be a version so we just use an empty context
-                    //(*) which means that the module variable is either empty or "imported modules".
-                    let contextPath;
-                    if(microbitModuleDescription.modules.includes(module)){
-                        contextPath = module + "." + e.acResult;
-                    }
-                    else{
-                        contextPath = (module.length ==0 || module === (this.$i18n.t("autoCompletion.importedModules") as string))  ? e.acResult : "";
-                    }
-                    return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
-                });
+                this.resultsToShow[module] = filteredResults
+                    .sort((a, b) => a.acResult.localeCompare(b.acResult))
+                    .map((e,i) => {
+                        //The context path for the ac results version is matched according to those 3 cases:
+                        //1) there is a acContextPath: we just concatenate the acResult of that element,
+                        //2) there is no acContextPath and the acResult is the content of an imported module: the acContext is that module and we append the acResult of that element
+                        //3) there is no acContextPath and the acResult is an imported module*: the path to check is the acResult itself if that is an imported module 
+                        //4) there is no acContextPath and the acResult is not an imported module: there would not be a version so we just use an empty context
+                        //(*) which means that the module variable is either empty or "imported modules".
+                        let contextPath;
+                        if(microbitModuleDescription.modules.includes(module)){
+                            contextPath = module + "." + e.acResult;
+                        }
+                        else{
+                            contextPath = (module.length ==0 || module === (this.$i18n.t("autoCompletion.importedModules") as string))  ? e.acResult : "";
+                        }
+                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
+                    });
                 lastIndex += filteredResults.length;    
             }    
+            //console.log("Results: " + JSON.stringify(this.resultsToShow));
 
             //if there are resutls
             if(this.areResultsToShow()) {
                 // set the first module as the selected one
-                this.currentModule = Object.keys(this.resultsToShow).filter((e) => this.resultsToShow[e].length>0)[0];
+                this.currentModule = Object.keys(this.resultsToShow)[0];
 
                 this.currentDocumentation = this.getCurrentDocumentation();
                 
@@ -279,7 +307,7 @@ export default Vue.extend({
                 this.selected > this.resultsToShow[this.currentModule][numItemsInCurrModule -1].index
             ){
                 // We want all the (non-zero result) modules
-                const listOfAllModules = Object.keys(this.resultsToShow).filter((e) => this.resultsToShow[e].length>0);
+                const listOfAllModules = Object.keys(this.resultsToShow);
                 const allModulesLength = listOfAllModules.length;
                 const currentModuleIndex = listOfAllModules.indexOf(this.currentModule);
                 // The following frames the newSelectionIndex to the results array (it's like a modulo that works for negative numbers as well)
@@ -294,7 +322,7 @@ export default Vue.extend({
         },
 
         areResultsToShow(): boolean {
-            return Object.values(this.resultsToShow).filter((e) => e.length>0)?.length > 0;
+            return Object.values(this.resultsToShow)?.length > 0;
         },
 
         getACEntryVersion(entry: any): number{

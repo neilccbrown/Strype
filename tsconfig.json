@@ -23,6 +23,7 @@
       "mocha",
       "chai",
       "cypress",
+      "@testing-library/cypress",
       "node"
     ],
     "paths": {
