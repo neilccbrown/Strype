@@ -79,8 +79,6 @@ function checkAutocompleteSorted(acIDSel: string) : void {
 describe("Built-ins", () => {
     it("Has built-ins, that narrow down when you type", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -118,8 +116,6 @@ describe("Built-ins", () => {
 describe("Modules", () => {
     it("Offers auto-complete in import frames", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Go up to imports, add one, then trigger auto-complete:
         cy.get("body").type("{uparrow}{uparrow}i");
         cy.wait(500);
@@ -183,8 +179,6 @@ describe("Modules", () => {
         }
         
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Go up to imports and add an import frame:
         cy.get("body").type("{uparrow}{uparrow}i");
         cy.wait(500);
@@ -218,8 +212,6 @@ describe("Modules", () => {
 
     it("Offers auto-completion for imported modules with a from import *", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Go up to the imports and add a "from..import.." frame
         cy.get("body").type("{uparrow}{uparrow}f");
         cy.wait(500);
@@ -254,8 +246,6 @@ describe("Modules", () => {
 describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Go up to functions section, add a function named "foo" then come back down and make a function call frame:
         cy.get("body").type("{uparrow}ffoo{downarrow}{downarrow}{downarrow} ");
         cy.wait(500);
@@ -269,8 +259,6 @@ describe("User-defined items", () => {
 
     it("Offers auto-complete for user-defined variables", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Make an assignment frame that says "myVar=23", then make a function call frame beneath:
         cy.get("body").type("=myVar=23{enter} ");
         cy.wait(500);
@@ -284,8 +272,6 @@ describe("User-defined items", () => {
 
     it("Offers auto-complete for items on user-defined variables", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Make an assignment frame myVar="hi" then add a function call frame beneath with "myVar."
         cy.get("body").type("=myVar=\"hi{enter} myVar.");
         cy.wait(500);
@@ -306,8 +292,6 @@ describe("User-defined items", () => {
 
     it("Offers auto-complete for user-defined variables but not before declaration", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Make an assignment frame with myVar=23, then go before it and add a function call frame:
         cy.get("body").type("=myVar=23{enter}{uparrow} ");
         cy.wait(500);
