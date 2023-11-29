@@ -180,6 +180,113 @@ describe("Modules", () => {
             }
         });
     });
+
+    it("Offers auto-complete in LHS of from...import frames", () => {
+        focusEditorAC();
+        // Go up to imports, add one, then trigger auto-complete:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            if (Cypress.env("mode") == "microbit") {
+                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                checkExactlyOneItem(acIDSel, null, "machine");
+                checkExactlyOneItem(acIDSel, null, "microbit");
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkExactlyOneItem(acIDSel, null, "time");
+                checkNoItems(acIDSel, "signal");
+                // Once we type "m", should show things beginning with M but not the others:
+                cy.get("body").type("m");
+                cy.wait(500);
+                checkExactlyOneItem(acIDSel, null, "machine");
+                checkExactlyOneItem(acIDSel, null, "microbit");
+                checkNoItems(acIDSel, "random");
+                checkNoItems(acIDSel, "time");
+                checkAutocompleteSorted(acIDSel);
+                // Once we type "i", should show things beginning with MI but not the others:
+                cy.get("body").type("i");
+                checkNoItems(acIDSel, "machine");
+                checkExactlyOneItem(acIDSel, null, "microbit");
+                checkNoItems(acIDSel, "random");
+                checkNoItems(acIDSel, "time");
+                checkAutocompleteSorted(acIDSel);
+            }
+            else {
+                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                checkExactlyOneItem(acIDSel, null, "antigravity");
+                checkExactlyOneItem(acIDSel, null, "array");
+                checkExactlyOneItem(acIDSel, null, "signal");
+                checkExactlyOneItem(acIDSel, null, "webbrowser");
+                checkNoItems(acIDSel, "microbit");
+                // Once we type "a", should show things beginning with A but not the others:
+                cy.get("body").type("a");
+                cy.wait(500);
+                checkExactlyOneItem(acIDSel, null, "antigravity");
+                checkExactlyOneItem(acIDSel, null, "array");
+                checkNoItems(acIDSel, "signal");
+                checkNoItems(acIDSel, "webbrowser");
+                checkAutocompleteSorted(acIDSel);
+                // Once we type "r", should show things beginning with AR but not the others:
+                cy.get("body").type("r");
+                checkNoItems(acIDSel, "antigravity");
+                checkExactlyOneItem(acIDSel, null, "array");
+                checkNoItems(acIDSel, "signal");
+                checkNoItems(acIDSel, "webbrowser");
+                checkAutocompleteSorted(acIDSel);
+            }
+        });
+    });
+
+    it("Offers auto-complete in RHS of from...import frames", () => {
+        focusEditorAC();
+        // Go up to imports, add one, then trigger auto-complete:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        // Fill in time in the LHS then go across to the RHS:
+        cy.get("body").type("time{rightarrow}");
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+            const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "*");
+            checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, nonAvailable);
+            // Once we type first character, should be the same:
+            cy.get("body").type(target.at(0) || "");
+            cy.wait(500);
+            checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, nonAvailable);
+            checkNoItems(acIDSel, "*");
+            checkAutocompleteSorted(acIDSel);
+            // Type rest of target then enter a comma:
+            cy.get("body").type(target.substring(1) + ",");
+            cy.wait(500);
+            // That should have dismissed the autocomplete and put us in a new slot:
+            cy.get(acIDSel).should("not.exist");
+        });
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        // We can check same item again; we don't deduplicate based on what is already imported:
+        withAC((acIDSel) => {
+            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+            const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "*");
+            checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, nonAvailable);
+            // Once we type first character, should be the same:
+            cy.get("body").type(target.at(0) || "");
+            cy.wait(500);
+            checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, nonAvailable);
+            checkNoItems(acIDSel, "*");
+            checkAutocompleteSorted(acIDSel);
+        });
+        
+        
+    });
     
     it("Offers auto-completion for imported modules", () => {
         if (Cypress.env("mode") == "microbit") {
