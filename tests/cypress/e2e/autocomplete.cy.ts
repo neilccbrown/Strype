@@ -5,6 +5,17 @@ import "@testing-library/cypress/add-commands";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 chai.use(require("chai-sorted"));
 
+chai.Assertion.addMethod("beLocaleSorted", function () {
+    const $element = this._obj;
+
+    new chai.Assertion($element).to.be.exist;
+    
+    const actual = [...$element] as string[];
+    // Important to spread again to make a copy, as sort sorts in-place:
+    const expected = [...actual].sort((a, b) => a.localeCompare(b));
+    expect(actual).to.deep.equal(expected);
+});
+
 
 // Must clear all local storage between tests to reset the state:
 beforeEach(() => {
@@ -71,7 +82,7 @@ function checkAutocompleteSorted(acIDSel: string) : void {
     cy.get(acIDSel + " .popupContainer ul > div").each((section) => {
         cy.wrap(section).find("li.popUpItems")
             .then((items) => [...items].map((item) => item.innerText.toLowerCase()))
-            .should("be.sorted");
+            .should("beLocaleSorted");
     });
 }
 
