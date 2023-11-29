@@ -102,6 +102,7 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "sum");
             checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError");
             checkExactlyOneItem(acIDSel, BUILTIN, "zip");
+            checkNoItems(acIDSel, "__name__");
             // Once we type "a", should show things beginning with A but not the others:
             cy.get("body").type("a");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
@@ -349,6 +350,7 @@ describe("Modules", () => {
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, IMPORTED, target);
             checkNoItems(acIDSel, nonAvailable);
+            checkNoItems(acIDSel, "__name__");
             checkExactlyOneItem(acIDSel, IMPORTED, "sleep");
             checkExactlyOneItem(acIDSel, IMPORTED, "abs");
             checkExactlyOneItem(acIDSel, IMPORTED, "ArithmeticError");

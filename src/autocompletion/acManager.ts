@@ -225,14 +225,14 @@ export function getAllExplicitlyImportedItems() : AcResultType[] {
                 /* IFTRUE_isMicrobit */
                 const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
                 if (allMicrobitItems) {
-                    soFar.push(...allMicrobitItems);
+                    soFar.push(...allMicrobitItems.filter((x) => !x.acResult.startsWith("_")));
                 }
                 /* FITRUE_isMicrobit */
 
                 /* IFTRUE_isPurePython */
                 const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
                 if (allSkulptItems) {
-                    soFar.push(...allSkulptItems);
+                    soFar.push(...allSkulptItems.filter((x) => !x.acResult.startsWith("_")));
                 }
                 /* FITRUE_isPurePython */
             }
