@@ -74,7 +74,7 @@ import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableModulesForImport, getBuiltins } from "@/autocompletion/acManager";
+import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins } from "@/autocompletion/acManager";
 import { configureSkulptForAutoComplete, prepareSkulptCode } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
 declare const Sk: any;
@@ -149,9 +149,15 @@ export default Vue.extend({
             return categories.sort((a, b) => intendedOrder.indexOf(a) - intendedOrder.indexOf(b));
         },
       
-        updateACForImport(token: string) : void {
+        updateACForModuleImport(token: string) : void {
             this.acRequestIndex += 1;
             this.acResults = getAvailableModulesForImport();
+            this.showSuggestionsAC(token);
+        },
+
+        updateACForImportFrom(token: string, module: string) : void {
+            this.acRequestIndex += 1;
+            this.acResults = getAvailableItemsForImportFromModule(module);
             this.showSuggestionsAC(token);
         },
       

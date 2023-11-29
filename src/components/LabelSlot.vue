@@ -390,12 +390,23 @@ export default Vue.extend({
                 const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
                 if (isImportFrame) {
                     this.tokenAC = textBeforeCaret;
+                    if (this.tokenAC.includes(",")) {
+                        this.tokenAC = this.tokenAC.substring(this.tokenAC.lastIndexOf(",") + 1); 
+                    }
                     this.showAC = true;
                     this.contextAC = "";
                     this.$nextTick(() => {
                         const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
                         if (ac) {
-                            ac.updateACForImport(this.tokenAC);
+                            if (this.labelSlotsIndex == 0) {
+                                // If we are in first slot in the import frame, look for modules:
+                                ac.updateACForModuleImport(this.tokenAC);
+                            }
+                            else {
+                                // If we're in the second slot (of from...import...), look for items
+                                // in the module that was specified in the first slot:
+                                ac.updateACForImportFrom(this.tokenAC, (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code);
+                            }
                         }
                     });
                 }
