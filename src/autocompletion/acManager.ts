@@ -6,8 +6,8 @@ import _ from "lodash";
 import {useStore} from "@/store/store";
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
+import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
-import { configureSkulptForAutoComplete, prepareSkulptCode } from "@/autocompletion/ac-skulpt";
 
 
 // Checks if the code passed as argument should not trigger the AC (implying the caret is at the end of this code)
@@ -210,8 +210,8 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     }
 }
 
-export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[] {
-    const soFar : Promise<AcResultsWithModule>[] = [];
+export function getAllExplicitlyImportedItems() : AcResultType[] {
+    const soFar : AcResultType[] = [];
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
     for (let i = 0; i < imports.length; i++) {
         const frame = imports[i];
@@ -220,39 +220,28 @@ export function getAllExplicitlyImportedItems() : Promise<AcResultsWithModule>[]
             if ((frame.labelSlotsDict[1].slotStructures.operators.length == 1 && frame.labelSlotsDict[1].slotStructures.operators[0].code === "*")
                 || (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*")) {
                 const module = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+                
+                // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
+                // the contents of the specific module:
+                
                 /* IFTRUE_isMicrobit */
-                // For microbit, things work differently.  We can't ask Skulpt because Skulpt doesn't
-                // know about the microbit modules.  We instead must consult our own module description:
                 const allItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
                 if (allItems) {
-                    soFar.push(Promise.resolve({"": allItems}));
+                    soFar.push(...allItems);
                 }
                 /* FITRUE_isMicrobit */
 
                 /* IFTRUE_isPurePython */
-                // Have to get everything out of module
-                
-                // We make some simple user code that just imports the module, then we ask Skulpt
-                // for autocomplete on that module.  That will tell us what is available on that
-                // module in Skulpt specifically:
-                // TODO cache these results to avoid re-running Skulpt for imports that never change
-                const codeToRun = prepareSkulptCode("import " + module + "\n", module, (x) => i18n.t(x) as string);
-                configureSkulptForAutoComplete();
-                soFar.push(Sk.misceval.asyncToPromise(function() {
-                    return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
-                }, {}).then(() => {
-                    const all = Sk.ffi.remapToJs(Sk.globals["ac"]) as AcResultsWithModule;
-                    // Because it's imported as "from", put it in default module:
-                    all[""] = all[module];
-                    delete all[module];
-                    return all;
-                }));
+                const allItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+                if (allItems) {
+                    soFar.push(...allItems);
+                }
                 /* FITRUE_isPurePython */
             }
             else {
                 // Just take those items, split by commas:
                 for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                    soFar.push(Promise.resolve({"": [{acResult: (f as BaseSlot).code.trim(), documentation: "", type: "", version: 0}]}));
+                    soFar.push({acResult: (f as BaseSlot).code.trim(), documentation: "", type: "", version: 0});
                 }
             }
         }
