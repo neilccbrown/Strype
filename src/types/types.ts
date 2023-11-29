@@ -1061,11 +1061,6 @@ export interface ParserElements {
 }
 
 // utility types
-export interface CodeMatchIterable {
-    hasMatches: boolean,
-    iteratorMatches?: IterableIterator<RegExpMatchArray>
-}
-
 export interface MIMEDesc {
     description: string,
     accept: {[MIME: string]: string[]}

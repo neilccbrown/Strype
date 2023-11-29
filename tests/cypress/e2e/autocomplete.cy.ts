@@ -131,7 +131,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkExactlyOneItem(acIDSel, null, "random");
                 checkExactlyOneItem(acIDSel, null, "time");
-                checkNoItems(acIDSel, "uuid");
+                checkNoItems(acIDSel, "signal");
                 // Once we type "m", should show things beginning with M but not the others:
                 cy.get("body").type("m");
                 cy.wait(500);
@@ -152,7 +152,7 @@ describe("Modules", () => {
                 cy.get(acIDSel + " .popupContainer").should("be.visible");
                 checkExactlyOneItem(acIDSel, null, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
-                checkExactlyOneItem(acIDSel, null, "uuid");
+                checkExactlyOneItem(acIDSel, null, "signal");
                 checkExactlyOneItem(acIDSel, null, "webbrowser");
                 checkNoItems(acIDSel, "microbit");
                 // Once we type "a", should show things beginning with A but not the others:
@@ -160,14 +160,14 @@ describe("Modules", () => {
                 cy.wait(500);
                 checkExactlyOneItem(acIDSel, null, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
-                checkNoItems(acIDSel, "uuid");
+                checkNoItems(acIDSel, "signal");
                 checkNoItems(acIDSel, "webbrowser");
                 checkAutocompleteSorted(acIDSel);
                 // Once we type "r", should show things beginning with AR but not the others:
                 cy.get("body").type("r");
                 checkNoItems(acIDSel, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
-                checkNoItems(acIDSel, "uuid");
+                checkNoItems(acIDSel, "signal");
                 checkNoItems(acIDSel, "webbrowser");
                 checkAutocompleteSorted(acIDSel);
             }
