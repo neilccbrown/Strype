@@ -8,7 +8,7 @@
             <!-- in order to allow 3 (customed) buttons, we use the slot "modal-footer" made available by Boostrap for the modal; to simply things, we handle both locked/unlocked files there -->
             <template #modal-footer-content="{ok, cancel}">
                 <b-button variant="secondary" @click="onSaveGDExistingFileAction(Actions.cancel);cancel()">{{$t('buttonLabel.cancel')}}</b-button>
-                <b-button :id="saveExistingFileCopyButtonId" variant="primary" @click="onSaveGDExistingFileAction(Actions.copy);ok()">{{(isFileLocked)?$t('buttonLabel.ok'):$t('buttonLabel.saveProjectCopy')}}</b-button>
+                <b-button :id="saveExistingFileCopyButtonId" variant="primary" @click="onSaveGDExistingFileAction(Actions.copy);ok()">{{$t('buttonLabel.saveProjectCopy')}}</b-button>
                 <b-button :id="saveExistingFileOverwriteButtonId" v-if="!isFileLocked" variant="primary" @click="onSaveGDExistingFileAction(Actions.overwrite);ok()">{{$t('buttonLabel.overwriteProject')}}</b-button>
             </template>
         </ModalDlg>

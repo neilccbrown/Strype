@@ -17,7 +17,7 @@
             <div class="menu-separator-div"></div>
             <!-- load/save section -->
             <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg 
-                v-t="'appMenu.loadProject'" :title="$t('appMenu.loadProjectTooltip')" @click="openLoadProjectModal"/>
+                    :title="$t('appMenu.loadProjectTooltip')" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" :autoFocusButton="'ok'">
                 <div v-if="changesNotSavedOnLoad">
                     <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
@@ -29,7 +29,7 @@
                     <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive</option>
                 </select>
             </ModalDlg>
-            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick" v-b-modal="saveLinkModalName" v-t="'appMenu.saveProject'" :title="$t('appMenu.saveProjectTooltip')"/>
+            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick" v-b-modal="saveLinkModalName" :title="$t('appMenu.saveProjectTooltip')">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
             <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'" :title="$t('appMenu.saveAsProjectTooltip')"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
                 <label v-t="'appMessage.fileName'" class="load-save-label"/>
@@ -120,7 +120,7 @@
 //////////////////////
 import Vue from "vue";
 import { useStore } from "@/store/store";
-import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension} from "@/helpers/common";
+import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
 import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUIID, getFrameUIID, getLabelSlotUIID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
@@ -217,20 +217,9 @@ export default Vue.extend({
             return "googleDriveComponent";
         },
 
-        loadProjectProjectSelectId(): string {
-            return "loadProjectProjectSelect";
-        },
-
-        saveProjectProjectSelectId(): string {
-            return "saveProjectProjectSelect";
-        },
 
         isSynced(): boolean {
             return this.appStore.syncTarget != StrypeSyncTarget.none;
-        },
-
-        saveLinkModalName(): string {
-            return (!this.isSynced) ? "save-strype-project-modal-dlg" : "";
         },
 
         syncFSValue(): StrypeSyncTarget {
@@ -241,27 +230,51 @@ export default Vue.extend({
             return StrypeSyncTarget.gd;
         },
 
+        isSyncingToGoogleDrive(): boolean {
+            return this.appStore.syncTarget == StrypeSyncTarget.gd;
+        },
+
+        currentDriveLocation(): string {
+            const currentLocation = this.appStore.strypeProjectLocationAlias??"";
+            return (currentLocation.length > 0) ? (this.$i18n.t("appMessage.folderX", {folder: currentLocation}) as string) : "Strype";
+        },       
+
         loadProjectLinkId(): string {
             return "loadProjectLink";
         },
 
+        loadProjectKBShortcut(): string {
+            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}O`;
+        },
+        
         loadProjectModalDlgId(): string {
             return "load-strype-project-modal-dlg";
         },
 
+        loadProjectProjectSelectId(): string {
+            return "loadProjectProjectSelect";
+        },
+        
         saveProjectLinkId(): string {
             return "saveStrypeProjLink";
+        },
+
+        saveProjectKBShortcut(): string {
+            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}S`;
         },
 
         saveProjectModalDlgId(): string {
             return getSaveAsProjectModalDlg();
         },
 
-        currentDriveLocation(): string {
-            const currentLocation = this.appStore.strypeProjectLocationAlias??"";
-            return (currentLocation.length > 0) ? (this.$i18n.t("appMessage.folderX", {folder: currentLocation}) as string) : "Strype";
-        },
+        saveLinkModalName(): string {
+            return (!this.isSynced) ? this.saveProjectModalDlgId : "";
+        },  
 
+        saveProjectProjectSelectId(): string {
+            return "saveProjectProjectSelect";
+        },
+        
         saveFileNameInputId(): string {
             return "saveStrypeFileNameInput";
         },
@@ -269,10 +282,6 @@ export default Vue.extend({
         changesNotSavedOnLoad(): boolean {
             // For Google Drive, we will attempt saving anyway when loading so we don't need to care.
             return this.appStore.syncTarget != StrypeSyncTarget.gd && (this.appStore.isProjectUnsaved ?? true);
-        },
-
-        isSyncingToGoogleDrive(): boolean {
-            return this.appStore.syncTarget == StrypeSyncTarget.gd;
         },
 
         isUndoDisabled(): boolean {
@@ -716,11 +725,21 @@ export default Vue.extend({
     width: 100%;
     outline: none;
     border: $strype-menu-entry-border;
+    position: relative;
 }
 
 .strype-menu-link.disabled{
     color: #c5c4c1;
     cursor: default;
+}
+
+.strype-menu-kb-shortcut {
+    font-size: smaller;
+    text-align: right;
+    width: 100%;
+    position:absolute;
+    top: 50%;
+    transform: translate(-25px, -50%);
 }
 
 .strype-menu-item {
@@ -832,10 +851,10 @@ export default Vue.extend({
       width: $strype-menu-entry-width;
 }
 
+// This essentially acts as the class for the keyboard shortcut spans (for the properties that are ovewritten, other bits are in .strype-menu-kb-shortcut)
 .bm-item-list > * > span {
-      margin-left: 0px !important;
-      font-weight: 700 !important;
-      color: white !important;
+    color: #817e7c;
+    font-weight: 400;
 }
 
 .bm-item-list > hr {
