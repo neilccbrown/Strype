@@ -127,6 +127,7 @@
         "editorErrors":"Errors"
     },
     "contextMenu": {
+        "ctrl":"Ctrl",
         "cut":"Cut",
         "copy":"Copy",
         "duplicate":"Duplicate",
