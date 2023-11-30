@@ -137,6 +137,44 @@
             "version": 0
         }
     ],
+    "urllib.request": [
+        {
+            "acResult": "Response",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__path__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "urlopen",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
     "webgl": [
         {
             "acResult": "Context",

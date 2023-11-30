@@ -148,6 +148,7 @@ export const pythonBuiltins : Record<string, { type: string, documentation?: str
     "test": {type: "module"},
     "unittest": {type: "module"},
     "urllib": {type: "module"},
+    "urllib.request": {type: "module"},
     "webgl": {type: "module"},
     "antigravity": {type: "module"},
     "array": {type: "module"},
