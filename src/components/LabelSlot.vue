@@ -390,12 +390,23 @@ export default Vue.extend({
                 const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
                 if (isImportFrame) {
                     this.tokenAC = textBeforeCaret;
+                    if (this.tokenAC.includes(",")) {
+                        this.tokenAC = this.tokenAC.substring(this.tokenAC.lastIndexOf(",") + 1); 
+                    }
                     this.showAC = true;
                     this.contextAC = "";
                     this.$nextTick(() => {
                         const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
                         if (ac) {
-                            ac.updateACForImport(this.tokenAC);
+                            if (this.labelSlotsIndex == 0) {
+                                // If we are in first slot in the import frame, look for modules:
+                                ac.updateACForModuleImport(this.tokenAC);
+                            }
+                            else {
+                                // If we're in the second slot (of from...import...), look for items
+                                // in the module that was specified in the first slot:
+                                ac.updateACForImportFrom(this.tokenAC, (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code);
+                            }
                         }
                     });
                 }
@@ -798,13 +809,13 @@ export default Vue.extend({
                     ){
                         // If we are in the LHS of a function definition or of a for, then we just don't allow the operator, bracket or quotes.
                         // For imports, we only allow comma and * (comma in import frame, coma and * in RHS from (* isn't treated as operator in this case)).
-                        const forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.fromimport].includes(this.frameType)
+                        const forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for].includes(this.frameType)
                             && this.labelSlotsIndex == 0;
                         insertKey = !forbidOperator;
                         if(!forbidOperator && (this.frameType == AllFrameTypesIdentifier.fromimport || this.frameType == AllFrameTypesIdentifier.import)){
                             // If we're in some import frame, we check we match the rule mentioned above
-                            insertKey = (this.frameType == AllFrameTypesIdentifier.fromimport && (this.keyDownStr == "*" || this.keyDownStr == ",")) 
-                                || (this.frameType == AllFrameTypesIdentifier.import && this.keyDownStr == ",");
+                            insertKey = (this.frameType == AllFrameTypesIdentifier.fromimport && (this.keyDownStr == "*" || this.keyDownStr == "," || this.keyDownStr == ".")) 
+                                || (this.frameType == AllFrameTypesIdentifier.import && (this.keyDownStr == "," || this.keyDownStr == "."));
                         }
                         if(!forbidOperator){
                             if(isBracket || isStringQuote){

@@ -5,6 +5,17 @@ import "@testing-library/cypress/add-commands";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 chai.use(require("chai-sorted"));
 
+chai.Assertion.addMethod("beLocaleSorted", function () {
+    const $element = this._obj;
+
+    new chai.Assertion($element).to.be.exist;
+    
+    const actual = [...$element] as string[];
+    // Important to spread again to make a copy, as sort sorts in-place:
+    const expected = [...actual].sort((a, b) => a.localeCompare(b));
+    expect(actual).to.deep.equal(expected);
+});
+
 
 // Must clear all local storage between tests to reset the state:
 beforeEach(() => {
@@ -71,7 +82,7 @@ function checkAutocompleteSorted(acIDSel: string) : void {
     cy.get(acIDSel + " .popupContainer ul > div").each((section) => {
         cy.wrap(section).find("li.popUpItems")
             .then((items) => [...items].map((item) => item.innerText.toLowerCase()))
-            .should("be.sorted");
+            .should("beLocaleSorted");
     });
 }
 
@@ -79,8 +90,6 @@ function checkAutocompleteSorted(acIDSel: string) : void {
 describe("Built-ins", () => {
     it("Has built-ins, that narrow down when you type", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -93,6 +102,7 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "sum");
             checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError");
             checkExactlyOneItem(acIDSel, BUILTIN, "zip");
+            checkNoItems(acIDSel, "__name__");
             // Once we type "a", should show things beginning with A but not the others:
             cy.get("body").type("a");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
@@ -118,8 +128,6 @@ describe("Built-ins", () => {
 describe("Modules", () => {
     it("Offers auto-complete in import frames", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Go up to imports, add one, then trigger auto-complete:
         cy.get("body").type("{uparrow}{uparrow}i");
         cy.wait(500);
@@ -173,6 +181,113 @@ describe("Modules", () => {
             }
         });
     });
+
+    it("Offers auto-complete in LHS of from...import frames", () => {
+        focusEditorAC();
+        // Go up to imports, add one, then trigger auto-complete:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            if (Cypress.env("mode") == "microbit") {
+                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                checkExactlyOneItem(acIDSel, null, "machine");
+                checkExactlyOneItem(acIDSel, null, "microbit");
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkExactlyOneItem(acIDSel, null, "time");
+                checkNoItems(acIDSel, "signal");
+                // Once we type "m", should show things beginning with M but not the others:
+                cy.get("body").type("m");
+                cy.wait(500);
+                checkExactlyOneItem(acIDSel, null, "machine");
+                checkExactlyOneItem(acIDSel, null, "microbit");
+                checkNoItems(acIDSel, "random");
+                checkNoItems(acIDSel, "time");
+                checkAutocompleteSorted(acIDSel);
+                // Once we type "i", should show things beginning with MI but not the others:
+                cy.get("body").type("i");
+                checkNoItems(acIDSel, "machine");
+                checkExactlyOneItem(acIDSel, null, "microbit");
+                checkNoItems(acIDSel, "random");
+                checkNoItems(acIDSel, "time");
+                checkAutocompleteSorted(acIDSel);
+            }
+            else {
+                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                checkExactlyOneItem(acIDSel, null, "antigravity");
+                checkExactlyOneItem(acIDSel, null, "array");
+                checkExactlyOneItem(acIDSel, null, "signal");
+                checkExactlyOneItem(acIDSel, null, "webbrowser");
+                checkNoItems(acIDSel, "microbit");
+                // Once we type "a", should show things beginning with A but not the others:
+                cy.get("body").type("a");
+                cy.wait(500);
+                checkExactlyOneItem(acIDSel, null, "antigravity");
+                checkExactlyOneItem(acIDSel, null, "array");
+                checkNoItems(acIDSel, "signal");
+                checkNoItems(acIDSel, "webbrowser");
+                checkAutocompleteSorted(acIDSel);
+                // Once we type "r", should show things beginning with AR but not the others:
+                cy.get("body").type("r");
+                checkNoItems(acIDSel, "antigravity");
+                checkExactlyOneItem(acIDSel, null, "array");
+                checkNoItems(acIDSel, "signal");
+                checkNoItems(acIDSel, "webbrowser");
+                checkAutocompleteSorted(acIDSel);
+            }
+        });
+    });
+
+    it("Offers auto-complete in RHS of from...import frames", () => {
+        focusEditorAC();
+        // Go up to imports, add one, then trigger auto-complete:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        // Fill in time in the LHS then go across to the RHS:
+        cy.get("body").type("time{rightarrow}");
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+            const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "*");
+            checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, nonAvailable);
+            // Once we type first character, should be the same:
+            cy.get("body").type(target.at(0) || "");
+            cy.wait(500);
+            checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, nonAvailable);
+            checkNoItems(acIDSel, "*");
+            checkAutocompleteSorted(acIDSel);
+            // Type rest of target then enter a comma:
+            cy.get("body").type(target.substring(1) + ",");
+            cy.wait(500);
+            // That should have dismissed the autocomplete and put us in a new slot:
+            cy.get(acIDSel).should("not.exist");
+        });
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        // We can check same item again; we don't deduplicate based on what is already imported:
+        withAC((acIDSel) => {
+            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+            const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "*");
+            checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, nonAvailable);
+            // Once we type first character, should be the same:
+            cy.get("body").type(target.at(0) || "");
+            cy.wait(500);
+            checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, nonAvailable);
+            checkNoItems(acIDSel, "*");
+            checkAutocompleteSorted(acIDSel);
+        });
+        
+        
+    });
     
     it("Offers auto-completion for imported modules", () => {
         if (Cypress.env("mode") == "microbit") {
@@ -183,8 +298,6 @@ describe("Modules", () => {
         }
         
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Go up to imports and add an import frame:
         cy.get("body").type("{uparrow}{uparrow}i");
         cy.wait(500);
@@ -218,8 +331,6 @@ describe("Modules", () => {
 
     it("Offers auto-completion for imported modules with a from import *", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Go up to the imports and add a "from..import.." frame
         cy.get("body").type("{uparrow}{uparrow}f");
         cy.wait(500);
@@ -239,6 +350,7 @@ describe("Modules", () => {
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, IMPORTED, target);
             checkNoItems(acIDSel, nonAvailable);
+            checkNoItems(acIDSel, "__name__");
             checkExactlyOneItem(acIDSel, IMPORTED, "sleep");
             checkExactlyOneItem(acIDSel, IMPORTED, "abs");
             checkExactlyOneItem(acIDSel, IMPORTED, "ArithmeticError");
@@ -254,8 +366,6 @@ describe("Modules", () => {
 describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Go up to functions section, add a function named "foo" then come back down and make a function call frame:
         cy.get("body").type("{uparrow}ffoo{downarrow}{downarrow}{downarrow} ");
         cy.wait(500);
@@ -269,8 +379,6 @@ describe("User-defined items", () => {
 
     it("Offers auto-complete for user-defined variables", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Make an assignment frame that says "myVar=23", then make a function call frame beneath:
         cy.get("body").type("=myVar=23{enter} ");
         cy.wait(500);
@@ -284,8 +392,6 @@ describe("User-defined items", () => {
 
     it("Offers auto-complete for items on user-defined variables", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Make an assignment frame myVar="hi" then add a function call frame beneath with "myVar."
         cy.get("body").type("=myVar=\"hi{enter} myVar.");
         cy.wait(500);
@@ -306,8 +412,6 @@ describe("User-defined items", () => {
 
     it("Offers auto-complete for user-defined variables but not before declaration", () => {
         focusEditorAC();
-        // Must wait for Brython to fully initialise:
-        cy.wait(1000);
         // Make an assignment frame with myVar=23, then go before it and add a function call frame:
         cy.get("body").type("=myVar=23{enter}{uparrow} ");
         cy.wait(500);
@@ -317,6 +421,72 @@ describe("User-defined items", () => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
             checkNoItems(acIDSel, "myVar");
+        });
+    });
+});
+
+describe("Nested modules", () => {
+    // Technically, microbit.accelerometer is a nested object not a nested module, but I think
+    // in terms of the autocomplete tests here, it should function in exactly the same way: 
+    const targetModule = Cypress.env("mode") == "microbit" ? "microbit.accelerometer" : "urllib.request";
+    const targetFunction = Cypress.env("mode") == "microbit" ? "get_x" : "urlopen";
+    
+    it("Offers auto-completion for modules with names a.b when imported as a.b", () => {
+        if (Cypress.env("mode") == "microbit") {
+            // This doesn't work on microbit because we can't dynamically ask
+            // Skulpt for the members of accelerometer.
+            return;
+        }
+        focusEditorAC();
+        // Go up to imports and add an import frame:
+        cy.get("body").type("{uparrow}{uparrow}i");
+        cy.wait(500);
+        // Type whole module as one item:
+        cy.get("body").type(targetModule);
+        cy.get("body").type("{rightarrow}");
+        // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, null, targetFunction);
+            checkNoItems(acIDSel, "abs");
+        });
+    });
+
+    it("Offers auto-completion for modules with names a.b when imported as a.b.* with from", () => {
+        focusEditorAC();
+        // Go up to imports and add a from import frame:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        // Type whole module as one item:
+        cy.get("body").type(targetModule);
+        cy.get("body").type("{rightarrow}*{rightarrow}");
+        // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, IMPORTED, targetFunction);
+            checkExactlyOneItem(acIDSel, null, "abs");
+        });
+    });
+
+    it("Offers auto-completion for modules with names a.b when imported as a.b.func with from", () => {
+        focusEditorAC();
+        // Go up to imports and add a from import frame:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        // Type whole module as one item:
+        cy.get("body").type(targetModule);
+        cy.get("body").type("{rightarrow}" + targetFunction + "{rightarrow}");
+        // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, IMPORTED, targetFunction);
+            checkExactlyOneItem(acIDSel, null, "abs");
         });
     });
 });
