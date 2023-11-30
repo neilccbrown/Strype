@@ -1,6 +1,10 @@
 import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
+// Re-export types from ac-types:
+// Note, important to use * here rather than individual imports, to avoid this issue with Babel:
+// https://stackoverflow.com/questions/52258061/export-not-found-on-module
+export * from "@/types/ac-types";
 
 // Type Definitions
 
@@ -1004,26 +1008,6 @@ export interface UserDefinedElement {
     name: string;
     isFunction: boolean;
 }
-export interface IndexedAcResult {
-    index: number; 
-    acResult: string; 
-    documentation: string; 
-    type: string;
-    version: number;
-}
-
-export interface AcResultType {
-    acResult: string; 
-    documentation: string; 
-    type: string;
-    version: number;
-}
-export interface IndexedAcResultWithModule {
-    [module: string]: IndexedAcResult[];
-}
-export interface AcResultsWithModule {
-    [module: string]: AcResultType[];
-}
 export interface VoidFunction {
     (): void;
 }
@@ -1061,11 +1045,6 @@ export interface ParserElements {
 }
 
 // utility types
-export interface CodeMatchIterable {
-    hasMatches: boolean,
-    iteratorMatches?: IterableIterator<RegExpMatchArray>
-}
-
 export interface MIMEDesc {
     description: string,
     accept: {[MIME: string]: string[]}

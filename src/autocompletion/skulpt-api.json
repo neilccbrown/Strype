@@ -1,0 +1,5976 @@
+{
+    "test": [
+        {
+            "acResult": "__author__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__path__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "testEqual",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "testNotEqual",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "unittest": [
+        {
+            "acResult": "TestCase",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_AssertRaisesContext",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__author__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__path__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "main",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "re",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "urllib": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__path__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "webgl": [
+        {
+            "acResult": "Context",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Float32Array",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Matrix4x4",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__path__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "antigravity": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "webbrowser",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "array": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "array",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "bisect": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "bisect",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "bisect_left",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "bisect_right",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "insort",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "insort_left",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "insort_right",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "collections": [
+        {
+            "acResult": "Counter",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "OrderedDict",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__all__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_chain",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_iskeyword",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_itemgetter",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_repeat",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_starmap",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "defaultdict",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "deque",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "namedtuple",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "copy": [
+        {
+            "acResult": "Error",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_EmptyClass",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_copy_inst",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_deepcopy_atomic",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_deepcopy_dict",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_deepcopy_dispatch",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_deepcopy_frozenset",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_deepcopy_inst",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_deepcopy_list",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_deepcopy_set",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_deepcopy_tuple",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_keep_alive",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_reconstruct",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "deepcopy",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "error",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "long",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "datetime": [
+        {
+            "acResult": "MAXYEAR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MINYEAR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_DAYNAMES",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_DAYS_BEFORE_MONTH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_DAYS_IN_MONTH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_DI100Y",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_DI400Y",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_DI4Y",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_MAX_DELTA_DAYS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_MINYEARFMT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_MONTHNAMES",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_SECONDS_PER_DAY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_SENTINEL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_US_PER_DAY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_US_PER_HOUR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_US_PER_MINUTE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_US_PER_MS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_US_PER_SECOND",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_US_PER_US",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_US_PER_WEEK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__class__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_accum",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_build_struct_time",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_check_date_fields",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_check_int_field",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_check_time_fields",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_check_tzinfo_arg",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_check_tzname",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_check_utc_offset",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_cmp",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_cmperror",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_date_class",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_days_before_month",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_days_before_year",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_days_in_month",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_format_time",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_is_leap",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_isoweek1monday",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_math",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_normalize_date",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_normalize_datetime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_normalize_pair",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_ord2ymd",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_round",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_time",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_time_class",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_tzinfo_class",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_wrap_strftime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_ymd2ord",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "date",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "datetime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sys",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "time",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "timedelta",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tzinfo",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "unicode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "document": [
+        {
+            "acResult": "Element",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "createElement",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "currentDiv",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "getElementById",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "getElementsByClassName",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "getElementsByName",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "getElementsByTagName",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "image": [
+        {
+            "acResult": "EmptyImage",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Image",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ImageWin",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Pixel",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "itertools": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_grouper",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "accumulate",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "chain",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "combinations",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "combinations_with_replacement",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "compress",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "count",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "cycle",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "dropwhile",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "filterfalse",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "groupby",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "islice",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "permutations",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "product",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "repeat",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "starmap",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "takewhile",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tee",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "zip_longest",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "keyword": [
+        {
+            "acResult": "__all__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "iskeyword",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "kwlist",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "math": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "acos",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "acosh",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "asin",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "asinh",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "atan",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "atan2",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "atanh",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ceil",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "copysign",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "cos",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "cosh",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "degrees",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "e",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "erf",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "erfc",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "exp",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "expm1",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "fabs",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "factorial",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "floor",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "fmod",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "frexp",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "fsum",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "gamma",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "gcd",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "hypot",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "inf",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "isclose",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "isfinite",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "isinf",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "isnan",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ldexp",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lgamma",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "log",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "log10",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "log1p",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "log2",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "modf",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "nan",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pi",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "radians",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "remainder",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sin",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sinh",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sqrt",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tan",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tanh",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tau",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "trunc",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "numbers": [
+        {
+            "acResult": "Complex",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Integral",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Number",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "operator": [
+        {
+            "acResult": "__abs__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__add__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__all__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__and__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__concat__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__contains__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__delitem__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__div__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__eq__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__floordiv__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ge__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__getitem__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__gt__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iadd__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iand__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__iconcat__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ifloordiv__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ilshift__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__imatmul__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__imod__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__imul__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__index__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__inv__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__invert__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ior__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ipow__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__irshift__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__isub__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__itruediv__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ixor__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__le__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lshift__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__lt__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__matmul__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mod__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__mul__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__ne__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__neg__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__not__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__or__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pos__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__pow__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__rshift__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__setitem__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__sub__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__truediv__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__xor__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_abs",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "abs",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "add",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "and_",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "attrgetter",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "concat",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "contains",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "countOf",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "delitem",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "div",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "eq",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "floordiv",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ge",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "getitem",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "gt",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "iadd",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "iand",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "iconcat",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ifloordiv",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ilshift",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "imatmul",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "imod",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "imul",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "index",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "indexOf",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "inv",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "invert",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ior",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ipow",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "irshift",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_not",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "isub",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "itemgetter",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "itruediv",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ixor",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "le",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "length_hint",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lshift",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lt",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "matmul",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "methodcaller",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "mod",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "mul",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ne",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "neg",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "not_",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "or_",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pos",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "rshift",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "setitem",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sub",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "truediv",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "truth",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "xor",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "platform": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "architecture",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "machine",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "node",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "processor",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "python_implementation",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "python_version",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "release",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "system",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "version",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "processing": [
+        {
+            "acResult": "A",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "AB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ADD",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "AG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ALPHA",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ALPHA_MASK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ALT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "AMBIENT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "AR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ARC",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ARGB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ARROW",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "B",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BACKSPACE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BASELINE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BEEN_LIT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BEVEL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BEZIER_VERTEX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BLEND",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BLUE_MASK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BLUR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BOTTOM",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BOX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BREAK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BURN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CAPSLK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CENTER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CLOSE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CLOSESHAPE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CMYK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CODED",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CONTROL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CORNER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CORNERS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CROSS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CURVE_VERTEX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CUSTOM",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DA",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DARKEST",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DEG_TO_RAD",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DELETE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DIAMETER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DIFFERENCE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DILATE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DIRECTIONAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DISABLE_ACCURATE_TEXTURES",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DISABLE_DEPTH_SORT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DISABLE_DEPTH_TEST",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DISABLE_OPENGL_2X_SMOOTH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DISABLE_OPENGL_ERROR_REPORT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DODGE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DOWN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DXF",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "EB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "EDGE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "EG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ELLIPSE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENABLE_ACCURATE_TEXTURES",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENABLE_DEPTH_SORT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENABLE_DEPTH_TEST",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENABLE_NATIVE_FONTS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENABLE_OPENGL_2X_SMOOTH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENABLE_OPENGL_4X_SMOOTH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENABLE_OPENGL_ERROR_REPORT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "END",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENTER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "EPSILON",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ERODE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ESC",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "EXCLUSION",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Environment",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F1",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F10",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F11",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F12",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F2",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F3",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F4",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F5",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F6",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F7",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F8",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "F9",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "G",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "GEOMETRY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "GIF",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "GRAY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "GREEN_MASK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "GROUP",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "HALF_PI",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "HAND",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "HARD_LIGHT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "HINT_COUNT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "HOME",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "HSB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "IMAGE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "INSERT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "INVERT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "JAVA2D",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "JPEG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Keyboard",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LEFT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LIGHTEST",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LINE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LINES",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LINUX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MAXOSX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MAX_FLOAT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MAX_INT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MAX_LIGHTS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "META",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MIN_FLOAT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MIN_INT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MITER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MODEL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MOVE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MULTIPLY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Mouse",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NOCURSOR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NORMAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NORMALIZED",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NORMAL_MODE_AUTO",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NORMAL_MODE_SHAPE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NORMAL_MODE_VERTEX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NUMLK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NZ",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "OPAQUE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "OPEN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "OPENGL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ORTHOGRAPHIC",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "OTHER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "OVERLAY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "P2D",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "P3D",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PATH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PDF",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PERSPECTIVE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PFont",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PGDN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PGUP",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PGraphics",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PI",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PImage",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "POINT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "POINTS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "POLYGON",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "POSTERIZE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PRECISIONB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PRECISIONF",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PREC_ALPHA_SHIFT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PREC_MAXVAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PREC_RED_SHIFT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PRIMITIVE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PROJECT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PShapeSVG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PVector",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "QUAD",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "QUADS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "QUAD_STRIP",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "QUARTER_PI",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "R",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RADIUS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RAD_TO_DEG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RECT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RED_MASK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "REPLACE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RETURN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RGB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RIGHT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ROUND",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SA",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SCREEN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SHAPE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SHIFT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SHINE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SINCOS_LENGTH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SOFT_LIGHT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SPB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SPG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SPHERE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SPOT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SPR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SQUARE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SUBTRACT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SW",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Screen",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TAB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TARGA",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TAU",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TEXT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "THIRD_PI",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "THRESHOLD",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TIFF",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TOP",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TRIANGLE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TRIANGLES",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TRIANGLE_FAN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TRIANGLE_STRIP",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TWO_PI",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TZ",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "U",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "UP",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "V",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "VERTEX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "VERTEX_FIELD_COUNT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "VW",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "VX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "VY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "VZ",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "WAIT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "WEBGL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "WHITESPACE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "WINDOWS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "X",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Y",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "Z",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "alpha",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ambient",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ambientLight",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "applyMatrix",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "arc",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "background",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "beginCamera",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "beginShape",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "bezier",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "bezierDetail",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "bezierPoint",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "bezierTangent",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "bezierVertex",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "blend",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "blendColor",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "blue",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "box",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "brightness",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "camera",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "color",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "colorMode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "constrain",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "copy",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "createFont",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "createGraphics",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "createImage",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "cursor",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "curve",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "curveDetail",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "curvePoint",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "curveTangent",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "curveTightness",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "curveVertex",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "day",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "degrees",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "directionalLight",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "dist",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ellipse",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ellipseMode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "emissive",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "endCamera",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "endShape",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "environment",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "exitp",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "fill",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "filter",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "frameRate",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "frustum",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "get",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "green",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "height",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "hint",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "hour",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "hue",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "image",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "imageMode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "keyboard",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lerp",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lerpColor",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lightFalloff",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lightSpecular",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lights",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "line",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "loadBytes",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "loadFont",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "loadImage",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "loadPixels",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "loadShape",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "loadStrings",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "loop",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "mag",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "map",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "millis",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "minute",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "modelX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "modelY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "modelZ",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "month",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "mouse",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "mouseX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "mouseY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noCursor",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noFill",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noLights",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noLoop",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noSmooth",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noStroke",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noTint",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noise",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noiseDetail",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "noiseSeed",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "norm",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "normal",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ortho",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "p",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "perspective",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pmouseX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pmouseY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "point",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pointLight",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "popMatrix",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "printCamera",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "printMatrix",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "printProjection",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "println",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "processing",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pushMatrix",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "quad",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "radians",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "random",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "randomSeed",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "rect",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "rectMode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "red",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "renderMode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "requestImage",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "resetMatrix",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "rotate",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "rotateX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "rotateY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "rotateZ",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "run",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "saturation",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "save",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "saveFrame",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "saveStrings",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "scale",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "screen",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "screenX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "screenY",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "screenZ",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "second",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "set",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "shape",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "shapeMode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "shininess",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "size",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "smooth",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "specular",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sphere",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sphereDetail",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "spotLight",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sq",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "status",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "stroke",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "strokeCap",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "strokeJoin",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "strokeWeight",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "text",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textAlign",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textAscent",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textDescent",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textFont",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textLeading",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textMode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textSize",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textWidth",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "texture",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "textureMode",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tint",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "translate",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "triangle",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "updatePixels",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "vertex",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "width",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "year",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "random": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "choice",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "expovariate",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "gauss",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lognormvariate",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "normalvariate",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "randint",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "random",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "randrange",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sample",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "seed",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "shuffle",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "triangular",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "uniform",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "re": [
+        {
+            "acResult": "I",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "IGNORECASE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "M",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MULTILINE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MatchObject",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RegexObject",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_findre",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "compile",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "findall",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "match",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "purge",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "search",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "split",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "signal": [
+        {
+            "acResult": "CTRL_BREAK_EVENT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CTRL_C_EVENT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NSIG",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGABRT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGBREAK",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGFPE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGHUP",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGILL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGKILL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGNINT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGSEGV",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIGTERM",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIG_DFL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SIG_IGN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "pause",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "signal",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "string": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ascii_letters",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ascii_lowercase",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ascii_uppercase",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "capitalize",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "capwords",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "digits",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "hexdigits",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "join",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "letters",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "lowercase",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "octdigits",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "printable",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "punctuation",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "split",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "uppercase",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "whitespace",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "textwrap": [
+        {
+            "acResult": "TextWrapper",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__all__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "_whitespace",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "dedent",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "fill",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "indent",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "re",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "shorten",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "string",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "wrap",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "time": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "accept2dyear",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "altzone",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "asctime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "clock",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ctime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "daylight",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "gmtime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "localtime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "mktime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "sleep",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "strftime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "strptime",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "struct_time",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "time",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "timezone",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tzname",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tzset",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "token": [
+        {
+            "acResult": "AMPER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "AMPEREQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ASYNC",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "AT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ATEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "AWAIT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CIRCUMFLEX",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "CIRCUMFLEXEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "COLON",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "COMMA",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "COMMENT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DEDENT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DOT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DOUBLESLASH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DOUBLESLASHEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DOUBLESTAR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DOUBLESTAREQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ELLIPSIS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENCODING",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENDMARKER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "EQEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "EQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ERRORTOKEN",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "GREATER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "GREATEREQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "INDENT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ISEOF",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ISNONTERMINAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ISTERMINAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LBRACE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LEFTSHIFT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LEFTSHIFTEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LESS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LESSEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LPAR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LSQB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MINEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MINUS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NAME",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NEWLINE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NOTEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NT_OFFSET",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NUMBER",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "N_TOKENS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "OP",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PERCENT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PERCENTEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PLUS",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "PLUSEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RARROW",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RBRACE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RIGHTSHIFT",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RIGHTSHIFTEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RPAR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "RSQB",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SEMI",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SLASH",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SLASHEQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "STAR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "STAREQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "STRING",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TILDE",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "VBAR",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "VBAREQUAL",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tok_name",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "tokenize": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "tokenize",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "types": [
+        {
+            "acResult": "BooleanType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BufferType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BuiltinFunctionType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "BuiltinMethodType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ClassMethodDescriptorType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ClassType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ComplexType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DictType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "DictionaryType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "FileType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "FloatType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "FunctionType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "GeneratorType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "InstanceType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "IntType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "LambdaType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ListType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MappingProxyType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MethodDescriptorType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MethodType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "MethodWrapperType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ModuleType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NoneType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "NotImplementedType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "ObjectType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "SliceType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "StringType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "StringTypes",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TupleType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "TypeType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "UnboundMethodType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "WrapperDescriptorType",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__all__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ],
+    "webbrowser": [
+        {
+            "acResult": "DefaultBrowser",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "get",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "open",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "open_new",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        },
+        {
+            "acResult": "open_new_tab",
+            "documentation": "",
+            "type": "",
+            "version": 0
+        }
+    ]
+}

@@ -74,7 +74,8 @@ import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import { configureSkulptForAutoComplete, getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableModulesForImport, prepareSkulptCode, getBuiltins } from "@/autocompletion/acManager";
+import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableModulesForImport, getBuiltins } from "@/autocompletion/acManager";
+import { configureSkulptForAutoComplete, prepareSkulptCode } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
@@ -162,7 +163,7 @@ export default Vue.extend({
                 // There is context, ask Skulpt for a dir() of that context
                 const parser = new Parser();
                 const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
-                const codeToRun = prepareSkulptCode(userCode, context);
+                const codeToRun = prepareSkulptCode(userCode, context, (x : string) => this.$i18n.t(x) as string);
                 configureSkulptForAutoComplete();
                 const myPromise = Sk.misceval.asyncToPromise(function() {
                     return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
@@ -202,17 +203,11 @@ export default Vue.extend({
                 }));
                 
                 // Add any items imported via a "from ... import ..." frame
-                Promise.all(getAllExplicitlyImportedItems()).then((exportedPerModule : AcResultsWithModule[]) => {
-                    if (this.acRequestIndex != ourAcRequest) {
-                        return;
-                    }
-                    for (const exportedOneModule of exportedPerModule) {
-                        for (const mod of Object.keys(exportedOneModule)) { 
-                            this.acResults["Python"].push(...(exportedOneModule[mod] as AcResultType[]));
-                        }
-                    }
-                    this.showSuggestionsAC(token);
-                });
+                const imported = getAllExplicitlyImportedItems();
+                this.acResults["Python"].push(...imported);
+                
+                // We know everything we need, we can immediately show the autocomplete:
+                this.showSuggestionsAC(token);
             }
         },
 
