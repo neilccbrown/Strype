@@ -87,14 +87,10 @@ function replaceInputFunction(code: string): string {
 }
 
 /*
- * @param regenerateAC -> If false we simply reshow AutoCompletion without running Brython code again
- * @param userCode 
- * @param contextAC -> Anything before the dot in the text before the current cursor position
- * @param acSpanId -> The UIID of the ac span where the AC results goto
- * @param documentationSpanId -> The UIID of the ac span where the AC documentation goes to
- * @param typesSpanId -> The UIID of the ac spand where the AC types go to
- * @param isImportModuleAC -> Are we needing AC for an import slot?
- * @param reshowResultsId -> The UIID of the hidden 'button` that would trigger the existing AC to reshow.
+ * Prepare code to be run by Skulpt in order to find out completions for autocomplete.
+ * @param userCode -> The user code to run in Skulpt
+ * @param contextAC -> Anything before the dot in the text before the current cursor position, to call dir() on.
+ * @param translateI18N -> The function to translate our keys to local language (pass i18n.t, if available).
  */
 export function prepareSkulptCode(userCode: string, contextAC: string, translateI18N: (key: string) => string): string {
 

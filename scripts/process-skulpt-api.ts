@@ -17,14 +17,8 @@ import "../public/js/skulpt.min";
 import "../public/js/skulpt-stdlib";
 import { pythonBuiltins } from "../src/autocompletion/pythonBuiltins";
 import {configureSkulptForAutoComplete, prepareSkulptCode} from "../src/autocompletion/ac-skulpt";
+import { AcResultType } from "../src/types/ac-types";
 
-// Repeated from ../src/types/types.ts, to avoid importing that file (which causes other imports and stops us running standalone)
-interface AcResultType {
-    acResult: string;
-    documentation: string;
-    type: string;
-    version: number;
-}
 
 declare const Sk: any;
 declare const window: any;
@@ -54,6 +48,8 @@ Promise.all(promises).then((results) => {
             moduleContents[resultKey] = results[i][resultKey];
         }
     }
+    // Outputting the results to console actually goes to stdout, which the surrounding
+    // task redirects to the API file:
     console.log(JSON.stringify(moduleContents, null, 4));
     // This tells browser-run to exit, without it the browser stays open and the process never terminates.
     // However, if we do it immediately it seems the console is not flushed to stdout, so we put it on a timer:
