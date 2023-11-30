@@ -424,3 +424,69 @@ describe("User-defined items", () => {
         });
     });
 });
+
+describe("Nested modules", () => {
+    // Technically, microbit.accelerometer is a nested object not a nested module, but I think
+    // in terms of the autocomplete tests here, it should function in exactly the same way: 
+    const targetModule = Cypress.env("mode") == "microbit" ? "microbit.accelerometer" : "urllib.request";
+    const targetFunction = Cypress.env("mode") == "microbit" ? "get_x" : "urlopen";
+    
+    it("Offers auto-completion for modules with names a.b when imported as a.b", () => {
+        if (Cypress.env("mode") == "microbit") {
+            // This doesn't work on microbit because we can't dynamically ask
+            // Skulpt for the members of accelerometer.
+            return;
+        }
+        focusEditorAC();
+        // Go up to imports and add an import frame:
+        cy.get("body").type("{uparrow}{uparrow}i");
+        cy.wait(500);
+        // Type whole module as one item:
+        cy.get("body").type(targetModule);
+        cy.get("body").type("{rightarrow}");
+        // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, null, targetFunction);
+            checkNoItems(acIDSel, "abs");
+        });
+    });
+
+    it("Offers auto-completion for modules with names a.b when imported as a.b.* with from", () => {
+        focusEditorAC();
+        // Go up to imports and add a from import frame:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        // Type whole module as one item:
+        cy.get("body").type(targetModule);
+        cy.get("body").type("{rightarrow}*{rightarrow}");
+        // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, IMPORTED, targetFunction);
+            checkExactlyOneItem(acIDSel, null, "abs");
+        });
+    });
+
+    it("Offers auto-completion for modules with names a.b when imported as a.b.func with from", () => {
+        focusEditorAC();
+        // Go up to imports and add a from import frame:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        // Type whole module as one item:
+        cy.get("body").type(targetModule);
+        cy.get("body").type("{rightarrow}" + targetFunction + "{rightarrow}");
+        // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, IMPORTED, targetFunction);
+            checkExactlyOneItem(acIDSel, null, "abs");
+        });
+    });
+});
