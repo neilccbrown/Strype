@@ -211,13 +211,24 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
 export function getAllExplicitlyImportedItems() : AcResultType[] {
     const soFar : AcResultType[] = [];
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
-    for (let i = 0; i < imports.length; i++) {
+    loopImportFrames: for (let i = 0; i < imports.length; i++) {
         const frame = imports[i];
         if (!frame.isDisabled && frame.frameType.type === AllFrameTypesIdentifier.fromimport) {
             // This works around issue #198; * can currently be a single operator or single field:
             if ((frame.labelSlotsDict[1].slotStructures.operators.length == 1 && frame.labelSlotsDict[1].slotStructures.operators[0].code === "*")
                 || (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*")) {
-                const module = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+                let module = "";
+                for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
+                    module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
+                    if (j < frame.labelSlotsDict[0].slotStructures.operators.length) {
+                        // Should be a dot:
+                        if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== ".") {
+                            // Error; ignore this import
+                            continue loopImportFrames;
+                        }
+                        module += frame.labelSlotsDict[0].slotStructures.operators[j].code;
+                    }
+                }
                 
                 // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
                 // the contents of the specific module:
@@ -237,7 +248,7 @@ export function getAllExplicitlyImportedItems() : AcResultType[] {
                 /* FITRUE_isPurePython */
             }
             else {
-                // Just take those items, split by commas:
+                // Just take the items they have said to import (without checking if they exist):
                 for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
                     soFar.push({acResult: (f as BaseSlot).code.trim(), documentation: "", type: "", version: 0});
                 }
