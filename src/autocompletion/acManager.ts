@@ -250,7 +250,7 @@ export function getAllExplicitlyImportedItems() : AcResultType[] {
             else {
                 // Just take the items they have said to import (without checking if they exist):
                 for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                    soFar.push({acResult: (f as BaseSlot).code.trim(), documentation: "", type: "", version: 0});
+                    soFar.push({acResult: (f as BaseSlot).code.trim(), documentation: "", type: "unknown", version: 0});
                 }
             }
         }
@@ -260,14 +260,14 @@ export function getAllExplicitlyImportedItems() : AcResultType[] {
 
 export function getAvailableModulesForImport() : AcResultsWithModule {
     /* IFTRUE_isMicrobit */
-    return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: "", type: "", version: 0}))};
+    return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: "", type: "module", version: 0}))};
     /* FITRUE_isMicrobit */
     /* IFTRUE_isPurePython */
     return {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: pythonBuiltins[k].type, version: 0}))};
     /* FITRUE_isPurePython */
 }
 export function getAvailableItemsForImportFromModule(module: string) : AcResultsWithModule {
-    const star = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": ""};
+    const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": "unknown"};
     /* IFTRUE_isMicrobit */
     const allMicrobitItems: AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
     if (allMicrobitItems) {
@@ -296,6 +296,6 @@ export function getBuiltins() : AcResultType[] {
     /* FITRUE_isPurePython */
     /* IFTRUE_isMicrobit */
     // Must return a clone as caller may later modify the list:
-    return [...microbitPythonAPI[""]];
+    return [...microbitPythonAPI[""] as AcResultType[]];
     /* FITRUE_isMicrobit */
 }

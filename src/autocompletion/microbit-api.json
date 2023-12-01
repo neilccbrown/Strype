@@ -1,45 +1,779 @@
 {
+    "abc": [
+        {
+            "acResult": "ABCMeta",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractproperty",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractstaticmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abstractclassmethod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ABC",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_cache_token",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "antigravity": [],
+    "array": [
+        {
+            "acResult": "array",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        }
+    ],
     "audio": [],
-    "random": [
+    "": [
         {
-            "acResult": "getrandbits",
+            "acResult": "_SupportsTrunc",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "object",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "staticmethod",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "classmethod",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "type",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "super",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "int",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "float",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "complex",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "str",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "bytes",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "bytearray",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "memoryview",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "bool",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "slice",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "tuple",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "function",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "frozenset",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "list",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "dict",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "set",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "enumerate",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "range",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "property",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_NotImplementedType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "abs",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "seed",
+            "acResult": "all",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "randint",
+            "acResult": "any",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "randrange",
+            "acResult": "bin",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "choice",
+            "acResult": "breakpoint",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "random",
+            "acResult": "callable",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "uniform",
+            "acResult": "chr",
             "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_PathLike",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "aiter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "delattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "dir",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "divmod",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "eval",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "exec",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "filter",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "getattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "globals",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "hasattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "hash",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "help",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "hex",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "id",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "input",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "iter",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "isinstance",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "issubclass",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "len",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "locals",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "map",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "max",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "min",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "next",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "oct",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "open",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ord",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "print",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_SupportsPow2",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_SupportsPow3",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reversed",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "repr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "round",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "setattr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sorted",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sum",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "zip",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "__import__",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ellipsis",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "BaseException",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "GeneratorExit",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "KeyboardInterrupt",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SystemExit",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Exception",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "StopIteration",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "OSError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ArithmeticError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AssertionError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AttributeError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EOFError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ImportError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "LookupError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MemoryError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "NameError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "RuntimeError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "StopAsyncIteration",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SyntaxError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TypeError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ValueError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "FloatingPointError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "OverflowError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ZeroDivisionError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "IndexError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "KeyError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "NotImplementedError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "IndentationError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TabError",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "errno": [],
+    "gc": [
+        {
+            "acResult": "enable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "disable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "collect",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_alloc",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_free",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "threshold",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "log": [
+        {
+            "acResult": "set_labels",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "add",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "delete",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "set_mirroring",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "love": [
+        {
+            "acResult": "badaboom",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "machine": [
+        {
+            "acResult": "unique_id",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "freq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "disable_irq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "enable_irq",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "time_pulse_us",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem",
+            "type": "type",
             "documentation": "",
             "version": 0
         }
@@ -196,974 +930,6 @@
             "version": 0
         }
     ],
-    "": [
-        {
-            "acResult": "_SupportsTrunc",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "object",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "staticmethod",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "classmethod",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "type",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "super",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "int",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "float",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "complex",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "str",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "bytes",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "bytearray",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "memoryview",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "bool",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "slice",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "tuple",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "function",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "frozenset",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "list",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "dict",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "set",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "enumerate",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "range",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "property",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_NotImplementedType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abs",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "all",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "any",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "bin",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "breakpoint",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "callable",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "chr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_PathLike",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "aiter",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "delattr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "dir",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "divmod",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "eval",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "exec",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "filter",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "getattr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "globals",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "hasattr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "hash",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "help",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "hex",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "id",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "input",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "iter",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "isinstance",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "issubclass",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "len",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "locals",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "map",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "max",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "min",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "next",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "oct",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "open",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ord",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "print",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_SupportsPow2",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_SupportsPow3",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "reversed",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "repr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "round",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "setattr",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sorted",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sum",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "zip",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "__import__",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ellipsis",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "BaseException",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "GeneratorExit",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "KeyboardInterrupt",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SystemExit",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Exception",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "StopIteration",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "OSError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ArithmeticError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AssertionError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AttributeError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "EOFError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ImportError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "LookupError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MemoryError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "NameError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "RuntimeError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "StopAsyncIteration",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SyntaxError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "TypeError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ValueError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "FloatingPointError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "OverflowError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ZeroDivisionError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "IndexError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "KeyError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "NotImplementedError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "IndentationError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "TabError",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "uarray": [],
-    "utime": [],
-    "speech": [
-        {
-            "acResult": "translate",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pronounce",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "say",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sing",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "this": [
-        {
-            "acResult": "authors",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "typing_extensions": [
-        {
-            "acResult": "_SpecialForm",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "runtime_checkable",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "final",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "IntVar",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_TypedDict",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_type_hints",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_args",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_origin",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SupportsIndex",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ParamSpecArgs",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ParamSpecKwargs",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ParamSpec",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "love": [
-        {
-            "acResult": "badaboom",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.audio": [
-        {
-            "acResult": "play",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "is_playing",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "stop",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SoundEffect",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AudioFrame",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.display": [
-        {
-            "acResult": "get_pixel",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "set_pixel",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "clear",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "show",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "scroll",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "on",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "off",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "is_on",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "read_light_level",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.speaker": [
-        {
-            "acResult": "off",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "on",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.i2c": [
-        {
-            "acResult": "init",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "scan",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "read",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "write",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.compass": [
-        {
-            "acResult": "calibrate",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "is_calibrated",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "clear_calibration",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_x",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_y",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_z",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "heading",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_field_strength",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.uart": [
-        {
-            "acResult": "init",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "any",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "read",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "readinto",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "readline",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "write",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "microbit.spi": [
-        {
-            "acResult": "init",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "read",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "write",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "write_readinto",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
     "microbit.accelerometer": [
         {
             "acResult": "get_x",
@@ -1226,6 +992,170 @@
             "version": 0
         }
     ],
+    "microbit.audio": [
+        {
+            "acResult": "play",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_playing",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "stop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SoundEffect",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AudioFrame",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.compass": [
+        {
+            "acResult": "calibrate",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_calibrated",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear_calibration",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_x",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_y",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_z",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "heading",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_field_strength",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.display": [
+        {
+            "acResult": "get_pixel",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "set_pixel",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "show",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "scroll",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "on",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "off",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_on",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read_light_level",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.i2c": [
+        {
+            "acResult": "init",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "scan",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
     "microbit.microphone": [
         {
             "acResult": "current_event",
@@ -1264,40 +1194,180 @@
             "version": 0
         }
     ],
-    "struct": [
+    "microbit.speaker": [
         {
-            "acResult": "calcsize",
+            "acResult": "off",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "pack",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "pack_into",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "unpack",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "unpack_from",
+            "acResult": "on",
             "type": "function",
             "documentation": "",
             "version": 0
         }
     ],
-    "uerrno": [],
-    "usys": [],
+    "microbit.spi": [
+        {
+            "acResult": "init",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write_readinto",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit.uart": [
+        {
+            "acResult": "init",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "any",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "read",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "readinto",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "readline",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "micropython": [
+        {
+            "acResult": "const",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "opt_level",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem_info",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "qstr_info",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "stack_use",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "heap_lock",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "heap_unlock",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "kbd_intr",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "music": [
+        {
+            "acResult": "set_tempo",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_tempo",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "play",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pitch",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "stop",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "neopixel": [
+        {
+            "acResult": "NeoPixel",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        }
+    ],
     "os": [
         {
             "acResult": "listdir",
@@ -1319,7 +1389,7 @@
         },
         {
             "acResult": "uname_result",
-            "type": "class",
+            "type": "type",
             "documentation": "",
             "version": 0
         },
@@ -1330,604 +1400,15 @@
             "version": 0
         }
     ],
-    "log": [
+    "power": [
         {
-            "acResult": "set_labels",
+            "acResult": "off",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "add",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "delete",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "set_mirroring",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "types": [
-        {
-            "acResult": "_Cell",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "FunctionType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "CodeType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MappingProxyType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SimpleNamespace",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ModuleType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "GeneratorType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AsyncGeneratorType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "CoroutineType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_StaticFunctionType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MethodType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "BuiltinFunctionType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "WrapperDescriptorType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MethodWrapperType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MethodDescriptorType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ClassMethodDescriptorType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "TracebackType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "FrameType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "GetSetDescriptorType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MemberDescriptorType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "new_class",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "resolve_bases",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "prepare_class",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "coroutine",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "GenericAlias",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "NoneType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "UnionType",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "typing": [
-        {
-            "acResult": "TypeVar",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_SpecialForm",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "overload",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "final",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "GenericMeta",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ParamSpecArgs",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ParamSpecKwargs",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ParamSpec",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "no_type_check",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "no_type_check_decorator",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_Alias",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "runtime_checkable",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SupportsInt",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SupportsFloat",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SupportsComplex",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SupportsBytes",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SupportsIndex",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SupportsAbs",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "SupportsRound",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Sized",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Hashable",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Iterable",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Iterator",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Reversible",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Generator",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Awaitable",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Coroutine",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AwaitableGenerator",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AsyncIterable",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AsyncIterator",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AsyncGenerator",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Container",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Collection",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Sequence",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MutableSequence",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AbstractSet",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MutableSet",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MappingView",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ItemsView",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "KeysView",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ValuesView",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ContextManager",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "AsyncContextManager",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Mapping",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "MutableMapping",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "IO",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "BinaryIO",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "TextIO",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ByteString",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Match",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "Pattern",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_type_hints",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_origin",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_args",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "cast",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "NamedTuple",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "_TypedDict",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "NewType",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "type_check_only",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ForwardRef",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "is_typeddict",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "urandom": [],
-    "time": [
-        {
-            "acResult": "sleep",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sleep_ms",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "sleep_us",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ticks_ms",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ticks_us",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ticks_add",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ticks_diff",
+            "acResult": "deep_sleep",
             "type": "function",
             "documentation": "",
             "version": 0
@@ -1995,46 +1476,104 @@
             "version": 0
         }
     ],
-    "machine": [
+    "random": [
         {
-            "acResult": "unique_id",
+            "acResult": "getrandbits",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "reset",
+            "acResult": "seed",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "freq",
+            "acResult": "randint",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "disable_irq",
+            "acResult": "randrange",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "enable_irq",
+            "acResult": "choice",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "time_pulse_us",
+            "acResult": "random",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "mem",
-            "type": "class",
+            "acResult": "uniform",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "speech": [
+        {
+            "acResult": "translate",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pronounce",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "say",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sing",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "struct": [
+        {
+            "acResult": "calcsize",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pack",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pack_into",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "unpack",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "unpack_from",
+            "type": "function",
             "documentation": "",
             "version": 0
         }
@@ -2054,213 +1593,674 @@
         },
         {
             "acResult": "_implementation",
-            "type": "class",
+            "type": "type",
             "documentation": "",
             "version": 0
         }
     ],
-    "abc": [
+    "this": [
         {
-            "acResult": "ABCMeta",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abstractmethod",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abstractproperty",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abstractstaticmethod",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "abstractclassmethod",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "ABC",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "get_cache_token",
+            "acResult": "authors",
             "type": "function",
             "documentation": "",
             "version": 0
         }
     ],
-    "errno": [],
-    "ustruct": [],
-    "gc": [
+    "time": [
         {
-            "acResult": "enable",
+            "acResult": "sleep",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "disable",
+            "acResult": "sleep_ms",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "collect",
+            "acResult": "sleep_us",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "mem_alloc",
+            "acResult": "ticks_ms",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "mem_free",
+            "acResult": "ticks_us",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "threshold",
+            "acResult": "ticks_add",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ticks_diff",
             "type": "function",
             "documentation": "",
             "version": 0
         }
     ],
-    "music": [
+    "types": [
         {
-            "acResult": "set_tempo",
+            "acResult": "_Cell",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "FunctionType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "CodeType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MappingProxyType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SimpleNamespace",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ModuleType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "GeneratorType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AsyncGeneratorType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "CoroutineType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_StaticFunctionType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MethodType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "BuiltinFunctionType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "WrapperDescriptorType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MethodWrapperType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MethodDescriptorType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ClassMethodDescriptorType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TracebackType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "FrameType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "GetSetDescriptorType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MemberDescriptorType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "new_class",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "get_tempo",
+            "acResult": "resolve_bases",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "play",
+            "acResult": "prepare_class",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "pitch",
+            "acResult": "coroutine",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "stop",
+            "acResult": "GenericAlias",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "NoneType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "UnionType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "typing": [
+        {
+            "acResult": "TypeVar",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_SpecialForm",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "overload",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "reset",
+            "acResult": "final",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "GenericMeta",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ParamSpecArgs",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ParamSpecKwargs",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ParamSpec",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "no_type_check",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "no_type_check_decorator",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_Alias",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "runtime_checkable",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsInt",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsFloat",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsComplex",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsBytes",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsIndex",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsAbs",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsRound",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Sized",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Hashable",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Iterable",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Iterator",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Reversible",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Generator",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Awaitable",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Coroutine",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AwaitableGenerator",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AsyncIterable",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AsyncIterator",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AsyncGenerator",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Container",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Collection",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Sequence",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MutableSequence",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AbstractSet",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MutableSet",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MappingView",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ItemsView",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "KeysView",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ValuesView",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ContextManager",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "AsyncContextManager",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Mapping",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MutableMapping",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "IO",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "BinaryIO",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TextIO",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ByteString",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Match",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Pattern",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_type_hints",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_origin",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_args",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "cast",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "NamedTuple",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_TypedDict",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "NewType",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "type_check_only",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ForwardRef",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "is_typeddict",
             "type": "function",
             "documentation": "",
             "version": 0
         }
     ],
-    "micropython": [
+    "typing_extensions": [
         {
-            "acResult": "const",
+            "acResult": "_SpecialForm",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "runtime_checkable",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "opt_level",
+            "acResult": "final",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "mem_info",
+            "acResult": "IntVar",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "qstr_info",
+            "acResult": "_TypedDict",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "get_type_hints",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "stack_use",
+            "acResult": "get_args",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "heap_lock",
+            "acResult": "get_origin",
             "type": "function",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "heap_unlock",
-            "type": "function",
+            "acResult": "SupportsIndex",
+            "type": "type",
             "documentation": "",
             "version": 0
         },
         {
-            "acResult": "kbd_intr",
-            "type": "function",
+            "acResult": "ParamSpecArgs",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ParamSpecKwargs",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ParamSpec",
+            "type": "type",
             "documentation": "",
             "version": 0
         }
     ],
-    "array": [
-        {
-            "acResult": "array",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ],
-    "antigravity": [],
-    "power": [
-        {
-            "acResult": "off",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        },
-        {
-            "acResult": "deep_sleep",
-            "type": "function",
-            "documentation": "",
-            "version": 0
-        }
-    ],
+    "uarray": [],
     "ucollections": [],
-    "neopixel": [
-        {
-            "acResult": "NeoPixel",
-            "type": "class",
-            "documentation": "",
-            "version": 0
-        }
-    ]
+    "uerrno": [],
+    "urandom": [],
+    "ustruct": [],
+    "usys": [],
+    "utime": []
 }

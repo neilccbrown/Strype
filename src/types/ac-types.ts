@@ -3,7 +3,7 @@
 export interface AcResultType {
     acResult: string;
     documentation: string;
-    type: string;
+    type: "function" | "module" | "variable" | "type" | "unknown";
     version: number;
 }
 
