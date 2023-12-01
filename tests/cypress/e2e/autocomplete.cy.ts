@@ -426,6 +426,25 @@ describe("User-defined items", () => {
     });
 });
 
+describe("Versions", () => {
+    if (Cypress.env("mode") == "microbit") {
+        it("Shows versions for relevant modules on function autocomplete", () => {
+            focusEditorAC();
+            // Add a function frame and trigger auto-complete:
+            cy.get("body").type(" ");
+            cy.wait(500);
+            cy.get("body").type("{ctrl} ");
+            withAC((acIDSel) => {
+                cy.get(acIDSel).should("be.visible");
+                checkExactlyOneItem(acIDSel, null, "compass");
+                checkExactlyOneItem(acIDSel, null, "speaker");
+                cy.get(acIDSel + " li:contains('compass') > .api-item-version:contains('v2')").should("not.exist");
+                cy.get(acIDSel + " li:contains('speaker') > .api-item-version:contains('v2')").should("exist");
+            });
+        });
+    }
+});
+
 describe("Nested modules", () => {
     // Technically, microbit.accelerometer is a nested object not a nested module, but I think
     // in terms of the autocomplete tests here, it should function in exactly the same way: 
