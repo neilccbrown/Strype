@@ -208,27 +208,28 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     }
 }
 
-export function getAllExplicitlyImportedItems() : AcResultType[] {
-    const soFar : AcResultType[] = [];
+export function getAllExplicitlyImportedItems() : AcResultsWithModule {
+    const soFar : AcResultsWithModule = {};
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
     loopImportFrames: for (let i = 0; i < imports.length; i++) {
         const frame = imports[i];
         if (!frame.isDisabled && frame.frameType.type === AllFrameTypesIdentifier.fromimport) {
+            let module = "";
+            for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
+                module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
+                if (j < frame.labelSlotsDict[0].slotStructures.operators.length) {
+                    // Should be a dot:
+                    if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== ".") {
+                        // Error; ignore this import
+                        continue loopImportFrames;
+                    }
+                    module += frame.labelSlotsDict[0].slotStructures.operators[j].code;
+                }
+            }
+            
             // This works around issue #198; * can currently be a single operator or single field:
             if ((frame.labelSlotsDict[1].slotStructures.operators.length == 1 && frame.labelSlotsDict[1].slotStructures.operators[0].code === "*")
                 || (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*")) {
-                let module = "";
-                for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
-                    module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
-                    if (j < frame.labelSlotsDict[0].slotStructures.operators.length) {
-                        // Should be a dot:
-                        if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== ".") {
-                            // Error; ignore this import
-                            continue loopImportFrames;
-                        }
-                        module += frame.labelSlotsDict[0].slotStructures.operators[j].code;
-                    }
-                }
                 
                 // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
                 // the contents of the specific module:
@@ -236,21 +237,22 @@ export function getAllExplicitlyImportedItems() : AcResultType[] {
                 /* IFTRUE_isMicrobit */
                 const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
                 if (allMicrobitItems) {
-                    soFar.push(...allMicrobitItems.filter((x) => !x.acResult.startsWith("_")));
+                    soFar[module] = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
                 }
                 /* FITRUE_isMicrobit */
 
                 /* IFTRUE_isPurePython */
                 const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
                 if (allSkulptItems) {
-                    soFar.push(...allSkulptItems.filter((x) => !x.acResult.startsWith("_")));
+                    soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
                 }
                 /* FITRUE_isPurePython */
             }
             else {
+                soFar[module] = [];
                 // Just take the items they have said to import (without checking if they exist):
                 for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                    soFar.push({acResult: (f as BaseSlot).code.trim(), documentation: "", type: "unknown", version: 0});
+                    soFar[module].push({acResult: (f as BaseSlot).code.trim(), documentation: "", type: "unknown", version: 0});
                 }
             }
         }

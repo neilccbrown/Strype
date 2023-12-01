@@ -65,7 +65,6 @@ function checkNoItems(acIDSel : string, text : string) : void {
 const MYVARS = "My variables";
 const MYFUNCS = "My functions";
 const BUILTIN = "Python";
-const IMPORTED = "Python";
 
 
 // Checks all sections in the autocomplete are internally sorted (i.e. that the items
@@ -314,14 +313,14 @@ describe("Modules", () => {
             const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             // Should have time related queries, but not the standard completions:
-            checkExactlyOneItem(acIDSel, null, target);
+            checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
-            checkExactlyOneItem(acIDSel, null, "sleep");
+            checkExactlyOneItem(acIDSel, "time", "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
             // Type first letter of the target:
             cy.get("body").type(target.at(0) || "");
-            checkExactlyOneItem(acIDSel, null, target);
+            checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
@@ -349,14 +348,14 @@ describe("Modules", () => {
             const sleepCall = Cypress.env("mode") == "microbit" ? "sleep_ms" : "sleep";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             // Should have time related queries, but not the standard completions:
-            checkExactlyOneItem(acIDSel, IMPORTED, target);
+            checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "__name__");
-            checkExactlyOneItem(acIDSel, IMPORTED, sleepCall);
-            checkExactlyOneItem(acIDSel, IMPORTED, "abs");
-            checkExactlyOneItem(acIDSel, IMPORTED, "ArithmeticError");
+            checkExactlyOneItem(acIDSel, "time", sleepCall);
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "ArithmeticError");
             cy.get("body").type(target.at(0) || "");
-            checkExactlyOneItem(acIDSel, IMPORTED, target);
+            checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, sleepCall);
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
@@ -469,7 +468,7 @@ describe("Nested modules", () => {
         cy.get("body").type(" " + targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, null, targetFunction);
+            checkExactlyOneItem(acIDSel, targetModule, targetFunction);
             checkNoItems(acIDSel, "abs");
         });
     });
@@ -487,7 +486,7 @@ describe("Nested modules", () => {
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, IMPORTED, targetFunction);
+            checkExactlyOneItem(acIDSel, targetModule, targetFunction);
             checkExactlyOneItem(acIDSel, null, "abs");
         });
     });
@@ -505,7 +504,7 @@ describe("Nested modules", () => {
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, IMPORTED, targetFunction);
+            checkExactlyOneItem(acIDSel, targetModule, targetFunction);
             checkExactlyOneItem(acIDSel, null, "abs");
         });
     });
@@ -522,9 +521,9 @@ describe("Nested modules", () => {
             cy.get("body").type("{ctrl} ");
             withAC((acIDSel) => {
                 cy.get(acIDSel).should("be.visible");
-                checkExactlyOneItem(acIDSel, IMPORTED, "button_a");
-                checkExactlyOneItem(acIDSel, IMPORTED, "compass");
-                checkExactlyOneItem(acIDSel, IMPORTED, "abs");
+                checkExactlyOneItem(acIDSel, "microbit", "button_a");
+                checkExactlyOneItem(acIDSel, "microbit", "compass");
+                checkExactlyOneItem(acIDSel, BUILTIN, "abs");
             });
             // Now let's delete the import and check they both vanish:
             cy.get("body").type("{leftarrow}{uparrow}{uparrow}{backspace}{downarrow}{downarrow}");
@@ -536,7 +535,7 @@ describe("Nested modules", () => {
                 cy.get(acIDSel).should("be.visible");
                 checkNoItems(acIDSel, "button_a");
                 checkNoItems(acIDSel, "compass");
-                checkExactlyOneItem(acIDSel, IMPORTED, "abs");
+                checkExactlyOneItem(acIDSel, BUILTIN, "abs");
             });
         }
     });

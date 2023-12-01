@@ -210,7 +210,7 @@ export default Vue.extend({
                 
                 // Add any items imported via a "from ... import ..." frame
                 const imported = getAllExplicitlyImportedItems();
-                this.acResults["Python"].push(...imported);
+                this.acResults = {...this.acResults, ...imported};
                 
                 // We know everything we need, we can immediately show the autocomplete:
                 this.showSuggestionsAC(token);
