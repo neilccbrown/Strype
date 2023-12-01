@@ -205,6 +205,12 @@
             "version": 0
         },
         {
+            "acResult": "NotImplemented",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
             "acResult": "abs",
             "type": "function",
             "documentation": "",
@@ -493,6 +499,12 @@
             "version": 0
         },
         {
+            "acResult": "Ellipsis",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
             "acResult": "BaseException",
             "type": "type",
             "documentation": "",
@@ -661,7 +673,178 @@
             "version": 0
         }
     ],
-    "errno": [],
+    "collections": [
+        {
+            "acResult": "namedtuple",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_OrderedDictKeysView",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_OrderedDictItemsView",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_OrderedDictValuesView",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "OrderedDict",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "errno": [
+        {
+            "acResult": "errorcode",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EACCES",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EADDRINUSE",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EAGAIN",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EALREADY",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EBADF",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ECONNABORTED",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ECONNREFUSED",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ECONNRESET",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EEXIST",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EHOSTUNREACH",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EINPROGRESS",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EINVAL",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EIO",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EISDIR",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENOBUFS",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENODEV",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENOENT",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENOMEM",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENOTCONN",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EOPNOTSUPP",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EPERM",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ETIMEDOUT",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        }
+    ],
     "gc": [
         {
             "acResult": "enable",
@@ -774,6 +957,24 @@
         {
             "acResult": "mem",
             "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem8",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem16",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "mem32",
+            "type": "variable",
             "documentation": "",
             "version": 0
         }
@@ -926,6 +1127,18 @@
         {
             "acResult": "trunc",
             "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "e",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pi",
+            "type": "variable",
             "documentation": "",
             "version": 0
         }
@@ -1236,6 +1449,18 @@
     ],
     "microbit.uart": [
         {
+            "acResult": "ODD",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "EVEN",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
             "acResult": "init",
             "type": "function",
             "documentation": "",
@@ -1268,6 +1493,290 @@
         {
             "acResult": "write",
             "type": "function",
+            "documentation": "",
+            "version": 0
+        }
+    ],
+    "microbit": [
+        {
+            "acResult": "accelerometer",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "audio",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "compass",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "display",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "i2c",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "microphone",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "speaker",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "spi",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "uart",
+            "type": "unknown",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "run_every",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "panic",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "scale",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "sleep",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "running_time",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "temperature",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "set_volume",
+            "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Button",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "button_a",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "button_b",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MicroBitDigitalPin",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MicroBitAnalogDigitalPin",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "MicroBitTouchPin",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin0",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin1",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin2",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin3",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin4",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin5",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin6",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin7",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin8",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin9",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin10",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin11",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin12",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin13",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin14",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin15",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin16",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin19",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin20",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin_logo",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "pin_speaker",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Image",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SoundEvent",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Sound",
+            "type": "type",
             "documentation": "",
             "version": 0
         }
@@ -1323,6 +1832,132 @@
         }
     ],
     "music": [
+        {
+            "acResult": "DADADADUM",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ENTERTAINER",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "PRELUDE",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ODE",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "NYAN",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "RINGTONE",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "FUNK",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "BLUES",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "BIRTHDAY",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "WEDDING",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "FUNERAL",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "PUNCHLINE",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "PYTHON",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "BADDY",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "CHASE",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "BA_DING",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "WAWAWAWAA",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "JUMP_UP",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "JUMP_DOWN",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "POWER_UP",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "POWER_DOWN",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
         {
             "acResult": "set_tempo",
             "type": "function",
@@ -1415,6 +2050,18 @@
         }
     ],
     "radio": [
+        {
+            "acResult": "RATE_1MBIT",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "RATE_2MBIT",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
         {
             "acResult": "on",
             "type": "function",
@@ -1592,8 +2239,62 @@
             "version": 0
         },
         {
+            "acResult": "argv",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "byteorder",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
             "acResult": "_implementation",
             "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "implementation",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "maxsize",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "modules",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "path",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "platform",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "version",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "version_info",
+            "type": "variable",
             "documentation": "",
             "version": 0
         }
@@ -1834,8 +2535,74 @@
             "version": 0
         },
         {
+            "acResult": "Union",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Optional",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Tuple",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Generic",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Protocol",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Callable",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Type",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "ClassVar",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Final",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
             "acResult": "final",
             "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Literal",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TypedDict",
+            "type": "variable",
             "documentation": "",
             "version": 0
         },
@@ -1864,6 +2631,24 @@
             "version": 0
         },
         {
+            "acResult": "Concatenate",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TypeAlias",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TypeGuard",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
             "acResult": "no_type_check",
             "type": "function",
             "documentation": "",
@@ -1878,6 +2663,12 @@
         {
             "acResult": "_Alias",
             "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Annotated",
+            "type": "variable",
             "documentation": "",
             "version": 0
         },
@@ -2196,8 +2987,26 @@
             "version": 0
         },
         {
+            "acResult": "Protocol",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Final",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
             "acResult": "final",
             "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Literal",
+            "type": "variable",
             "documentation": "",
             "version": 0
         },
@@ -2210,6 +3019,12 @@
         {
             "acResult": "_TypedDict",
             "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TypedDict",
+            "type": "variable",
             "documentation": "",
             "version": 0
         },
@@ -2228,6 +3043,18 @@
         {
             "acResult": "get_origin",
             "type": "function",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "Annotated",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "_AnnotatedAlias",
+            "type": "variable",
             "documentation": "",
             "version": 0
         },
@@ -2254,6 +3081,24 @@
             "type": "type",
             "documentation": "",
             "version": 0
+        },
+        {
+            "acResult": "Concatenate",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TypeAlias",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "TypeGuard",
+            "type": "variable",
+            "documentation": "",
+            "version": 0
         }
     ],
     "uarray": [],
@@ -2262,5 +3107,97 @@
     "urandom": [],
     "ustruct": [],
     "usys": [],
-    "utime": []
+    "utime": [],
+    "_typeshed": [
+        {
+            "acResult": "IdentityFunction",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsLessThan",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsDivMod",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsRDivMod",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsLenAndGetItem",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsItems",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsKeysAndGetItem",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsGetItem",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsItemAccess",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "HasFileno",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsRead",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsReadline",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsNoArgReadline",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "SupportsWrite",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        },
+        {
+            "acResult": "NoneType",
+            "type": "type",
+            "documentation": "",
+            "version": 0
+        }
+    ]
 }

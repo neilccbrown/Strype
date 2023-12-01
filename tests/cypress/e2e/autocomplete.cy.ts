@@ -346,17 +346,18 @@ describe("Modules", () => {
             // Microbit and Python have different items in the time module, so pick accordingly:
             const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
             const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
+            const sleepCall = Cypress.env("mode") == "microbit" ? "sleep_ms" : "sleep";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, IMPORTED, target);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "__name__");
-            checkExactlyOneItem(acIDSel, IMPORTED, "sleep");
+            checkExactlyOneItem(acIDSel, IMPORTED, sleepCall);
             checkExactlyOneItem(acIDSel, IMPORTED, "abs");
             checkExactlyOneItem(acIDSel, IMPORTED, "ArithmeticError");
             cy.get("body").type(target.at(0) || "");
             checkExactlyOneItem(acIDSel, IMPORTED, target);
-            checkNoItems(acIDSel, "sleep");
+            checkNoItems(acIDSel, sleepCall);
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "ArithmeticError");
             checkAutocompleteSorted(acIDSel);
@@ -488,5 +489,36 @@ describe("Nested modules", () => {
             checkExactlyOneItem(acIDSel, IMPORTED, targetFunction);
             checkExactlyOneItem(acIDSel, null, "abs");
         });
+    });
+
+    it("Deals with different microbit items correctly", () => {
+        if (Cypress.env("mode") == "microbit") {
+            // In microbit, compass is a module microbit.compass, but it is also reexported by the microbit
+            // module.  So if you do "from microbit import *" as we do by default, you should see compass.
+            // Whereas button_a is an object in that module, but that should also be visible with the default import:
+            focusEditorAC();
+            // Add a function frame and trigger auto-complete:
+            cy.get("body").type(" ");
+            cy.wait(500);
+            cy.get("body").type("{ctrl} ");
+            withAC((acIDSel) => {
+                cy.get(acIDSel).should("be.visible");
+                checkExactlyOneItem(acIDSel, IMPORTED, "button_a");
+                checkExactlyOneItem(acIDSel, IMPORTED, "compass");
+                checkExactlyOneItem(acIDSel, IMPORTED, "abs");
+            });
+            // Now let's delete the import and check they both vanish:
+            cy.get("body").type("{leftarrow}{uparrow}{uparrow}{backspace}{downarrow}{downarrow}");
+            // Enter frame again:
+            cy.get("body").type(" ");
+            cy.wait(500);
+            cy.get("body").type("{ctrl} ");
+            withAC((acIDSel) => {
+                cy.get(acIDSel).should("be.visible");
+                checkNoItems(acIDSel, "button_a");
+                checkNoItems(acIDSel, "compass");
+                checkExactlyOneItem(acIDSel, IMPORTED, "abs");
+            });
+        }
     });
 });
