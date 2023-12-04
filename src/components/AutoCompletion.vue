@@ -145,8 +145,23 @@ export default Vue.extend({
         sortCategories(categories : string[]) : string[] {
             // Other items (like the names of variables when you do var.) will come out as -1,
             // which works nicely because they should be first:
-            const intendedOrder = ["", this.$i18n.t("autoCompletion.myVariables"), this.$i18n.t("autoCompletion.myFunctions"), "Python"];
-            return categories.sort((a, b) => intendedOrder.indexOf(a) - intendedOrder.indexOf(b));
+            const getOrder = (cat : string) => {
+                // First is my variables and my functions
+                if (cat === this.$i18n.t("autoCompletion.myVariables")) {
+                    return 0;
+                }
+                else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
+                    return 1;
+                }
+                // Python in-built is after any custom imports:
+                else if (cat === "Python") {
+                    return 3;
+                }
+                else {
+                    return 2;
+                }
+            };
+            return categories.sort((a, b) => getOrder(a) - getOrder(b));
         },
       
         updateACForModuleImport(token: string) : void {

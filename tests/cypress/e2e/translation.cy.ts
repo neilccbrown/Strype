@@ -35,8 +35,27 @@ describe("Translation tests", () => {
         cy.get("select#appLangSelect").select("fr");
         cy.get("select#appLangSelect").should("have.value", "fr");
 
-        // check that the sections are present and translated:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
+        // Check that the sections are present and translated:
+        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", "fr") as string, i18n.t("appMessage.funcDefsContainer", "fr") as string, i18n.t("appMessage.mainContainer", "fr") as string]));
+
+        // Close the menu:
+        cy.get("body").type("{esc}");
+        cy.wait(1000);
+        
+        // Check that sections in the autocomplete are translated:
+        // Add a function:
+        cy.get("body").type("{uparrow}ffoo{downarrow}{downarrow}");
+        // And a variable:
+        cy.get("body").type("{downarrow}=bar=3{rightarrow}");
+        // Then trigger autocomplete:
+        cy.get("body").type(" {ctrl} ");
+        // And check the sections:
+        const expAuto = [i18n.t("autoCompletion.myVariables", "fr") as string, i18n.t("autoCompletion.myFunctions", "fr") as string];
+        if (Cypress.env("mode") === "microbit") {
+            expAuto.push("microbit");
+        }
+        expAuto.push("Python", i18n.t("autoCompletion.invalidState", "fr") as string);
+        cy.get("div.module > em").should((hs) => checkTextEquals(hs, expAuto));
     });
     it("Resets translation properly", () => {
         // Should be back to English:
