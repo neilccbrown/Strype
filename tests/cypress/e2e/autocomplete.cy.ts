@@ -116,10 +116,8 @@ describe("Built-ins", () => {
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
             checkAutocompleteSorted(acIDSel);
-            // Check docs are showing (for pure Python, at least):
-            if (Cypress.env("mode") != "microbit") {
-                cy.get(acIDSel).contains("Return the absolute value of the argument.");
-            }
+            // Check docs are showing for built-in function:
+            cy.get(acIDSel).contains("Return the absolute value of the argument.");
         });
     });
 });
@@ -154,6 +152,7 @@ describe("Modules", () => {
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
                 checkAutocompleteSorted(acIDSel);
+                cy.get(acIDSel).contains("Pins, images, sounds, temperature and volume.");
             }
             else {
                 cy.get(acIDSel + " .popupContainer").should("be.visible");
@@ -177,6 +176,7 @@ describe("Modules", () => {
                 checkNoItems(acIDSel, "signal");
                 checkNoItems(acIDSel, "webbrowser");
                 checkAutocompleteSorted(acIDSel);
+                cy.get(acIDSel).contains("Efficient arrays of numeric values.");
             }
         });
     });
@@ -239,6 +239,11 @@ describe("Modules", () => {
 
     it("Offers auto-complete in RHS of from...import frames", () => {
         focusEditorAC();
+
+        const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+        const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
+        const targetDoc = Cypress.env("mode") == "microbit" ? "Offset ticks value by a given number, which can be either positive or negative." : "Convert a time expressed in seconds since the epoch to a struct_time in UTC in which the dst flag is always zero.";
+        
         // Go up to imports, add one, then trigger auto-complete:
         cy.get("body").type("{uparrow}{uparrow}f");
         cy.wait(500);
@@ -247,8 +252,6 @@ describe("Modules", () => {
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
-            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
-            const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, null, "*");
             checkExactlyOneItem(acIDSel, null, target);
@@ -270,8 +273,6 @@ describe("Modules", () => {
         cy.get("body").type("{ctrl} ");
         // We can check same item again; we don't deduplicate based on what is already imported:
         withAC((acIDSel) => {
-            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
-            const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, null, "*");
             checkExactlyOneItem(acIDSel, null, target);
@@ -283,6 +284,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
             checkAutocompleteSorted(acIDSel);
+            cy.get(acIDSel).contains(targetDoc);
         });
         
         
