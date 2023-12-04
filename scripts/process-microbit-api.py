@@ -25,7 +25,17 @@ class TreeWalk(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         self.content[node.name] = {"acResult": node.name, "type": "function", "documentation": "", "version": 0}
     def visit_ClassDef(self, node):
-        self.content[node.name] = {"acResult": node.name, "type": "class", "documentation": "", "version": 0}
+        self.content[node.name] = {"acResult": node.name, "type": "type", "documentation": "", "version": 0}
+    def visit_AnnAssign(self, node):
+        # Picks up items like "button_a : Button" which appear in the type stubs.  The target is the LHS
+        if node.target.id:
+            self.content[node.target.id] = {"acResult": node.target.id, "type": "variable", "documentation": "", "version": 0}
+    def visit_ImportFrom(self, node):
+        # Picks up items like "from . import compass as compass"
+        # not node.module checks for "." in module name:
+        if not node.module:
+            for alias in node.names:
+                self.content[alias.asname] = {"acResult": alias.asname, "type": "module", "documentation": "", "version": 0}
 
 # Either checkout https://github.com/microbit-foundation/micropython-microbit-stubs or do a git pull if directory exists
 if os.path.isdir("temp-scripts/micropython-microbit-stubs"):
@@ -45,7 +55,13 @@ def processdir(dir, parent):
                     parsed = ast.parse(fileHandle.read())
                     walker = TreeWalk()
                     walker.visit(parsed)
-                    found[parent + stem if parent + stem != "builtins" else ""] = list(walker.content.values()) 
+                    found[parent + stem if parent + stem != "builtins" else ""] = list(walker.content.values())
+        elif file == "__init__.pyi" and parent.endswith("."):
+            with open(dir + "/" + file, 'r', encoding="utf-8") as fileHandle:
+                parsed = ast.parse(fileHandle.read())
+                walker = TreeWalk()
+                walker.visit(parsed)
+                found[parent[:-1]] = list(walker.content.values())                     
 
 processdir("temp-scripts/micropython-microbit-stubs/lang/en/typeshed/stdlib", "")
 

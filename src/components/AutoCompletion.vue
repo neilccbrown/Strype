@@ -145,8 +145,23 @@ export default Vue.extend({
         sortCategories(categories : string[]) : string[] {
             // Other items (like the names of variables when you do var.) will come out as -1,
             // which works nicely because they should be first:
-            const intendedOrder = ["", this.$i18n.t("autoCompletion.myVariables"), this.$i18n.t("autoCompletion.myFunctions"), "Python"];
-            return categories.sort((a, b) => intendedOrder.indexOf(a) - intendedOrder.indexOf(b));
+            const getOrder = (cat : string) => {
+                // First is my variables and my functions
+                if (cat === this.$i18n.t("autoCompletion.myVariables")) {
+                    return 0;
+                }
+                else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
+                    return 1;
+                }
+                // Python in-built is after any custom imports:
+                else if (cat === "Python") {
+                    return 3;
+                }
+                else {
+                    return 2;
+                }
+            };
+            return categories.sort((a, b) => getOrder(a) - getOrder(b));
         },
       
         updateACForModuleImport(token: string) : void {
@@ -210,7 +225,7 @@ export default Vue.extend({
                 
                 // Add any items imported via a "from ... import ..." frame
                 const imported = getAllExplicitlyImportedItems();
-                this.acResults["Python"].push(...imported);
+                this.acResults = {...this.acResults, ...imported};
                 
                 // We know everything we need, we can immediately show the autocomplete:
                 this.showSuggestionsAC(token);
@@ -240,24 +255,11 @@ export default Vue.extend({
                 this.resultsToShow[module] = filteredResults
                     .sort((a, b) => a.acResult.localeCompare(b.acResult))
                     .map((e,i) => {
-                        //The context path for the ac results version is matched according to those 3 cases:
-                        //1) there is a acContextPath: we just concatenate the acResult of that element,
-                        //2) there is no acContextPath and the acResult is the content of an imported module: the acContext is that module and we append the acResult of that element
-                        //3) there is no acContextPath and the acResult is an imported module*: the path to check is the acResult itself if that is an imported module 
-                        //4) there is no acContextPath and the acResult is not an imported module: there would not be a version so we just use an empty context
-                        //(*) which means that the module variable is either empty or "imported modules".
-                        let contextPath;
-                        if(microbitModuleDescription.modules.includes(module)){
-                            contextPath = module + "." + e.acResult;
-                        }
-                        else{
-                            contextPath = (module.length ==0 || module === (this.$i18n.t("autoCompletion.importedModules") as string))  ? e.acResult : "";
-                        }
+                        let contextPath = module + "." + e.acResult;
                         return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
                     });
                 lastIndex += filteredResults.length;    
-            }    
-            //console.log("Results: " + JSON.stringify(this.resultsToShow));
+            }
 
             //if there are resutls
             if(this.areResultsToShow()) {
@@ -326,20 +328,12 @@ export default Vue.extend({
             return Object.values(this.resultsToShow)?.length > 0;
         },
 
-        getACEntryVersion(entry: any): number{
-            // The version is stored in 2 ways*: either directly as a numbered value, or as a sub property called "__value__".
-            // So we check the first and if no match, the latter.
+        getACEntryVersion(entry: any): number {
+            if (entry && typeof entry === "number"){
+                return entry as number;
+            }
             // If nothing matches at all, then we return the default value: 1.
-            //(*) at the moment not used for microbit, but may be useful in future
-            if(!entry){
-                return 1;
-            }
-            else if (typeof entry === "number"){
-                return entry;
-            }
-            else {
-                return entry["__version__"];
-            }
+            return 1;
         },        
     }, 
 
