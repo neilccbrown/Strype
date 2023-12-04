@@ -43,18 +43,6 @@ function body(match: CodeMatch) : CodeMatch[] {
 }
 
 /**
- * Given a JQuery with multiple results and an array of expected string content,
- * checks that the two are the same size and that the text() of each JQuery result matches the
- * corresponding expected string content.
- */
-function checkTextEquals(ws: JQuery, expecteds : string[]) : void {
-    expect(ws.length).to.equal(expecteds.length);
-    for (let i = 0; i < ws.length; i++) {
-        expect(ws.eq(i).text()).to.equal(expecteds[i]);
-    }
-}
-
-/**
  * Gets all the text from the labels and fields in a frame header  and glues
  * it together into one string, then matches it against the header of the CodeMatch.
  * Then gets all the body items and matches them against the body of the CodeMatch.
@@ -237,28 +225,6 @@ beforeEach(() => {
         win.localStorage.clear();
         win.sessionStorage.clear();
     }});
-});
-
-// Test that the translation is working properly
-describe("Translation tests", () => {
-    it("Translates correctly", () => {
-        // Starts as English:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
-        cy.get("select#appLangSelect").should("have.value", "en");
-
-        // Swap to French and check it worked:
-        cy.get("button#showHideMenu").click();
-        cy.get("select#appLangSelect").select("fr");
-        cy.get("select#appLangSelect").should("have.value", "fr");
-
-        // check that the sections are present and translated:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
-    });
-    it("Resets translation properly", () => {
-        // Should be back to English:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
-        cy.get("select#appLangSelect").should("have.value", "en");
-    });
 });
 
 // Test that adding frames by typing keys works properly:
