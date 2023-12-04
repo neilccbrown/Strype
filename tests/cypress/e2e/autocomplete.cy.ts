@@ -73,7 +73,7 @@ const BUILTIN = "Python";
 function checkAutocompleteSorted(acIDSel: string) : void {
     // Other items (like the names of variables when you do var.) will come out as -1,
     // which works nicely because they should be first:
-    const intendedOrder : string[] = ["", MYVARS, MYFUNCS, BUILTIN];
+    const intendedOrder : string[] = [MYVARS, MYFUNCS, "microbit", "microbit.accelerometer", "time", BUILTIN];
     cy.get(acIDSel + " div.module:not(.empty-results) > em")
         .then((items) => [...items].map((item) => intendedOrder.indexOf(item.innerText.trim())))
         .should("be.sorted");
