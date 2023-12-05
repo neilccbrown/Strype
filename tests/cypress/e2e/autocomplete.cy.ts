@@ -286,9 +286,26 @@ describe("Modules", () => {
             checkNoItems(acIDSel, "*");
             checkAutocompleteSorted(acIDSel);
             cy.get(acIDSel).contains(targetDoc);
+            // Remove character and comma, to make it import just the one valid item:
+            cy.get("body").type("{backspace}{backspace}");
         });
-        
-        
+        // Now check in the body for docs on the autocomplete:
+        cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, "time", target);
+            checkNoItems(acIDSel, nonAvailable);
+            // Once we type first character, should be the same:
+            cy.get("body").type(target);
+            cy.wait(500);
+            checkExactlyOneItem(acIDSel, "time", target);
+            checkNoItems(acIDSel, nonAvailable);
+            checkNoItems(acIDSel, "*");
+            checkAutocompleteSorted(acIDSel);
+            // Check documentation is showing for it:
+            cy.get(acIDSel).contains(targetDoc);
+        });
     });
     
     it("Offers auto-completion for imported modules", () => {

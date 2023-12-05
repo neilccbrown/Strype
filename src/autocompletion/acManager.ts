@@ -250,9 +250,29 @@ export function getAllExplicitlyImportedItems() : AcResultsWithModule {
             }
             else {
                 soFar[module] = [];
-                // Just take the items they have said to import (without checking if they exist):
+                
+                let allItems : AcResultType[] = [];
+
+                /* IFTRUE_isMicrobit */
+                const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
+                if (allMicrobitItems) {
+                    allItems = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
+                }
+                /* FITRUE_isMicrobit */
+
+                /* IFTRUE_isPurePython */
+                const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+                if (allSkulptItems) {
+                    allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
+                }
+                /* FITRUE_isPurePython */
+                
+                // Find the relevant item from allItems (if it exists):
                 for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                    soFar[module].push({acResult: (f as BaseSlot).code.trim(), documentation: "", type: "unknown", version: 0});
+                    const item = allItems.find((ac) => ac.acResult === (f as BaseSlot).code.trim());
+                    if (item) {
+                        soFar[module].push(item);
+                    }
                 }
             }
         }
