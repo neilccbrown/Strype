@@ -262,7 +262,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithModule {
 
 export function getAvailableModulesForImport() : AcResultsWithModule {
     /* IFTRUE_isMicrobit */
-    return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: _.get(microbitPythonAPI, m + ".__doc__")?.documentation || "", type: "module", version: 0}))};
+    return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: m in microbitPythonAPI ? (microbitPythonAPI[m as keyof typeof microbitPythonAPI].find((ac) => ac.acResult === "__doc__")?.documentation || "") : "", type: "module", version: 0}))};
     /* FITRUE_isMicrobit */
     /* IFTRUE_isPurePython */
     return {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: pythonBuiltins[k].type, version: 0}))};
