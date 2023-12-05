@@ -242,7 +242,7 @@ describe("Modules", () => {
 
         const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
         const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
-        const targetDoc = Cypress.env("mode") == "microbit" ? "Offset ticks value by a given number, which can be either positive or negative." : "Convert a time expressed in seconds since the epoch to a struct_time in UTC in which the dst flag is always zero.";
+        const targetDoc = Cypress.env("mode") == "microbit" ? "Offset ticks value by a given number, which can be either positive or negative." : "Convert seconds since the Epoch to a time tuple expressing UTC";
         
         // Go up to imports, add one, then trigger auto-complete:
         cy.get("body").type("{uparrow}{uparrow}f");
@@ -263,6 +263,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
             checkAutocompleteSorted(acIDSel);
+            cy.get(acIDSel).contains(targetDoc);
             // Type rest of target then enter a comma:
             cy.get("body").type(target.substring(1) + ",");
             cy.wait(500);
