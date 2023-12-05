@@ -43,11 +43,19 @@ for (const key in pythonBuiltins) {
 }
 Promise.all(promises).then((results) => {
     const moduleContents: Record<string, AcResultType[]> = {};
+    moduleContents[""] = [];
     for (let i = 0; i < results.length; i++) {
         for (const resultKey in results[i]) {
             moduleContents[resultKey] = results[i][resultKey];
         }
     }
+    // Also add Skulpt's builtin functions to the default module:
+    for (const func of Object.keys(Sk.builtin)) {
+        if (!func.includes("$")) {
+            moduleContents[""].push({acResult: func, documentation: "", version: 0, type: "function"});
+        }
+    }
+    
     // Outputting the results to console actually goes to stdout, which the surrounding
     // task redirects to the API file:
     console.log(JSON.stringify(moduleContents, null, 4));
