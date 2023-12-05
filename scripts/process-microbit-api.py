@@ -23,9 +23,9 @@ class TreeWalk(ast.NodeVisitor):
         self.content = {}
         
     def visit_FunctionDef(self, node):
-        self.content[node.name] = {"acResult": node.name, "type": "function", "documentation": "", "version": 0}
+        self.content[node.name] = {"acResult": node.name, "type": "function", "documentation": ast.get_docstring(node) or "", "version": 0}
     def visit_ClassDef(self, node):
-        self.content[node.name] = {"acResult": node.name, "type": "type", "documentation": "", "version": 0}
+        self.content[node.name] = {"acResult": node.name, "type": "type", "documentation": ast.get_docstring(node) or "", "version": 0}
     def visit_AnnAssign(self, node):
         # Picks up items like "button_a : Button" which appear in the type stubs.  The target is the LHS
         if node.target.id:
@@ -61,7 +61,8 @@ def processdir(dir, parent):
                 parsed = ast.parse(fileHandle.read())
                 walker = TreeWalk()
                 walker.visit(parsed)
-                found[parent[:-1]] = list(walker.content.values())                     
+                topLevelDoc = ast.get_docstring(parsed)
+                found[parent[:-1]] = list(walker.content.values()) + ([{"acResult": "__doc__", "type": "module", "documentation": topLevelDoc, "version": 0}] if topLevelDoc else [])                  
 
 processdir("temp-scripts/micropython-microbit-stubs/lang/en/typeshed/stdlib", "")
 
