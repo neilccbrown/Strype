@@ -3,43 +3,43 @@
         {
             "acResult": "ABCMeta",
             "type": "type",
-            "documentation": "",
+            "documentation": "Metaclass for defining Abstract Base Classes (ABCs).\n\nUse this metaclass to create an ABC.  An ABC can be subclassed\ndirectly, and then acts as a mix-in class.  You can also register\nunrelated concrete classes (even built-in classes) and unrelated\nABCs as 'virtual subclasses' -- these and their descendants will\nbe considered subclasses of the registering ABC by the built-in\nissubclass() function, but the registering ABC won't show up in\ntheir MRO (Method Resolution Order) nor will method\nimplementations defined by the registering ABC be callable (not\neven via super()).",
             "version": 0
         },
         {
             "acResult": "abstractmethod",
             "type": "function",
-            "documentation": "",
+            "documentation": "A decorator indicating abstract methods.\n\nRequires that the metaclass is ABCMeta or derived from it.  A\nclass that has a metaclass derived from ABCMeta cannot be\ninstantiated unless all of its abstract methods are overridden.\nThe abstract methods can be called using any of the normal\n'super' call mechanisms.  abstractmethod() may be used to declare\nabstract methods for properties and descriptors.\n\nUsage:\n\n    class C(metaclass=ABCMeta):\n        @abstractmethod\n        def my_abstract_method(self, ...):\n            ...",
             "version": 0
         },
         {
             "acResult": "abstractproperty",
             "type": "type",
-            "documentation": "",
+            "documentation": "A decorator indicating abstract properties.\n\nDeprecated, use 'property' with 'abstractmethod' instead:\n\n    class C(ABC):\n        @property\n        @abstractmethod\n        def my_abstract_property(self):\n            ...",
             "version": 0
         },
         {
             "acResult": "abstractstaticmethod",
             "type": "function",
-            "documentation": "",
+            "documentation": "A decorator indicating abstract staticmethods.\n\nDeprecated, use 'staticmethod' with 'abstractmethod' instead:\n\n    class C(ABC):\n        @staticmethod\n        @abstractmethod\n        def my_abstract_staticmethod(...):\n            ...",
             "version": 0
         },
         {
             "acResult": "abstractclassmethod",
             "type": "function",
-            "documentation": "",
+            "documentation": "A decorator indicating abstract classmethods.\n\nDeprecated, use 'classmethod' with 'abstractmethod' instead:\n\n    class C(ABC):\n        @classmethod\n        @abstractmethod\n        def my_abstract_classmethod(cls, ...):\n            ...",
             "version": 0
         },
         {
             "acResult": "ABC",
             "type": "type",
-            "documentation": "",
+            "documentation": "Helper class that provides a standard way to create an ABC using\ninheritance.",
             "version": 0
         },
         {
             "acResult": "get_cache_token",
             "type": "function",
-            "documentation": "",
+            "documentation": "Returns the current ABC cache token.\n\nThe token is an opaque object (supporting equality testing) identifying the\ncurrent version of the ABC cache for virtual subclasses. The token changes\nwith every call to register() on any ABC.",
             "version": 0
         }
     ],
@@ -48,7 +48,7 @@
         {
             "acResult": "array",
             "type": "type",
-            "documentation": "",
+            "documentation": "Return a new array whose items are restricted by typecode, and\ninitialized from the optional initializer value, which must be a list,\nstring or iterable over elements of the appropriate type.\n\nArrays represent basic values and behave very much like lists, except\nthe type of objects stored in them is constrained. The type is specified\nat object creation time by using a type code, which is a single character.\nThe following type codes are defined:\n\n    Type code   C Type             Minimum size in bytes\n    'b'         signed integer     1\n    'B'         unsigned integer   1\n    'u'         Unicode character  2 (see note)\n    'h'         signed integer     2\n    'H'         unsigned integer   2\n    'i'         signed integer     2\n    'I'         unsigned integer   2\n    'l'         signed integer     4\n    'L'         unsigned integer   4\n    'q'         signed integer     8 (see note)\n    'Q'         unsigned integer   8 (see note)\n    'f'         floating point     4\n    'd'         floating point     8\n\nNOTE: The 'u' typecode corresponds to Python's unicode character. On\nnarrow builds this is 2-bytes on wide builds this is 4-bytes.\n\nNOTE: The 'q' and 'Q' type codes are only available if the platform\nC compiler used to build Python supports 'long long', or, on Windows,\n'__int64'.\n\nMethods:\n\nappend() -- append a new item to the end of the array\nbuffer_info() -- return information giving the current memory info\nbyteswap() -- byteswap all the items of the array\ncount() -- return number of occurrences of an object\nextend() -- extend array by appending multiple elements from an iterable\nfromfile() -- read items from a file object\nfromlist() -- append items from the list\nfrombytes() -- append items from the string\nindex() -- return index of first occurrence of an object\ninsert() -- insert a new item into the array at a provided position\npop() -- remove and return item (default last)\nremove() -- remove first occurrence of an object\nreverse() -- reverse the order of the items in the array\ntofile() -- write all items to a file object\ntolist() -- return the array converted to an ordinary list\ntobytes() -- return the array converted to a string\n\nAttributes:\n\ntypecode -- the typecode character used to create the array\nitemsize -- the length in bytes of one array item",
             "version": 0
         }
     ],
@@ -63,91 +63,91 @@
         {
             "acResult": "object",
             "type": "type",
-            "documentation": "",
+            "documentation": "The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.",
             "version": 0
         },
         {
             "acResult": "staticmethod",
             "type": "type",
-            "documentation": "",
+            "documentation": "Convert a function to be a static method.\n\nA static method does not receive an implicit first argument.\nTo declare a static method, use this idiom:\n\n     class C:\n         @staticmethod\n         def f(arg1, arg2, ...):\n             ...\n\nIt can be called either on the class (e.g. C.f()) or on an instance\n(e.g. C().f()). Both the class and the instance are ignored, and\nneither is passed implicitly as the first argument to the method.\n\nStatic methods in Python are similar to those found in Java or C++.\nFor a more advanced concept, see the classmethod builtin.",
             "version": 0
         },
         {
             "acResult": "classmethod",
             "type": "type",
-            "documentation": "",
+            "documentation": "Convert a function to be a class method.\n\nA class method receives the class as implicit first argument,\njust like an instance method receives the instance.\nTo declare a class method, use this idiom:\n\n  class C:\n      @classmethod\n      def f(cls, arg1, arg2, ...):\n          ...\n\nIt can be called either on the class (e.g. C.f()) or on an instance\n(e.g. C().f()).  The instance is ignored except for its class.\nIf a class method is called for a derived class, the derived class\nobject is passed as the implied first argument.\n\nClass methods are different than C++ or Java static methods.\nIf you want those, see the staticmethod builtin.",
             "version": 0
         },
         {
             "acResult": "type",
             "type": "type",
-            "documentation": "",
+            "documentation": "type(object) -> the object's type\ntype(name, bases, dict, **kwds) -> a new type",
             "version": 0
         },
         {
             "acResult": "super",
             "type": "type",
-            "documentation": "",
+            "documentation": "super() -> same as super(__class__, <first argument>)\nsuper(type) -> unbound super object\nsuper(type, obj) -> bound super object; requires isinstance(obj, type)\nsuper(type, type2) -> bound super object; requires issubclass(type2, type)\nTypical use to call a cooperative superclass method:\nclass C(B):\n    def meth(self, arg):\n        super().meth(arg)\nThis works for class methods too:\nclass C(B):\n    @classmethod\n    def cmeth(cls, arg):\n        super().cmeth(arg)",
             "version": 0
         },
         {
             "acResult": "int",
             "type": "type",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "float",
             "type": "type",
-            "documentation": "",
+            "documentation": "Convert a string or number to a floating point number, if possible.",
             "version": 0
         },
         {
             "acResult": "complex",
             "type": "type",
-            "documentation": "",
+            "documentation": "Create a complex number from a real part and an optional imaginary part.\n\nThis is equivalent to (real + imag*1j) where imag defaults to 0.",
             "version": 0
         },
         {
             "acResult": "str",
             "type": "type",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "version": 0
         },
         {
             "acResult": "bytes",
             "type": "type",
-            "documentation": "",
+            "documentation": "Construct an immutable array of bytes from:\n  - an iterable yielding integers in range(256)\n  - a text string encoded using the specified encoding\n  - any object implementing the buffer API.\n  - an integer",
             "version": 0
         },
         {
             "acResult": "bytearray",
             "type": "type",
-            "documentation": "",
+            "documentation": "Construct a mutable bytearray object from:\n  - an iterable yielding integers in range(256)\n  - a text string encoded using the specified encoding\n  - a bytes or a buffer object\n  - any object implementing the buffer API.\n  - an integer",
             "version": 0
         },
         {
             "acResult": "memoryview",
             "type": "type",
-            "documentation": "",
+            "documentation": "Create a new memoryview object which references the given object.",
             "version": 0
         },
         {
             "acResult": "bool",
             "type": "type",
-            "documentation": "",
+            "documentation": "Returns True when the argument x is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.",
             "version": 0
         },
         {
             "acResult": "slice",
             "type": "type",
-            "documentation": "",
+            "documentation": "Create a slice object.  This is used for extended slicing (e.g. a[0:10:2]).",
             "version": 0
         },
         {
             "acResult": "tuple",
             "type": "type",
-            "documentation": "",
+            "documentation": "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.",
             "version": 0
         },
         {
@@ -159,43 +159,43 @@
         {
             "acResult": "frozenset",
             "type": "type",
-            "documentation": "",
+            "documentation": "Build an immutable unordered collection of unique elements.",
             "version": 0
         },
         {
             "acResult": "list",
             "type": "type",
-            "documentation": "",
+            "documentation": "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",
             "version": 0
         },
         {
             "acResult": "dict",
             "type": "type",
-            "documentation": "",
+            "documentation": "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)",
             "version": 0
         },
         {
             "acResult": "set",
             "type": "type",
-            "documentation": "",
+            "documentation": "Build an unordered collection of unique elements.",
             "version": 0
         },
         {
             "acResult": "enumerate",
             "type": "type",
-            "documentation": "",
+            "documentation": "Return an enumerate object.\n\n  iterable\n    an object supporting iteration\n\nThe enumerate object yields pairs containing a count (from start, which\ndefaults to zero) and a value yielded by the iterable argument.\n\nenumerate is useful for obtaining an indexed list:\n    (0, seq[0]), (1, seq[1]), (2, seq[2]), ...",
             "version": 0
         },
         {
             "acResult": "range",
             "type": "type",
-            "documentation": "",
+            "documentation": "Return an object that produces a sequence of integers from start (inclusive)\nto stop (exclusive) by step.  range(i, j) produces i, i+1, i+2, ..., j-1.\nstart defaults to 0, and stop is omitted!  range(4) produces 0, 1, 2, 3.\nThese are exactly the valid indices for a list of 4 elements.\nWhen step is given, it specifies the increment (or decrement).",
             "version": 0
         },
         {
             "acResult": "property",
             "type": "type",
-            "documentation": "",
+            "documentation": "Property attribute.\n\n  fget\n    function to be used for getting an attribute value\n  fset\n    function to be used for setting an attribute value\n  fdel\n    function to be used for del'ing an attribute\n  doc\n    docstring\n\nTypical use is to define a managed attribute x:\n\nclass C(object):\n    def getx(self): return self._x\n    def setx(self, value): self._x = value\n    def delx(self): del self._x\n    x = property(getx, setx, delx, \"I'm the 'x' property.\")\n\nDecorators make defining new properties or modifying existing ones easy:\n\nclass C(object):\n    @property\n    def x(self):\n        \"I am the 'x' property.\"\n        return self._x\n    @x.setter\n    def x(self, value):\n        self._x = value\n    @x.deleter\n    def x(self):\n        del self._x",
             "version": 0
         },
         {
@@ -213,43 +213,43 @@
         {
             "acResult": "abs",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the absolute value of the argument.",
             "version": 0
         },
         {
             "acResult": "all",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return True if bool(x) is True for all values x in the iterable.\n\nIf the iterable is empty, return True.",
             "version": 0
         },
         {
             "acResult": "any",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return True if bool(x) is True for any x in the iterable.\n\nIf the iterable is empty, return False.",
             "version": 0
         },
         {
             "acResult": "bin",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the binary representation of an integer.\n\n>>> bin(2796202)\n'0b1010101010101010101010'",
             "version": 0
         },
         {
             "acResult": "breakpoint",
             "type": "function",
-            "documentation": "",
+            "documentation": "Call sys.breakpointhook(*args, **kws).  sys.breakpointhook() must accept\nwhatever arguments are passed.\n\nBy default, this drops you into the pdb debugger.",
             "version": 0
         },
         {
             "acResult": "callable",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return whether the object is callable (i.e., some kind of function).\n\nNote that classes are callable, as are instances of classes with a\n__call__() method.",
             "version": 0
         },
         {
             "acResult": "chr",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return a Unicode string of one character with ordinal i; 0 <= i <= 0x10ffff.",
             "version": 0
         },
         {
@@ -261,169 +261,169 @@
         {
             "acResult": "aiter",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return an AsyncIterator for an AsyncIterable object.",
             "version": 0
         },
         {
             "acResult": "delattr",
             "type": "function",
-            "documentation": "",
+            "documentation": "Deletes the named attribute from the given object.\n\ndelattr(x, 'y') is equivalent to ``del x.y''",
             "version": 0
         },
         {
             "acResult": "dir",
             "type": "function",
-            "documentation": "",
+            "documentation": "If called without an argument, return the names in the current scope.\nElse, return an alphabetized list of names comprising (some of) the attributes\nof the given object, and of attributes reachable from it.\nIf the object supplies a method named __dir__, it will be used; otherwise\nthe default dir() logic is used and returns:\n  for a module object: the module's attributes.\n  for a class object:  its attributes, and recursively the attributes\n    of its bases.\n  for any other object: its attributes, its class's attributes, and\n    recursively the attributes of its class's base classes.",
             "version": 0
         },
         {
             "acResult": "divmod",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the tuple (x//y, x%y).  Invariant: div*y + mod == x.",
             "version": 0
         },
         {
             "acResult": "eval",
             "type": "function",
-            "documentation": "",
+            "documentation": "Evaluate the given source in the context of globals and locals.\n\nThe source may be a string representing a Python expression\nor a code object as returned by compile().\nThe globals must be a dictionary and locals can be any mapping,\ndefaulting to the current globals and locals.\nIf only globals is given, locals defaults to it.",
             "version": 0
         },
         {
             "acResult": "exec",
             "type": "function",
-            "documentation": "",
+            "documentation": "Execute the given source in the context of globals and locals.\n\nThe source may be a string representing one or more Python statements\nor a code object as returned by compile().\nThe globals must be a dictionary and locals can be any mapping,\ndefaulting to the current globals and locals.\nIf only globals is given, locals defaults to it.",
             "version": 0
         },
         {
             "acResult": "filter",
             "type": "type",
-            "documentation": "",
+            "documentation": "Return an iterator yielding those items of iterable for which function(item)\nis true. If function is None, return the items that are true.",
             "version": 0
         },
         {
             "acResult": "getattr",
             "type": "function",
-            "documentation": "",
+            "documentation": "Get a named attribute from an object; getattr(x, 'y') is equivalent to x.y.\nWhen a default argument is given, it is returned when the attribute doesn't\nexist; without it, an exception is raised in that case.",
             "version": 0
         },
         {
             "acResult": "globals",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the dictionary containing the current scope's global variables.\n\nNOTE: Updates to this dictionary *will* affect name lookups in the current\nglobal scope and vice-versa.",
             "version": 0
         },
         {
             "acResult": "hasattr",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return whether the object has an attribute with the given name.\n\nThis is done by calling getattr(obj, name) and catching AttributeError.",
             "version": 0
         },
         {
             "acResult": "hash",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the hash value for the given object.\n\nTwo objects that compare equal must also have the same hash value, but the\nreverse is not necessarily true.",
             "version": 0
         },
         {
             "acResult": "help",
             "type": "function",
-            "documentation": "",
+            "documentation": "Define the builtin 'help'.\n\nThis is a wrapper around pydoc.help that provides a helpful message\nwhen 'help' is typed at the Python interactive prompt.\n\nCalling help() at the Python prompt starts an interactive help session.\nCalling help(thing) prints help for the python object 'thing'.",
             "version": 0
         },
         {
             "acResult": "hex",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the hexadecimal representation of an integer.\n\n>>> hex(12648430)\n'0xc0ffee'",
             "version": 0
         },
         {
             "acResult": "id",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the identity of an object.\n\nThis is guaranteed to be unique among simultaneously existing objects.\n(CPython uses the object's memory address.)",
             "version": 0
         },
         {
             "acResult": "input",
             "type": "function",
-            "documentation": "",
+            "documentation": "Read a string from standard input.  The trailing newline is stripped.\n\nThe prompt string, if given, is printed to standard output without a\ntrailing newline before reading input.\n\nIf the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.\nOn *nix systems, readline is used if available.",
             "version": 0
         },
         {
             "acResult": "iter",
             "type": "function",
-            "documentation": "",
+            "documentation": "Get an iterator from an object.  In the first form, the argument must\nsupply its own iterator, or be a sequence.\nIn the second form, the callable is called until it returns the sentinel.",
             "version": 0
         },
         {
             "acResult": "isinstance",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return whether an object is an instance of a class or of a subclass thereof.\n\nA tuple, as in ``isinstance(x, (A, B, ...))``, may be given as the target to\ncheck against. This is equivalent to ``isinstance(x, A) or isinstance(x, B)\nor ...`` etc.",
             "version": 0
         },
         {
             "acResult": "issubclass",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return whether 'cls' is derived from another class or is the same class.\n\nA tuple, as in ``issubclass(x, (A, B, ...))``, may be given as the target to\ncheck against. This is equivalent to ``issubclass(x, A) or issubclass(x, B)\nor ...``.",
             "version": 0
         },
         {
             "acResult": "len",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the number of items in a container.",
             "version": 0
         },
         {
             "acResult": "locals",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return a dictionary containing the current scope's local variables.\n\nNOTE: Whether or not updates to this dictionary will affect name lookups in\nthe local scope and vice-versa is *implementation dependent* and not\ncovered by any backwards compatibility guarantees.",
             "version": 0
         },
         {
             "acResult": "map",
             "type": "type",
-            "documentation": "",
+            "documentation": "Make an iterator that computes the function using arguments from\neach of the iterables.  Stops when the shortest iterable is exhausted.",
             "version": 0
         },
         {
             "acResult": "max",
             "type": "function",
-            "documentation": "",
+            "documentation": "With a single iterable argument, return its biggest item. The\ndefault keyword-only argument specifies an object to return if\nthe provided iterable is empty.\nWith two or more arguments, return the largest argument.",
             "version": 0
         },
         {
             "acResult": "min",
             "type": "function",
-            "documentation": "",
+            "documentation": "With a single iterable argument, return its smallest item. The\ndefault keyword-only argument specifies an object to return if\nthe provided iterable is empty.\nWith two or more arguments, return the smallest argument.",
             "version": 0
         },
         {
             "acResult": "next",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the next item from the iterator. If default is given and the iterator\nis exhausted, it is returned instead of raising StopIteration.",
             "version": 0
         },
         {
             "acResult": "oct",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the octal representation of an integer.\n\n>>> oct(342391)\n'0o1234567'",
             "version": 0
         },
         {
             "acResult": "open",
             "type": "function",
-            "documentation": "",
+            "documentation": "Open file and return a stream.  Raise OSError upon failure.\n\nfile is either a text or byte string giving the name (and the path\nif the file isn't in the current working directory) of the file to\nbe opened or an integer file descriptor of the file to be\nwrapped. (If a file descriptor is given, it is closed when the\nreturned I/O object is closed, unless closefd is set to False.)\n\nmode is an optional string that specifies the mode in which the file\nis opened. It defaults to 'r' which means open for reading in text\nmode.  Other common values are 'w' for writing (truncating the file if\nit already exists), 'x' for creating and writing to a new file, and\n'a' for appending (which on some Unix systems, means that all writes\nappend to the end of the file regardless of the current seek position).\nIn text mode, if encoding is not specified the encoding used is platform\ndependent: locale.getpreferredencoding(False) is called to get the\ncurrent locale encoding. (For reading and writing raw bytes use binary\nmode and leave encoding unspecified.) The available modes are:\n\n========= ===============================================================\nCharacter Meaning\n--------- ---------------------------------------------------------------\n'r'       open for reading (default)\n'w'       open for writing, truncating the file first\n'x'       create a new file and open it for writing\n'a'       open for writing, appending to the end of the file if it exists\n'b'       binary mode\n't'       text mode (default)\n'+'       open a disk file for updating (reading and writing)\n'U'       universal newline mode (deprecated)\n========= ===============================================================\n\nThe default mode is 'rt' (open for reading text). For binary random\naccess, the mode 'w+b' opens and truncates the file to 0 bytes, while\n'r+b' opens the file without truncation. The 'x' mode implies 'w' and\nraises an `FileExistsError` if the file already exists.\n\nPython distinguishes between files opened in binary and text modes,\neven when the underlying operating system doesn't. Files opened in\nbinary mode (appending 'b' to the mode argument) return contents as\nbytes objects without any decoding. In text mode (the default, or when\n't' is appended to the mode argument), the contents of the file are\nreturned as strings, the bytes having been first decoded using a\nplatform-dependent encoding or using the specified encoding if given.\n\n'U' mode is deprecated and will raise an exception in future versions\nof Python.  It has no effect in Python 3.  Use newline to control\nuniversal newlines mode.\n\nbuffering is an optional integer used to set the buffering policy.\nPass 0 to switch buffering off (only allowed in binary mode), 1 to select\nline buffering (only usable in text mode), and an integer > 1 to indicate\nthe size of a fixed-size chunk buffer.  When no buffering argument is\ngiven, the default buffering policy works as follows:\n\n* Binary files are buffered in fixed-size chunks; the size of the buffer\n  is chosen using a heuristic trying to determine the underlying device's\n  \"block size\" and falling back on `io.DEFAULT_BUFFER_SIZE`.\n  On many systems, the buffer will typically be 4096 or 8192 bytes long.\n\n* \"Interactive\" text files (files for which isatty() returns True)\n  use line buffering.  Other text files use the policy described above\n  for binary files.\n\nencoding is the name of the encoding used to decode or encode the\nfile. This should only be used in text mode. The default encoding is\nplatform dependent, but any encoding supported by Python can be\npassed.  See the codecs module for the list of supported encodings.\n\nerrors is an optional string that specifies how encoding errors are to\nbe handled---this argument should not be used in binary mode. Pass\n'strict' to raise a ValueError exception if there is an encoding error\n(the default of None has the same effect), or pass 'ignore' to ignore\nerrors. (Note that ignoring encoding errors can lead to data loss.)\nSee the documentation for codecs.register or run 'help(codecs.Codec)'\nfor a list of the permitted encoding error strings.\n\nnewline controls how universal newlines works (it only applies to text\nmode). It can be None, '', '\\n', '\\r', and '\\r\\n'.  It works as\nfollows:\n\n* On input, if newline is None, universal newlines mode is\n  enabled. Lines in the input can end in '\\n', '\\r', or '\\r\\n', and\n  these are translated into '\\n' before being returned to the\n  caller. If it is '', universal newline mode is enabled, but line\n  endings are returned to the caller untranslated. If it has any of\n  the other legal values, input lines are only terminated by the given\n  string, and the line ending is returned to the caller untranslated.\n\n* On output, if newline is None, any '\\n' characters written are\n  translated to the system default line separator, os.linesep. If\n  newline is '' or '\\n', no translation takes place. If newline is any\n  of the other legal values, any '\\n' characters written are translated\n  to the given string.\n\nIf closefd is False, the underlying file descriptor will be kept open\nwhen the file is closed. This does not work when a file name is given\nand must be True in that case.\n\nA custom opener can be used by passing a callable as *opener*. The\nunderlying file descriptor for the file object is then obtained by\ncalling *opener* with (*file*, *flags*). *opener* must return an open\nfile descriptor (passing os.open as *opener* results in functionality\nsimilar to passing None).\n\nopen() returns a file object whose type depends on the mode, and\nthrough which the standard file operations such as reading and writing\nare performed. When open() is used to open a file in a text mode ('w',\n'r', 'wt', 'rt', etc.), it returns a TextIOWrapper. When used to open\na file in a binary mode, the returned class varies: in read binary\nmode, it returns a BufferedReader; in write binary and append binary\nmodes, it returns a BufferedWriter, and in read/write mode, it returns\na BufferedRandom.\n\nIt is also possible to use a string or bytearray as a file for both\nreading and writing. For strings StringIO can be used like a file\nopened in a text mode, and for bytes a BytesIO can be used like a file\nopened in a binary mode.",
             "version": 0
         },
         {
             "acResult": "ord",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the Unicode code point for a one-character string.",
             "version": 0
         },
         {
             "acResult": "print",
             "type": "function",
-            "documentation": "",
+            "documentation": "Prints the values to a stream, or to sys.stdout by default.\nOptional keyword arguments:\nfile:  a file-like object (stream); defaults to the current sys.stdout.\nsep:   string inserted between values, default a space.\nend:   string appended after the last value, default a newline.\nflush: whether to forcibly flush the stream.",
             "version": 0
         },
         {
@@ -441,49 +441,49 @@
         {
             "acResult": "pow",
             "type": "function",
-            "documentation": "",
+            "documentation": "Equivalent to base**exp with 2 arguments or base**exp % mod with 3 arguments\n\nSome types, such as ints, are able to use a more efficient algorithm when\ninvoked using the three argument form.",
             "version": 0
         },
         {
             "acResult": "reversed",
             "type": "type",
-            "documentation": "",
+            "documentation": "Return a reverse iterator over the values of the given sequence.",
             "version": 0
         },
         {
             "acResult": "repr",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the canonical string representation of the object.\n\nFor many object types, including most builtins, eval(repr(obj)) == obj.",
             "version": 0
         },
         {
             "acResult": "round",
             "type": "function",
-            "documentation": "",
+            "documentation": "Round a number to a given precision in decimal digits.\n\nThe return value is an integer if ndigits is omitted or None.  Otherwise\nthe return value has the same type as the number.  ndigits may be negative.",
             "version": 0
         },
         {
             "acResult": "setattr",
             "type": "function",
-            "documentation": "",
+            "documentation": "Sets the named attribute on the given object to the specified value.\n\nsetattr(x, 'y', v) is equivalent to ``x.y = v''",
             "version": 0
         },
         {
             "acResult": "sorted",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return a new list containing all items from the iterable in ascending order.\n\nA custom key function can be supplied to customize the sort order, and the\nreverse flag can be set to request the result in descending order.",
             "version": 0
         },
         {
             "acResult": "sum",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return the sum of a 'start' value (default: 0) plus an iterable of numbers\n\nWhen the iterable is empty, return the start value.\nThis function is intended specifically for use with numeric values and may\nreject non-numeric types.",
             "version": 0
         },
         {
             "acResult": "zip",
             "type": "type",
-            "documentation": "",
+            "documentation": ">>> list(zip('abcdefg', range(3), range(4)))\n   [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]\n\nThe zip object yields n-length tuples, where n is the number of iterables\npassed as positional arguments to zip().  The i-th element in every tuple\ncomes from the i-th iterable argument to zip().  This continues until the\nshortest argument is exhausted.\n\nIf strict is true and one of the arguments is exhausted before the others,\nraise a ValueError.",
             "version": 0
         },
         {
@@ -507,169 +507,169 @@
         {
             "acResult": "BaseException",
             "type": "type",
-            "documentation": "",
+            "documentation": "Common base class for all exceptions",
             "version": 0
         },
         {
             "acResult": "GeneratorExit",
             "type": "type",
-            "documentation": "",
+            "documentation": "Request that a generator exit.",
             "version": 0
         },
         {
             "acResult": "KeyboardInterrupt",
             "type": "type",
-            "documentation": "",
+            "documentation": "Program interrupted by user.",
             "version": 0
         },
         {
             "acResult": "SystemExit",
             "type": "type",
-            "documentation": "",
+            "documentation": "Request to exit from the interpreter.",
             "version": 0
         },
         {
             "acResult": "Exception",
             "type": "type",
-            "documentation": "",
+            "documentation": "Common base class for all non-exit exceptions.",
             "version": 0
         },
         {
             "acResult": "StopIteration",
             "type": "type",
-            "documentation": "",
+            "documentation": "Signal the end from iterator.__next__().",
             "version": 0
         },
         {
             "acResult": "OSError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Base class for I/O related errors.",
             "version": 0
         },
         {
             "acResult": "ArithmeticError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Base class for arithmetic errors.",
             "version": 0
         },
         {
             "acResult": "AssertionError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Assertion failed.",
             "version": 0
         },
         {
             "acResult": "AttributeError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Attribute not found.",
             "version": 0
         },
         {
             "acResult": "EOFError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Read beyond end of file.",
             "version": 0
         },
         {
             "acResult": "ImportError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Import can't find module, or can't find name in module.",
             "version": 0
         },
         {
             "acResult": "LookupError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Base class for lookup errors.",
             "version": 0
         },
         {
             "acResult": "MemoryError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Out of memory.",
             "version": 0
         },
         {
             "acResult": "NameError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Name not found globally.",
             "version": 0
         },
         {
             "acResult": "RuntimeError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Unspecified run-time error.",
             "version": 0
         },
         {
             "acResult": "StopAsyncIteration",
             "type": "type",
-            "documentation": "",
+            "documentation": "Signal the end from iterator.__anext__().",
             "version": 0
         },
         {
             "acResult": "SyntaxError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Invalid syntax.",
             "version": 0
         },
         {
             "acResult": "TypeError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Inappropriate argument type.",
             "version": 0
         },
         {
             "acResult": "ValueError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Inappropriate argument value (of correct type).",
             "version": 0
         },
         {
             "acResult": "FloatingPointError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Floating point operation failed.",
             "version": 0
         },
         {
             "acResult": "OverflowError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Result too large to be represented.",
             "version": 0
         },
         {
             "acResult": "ZeroDivisionError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Second argument to a division or modulo operation was zero.",
             "version": 0
         },
         {
             "acResult": "IndexError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Sequence index out of range.",
             "version": 0
         },
         {
             "acResult": "KeyError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Mapping key not found.",
             "version": 0
         },
         {
             "acResult": "NotImplementedError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Method or function hasn't been implemented yet.",
             "version": 0
         },
         {
             "acResult": "IndentationError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Improper indentation.",
             "version": 0
         },
         {
             "acResult": "TabError",
             "type": "type",
-            "documentation": "",
+            "documentation": "Improper mixture of spaces and tabs.",
             "version": 0
         }
     ],
@@ -677,7 +677,7 @@
         {
             "acResult": "namedtuple",
             "type": "function",
-            "documentation": "",
+            "documentation": "Returns a new subclass of tuple with named fields.\n\n>>> Point = namedtuple('Point', ['x', 'y'])\n>>> Point.__doc__                   # docstring for the new class\n'Point(x, y)'\n>>> p = Point(11, y=22)             # instantiate with positional args or keywords\n>>> p[0] + p[1]                     # indexable like a plain tuple\n33\n>>> x, y = p                        # unpack like a regular tuple\n>>> x, y\n(11, 22)\n>>> p.x + p.y                       # fields also accessible by name\n33\n>>> d = p._asdict()                 # convert to a dictionary\n>>> d['x']\n11\n>>> Point(**d)                      # convert from a dictionary\nPoint(x=11, y=22)\n>>> p._replace(x=100)               # _replace() is like str.replace() but targets named fields\nPoint(x=100, y=22)",
             "version": 0
         },
         {
@@ -701,7 +701,7 @@
         {
             "acResult": "OrderedDict",
             "type": "type",
-            "documentation": "",
+            "documentation": "Dictionary that remembers insertion order",
             "version": 0
         }
     ],
@@ -709,139 +709,139 @@
         {
             "acResult": "errorcode",
             "type": "variable",
-            "documentation": "",
+            "documentation": "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)",
             "version": 0
         },
         {
             "acResult": "EACCES",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EADDRINUSE",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EAGAIN",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EALREADY",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EBADF",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ECONNABORTED",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ECONNREFUSED",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ECONNRESET",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EEXIST",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EHOSTUNREACH",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EINPROGRESS",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EINVAL",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EIO",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EISDIR",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ENOBUFS",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ENODEV",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ENOENT",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ENOMEM",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ENOTCONN",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EOPNOTSUPP",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "EPERM",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "ETIMEDOUT",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         }
     ],
@@ -1133,13 +1133,13 @@
         {
             "acResult": "e",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a string or number to a floating point number, if possible.",
             "version": 0
         },
         {
             "acResult": "pi",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a string or number to a floating point number, if possible.",
             "version": 0
         }
     ],
@@ -2247,13 +2247,13 @@
         {
             "acResult": "argv",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",
             "version": 0
         },
         {
             "acResult": "byteorder",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "version": 0
         },
         {
@@ -2265,43 +2265,43 @@
         {
             "acResult": "implementation",
             "type": "variable",
-            "documentation": "",
+            "documentation": "A simple attribute-based namespace.\n\nSimpleNamespace(**kwargs)",
             "version": 0
         },
         {
             "acResult": "maxsize",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Convert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
             "version": 0
         },
         {
             "acResult": "modules",
             "type": "variable",
-            "documentation": "",
+            "documentation": "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)",
             "version": 0
         },
         {
             "acResult": "path",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",
             "version": 0
         },
         {
             "acResult": "platform",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "version": 0
         },
         {
             "acResult": "version",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "version": 0
         },
         {
             "acResult": "version_info",
             "type": "variable",
-            "documentation": "",
+            "documentation": "sys.version_info\n\nVersion information as a named tuple.",
             "version": 0
         }
     ],
@@ -2367,7 +2367,7 @@
         {
             "acResult": "FunctionType",
             "type": "type",
-            "documentation": "",
+            "documentation": "Create a function object.\n\ncode\n  a code object\nglobals\n  the globals dictionary\nname\n  a string that overrides the name from the code object\nargdefs\n  a tuple that specifies the default argument values\nclosure\n  a tuple that supplies the bindings for free variables",
             "version": 0
         },
         {
@@ -2385,13 +2385,13 @@
         {
             "acResult": "SimpleNamespace",
             "type": "type",
-            "documentation": "",
+            "documentation": "A simple attribute-based namespace.\n\nSimpleNamespace(**kwargs)",
             "version": 0
         },
         {
             "acResult": "ModuleType",
             "type": "type",
-            "documentation": "",
+            "documentation": "Create a module object.\n\nThe name must be a string; the optional doc argument can have any type.",
             "version": 0
         },
         {
@@ -2421,7 +2421,7 @@
         {
             "acResult": "MethodType",
             "type": "type",
-            "documentation": "",
+            "documentation": "Create a bound instance method object.",
             "version": 0
         },
         {
@@ -2457,7 +2457,7 @@
         {
             "acResult": "TracebackType",
             "type": "type",
-            "documentation": "",
+            "documentation": "Create a new traceback object.",
             "version": 0
         },
         {
@@ -2481,31 +2481,31 @@
         {
             "acResult": "new_class",
             "type": "function",
-            "documentation": "",
+            "documentation": "Create a class object dynamically using the appropriate metaclass.",
             "version": 0
         },
         {
             "acResult": "resolve_bases",
             "type": "function",
-            "documentation": "",
+            "documentation": "Resolve MRO entries dynamically as specified by PEP 560.",
             "version": 0
         },
         {
             "acResult": "prepare_class",
             "type": "function",
-            "documentation": "",
+            "documentation": "Call the __prepare__ method of the appropriate metaclass.\n\nReturns (metaclass, namespace, kwds) as a 3-tuple\n\n*metaclass* is the appropriate metaclass\n*namespace* is the prepared class namespace\n*kwds* is an updated copy of the passed in kwds argument with any\n'metaclass' entry removed. If no kwds argument is passed in, this will\nbe an empty dict.",
             "version": 0
         },
         {
             "acResult": "coroutine",
             "type": "function",
-            "documentation": "",
+            "documentation": "Convert regular generator function to a coroutine.",
             "version": 0
         },
         {
             "acResult": "GenericAlias",
             "type": "type",
-            "documentation": "",
+            "documentation": "Represent a PEP 585 generic type\n\nE.g. for t = list[int], t.__origin__ is list and t.__args__ is (int,).",
             "version": 0
         },
         {
@@ -2517,7 +2517,7 @@
         {
             "acResult": "UnionType",
             "type": "type",
-            "documentation": "",
+            "documentation": "Represent a PEP 604 union type\n\nE.g. for int | str",
             "version": 0
         }
     ],
@@ -2525,7 +2525,7 @@
         {
             "acResult": "TypeVar",
             "type": "type",
-            "documentation": "",
+            "documentation": "Type variable.\n\nUsage::\n\n  T = TypeVar('T')  # Can be anything\n  A = TypeVar('A', str, bytes)  # Must be str or bytes\n\nType variables exist primarily for the benefit of static type\ncheckers.  They serve as the parameters for generic types as well\nas for generic function definitions.  See class Generic for more\ninformation on generic types.  Generic functions work as follows:\n\n  def repeat(x: T, n: int) -> List[T]:\n      '''Return a list containing n references to x.'''\n      return [x]*n\n\n  def longest(x: A, y: A) -> A:\n      '''Return the longest of two strings.'''\n      return x if len(x) >= len(y) else y\n\nThe latter example's signature is essentially the overloading\nof (str, str) -> str and (bytes, bytes) -> bytes.  Also note\nthat if the arguments are instances of some subclass of str,\nthe return type is still plain str.\n\nAt runtime, isinstance(x, T) and issubclass(C, T) will raise TypeError.\n\nType variables defined with covariant=True or contravariant=True\ncan be used to declare covariant or contravariant generic types.\nSee PEP 484 for more details. By default generic types are invariant\nin all type variables.\n\nType variables can be introspected. e.g.:\n\n  T.__name__ == 'T'\n  T.__constraints__ == ()\n  T.__covariant__ == False\n  T.__contravariant__ = False\n  A.__constraints__ == (str, bytes)\n\nNote that only type variables defined in global scope can be pickled.",
             "version": 0
         },
         {
@@ -2537,79 +2537,79 @@
         {
             "acResult": "overload",
             "type": "function",
-            "documentation": "",
+            "documentation": "Decorator for overloaded functions/methods.\n\nIn a stub file, place two or more stub definitions for the same\nfunction in a row, each decorated with @overload.  For example:\n\n  @overload\n  def utf8(value: None) -> None: ...\n  @overload\n  def utf8(value: bytes) -> bytes: ...\n  @overload\n  def utf8(value: str) -> bytes: ...\n\nIn a non-stub file (i.e. a regular .py file), do the same but\nfollow it with an implementation.  The implementation should *not*\nbe decorated with @overload.  For example:\n\n  @overload\n  def utf8(value: None) -> None: ...\n  @overload\n  def utf8(value: bytes) -> bytes: ...\n  @overload\n  def utf8(value: str) -> bytes: ...\n  def utf8(value):\n      # implementation goes here",
             "version": 0
         },
         {
             "acResult": "Union",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Union type; Union[X, Y] means either X or Y.\n\nTo define a union, use e.g. Union[int, str].  Details:\n- The arguments must be types and there must be at least one.\n- None as an argument is a special case and is replaced by\n  type(None).\n- Unions of unions are flattened, e.g.::\n\n    Union[Union[int, str], float] == Union[int, str, float]\n\n- Unions of a single argument vanish, e.g.::\n\n    Union[int] == int  # The constructor actually returns int\n\n- Redundant arguments are skipped, e.g.::\n\n    Union[int, str, int] == Union[int, str]\n\n- When comparing unions, the argument order is ignored, e.g.::\n\n    Union[int, str] == Union[str, int]\n\n- You cannot subclass or instantiate a union.\n- You can use Optional[X] as a shorthand for Union[X, None].",
             "version": 0
         },
         {
             "acResult": "Optional",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Optional type.\n\nOptional[X] is equivalent to Union[X, None].",
             "version": 0
         },
         {
             "acResult": "Tuple",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Tuple type; Tuple[X, Y] is the cross-product type of X and Y.\n\nExample: Tuple[T1, T2] is a tuple of two elements corresponding\nto type variables T1 and T2.  Tuple[int, float, str] is a tuple\nof an int, a float and a string.\n\nTo specify a variable-length tuple of homogeneous type, use Tuple[T, ...].",
             "version": 0
         },
         {
             "acResult": "Generic",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Abstract base class for generic types.\n\nA generic type is typically declared by inheriting from\nthis class parameterized with one or more type variables.\nFor example, a generic mapping type might be defined as::\n\n  class Mapping(Generic[KT, VT]):\n      def __getitem__(self, key: KT) -> VT:\n          ...\n      # Etc.\n\nThis class can then be used as follows::\n\n  def lookup_name(mapping: Mapping[KT, VT], key: KT, default: VT) -> VT:\n      try:\n          return mapping[key]\n      except KeyError:\n          return default",
             "version": 0
         },
         {
             "acResult": "Protocol",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Base class for protocol classes.\n\nProtocol classes are defined as::\n\n    class Proto(Protocol):\n        def meth(self) -> int:\n            ...\n\nSuch classes are primarily used with static type checkers that recognize\nstructural subtyping (static duck-typing), for example::\n\n    class C:\n        def meth(self) -> int:\n            return 0\n\n    def func(x: Proto) -> int:\n        return x.meth()\n\n    func(C())  # Passes static type check\n\nSee PEP 544 for details. Protocol classes decorated with\n@typing.runtime_checkable act as simple-minded runtime protocols that check\nonly the presence of given attributes, ignoring their type signatures.\nProtocol classes can be generic, they are defined as::\n\n    class GenProto(Protocol[T]):\n        def meth(self) -> T:\n            ...",
             "version": 0
         },
         {
             "acResult": "Callable",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Callable type; Callable[[int], str] is a function of (int) -> str.\n\nThe subscription syntax must always be used with exactly two\nvalues: the argument list and the return type.  The argument list\nmust be a list of types or ellipsis; the return type must be a single type.\n\nThere is no syntax to indicate optional or keyword arguments,\nsuch function types are rarely used as callback types.",
             "version": 0
         },
         {
             "acResult": "Type",
             "type": "variable",
-            "documentation": "",
+            "documentation": "A special construct usable to annotate class objects.\n\nFor example, suppose we have the following classes::\n\n  class User: ...  # Abstract base for User classes\n  class BasicUser(User): ...\n  class ProUser(User): ...\n  class TeamUser(User): ...\n\nAnd a function that takes a class argument that's a subclass of\nUser and returns an instance of the corresponding class::\n\n  U = TypeVar('U', bound=User)\n  def new_user(user_class: Type[U]) -> U:\n      user = user_class()\n      # (Here we could write the user object to a database)\n      return user\n\n  joe = new_user(BasicUser)\n\nAt this point the type checker knows that joe has type BasicUser.",
             "version": 0
         },
         {
             "acResult": "ClassVar",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special type construct to mark class variables.\n\nAn annotation wrapped in ClassVar indicates that a given\nattribute is intended to be used as a class variable and\nshould not be set on instances of that class. Usage::\n\n  class Starship:\n      stats: ClassVar[Dict[str, int]] = {} # class variable\n      damage: int = 10                     # instance variable\n\nClassVar accepts only types and cannot be further subscribed.\n\nNote that ClassVar is not a class itself, and should not\nbe used with isinstance() or issubclass().",
             "version": 0
         },
         {
             "acResult": "Final",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special typing construct to indicate final names to type checkers.\n\nA final name cannot be re-assigned or overridden in a subclass.\nFor example:\n\n  MAX_SIZE: Final = 9000\n  MAX_SIZE += 1  # Error reported by type checker\n\n  class Connection:\n      TIMEOUT: Final[int] = 10\n\n  class FastConnector(Connection):\n      TIMEOUT = 1  # Error reported by type checker\n\nThere is no runtime checking of these properties.",
             "version": 0
         },
         {
             "acResult": "final",
             "type": "function",
-            "documentation": "",
+            "documentation": "A decorator to indicate final methods and final classes.\n\nUse this decorator to indicate to type checkers that the decorated\nmethod cannot be overridden, and decorated class cannot be subclassed.\nFor example:\n\n  class Base:\n      @final\n      def done(self) -> None:\n          ...\n  class Sub(Base):\n      def done(self) -> None:  # Error reported by type checker\n            ...\n\n  @final\n  class Leaf:\n      ...\n  class Other(Leaf):  # Error reported by type checker\n      ...\n\nThere is no runtime checking of these properties.",
             "version": 0
         },
         {
             "acResult": "Literal",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special typing form to define literal types (a.k.a. value types).\n\nThis form can be used to indicate to type checkers that the corresponding\nvariable or function parameter has a value equivalent to the provided\nliteral (or one of several literals):\n\n  def validate_simple(data: Any) -> Literal[True]:  # always returns True\n      ...\n\n  MODE = Literal['r', 'rb', 'w', 'wb']\n  def open_helper(file: str, mode: MODE) -> str:\n      ...\n\n  open_helper('/some/path', 'r')  # Passes type check\n  open_helper('/other/path', 'typo')  # Error in type checker\n\nLiteral[...] cannot be subclassed. At runtime, an arbitrary value\nis allowed as type argument to Literal[...], but type checkers may\nimpose restrictions.",
             "version": 0
         },
         {
             "acResult": "TypedDict",
             "type": "variable",
-            "documentation": "",
+            "documentation": "A simple typed namespace. At runtime it is equivalent to a plain dict.\n\nTypedDict creates a dictionary type that expects all of its\ninstances to have a certain set of keys, where each key is\nassociated with a value of a consistent type. This expectation\nis not checked at runtime but is only enforced by type checkers.\nUsage::\n\n    class Point2D(TypedDict):\n        x: int\n        y: int\n        label: str\n\n    a: Point2D = {'x': 1, 'y': 2, 'label': 'good'}  # OK\n    b: Point2D = {'z': 3, 'label': 'bad'}           # Fails type check\n\n    assert Point2D(x=1, y=2, label='first') == dict(x=1, y=2, label='first')\n\nThe type info can be accessed via the Point2D.__annotations__ dict, and\nthe Point2D.__required_keys__ and Point2D.__optional_keys__ frozensets.\nTypedDict supports two additional equivalent forms::\n\n    Point2D = TypedDict('Point2D', x=int, y=int, label=str)\n    Point2D = TypedDict('Point2D', {'x': int, 'y': int, 'label': str})\n\nBy default, all keys must be present in a TypedDict. It is possible\nto override this by specifying totality.\nUsage::\n\n    class point2D(TypedDict, total=False):\n        x: int\n        y: int\n\nThis means that a point2D TypedDict can have any of the keys omitted.A type\nchecker is only expected to support a literal False or True as the value of\nthe total argument. True is the default, and makes all items defined in the\nclass body be required.\n\nThe class syntax is only supported in Python 3.6+, while two other\nsyntax forms work for Python 2.7 and 3.2+",
             "version": 0
         },
         {
@@ -2621,49 +2621,49 @@
         {
             "acResult": "ParamSpecArgs",
             "type": "type",
-            "documentation": "",
+            "documentation": "The args for a ParamSpec object.\n\nGiven a ParamSpec object P, P.args is an instance of ParamSpecArgs.\n\nParamSpecArgs objects have a reference back to their ParamSpec:\n\n   P.args.__origin__ is P\n\nThis type is meant for runtime introspection and has no special meaning to\nstatic type checkers.",
             "version": 0
         },
         {
             "acResult": "ParamSpecKwargs",
             "type": "type",
-            "documentation": "",
+            "documentation": "The kwargs for a ParamSpec object.\n\nGiven a ParamSpec object P, P.kwargs is an instance of ParamSpecKwargs.\n\nParamSpecKwargs objects have a reference back to their ParamSpec:\n\n   P.kwargs.__origin__ is P\n\nThis type is meant for runtime introspection and has no special meaning to\nstatic type checkers.",
             "version": 0
         },
         {
             "acResult": "ParamSpec",
             "type": "type",
-            "documentation": "",
+            "documentation": "Parameter specification variable.\n\nUsage::\n\n   P = ParamSpec('P')\n\nParameter specification variables exist primarily for the benefit of static\ntype checkers.  They are used to forward the parameter types of one\ncallable to another callable, a pattern commonly found in higher order\nfunctions and decorators.  They are only valid when used in ``Concatenate``,\nor s the first argument to ``Callable``, or as parameters for user-defined\nGenerics.  See class Generic for more information on generic types.  An\nexample for annotating a decorator::\n\n   T = TypeVar('T')\n   P = ParamSpec('P')\n\n   def add_logging(f: Callable[P, T]) -> Callable[P, T]:\n       '''A type-safe decorator to add logging to a function.'''\n       def inner(*args: P.args, **kwargs: P.kwargs) -> T:\n           logging.info(f'{f.__name__} was called')\n           return f(*args, **kwargs)\n       return inner\n\n   @add_logging\n   def add_two(x: float, y: float) -> float:\n       '''Add two numbers together.'''\n       return x + y\n\nParameter specification variables defined with covariant=True or\ncontravariant=True can be used to declare covariant or contravariant\ngeneric types.  These keyword arguments are valid, but their actual semantics\nare yet to be decided.  See PEP 612 for details.\n\nParameter specification variables can be introspected. e.g.:\n\n   P.__name__ == 'T'\n   P.__bound__ == None\n   P.__covariant__ == False\n   P.__contravariant__ == False\n\nNote that only parameter specification variables defined in global scope can\nbe pickled.",
             "version": 0
         },
         {
             "acResult": "Concatenate",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Used in conjunction with ``ParamSpec`` and ``Callable`` to represent a\nhigher order function which adds, removes or transforms parameters of a\ncallable.\n\nFor example::\n\n   Callable[Concatenate[int, P], int]\n\nSee PEP 612 for detailed information.",
             "version": 0
         },
         {
             "acResult": "TypeAlias",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special marker indicating that an assignment should\nbe recognized as a proper type alias definition by type\ncheckers.\n\nFor example::\n\n    Predicate: TypeAlias = Callable[..., bool]\n\nIt's invalid when used anywhere except as in the example above.",
             "version": 0
         },
         {
             "acResult": "TypeGuard",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special typing form used to annotate the return type of a user-defined\ntype guard function.  ``TypeGuard`` only accepts a single type argument.\nAt runtime, functions marked this way should return a boolean.\n\n``TypeGuard`` aims to benefit *type narrowing* -- a technique used by static\ntype checkers to determine a more precise type of an expression within a\nprogram's code flow.  Usually type narrowing is done by analyzing\nconditional code flow and applying the narrowing to a block of code.  The\nconditional expression here is sometimes referred to as a \"type guard\".\n\nSometimes it would be convenient to use a user-defined boolean function\nas a type guard.  Such a function should use ``TypeGuard[...]`` as its\nreturn type to alert static type checkers to this intention.\n\nUsing  ``-> TypeGuard`` tells the static type checker that for a given\nfunction:\n\n1. The return value is a boolean.\n2. If the return value is ``True``, the type of its argument\n   is the type inside ``TypeGuard``.\n\n   For example::\n\n      def is_str(val: Union[str, float]):\n          # \"isinstance\" type guard\n          if isinstance(val, str):\n              # Type of ``val`` is narrowed to ``str``\n              ...\n          else:\n              # Else, type of ``val`` is narrowed to ``float``.\n              ...\n\nStrict type narrowing is not enforced -- ``TypeB`` need not be a narrower\nform of ``TypeA`` (it can even be a wider form) and this may lead to\ntype-unsafe results.  The main reason is to allow for things like\nnarrowing ``List[object]`` to ``List[str]`` even though the latter is not\na subtype of the former, since ``List`` is invariant.  The responsibility of\nwriting type-safe type guards is left to the user.\n\n``TypeGuard`` also works with type variables.  For more information, see\nPEP 647 (User-Defined Type Guards).",
             "version": 0
         },
         {
             "acResult": "no_type_check",
             "type": "function",
-            "documentation": "",
+            "documentation": "Decorator to indicate that annotations are not type hints.\n\nThe argument must be a class or function; if it is a class, it\napplies recursively to all methods and classes defined in that class\n(but not to methods defined in its superclasses or subclasses).\n\nThis mutates the function(s) or class(es) in place.",
             "version": 0
         },
         {
             "acResult": "no_type_check_decorator",
             "type": "function",
-            "documentation": "",
+            "documentation": "Decorator to give another decorator the @no_type_check effect.\n\nThis wraps the decorator with something that wraps the decorated\nfunction in @no_type_check.",
             "version": 0
         },
         {
@@ -2675,103 +2675,103 @@
         {
             "acResult": "Annotated",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Add context specific metadata to a type.\n\nExample: Annotated[int, runtime_check.Unsigned] indicates to the\nhypothetical runtime_check module that this type is an unsigned int.\nEvery other consumer of this type can ignore this metadata and treat\nthis type as int.\n\nThe first argument to Annotated must be a valid type.\n\nDetails:\n\n- It's an error to call `Annotated` with less than two arguments.\n- Nested Annotated are flattened::\n\n    Annotated[Annotated[T, Ann1, Ann2], Ann3] == Annotated[T, Ann1, Ann2, Ann3]\n\n- Instantiating an annotated type is equivalent to instantiating the\nunderlying type::\n\n    Annotated[C, Ann1](5) == C(5)\n\n- Annotated can be used as a generic type alias::\n\n    Optimized = Annotated[T, runtime.Optimize()]\n    Optimized[int] == Annotated[int, runtime.Optimize()]\n\n    OptimizedList = Annotated[List[T], runtime.Optimize()]\n    OptimizedList[int] == Annotated[List[int], runtime.Optimize()]",
             "version": 0
         },
         {
             "acResult": "runtime_checkable",
             "type": "function",
-            "documentation": "",
+            "documentation": "Mark a protocol class as a runtime protocol.\n\nSuch protocol can be used with isinstance() and issubclass().\nRaise TypeError if applied to a non-protocol class.\nThis allows a simple-minded structural check very similar to\none trick ponies in collections.abc such as Iterable.\nFor example::\n\n    @runtime_checkable\n    class Closable(Protocol):\n        def close(self): ...\n\n    assert isinstance(open('/some/file'), Closable)\n\nWarning: this will check only the presence of the required methods,\nnot their type signatures!",
             "version": 0
         },
         {
             "acResult": "SupportsInt",
             "type": "type",
-            "documentation": "",
+            "documentation": "An ABC with one abstract method __int__.",
             "version": 0
         },
         {
             "acResult": "SupportsFloat",
             "type": "type",
-            "documentation": "",
+            "documentation": "An ABC with one abstract method __float__.",
             "version": 0
         },
         {
             "acResult": "SupportsComplex",
             "type": "type",
-            "documentation": "",
+            "documentation": "An ABC with one abstract method __complex__.",
             "version": 0
         },
         {
             "acResult": "SupportsBytes",
             "type": "type",
-            "documentation": "",
+            "documentation": "An ABC with one abstract method __bytes__.",
             "version": 0
         },
         {
             "acResult": "SupportsIndex",
             "type": "type",
-            "documentation": "",
+            "documentation": "An ABC with one abstract method __index__.",
             "version": 0
         },
         {
             "acResult": "SupportsAbs",
             "type": "type",
-            "documentation": "",
+            "documentation": "An ABC with one abstract method __abs__ that is covariant in its return type.",
             "version": 0
         },
         {
             "acResult": "SupportsRound",
             "type": "type",
-            "documentation": "",
+            "documentation": "An ABC with one abstract method __round__ that is covariant in its return type.",
             "version": 0
         },
         {
             "acResult": "Sized",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Sized.",
             "version": 0
         },
         {
             "acResult": "Hashable",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Hashable.",
             "version": 0
         },
         {
             "acResult": "Iterable",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Iterable.",
             "version": 0
         },
         {
             "acResult": "Iterator",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Iterator.",
             "version": 0
         },
         {
             "acResult": "Reversible",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Reversible.",
             "version": 0
         },
         {
             "acResult": "Generator",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Generator.",
             "version": 0
         },
         {
             "acResult": "Awaitable",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Awaitable.",
             "version": 0
         },
         {
             "acResult": "Coroutine",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Coroutine.",
             "version": 0
         },
         {
@@ -2783,169 +2783,169 @@
         {
             "acResult": "AsyncIterable",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.AsyncIterable.",
             "version": 0
         },
         {
             "acResult": "AsyncIterator",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.AsyncIterator.",
             "version": 0
         },
         {
             "acResult": "AsyncGenerator",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.AsyncGenerator.",
             "version": 0
         },
         {
             "acResult": "Container",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Container.",
             "version": 0
         },
         {
             "acResult": "Collection",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Collection.",
             "version": 0
         },
         {
             "acResult": "Sequence",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Sequence.",
             "version": 0
         },
         {
             "acResult": "MutableSequence",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.MutableSequence.",
             "version": 0
         },
         {
             "acResult": "AbstractSet",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Set.",
             "version": 0
         },
         {
             "acResult": "MutableSet",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.MutableSet.",
             "version": 0
         },
         {
             "acResult": "MappingView",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.MappingView.",
             "version": 0
         },
         {
             "acResult": "ItemsView",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.ItemsView.",
             "version": 0
         },
         {
             "acResult": "KeysView",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.KeysView.",
             "version": 0
         },
         {
             "acResult": "ValuesView",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.ValuesView.",
             "version": 0
         },
         {
             "acResult": "ContextManager",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of contextlib.AbstractContextManager.",
             "version": 0
         },
         {
             "acResult": "AsyncContextManager",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of contextlib.AbstractAsyncContextManager.",
             "version": 0
         },
         {
             "acResult": "Mapping",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.Mapping.",
             "version": 0
         },
         {
             "acResult": "MutableMapping",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.MutableMapping.",
             "version": 0
         },
         {
             "acResult": "IO",
             "type": "type",
-            "documentation": "",
+            "documentation": "Generic base class for TextIO and BinaryIO.\n\nThis is an abstract, generic version of the return of open().\n\nNOTE: This does not distinguish between the different possible\nclasses (text vs. binary, read vs. write vs. read/write,\nappend-only, unbuffered).  The TextIO and BinaryIO subclasses\nbelow capture the distinctions between text vs. binary, which is\npervasive in the interface; however we currently do not offer a\nway to track the other distinctions in the type system.",
             "version": 0
         },
         {
             "acResult": "BinaryIO",
             "type": "type",
-            "documentation": "",
+            "documentation": "Typed version of the return of open() in binary mode.",
             "version": 0
         },
         {
             "acResult": "TextIO",
             "type": "type",
-            "documentation": "",
+            "documentation": "Typed version of the return of open() in text mode.",
             "version": 0
         },
         {
             "acResult": "ByteString",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of collections.abc.ByteString.",
             "version": 0
         },
         {
             "acResult": "Match",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of re.Match.",
             "version": 0
         },
         {
             "acResult": "Pattern",
             "type": "type",
-            "documentation": "",
+            "documentation": "A generic version of re.Pattern.",
             "version": 0
         },
         {
             "acResult": "get_type_hints",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return type hints for an object.\n\nThis is often the same as obj.__annotations__, but it handles\nforward references encoded as string literals, adds Optional[t] if a\ndefault value equal to None is set and recursively replaces all\n'Annotated[T, ...]' with 'T' (unless 'include_extras=True').\n\nThe argument may be a module, class, method, or function. The annotations\nare returned as a dictionary. For classes, annotations include also\ninherited members.\n\nTypeError is raised if the argument is not of a type that can contain\nannotations, and an empty dictionary is returned if no annotations are\npresent.\n\nBEWARE -- the behavior of globalns and localns is counterintuitive\n(unless you are familiar with how eval() and exec() work).  The\nsearch order is locals first, then globals.\n\n- If no dict arguments are passed, an attempt is made to use the\n  globals from obj (or the respective module's globals for classes),\n  and these are also used as the locals.  If the object does not appear\n  to have globals, an empty dictionary is used.  For classes, the search\n  order is globals first then locals.\n\n- If one dict argument is passed, it is used for both globals and\n  locals.\n\n- If two dict arguments are passed, they specify globals and\n  locals, respectively.",
             "version": 0
         },
         {
             "acResult": "get_origin",
             "type": "function",
-            "documentation": "",
+            "documentation": "Get the unsubscripted version of a type.\n\nThis supports generic types, Callable, Tuple, Union, Literal, Final, ClassVar\nand Annotated. Return None for unsupported types. Examples::\n\n    get_origin(Literal[42]) is Literal\n    get_origin(int) is None\n    get_origin(ClassVar[int]) is ClassVar\n    get_origin(Generic) is Generic\n    get_origin(Generic[T]) is Generic\n    get_origin(Union[T, int]) is Union\n    get_origin(List[Tuple[T, T]][int]) == list\n    get_origin(P.args) is P",
             "version": 0
         },
         {
             "acResult": "get_args",
             "type": "function",
-            "documentation": "",
+            "documentation": "Get type arguments with all substitutions performed.\n\nFor unions, basic simplifications used by Union constructor are performed.\nExamples::\n    get_args(Dict[str, int]) == (str, int)\n    get_args(int) == ()\n    get_args(Union[int, Union[T, int], str][int]) == (int, str)\n    get_args(Union[int, Tuple[T, int]][str]) == (int, Tuple[str, int])\n    get_args(Callable[[], T][int]) == ([], int)",
             "version": 0
         },
         {
             "acResult": "cast",
             "type": "function",
-            "documentation": "",
+            "documentation": "Cast a value to a type.\n\nThis returns the value unchanged.  To the type checker this\nsignals that the return value has the designated type, but at\nruntime we intentionally don't check anything (we want this\nto be as fast as possible).",
             "version": 0
         },
         {
             "acResult": "NamedTuple",
             "type": "type",
-            "documentation": "",
+            "documentation": "Typed version of namedtuple.\n\nUsage in Python versions >= 3.6::\n\n    class Employee(NamedTuple):\n        name: str\n        id: int\n\nThis is equivalent to::\n\n    Employee = collections.namedtuple('Employee', ['name', 'id'])\n\nThe resulting class has an extra __annotations__ attribute, giving a\ndict that maps field names to types.  (The field names are also in\nthe _fields attribute, which is part of the namedtuple API.)\nAlternative equivalent keyword syntax is also accepted::\n\n    Employee = NamedTuple('Employee', name=str, id=int)\n\nIn Python versions <= 3.5 use::\n\n    Employee = NamedTuple('Employee', [('name', str), ('id', int)])",
             "version": 0
         },
         {
@@ -2957,7 +2957,7 @@
         {
             "acResult": "NewType",
             "type": "function",
-            "documentation": "",
+            "documentation": "NewType creates simple unique types with almost zero\nruntime overhead. NewType(name, tp) is considered a subtype of tp\nby static type checkers. At runtime, NewType(name, tp) returns\na dummy callable that simply returns its argument. Usage::\n\n    UserId = NewType('UserId', int)\n\n    def name_by_id(user_id: UserId) -> str:\n        ...\n\n    UserId('user')          # Fails type check\n\n    name_by_id(42)          # Fails type check\n    name_by_id(UserId(42))  # OK\n\n    num = UserId(5) + 1     # type: int",
             "version": 0
         },
         {
@@ -2969,13 +2969,13 @@
         {
             "acResult": "ForwardRef",
             "type": "type",
-            "documentation": "",
+            "documentation": "Internal wrapper to hold a forward reference.",
             "version": 0
         },
         {
             "acResult": "is_typeddict",
             "type": "function",
-            "documentation": "",
+            "documentation": "Check if an annotation is a TypedDict class\n\nFor example::\n    class Film(TypedDict):\n        title: str\n        year: int\n\n    is_typeddict(Film)  # => True\n    is_typeddict(Union[list, str])  # => False",
             "version": 0
         }
     ],
@@ -2989,31 +2989,31 @@
         {
             "acResult": "runtime_checkable",
             "type": "function",
-            "documentation": "",
+            "documentation": "Mark a protocol class as a runtime protocol.\n\nSuch protocol can be used with isinstance() and issubclass().\nRaise TypeError if applied to a non-protocol class.\nThis allows a simple-minded structural check very similar to\none trick ponies in collections.abc such as Iterable.\nFor example::\n\n    @runtime_checkable\n    class Closable(Protocol):\n        def close(self): ...\n\n    assert isinstance(open('/some/file'), Closable)\n\nWarning: this will check only the presence of the required methods,\nnot their type signatures!",
             "version": 0
         },
         {
             "acResult": "Protocol",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Base class for protocol classes.\n\nProtocol classes are defined as::\n\n    class Proto(Protocol):\n        def meth(self) -> int:\n            ...\n\nSuch classes are primarily used with static type checkers that recognize\nstructural subtyping (static duck-typing), for example::\n\n    class C:\n        def meth(self) -> int:\n            return 0\n\n    def func(x: Proto) -> int:\n        return x.meth()\n\n    func(C())  # Passes static type check\n\nSee PEP 544 for details. Protocol classes decorated with\n@typing.runtime_checkable act as simple-minded runtime protocols that check\nonly the presence of given attributes, ignoring their type signatures.\nProtocol classes can be generic, they are defined as::\n\n    class GenProto(Protocol[T]):\n        def meth(self) -> T:\n            ...",
             "version": 0
         },
         {
             "acResult": "Final",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special typing construct to indicate final names to type checkers.\n\nA final name cannot be re-assigned or overridden in a subclass.\nFor example:\n\n  MAX_SIZE: Final = 9000\n  MAX_SIZE += 1  # Error reported by type checker\n\n  class Connection:\n      TIMEOUT: Final[int] = 10\n\n  class FastConnector(Connection):\n      TIMEOUT = 1  # Error reported by type checker\n\nThere is no runtime checking of these properties.",
             "version": 0
         },
         {
             "acResult": "final",
             "type": "function",
-            "documentation": "",
+            "documentation": "This decorator can be used to indicate to type checkers that\nthe decorated method cannot be overridden, and decorated class\ncannot be subclassed. For example:\n\n    class Base:\n        @final\n        def done(self) -> None:\n            ...\n    class Sub(Base):\n        def done(self) -> None:  # Error reported by type checker\n            ...\n    @final\n    class Leaf:\n        ...\n    class Other(Leaf):  # Error reported by type checker\n        ...\n\nThere is no runtime checking of these properties. The decorator\nsets the ``__final__`` attribute to ``True`` on the decorated object\nto allow runtime introspection.",
             "version": 0
         },
         {
             "acResult": "Literal",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special typing form to define literal types (a.k.a. value types).\n\nThis form can be used to indicate to type checkers that the corresponding\nvariable or function parameter has a value equivalent to the provided\nliteral (or one of several literals):\n\n  def validate_simple(data: Any) -> Literal[True]:  # always returns True\n      ...\n\n  MODE = Literal['r', 'rb', 'w', 'wb']\n  def open_helper(file: str, mode: MODE) -> str:\n      ...\n\n  open_helper('/some/path', 'r')  # Passes type check\n  open_helper('/other/path', 'typo')  # Error in type checker\n\nLiteral[...] cannot be subclassed. At runtime, an arbitrary value\nis allowed as type argument to Literal[...], but type checkers may\nimpose restrictions.",
             "version": 0
         },
         {
@@ -3031,31 +3031,31 @@
         {
             "acResult": "TypedDict",
             "type": "variable",
-            "documentation": "",
+            "documentation": "A simple typed namespace. At runtime it is equivalent to a plain dict.\n\nTypedDict creates a dictionary type such that a type checker will expect all\ninstances to have a certain set of keys, where each key is\nassociated with a value of a consistent type. This expectation\nis not checked at runtime.\n\nUsage::\n\n    class Point2D(TypedDict):\n        x: int\n        y: int\n        label: str\n\n    a: Point2D = {'x': 1, 'y': 2, 'label': 'good'}  # OK\n    b: Point2D = {'z': 3, 'label': 'bad'}           # Fails type check\n\n    assert Point2D(x=1, y=2, label='first') == dict(x=1, y=2, label='first')\n\nThe type info can be accessed via the Point2D.__annotations__ dict, and\nthe Point2D.__required_keys__ and Point2D.__optional_keys__ frozensets.\nTypedDict supports an additional equivalent form::\n\n    Point2D = TypedDict('Point2D', {'x': int, 'y': int, 'label': str})\n\nBy default, all keys must be present in a TypedDict. It is possible\nto override this by specifying totality::\n\n    class Point2D(TypedDict, total=False):\n        x: int\n        y: int\n\nThis means that a Point2D TypedDict can have any of the keys omitted. A type\nchecker is only expected to support a literal False or True as the value of\nthe total argument. True is the default, and makes all items defined in the\nclass body be required.\n\nThe Required and NotRequired special forms can also be used to mark\nindividual keys as being required or not required::\n\n    class Point2D(TypedDict):\n        x: int  # the \"x\" key must always be present (Required is the default)\n        y: NotRequired[int]  # the \"y\" key can be omitted\n\nSee PEP 655 for more details on Required and NotRequired.",
             "version": 0
         },
         {
             "acResult": "get_type_hints",
             "type": "function",
-            "documentation": "",
+            "documentation": "Return type hints for an object.\n\nThis is often the same as obj.__annotations__, but it handles\nforward references encoded as string literals, adds Optional[t] if a\ndefault value equal to None is set and recursively replaces all\n'Annotated[T, ...]', 'Required[T]' or 'NotRequired[T]' with 'T'\n(unless 'include_extras=True').\n\nThe argument may be a module, class, method, or function. The annotations\nare returned as a dictionary. For classes, annotations include also\ninherited members.\n\nTypeError is raised if the argument is not of a type that can contain\nannotations, and an empty dictionary is returned if no annotations are\npresent.\n\nBEWARE -- the behavior of globalns and localns is counterintuitive\n(unless you are familiar with how eval() and exec() work).  The\nsearch order is locals first, then globals.\n\n- If no dict arguments are passed, an attempt is made to use the\n  globals from obj (or the respective module's globals for classes),\n  and these are also used as the locals.  If the object does not appear\n  to have globals, an empty dictionary is used.\n\n- If one dict argument is passed, it is used for both globals and\n  locals.\n\n- If two dict arguments are passed, they specify globals and\n  locals, respectively.",
             "version": 0
         },
         {
             "acResult": "get_args",
             "type": "function",
-            "documentation": "",
+            "documentation": "Get type arguments with all substitutions performed.\n\nFor unions, basic simplifications used by Union constructor are performed.\nExamples::\n    get_args(Dict[str, int]) == (str, int)\n    get_args(int) == ()\n    get_args(Union[int, Union[T, int], str][int]) == (int, str)\n    get_args(Union[int, Tuple[T, int]][str]) == (int, Tuple[str, int])\n    get_args(Callable[[], T][int]) == ([], int)",
             "version": 0
         },
         {
             "acResult": "get_origin",
             "type": "function",
-            "documentation": "",
+            "documentation": "Get the unsubscripted version of a type.\n\nThis supports generic types, Callable, Tuple, Union, Literal, Final, ClassVar\nand Annotated. Return None for unsupported types. Examples::\n\n    get_origin(Literal[42]) is Literal\n    get_origin(int) is None\n    get_origin(ClassVar[int]) is ClassVar\n    get_origin(Generic) is Generic\n    get_origin(Generic[T]) is Generic\n    get_origin(Union[T, int]) is Union\n    get_origin(List[Tuple[T, T]][int]) == list\n    get_origin(P.args) is P",
             "version": 0
         },
         {
             "acResult": "Annotated",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Add context specific metadata to a type.\n\nExample: Annotated[int, runtime_check.Unsigned] indicates to the\nhypothetical runtime_check module that this type is an unsigned int.\nEvery other consumer of this type can ignore this metadata and treat\nthis type as int.\n\nThe first argument to Annotated must be a valid type.\n\nDetails:\n\n- It's an error to call `Annotated` with less than two arguments.\n- Nested Annotated are flattened::\n\n    Annotated[Annotated[T, Ann1, Ann2], Ann3] == Annotated[T, Ann1, Ann2, Ann3]\n\n- Instantiating an annotated type is equivalent to instantiating the\nunderlying type::\n\n    Annotated[C, Ann1](5) == C(5)\n\n- Annotated can be used as a generic type alias::\n\n    Optimized = Annotated[T, runtime.Optimize()]\n    Optimized[int] == Annotated[int, runtime.Optimize()]\n\n    OptimizedList = Annotated[List[T], runtime.Optimize()]\n    OptimizedList[int] == Annotated[List[int], runtime.Optimize()]",
             "version": 0
         },
         {
@@ -3067,43 +3067,43 @@
         {
             "acResult": "SupportsIndex",
             "type": "type",
-            "documentation": "",
+            "documentation": "Base class for protocol classes.\n\nProtocol classes are defined as::\n\n    class Proto(Protocol):\n        def meth(self) -> int:\n            ...\n\nSuch classes are primarily used with static type checkers that recognize\nstructural subtyping (static duck-typing), for example::\n\n    class C:\n        def meth(self) -> int:\n            return 0\n\n    def func(x: Proto) -> int:\n        return x.meth()\n\n    func(C())  # Passes static type check\n\nSee PEP 544 for details. Protocol classes decorated with\n@typing.runtime_checkable act as simple-minded runtime protocols that check\nonly the presence of given attributes, ignoring their type signatures.\nProtocol classes can be generic, they are defined as::\n\n    class GenProto(Protocol[T]):\n        def meth(self) -> T:\n            ...",
             "version": 0
         },
         {
             "acResult": "ParamSpecArgs",
             "type": "type",
-            "documentation": "",
+            "documentation": "The args for a ParamSpec object.\n\nGiven a ParamSpec object P, P.args is an instance of ParamSpecArgs.\n\nParamSpecArgs objects have a reference back to their ParamSpec:\n\n   P.args.__origin__ is P\n\nThis type is meant for runtime introspection and has no special meaning to\nstatic type checkers.",
             "version": 0
         },
         {
             "acResult": "ParamSpecKwargs",
             "type": "type",
-            "documentation": "",
+            "documentation": "The kwargs for a ParamSpec object.\n\nGiven a ParamSpec object P, P.kwargs is an instance of ParamSpecKwargs.\n\nParamSpecKwargs objects have a reference back to their ParamSpec:\n\n   P.kwargs.__origin__ is P\n\nThis type is meant for runtime introspection and has no special meaning to\nstatic type checkers.",
             "version": 0
         },
         {
             "acResult": "ParamSpec",
             "type": "type",
-            "documentation": "",
+            "documentation": "Parameter specification.",
             "version": 0
         },
         {
             "acResult": "Concatenate",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Used in conjunction with ``ParamSpec`` and ``Callable`` to represent a\nhigher order function which adds, removes or transforms parameters of a\ncallable.\n\nFor example::\n\n   Callable[Concatenate[int, P], int]\n\nSee PEP 612 for detailed information.",
             "version": 0
         },
         {
             "acResult": "TypeAlias",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special marker indicating that an assignment should\nbe recognized as a proper type alias definition by type\ncheckers.\n\nFor example::\n\n    Predicate: TypeAlias = Callable[..., bool]\n\nIt's invalid when used anywhere except as in the example above.",
             "version": 0
         },
         {
             "acResult": "TypeGuard",
             "type": "variable",
-            "documentation": "",
+            "documentation": "Special typing form used to annotate the return type of a user-defined\ntype guard function.  ``TypeGuard`` only accepts a single type argument.\nAt runtime, functions marked this way should return a boolean.\n\n``TypeGuard`` aims to benefit *type narrowing* -- a technique used by static\ntype checkers to determine a more precise type of an expression within a\nprogram's code flow.  Usually type narrowing is done by analyzing\nconditional code flow and applying the narrowing to a block of code.  The\nconditional expression here is sometimes referred to as a \"type guard\".\n\nSometimes it would be convenient to use a user-defined boolean function\nas a type guard.  Such a function should use ``TypeGuard[...]`` as its\nreturn type to alert static type checkers to this intention.\n\nUsing  ``-> TypeGuard`` tells the static type checker that for a given\nfunction:\n\n1. The return value is a boolean.\n2. If the return value is ``True``, the type of its argument\n   is the type inside ``TypeGuard``.\n\n   For example::\n\n      def is_str(val: Union[str, float]):\n          # \"isinstance\" type guard\n          if isinstance(val, str):\n              # Type of ``val`` is narrowed to ``str``\n              ...\n          else:\n              # Else, type of ``val`` is narrowed to ``float``.\n              ...\n\nStrict type narrowing is not enforced -- ``TypeB`` need not be a narrower\nform of ``TypeA`` (it can even be a wider form) and this may lead to\ntype-unsafe results.  The main reason is to allow for things like\nnarrowing ``List[object]`` to ``List[str]`` even though the latter is not\na subtype of the former, since ``List`` is invariant.  The responsibility of\nwriting type-safe type guards is left to the user.\n\n``TypeGuard`` also works with type variables.  For more information, see\nPEP 647 (User-Defined Type Guards).",
             "version": 0
         }
     ],
