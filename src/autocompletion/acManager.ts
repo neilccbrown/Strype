@@ -288,13 +288,8 @@ export function getAvailableItemsForImportFromModule(module: string) : AcResults
 
 export function getBuiltins() : AcResultType[] {
     /* IFTRUE_isPurePython */
-    // Pick up built-in Python functions and types:
-    return Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type !== "module").map((k) => ({
-        acResult: k,
-        documentation: pythonBuiltins[k].documentation || "",
-        type: pythonBuiltins[k].type,
-        version: 0,
-    }));
+    // Must return a clone as caller may later modify the list:
+    return [...skulptPythonAPI[""] as AcResultType[]];
     /* FITRUE_isPurePython */
     /* IFTRUE_isMicrobit */
     // Must return a clone as caller may later modify the list:
