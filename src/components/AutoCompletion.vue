@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="popupContainer">
+        <div class="popupContainer" spellcheck="false">
             <div
                 :style="popupPosition"
                 class="popup"
