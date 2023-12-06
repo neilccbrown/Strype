@@ -249,7 +249,7 @@ export default Vue.extend({
 
         isFrameEmpty(): boolean {
             // This computed property checks that all the (visible) editable slots of a frame, and if applies, its body, are empty
-            const isEmpty = !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent) => ((labelSlotContent.shown??true) && 
+            const isEmpty = (this.frameId in this.appStore.frameObjects) && !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent) => ((labelSlotContent.shown??true) && 
                 (labelSlotContent.slotStructures.fields.length > 1 || (labelSlotContent.slotStructures.fields[0] as BaseSlot).code.trim().length > 0))) 
                 || this.appStore.frameObjects[this.frameId].childrenIds.length > 0);
             return isEmpty;

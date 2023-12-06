@@ -294,7 +294,7 @@ export default Vue.extend({
             // Let through various shortcuts like Ctrl-A, Ctrl-C, etc, so that they trigger the in-built
             // actions of selectAll, copy, etc; as well as up/down and derivates keys IF WE ARE IN A COMMENT FRAME.
             if (!event.ctrlKey && !event.metaKey && 
-                !((this.appStore.frameObjects[this.frameId].frameType.type === AllFrameTypesIdentifier.comment) && ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(event.key))) {
+                !((this.frameId in this.appStore.frameObjects) && (this.appStore.frameObjects[this.frameId].frameType.type === AllFrameTypesIdentifier.comment) && ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(event.key))) {
                 event.preventDefault();
             }
         },
