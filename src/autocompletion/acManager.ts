@@ -240,9 +240,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithModule {
                 }
             }
             
-            // This works around issue #198; * can currently be a single operator or single field:
-            if ((frame.labelSlotsDict[1].slotStructures.operators.length == 1 && frame.labelSlotsDict[1].slotStructures.operators[0].code === "*")
-                || (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*")) {
+            if (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
                 // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
                 // the contents of the specific module:
