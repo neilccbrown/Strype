@@ -280,6 +280,11 @@ export default Vue.extend({
             if(event.key == "ArrowLeft" || event.key == "ArrowRight"){
                 return;
             }
+
+            // Ignore context menu (we need to let it pass through to be handled by App)
+            if(event.key.toLowerCase() == "contextmenu"){
+                return;
+            }
             
             if(this.appStore.focusSlotCursorInfos){
                 document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))

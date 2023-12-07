@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, Position, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
@@ -24,12 +24,25 @@ export enum CustomEventTypes {
     /* FITRUE_isPurePython */
 }
 
+export enum ContextMenuType {
+    frame,
+    caretPaste,
+}
+
 export function getFrameContainerUIID(frameId: number): string {
     return "FrameContainer_" + frameId;
 }
 
 export function getFrameBodyUIID(frameId: number): string {
     return "frameBodyId_" + frameId;
+}
+
+export function getFrameBodyRef(): string {
+    return "frameBody";
+}
+
+export function getJointFramesRef(): string {
+    return "jointFrames";
 }
 
 export function getFrameUIID(frameId: number): string{
@@ -287,7 +300,7 @@ export function checkCanReachAnotherCommentLine(isCommentFrame: boolean, isArrow
 }
 
 export function getFrameContextMenuUIID(frameUIID: string): string {
-    return frameUIID + "frameContextMenu";
+    return frameUIID + "_frameContextMenu";
 }
 
 export function getCodeEditorUIID(): string {
@@ -296,6 +309,10 @@ export function getCodeEditorUIID(): string {
 
 export function getCaretUIID(caretAssignedPosition: string, frameId: number): string {
     return "caret_"+caretAssignedPosition+"_"+frameId;
+}
+
+export function getCaretContainerRef(): string {
+    return "caretContainer";
 }
 
 export function getCommandsContainerUIID(): string {
@@ -320,6 +337,39 @@ export function getEditorMiddleUIID(): string {
 
 export function getCommandsRightPaneContainerId(): string {
     return "commandsContainerDiv";
+}
+
+export function setContextMenuEventPageXY(event: MouseEvent, positionForMenu?: Position): void {
+    Object.defineProperty(event, "pageX", {
+        value: (positionForMenu?.left) ? positionForMenu.left: (event.pageX - 60),
+        writable: true,
+    });
+
+    Object.defineProperty(event, "pageY", {
+        value: (positionForMenu?.top) ? positionForMenu.top : ((positionForMenu?.bottom) ? positionForMenu.bottom : event.pageY),
+        writable: true,
+    });
+
+}
+
+export function adjustContextMenuPosition(event: MouseEvent, contextMenu: HTMLElement, positionForMenu?: Position): void {
+    // These situations can happen:
+    // - we didn't provide any positioning request (case of click): we check the bottom of temporary (invisible) menu is in view
+    //   if not, we slide the menu so that the bottom position is at the click
+    // - we provided a positioning request (case of KB shortcut) AND we passed the "top" property in our position: keep as is
+    // - we provided a positioning request (case of KB shortcut) AND we passed the "bottom" property in our position: 
+    //   we slide the menu so that the actual height of the menu is deducted from the "bottom" property value 
+    //   (so the bottom of the menu and the bottom of the target (last selected frame or context menu container) are aligned)
+    if(positionForMenu){
+        if(positionForMenu.bottom){
+            const newMenuTopPosition = positionForMenu.bottom - contextMenu.getBoundingClientRect().height;
+            contextMenu.style.top = newMenuTopPosition+"px";
+        }
+    }
+    else if(event.pageY + contextMenu.getBoundingClientRect().height > (document.getElementById(getEditorMiddleUIID())?.getBoundingClientRect().height??0)){
+        const newMenuTopPosition = event.pageY - contextMenu.getBoundingClientRect().height;
+        contextMenu.style.top = newMenuTopPosition+"px";
+    }
 }
 
 export const fileImportSupportedFormats: string[] = [strypeFileExtension];

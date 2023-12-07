@@ -22,12 +22,12 @@
                 :id="uiid"
                 @mousedown.left="hideCaretAtClick"
                 @click="toggleCaret($event)"
-                @contextmenu="handleClick($event,'frame-context-menu')"
+                @contextmenu="handleClick($event, ContextMenuType.frame)"
                 tabindex="-1"
             >
                 <vue-simple-context-menu
                     v-show="allowContextMenu"
-                    :elementId="uiid+'frameContextMenu'"
+                    :elementId="getFrameContextMenuUIID"
                     :options="this.frameContextMenuOptions"
                     :ref="'frameContextMenu'"
                     @option-clicked="optionClicked"
@@ -61,14 +61,15 @@
                 </b-popover>
                 <FrameBody
                     v-if="allowChildren"
+                    :ref="getFrameBodyRef"
                     :frameId="frameId"
                     :isDisabled="isDisabled"
                     :caretVisibility="caretVisibility"
-                    ref="frameBody"
                     :style="frameMarginStyle['body']"
                 />
                 <JointFrames 
                     v-if="allowsJointChildren"
+                    :ref="getJointFramesRef"
                     :jointParentId="frameId"
                     :isDisabled="isDisabled"
                     :isParentSelected="isPartOfSelection"
@@ -78,10 +79,11 @@
                 <CaretContainer
                     v-if="!isJointFrame"
                     :frameId="this.frameId"
+                    :ref="getCaretContainerRef"
                     :caretVisibility="this.caretVisibility"
                     :caretAssignedPosition="caretPosition.below"
                     :isFrameDisabled="this.isDisabled"
-                    @hide-context-menus="handleClick($event,'paste')"
+                    @hide-context-menus="handleClick($event,ContextMenuType.caretPaste)"
                 />
             </div>
         </div>
@@ -102,10 +104,10 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor}  from "vue-simple-context-menu";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId } from "@/helpers/editor";
+import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, ContextMenuType, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventPageXY, adjustContextMenuPosition } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 
@@ -160,6 +162,7 @@ export default Vue.extend({
             // We keep a data property for frame run time error, even if that's a duplication, we need to keep it because
             // when the error in the frame is lifted, the error message disappear, and we need to use it in the popup
             runtimeErrorAtLastRunMsg: "",
+            ContextMenuType, // this is required to be accessible in the template
         };
     },
 
@@ -280,6 +283,27 @@ export default Vue.extend({
         isInFrameWithKeyboard(): boolean {            
             return (this.appStore.currentFrame.id == this.frameId && this.appStore.isEditing);
         },
+
+        getFrameBodyUIID(): string {
+            return getFrameBodyUIID(this.frameId);
+        },
+    
+        getFrameBodyRef(): string {
+            return getFrameBodyRef();
+        },
+
+
+        getJointFramesRef(): string {
+            return getJointFramesRef();
+        },
+
+        getCaretContainerRef(): string {
+            return getCaretContainerRef();
+        },
+
+        getFrameContextMenuUIID(): string {
+            return getFrameContextMenuUIID(this.uiid);
+        },
     },
 
     watch:{
@@ -390,7 +414,12 @@ export default Vue.extend({
             Vue.set(this.appStore.frameObjects[this.frameId],"runTimeError", "");
         },
 
-        handleClick (event: MouseEvent, action: string) {
+        handleClick (event: MouseEvent, action: ContextMenuType, positionForMenu?: Position) {
+            if(this.appStore.isContextMenuKeyboardShortcutUsed){
+                // The logic for handling the context menu opened via a keyboard shortcut is handled by App
+                return;
+            }
+            
             this.appStore.contextMenuShownId = this.uiid;
 
             // only show the frame menu if we are not editing
@@ -398,7 +427,7 @@ export default Vue.extend({
                 return;
             }
 
-            if(action === "frame-context-menu") {
+            if(action === ContextMenuType.frame) {
                 const deleteMethod = "delete";
                 const deleteOuterMethod = "deleteOuter";
                 this.frameContextMenuOptions = [
@@ -438,7 +467,7 @@ export default Vue.extend({
                 // We show the paste entries depending on the possiblity to paste the clipboard. 
                 let canPasteAboveFrame: boolean, canPasteBelowFrame: boolean;
                 if(!this.appStore.isCopiedAvailable || this.isPartOfSelection){
-                    // If there are no frame to copy, of the click is part of a selection of frames
+                    // If there are no frame to copy, or the click is part of a selection of frames
                     // we just remove all paste menu entries (and the divider following them)
                     const pasteOptionContextMenuPos = this.frameContextMenuOptions.findIndex((entry) => entry.method === "pasteAbove");
                     this.frameContextMenuOptions.splice(
@@ -514,11 +543,8 @@ export default Vue.extend({
                     disableOrEnableOption
                 );
 
-                // overwrite readonly properties pageX and set correct value
-                Object.defineProperty(event, "pageX", {
-                    value: event.pageX - 60,
-                    writable: true,
-                });
+                // Overwrite readonly properties pageX and set correct value
+                setContextMenuEventPageXY(event, positionForMenu);
                 
                 ((this.$refs.frameContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
                 //the menu could have "forcely" been disabled by us to prevent duplicated menu showing in the editable slots
@@ -526,11 +552,15 @@ export default Vue.extend({
                 const contextMenu = document.getElementById(getFrameContextMenuUIID(this.uiid));  
                 contextMenu?.removeAttribute("hidden");
 
+
                 // We add a hover event on the delete menu entries to show cue in the UI on what the entry will act upon
                 // need to be done in the next tick to make sure the menu has been generated.
                 // The other entries are all ignored, as we will show a selection when the menu opens (if there is no selection already for that frame)
                 this.$nextTick(() => {
                     if(contextMenu){
+                        // We make sure the menu can be shown completely. 
+                        adjustContextMenuPosition(event, contextMenu, positionForMenu);
+                        
                         //We prepare the indexes of the "delete" entries to add events on. "Delete" will always be added.
                         const deleteEntriesIndexes = [this.frameContextMenuOptions.findIndex((option) => option.method == deleteMethod)];
                         if(canDeleteOuter){

@@ -33,6 +33,7 @@
             >
                 <Frame 
                     v-for="frame in frames" 
+                    :ref="setFrameRef(frame.id)"
                     :key="frame.frameType.type + '-id:' + frame.id"
                     :frameId="frame.id"
                     :isDisabled="frame.isDisabled"
@@ -167,6 +168,10 @@ export default Vue.extend({
     },
 
     methods: {
+        setFrameRef(frameId: number) {
+            return getFrameUIID(frameId);
+        },
+        
         toggleCollapse(): void {
             this.isCollapsed = !this.isCollapsed;
         },

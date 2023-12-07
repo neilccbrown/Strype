@@ -14,6 +14,7 @@
         >
             <Frame
                 v-for="frame in jointFrames"
+                :ref="setFrameRef(frame.id)"
                 :key="frame.frameType.type + '-id:' + frame.id"
                 :frameId="frame.id"
                 :isDisabled="frame.isDisabled || isDisabled"
@@ -39,7 +40,7 @@ import Frame from "@/components/Frame.vue";
 import Draggable from "vuedraggable";
 import { FrameObject } from "@/types/types";
 import { mapStores } from "pinia";
-import { handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 
 //////////////////////
@@ -96,6 +97,10 @@ export default Vue.extend({
     },
 
     methods: {
+        setFrameRef(frameId: number) {
+            return getFrameUIID(frameId);
+        },
+        
         handleDragAndDrop(event: any): void {
             const eventType = Object.keys(event)[0];
             const chosenFrame = event[eventType].element;
