@@ -292,7 +292,6 @@ export default Vue.extend({
             return getFrameBodyRef();
         },
 
-
         getJointFramesRef(): string {
             return getJointFramesRef();
         },

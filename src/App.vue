@@ -124,7 +124,6 @@ export default Vue.extend({
             resetStrypeProjectFlag:false,
             isLargePythonConsole: false,
             autoSaveState: [] as AutoSaveFunction[],
-            isContextMenuKeyboardShortcutUsed: false, // Flag used to handle the context menu: see created() and registration of "contextmenu" event for
         };
     },
 
