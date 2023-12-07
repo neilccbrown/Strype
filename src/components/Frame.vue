@@ -363,12 +363,6 @@ export default Vue.extend({
 
     methods: {
         onKeyDown(event: KeyboardEvent) {
-            // When a up/down arrow is hit, we don't want to keep the menu open and potential menu enforced selection
-            if(event.key == "ArrowUp" || event.key == "ArrowDown"){
-                document.querySelector(".vue-simple-context-menu--active")?.classList.remove("vue-simple-context-menu--active");
-                this.contextMenuEnforcedSelect = false;
-            }
-            
             // Cutting/copying by shortcut is only available for a frame selection*.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
@@ -1025,5 +1019,26 @@ export default Vue.extend({
     border-left: 3px solid #000000 !important;
     border-right: 3px solid #000000 !important;
     padding-top: 5px;
+}
+
+/* Context Menu (Vue-simple-context-menu and a/c) classes
+*  some classes overwrite the classes of vue-simple-context-menu
+*/
+.vue-simple-context-menu__item:hover,
+.hoveredContextMenuItem {
+    background-color:#9aaefd !important;
+    color: black !important;
+}
+
+.selectedContextMenuItem {
+    background-color: #5a7bfc !important;
+    color: white !important;
+}
+
+.selectedContextMenuItem:hover {
+    // This is to deal with the conflict between our overwriting of :hover and selection
+    // for the vue-simple-context-menu objects.
+    background-color: #5a7bfc !important;
+    color: white !important;
 }
 </style>

@@ -40,12 +40,12 @@ export default Vue.extend({
     computed: {
         selectedItem(): string {
             return this.hoveredOver && !this.selected?
-                "hoveredAcItem"
+                "acItem hoveredContextMenuItem"
                 :
                 this.selected? 
-                    "selectedAcItem"
+                    "acItem selectedContextMenuItem"
                     :
-                    ""; 
+                    "acItem"; 
         },
     },
 
@@ -63,15 +63,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.selectedAcItem {
-    background-color: #5a7bfc;
-    color: white;
-}
-
-.hoveredAcItem {
-     background-color: #9aaefd;
-}
-
 .newlines {
     //Nedded for understanding the formated errors that split multiple
     // lines with \n
