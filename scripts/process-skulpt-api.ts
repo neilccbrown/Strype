@@ -16,7 +16,7 @@
 import "../public/js/skulpt.min";
 import "../public/js/skulpt-stdlib";
 import { pythonBuiltins } from "../src/autocompletion/pythonBuiltins";
-import {configureSkulptForAutoComplete, prepareSkulptCode} from "../src/autocompletion/ac-skulpt";
+import {configureSkulptForAutoComplete, getPythonCodeForNamesInContext} from "../src/autocompletion/ac-skulpt";
 import { AcResultType } from "../src/types/ac-types";
 
 
@@ -27,14 +27,14 @@ const promises : Promise<{[module: string] : AcResultType[]}>[] = [];
 for (const key in pythonBuiltins) {
     if (pythonBuiltins[key].type === "module") {
         // Ask Skulpt about the module's contents:
-        const codeToRun = prepareSkulptCode("import " + key + "\n", key, (x : string) => x);
+        const codeToRun = getPythonCodeForNamesInContext("import " + key + "\n", key);
         configureSkulptForAutoComplete();
         const myPromise = Sk.misceval.asyncToPromise(function() {
             return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
         }, {});
         // Show error in JS console if error happens
         promises.push(myPromise.then(() => {
-            return Promise.resolve(Sk.ffi.remapToJs(Sk.globals["ac"]) as {[module: string] : AcResultType[]});
+            return Promise.resolve({[key] : (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({acResult: s, documentation: "", type: "unknown", version: 0}))});
         },
         (err: any) => {
             console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);

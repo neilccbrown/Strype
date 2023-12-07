@@ -75,7 +75,7 @@ import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
 import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins } from "@/autocompletion/acManager";
-import { configureSkulptForAutoComplete, prepareSkulptCode } from "@/autocompletion/ac-skulpt";
+import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
@@ -184,7 +184,7 @@ export default Vue.extend({
                 // There is context, ask Skulpt for a dir() of that context
                 const parser = new Parser();
                 const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
-                const codeToRun = prepareSkulptCode(userCode, context, (x : string) => this.$i18n.t(x) as string);
+                const codeToRun = getPythonCodeForNamesInContext(userCode, context);
                 configureSkulptForAutoComplete();
                 const myPromise = Sk.misceval.asyncToPromise(function() {
                     return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
@@ -192,7 +192,7 @@ export default Vue.extend({
                 // Show error in JS console if error happens
                 myPromise.then(() => {
                     if (ourAcRequest == this.acRequestIndex) {
-                        this.acResults = Sk.ffi.remapToJs(Sk.globals["ac"]);
+                        this.acResults = {[context]: (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({acResult: s, documentation: "", type: "unknown", version: 0}))};
                         this.showSuggestionsAC(token);
                     }                    
                 },
