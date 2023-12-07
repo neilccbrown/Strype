@@ -224,21 +224,6 @@ if validContext:
                         #sys.stdout = old_stdout
                         #mystdout.close()
                         pass
-        #inspectionCode += "\\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+documentationSpanId+"'].text = "+STRYPE_LIB_TO_HIDE_PREFIX+"json.dumps(documentation);";
-        #inspectionCode += "\\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+typesSpanId+"'].text = "+STRYPE_LIB_TO_HIDE_PREFIX+"json.dumps(types);";
-    
-        # we store the context *path* obtained by checking the type of the context with Python, or leave empty if no context.
-        # it will be used in the AutoCompletion component to check versions
-        #inspectionCode += "\\n"+INDENT+INDENT+STRYPE_LIB_TO_HIDE_PREFIX+"document['"+acContextPathSpanId+"'].text = ''";
-        if ${contextAC.length > 0 ? "True" : "False"}:
-            # if there is a context,  we get the context path from 
-            # - self value if that's a module,
-            # - type() that returns the type as "<class 'xxx'>"
-            #if str(globals().get("+jsonStringifiedContext+")).startswith('<module '):
-            #    ${hide}document['"+acContextPathSpanId+"'].text = "+jsonStringifiedContext;
-            #elif str(type("+contextAC+")).startswith('<class '):
-            #    ${hide}document['"+acContextPathSpanId+"'].text = str(type("+contextAC+"))[8:-2]
-            pass
     except Exception as e3:
         print('exception3 ' + str(e3))
         
