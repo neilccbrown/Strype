@@ -75,7 +75,7 @@ import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
 import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins } from "@/autocompletion/acManager";
-import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext } from "@/autocompletion/ac-skulpt";
+import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext, getPythonCodeForTypeAndDocumentation } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
 declare const Sk: any;
 
@@ -176,7 +176,7 @@ export default Vue.extend({
             this.showSuggestionsAC(token);
         },
       
-        updateAC(frameId: number, token : string, context: string): void {
+        async updateAC(frameId: number, token : string, context: string): Promise<void> {
             this.acRequestIndex += 1;
             const ourAcRequest = this.acRequestIndex;
             this.acResults = {};
@@ -186,20 +186,34 @@ export default Vue.extend({
                 const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
                 const codeToRun = getPythonCodeForNamesInContext(userCode, context);
                 configureSkulptForAutoComplete();
-                const myPromise = Sk.misceval.asyncToPromise(function() {
-                    return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
-                }, {});
-                // Show error in JS console if error happens
-                myPromise.then(() => {
+                try {
+                    await Sk.misceval.asyncToPromise(function () {
+                        return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
+                    });
                     if (ourAcRequest == this.acRequestIndex) {
-                        this.acResults = {[context]: (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
-                        this.showSuggestionsAC(token);
-                    }                    
-                },
-                (err: any) => {
+                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({
+                            acResult: s,
+                            documentation: "",
+                            type: [],
+                            version: 0,
+                        })) as AcResultType[];
+                        for (const item of items) {
+                            const codeForDocs = getPythonCodeForTypeAndDocumentation(userCode, context + "." + item.acResult);
+                            await Sk.misceval.asyncToPromise(function () {
+                                return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
+                            });
+                            item.type = Sk.ffi.remapToJs(Sk.globals["itemType"]) as AcResultType["type"];
+                            item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
+                        }
+                        if (ourAcRequest == this.acRequestIndex) {
+                            this.acResults = {[context]: items};
+                            this.showSuggestionsAC(token);
+                        }
+                    }
+                }
+                catch (err) {
                     console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
-                });
-                // Everything else will happen in the callback once Skulpt finishes
+                }
             }
             else {
                 // No context, just ask for all built-ins, user-defined functions, user-defined variables and everything explicitly imported with "from...import...":
