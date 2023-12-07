@@ -450,6 +450,9 @@ describe("User-defined items", () => {
             checkExactlyOneItem(acIDSel, "myVar", "upper");
             checkNoItems(acIDSel, "divmod");
             checkAutocompleteSorted(acIDSel);
+            // Check docs show:
+            cy.get("body").type("pper");
+            cy.get(acIDSel).contains("Return a copy of the string converted to uppercase.");
         });
     });
 
