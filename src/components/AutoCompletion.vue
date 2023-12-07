@@ -192,7 +192,7 @@ export default Vue.extend({
                 // Show error in JS console if error happens
                 myPromise.then(() => {
                     if (ourAcRequest == this.acRequestIndex) {
-                        this.acResults = {[context]: (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({acResult: s, documentation: "", type: "unknown", version: 0}))};
+                        this.acResults = {[context]: (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
                         this.showSuggestionsAC(token);
                     }                    
                 },
@@ -211,7 +211,7 @@ export default Vue.extend({
                 this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
                     acResult: f.name,
                     documentation: f.documentation,
-                    type: "function",
+                    type: ["function"],
                     version: 0,
                 }));
                 
@@ -219,7 +219,7 @@ export default Vue.extend({
                 this.acResults[this.$i18n.t("autoCompletion.myVariables") as string] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
                     acResult: f,
                     documentation: "",
-                    type: "variable",
+                    type: ["variable"],
                     version: 0,
                 }));
                 
@@ -293,7 +293,7 @@ export default Vue.extend({
 
         },
 
-        getTypeOfSelected(id: string): string {
+        getTypeOfSelected(id: string): ("function" | "module" | "variable" | "type")[] {
             // We start by getting the index
             const indexOfSelected = parseInt(id.replace(this.UIID,""));
             // Here we are making all the ACresult objects in a flatten array (with contact.apply()) in which we are then finding the selected and return its type

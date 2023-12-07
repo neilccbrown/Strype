@@ -84,6 +84,17 @@ function replaceInputFunction(code: string): string {
     return code;
 }
 
+// Takes user code from the editor and gets rid of print calls and input() functions, then returns the new code
+function processUserCodeForAC(userCode: string) {
+    // we want to remove prints, so that when the AC runs on Brython we don't get the prints on the console or the browsers terminal
+    // we search for INDENT+print to avoid the very rare case that print is part of a string
+    // we also replace with pass# to avoid leaving a blank or commented row which is considered a mistake by python
+    // we also search for the input function as it would systematically trigger a prompt whenever we run the a/c (but OK for exec on console though)
+    // we replace it by an empty string
+    userCode = userCode.replaceAll(INDENT + "print(", INDENT + "pass#");
+    return replaceInputFunction(userCode);
+}
+
 /*
  * Prepare code to be run by Skulpt in order to find out completions for autocomplete.
  * Calls dir() on the given context then puts the results as a list of string into the "acs" variable.
@@ -93,13 +104,7 @@ function replaceInputFunction(code: string): string {
  */
 export function getPythonCodeForNamesInContext(userCode: string, contextAC: string): string {
 
-    // we want to remove prints, so that when the AC runs on Brython we don't get the prints on the console or the browsers terminal
-    // we search for INDENT+print to avoid the very rare case that print is part of a string
-    // we also replace with pass# to avoid leaving a blank or commented row which is considered a mistake by python
-    // we also search for the input function as it would systematically trigger a prompt whenever we run the a/c (but OK for exec on console though)
-    // we replace it by an empty string
-    userCode = userCode.replaceAll(INDENT+"print(",INDENT+"pass#");
-    userCode = replaceInputFunction(userCode);
+    userCode = processUserCodeForAC(userCode);
 
     // To avoid problems with strings in the contextAC (i.e. in function calls), we use an "escaped" value JSON-compliant
     // (note that the rendered string is wrapped by double quotes)
@@ -114,6 +119,39 @@ except Exception as e:
 `;
 
     return (userCode + inspectionCode);
+}
+
+/**
+ * Generates some Python code to access the type and documentation of the itemToQuery.
+ * @param userCode User code to run before querying the item
+ * @param itemToQuery The item to query, unquoted
+ * Leaves the list of types in itemTypes and the documentation in itemDocumentation
+ */
+export function getPythonCodeForTypeAndDocumentation(userCode: string, itemToQuery: string) : string {
+    userCode = processUserCodeForAC(userCode);
+    const inspectionCode = `
+from types import ModuleType
+
+itemTypes = []
+try:
+    if callable(${itemToQuery}):
+        itemTypes.append("function")
+    if isinstance(${itemToQuery}, type):
+        itemTypes.append("type")    
+    if isinstance(${itemToQuery}, ModuleType):
+        itemTypes.append("module")
+except:
+    pass
+itemDocumentation = ""
+try:
+    itemDocumentation = ${itemToQuery}.__doc__ or itemDocumentation
+except:
+    pass
+# For some items, e.g. types.BuiltinMethodType, __doc__ is not a string.  If this happens, set it back to empty string:
+if not isinstance(itemDocumentation, str):
+    itemDocumentation = ""
+`;
+    return userCode + inspectionCode;
 }
 
 export function configureSkulptForAutoComplete() : void {

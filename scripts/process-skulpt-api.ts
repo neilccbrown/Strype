@@ -16,8 +16,12 @@
 import "../public/js/skulpt.min";
 import "../public/js/skulpt-stdlib";
 import { pythonBuiltins } from "../src/autocompletion/pythonBuiltins";
-import {configureSkulptForAutoComplete, getPythonCodeForNamesInContext} from "../src/autocompletion/ac-skulpt";
-import {AcResultsWithModule} from "../src/types/ac-types";
+import {
+    configureSkulptForAutoComplete,
+    getPythonCodeForNamesInContext,
+    getPythonCodeForTypeAndDocumentation,
+} from "../src/autocompletion/ac-skulpt";
+import {AcResultsWithModule, AcResultType} from "../src/types/ac-types";
 
 declare const Sk: any;
 declare const window: any;
@@ -30,6 +34,28 @@ const modules : string[] = Object.keys(pythonBuiltins).filter((k) => pythonBuilt
 // promise chain that adds each item to the list until there is nothing left to process, then we output them
 // all and tell the browser to exit:
 
+function getDetailsForListOfItems(module: string | null, items: AcResultType[], next: number, atEnd: () => void) {
+    if (next >= items.length) {
+        atEnd();
+        return;
+    }
+    const codeToRun = getPythonCodeForTypeAndDocumentation(module ? "import " + module + "\n" : "", (module ? module + "." : "") + items[next].acResult);
+    Sk.misceval.asyncToPromise(function() {
+        return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
+    }, {}).then(() => {
+        items[next].type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
+        items[next].documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
+        // Sanity check the returns:
+        if (items[next].type === null || items[next].type === undefined || items[next].documentation === null || items[next].documentation === undefined) {
+            console.log("Undefined type or documentation for " + module + "." + items[next].acResult);
+        }
+        getDetailsForListOfItems(module, items, next + 1, atEnd);
+    },
+    (err: any) => {
+        console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
+    });
+}
+
 function getModuleMembersOneByOne(next : number, soFar : AcResultsWithModule, atEnd: () => void) {
     if (next >= modules.length) {
         // Done everything, so execute last bit instead:
@@ -39,32 +65,30 @@ function getModuleMembersOneByOne(next : number, soFar : AcResultsWithModule, at
     
     // Ask Skulpt about the module's contents:
     const codeToRun = getPythonCodeForNamesInContext("import " + modules[next] + "\n", modules[next]);
-    configureSkulptForAutoComplete();
-    const myPromise = Sk.misceval.asyncToPromise(function() {
+    Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
-    }, {});
-    // Show error in JS console if error happens
-    myPromise.then(() => {
-        soFar[modules[next]] = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({acResult: s, documentation: "", type: "unknown", version: 0}));
-        getModuleMembersOneByOne(next + 1, soFar, atEnd);
+    }, {}).then(() => {
+        const items : AcResultType[] = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({acResult: s, documentation: "", type: [], version: 0}));
+        getDetailsForListOfItems(modules[next], items, 0, () => {
+            soFar[modules[next]] = items;
+            getModuleMembersOneByOne(next + 1, soFar, atEnd);
+        });
     },
     (err: any) => {
         console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
     });
 }
 
-const allContent : AcResultsWithModule = {"": []};
+const allContent : AcResultsWithModule = {"": Object.keys(Sk.builtin).filter((func) => !func.includes("$")).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
+configureSkulptForAutoComplete();
 // Add Skulpt's builtin functions to the default module:
-for (const func of Object.keys(Sk.builtin)) {
-    if (!func.includes("$")) {
-        allContent[""].push({acResult: func, documentation: "", version: 0, type: "function"});
-    }
-}
-getModuleMembersOneByOne(0, allContent, () => {    
-    // Outputting the results to console actually goes to stdout, which the surrounding
-    // task redirects to the API file:
-    console.log(JSON.stringify(allContent, null, 4));
-    // This tells browser-run to exit, without it the browser stays open and the process never terminates.
-    // However, if we do it immediately it seems the console is not flushed to stdout, so we put it on a timer:
-    setTimeout(() => window.close(), 2000);
+getDetailsForListOfItems(null, allContent[""], 0, () => {
+    getModuleMembersOneByOne(0, allContent, () => {
+        // Outputting the results to console actually goes to stdout, which the surrounding
+        // task redirects to the API file:
+        console.log(JSON.stringify(allContent, null, 4));
+        // This tells browser-run to exit, without it the browser stays open and the process never terminates.
+        // However, if we do it immediately it seems the console is not flushed to stdout, so we put it on a timer:
+        setTimeout(() => window.close(), 2000);
+    });
 });
