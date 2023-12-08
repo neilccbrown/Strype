@@ -69,7 +69,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import { DefaultCursorPosition, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
+import { DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory } from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
@@ -103,8 +103,8 @@ export default Vue.extend({
             // and inapplicable.  So we put a number in here that we increment each time
             // we update:
             acRequestIndex : 0,
-            acResults: {} as AcResultsWithModule,
-            resultsToShow: {} as IndexedAcResultWithModule,
+            acResults: {} as AcResultsWithCategory,
+            resultsToShow: {} as IndexedAcResultWithCategory,
             documentation: [] as string[],
             selected: 0,
             currentModule: "",
