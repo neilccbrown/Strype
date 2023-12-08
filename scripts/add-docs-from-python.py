@@ -20,7 +20,7 @@ for mod in targetAPI:
         continue
     for item in targetAPI[mod]:
         # Each item has an "acResult" with the name
-        if not item['acResult'].startswith("_") and not item['documentation']:
+        if not item['documentation']:
             try:
                 doc = inspect.getdoc(getattr(imp_mod, item['acResult']))
                 # Some functions now have their type signature first, which we will omit by removing up

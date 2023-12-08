@@ -895,7 +895,7 @@
             "type": [
                 "function"
             ],
-            "documentation": "",
+            "documentation": "Import a module.\n\nBecause this function is meant for use by the Python\ninterpreter and not for general use, it is better to use\nimportlib.import_module() to programmatically import a module.\n\nThe globals argument is only used to determine the context;\nthey are not modified.  The locals argument is unused.  The fromlist\nshould be a list of names to emulate ``from name import ...``, or an\nempty list to emulate ``import name``.\nWhen importing a module from a package, note that __import__('A.B', ...)\nreturns package A when fromlist is empty, but its submodule B when\nfromlist is not empty.  The level argument is used to determine whether to\nperform absolute or relative imports: 0 is absolute, while a positive number\nis the number of parent directories to search relative to the current module.",
             "version": 0
         },
         {
@@ -1417,7 +1417,7 @@
             "type": [
                 "variable"
             ],
-            "documentation": "",
+            "documentation": "Runtime representation of an annotated type.\n\nAt its core 'Annotated[t, dec1, dec2, ...]' is an alias for the type 't'\nwith extra annotations. The alias behaves like a normal typing alias.\nInstantiating is the same as instantiating the underlying type; binding\nit to types is also the same.\n\nThe metadata itself is stored in a '__metadata__' attribute as a tuple.",
             "version": 0
         },
         {
@@ -3941,7 +3941,7 @@
             "type": [
                 "type"
             ],
-            "documentation": "",
+            "documentation": "A set is a finite, iterable container.\n\nThis class provides concrete generic implementations of all\nmethods except for __contains__, __iter__ and __len__.\n\nTo override the comparisons (presumably for speed, as the\nsemantics are fixed), redefine __le__ and __ge__,\nthen the other operations will automatically follow suit.",
             "version": 0
         },
         {
@@ -3949,7 +3949,7 @@
             "type": [
                 "type"
             ],
-            "documentation": "",
+            "documentation": "A set is a finite, iterable container.\n\nThis class provides concrete generic implementations of all\nmethods except for __contains__, __iter__ and __len__.\n\nTo override the comparisons (presumably for speed, as the\nsemantics are fixed), redefine __le__ and __ge__,\nthen the other operations will automatically follow suit.",
             "version": 0
         },
         {

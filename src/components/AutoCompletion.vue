@@ -191,7 +191,7 @@ export default Vue.extend({
                         return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
                     });
                     if (ourAcRequest == this.acRequestIndex) {
-                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({
+                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
                             acResult: s,
                             documentation: "",
                             type: [],
@@ -219,7 +219,7 @@ export default Vue.extend({
                 // No context, just ask for all built-ins, user-defined functions, user-defined variables and everything explicitly imported with "from...import...":
               
                 // Pick up built-in Python functions and types:
-                this.acResults["Python"] = getBuiltins();
+                this.acResults["Python"] = getBuiltins().filter((ac) => !ac.acResult.startsWith("_") || token.startsWith("_"));
               
                 // Add user-defined functions:
                 this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
