@@ -3,7 +3,8 @@
 export interface AcResultType {
     acResult: string;
     documentation: string;
-    type: "function" | "module" | "variable" | "type" | "unknown";
+    // Empty list means unknown.  
+    type: ("function" | "module" | "variable" | "type")[];
     version: number;
 }
 

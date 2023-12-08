@@ -410,6 +410,29 @@ describe("User-defined items", () => {
         });
     });
 
+    it("Offers auto-complete for user-defined function parameters", () => {
+        focusEditorAC();
+        // Make a function frame with "foo(myParam)" 
+        // then make a function call frame inside:
+        cy.get("body").type("{uparrow}ffoo(myParam{rightarrow} ");
+        // Trigger auto-completion:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, MYVARS, "myParam");
+            // Go out of this call and into the main body:
+            cy.get("body").type("{backspace}");
+            cy.wait(500);
+            cy.get("body").type("{downarrow}{downarrow}");
+        });
+        // Make a function call and check myParam doesn't show there:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkNoItems(acIDSel, "myParam");
+        });
+    });
+
     it("Offers auto-complete for items on user-defined variables", () => {
         focusEditorAC();
         // Make an assignment frame myVar="hi" then add a function call frame beneath with "myVar."
@@ -427,6 +450,9 @@ describe("User-defined items", () => {
             checkExactlyOneItem(acIDSel, "myVar", "upper");
             checkNoItems(acIDSel, "divmod");
             checkAutocompleteSorted(acIDSel);
+            // Check docs show:
+            cy.get("body").type("pper");
+            cy.get(acIDSel).contains("Return a copy of the string converted to uppercase.");
         });
     });
 

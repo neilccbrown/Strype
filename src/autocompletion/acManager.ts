@@ -1,4 +1,4 @@
-import {AcResultsWithModule, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType} from "@/types/types";
+import {AcResultsWithModule, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure} from "@/types/types";
 import { operators, keywordOperatorsWithSurroundSpaces, STRING_SINGLEQUOTE_PLACERHOLDER, STRING_DOUBLEQUOTE_PLACERHOLDER } from "@/helpers/editor";
 
 import _ from "lodash";
@@ -155,6 +155,23 @@ export function getCandidatesForAC(slotCode: string, frameId: number): {tokenAC:
     return {tokenAC: tokenAC , contextAC: contextAC, showAC: true};
 }
 
+// Given a slot, find all identifiers that are between two commas (or between a comma
+// and the start/end of the slot) and add them to the given set.
+function extractCommaSeparatedNamesAndAddToSet(slot: SlotsStructure, addTo: Set<string>) {
+    let validOpBefore = true;
+    const ops = slot.operators;
+    const fields = slot.fields;
+    for (let i = 0; i < fields.length; i++) {
+        const validOpAfter = i == fields.length - 1 || ops[i].code === ",";
+        if ((fields[i] as BaseSlot).code) {
+            if (validOpBefore && validOpAfter) {
+                addTo.add((fields[i] as BaseSlot).code);
+            }
+        }
+        validOpBefore = validOpAfter;
+    }
+}
+
 function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], frameId: number) : { found : Set<string>, complete: boolean} {
     const soFar = new Set<string>();
     for (const frame of framesForParentId) {
@@ -165,18 +182,7 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
             // We may have all sorts on the LHS.  We want any slots which are plain,
             // and which are adjoined by either the beginning of the slot, the end,
             // or a comma
-            let validOpBefore = true;
-            const ops = frame.labelSlotsDict[0].slotStructures.operators;
-            const fields = frame.labelSlotsDict[0].slotStructures.fields;
-            for (let i = 0; i < fields.length; i++) {
-                const validOpAfter = i == fields.length - 1 || ops[i].code === ",";
-                if ((fields[i] as BaseSlot).code) {
-                    if (validOpBefore && validOpAfter) {
-                        soFar.add((fields[i] as BaseSlot).code);
-                    }
-                }
-                validOpBefore = validOpAfter;
-            }
+            extractCommaSeparatedNamesAndAddToSet(frame.labelSlotsDict[0].slotStructures, soFar);
         }
         // Now go through children:
         for (const childrenId of frame.childrenIds) {
@@ -195,10 +201,17 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     // First we need to go up the tree, to find the top-most parent (either top-level frames or a user-defined function)
     let curFrameId = frameId;
     for (;;) {
-        const parentId = useStore().frameObjects[curFrameId].parentId;
+        const frame = useStore().frameObjects[curFrameId];
+        const parentId = frame.parentId;
         if (parentId == -2) {
             // It's a user-defined function, process accordingly
-            return getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(curFrameId), frameId).found;
+            const available = getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(curFrameId), frameId).found;
+            // Also add any parameters from the function:
+            // Sanity check the frame type:
+            if (frame.frameType.type === AllFrameTypesIdentifier.funcdef) {
+                extractCommaSeparatedNamesAndAddToSet(frame.labelSlotsDict[1].slotStructures, available);
+            }
+            return available;
         }
         else if (parentId <= 0) {
             // Reached top-level, go backwards from here:
@@ -227,9 +240,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithModule {
                 }
             }
             
-            // This works around issue #198; * can currently be a single operator or single field:
-            if ((frame.labelSlotsDict[1].slotStructures.operators.length == 1 && frame.labelSlotsDict[1].slotStructures.operators[0].code === "*")
-                || (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*")) {
+            if (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
                 // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
                 // the contents of the specific module:
@@ -282,14 +293,14 @@ export function getAllExplicitlyImportedItems() : AcResultsWithModule {
 
 export function getAvailableModulesForImport() : AcResultsWithModule {
     /* IFTRUE_isMicrobit */
-    return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: m in microbitPythonAPI ? (microbitPythonAPI[m as keyof typeof microbitPythonAPI].find((ac) => ac.acResult === "__doc__")?.documentation || "") : "", type: "module", version: 0}))};
+    return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: m in microbitPythonAPI ? (microbitPythonAPI[m as keyof typeof microbitPythonAPI].find((ac) => ac.acResult === "__doc__")?.documentation || "") : "", type: ["module"], version: 0}))};
     /* FITRUE_isMicrobit */
     /* IFTRUE_isPurePython */
-    return {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: pythonBuiltins[k].type, version: 0}))};
+    return {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: [pythonBuiltins[k].type], version: 0}))};
     /* FITRUE_isPurePython */
 }
 export function getAvailableItemsForImportFromModule(module: string) : AcResultsWithModule {
-    const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": "unknown"};
+    const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
     /* IFTRUE_isMicrobit */
     const allMicrobitItems: AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
     if (allMicrobitItems) {

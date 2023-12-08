@@ -23,19 +23,27 @@ class TreeWalk(ast.NodeVisitor):
         self.content = {}
         
     def visit_FunctionDef(self, node):
-        self.content[node.name] = {"acResult": node.name, "type": "function", "documentation": ast.get_docstring(node) or "", "version": 0}
+        if not node.name in self.content:
+            self.content[node.name] = {"acResult": node.name, "type": [], "documentation": ast.get_docstring(node) or "", "version": 0}
+        self.content[node.name]["type"].append("function")
     def visit_ClassDef(self, node):
-        self.content[node.name] = {"acResult": node.name, "type": "type", "documentation": ast.get_docstring(node) or "", "version": 0}
+        if not node.name in self.content:
+            self.content[node.name] = {"acResult": node.name, "type": [], "documentation": ast.get_docstring(node) or "", "version": 0}
+        self.content[node.name]["type"].append("type")
     def visit_AnnAssign(self, node):
         # Picks up items like "button_a : Button" which appear in the type stubs.  The target is the LHS
         if node.target.id:
-            self.content[node.target.id] = {"acResult": node.target.id, "type": "variable", "documentation": "", "version": 0}
+            if not node.target.id in self.content:
+                self.content[node.target.id] = {"acResult": node.target.id, "type": [], "documentation": "", "version": 0}
+            self.content[node.target.id]["type"].append("variable")
     def visit_ImportFrom(self, node):
         # Picks up items like "from . import compass as compass"
         # not node.module checks for "." in module name:
         if not node.module:
             for alias in node.names:
-                self.content[alias.asname] = {"acResult": alias.asname, "type": "module", "documentation": "", "version": 0}
+                if not alias.asname in self.content:
+                    self.content[alias.asname] = {"acResult": alias.asname, "type": [], "documentation": "", "version": 0}
+                self.content[alias.asname]["type"].append("module")
 
 # Either checkout https://github.com/microbit-foundation/micropython-microbit-stubs or do a git pull if directory exists
 if os.path.isdir("temp-scripts/micropython-microbit-stubs"):
@@ -62,7 +70,7 @@ def processdir(dir, parent):
                 walker = TreeWalk()
                 walker.visit(parsed)
                 topLevelDoc = ast.get_docstring(parsed)
-                found[parent[:-1]] = list(walker.content.values()) + ([{"acResult": "__doc__", "type": "module", "documentation": topLevelDoc, "version": 0}] if topLevelDoc else [])                  
+                found[parent[:-1]] = list(walker.content.values()) + ([{"acResult": "__doc__", "type": ["module"], "documentation": topLevelDoc, "version": 0}] if topLevelDoc else [])                  
 
 processdir("temp-scripts/micropython-microbit-stubs/lang/en/typeshed/stdlib", "")
 
