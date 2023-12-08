@@ -341,12 +341,12 @@ export function getCommandsRightPaneContainerId(): string {
 
 export function setContextMenuEventPageXY(event: MouseEvent, positionForMenu?: Position): void {
     Object.defineProperty(event, "pageX", {
-        value: (positionForMenu?.left) ? positionForMenu.left: (event.pageX - 60),
+        value: (positionForMenu?.left != undefined) ? positionForMenu.left: (event.pageX - 60),
         writable: true,
     });
 
     Object.defineProperty(event, "pageY", {
-        value: (positionForMenu?.top) ? positionForMenu.top : ((positionForMenu?.bottom) ? positionForMenu.bottom : event.pageY),
+        value: (positionForMenu?.top != undefined) ? positionForMenu.top : ((positionForMenu?.bottom != undefined) ? positionForMenu.bottom : event.pageY),
         writable: true,
     });
 
@@ -361,7 +361,7 @@ export function adjustContextMenuPosition(event: MouseEvent, contextMenu: HTMLEl
     //   we slide the menu so that the actual height of the menu is deducted from the "bottom" property value 
     //   (so the bottom of the menu and the bottom of the target (last selected frame or context menu container) are aligned)
     if(positionForMenu){
-        if(positionForMenu.bottom){
+        if(positionForMenu.bottom != undefined){
             const newMenuTopPosition = positionForMenu.bottom - contextMenu.getBoundingClientRect().height;
             contextMenu.style.top = newMenuTopPosition+"px";
         }
