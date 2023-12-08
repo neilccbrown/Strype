@@ -160,7 +160,8 @@
         "myFunctions":"My functions",
         "myVariables":"My variables",
         "importedModules":"Imported modules",
-        "invalidState":"No completion available"
+        "invalidState":"No completion available",
+        "noDocumentation":"No documentation available"
     },
     "apidiscovery" : {
         "v2InfoMsg":"This is only valid for the micro:bit board v2.",

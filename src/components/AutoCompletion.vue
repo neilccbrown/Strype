@@ -69,7 +69,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import { DefaultCursorPosition, IndexedAcResultWithModule, IndexedAcResult, AcResultType, AcResultsWithModule } from "@/types/types";
+import { DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory } from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
@@ -103,8 +103,8 @@ export default Vue.extend({
             // and inapplicable.  So we put a number in here that we increment each time
             // we update:
             acRequestIndex : 0,
-            acResults: {} as AcResultsWithModule,
-            resultsToShow: {} as IndexedAcResultWithModule,
+            acResults: {} as AcResultsWithCategory,
+            resultsToShow: {} as IndexedAcResultWithCategory,
             documentation: [] as string[],
             selected: 0,
             currentModule: "",
@@ -191,7 +191,7 @@ export default Vue.extend({
                         return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
                     });
                     if (ourAcRequest == this.acRequestIndex) {
-                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({
+                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
                             acResult: s,
                             documentation: "",
                             type: [],
@@ -219,7 +219,7 @@ export default Vue.extend({
                 // No context, just ask for all built-ins, user-defined functions, user-defined variables and everything explicitly imported with "from...import...":
               
                 // Pick up built-in Python functions and types:
-                this.acResults["Python"] = getBuiltins();
+                this.acResults["Python"] = getBuiltins().filter((ac) => !ac.acResult.startsWith("_") || token.startsWith("_"));
               
                 // Add user-defined functions:
                 this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
@@ -335,7 +335,13 @@ export default Vue.extend({
         },
 
         getCurrentDocumentation(): string {
-            return (this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType)?.documentation??"";
+            const curAC = this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType;
+            if (curAC) {
+                return curAC.documentation || (this.$i18n.t("autoCompletion.noDocumentation") as string); 
+            }
+            else {
+                return "";
+            }
         },
 
         areResultsToShow(): boolean {

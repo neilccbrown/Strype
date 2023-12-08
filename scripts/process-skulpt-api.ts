@@ -21,7 +21,7 @@ import {
     getPythonCodeForNamesInContext,
     getPythonCodeForTypeAndDocumentation,
 } from "../src/autocompletion/ac-skulpt";
-import {AcResultsWithModule, AcResultType} from "../src/types/ac-types";
+import {AcResultsWithCategory, AcResultType} from "../src/types/ac-types";
 
 declare const Sk: any;
 declare const window: any;
@@ -57,7 +57,7 @@ function getDetailsForListOfItems(module: string | null, items: AcResultType[], 
     });
 }
 
-function getModuleMembersOneByOne(next : number, soFar : AcResultsWithModule, atEnd: () => void) {
+function getModuleMembersOneByOne(next : number, soFar : AcResultsWithCategory, atEnd: () => void) {
     if (next >= modules.length) {
         // Done everything, so execute last bit instead:
         atEnd();
@@ -80,7 +80,7 @@ function getModuleMembersOneByOne(next : number, soFar : AcResultsWithModule, at
     });
 }
 
-const allContent : AcResultsWithModule = {"": Object.keys(Sk.builtin).filter((func) => !func.includes("$")).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
+const allContent : AcResultsWithCategory = {"": Object.keys(Sk.builtins).filter((func) => !func.includes("$")).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
 configureSkulptForAutoComplete();
 // Add Skulpt's builtin functions to the default module:
 getDetailsForListOfItems(null, allContent[""], 0, () => {

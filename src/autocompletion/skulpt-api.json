@@ -1,207 +1,6 @@
 {
     "": [
         {
-            "acResult": "type",
-            "documentation": "type(object_or_name, bases, dict)\ntype(object) -> the object's type\ntype(name, bases, dict) -> a new type",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "pyCheckArgs",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "pyCheckArgsLen",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "pyCheckType",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkSequence",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkIterable",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkCallable",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkNumber",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkComplex",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkInt",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkFloat",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkString",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkBytes",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkClass",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkBool",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkNone",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkFunction",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkDataDescr",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkAnySet",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "checkMapping",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "object",
-            "documentation": "The most base type",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "getset_descriptor",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "method_descriptor",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "wrapper_descriptor",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "method_wrapper",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "classmethod_descriptor",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "sk_method",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "none",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "NotImplemented",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "Ellipsis",
-            "documentation": "The most base type",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "str",
-            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "func",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
             "acResult": "round",
             "documentation": "Round a number to a given precision in decimal digits.\n\nThe return value is an integer if ndigits is omitted or None.  Otherwise\nthe return value has the same type as the number.  ndigits may be negative.",
             "type": [
@@ -234,35 +33,10 @@
             "version": 0
         },
         {
-            "acResult": "any",
-            "documentation": "Return True if bool(x) is True for any x in the iterable.\n\nIf the iterable is empty, return False.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "all",
-            "documentation": "Return True if bool(x) is True for all values x in the iterable.\n\nIf the iterable is empty, return True.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
             "acResult": "sum",
             "documentation": "Return the sum of a 'start' value (default: 0) plus an iterable of numbers\n\nWhen the iterable is empty, return the start value.\nThis function is intended specifically for use with numeric values and may\nreject non-numeric types.",
             "type": [
                 "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "zip",
-            "documentation": "zip(iter1 [,iter2 [...]]) --> zip object\n\nReturn a zip object whose .__next__() method returns a tuple where\nthe i-th element comes from the i-th iterable argument.  The .__next__()\nmethod continues until the shortest iterable in the argument sequence\nis exhausted and then it raises StopIteration.",
-            "type": [
-                "function",
-                "type"
             ],
             "version": 0
         },
@@ -294,18 +68,6 @@
             "type": [
                 "function"
             ],
-            "version": 0
-        },
-        {
-            "acResult": "unichr",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "int2str_",
-            "documentation": "",
-            "type": [],
             "version": 0
         },
         {
@@ -349,14 +111,6 @@
             "version": 0
         },
         {
-            "acResult": "ascii",
-            "documentation": "Return an ASCII-only representation of an object.\n\nAs repr(), return a string containing a printable representation of an\nobject, but escape the non-ASCII characters in the string returned by\nrepr() using \\\\x, \\\\u or \\\\U escapes. This generates a string similar\nto that returned by repr() in Python 2.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
             "acResult": "open",
             "documentation": "open(name[, mode[, buffering]]) -> file object\n\nOpen a file using the file() type, returns a file object.  This is the\npreferred way to open a file.  See file.__doc__ for further information.",
             "type": [
@@ -389,146 +143,8 @@
             "version": 0
         },
         {
-            "acResult": "setattr",
-            "documentation": "Sets the named attribute on the given object to the specified value.\n\nsetattr(x, 'y', v) is equivalent to ``x.y = v''",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "raw_input",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "input",
-            "documentation": "Read a string from standard input.  The trailing newline is stripped.\n\nThe prompt string, if given, is printed to standard output without a\ntrailing newline before reading input.\n\nIf the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.\nOn *nix systems, readline is used if available.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "jseval",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "jsmillis",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "compile",
-            "documentation": "Compile source into a code object that can be executed by exec() or eval().\n\nThe source code may represent a Python module, statement or expression.\nThe filename will be used for run-time error messages.\nThe mode must be 'exec' to compile a module, 'single' to compile a\nsingle (interactive) statement, or 'eval' to compile an expression.\nThe flags argument, if present, controls which future statements influence\nthe compilation of the code.\nThe dont_inherit argument, if true, stops the compilation inheriting\nthe effects of any future statements in effect in the code calling\ncompile; if absent or false these statements do influence the compilation,\nin addition to any features explicitly specified.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "exec",
-            "documentation": "Execute the given source in the context of globals and locals.\n\nThe source may be a string representing one or more Python statements\nor a code object as returned by compile().\nThe globals must be a dictionary and locals can be any mapping,\ndefaulting to the current globals and locals.\nIf only globals is given, locals defaults to it.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "eval",
-            "documentation": "Evaluate the given source in the context of globals and locals.\n\nThe source may be a string representing a Python expression\nor a code object as returned by compile().\nThe globals must be a dictionary and locals can be any mapping,\ndefaulting to the current globals and locals.\nIf only globals is given, locals defaults to it.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "map",
-            "documentation": "map(func, *iterables) --> map object\n\nMake an iterator that computes the function using arguments from\neach of the iterables.  Stops when the shortest iterable is exhausted.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "reduce",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "sorted",
-            "documentation": "Return a new list containing all items from the iterable in ascending order.\n\nA custom key function can be supplied to customize the sort order, and the\nreverse flag can be set to request the result in descending order.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "filter",
-            "documentation": "Return an iterator yielding those items of iterable for which function(item)\nis true. If function is None, return the items that are true.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
             "acResult": "hasattr",
             "documentation": "Return whether the object has an attribute with the given name.\n\nThis is done by calling getattr(obj, name) and catching AttributeError.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "pow",
-            "documentation": "Equivalent to x**y (with two arguments) or x**y % z (with three arguments)\n\nSome types, such as ints, are able to use a more efficient algorithm when\ninvoked using the three argument form.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "quit",
-            "documentation": "",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "issubclass",
-            "documentation": "Return whether 'cls' is a derived from another class or is the same class.\n\nA tuple, as in ``issubclass(x, (A, B, ...))``, may be given as the target to\ncheck against. This is equivalent to ``issubclass(x, A) or issubclass(x, B)\nor ...`` etc.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "globals",
-            "documentation": "Return the dictionary containing the current scope's global variables.\n\nNOTE: Updates to this dictionary *will* affect name lookups in the current\nglobal scope and vice-versa.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "divmod",
-            "documentation": "Return the tuple (x//y, x%y).  Invariant: div*y + mod == x.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "format",
-            "documentation": "Return value.__format__(format_spec)\n\nformat_spec defaults to the empty string.\nSee the Format Specification Mini-Language section of help('FORMATTING') for\ndetails.",
             "type": [
                 "function"
             ],
@@ -543,103 +159,81 @@
             "version": 0
         },
         {
-            "acResult": "bytearray",
-            "documentation": "Construct a mutable bytearray object from:\n  - an iterable yielding integers in range(256)\n  - a text string encoded using the specified encoding\n  - a bytes or a buffer object\n  - any object implementing the buffer API.\n  - an integer",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "callable",
-            "documentation": "Return whether the object is callable (i.e., some kind of function).\n\nNote that classes are callable, as are instances of classes with a\n__call__() method.",
+            "acResult": "sorted",
+            "documentation": "Return a new list containing all items from the iterable in ascending order.\n\nA custom key function can be supplied to customize the sort order, and the\nreverse flag can be set to request the result in descending order.",
             "type": [
                 "function"
             ],
             "version": 0
         },
         {
-            "acResult": "delattr",
-            "documentation": "Deletes the named attribute from the given object.\n\ndelattr(x, 'y') is equivalent to ``del x.y''",
+            "acResult": "any",
+            "documentation": "Return True if bool(x) is True for any x in the iterable.\n\nIf the iterable is empty, return False.",
             "type": [
                 "function"
             ],
             "version": 0
         },
         {
-            "acResult": "execfile",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "help",
-            "documentation": "Define the builtin 'help'.\n\nThis is a wrapper around pydoc.help that provides a helpful message\nwhen 'help' is typed at the Python interactive prompt.\n\nCalling help() at the Python prompt starts an interactive help session.\nCalling help(thing) prints help for the python object 'thing'.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "iter",
-            "documentation": "iter(iterable) -> iterator\niter(callable, sentinel) -> iterator\n\nGet an iterator from an object.  In the first form, the argument must\nsupply its own iterator, or be a sequence.\nIn the second form, the callable is called until it returns the sentinel.",
+            "acResult": "all",
+            "documentation": "Return True if bool(x) is True for all values x in the iterable.\n\nIf the iterable is empty, return True.",
             "type": [
                 "function"
             ],
             "version": 0
         },
         {
-            "acResult": "locals",
-            "documentation": "Return a dictionary containing the current scope's local variables.\n\nNOTE: Whether or not updates to this dictionary will affect name lookups in\nthe local scope and vice-versa is *implementation dependent* and not\ncovered by any backwards compatibility guarantees.",
+            "acResult": "enumerate",
+            "documentation": "Return an enumerate object.\n\n  iterable\n    an object supporting iteration\n\nThe enumerate object yields pairs containing a count (from start, which\ndefaults to zero) and a value yielded by the iterable argument.\n\nenumerate is useful for obtaining an indexed list:\n    (0, seq[0]), (1, seq[1]), (2, seq[2]), ...",
             "type": [
-                "function"
+                "function",
+                "type"
             ],
             "version": 0
         },
         {
-            "acResult": "memoryview",
-            "documentation": "Create a new memoryview object which references the given object.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "next_",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "reload",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "vars",
-            "documentation": "vars([object]) -> dictionary\n\nWithout arguments, equivalent to locals().\nWith an argument, equivalent to object.__dict__.",
+            "acResult": "filter",
+            "documentation": "Return an iterator yielding those items of iterable for which function(item)\nis true. If function is None, return the items that are true.",
             "type": [
-                "function"
+                "function",
+                "type"
             ],
             "version": 0
         },
         {
-            "acResult": "apply_",
-            "documentation": "",
-            "type": [],
+            "acResult": "map",
+            "documentation": "map(func, *iterables) --> map object\n\nMake an iterator that computes the function using arguments from\neach of the iterables.  Stops when the shortest iterable is exhausted.",
+            "type": [
+                "function",
+                "type"
+            ],
             "version": 0
         },
         {
-            "acResult": "buffer",
-            "documentation": "",
-            "type": [],
+            "acResult": "range",
+            "documentation": "range(stop) -> range object\nrange(start, stop[, step]) -> range object\n\nReturn an object that produces a sequence of integers from start (inclusive)\nto stop (exclusive) by step.  range(i, j) produces i, i+1, i+2, ..., j-1.\nstart defaults to 0, and stop is omitted!  range(4) produces 0, 1, 2, 3.\nThese are exactly the valid indices for a list of 4 elements.\nWhen step is given, it specifies the increment (or decrement).",
+            "type": [
+                "function",
+                "type"
+            ],
             "version": 0
         },
         {
-            "acResult": "coerce",
-            "documentation": "",
-            "type": [],
+            "acResult": "reversed",
+            "documentation": "Return a reverse iterator over the values of the given sequence.",
+            "type": [
+                "function",
+                "type"
+            ],
             "version": 0
         },
         {
-            "acResult": "intern",
-            "documentation": "",
-            "type": [],
+            "acResult": "zip",
+            "documentation": "zip(iter1 [,iter2 [...]]) --> zip object\n\nReturn a zip object whose .__next__() method returns a tuple where\nthe i-th element comes from the i-th iterable argument.  The .__next__()\nmethod continues until the shortest iterable in the argument sequence\nis exhausted and then it raises StopIteration.",
+            "type": [
+                "function",
+                "type"
+            ],
             "version": 0
         },
         {
@@ -652,8 +246,8 @@
             "version": 0
         },
         {
-            "acResult": "SystemExit",
-            "documentation": "Request to exit from the interpreter.",
+            "acResult": "AttributeError",
+            "documentation": "Attribute not found.",
             "type": [
                 "function",
                 "type"
@@ -661,59 +255,17 @@
             "version": 0
         },
         {
-            "acResult": "KeyboardInterrupt",
-            "documentation": "Program interrupted by user.",
+            "acResult": "ValueError",
+            "documentation": "Inappropriate argument value (of correct type).",
             "type": [
                 "function",
                 "type"
             ],
-            "version": 0
-        },
-        {
-            "acResult": "GeneratorExit",
-            "documentation": "Request that a generator exit.",
-            "type": [],
             "version": 0
         },
         {
             "acResult": "Exception",
             "documentation": "Common base class for all non-exit exceptions.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "StopIteration",
-            "documentation": "Signal the end from iterator.__next__().",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "StopAsyncIteration",
-            "documentation": "Signal the end from iterator.__anext__().",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "ArithmeticError",
-            "documentation": "Base class for arithmetic errors.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "FloatingPointError",
-            "documentation": "Floating point operation failed.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "OverflowError",
-            "documentation": "Result too large to be represented.",
             "type": [
                 "function",
                 "type"
@@ -739,27 +291,6 @@
             "version": 0
         },
         {
-            "acResult": "AttributeError",
-            "documentation": "Attribute not found.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "BufferError",
-            "documentation": "Buffer error.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "EOFError",
-            "documentation": "Read beyond end of file.",
-            "type": [],
-            "version": 0
-        },
-        {
             "acResult": "ImportError",
             "documentation": "Import can't find module, or can't find name in module.",
             "type": [
@@ -778,8 +309,8 @@
             "version": 0
         },
         {
-            "acResult": "LookupError",
-            "documentation": "Base class for lookup errors.",
+            "acResult": "IndentationError",
+            "documentation": "Improper indentation.",
             "type": [
                 "function",
                 "type"
@@ -796,125 +327,17 @@
             "version": 0
         },
         {
+            "acResult": "LookupError",
+            "documentation": "Base class for lookup errors.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
             "acResult": "KeyError",
             "documentation": "Mapping key not found.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "MemoryError",
-            "documentation": "Out of memory.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "NameError",
-            "documentation": "Name not found globally.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "UnboundLocalError",
-            "documentation": "Local name referenced but not bound to a value.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "OSError",
-            "documentation": "Base class for I/O related errors.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "IOError",
-            "documentation": "Base class for I/O related errors.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "FileNotFoundError",
-            "documentation": "File not found.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "TimeoutError",
-            "documentation": "Timeout expired.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "ReferenceError",
-            "documentation": "Weak ref proxy used after referent went away.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "RuntimeError",
-            "documentation": "Unspecified run-time error.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "NotImplementedError",
-            "documentation": "Method or function hasn't been implemented yet.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "RecursionError",
-            "documentation": "Recursion limit exceeded.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "SyntaxError",
-            "documentation": "Invalid syntax.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "IndentationError",
-            "documentation": "Improper indentation.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "TabError",
-            "documentation": "Improper mixture of spaces and tabs.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "SystemError",
-            "documentation": "Internal error in the Skulpt interpreter.",
             "type": [
                 "function",
                 "type"
@@ -928,21 +351,6 @@
                 "function",
                 "type"
             ],
-            "version": 0
-        },
-        {
-            "acResult": "ValueError",
-            "documentation": "Inappropriate argument value (of correct type).",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "UnicodeError",
-            "documentation": "Unicode related error.",
-            "type": [],
             "version": 0
         },
         {
@@ -964,26 +372,8 @@
             "version": 0
         },
         {
-            "acResult": "SuspensionError",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "ExternalError",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "getExcInfo",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "method",
-            "documentation": "",
+            "acResult": "NameError",
+            "documentation": "Name not found globally.",
             "type": [
                 "function",
                 "type"
@@ -991,20 +381,8 @@
             "version": 0
         },
         {
-            "acResult": "callable_iter_",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "seq_iter_",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "list",
-            "documentation": "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",
+            "acResult": "UnboundLocalError",
+            "documentation": "Local name referenced but not bound to a value.",
             "type": [
                 "function",
                 "type"
@@ -1012,8 +390,8 @@
             "version": 0
         },
         {
-            "acResult": "bytes",
-            "documentation": "bytes(iterable_of_ints) -> bytes\nbytes(string, encoding[, errors]) -> bytes\nbytes(bytes_or_buffer) -> immutable copy of bytes_or_buffer\nbytes(int) -> bytes object of size given by the parameter initialized with null bytes\nbytes() -> empty bytes object\n\nConstruct an immutable array of bytes from:\n  - an iterable yielding integers in range(256)\n  - a text string encoded using the specified encoding\n  - any object implementing the buffer API.\n  - an integer",
+            "acResult": "IOError",
+            "documentation": "Base class for I/O related errors.",
             "type": [
                 "function",
                 "type"
@@ -1021,8 +399,110 @@
             "version": 0
         },
         {
-            "acResult": "tuple",
-            "documentation": "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.",
+            "acResult": "NotImplementedError",
+            "documentation": "Method or function hasn't been implemented yet.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "SystemExit",
+            "documentation": "Request to exit from the interpreter.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "OverflowError",
+            "documentation": "Result too large to be represented.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "OperationError",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "NegativePowerError",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "RuntimeError",
+            "documentation": "Unspecified run-time error.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "RecursionError",
+            "documentation": "Recursion limit exceeded.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "StopIteration",
+            "documentation": "Signal the end from iterator.__next__().",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "SyntaxError",
+            "documentation": "Invalid syntax.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "SystemError",
+            "documentation": "Internal error in the Skulpt interpreter.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "KeyboardInterrupt",
+            "documentation": "Program interrupted by user.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "bool",
+            "documentation": "bool(x) -> bool\n\nReturns True when the argument x is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "complex",
+            "documentation": "Create a complex number from a real part and an optional imaginary part.\n\nThis is equivalent to (real + imag*1j) where imag defaults to 0.",
             "type": [
                 "function",
                 "type"
@@ -1039,7 +519,260 @@
             "version": 0
         },
         {
-            "acResult": "mappingproxy",
+            "acResult": "file",
+            "documentation": "The most base type",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "frozenset",
+            "documentation": "frozenset() -> empty frozenset object\nfrozenset(iterable) -> frozenset object\n\nBuild an immutable unordered collection of unique elements.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "function",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "generator",
+            "documentation": "The most base type",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "list",
+            "documentation": "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "method",
+            "documentation": "",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "object",
+            "documentation": "The most base type",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "slice",
+            "documentation": "slice(stop)\nslice(start, stop[, step])\n\nCreate a slice object.  This is used for extended slicing (e.g. a[0:10:2]).",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "str",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "set",
+            "documentation": "set() -> new empty set object\nset(iterable) -> new set object\n\nBuild an unordered collection of unique elements.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "tuple",
+            "documentation": "Built-in immutable sequence.\n\nIf no argument is given, the constructor returns an empty tuple.\nIf iterable is specified the tuple is initialized from iterable's items.\n\nIf the argument is a tuple, the return value is the same object.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "type",
+            "documentation": "type(object_or_name, bases, dict)\ntype(object) -> the object's type\ntype(name, bases, dict) -> a new type",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "input",
+            "documentation": "Read a string from standard input.  The trailing newline is stripped.\n\nThe prompt string, if given, is printed to standard output without a\ntrailing newline before reading input.\n\nIf the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.\nOn *nix systems, readline is used if available.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "raw_input",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "setattr",
+            "documentation": "Sets the named attribute on the given object to the specified value.\n\nsetattr(x, 'y', v) is equivalent to ``x.y = v''",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "jseval",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "jsmillis",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "quit",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "exit",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "print",
+            "documentation": "print(value, ..., sep=' ', end='\\n', file=sys.stdout, flush=False)\n\nPrints the values to a stream, or to sys.stdout by default.\nOptional keyword arguments:\nfile:  a file-like object (stream); defaults to the current sys.stdout.\nsep:   string inserted between values, default a space.\nend:   string appended after the last value, default a newline.\nflush: whether to forcibly flush the stream.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "divmod",
+            "documentation": "Return the tuple (x//y, x%y).  Invariant: div*y + mod == x.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "format",
+            "documentation": "Return value.__format__(format_spec)\n\nformat_spec defaults to the empty string.\nSee the Format Specification Mini-Language section of help('FORMATTING') for\ndetails.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "globals",
+            "documentation": "Return the dictionary containing the current scope's global variables.\n\nNOTE: Updates to this dictionary *will* affect name lookups in the current\nglobal scope and vice-versa.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "issubclass",
+            "documentation": "Return whether 'cls' is a derived from another class or is the same class.\n\nA tuple, as in ``issubclass(x, (A, B, ...))``, may be given as the target to\ncheck against. This is equivalent to ``issubclass(x, A) or issubclass(x, B)\nor ...`` etc.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "iter",
+            "documentation": "iter(iterable) -> iterator\niter(callable, sentinel) -> iterator\n\nGet an iterator from an object.  In the first form, the argument must\nsupply its own iterator, or be a sequence.\nIn the second form, the callable is called until it returns the sentinel.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "execfile",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "help",
+            "documentation": "Define the builtin 'help'.\n\nThis is a wrapper around pydoc.help that provides a helpful message\nwhen 'help' is typed at the Python interactive prompt.\n\nCalling help() at the Python prompt starts an interactive help session.\nCalling help(thing) prints help for the python object 'thing'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "memoryview",
+            "documentation": "Create a new memoryview object which references the given object.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "reload",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "unichr",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "vars",
+            "documentation": "vars([object]) -> dictionary\n\nWithout arguments, equivalent to locals().\nWith an argument, equivalent to object.__dict__.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "buffer",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "coerce",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "intern",
             "documentation": "",
             "type": [],
             "version": 0
@@ -1072,172 +805,8 @@
             "version": 0
         },
         {
-            "acResult": "int_",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "lng",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "bool",
-            "documentation": "bool(x) -> bool\n\nReturns True when the argument x is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "float_",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "complex",
-            "documentation": "Create a complex number from a real part and an optional imaginary part.\n\nThis is equivalent to (real + imag*1j) where imag defaults to 0.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "slice",
-            "documentation": "slice(stop)\nslice(start, stop[, step])\n\nCreate a slice object.  This is used for extended slicing (e.g. a[0:10:2]).",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "set",
-            "documentation": "set() -> new empty set object\nset(iterable) -> new set object\n\nBuild an unordered collection of unique elements.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "frozenset",
-            "documentation": "frozenset() -> empty frozenset object\nfrozenset(iterable) -> frozenset object\n\nBuild an immutable unordered collection of unique elements.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "print",
-            "documentation": "print(value, ..., sep=' ', end='\\n', file=sys.stdout, flush=False)\n\nPrints the values to a stream, or to sys.stdout by default.\nOptional keyword arguments:\nfile:  a file-like object (stream); defaults to the current sys.stdout.\nsep:   string inserted between values, default a space.\nend:   string appended after the last value, default a newline.\nflush: whether to forcibly flush the stream.",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "module",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "structseq_types",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "make_structseq",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "generator",
+            "acResult": "Ellipsis",
             "documentation": "The most base type",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "makeGenerator",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "file",
-            "documentation": "The most base type",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "range_",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "xrange",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "range",
-            "documentation": "range(stop) -> range object\nrange(start, stop[, step]) -> range object\n\nReturn an object that produces a sequence of integers from start (inclusive)\nto stop (exclusive) by step.  range(i, j) produces i, i+1, i+2, ..., j-1.\nstart defaults to 0, and stop is omitted!  range(4) produces 0, 1, 2, 3.\nThese are exactly the valid indices for a list of 4 elements.\nWhen step is given, it specifies the increment (or decrement).",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "enumerate",
-            "documentation": "Return an enumerate object.\n\n  iterable\n    an object supporting iteration\n\nThe enumerate object yields pairs containing a count (from start, which\ndefaults to zero) and a value yielded by the iterable argument.\n\nenumerate is useful for obtaining an indexed list:\n    (0, seq[0]), (1, seq[1]), (2, seq[2]), ...",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "filter_",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "map_",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "reversed",
-            "documentation": "Return a reverse iterator over the values of the given sequence.",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "zip_",
-            "documentation": "",
             "type": [],
             "version": 0
         },
@@ -1250,27 +819,67 @@
             "version": 0
         },
         {
-            "acResult": "timSort",
-            "documentation": "",
-            "type": [],
+            "acResult": "ascii",
+            "documentation": "Return an ASCII-only representation of an object.\n\nAs repr(), return a string containing a printable representation of an\nobject, but escape the non-ASCII characters in the string returned by\nrepr() using \\\\x, \\\\u or \\\\U escapes. This generates a string similar\nto that returned by repr() in Python 2.",
+            "type": [
+                "function"
+            ],
             "version": 0
         },
         {
-            "acResult": "listSlice",
-            "documentation": "",
-            "type": [],
+            "acResult": "callable",
+            "documentation": "Return whether the object is callable (i.e., some kind of function).\n\nNote that classes are callable, as are instances of classes with a\n__call__() method.",
+            "type": [
+                "function"
+            ],
             "version": 0
         },
         {
-            "acResult": "super_",
-            "documentation": "",
-            "type": [],
+            "acResult": "compile",
+            "documentation": "Compile source into a code object that can be executed by exec() or eval().\n\nThe source code may represent a Python module, statement or expression.\nThe filename will be used for run-time error messages.\nThe mode must be 'exec' to compile a module, 'single' to compile a\nsingle (interactive) statement, or 'eval' to compile an expression.\nThe flags argument, if present, controls which future statements influence\nthe compilation of the code.\nThe dont_inherit argument, if true, stops the compilation inheriting\nthe effects of any future statements in effect in the code calling\ncompile; if absent or false these statements do influence the compilation,\nin addition to any features explicitly specified.",
+            "type": [
+                "function"
+            ],
             "version": 0
         },
         {
-            "acResult": "GenericAlias",
-            "documentation": "",
-            "type": [],
+            "acResult": "delattr",
+            "documentation": "Deletes the named attribute from the given object.\n\ndelattr(x, 'y') is equivalent to ``del x.y''",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "exec",
+            "documentation": "Execute the given source in the context of globals and locals.\n\nThe source may be a string representing one or more Python statements\nor a code object as returned by compile().\nThe globals must be a dictionary and locals can be any mapping,\ndefaulting to the current globals and locals.\nIf only globals is given, locals defaults to it.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "locals",
+            "documentation": "Return a dictionary containing the current scope's local variables.\n\nNOTE: Whether or not updates to this dictionary will affect name lookups in\nthe local scope and vice-versa is *implementation dependent* and not\ncovered by any backwards compatibility guarantees.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "next",
+            "documentation": "next(iterator[, default])\n\nReturn the next item from the iterator. If default is given and the iterator\nis exhausted, it is returned instead of raising StopIteration.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pow",
+            "documentation": "Equivalent to x**y (with two arguments) or x**y % z (with three arguments)\n\nSome types, such as ints, are able to use a more efficient algorithm when\ninvoked using the three argument form.",
+            "type": [
+                "function"
+            ],
             "version": 0
         }
     ],
@@ -1295,7 +904,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -1319,7 +928,7 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -1367,7 +976,7 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
@@ -1379,7 +988,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -1403,7 +1012,7 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -1433,7 +1042,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -1457,7 +1066,7 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         }
@@ -1474,13 +1083,13 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -1504,7 +1113,7 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -1597,7 +1206,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -1609,13 +1218,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -1631,13 +1240,13 @@
     "array": [
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Loader for extension modules.\n\nThe constructor is designed to work with FileFinder.",
             "type": [],
             "version": 0
         },
@@ -1649,13 +1258,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -1684,7 +1293,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -1696,13 +1305,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -1782,13 +1391,13 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -1800,13 +1409,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -1914,7 +1523,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -1926,13 +1535,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -2086,13 +1695,13 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -2104,13 +1713,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -4335,7 +3944,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Meta path import for built-in modules.\n\nAll methods are either class or static methods to avoid the need to\ninstantiate the class.",
             "type": [],
             "version": 0
         },
@@ -4353,7 +3962,7 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -4537,13 +4146,13 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -4555,13 +4164,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -4597,13 +4206,13 @@
     "math": [
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Loader for extension modules.\n\nThe constructor is designed to work with FileFinder.",
             "type": [],
             "version": 0
         },
@@ -4615,13 +4224,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -5083,7 +4692,7 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
@@ -5095,7 +4704,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -5107,13 +4716,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         }
@@ -5373,7 +4982,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -5457,7 +5066,7 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
@@ -5495,7 +5104,7 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -5970,13 +5579,13 @@
     "platform": [
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -5988,13 +5597,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -8814,13 +8423,13 @@
     "random": [
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -8832,13 +8441,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -9085,13 +8694,13 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -9103,13 +8712,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -9312,7 +8921,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -9324,13 +8933,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -9354,13 +8963,13 @@
     "string": [
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -9372,13 +8981,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -9517,7 +9126,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -9529,13 +9138,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -9605,13 +9214,13 @@
     "time": [
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Meta path import for built-in modules.\n\nAll methods are either class or static methods to avoid the need to\ninstantiate the class.",
             "type": [],
             "version": 0
         },
@@ -9629,7 +9238,7 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -10160,7 +9769,7 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
@@ -10172,7 +9781,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -10184,13 +9793,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -10204,13 +9813,13 @@
     "tokenize": [
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -10222,13 +9831,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -10562,7 +10171,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -10574,13 +10183,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         }
@@ -10597,13 +10206,13 @@
         },
         {
             "acResult": "__doc__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -10615,13 +10224,13 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },

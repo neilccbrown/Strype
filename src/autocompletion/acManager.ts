@@ -1,4 +1,4 @@
-import {AcResultsWithModule, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure} from "@/types/types";
+import {AcResultsWithCategory, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure} from "@/types/types";
 import { operators, keywordOperatorsWithSurroundSpaces, STRING_SINGLEQUOTE_PLACERHOLDER, STRING_DOUBLEQUOTE_PLACERHOLDER } from "@/helpers/editor";
 
 import _ from "lodash";
@@ -221,8 +221,8 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     }
 }
 
-export function getAllExplicitlyImportedItems() : AcResultsWithModule {
-    const soFar : AcResultsWithModule = {};
+export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
+    const soFar : AcResultsWithCategory = {};
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
     loopImportFrames: for (let i = 0; i < imports.length; i++) {
         const frame = imports[i];
@@ -291,7 +291,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithModule {
     return soFar;
 }
 
-export function getAvailableModulesForImport() : AcResultsWithModule {
+export function getAvailableModulesForImport() : AcResultsWithCategory {
     /* IFTRUE_isMicrobit */
     return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: m in microbitPythonAPI ? (microbitPythonAPI[m as keyof typeof microbitPythonAPI].find((ac) => ac.acResult === "__doc__")?.documentation || "") : "", type: ["module"], version: 0}))};
     /* FITRUE_isMicrobit */
@@ -299,7 +299,7 @@ export function getAvailableModulesForImport() : AcResultsWithModule {
     return {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: [pythonBuiltins[k].type], version: 0}))};
     /* FITRUE_isPurePython */
 }
-export function getAvailableItemsForImportFromModule(module: string) : AcResultsWithModule {
+export function getAvailableItemsForImportFromModule(module: string) : AcResultsWithCategory {
     const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
     /* IFTRUE_isMicrobit */
     const allMicrobitItems: AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
