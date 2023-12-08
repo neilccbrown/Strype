@@ -586,3 +586,110 @@ describe("Nested modules", () => {
         }
     });
 });
+
+describe("Underscore handling", () => {
+    it("Does not offer underscore items at top-level until typed", () => {
+        focusEditorAC();
+        // Add a function frame and trigger auto-complete:
+        cy.get("body").type(" ");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
+            checkNoItems(acIDSel, "__doc__");
+            checkNoItems(acIDSel, "__import__");
+            checkNoItems(acIDSel, "__name__");
+            // Once we type "_", should show things beginning with _ but not the others:
+            cy.get("body").type("_");
+            checkNoItems(acIDSel, "abs");
+            checkNoItems(acIDSel, "AssertionError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "__import__");
+            checkAutocompleteSorted(acIDSel);
+            // Check docs are showing for built-in function:
+            cy.get(acIDSel).contains("Import a module.");
+        });
+    });
+    // Python rules say we never import anything with underscores from modules with import *:
+    it("Does not offer underscore items on modules at all", () => {
+        // Go up to imports and add a from time import *
+        cy.get("body").type("{uparrow}{uparrow}ftime{rightarrow}*{rightarrow}");
+        cy.get("body").type("{downarrow}{downarrow}");
+        
+        focusEditorAC();
+        // Add a function frame and trigger auto-complete:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
+            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime");
+            checkNoItems(acIDSel, "__doc__");
+            checkNoItems(acIDSel, "__import__");
+            checkNoItems(acIDSel, "__name__");
+            // Once we type "_", should show things beginning with _ but not the others:
+            cy.get("body").type("_");
+            checkNoItems(acIDSel, "abs");
+            checkNoItems(acIDSel, "AssertionError");
+            checkNoItems(acIDSel, "gmtime");
+            checkNoItems(acIDSel, "ticks_add");
+            checkExactlyOneItem(acIDSel, BUILTIN, "__import__");
+            checkNoItems(acIDSel, "__doc__");
+            checkNoItems(acIDSel, "__name__");
+            checkAutocompleteSorted(acIDSel);
+            // Now cancel this:
+            cy.get("body").type("{backspace}{backspace}");
+        });
+    });
+    it("Does not offer underscore items on object until typed", () => {
+        focusEditorAC();
+        // Add a string variable named myVar:
+        cy.get("body").type("=myVar=\"hi{enter}");
+        // Add a function frame and trigger auto-complete on myVar.:
+        cy.get("body").type(" myVar.");
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, "myVar", "upper");
+            checkNoItems(acIDSel, "__doc__");
+            checkNoItems(acIDSel, "__import__");
+            checkNoItems(acIDSel, "__name__");
+            // Once we type "_", should show things beginning with _ but not the others:
+            cy.get("body").type("_");
+            checkNoItems(acIDSel, "upper");
+            checkExactlyOneItem(acIDSel, "myVar", "__doc__");
+            checkExactlyOneItem(acIDSel, "myVar", "__dir__");
+            checkExactlyOneItem(acIDSel, "myVar", "__class__");
+            cy.get("body").type("_dir");
+            checkAutocompleteSorted(acIDSel);
+            // Check docs are showing for built-in function:
+            cy.get(acIDSel).contains("Default dir() implementation.");
+        });
+    });
+    it("Offers user's own definitions, even if they start with underscores", () => {
+        focusEditorAC();
+        // Go up to functions section, add a function named "__myFunction" then come back down:
+        cy.get("body").type("{uparrow}f__myFunction{downarrow}{downarrow}{downarrow}");
+        // Make a variable called __myVar:
+        cy.get("body").type("=__myVar=42{enter}");
+        // Add a function frame and trigger auto-complete:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkNoItems(acIDSel, "__doc__");
+            checkNoItems(acIDSel, "__import__");
+            checkNoItems(acIDSel, "__name__");
+            checkExactlyOneItem(acIDSel, MYFUNCS,"__myFunction");
+            checkExactlyOneItem(acIDSel, MYVARS, "__myVar");
+            // Once we type "_", should show things beginning with _ but not the others:
+            cy.get("body").type("_");
+            checkNoItems(acIDSel, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "__import__");
+            checkExactlyOneItem(acIDSel, MYFUNCS, "__myFunction");
+            checkExactlyOneItem(acIDSel, MYVARS, "__myVar");
+            checkAutocompleteSorted(acIDSel);
+        });
+    });
+});
