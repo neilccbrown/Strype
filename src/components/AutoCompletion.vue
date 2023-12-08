@@ -335,7 +335,13 @@ export default Vue.extend({
         },
 
         getCurrentDocumentation(): string {
-            return (this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType)?.documentation??"";
+            const curAC = this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType;
+            if (curAC) {
+                return curAC.documentation || (this.$i18n.t("autoCompletion.noDocumentation") as string); 
+            }
+            else {
+                return "";
+            }
         },
 
         areResultsToShow(): boolean {

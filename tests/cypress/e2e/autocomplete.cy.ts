@@ -120,6 +120,26 @@ describe("Built-ins", () => {
             cy.get(acIDSel).contains("Return the absolute value of the argument.");
         });
     });
+    it("Shows text when no documentation available", () => {
+        focusEditorAC();
+        // Add a function frame and trigger auto-complete:
+        const targetNoDocs = Cypress.env("mode") === "microbit" ? "ellipsis" : "buffer";
+        cy.get("body").type(" " + targetNoDocs);
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel).should("be.visible");
+            // buffer is a Skulpt-only function with no documentation available:
+            // ellipsis is a type with no docs
+            
+            checkExactlyOneItem(acIDSel, BUILTIN, targetNoDocs);
+            cy.get("body").type("{downarrow}");
+            // Check docs are showing even though there's no documentation:
+            const acIDDoc = acIDSel.replace("#", "#popupAC").replace("_AutoCompletion", "documentation");
+            cy.get(acIDDoc).should("be.visible");
+            cy.get(acIDDoc).contains("No documentation available");
+        });
+    });
 });
 
 describe("Modules", () => {
