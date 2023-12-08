@@ -3,7 +3,7 @@
         :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer}"
         @click.exact.prevent.stop="toggleCaret()"
         @click.shift.exact.prevent.stop="frameSelection()"
-        @contextmenu.prevent.stop="handleClick($event, 'paste')"
+        @contextmenu.prevent.stop="handleClick($event)"
         :key="uiid"
         :id="uiid"
     >
@@ -31,9 +31,9 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import { AllFrameTypesIdentifier, CaretPosition } from "@/types/types";
+import { AllFrameTypesIdentifier, CaretPosition, Position } from "@/types/types";
 import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
-import { getCaretUIID } from "@/helpers/editor";
+import { getCaretUIID, ContextMenuType, adjustContextMenuPosition, setContextMenuEventPageXY } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -54,6 +54,12 @@ export default Vue.extend({
             type: String as PropType<CaretPosition>,
         },
         isFrameDisabled: Boolean,
+    },
+
+    data: function () {
+        return {
+            ContextMenuType, // this is required to be accessible in the template
+        };
     },
 
     computed: {
@@ -139,16 +145,26 @@ export default Vue.extend({
             }
         },
 
-        handleClick (event: MouseEvent): void {
+        handleClick (event: MouseEvent, positionForMenu?: Position): void {
             // For a weird reason I don't understand, the menu can still be shown in a specifc context, despite the test 
             // done further in this function: if you had a valid copy, right click to show the menu, didn't paste and then
             // do the same for an invalid copy at the same caret container, the menu would still show (but paste wouldn't work)
             // -- hiding the menu here sort that issue.
             ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).hideContextMenu();
-            
+
             this.appStore.contextMenuShownId = this.uiid;
             if(this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {  
+                // Overwrite readonly properties pageX and set correct value
+                setContextMenuEventPageXY(event, positionForMenu);
                 ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+
+                this.$nextTick(() => {
+                    const contextMenu = document.getElementById(this.uiid);  
+                    if(contextMenu){
+                        // We make sure the menu can be shown completely. 
+                        adjustContextMenuPosition(event, contextMenu, positionForMenu);
+                    }
+                });
             }
         },
 

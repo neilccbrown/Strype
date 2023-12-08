@@ -50,6 +50,7 @@
                                     v-for="container in containerFrames"
                                     :key="container.frameType.type + '-id:' + container.id"
                                     :id="getFrameContainerUIID(container.id)"
+                                    :ref="getFrameContainerUIID(container.id)"
                                     :frameId="container.id"
                                     :containerLabel="container.frameType.labels[0].label"
                                     :caretVisibility="container.caretVisibility"
@@ -76,13 +77,17 @@
 import Vue from "vue";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
+import Frame from "@/components/Frame.vue";
+import FrameBody from "@/components/FrameBody.vue";
+import JointFrames from "@/components/JointFrames.vue";
+import CaretContainer from "@/components/CaretContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, getFrameContextMenuUIID, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId } from "./helpers/editor";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, ContextMenuType, getCaretContainerRef, getFrameBodyRef, getJointFramesRef } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -90,7 +95,7 @@ import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import Draggable from "vuedraggable";
 import scssVars  from "@/assets/style/_export.module.scss";
-import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
+import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
 
 //////////////////////
@@ -226,22 +231,71 @@ export default Vue.extend({
         this.setAutoSaveState();
 
         // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
+        // We can't know if that is called because of a click or because of the keyboard shortcut - and it's important to know because we need to process
+        // things differently based on one or the other. That's why we have a flag on the keyboard shortcut (in keydown even registration) to make the distinction.
         window.addEventListener(
             "contextmenu",
             (event: MouseEvent) => {
-                if(!isElementLabelSlotInput(event.target)){
-                    event.stopImmediatePropagation();
-                    event.preventDefault();
+                // This method can be called either when the mouse has been right-clicked (context menu) or a keyboard shortcut for context menu has been hit
+                if(this.appStore.isContextMenuKeyboardShortcutUsed){
+                    // Handle the context menu triggered by the keyboard here.
+                    // 3 cases should be considered 
+                    //  1) we are editing (so in a slot: we do nothing special, because we want to show the native context menu),
+                    //  2) we are not editing and there is a frame selection: get the frames context menu opened for that selection
+                    //  3) we are not editing and there is no frame selection: get the caret context menu opened for that position (i.e. paste...)
+                    if(!this.appStore.isEditing) {
+                        // We wait for the next tick even to show the menu, because the flag about the key need to be reset
+                        // in the call of this handleClick() (for frames context menu)
+                        const areFramesSelected = (this.appStore.selectedFrames.length > 0);
+                        this.$nextTick(() => {
+                            // Prepare positioning stuff before showing the menu; then use the position informations to call the handleClick method
+                            const menuPosition = this.ensureFrameKBShortcutContextMenu(areFramesSelected);
+                            // We retrieve the element on which we need to call the menu: the first frame of the selection if some frames are selected,
+                            // the current blue caret otherwise
+                            const frameComponent = this.getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
+                            if(frameComponent) {
+                                if(areFramesSelected){
+                                    frameComponent.handleClick(event, ContextMenuType.frame, menuPosition);
+                                }
+                                else{
+                                    // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
+                                    const caretContainerComponent = (this.appStore.currentFrame.caretPosition == CaretPosition.below)
+                                        ? (frameComponent.$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>)
+                                        : ((frameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>).$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>);
+                                    caretContainerComponent.handleClick(event, menuPosition);
+                                }
+                            }
+                        });  
+                        // Prevent the default browser's handling of a context menu here
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+                    }
+                    this.appStore.isContextMenuKeyboardShortcutUsed = false;
                 }
                 else{
-                    const currentCustomMenuId: string = this.appStore.contextMenuShownId;
-                    if(currentCustomMenuId.length > 0){
-                        const customMenu = document.getElementById(getFrameContextMenuUIID(currentCustomMenuId));
-                        customMenu?.setAttribute("hidden", "true");
+                    // Handling the context menu triggered by a click here.
+                    if(!isElementLabelSlotInput(event.target)){
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+                    }
+                    else{
+                        const currentCustomMenuId: string = this.appStore.contextMenuShownId;
+                        if(currentCustomMenuId.length > 0){
+                            const customMenu = document.getElementById(getFrameContextMenuUIID(currentCustomMenuId));
+                            customMenu?.setAttribute("hidden", "true");
+                        }
                     }
                 }
             }
         );
+
+        window.addEventListener("keydown", (event: KeyboardEvent) => {
+            // We need to register if the keyboard shortcut has been used to get the context menu
+            // so we set the flag here. It will be reset when the context menu actions are consumed.
+            if(event.key.toLowerCase() == "contextmenu"){
+                this.appStore.isContextMenuKeyboardShortcutUsed  = true;
+            }
+        });
 
         /* IFTRUE_isPurePython */
         // Listen to the Python console display change events (as the editor needs to be resized too)
@@ -515,6 +569,92 @@ export default Vue.extend({
                         caretPosition: (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below});
                 }
             });     
+        },
+
+        getFrameComponent(frameId: number, innerLookDetails?: {frameParentComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | InstanceType<typeof FrameBody> | InstanceType<typeof JointFrames>, listOfFrameIdToCheck: number[]}): InstanceType<typeof Frame> | undefined {
+            // This methods gets the (Vue) reference of a frame based on its ID, or undefined if we could not find it.
+            // The logic to retrieve the reference relies on the implementation of the editor, as we look in 
+            // the frame containers which are supposed to hold the frames, and within frame body/joint when a frame can have children/joint frames.
+            // If no root is provided, we assume we search the frame eference everywhere in the editor, meaning we look into the frame containers of App (this)
+            // IMPORTANT NOTE: we are getting arrays of refs here when retrieving the refs, because the referenced elements are within a v-for
+            // https://laracasts.com/discuss/channels/vue/ref-is-an-array 
+        
+            let result = undefined;
+            if(innerLookDetails){                
+                for(const childFrameId of innerLookDetails.listOfFrameIdToCheck){
+                    const childFrameComponent = ((innerLookDetails.frameParentComponent.$refs[getFrameUIID(childFrameId)] as (Vue|Element)[])[0] as InstanceType<typeof Frame>);
+                    if(childFrameId == frameId){
+                        // Found the frame directly inside this list of frames
+                        result =  childFrameComponent;
+                        break;
+                    }
+                    else if(this.appStore.frameObjects[childFrameId].childrenIds.length > 0 || this.appStore.frameObjects[childFrameId].jointFrameIds.length > 0){
+                        // That frame isn't the one we want, but maybe it contains the one we want so we look into it.
+                        // We first look into the children, the joint frames (which may have children as well)
+                        const frameBodyComponent = (childFrameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>); // There is 1 body in a frame, no v-for is used, we have 1 element
+                        result = this.getFrameComponent(frameId, {frameParentComponent: frameBodyComponent, listOfFrameIdToCheck: this.appStore.frameObjects[childFrameId].childrenIds});
+
+                        if(!result){
+                            // Check joints if we didn't find anything in the children
+                            const jointFramesComponent = (childFrameComponent.$refs[getJointFramesRef()] as InstanceType<typeof FrameBody>); // There is 1 joint frames strcut in a frame, no v-for is used, we have 1 element
+                            result = this.getFrameComponent(frameId, {frameParentComponent: jointFramesComponent, listOfFrameIdToCheck: this.appStore.frameObjects[childFrameId].jointFrameIds});
+                        }
+                    }
+                }
+            }
+            else{
+                // When we look for the frame from the whole editor, we need to find in wich frame container that frame lives.
+                // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
+                const frameContainerId = getFrameContainer(frameId); 
+                const containerElementRefs = this.$refs[getFrameContainerUIID(frameContainerId)];
+                if(containerElementRefs) {
+                    result = this.getFrameComponent(frameId,{frameParentComponent: (containerElementRefs as (Vue|Element)[])[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: this.appStore.frameObjects[frameContainerId].childrenIds});
+                }
+            }
+
+            return result;
+        },
+
+        ensureFrameKBShortcutContextMenu(isTargetFrames: boolean): Position {
+            // This method is called when the context menu for selected frames or the blue caret is going to be shown because of a keyboard shortcut.
+            // We need to make sure the frame(s) / caret and the context menu will be visible, as the user may have scrolled and left the selection (partially or fully) out of view.
+            // We need to force a position for that menu, because the mouse is not the reference when using the keyboard shortcut
+            // We do it like that: if top of the target position + estimated large menu height for safety can be visible, we make sure the top of the target position, and place the menu with both X and Y offsets from the top;
+            // if the top of the target + estimated large menu height can't be visible (for example when we are at the down-most frames) then we make sure the bottom
+            // of the target is in view, and place the menu with a X offset based on the bottom positions
+            const menuHeightSpace = (isTargetFrames) ? 300 : 50, menuOffsetY = 5, menuOffsetX = 40;
+            const firstSelectedTargetElement = (isTargetFrames) 
+                ? document.getElementById(getFrameUIID(this.appStore.selectedFrames[0]))
+                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible)"); // We want to retrieve the caret container of the currently visible caret
+            const lastSelectedTargetElement = (isTargetFrames) 
+                ? document.getElementById(getFrameUIID(this.appStore.selectedFrames.at(-1) as number)) 
+                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible)");
+            // For the editor, we need to get whole editor container, not the space in the middle that is adapted to the viewport
+            const editorViewingElement = document.getElementById(getEditorMiddleUIID());
+            const editorElement = editorViewingElement?.children[0];
+            const positionToReturn: Position = {};
+            if(firstSelectedTargetElement && lastSelectedTargetElement && editorElement && editorViewingElement){
+                if(firstSelectedTargetElement.getBoundingClientRect().top + menuHeightSpace < editorElement.getBoundingClientRect().bottom){
+                    // The menu can be shown from the top of the selection, we just make sure we give enough visibility below the top of the frame
+                    const positionOfBottomMenu = firstSelectedTargetElement.getBoundingClientRect().top + menuHeightSpace;
+                    if(positionOfBottomMenu > editorViewingElement.getBoundingClientRect().height || firstSelectedTargetElement.getBoundingClientRect().top < 0){
+                        editorViewingElement.scroll(0, firstSelectedTargetElement.getBoundingClientRect().top);
+                    }
+                    positionToReturn.top = firstSelectedTargetElement.getBoundingClientRect().top + menuOffsetY;                                      
+                    positionToReturn.left = firstSelectedTargetElement.getBoundingClientRect().left + menuOffsetX;
+                }
+                else{
+                    // The menu cannot be shown from the top of the selection
+                    const positionOfTopMenu = lastSelectedTargetElement.getBoundingClientRect().bottom - menuHeightSpace;
+                    if(positionOfTopMenu < 0 || lastSelectedTargetElement.getBoundingClientRect().bottom > editorViewingElement.getBoundingClientRect().height){
+                        editorViewingElement.scroll(0, positionOfTopMenu);
+                    }
+                    positionToReturn.bottom = lastSelectedTargetElement.getBoundingClientRect().bottom;     
+                    positionToReturn.left = lastSelectedTargetElement.getBoundingClientRect().left + menuOffsetX;
+                }
+            }
+            
+            return positionToReturn;                          
         },
     },
 });

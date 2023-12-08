@@ -6,6 +6,7 @@
         <div>
             <CaretContainer
             :id="uiid+'_caret_container'"
+            :ref="getCaretContainerRef"
             :frameId="this.frameId"
             :caretVisibility="this.caretVisibility"
             :caretAssignedPosition="caretPosition.body"
@@ -30,6 +31,7 @@
             >
                 <Frame
                     v-for="frame in frames"
+                    :ref="setFrameRef(frame.id)"
                     :key="frame.frameType.type  + '-id:' + frame.id"
                     :frameId="frame.id"
                     :isDisabled="frame.isDisabled"
@@ -55,7 +57,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
 import { AllFrameTypesIdentifier, CaretPosition, DraggableGroupTypes, FrameObject } from "@/types/types";
 import { mapStores } from "pinia";
-import { getFrameBodyUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { getCaretContainerRef, getFrameBodyUIID, getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -124,6 +126,10 @@ export default Vue.extend({
             return getFrameBodyUIID(this.frameId);
         },
 
+        getCaretContainerRef(): string {
+            return getCaretContainerRef();
+        },
+
         isDraggingFrame(): boolean{
             return this.appStore.isDraggingFrame;
         },
@@ -141,6 +147,10 @@ export default Vue.extend({
     },
 
     methods: {
+        setFrameRef(frameId: number) {
+            return getFrameUIID(frameId);
+        },
+        
         handleDragAndDrop(event: any): void {
             const eventType = Object.keys(event)[0];
             const chosenFrame = event[eventType].element;

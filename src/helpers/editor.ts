@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, Position, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
@@ -24,12 +24,25 @@ export enum CustomEventTypes {
     /* FITRUE_isPurePython */
 }
 
+export enum ContextMenuType {
+    frame,
+    caretPaste,
+}
+
 export function getFrameContainerUIID(frameId: number): string {
     return "FrameContainer_" + frameId;
 }
 
 export function getFrameBodyUIID(frameId: number): string {
     return "frameBodyId_" + frameId;
+}
+
+export function getFrameBodyRef(): string {
+    return "frameBody";
+}
+
+export function getJointFramesRef(): string {
+    return "jointFrames";
 }
 
 export function getFrameUIID(frameId: number): string{
@@ -287,7 +300,7 @@ export function checkCanReachAnotherCommentLine(isCommentFrame: boolean, isArrow
 }
 
 export function getFrameContextMenuUIID(frameUIID: string): string {
-    return frameUIID + "frameContextMenu";
+    return frameUIID + "_frameContextMenu";
 }
 
 export function getCodeEditorUIID(): string {
@@ -296,6 +309,10 @@ export function getCodeEditorUIID(): string {
 
 export function getCaretUIID(caretAssignedPosition: string, frameId: number): string {
     return "caret_"+caretAssignedPosition+"_"+frameId;
+}
+
+export function getCaretContainerRef(): string {
+    return "caretContainer";
 }
 
 export function getCommandsContainerUIID(): string {
@@ -321,6 +338,69 @@ export function getEditorMiddleUIID(): string {
 export function getCommandsRightPaneContainerId(): string {
     return "commandsContainerDiv";
 }
+
+export function setContextMenuEventPageXY(event: MouseEvent, positionForMenu?: Position): void {
+    Object.defineProperty(event, "pageX", {
+        value: (positionForMenu?.left != undefined) ? positionForMenu.left: (event.pageX - 60),
+        writable: true,
+    });
+
+    Object.defineProperty(event, "pageY", {
+        value: (positionForMenu?.top != undefined) ? positionForMenu.top : ((positionForMenu?.bottom != undefined) ? positionForMenu.bottom : event.pageY),
+        writable: true,
+    });
+
+}
+
+export function adjustContextMenuPosition(event: MouseEvent, contextMenu: HTMLElement, positionForMenu?: Position): void {
+    // These situations can happen:
+    // - we didn't provide any positioning request (case of click): we check the bottom of temporary (invisible) menu is in view
+    //   if not, we slide the menu so that the bottom position is at the click
+    // - we provided a positioning request (case of KB shortcut) AND we passed the "top" property in our position: keep as is
+    // - we provided a positioning request (case of KB shortcut) AND we passed the "bottom" property in our position: 
+    //   we slide the menu so that the actual height of the menu is deducted from the "bottom" property value 
+    //   (so the bottom of the menu and the bottom of the target (last selected frame or context menu container) are aligned)
+    if(positionForMenu){
+        if(positionForMenu.bottom != undefined){
+            const newMenuTopPosition = positionForMenu.bottom - contextMenu.getBoundingClientRect().height;
+            contextMenu.style.top = newMenuTopPosition+"px";
+        }
+    }
+    else if(event.pageY + contextMenu.getBoundingClientRect().height > (document.getElementById(getEditorMiddleUIID())?.getBoundingClientRect().height??0)){
+        const newMenuTopPosition = event.pageY - contextMenu.getBoundingClientRect().height;
+        contextMenu.style.top = newMenuTopPosition+"px";
+    }
+}
+
+export function handleContextMenuKBInteraction(keyDownStr: string): void {
+    // This helper method handles the keyboard interaction with the frames/caret context menu.
+    // Vue-simple-context-menu only handles escape interaction, we need to work out the rest...
+    // Note that the CSS styling for this menu is both using custom classes and overwriting exisitng classes of the component (cf Frame.vue)
+    const contextMenuElement = document.querySelector(".vue-simple-context-menu--active");
+    if(contextMenuElement){
+        if(keyDownStr.toLowerCase() == "arrowdown" || keyDownStr.toLowerCase() == "arrowup"){
+            // Navigating the menu, we change the selection via CSS
+            const navDirection = (keyDownStr.toLowerCase() == "arrowup") ? -1 : 1;
+            const menuItemElements = contextMenuElement.querySelectorAll(".vue-simple-context-menu__item:not(.vue-simple-context-menu__divider)");
+            if(menuItemElements.length > 0){
+                const menuItemsCount = menuItemElements.length;
+                const currentSelectedMenuItemIndex = Array.from(menuItemElements).findIndex((menuItemEl) => menuItemEl.classList.contains("selectedContextMenuItem"));
+                if(currentSelectedMenuItemIndex > -1){
+                    // First we need to deselect the current selected item
+                    Array.from(menuItemElements)[currentSelectedMenuItemIndex].classList.remove("selectedContextMenuItem");
+                    // Then we can select another menu item, next in navigation order, or looping to the start/end of the menu if needed
+                    const newSelectedMenuItemIndex = (((currentSelectedMenuItemIndex + navDirection) % menuItemsCount) + menuItemsCount) % menuItemsCount;
+                    Array.from(menuItemElements)[newSelectedMenuItemIndex].classList.add("selectedContextMenuItem");                      
+                }
+                else{
+                    // No menu item has been yet selected: we select either the first or last one depending on the direction
+                    Array.from(menuItemElements)[(navDirection == -1) ? (menuItemsCount - 1) : 0].classList.add("selectedContextMenuItem");
+                }
+            }
+        }
+    }
+}
+
 
 export const fileImportSupportedFormats: string[] = [strypeFileExtension];
 

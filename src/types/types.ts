@@ -12,6 +12,13 @@ export * from "@/types/ac-types";
  *  NOTE that all "primitive" types start with a lower-case as this is the way TS works.
  */
 
+export interface Position {
+    left?: number,
+    top?: number,
+    bottom?: number,
+    right?: number,
+}
+
 export interface LabelSlotsContent {
     shown?: boolean; // default is true (indicate if the label/slots are currently shown at all, for example "as" part for import frame)
     slotStructures: SlotsStructure; // the root slot for that label

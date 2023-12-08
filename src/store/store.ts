@@ -110,6 +110,8 @@ export const useStore = defineStore("app", {
 
             contextMenuShownId: "",
 
+            isContextMenuKeyboardShortcutUsed: false,
+
             projectName: i18n.t("defaultProjName") as string,
 
             isEditorContentModified: false,

@@ -227,6 +227,17 @@ export const getParent = (currentFrame: FrameObject): number => {
     return parentId;
 };
 
+// Returns the frame container id of a given frame (which is a valid frame, not a container itself)
+export const getFrameContainer = (frameId: number): number => {
+    const parentFrameId = getParentOrJointParent(frameId);
+    if(parentFrameId > 0){
+        return getFrameContainer(parentFrameId);
+    }
+    else{
+        return parentFrameId;
+    }
+};
+
 export const getFrameSectionIdFromFrameId = (frameId: number): number => {
     // Retrieve the id of the frame section (imports, function definitions or main code) of frame given its id.   
     // (We know when we reached a frame section when the id of that frame is negative; all frame sections are defined with a negative index.) 

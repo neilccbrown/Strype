@@ -76,7 +76,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -246,7 +246,16 @@ export default Vue.extend({
 
                 const isEditing = this.appStore.isEditing;
 
-                //prevent default scrolling and navigation
+                // If a context menu is currently displayed, we handle the menu keyboard interaction here
+                // (note that preventing the event here also prevents the keyboard scrolling of the page)
+                if(!isEditing && this.appStore.contextMenuShownId.length > 0 && document.querySelector(".vue-simple-context-menu--active")){
+                    handleContextMenuKBInteraction(event.key);
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                    return;
+                }
+
+                // Prevent default scrolling and navigation in the editor
                 if (!isEditing && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
                     if(this.appStore.ignoreKeyEvent){
                         this.appStore.ignoreKeyEvent = false;
@@ -340,6 +349,13 @@ export default Vue.extend({
 
             // If a modal is open, we let the event be handled by the browser
             if(this.appStore.isModalDlgShown){
+                return;
+            }
+
+            // If a context menu is currently displayed, stop any action here (keyboard interaction is handled for the keydown event)
+            if(!isEditing && this.appStore.contextMenuShownId.length > 0 && document.querySelector(".vue-simple-context-menu--active")){
+                event.stopImmediatePropagation();
+                event.preventDefault();
                 return;
             }
         
