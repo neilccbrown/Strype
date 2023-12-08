@@ -80,7 +80,7 @@ function getModuleMembersOneByOne(next : number, soFar : AcResultsWithModule, at
     });
 }
 
-const allContent : AcResultsWithModule = {"": Object.keys(Sk.builtin).filter((func) => !func.includes("$")).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
+const allContent : AcResultsWithModule = {"": Object.keys(Sk.builtins).filter((func) => !func.includes("$")).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
 configureSkulptForAutoComplete();
 // Add Skulpt's builtin functions to the default module:
 getDetailsForListOfItems(null, allContent[""], 0, () => {

@@ -96,7 +96,7 @@ describe("Built-ins", () => {
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "ArithmeticError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
             // We had a previous bug with multiple sum items in microbit:
             checkExactlyOneItem(acIDSel, BUILTIN, "sum");
             checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError");
@@ -105,14 +105,14 @@ describe("Built-ins", () => {
             // Once we type "a", should show things beginning with A but not the others:
             cy.get("body").type("a");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "ArithmeticError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
             checkAutocompleteSorted(acIDSel);
             // Once we type "b", should show things beginning with AB but not the others:
             cy.get("body").type("b");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkNoItems(acIDSel, "ArithmeticError");
+            checkNoItems(acIDSel, "AssertionError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
             checkAutocompleteSorted(acIDSel);
@@ -337,13 +337,13 @@ describe("Modules", () => {
             checkNoItems(acIDSel, nonAvailable);
             checkExactlyOneItem(acIDSel, "time", "sleep");
             checkNoItems(acIDSel, "abs");
-            checkNoItems(acIDSel, "ArithmeticError");
+            checkNoItems(acIDSel, "AssertionError");
             // Type first letter of the target:
             cy.get("body").type(target.at(0) || "");
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
-            checkNoItems(acIDSel, "ArithmeticError");
+            checkNoItems(acIDSel, "AssertionError");
             checkAutocompleteSorted(acIDSel);
         });
     });
@@ -373,12 +373,12 @@ describe("Modules", () => {
             checkNoItems(acIDSel, "__name__");
             checkExactlyOneItem(acIDSel, "time", sleepCall);
             checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "ArithmeticError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
             cy.get("body").type(target.at(0) || "");
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, sleepCall);
             checkNoItems(acIDSel, "abs");
-            checkNoItems(acIDSel, "ArithmeticError");
+            checkNoItems(acIDSel, "AssertionError");
             checkAutocompleteSorted(acIDSel);
         });
     });
