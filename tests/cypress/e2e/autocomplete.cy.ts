@@ -453,6 +453,31 @@ describe("User-defined items", () => {
         });
     });
 
+    it("Offers auto-complete for for-loop iterating variables", () => {
+        focusEditorAC();
+        // Make a for loop:
+        cy.get("body").type("fmyIterator{rightarrow}imaginaryList{rightarrow}");
+        // Trigger auto-completion in a new function call frame:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, MYVARS, "myIterator");
+            checkNoItems(acIDSel, "imaginaryList");
+            // Go out of this call and beneath the loop:
+            cy.get("body").type("{backspace}");
+            cy.wait(500);
+            cy.get("body").type("{downarrow}");
+        });
+        // Make a function call and check myIterator shows there -- Python semantics
+        // are that the loop variable is available after the loop:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            checkExactlyOneItem(acIDSel, MYVARS, "myIterator");
+            checkNoItems(acIDSel, "imaginaryList");
+        });
+    });
+
     it("Offers auto-complete for items on user-defined variables", () => {
         focusEditorAC();
         // Make an assignment frame myVar="hi" then add a function call frame beneath with "myVar."

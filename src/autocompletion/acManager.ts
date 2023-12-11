@@ -178,12 +178,20 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
         if (frameId == frame.id) {
             return {found: soFar, complete: true};
         }
+        // Get LHS from assignments:
         if (frame.frameType.type === AllFrameTypesIdentifier.varassign && !frame.isDisabled) {
             // We may have all sorts on the LHS.  We want any slots which are plain,
             // and which are adjoined by either the beginning of the slot, the end,
             // or a comma
             extractCommaSeparatedNamesAndAddToSet(frame.labelSlotsDict[0].slotStructures, soFar);
         }
+        // Get iterator variables from for loops:
+        if (frame.frameType.type === AllFrameTypesIdentifier.for && !frame.isDisabled) {
+            if ((frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code) {
+                soFar.add((frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code);
+            }
+        }
+        
         // Now go through children:
         for (const childrenId of frame.childrenIds) {
             const childFrame = useStore().frameObjects[childrenId];
