@@ -319,12 +319,17 @@ export default Vue.extend({
 
         // Add en event listener for the mouse up events, it will be used for detecting the end of a drag in the context of slots/text selection.
         document.addEventListener("mouseup", this.checkMouseSelection);
+
+        // Add a listener for the scroll events. We do not want to allow scrolling when the context menu is shown
+        document.addEventListener("scroll", this.blockScrollOnContextMenu);
     },
 
     destroyed() {
         // Removes the listeners
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
         document.removeEventListener("mouseup", this.checkMouseSelection);
+        document.removeEventListener("scroll", this.blockScrollOnContextMenu);
+
     },
 
     mounted() {
@@ -655,6 +660,13 @@ export default Vue.extend({
             }
             
             return positionToReturn;                          
+        },
+
+        blockScrollOnContextMenu(event :Event) {
+            if(document.querySelector(".vue-simple-context-menu--active")){
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
         },
     },
 });
