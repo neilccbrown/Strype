@@ -161,7 +161,20 @@ export default Vue.extend({
                     return 2;
                 }
             };
-            return categories.sort((a, b) => getOrder(a) - getOrder(b));
+            
+            // Before returning the categories, we need to reflect the sorting change to the categories' elements indexes
+            // as they may not be in order anymore. This is is required for coherence between the data list and the CSS selection.
+            const sortedCategories = categories.sort((a, b) => getOrder(a) - getOrder(b));
+            let indexValue = 0;
+            sortedCategories.forEach((category) => {
+                this.resultsToShow[category].forEach((acResult) => {
+                    acResult.index = indexValue;
+                    indexValue++;
+                });
+            });
+
+            // Now we can return the categories
+            return sortedCategories;
         },
       
         updateACForModuleImport(token: string) : void {
@@ -302,7 +315,7 @@ export default Vue.extend({
 
             // now scroll to the selected view
             const items = document.querySelectorAll(".popUpItems");
-            // the `false` in the method tells it to leave the item at the bottom while scrolling (not scroll and show the selected at the top.
+            // the `false` in the method tells it to leave the item at the bottom while scrolling (not scroll and show the selected at the top).
             items[this.selected].scrollIntoView(false);
 
         },
