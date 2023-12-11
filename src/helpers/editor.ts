@@ -400,7 +400,7 @@ export function handleContextMenuKBInteraction(keyDownStr: string): void {
         }
         else if (keyDownStr.toLowerCase() == "enter"){
             useStore().ignoreKeyEvent = true; // So the enter key up event won't be picked up by Commands.vue
-            (contextMenuElement.querySelector(".selectedContextMenuItem") as HTMLLIElement).click();
+            (contextMenuElement.querySelector(".selectedContextMenuItem") as HTMLLIElement)?.click();
         }   
     }
 }
