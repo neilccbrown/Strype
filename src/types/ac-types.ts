@@ -9,6 +9,8 @@ export interface AcResultType {
     // so we use a list of types.
     // Empty list means unknown.  
     type: ("function" | "module" | "variable" | "type")[];
+    // Only there if a function, and even then it may be missing if we can't look up the info:
+    params?: {name: string, defaultValue?: string}[];
     // The version.  Only used on microbit to distinguish v2 and v3:
     version: number;
 }

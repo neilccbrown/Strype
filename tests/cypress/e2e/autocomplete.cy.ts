@@ -58,8 +58,8 @@ function checkExactlyOneItem(acIDSel : string, category: string | null, text : s
 
 // Given a selector for the auto-complete and text for an item, checks that no items with that text
 // exists in the autocomplete
-function checkNoItems(acIDSel : string, text : string) : void {
-    cy.get(acIDSel + " .popupContainer").within(() => cy.findAllByText(text, { exact: true}).should("not.exist"));
+function checkNoItems(acIDSel : string, text : string, exact? : boolean) : void {
+    cy.get(acIDSel + " .popupContainer").within(() => cy.findAllByText(text, { exact: exact ?? false}).should("not.exist"));
 }
 
 const MYVARS = "My variables";
@@ -80,7 +80,8 @@ function checkAutocompleteSorted(acIDSel: string) : void {
 
     cy.get(acIDSel + " .popupContainer ul > div").each((section) => {
         cy.wrap(section).find("li.popUpItems")
-            .then((items) => [...items].map((item) => item.innerText.toLowerCase()))
+            // Replace opening bracket onwards as we want to check it's sorted by function name, ignoring params:
+            .then((items) => [...items].map((item) => item.innerText.toLowerCase().replace(new RegExp("\\(.*"), "")))
             .should("beLocaleSorted");
     });
 }
@@ -95,23 +96,23 @@ describe("Built-ins", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             // We had a previous bug with multiple sum items in microbit:
-            checkExactlyOneItem(acIDSel, BUILTIN, "sum");
-            checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError");
-            checkExactlyOneItem(acIDSel, BUILTIN, "zip");
+            checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable)");
+            checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError()");
+            checkExactlyOneItem(acIDSel, BUILTIN, "zip()");
             checkNoItems(acIDSel, "__name__");
             // Once we type "a", should show things beginning with A but not the others:
             cy.get("body").type("a");
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
             checkAutocompleteSorted(acIDSel);
             // Once we type "b", should show things beginning with AB but not the others:
             cy.get("body").type("b");
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkNoItems(acIDSel, "AssertionError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
@@ -132,7 +133,7 @@ describe("Built-ins", () => {
             // buffer is a Skulpt-only function with no documentation available:
             // ellipsis is a type with no docs
             
-            checkExactlyOneItem(acIDSel, BUILTIN, targetNoDocs);
+            checkExactlyOneItem(acIDSel, BUILTIN, targetNoDocs + (Cypress.env("mode") === "microbit" ? "()" : ""));
             cy.get("body").type("{downarrow}");
             // Check docs are showing even though there's no documentation:
             const acIDDoc = acIDSel.replace("#", "#popupAC").replace("_AutoCompletion", "documentation");
@@ -261,6 +262,7 @@ describe("Modules", () => {
         focusEditorAC();
 
         const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+        const targetParams = Cypress.env("mode") == "microbit" ? "(ticks, delta)" : "()";
         const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
         const targetDoc = Cypress.env("mode") == "microbit" ? "Offset ticks value by a given number, which can be either positive or negative." : "Convert seconds since the Epoch to a time tuple expressing UTC";
         
@@ -275,6 +277,7 @@ describe("Modules", () => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, null, "*");
             checkExactlyOneItem(acIDSel, null, target);
+            checkNoItems(acIDSel, target + targetParams); // Shouldn't show brackets in import, even though it is a function
             checkNoItems(acIDSel, nonAvailable);
             // Once we type first character, should be the same:
             cy.get("body").type(target.at(0) || "");
@@ -314,12 +317,12 @@ describe("Modules", () => {
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, "time", target);
+            checkExactlyOneItem(acIDSel, "time", target + targetParams);
             checkNoItems(acIDSel, nonAvailable);
             // Once we type first character, should be the same:
             cy.get("body").type(target);
             cy.wait(500);
-            checkExactlyOneItem(acIDSel, "time", target);
+            checkExactlyOneItem(acIDSel, "time", target + targetParams);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
             checkAutocompleteSorted(acIDSel);
@@ -349,13 +352,13 @@ describe("Modules", () => {
         cy.get("body").type(" time.{ctrl} ");
         withAC((acIDSel) => {
             // Microbit and Python have different items in the time module, so pick accordingly:
-            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
-            const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
+            const target = Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()";
+            const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime()" : "ticks_add(ticks, delta)";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
-            checkExactlyOneItem(acIDSel, "time", "sleep");
+            checkExactlyOneItem(acIDSel, "time", "sleep()");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "AssertionError");
             // Type first letter of the target:
@@ -383,21 +386,21 @@ describe("Modules", () => {
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             // Microbit and Python have different items in the time module, so pick accordingly:
-            const target = Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime";
+            const target = Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()";
             const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
-            const sleepCall = Cypress.env("mode") == "microbit" ? "sleep_ms" : "sleep";
+            const sleepCall = Cypress.env("mode") == "microbit" ? "sleep_ms(ms)" : "sleep()";
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "__name__");
             checkExactlyOneItem(acIDSel, "time", sleepCall);
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             cy.get("body").type(target.at(0) || "");
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, sleepCall);
-            checkNoItems(acIDSel, "abs");
+            checkNoItems(acIDSel, "abs", true);
             checkNoItems(acIDSel, "AssertionError");
             checkAutocompleteSorted(acIDSel);
         });
@@ -413,7 +416,7 @@ describe("User-defined items", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, MYFUNCS, "foo");
+            checkExactlyOneItem(acIDSel, MYFUNCS, "foo()");
         });
     });
 
@@ -427,6 +430,8 @@ describe("User-defined items", () => {
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myVar");
+            // Not a function, so shouldn't show brackets:
+            checkNoItems(acIDSel, "myVar()");
         });
     });
 
@@ -449,7 +454,7 @@ describe("User-defined items", () => {
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkNoItems(acIDSel, "myParam");
+            checkNoItems(acIDSel, "myParam", true);
         });
     });
 
@@ -487,12 +492,12 @@ describe("User-defined items", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, "myVar", "lower");
-            checkExactlyOneItem(acIDSel, "myVar", "upper");
+            checkExactlyOneItem(acIDSel, "myVar", "lower()");
+            checkExactlyOneItem(acIDSel, "myVar", "upper()");
             checkNoItems(acIDSel, "divmod");
             cy.get("body").type("u");
             checkNoItems(acIDSel, "lower");
-            checkExactlyOneItem(acIDSel, "myVar", "upper");
+            checkExactlyOneItem(acIDSel, "myVar", "upper()");
             checkNoItems(acIDSel, "divmod");
             checkAutocompleteSorted(acIDSel);
             // Check docs show:
@@ -510,7 +515,7 @@ describe("User-defined items", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkNoItems(acIDSel, "myVar");
         });
     });
@@ -540,6 +545,7 @@ describe("Nested modules", () => {
     // in terms of the autocomplete tests here, it should function in exactly the same way: 
     const targetModule = Cypress.env("mode") == "microbit" ? "microbit.accelerometer" : "urllib.request";
     const targetFunction = Cypress.env("mode") == "microbit" ? "get_x" : "urlopen";
+    const targetFunctionWithParam = Cypress.env("mode") == "microbit" ? "get_x()" : "urlopen(url)";
     
     it("Offers auto-completion for modules with names a.b when imported as a.b", () => {
         if (Cypress.env("mode") == "microbit") {
@@ -559,7 +565,8 @@ describe("Nested modules", () => {
         cy.get("body").type(" " + targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, targetModule, targetFunction);
+            // Because it's fetched dynamically, we won't know parameter names:
+            checkExactlyOneItem(acIDSel, targetModule, targetFunction + "()");
             checkNoItems(acIDSel, "abs");
         });
     });
@@ -577,8 +584,8 @@ describe("Nested modules", () => {
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, targetModule, targetFunction);
-            checkExactlyOneItem(acIDSel, null, "abs");
+            checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
+            checkExactlyOneItem(acIDSel, null, "abs(x)");
         });
     });
 
@@ -595,8 +602,8 @@ describe("Nested modules", () => {
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            checkExactlyOneItem(acIDSel, targetModule, targetFunction);
-            checkExactlyOneItem(acIDSel, null, "abs");
+            checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
+            checkExactlyOneItem(acIDSel, null, "abs(x)");
         });
     });
 
@@ -614,7 +621,7 @@ describe("Nested modules", () => {
                 cy.get(acIDSel).should("be.visible");
                 checkExactlyOneItem(acIDSel, "microbit", "button_a");
                 checkExactlyOneItem(acIDSel, "microbit", "compass");
-                checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+                checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             });
             // Now let's delete the import and check they both vanish:
             cy.get("body").type("{leftarrow}{uparrow}{uparrow}{backspace}{downarrow}{downarrow}");
@@ -626,13 +633,15 @@ describe("Nested modules", () => {
                 cy.get(acIDSel).should("be.visible");
                 checkNoItems(acIDSel, "button_a");
                 checkNoItems(acIDSel, "compass");
-                checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+                checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             });
         }
     });
 });
 
 describe("Underscore handling", () => {
+    const importFunc = Cypress.env("mode") === "microbit" ? "__import__(name)" : "__import__()";
+    
     it("Does not offer underscore items at top-level until typed", () => {
         focusEditorAC();
         // Add a function frame and trigger auto-complete:
@@ -641,16 +650,16 @@ describe("Underscore handling", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             checkNoItems(acIDSel, "__doc__");
             checkNoItems(acIDSel, "__import__");
             checkNoItems(acIDSel, "__name__");
             // Once we type "_", should show things beginning with _ but not the others:
             cy.get("body").type("_");
-            checkNoItems(acIDSel, "abs");
+            checkNoItems(acIDSel, "abs(x)");
             checkNoItems(acIDSel, "AssertionError");
-            checkExactlyOneItem(acIDSel, BUILTIN, "__import__");
+            checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
             checkAutocompleteSorted(acIDSel);
             // Check docs are showing for built-in function:
             cy.get(acIDSel).contains("Import a module.");
@@ -667,19 +676,19 @@ describe("Underscore handling", () => {
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError");
-            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") == "microbit" ? "ticks_add" : "gmtime");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
+            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()");
             checkNoItems(acIDSel, "__doc__");
             checkNoItems(acIDSel, "__import__");
             checkNoItems(acIDSel, "__name__");
             // Once we type "_", should show things beginning with _ but not the others:
             cy.get("body").type("_");
-            checkNoItems(acIDSel, "abs");
+            checkNoItems(acIDSel, "abs(x)");
             checkNoItems(acIDSel, "AssertionError");
             checkNoItems(acIDSel, "gmtime");
             checkNoItems(acIDSel, "ticks_add");
-            checkExactlyOneItem(acIDSel, BUILTIN, "__import__");
+            checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
             checkNoItems(acIDSel, "__doc__");
             checkNoItems(acIDSel, "__name__");
             checkAutocompleteSorted(acIDSel);
@@ -696,7 +705,7 @@ describe("Underscore handling", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, "myVar", "upper");
+            checkExactlyOneItem(acIDSel, "myVar", "upper()");
             checkNoItems(acIDSel, "__doc__");
             checkNoItems(acIDSel, "__import__");
             checkNoItems(acIDSel, "__name__");
@@ -704,8 +713,9 @@ describe("Underscore handling", () => {
             cy.get("body").type("_");
             checkNoItems(acIDSel, "upper");
             checkExactlyOneItem(acIDSel, "myVar", "__doc__");
-            checkExactlyOneItem(acIDSel, "myVar", "__dir__");
-            checkExactlyOneItem(acIDSel, "myVar", "__class__");
+            checkNoItems(acIDSel, "__doc__()"); // Not a function, so shouldn't be a bracket
+            checkExactlyOneItem(acIDSel, "myVar", "__dir__()");
+            checkExactlyOneItem(acIDSel, "myVar", "__class__()");
             cy.get("body").type("_dir");
             checkAutocompleteSorted(acIDSel);
             // Check docs are showing for built-in function:
@@ -715,24 +725,25 @@ describe("Underscore handling", () => {
     it("Offers user's own definitions, even if they start with underscores", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "__myFunction" then come back down:
-        cy.get("body").type("{uparrow}f__myFunction{downarrow}{downarrow}{downarrow}");
+        cy.get("body").type("{uparrow}f__myFunction{rightarrow}myParam{downarrow}{downarrow}{downarrow}");
         // Make a variable called __myVar:
         cy.get("body").type("=__myVar=42{enter}");
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs");
+            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkNoItems(acIDSel, "__doc__");
             checkNoItems(acIDSel, "__import__");
             checkNoItems(acIDSel, "__name__");
-            checkExactlyOneItem(acIDSel, MYFUNCS,"__myFunction");
+            checkExactlyOneItem(acIDSel, MYFUNCS,"__myFunction(myParam)");
             checkExactlyOneItem(acIDSel, MYVARS, "__myVar");
+            checkNoItems(acIDSel, "__myVar()");
             // Once we type "_", should show things beginning with _ but not the others:
             cy.get("body").type("_");
-            checkNoItems(acIDSel, "abs");
-            checkExactlyOneItem(acIDSel, BUILTIN, "__import__");
-            checkExactlyOneItem(acIDSel, MYFUNCS, "__myFunction");
+            checkNoItems(acIDSel, "abs(x)");
+            checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
+            checkExactlyOneItem(acIDSel, MYFUNCS, "__myFunction(myParam)");
             checkExactlyOneItem(acIDSel, MYVARS, "__myVar");
             checkAutocompleteSorted(acIDSel);
         });
