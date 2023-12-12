@@ -202,7 +202,7 @@ export default Vue.extend({
                             await Sk.misceval.asyncToPromise(function () {
                                 return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
                             });
-                            item.type = Sk.ffi.remapToJs(Sk.globals["itemType"]) as AcResultType["type"];
+                            item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
                             item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
                         }
                         if (ourAcRequest == this.acRequestIndex) {
