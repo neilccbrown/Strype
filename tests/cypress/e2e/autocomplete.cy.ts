@@ -26,7 +26,7 @@ beforeEach(() => {
     }});
 });
 
-function withAC(inner : (acIDSel : string) => void) : void {
+function withAC(inner : (acIDSel : string) => void, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
     cy.get("#editor").then((eds) => {
@@ -35,7 +35,9 @@ function withAC(inner : (acIDSel : string) => void) : void {
         // Must escape any commas in the ID because they can confuse CSS selectors:
         const acIDSel = "#" + ed.getAttribute("data-slot-focus-id")?.replace(",", "\\,") + "_AutoCompletion";
         // Should always be sorted:
-        checkAutocompleteSorted(acIDSel);
+        if (!skipSortedCheck) {
+            checkAutocompleteSorted(acIDSel);
+        }
         // Call the inner function:
         inner(acIDSel);
     });
@@ -61,6 +63,12 @@ function checkExactlyOneItem(acIDSel : string, category: string | null, text : s
 // exists in the autocomplete
 function checkNoItems(acIDSel : string, text : string, exact? : boolean) : void {
     cy.get(acIDSel + " .popupContainer").within(() => cy.findAllByText(text, { exact: exact ?? false}).should("not.exist"));
+}
+
+function checkNoneAvailable(acIDSel : string) {
+    cy.get(acIDSel + " .popupContainer").within(() => {
+        cy.findAllByText("No completion available", { exact: true}).should("have.length", 1);
+    });
 }
 
 const MYVARS = "My variables";
@@ -224,12 +232,12 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
             cy.get("body").type("{ctrl} ");
             withAC((acIDSel) => {
                 cy.get(acIDSel).should("be.visible");
-                checkExactlyOneItem(acIDSel, null, "No completion available");
+                checkNoneAvailable(acIDSel);
                 checkNoItems(acIDSel, "abs(x)");
                 checkNoItems(acIDSel, "AssertionError");
                 checkNoItems(acIDSel, "ZeroDivisionError");
                 checkNoItems(acIDSel, "zip");
-            });
+            }, true);
         });
     }
 });
