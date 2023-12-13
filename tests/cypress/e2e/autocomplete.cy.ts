@@ -32,7 +32,8 @@ function withAC(inner : (acIDSel : string) => void) : void {
     cy.get("#editor").then((eds) => {
         const ed = eds.get()[0];
         // Find the auto-complete corresponding to the currently focused slot:
-        const acIDSel = "#" + ed.getAttribute("data-slot-focus-id") + "_AutoCompletion";
+        // Must escape any commas in the ID because they can confuse CSS selectors:
+        const acIDSel = "#" + ed.getAttribute("data-slot-focus-id")?.replace(",", "\\,") + "_AutoCompletion";
         // Should always be sorted:
         checkAutocompleteSorted(acIDSel);
         // Call the inner function:
