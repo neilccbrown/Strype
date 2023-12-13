@@ -154,7 +154,7 @@ describe("Built-ins", () => {
 
 describe("Behaviour with operators, brackets and complex expressions", () => {
     const prefixesWhichShouldShowBuiltins = ["0+", "1.6-", "not ", "1**(2+6)", "[a,", "array[", "~", "(1*", "{3:"];
-    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "(\"a\").", "(\"a\".upper()).", "myString."];
+    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "(\"a\").", "(\"a\".upper()).", "myString.", "[\"a\"][0]."];
     const prefixesWhichShouldShowNone = ["z..", "123", "123.", "\"", "\"abc", "\"abc.", "'", "totally_unique_stem", "nonexistentvariable."];
 
     for (const prefix of prefixesWhichShouldShowBuiltins) {
