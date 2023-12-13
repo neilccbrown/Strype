@@ -26,15 +26,18 @@ beforeEach(() => {
     }});
 });
 
-function withAC(inner : (acIDSel : string) => void) : void {
+function withAC(inner : (acIDSel : string) => void, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
     cy.get("#editor").then((eds) => {
         const ed = eds.get()[0];
         // Find the auto-complete corresponding to the currently focused slot:
-        const acIDSel = "#" + ed.getAttribute("data-slot-focus-id") + "_AutoCompletion";
+        // Must escape any commas in the ID because they can confuse CSS selectors:
+        const acIDSel = "#" + ed.getAttribute("data-slot-focus-id")?.replace(",", "\\,") + "_AutoCompletion";
         // Should always be sorted:
-        checkAutocompleteSorted(acIDSel);
+        if (!skipSortedCheck) {
+            checkAutocompleteSorted(acIDSel);
+        }
         // Call the inner function:
         inner(acIDSel);
     });
@@ -60,6 +63,12 @@ function checkExactlyOneItem(acIDSel : string, category: string | null, text : s
 // exists in the autocomplete
 function checkNoItems(acIDSel : string, text : string, exact? : boolean) : void {
     cy.get(acIDSel + " .popupContainer").within(() => cy.findAllByText(text, { exact: exact ?? false}).should("not.exist"));
+}
+
+function checkNoneAvailable(acIDSel : string) {
+    cy.get(acIDSel + " .popupContainer").within(() => {
+        cy.findAllByText("No completion available", { exact: true}).should("have.length", 1);
+    });
 }
 
 const MYVARS = "My variables";
@@ -141,6 +150,96 @@ describe("Built-ins", () => {
             cy.get(acIDDoc).contains("No documentation available");
         });
     });
+});
+
+describe("Behaviour with operators, brackets and complex expressions", () => {
+    const prefixesWhichShouldShowBuiltins = ["0+", "1.6-", "not ", "1**(2+6)", "[a,", "array[", "~", "(1*", "{3:"];
+    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "(\"a\").", "(\"a\".upper()).", "myString.", "[\"a\"][0]."];
+    const prefixesWhichShouldShowNone = ["z..", "123", "123.", "\"", "\"abc", "\"abc.", "'", "totally_unique_stem", "nonexistentvariable."];
+
+    for (const prefix of prefixesWhichShouldShowBuiltins) {
+        it("Shows built-ins, if you autocomplete after " + prefix, () => {
+            focusEditorAC();
+            // Add a function frame and trigger auto-complete:
+            cy.get("body").type(" ");
+            cy.wait(500);
+            cy.get("body").type(prefix);
+            cy.wait(500);
+            cy.get("body").type("{ctrl} ");
+            withAC((acIDSel) => {
+                cy.get(acIDSel).should("be.visible");
+                checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+                checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
+                // We had a previous bug with multiple sum items in microbit:
+                checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable)");
+                checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError()");
+                checkExactlyOneItem(acIDSel, BUILTIN, "zip()");
+                checkNoItems(acIDSel, "__name__");
+                // Once we type "a", should show things beginning with A but not the others:
+                cy.get("body").type("a");
+                checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+                checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
+                checkNoItems(acIDSel, "ZeroDivisionError");
+                checkNoItems(acIDSel, "zip");
+                checkAutocompleteSorted(acIDSel);
+                // Once we type "b", should show things beginning with AB but not the others:
+                cy.get("body").type("b");
+                checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+                checkNoItems(acIDSel, "AssertionError");
+                checkNoItems(acIDSel, "ZeroDivisionError");
+                checkNoItems(acIDSel, "zip");
+                checkAutocompleteSorted(acIDSel);
+                // Check docs are showing for built-in function:
+                cy.get(acIDSel).contains("Return the absolute value of the argument.");
+            });
+        });
+    }
+
+    for (const prefix of prefixesWhichShouldShowStringMembers) {
+        it("Shows string members, if you autocomplete after " + prefix, () => {
+            focusEditorAC();
+            // Add a function frame (after the default line assigning to myString) and trigger auto-complete:
+            cy.get("body").type("{downarrow} ");
+            cy.wait(500);
+            cy.get("body").type(prefix);
+            cy.wait(500);
+            cy.get("body").type("{ctrl} ");
+            withAC((acIDSel) => {
+                cy.get(acIDSel).should("be.visible");
+                checkExactlyOneItem(acIDSel, null, "lower()");
+                checkExactlyOneItem(acIDSel, null, "upper()");
+                checkNoItems(acIDSel, "divmod");
+                cy.get("body").type("u");
+                checkNoItems(acIDSel, "lower");
+                checkExactlyOneItem(acIDSel, null, "upper()");
+                checkNoItems(acIDSel, "divmod");
+                checkAutocompleteSorted(acIDSel);
+                // Check docs show:
+                cy.get("body").type("pper");
+                cy.get(acIDSel).contains("Return a copy of the string converted to uppercase.");
+            });
+        });
+    }
+
+    for (const prefix of prefixesWhichShouldShowNone) {
+        it("Shows no completions, if you autocomplete after " + prefix, () => {
+            focusEditorAC();
+            // Add a function frame and trigger auto-complete:
+            cy.get("body").type(" ");
+            cy.wait(500);
+            cy.get("body").type(prefix);
+            cy.wait(500);
+            cy.get("body").type("{ctrl} ");
+            withAC((acIDSel) => {
+                cy.get(acIDSel).should("be.visible");
+                checkNoneAvailable(acIDSel);
+                checkNoItems(acIDSel, "abs(x)");
+                checkNoItems(acIDSel, "AssertionError");
+                checkNoItems(acIDSel, "ZeroDivisionError");
+                checkNoItems(acIDSel, "zip");
+            }, true);
+        });
+    }
 });
 
 describe("Modules", () => {
