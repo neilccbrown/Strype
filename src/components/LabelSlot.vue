@@ -1232,7 +1232,7 @@ export default Vue.extend({
             const hasFollowingBracketSlot = (getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true)?.slotType == SlotType.bracket);
             const isSelectedFunction =  ((typeOfSelected.includes("function") || typeOfSelected.includes("method")) && !hasFollowingBracketSlot);
             const newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0))
-                + selectedItem 
+                + selectedItem.replace(new RegExp("\\(.*"), "") 
                 + ((isSelectedFunction)?"()":"");
             
             // Remove content before the cursor (and put cursor at the beginning):

@@ -26,7 +26,7 @@ beforeEach(() => {
     }});
 });
 
-function withAC(inner : (acIDSel : string) => void, skipSortedCheck?: boolean) : void {
+function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
     cy.get("#editor").then((eds) => {
@@ -38,8 +38,11 @@ function withAC(inner : (acIDSel : string) => void, skipSortedCheck?: boolean) :
         if (!skipSortedCheck) {
             checkAutocompleteSorted(acIDSel);
         }
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const frameId = parseInt(new RegExp("input_frame_(\\d+)").exec(acIDSel)[1]);
         // Call the inner function:
-        inner(acIDSel);
+        inner(acIDSel, frameId);
     });
 }
 
@@ -48,6 +51,16 @@ function focusEditorAC(): void {
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
     cy.get("#frame_id_-3").focus();
 }
+
+function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
+    // We need a delay to make sure last DOM update has occurred:
+    cy.wait(200);
+    cy.get("#editor").then((eds) => {
+        const ed = eds.get()[0];
+        inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
+    });
+}
+
 
 // Given a selector for the auto-complete and text for an item, checks that exactly one item with that text
 // exists in the autocomplete
@@ -95,6 +108,28 @@ function checkAutocompleteSorted(acIDSel: string) : void {
     });
 }
 
+// Checks that the first labelslot in the given frame has content equivalent to expectedState (with a dollar indicating cursor position),
+function assertState(frameId: number, expectedState : string) : void {
+    withSelection((info) => {    
+        cy.get("#frameHeader_" + frameId + " #labelSlotsStruct" + frameId + "_0 .labelSlot-input").then((parts) => {
+            let content = "";
+            for (let i = 0; i < parts.length; i++) {
+                const p : any = parts[i];
+                let text = p.value || p.textContent || "";
+                
+                // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
+                if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
+                    text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
+                }
+                
+                content += text;
+            }
+            expect(content).to.equal(expectedState);
+        });
+    });
+}
+
+
 
 describe("Built-ins", () => {
     it("Has built-ins, that narrow down when you type", () => {
@@ -103,7 +138,7 @@ describe("Built-ins", () => {
         cy.get("body").type(" ");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
-        withAC((acIDSel) => {
+        withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
@@ -128,6 +163,10 @@ describe("Built-ins", () => {
             checkAutocompleteSorted(acIDSel);
             // Check docs are showing for built-in function:
             cy.get(acIDSel).contains("Return the absolute value of the argument.");
+            
+            // Now complete and check content:
+            cy.get("body").type("s{enter}");
+            assertState(frameId, "abs($)");
         });
     });
     it("Shows text when no documentation available", () => {
@@ -513,9 +552,11 @@ describe("User-defined items", () => {
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
-        withAC((acIDSel) => {
+        withAC((acIDSel, frameId) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, MYFUNCS, "foo()");
+            cy.get("body").type("foo{enter}");
+            assertState(frameId, "foo($)");
         });
     });
 
