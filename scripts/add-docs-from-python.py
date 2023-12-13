@@ -33,5 +33,25 @@ for mod in targetAPI:
             except:
                 # If we get an AttributeError or any other error, we just can't provide the doc:
                 pass
+        if 'function' in item['type'] and not 'params' in item:
+            try:
+                 argspec = inspect.getfullargspec(getattr(imp_mod, item['acResult']))
+                 # The args item in the tuple is a list of names of positional arguments:
+                 numArgs = len(argspec.args)
+                 if numArgs > 0:
+                    item['params'] = []
+                    for i, arg in enumerate(argspec.args):
+                        details = {"name": arg}
+                        # The defaults item in the tuple is None or a list of default values but it goes backwards
+                        # So if you have 5 args, and 2 in the default, they apply to the fifth and fourth arg
+                        if argspec.defaults and ((numArgs - i) <= len(argspec.defaults)):
+                            try:
+                                details['defaultValue'] = str(argspec.defaults[numArgs - i - 1])
+                            except:
+                                pass
+                        item['params'].append(details)
+                        
+            except:
+                pass 
 
 json.dump(targetAPI, sys.stdout, indent=4)

@@ -157,7 +157,8 @@ export function getCandidatesForAC(slotCode: string, frameId: number): {tokenAC:
 
 // Given a slot, find all identifiers that are between two commas (or between a comma
 // and the start/end of the slot) and add them to the given set.
-function extractCommaSeparatedNamesAndAddToSet(slot: SlotsStructure, addTo: Set<string>) {
+export function extractCommaSeparatedNames(slot: SlotsStructure) : string[] {
+    const found : string[] = [];
     let validOpBefore = true;
     const ops = slot.operators;
     const fields = slot.fields;
@@ -165,11 +166,12 @@ function extractCommaSeparatedNamesAndAddToSet(slot: SlotsStructure, addTo: Set<
         const validOpAfter = i == fields.length - 1 || ops[i].code === ",";
         if ((fields[i] as BaseSlot).code) {
             if (validOpBefore && validOpAfter) {
-                addTo.add((fields[i] as BaseSlot).code);
+                found.push((fields[i] as BaseSlot).code);
             }
         }
         validOpBefore = validOpAfter;
     }
+    return found;
 }
 
 function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], frameId: number) : { found : Set<string>, complete: boolean} {
@@ -178,12 +180,20 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
         if (frameId == frame.id) {
             return {found: soFar, complete: true};
         }
+        // Get LHS from assignments:
         if (frame.frameType.type === AllFrameTypesIdentifier.varassign && !frame.isDisabled) {
             // We may have all sorts on the LHS.  We want any slots which are plain,
             // and which are adjoined by either the beginning of the slot, the end,
             // or a comma
-            extractCommaSeparatedNamesAndAddToSet(frame.labelSlotsDict[0].slotStructures, soFar);
+            extractCommaSeparatedNames(frame.labelSlotsDict[0].slotStructures).forEach((x) => soFar.add(x));
         }
+        // Get iterator variables from for loops:
+        if (frame.frameType.type === AllFrameTypesIdentifier.for && !frame.isDisabled) {
+            if ((frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code) {
+                soFar.add((frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code);
+            }
+        }
+        
         // Now go through children:
         for (const childrenId of frame.childrenIds) {
             const childFrame = useStore().frameObjects[childrenId];
@@ -209,7 +219,7 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
             // Also add any parameters from the function:
             // Sanity check the frame type:
             if (frame.frameType.type === AllFrameTypesIdentifier.funcdef) {
-                extractCommaSeparatedNamesAndAddToSet(frame.labelSlotsDict[1].slotStructures, available);
+                extractCommaSeparatedNames(frame.labelSlotsDict[1].slotStructures).forEach((x) => available.add(x));
             }
             return available;
         }

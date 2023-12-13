@@ -11,6 +11,7 @@ import ast
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -25,11 +26,33 @@ class TreeWalk(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         if not node.name in self.content:
             self.content[node.name] = {"acResult": node.name, "type": [], "documentation": ast.get_docstring(node) or "", "version": 0}
+            # Put args together:
+            numArgs = len(node.args.args)
+            if numArgs > 0:
+                self.content[node.name]['params'] = []
+                for i, arg in enumerate(node.args.args):
+                    # A lot of microbit stubs seem to have __ at the beginning of param names, which we trim:
+                    paramName = re.sub(r'^_+', '', arg.arg)
+                    details = {"name": paramName}
+                    # The defaults item in the tuple is None or a list of default values but it goes backwards
+                    # So if you have 5 args, and 2 in the default, they apply to the fifth and fourth arg
+                    if node.args.defaults and ((numArgs - i) <= len(node.args.defaults)):
+                        try:
+                            if isinstance(node.args.defaults[numArgs - i - 1], ast.Constant): 
+                                details['defaultValue'] = str(node.args.defaults[numArgs - i - 1].value)
+                            else:
+                                details['defaultValue'] = str(ast.literal_eval(node.args.defaults[numArgs - i - 1])) 
+                        except:
+                            pass
+                    self.content[node.name]['params'].append(details)
+            
         self.content[node.name]["type"].append("function")
     def visit_ClassDef(self, node):
         if not node.name in self.content:
             self.content[node.name] = {"acResult": node.name, "type": [], "documentation": ast.get_docstring(node) or "", "version": 0}
         self.content[node.name]["type"].append("type")
+        # Classes have a constructor:
+        self.content[node.name]["type"].append("function")
     def visit_AnnAssign(self, node):
         # Picks up items like "button_a : Button" which appear in the type stubs.  The target is the LHS
         if node.target.id:

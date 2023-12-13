@@ -824,6 +824,6 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     }); 
 }
 
-export function getAllEnabledUserDefinedFunctions() : {name: string, documentation: string}[] {
-    return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled).map((f) => ({name: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code, documentation: ""}));
+export function getAllEnabledUserDefinedFunctions() : FrameObject[] {
+    return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled);
 }
