@@ -182,12 +182,18 @@ export default Vue.extend({
             this.showSuggestionsAC(token);
         },
       
-        async updateAC(frameId: number, token : string, context: string): Promise<void> {
+        // frameId is which frame we're in.
+        // token is the string token being edited, or null if it's invalid to show code completion here
+        // context is the part before any preceding dot before us 
+        async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
             this.showFunctionBrackets = true;
             this.acRequestIndex += 1;
             const ourAcRequest = this.acRequestIndex;
             this.acResults = {};
-            if (context !== "") {
+            if (token === null) {
+                this.showSuggestionsAC("");
+            }
+            else if (context !== "") {
                 // There is context, ask Skulpt for a dir() of that context
                 const parser = new Parser();
                 const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
