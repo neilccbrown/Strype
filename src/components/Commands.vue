@@ -402,8 +402,8 @@ export default Vue.extend({
         handleAppScroll(event: WheelEvent) {
             // Don't do anything if a context menu is displayed
             if(!getActiveContextMenu()){
-            const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
-            $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
+                const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
+                $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
             }          
         },
 
