@@ -1040,15 +1040,27 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         cursorOffset += beforeBracketCursorOffset;
         const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape});
         if (openingBracketValue === "(") {
-            // TODO support providing prompt when there are some commas already there:
-            if (structOfBracket.fields.length == 1 && "code" in structOfBracket.fields[0]) {
-                (structOfBracket.fields[0] as BaseSlot).placeholderSource = {
+            // First scan and find all the comma-separated parameters that are a single field:
+            let lastParamStart = -1;
+            let curParam = 0;
+            const singleFieldParams : Record<number, BaseSlot> = {};
+            for (let i = 0; i < structOfBracket.fields.length; i++) {
+                if (i == structOfBracket.operators.length || structOfBracket.operators[i].code === ",") {
+                    if (i - lastParamStart == 1 && "code" in structOfBracket.fields[i] && !("quote" in structOfBracket.fields[i])) {
+                        singleFieldParams[curParam] = structOfBracket.fields[i] as BaseSlot;
+                    }
+                    curParam += 1;
+                    lastParamStart = i;
+                }
+            }
+            (Object.entries(singleFieldParams) as unknown as [number, BaseSlot][]).forEach(([paramIndex, slot] : [number, BaseSlot]) => {
+                slot.placeholderSource = {
                     token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
                     context: "", // TODO
-                    paramIndex: 0,
-                    lastParam: true,
+                    paramIndex: paramIndex,
+                    lastParam: paramIndex == curParam - 1,
                 };
-            }
+            });
         }
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;

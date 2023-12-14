@@ -927,6 +927,7 @@ describe("Parameter prompts", () => {
         ["delattr", ["obj", "name"]],
         ["dir", m ? ["o"] : []],
         ["globals", []],
+        ["setattr", ["obj, name, value"]],
     ];
     // TODO add qualified functions
     for (const func of funcs) {
@@ -935,7 +936,18 @@ describe("Parameter prompts", () => {
             cy.get("body").type(" " + func[0] + "(");
             withFrameId((frameId) => assertState(frameId, func[0] + "($)", func[0] + "(" + func[1].join(", ") + ")"));
         });
-        // TODO manual writing commas
+        it("Shows prompts after manually writing function name and brackets AND commas for " + func, () => {
+            focusEditorAC();
+            cy.get("body").type(" " + func[0] + "(");
+            let expected = func[0] + "(";
+            // Type commas for num params minus 1:
+            for (let i = 1; i < func[1].length; i++) {
+                cy.get("body").type(",");
+                expected += ",";
+            }
+            expected += "$)";
+            withFrameId((frameId) => assertState(frameId, expected, func[0] + "(" + func[1].join(",") + ")"));
+        });
         it("Shows prompts after using AC for " + func, () => {
             focusEditorAC();
             cy.get("body").type(" " + func[0]);
