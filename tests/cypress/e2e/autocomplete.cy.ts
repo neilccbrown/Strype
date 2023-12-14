@@ -933,13 +933,15 @@ describe("Parameter prompts", () => {
     const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string}[] = [];
     for (const rawFunc of rawFuncs) {
         if (rawFunc[0].includes(".")) {
+            const beforeLastDot = rawFunc[0].substring(0, rawFunc[0].lastIndexOf("."));
+            const afterLastDot = rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1);
             // We need some kind of import; test three ways:
             // The "import module" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}i" + rawFunc[0].substring(0, rawFunc[0].lastIndexOf(".")) + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0], params: rawFunc[1], displayName: rawFunc[0] + " with import frame"});
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}i" + beforeLastDot + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0], params: rawFunc[1], displayName: rawFunc[0] + " with import frame"});
             // The "from module import *" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0].substring(0, rawFunc[0].lastIndexOf(".")) + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1), params: rawFunc[1], displayName: rawFunc[0] + " with from-import-* frame"});
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + beforeLastDot + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: afterLastDot, params: rawFunc[1], displayName: rawFunc[0] + " with from-import-* frame"});
             // The "from module import funcName" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0].substring(0, rawFunc[0].lastIndexOf(".")) + "{rightarrow}" + rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1) + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1), params: rawFunc[1], displayName: rawFunc[0] + " with from-import-funcName frame"});
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + beforeLastDot + "{rightarrow}" + afterLastDot + "{rightarrow}{downarrow}{downarrow}", funcName: afterLastDot, params: rawFunc[1], displayName: rawFunc[0] + " with from-import-funcName frame"});
         }
         else {
             // No import necessary
@@ -982,10 +984,8 @@ describe("Parameter prompts", () => {
             cy.get("body").type("{ctrl} ");
             // There is a bug which only seems to happen in cypress where the selection
             // pings back to the start of the slot; I don't see this in a real browser
-            // We compensate by moving the cursor back to the end:
-            for (let i = 0; i < func.funcName.length; i++) {
-                cy.get("body").type("{rightarrow}");
-            }
+            // We compensate by moving the cursor back to the end with right arrow:
+            cy.get("body").type("{rightarrow}".repeat(func.funcName.includes(".") ? func.funcName.length - func.funcName.lastIndexOf(".") - 1 : func.funcName.length));
             cy.get("body").type("{enter}");
             withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
         });

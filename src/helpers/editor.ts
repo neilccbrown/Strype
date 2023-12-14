@@ -4,6 +4,7 @@ import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, Bas
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
+import {getContentForACPrefix} from "@/autocompletion/acManager";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1054,9 +1055,11 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                 }
             }
             (Object.entries(singleFieldParams) as unknown as [number, BaseSlot][]).forEach(([paramIndex, slot] : [number, BaseSlot]) => {
+                const context = getContentForACPrefix(structBeforeBracket, true);
+                console.log("Context is " + context + " for " + JSON.stringify(structBeforeBracket));
                 slot.placeholderSource = {
                     token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
-                    context: "", // TODO
+                    context: context,
                     paramIndex: paramIndex,
                     lastParam: paramIndex == curParam - 1,
                 };

@@ -42,7 +42,7 @@ import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
 import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import {extractCommaSeparatedNames, getBuiltins, getAllExplicitlyImportedItems} from "@/autocompletion/acManager";
+import {extractCommaSeparatedNames, getBuiltins, getAllExplicitlyImportedItems, getAvailableItemsForImportFromModule} from "@/autocompletion/acManager";
 
 // Get the placeholder text for the given function parameter index
 // If it's the last parameter, glue the rest together with commas
@@ -95,7 +95,13 @@ function calculateParamPrompt(context: string, token: string, paramIndex: number
         return "";
     }
     else {
-        // If there's context, we would have to use Skulpt, but the problem is that Skulpt
+        // If the context matches an imported module, we can look it up there.        
+        const fromModule = getAvailableItemsForImportFromModule(context).find((ac) => ac.acResult === token);
+        if (fromModule?.params !== undefined) {
+            return getParamPrompt(fromModule.params.map((p) => p.name), paramIndex, lastParam);
+        }
+        
+        // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt
         // doesn't have an inspect module to reflect params
         
         // So unfortunately, we just can't help with param names.

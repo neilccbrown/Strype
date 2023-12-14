@@ -9,7 +9,7 @@ import {getMatchingBracket} from "@/helpers/editor";
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
-function getContentForACPrefix(item : FieldSlot) {
+export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) : string {
     if ("quote" in item) {
         // It's a string literal
         const ss = item as StringSlot;
@@ -23,9 +23,9 @@ function getContentForACPrefix(item : FieldSlot) {
         // Must be a SlotsStructure, then
         const struct = item as SlotsStructure;
         let glued = "";
-        for (let i = 0; i < struct.fields.length; i++) {
+        for (let i = 0; i < struct.fields.length - (excludeLast ? 1 : 0); i++) {
             glued += getContentForACPrefix(struct.fields[i]);
-            if (i < struct.operators.length) {
+            if (i < struct.operators.length - (excludeLast ? 1 : 0)) {
                 // Add spaces to avoid adjacent items running together:
                 glued += " " + struct.operators[i].code + " ";
             }
@@ -231,22 +231,22 @@ export function getAvailableModulesForImport() : AcResultsWithCategory {
     return {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: [pythonBuiltins[k].type], version: 0}))};
     /* FITRUE_isPurePython */
 }
-export function getAvailableItemsForImportFromModule(module: string) : AcResultsWithCategory {
+export function getAvailableItemsForImportFromModule(module: string) : AcResultType[] {
     const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
     /* IFTRUE_isMicrobit */
     const allMicrobitItems: AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
     if (allMicrobitItems) {
-        return {"": [...allMicrobitItems, star]};
+        return [...allMicrobitItems, star];
     }
     /* FITRUE_isMicrobit */
 
     /* IFTRUE_isPurePython */
     const allSkulptItems: AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
     if (allSkulptItems) {
-        return {"": [...allSkulptItems, star]};
+        return [...allSkulptItems, star];
     }
     /* FITRUE_isPurePython */
-    return {"": [star]};
+    return [star];
 }
 
 export function getBuiltins() : AcResultType[] {
