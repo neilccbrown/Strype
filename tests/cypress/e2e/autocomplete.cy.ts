@@ -939,14 +939,16 @@ describe("Parameter prompts", () => {
         it("Shows prompts after manually writing function name and brackets AND commas for " + func, () => {
             focusEditorAC();
             cy.get("body").type(" " + func[0] + "(");
-            let expected = func[0] + "(";
             // Type commas for num params minus 1:
-            for (let i = 1; i < func[1].length; i++) {
-                cy.get("body").type(",");
-                expected += ",";
+            for (let i = 0; i < func[1].length; i++) {
+                if (i > 0) {
+                    cy.get("body").type(",");
+                }
+                withFrameId((frameId) => assertState(frameId, 
+                    func[0] + "(" + ",".repeat(i) + "$)", 
+                    func[0] + "(" + func[1].slice(0, i).join(",") + (i > 0 ? "," : "") + func[1].slice(i).join(", ") + ")"));
             }
-            expected += "$)";
-            withFrameId((frameId) => assertState(frameId, expected, func[0] + "(" + func[1].join(",") + ")"));
+            
         });
         it("Shows prompts after using AC for " + func, () => {
             focusEditorAC();
