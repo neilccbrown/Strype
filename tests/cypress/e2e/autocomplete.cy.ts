@@ -936,6 +936,18 @@ describe("Parameter prompts", () => {
             withFrameId((frameId) => assertState(frameId, func[0] + "($)", func[0] + "(" + func[1].join(", ") + ")"));
         });
         // TODO manual writing commas
-        // TODO using AC
+        it("Shows prompts after using AC for " + func, () => {
+            focusEditorAC();
+            cy.get("body").type(" " + func[0]);
+            cy.get("body").type("{ctrl} ");
+            // There is a bug which only seems to happen in cypress where the selection
+            // pings back to the start of the slot; I don't see this in a real browser
+            // We compensate by moving the cursor back to the end:
+            for (let i = 0; i < func[0].length; i++) {
+                cy.get("body").type("{rightarrow}");
+            }
+            cy.get("body").type("{enter}");
+            withFrameId((frameId) => assertState(frameId, func[0] + "($)", func[0] + "(" + func[1].join(", ") + ")"));
+        });
     }
 });
