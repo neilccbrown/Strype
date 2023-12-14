@@ -623,11 +623,11 @@ export default Vue.extend({
                 // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
                 // And if we are already in the container (body), then we just return this component 
                 const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId); 
-                const containerElementRefs = this.$refs[getFrameContainerUIID(frameContainerId)];
+                const containerElementRefs = this.$refs[getFrameContainerUIID(frameContainerId)] as (Vue|Element)[];
                 if(containerElementRefs) {
                     result = (frameId < 0) 
-                        ? (containerElementRefs as (Vue|Element)[])[0] as InstanceType<typeof FrameContainer>
-                        : this.getFrameComponent(frameId,{frameParentComponent: (containerElementRefs as (Vue|Element)[])[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: this.appStore.frameObjects[frameContainerId].childrenIds});
+                        ? containerElementRefs[0] as InstanceType<typeof FrameContainer>
+                        : this.getFrameComponent(frameId,{frameParentComponent: containerElementRefs[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: this.appStore.frameObjects[frameContainerId].childrenIds});
                 }
             }
 

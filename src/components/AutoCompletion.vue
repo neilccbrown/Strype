@@ -22,10 +22,10 @@
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
                             class="popUpItems"
-                            :id="UIID+item.index"
+                            :id="UIID+'_'+item.index"
                             :index="item.index"
                             :item="textForAC(item)"
-                            :key="UIID+item.index"
+                            :key="UIID+'_'+item.index"
                             :selected="item.index==selected"
                             v-on="$listeners"
                             @[CustomEventTypes.acItemHovered]="handleACItemHover"
@@ -329,7 +329,7 @@ export default Vue.extend({
                     // Select the item immediately manually, because otherwise we need to wait that another item is selected for hover to work
                     const selectedItem = document.querySelector(".acItem:hover");
                     if(selectedItem){
-                        const indexOfSelected = parseInt(selectedItem.id.replace(this.UIID,""));
+                        const indexOfSelected = parseInt(selectedItem.id.replace(this.UIID + "_",""));
                         this.handleACItemHover(indexOfSelected);
                     }
                 });
@@ -369,7 +369,7 @@ export default Vue.extend({
 
         getTypeOfSelected(id: string): ("function" | "module" | "variable" | "type")[] {
             // We start by getting the index
-            const indexOfSelected = parseInt(id.replace(this.UIID,""));
+            const indexOfSelected = parseInt(id.replace(this.UIID + "_",""));
             // Here we are making all the ACresult objects in a flatten array (with contact.apply()) in which we are then finding the selected and return its type
             return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type;
         },

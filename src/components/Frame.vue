@@ -817,7 +817,7 @@ export default Vue.extend({
         copy(): void {
             if(this.isPartOfSelection){
                 this.appStore.copySelection(); 
-                this.appStore.selectedFrames.splice(0);
+                this.appStore.selectedFrames.splice(0); // clear the selected frames (splice to make sure we don't break reactivity)
             }
             else{
                 this.appStore.copyFrame(this.frameId);
