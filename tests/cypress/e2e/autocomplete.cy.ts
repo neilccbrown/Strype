@@ -46,6 +46,19 @@ function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedC
     });
 }
 
+function withFrameId(inner : (frameId: number) => void) : void {
+    // We need a delay to make sure last DOM update has occurred:
+    cy.wait(200);
+    cy.get("#editor").then((eds) => {
+        const ed = eds.get()[0];
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const frameId = parseInt(new RegExp("input_frame_(\\d+)").exec(ed.getAttribute("data-slot-focus-id"))[1]);
+        // Call the inner function:
+        inner(frameId);
+    });
+}
+
 function focusEditorAC(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
@@ -903,4 +916,26 @@ describe("Underscore handling", () => {
             checkAutocompleteSorted(acIDSel);
         });
     });
+});
+
+describe("Parameter prompts", () => {
+    // m for microbit:
+    const m = Cypress.env("mode") === "microbit"; 
+    // Each item is a pair: the function name, the list of param names
+    const funcs : [string, string[]][] = [
+        ["abs", ["x"]],
+        ["delattr", ["obj", "name"]],
+        ["dir", m ? ["o"] : []],
+        ["globals", []],
+    ];
+    // TODO add qualified functions
+    for (const func of funcs) {
+        it("Shows prompts after manually writing function name and brackets for " + func, () => {
+            focusEditorAC();
+            cy.get("body").type(" " + func[0] + "(");
+            withFrameId((frameId) => assertState(frameId, func[0] + "($)", func[0] + "(" + func[1].join(", ") + ")"));
+        });
+        // TODO manual writing commas
+        // TODO using AC
+    }
 });
