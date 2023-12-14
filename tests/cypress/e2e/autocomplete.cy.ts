@@ -109,13 +109,27 @@ function checkAutocompleteSorted(acIDSel: string) : void {
 }
 
 // Checks that the first labelslot in the given frame has content equivalent to expectedState (with a dollar indicating cursor position),
-function assertState(frameId: number, expectedState : string) : void {
+// and equivalent to expectedStateWithPlaceholders if you count placeholders as the text for blank spans
+// If the last parameter is missing, it's assumed that expectedStateWithPlaceholders is the same as expectedState
+// (but without the dollar)
+function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
+    expectedStateWithPlaceholders = expectedStateWithPlaceholders ?? expectedState.replaceAll("$", "");
     withSelection((info) => {    
         cy.get("#frameHeader_" + frameId + " #labelSlotsStruct" + frameId + "_0 .labelSlot-input").then((parts) => {
             let content = "";
+            let contentWithPlaceholders = "";
             for (let i = 0; i < parts.length; i++) {
                 const p : any = parts[i];
                 let text = p.value || p.textContent || "";
+
+                // If the text for a span is blank, use the placeholder since that's what the user will be seeing:
+                if (!text) {
+                    // Get rid of zero-width spaces (trim() doesn't seem to do this):
+                    contentWithPlaceholders += p.getAttribute("placeholder")?.replace(/\u200B/g,"") ?? "";
+                }
+                else {
+                    contentWithPlaceholders += text;
+                }
                 
                 // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
                 if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
@@ -125,6 +139,7 @@ function assertState(frameId: number, expectedState : string) : void {
                 content += text;
             }
             expect(content).to.equal(expectedState);
+            expect(contentWithPlaceholders).to.equal(expectedStateWithPlaceholders);
         });
     });
 }
@@ -166,7 +181,7 @@ describe("Built-ins", () => {
             
             // Now complete and check content:
             cy.get("body").type("s{enter}");
-            assertState(frameId, "abs($)");
+            assertState(frameId, "abs($)", "abs(x)");
         });
     });
     it("Shows text when no documentation available", () => {
