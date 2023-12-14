@@ -1284,7 +1284,7 @@ export default Vue.extend({
 .labelSlot-input:empty::before {
     content: attr(placeholder);
     font-style: italic;
-    color: #757575;
+    color: #bbb;
 }
 
 .errorSlot {

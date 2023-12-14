@@ -1039,6 +1039,17 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
         cursorOffset += beforeBracketCursorOffset;
         const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape});
+        if (openingBracketValue === "(") {
+            // TODO support providing prompt when there are some commas already there:
+            if (structOfBracket.fields.length == 1 && "code" in structOfBracket.fields[0]) {
+                (structOfBracket.fields[0] as BaseSlot).placeholderSource = {
+                    token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
+                    context: "", // TODO
+                    paramIndex: 0,
+                    lastParam: true,
+                };
+            }
+        }
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;
         const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (closingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
