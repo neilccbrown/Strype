@@ -9,6 +9,7 @@
         <div :id="this.frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1">
             <CaretContainer
                 :frameId="this.frameId"
+                :ref="getCaretContainerRef"
                 :caretVisibility="this.caretVisibility"
                 :caretAssignedPosition="caretPosition.body"
             />
@@ -58,7 +59,7 @@ import { useStore } from "@/store/store";
 import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier } from "@/types/types";
 import { mapStores } from "pinia";
-import { getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { getCaretContainerRef, getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -93,6 +94,10 @@ export default Vue.extend({
 
         frameUIID(): string{
             return getFrameUIID(this.frameId);
+        },
+
+        getCaretContainerRef(): string {
+            return getCaretContainerRef();
         },
         
         frames: {

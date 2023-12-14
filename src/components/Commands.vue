@@ -76,7 +76,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -248,7 +248,7 @@ export default Vue.extend({
 
                 // If a context menu is currently displayed, we handle the menu keyboard interaction here
                 // (note that preventing the event here also prevents the keyboard scrolling of the page)
-                if(!isEditing && this.appStore.contextMenuShownId.length > 0 && document.querySelector(".vue-simple-context-menu--active")){
+                if(!isEditing && this.appStore.contextMenuShownId.length > 0 && getActiveContextMenu()){
                     handleContextMenuKBInteraction(event.key);
                     event.stopImmediatePropagation();
                     event.preventDefault();
@@ -353,7 +353,7 @@ export default Vue.extend({
             }
 
             // If a context menu is currently displayed, stop any action here (keyboard interaction is handled for the keydown event)
-            if(!isEditing && this.appStore.contextMenuShownId.length > 0 && document.querySelector(".vue-simple-context-menu--active")){
+            if(!isEditing && this.appStore.contextMenuShownId.length > 0 && getActiveContextMenu()){
                 event.stopImmediatePropagation();
                 event.preventDefault();
                 return;
@@ -400,8 +400,11 @@ export default Vue.extend({
         },
         
         handleAppScroll(event: WheelEvent) {
+            // Don't do anything if a context menu is displayed
+            if(!getActiveContextMenu()){
             const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
             $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
+            }          
         },
 
         /* IFTRUE_isMicrobit */
