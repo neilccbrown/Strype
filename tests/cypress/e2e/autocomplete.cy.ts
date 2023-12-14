@@ -918,18 +918,19 @@ describe("Underscore handling", () => {
     });
 });
 
-describe("Parameter prompts", () => {
-    // m for microbit:
-    const m = Cypress.env("mode") === "microbit"; 
+describe("Parameter prompts", () => { 
     // Each item is a pair: the function name, the list of param names
     const rawFuncs : [string, string[]][] = [
         ["abs", ["x"]],
         ["delattr", ["obj", "name"]],
-        ["dir", m ? ["o"] : []],
+        ["dir", []],
         ["globals", []],
         ["setattr", ["obj, name, value"]],
         ["collections.namedtuple", ["typename", "field_names"]],
     ];
+    if (Cypress.env("mode") !== "microbit") {
+        rawFuncs.push(["urllib.request.urlopen", ["url"]]);
+    }
     const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string}[] = [];
     for (const rawFunc of rawFuncs) {
         if (rawFunc[0].includes(".")) {

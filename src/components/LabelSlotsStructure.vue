@@ -75,7 +75,7 @@ function calculateParamPrompt(context: string, token: string, paramIndex: number
         const builtinFunc = getBuiltins().find((f) => f.acResult === token);
         if (builtinFunc !== undefined) {
             if (builtinFunc.params) {
-                return getParamPrompt(builtinFunc.params.map((p) => p.name), paramIndex, lastParam);
+                return getParamPrompt(builtinFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
             }
             else {
                 return "";
@@ -84,7 +84,7 @@ function calculateParamPrompt(context: string, token: string, paramIndex: number
         const importedFunc = Object.values(getAllExplicitlyImportedItems()).flat().find((f) => f.acResult === token);
         if (importedFunc !== undefined) {
             if (importedFunc.params) {
-                return getParamPrompt(importedFunc.params.map((p) => p.name), paramIndex, lastParam);
+                return getParamPrompt(importedFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
             }
             else {
                 return "";
@@ -98,7 +98,7 @@ function calculateParamPrompt(context: string, token: string, paramIndex: number
         // If the context matches an imported module, we can look it up there.        
         const fromModule = getAvailableItemsForImportFromModule(context).find((ac) => ac.acResult === token);
         if (fromModule?.params !== undefined) {
-            return getParamPrompt(fromModule.params.map((p) => p.name), paramIndex, lastParam);
+            return getParamPrompt(fromModule.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
         }
         
         // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt

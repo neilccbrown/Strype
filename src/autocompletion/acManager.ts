@@ -27,7 +27,7 @@ export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) 
             glued += getContentForACPrefix(struct.fields[i]);
             if (i < struct.operators.length - (excludeLast ? 1 : 0)) {
                 // Add spaces to avoid adjacent items running together:
-                glued += " " + struct.operators[i].code + " ";
+                glued += struct.operators[i].code;
             }
         }
         if (struct.openingBracketValue) {
