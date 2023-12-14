@@ -24,7 +24,7 @@
                             class="popUpItems"
                             :id="UIID+item.index"
                             :index="item.index"
-                            :item="item.acResult"
+                            :item="textForAC(item)"
                             :key="UIID+item.index"
                             :selected="item.index==selected"
                             v-on="$listeners"
@@ -71,12 +71,12 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import { DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory } from "@/types/types";
+import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins } from "@/autocompletion/acManager";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
 import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext, getPythonCodeForTypeAndDocumentation } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
 import { CustomEventTypes } from "@/helpers/editor";
@@ -109,6 +109,7 @@ export default Vue.extend({
             acResults: {} as AcResultsWithCategory,
             resultsToShow: {} as IndexedAcResultWithCategory,
             documentation: [] as string[],
+            showFunctionBrackets : true,
             selected: 0,
             currentModule: "",
             currentDocumentation: "",
@@ -146,6 +147,10 @@ export default Vue.extend({
     },
 
     methods: {
+        textForAC(item : AcResultType) : string {
+            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.params?.filter((p) => p.defaultValue === undefined)?.map((p) => p.name)?.join(", ") || "") + ")" : "");
+        },
+
         sortCategories(categories : string[]) : string[] {
             // Other items (like the names of variables when you do var.) will come out as -1,
             // which works nicely because they should be first:
@@ -184,20 +189,29 @@ export default Vue.extend({
         updateACForModuleImport(token: string) : void {
             this.acRequestIndex += 1;
             this.acResults = getAvailableModulesForImport();
+            this.showFunctionBrackets = false;
             this.showSuggestionsAC(token);
         },
 
         updateACForImportFrom(token: string, module: string) : void {
             this.acRequestIndex += 1;
             this.acResults = getAvailableItemsForImportFromModule(module);
+            this.showFunctionBrackets = false;
             this.showSuggestionsAC(token);
         },
       
-        async updateAC(frameId: number, token : string, context: string): Promise<void> {
+        // frameId is which frame we're in.
+        // token is the string token being edited, or null if it's invalid to show code completion here
+        // context is the part before any preceding dot before us 
+        async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
+            this.showFunctionBrackets = true;
             this.acRequestIndex += 1;
             const ourAcRequest = this.acRequestIndex;
             this.acResults = {};
-            if (context !== "") {
+            if (token === null) {
+                this.showSuggestionsAC("");
+            }
+            else if (context !== "") {
                 // There is context, ask Skulpt for a dir() of that context
                 const parser = new Parser();
                 const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
@@ -219,7 +233,7 @@ export default Vue.extend({
                             await Sk.misceval.asyncToPromise(function () {
                                 return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
                             });
-                            item.type = Sk.ffi.remapToJs(Sk.globals["itemType"]) as AcResultType["type"];
+                            item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
                             item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
                         }
                         if (ourAcRequest == this.acRequestIndex) {
@@ -240,9 +254,10 @@ export default Vue.extend({
               
                 // Add user-defined functions:
                 this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
-                    acResult: f.name,
-                    documentation: f.documentation,
+                    acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
+                    documentation: "",
                     type: ["function"],
+                    params: extractCommaSeparatedNames(f.labelSlotsDict[1].slotStructures).map((p) => ({name: p})),
                     version: 0,
                 }));
                 
@@ -287,7 +302,7 @@ export default Vue.extend({
                     .sort((a, b) => a.acResult.localeCompare(b.acResult))
                     .map((e,i) => {
                         let contextPath = module + "." + e.acResult;
-                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
+                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", params: e.params, version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
                     });
                 lastIndex += filteredResults.length;    
             }

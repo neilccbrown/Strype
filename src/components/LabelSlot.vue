@@ -129,7 +129,8 @@ export default Vue.extend({
             showAC: false,
             acRequested: false,
             contextAC: "",
-            tokenAC: "",
+            // tokenAC can be null if code completion is invalid here
+            tokenAC: "" as string | null,
             //used to force a text cursor position, for example after inserting an AC candidate
             textCursorPos: 0,    
             //flags to indicate whether the user has explicitly marked a pause when deleting text with backspace
@@ -397,7 +398,7 @@ export default Vue.extend({
                     this.contextAC = "";
                     this.$nextTick(() => {
                         const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
-                        if (ac) {
+                        if (ac && this.tokenAC != null) {
                             if (this.labelSlotsIndex == 0) {
                                 // If we are in first slot in the import frame, look for modules:
                                 ac.updateACForModuleImport(this.tokenAC);
@@ -411,12 +412,10 @@ export default Vue.extend({
                     });
                 }
                 else {
-                    const resultsAC = getCandidatesForAC(textBeforeCaret, this.frameId);
-                    this.showAC = resultsAC.showAC;
+                    const resultsAC = getCandidatesForAC(frame.labelSlotsDict[this.labelSlotsIndex].slotStructures, new RegExp("[0-9,]+$").exec(this.slotId)?.[0]?.trim()?.split(",")?.map((x) => parseInt(x)) ?? []);
+                    this.showAC = true;
                     this.contextAC = resultsAC.contextAC;
-                    if (resultsAC.showAC) {
-                        this.tokenAC = resultsAC.tokenAC.toLowerCase();
-                    }
+                    this.tokenAC = resultsAC.tokenAC;
   
                     this.$nextTick(() => {
                         const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
@@ -1232,7 +1231,7 @@ export default Vue.extend({
             const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
             const hasFollowingBracketSlot = (getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true)?.slotType == SlotType.bracket);
             const isSelectedFunction =  ((typeOfSelected.includes("function") || typeOfSelected.includes("method")) && !hasFollowingBracketSlot);
-            const newCode = this.getSlotContent().substr(0, currentTextCursorPos - this.tokenAC.length)
+            const newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0))
                 + selectedItem 
                 + ((isSelectedFunction)?"()":"");
             
