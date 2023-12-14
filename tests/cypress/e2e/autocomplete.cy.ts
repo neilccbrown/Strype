@@ -922,46 +922,72 @@ describe("Parameter prompts", () => {
     // m for microbit:
     const m = Cypress.env("mode") === "microbit"; 
     // Each item is a pair: the function name, the list of param names
-    const funcs : [string, string[]][] = [
+    const rawFuncs : [string, string[]][] = [
         ["abs", ["x"]],
         ["delattr", ["obj", "name"]],
         ["dir", m ? ["o"] : []],
         ["globals", []],
         ["setattr", ["obj, name, value"]],
+        ["collections.namedtuple", ["typename", "field_names"]],
     ];
-    // TODO add qualified functions
+    const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string}[] = [];
+    for (const rawFunc of rawFuncs) {
+        if (rawFunc[0].includes(".")) {
+            // We need some kind of import; test three ways:
+            // The "import module" frame:
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}i" + rawFunc[0].substring(0, rawFunc[0].lastIndexOf(".")) + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0], params: rawFunc[1], displayName: rawFunc[0] + " with import frame"});
+            // The "from module import *" frame:
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0].substring(0, rawFunc[0].lastIndexOf(".")) + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1), params: rawFunc[1], displayName: rawFunc[0] + " with from-import-* frame"});
+            // The "from module import funcName" frame:
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0].substring(0, rawFunc[0].lastIndexOf(".")) + "{rightarrow}" + rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1) + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1), params: rawFunc[1], displayName: rawFunc[0] + " with from-import-funcName frame"});
+        }
+        else {
+            // No import necessary
+            funcs.push({funcName: rawFunc[0], params: rawFunc[1], displayName: rawFunc[0]});
+        }
+    }
+    
     for (const func of funcs) {
-        it("Shows prompts after manually writing function name and brackets for " + func, () => {
+        it("Shows prompts after manually writing function name and brackets for " + func.displayName, () => {
             focusEditorAC();
-            cy.get("body").type(" " + func[0] + "(");
-            withFrameId((frameId) => assertState(frameId, func[0] + "($)", func[0] + "(" + func[1].join(", ") + ")"));
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" " + func.funcName + "(");
+            withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
         });
-        it("Shows prompts after manually writing function name and brackets AND commas for " + func, () => {
+        it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
             focusEditorAC();
-            cy.get("body").type(" " + func[0] + "(");
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" " + func.funcName + "(");
             // Type commas for num params minus 1:
-            for (let i = 0; i < func[1].length; i++) {
+            for (let i = 0; i < func.params.length; i++) {
                 if (i > 0) {
                     cy.get("body").type(",");
                 }
                 withFrameId((frameId) => assertState(frameId, 
-                    func[0] + "(" + ",".repeat(i) + "$)", 
-                    func[0] + "(" + func[1].slice(0, i).join(",") + (i > 0 ? "," : "") + func[1].slice(i).join(", ") + ")"));
+                    func.funcName + "(" + ",".repeat(i) + "$)", 
+                    func.funcName + "(" + func.params.slice(0, i).join(",") + (i > 0 ? "," : "") + func.params.slice(i).join(", ") + ")"));
             }
             
         });
-        it("Shows prompts after using AC for " + func, () => {
+        it("Shows prompts after using AC for " + func.displayName, () => {
             focusEditorAC();
-            cy.get("body").type(" " + func[0]);
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" " + func.funcName);
             cy.get("body").type("{ctrl} ");
             // There is a bug which only seems to happen in cypress where the selection
             // pings back to the start of the slot; I don't see this in a real browser
             // We compensate by moving the cursor back to the end:
-            for (let i = 0; i < func[0].length; i++) {
+            for (let i = 0; i < func.funcName.length; i++) {
                 cy.get("body").type("{rightarrow}");
             }
             cy.get("body").type("{enter}");
-            withFrameId((frameId) => assertState(frameId, func[0] + "($)", func[0] + "(" + func[1].join(", ") + ")"));
+            withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
         });
     }
 });
