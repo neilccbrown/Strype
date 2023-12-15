@@ -40,75 +40,10 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
-import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
+import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import {extractCommaSeparatedNames, getBuiltins, getAllExplicitlyImportedItems, getAvailableItemsForImportFromModule} from "@/autocompletion/acManager";
+import {calculateParamPrompt} from "@/autocompletion/acManager";
 
-// Get the placeholder text for the given function parameter index
-// If it's the last parameter, glue the rest together with commas
-function getParamPrompt(params: string[], targetParamIndex: number, lastParam: boolean) : string {
-    if (targetParamIndex >= params.length) {
-        return "";
-    }
-    else if (!lastParam) {
-        return params[targetParamIndex];
-    }
-    else {
-        return params.slice(targetParamIndex).join(", ");
-    }
-}
-
-// Gets the parameter name prompt for the given autocomplete details (context+token)
-// for the given parameter.
-function calculateParamPrompt(context: string, token: string, paramIndex: number, lastParam: boolean) : string {
-    if (!context) {
-        // If context is blank, we know that the function must be one of:
-        // - A user-defined function
-        // - A built-in function
-        // - An explicitly imported function with from...import...
-        // We check the items in that order.  We can do this without using Skulpt, which will speed things up
-        const userFunc = getAllEnabledUserDefinedFunctions().find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
-        if (userFunc !== undefined) {
-            const params : string[] = extractCommaSeparatedNames(userFunc.labelSlotsDict[1].slotStructures);
-            return getParamPrompt(params, paramIndex, lastParam); 
-        }
-        const builtinFunc = getBuiltins().find((f) => f.acResult === token);
-        if (builtinFunc !== undefined) {
-            if (builtinFunc.params) {
-                return getParamPrompt(builtinFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
-            }
-            else {
-                return "";
-            }
-        }
-        const importedFunc = Object.values(getAllExplicitlyImportedItems()).flat().find((f) => f.acResult === token);
-        if (importedFunc !== undefined) {
-            if (importedFunc.params) {
-                return getParamPrompt(importedFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
-            }
-            else {
-                return "";
-            }
-        }
-
-        // Didn't find it anywhere, so we just don't know:
-        return "";
-    }
-    else {
-        // If the context matches an imported module, we can look it up there.        
-        const fromModule = getAvailableItemsForImportFromModule(context).find((ac) => ac.acResult === token);
-        if (fromModule?.params !== undefined) {
-            return getParamPrompt(fromModule.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
-        }
-        
-        // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt
-        // doesn't have an inspect module to reflect params
-        
-        // So unfortunately, we just can't help with param names.
-        return "";
-    }
-    
-}
 
 export default Vue.extend({
     name: "LabelSlotsStructure.vue",
