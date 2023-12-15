@@ -26,7 +26,7 @@ beforeEach(() => {
     }});
 });
 
-function withAC(inner : (acIDSel : string) => void, skipSortedCheck?: boolean) : void {
+function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
     cy.get("#editor").then((eds) => {
@@ -38,8 +38,24 @@ function withAC(inner : (acIDSel : string) => void, skipSortedCheck?: boolean) :
         if (!skipSortedCheck) {
             checkAutocompleteSorted(acIDSel);
         }
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const frameId = parseInt(new RegExp("input_frame_(\\d+)").exec(acIDSel)[1]);
         // Call the inner function:
-        inner(acIDSel);
+        inner(acIDSel, frameId);
+    });
+}
+
+function withFrameId(inner : (frameId: number) => void) : void {
+    // We need a delay to make sure last DOM update has occurred:
+    cy.wait(200);
+    cy.get("#editor").then((eds) => {
+        const ed = eds.get()[0];
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const frameId = parseInt(new RegExp("input_frame_(\\d+)").exec(ed.getAttribute("data-slot-focus-id"))[1]);
+        // Call the inner function:
+        inner(frameId);
     });
 }
 
@@ -48,6 +64,16 @@ function focusEditorAC(): void {
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
     cy.get("#frame_id_-3").focus();
 }
+
+function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
+    // We need a delay to make sure last DOM update has occurred:
+    cy.wait(200);
+    cy.get("#editor").then((eds) => {
+        const ed = eds.get()[0];
+        inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
+    });
+}
+
 
 // Given a selector for the auto-complete and text for an item, checks that exactly one item with that text
 // exists in the autocomplete
@@ -95,6 +121,43 @@ function checkAutocompleteSorted(acIDSel: string) : void {
     });
 }
 
+// Checks that the first labelslot in the given frame has content equivalent to expectedState (with a dollar indicating cursor position),
+// and equivalent to expectedStateWithPlaceholders if you count placeholders as the text for blank spans
+// If the last parameter is missing, it's assumed that expectedStateWithPlaceholders is the same as expectedState
+// (but without the dollar)
+function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
+    expectedStateWithPlaceholders = expectedStateWithPlaceholders ?? expectedState.replaceAll("$", "");
+    withSelection((info) => {    
+        cy.get("#frameHeader_" + frameId + " #labelSlotsStruct" + frameId + "_0 .labelSlot-input").then((parts) => {
+            let content = "";
+            let contentWithPlaceholders = "";
+            for (let i = 0; i < parts.length; i++) {
+                const p : any = parts[i];
+                let text = p.value || p.textContent || "";
+
+                // If the text for a span is blank, use the placeholder since that's what the user will be seeing:
+                if (!text) {
+                    // Get rid of zero-width spaces (trim() doesn't seem to do this):
+                    contentWithPlaceholders += p.getAttribute("placeholder")?.replace(/\u200B/g,"") ?? "";
+                }
+                else {
+                    contentWithPlaceholders += text;
+                }
+                
+                // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
+                if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
+                    text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
+                }
+                
+                content += text;
+            }
+            expect(content).to.equal(expectedState);
+            expect(contentWithPlaceholders).to.equal(expectedStateWithPlaceholders);
+        });
+    });
+}
+
+
 
 describe("Built-ins", () => {
     it("Has built-ins, that narrow down when you type", () => {
@@ -103,7 +166,7 @@ describe("Built-ins", () => {
         cy.get("body").type(" ");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
-        withAC((acIDSel) => {
+        withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
@@ -128,6 +191,10 @@ describe("Built-ins", () => {
             checkAutocompleteSorted(acIDSel);
             // Check docs are showing for built-in function:
             cy.get(acIDSel).contains("Return the absolute value of the argument.");
+            
+            // Now complete and check content:
+            cy.get("body").type("s{enter}");
+            assertState(frameId, "abs($)", "abs(x)");
         });
     });
     it("Shows text when no documentation available", () => {
@@ -513,9 +580,11 @@ describe("User-defined items", () => {
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
-        withAC((acIDSel) => {
+        withAC((acIDSel, frameId) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, MYFUNCS, "foo()");
+            cy.get("body").type("foo{enter}");
+            assertState(frameId, "foo($)");
         });
     });
 
@@ -847,4 +916,79 @@ describe("Underscore handling", () => {
             checkAutocompleteSorted(acIDSel);
         });
     });
+});
+
+describe("Parameter prompts", () => { 
+    // Each item is a pair: the function name, the list of param names
+    const rawFuncs : [string, string[]][] = [
+        ["abs", ["x"]],
+        ["delattr", ["obj", "name"]],
+        ["dir", []],
+        ["globals", []],
+        ["setattr", ["obj, name, value"]],
+        ["collections.namedtuple", ["typename", "field_names"]],
+    ];
+    if (Cypress.env("mode") !== "microbit") {
+        rawFuncs.push(["urllib.request.urlopen", ["url"]]);
+    }
+    const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string}[] = [];
+    for (const rawFunc of rawFuncs) {
+        if (rawFunc[0].includes(".")) {
+            const beforeLastDot = rawFunc[0].substring(0, rawFunc[0].lastIndexOf("."));
+            const afterLastDot = rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1);
+            // We need some kind of import; test three ways:
+            // The "import module" frame:
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}i" + beforeLastDot + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0], params: rawFunc[1], displayName: rawFunc[0] + " with import frame"});
+            // The "from module import *" frame:
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + beforeLastDot + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: afterLastDot, params: rawFunc[1], displayName: rawFunc[0] + " with from-import-* frame"});
+            // The "from module import funcName" frame:
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + beforeLastDot + "{rightarrow}" + afterLastDot + "{rightarrow}{downarrow}{downarrow}", funcName: afterLastDot, params: rawFunc[1], displayName: rawFunc[0] + " with from-import-funcName frame"});
+        }
+        else {
+            // No import necessary
+            funcs.push({funcName: rawFunc[0], params: rawFunc[1], displayName: rawFunc[0]});
+        }
+    }
+    
+    for (const func of funcs) {
+        it("Shows prompts after manually writing function name and brackets for " + func.displayName, () => {
+            focusEditorAC();
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" " + func.funcName + "(");
+            withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
+        });
+        it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
+            focusEditorAC();
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" " + func.funcName + "(");
+            // Type commas for num params minus 1:
+            for (let i = 0; i < func.params.length; i++) {
+                if (i > 0) {
+                    cy.get("body").type(",");
+                }
+                withFrameId((frameId) => assertState(frameId, 
+                    func.funcName + "(" + ",".repeat(i) + "$)", 
+                    func.funcName + "(" + func.params.slice(0, i).join(",") + (i > 0 ? "," : "") + func.params.slice(i).join(", ") + ")"));
+            }
+            
+        });
+        it("Shows prompts after using AC for " + func.displayName, () => {
+            focusEditorAC();
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" " + func.funcName);
+            cy.get("body").type("{ctrl} ");
+            // There is a bug which only seems to happen in cypress where the selection
+            // pings back to the start of the slot; I don't see this in a real browser
+            // We compensate by moving the cursor back to the end with right arrow:
+            cy.get("body").type("{rightarrow}".repeat(func.funcName.includes(".") ? func.funcName.length - func.funcName.lastIndexOf(".") - 1 : func.funcName.length));
+            cy.get("body").type("{enter}");
+            withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
+        });
+    }
 });

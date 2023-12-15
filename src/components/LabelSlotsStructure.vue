@@ -22,7 +22,7 @@
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
                 :isDisabled="isDisabled"
-                :default-text="(subSlots.length == 1) ? defaultText : '\u200b'"
+                :default-text="placeholderText[slotIndex]"
                 :code="getSlotCode(slotItem)"
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
@@ -40,8 +40,10 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
-import { checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
+import {calculateParamPrompt} from "@/autocompletion/acManager";
+
 
 export default Vue.extend({
     name: "LabelSlotsStructure.vue",
@@ -81,6 +83,15 @@ export default Vue.extend({
         
         focusSlotCursorInfos(): SlotCursorInfos | undefined {
             return this.appStore.focusSlotCursorInfos;
+        },
+
+        placeholderText() : string[] {
+            if (this.subSlots.length == 1) {
+                return [this.defaultText];
+            }
+            else {
+                return this.subSlots.map((slotItem) => slotItem.placeholderSource !== undefined ? calculateParamPrompt(slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) : "\u200b");
+            }
         },
     },
 

@@ -4,6 +4,7 @@ import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, Bas
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
+import {getContentForACPrefix} from "@/autocompletion/acManager";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1039,6 +1040,30 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
         cursorOffset += beforeBracketCursorOffset;
         const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape});
+        if (openingBracketValue === "(") {
+            // First scan and find all the comma-separated parameters that are a single field:
+            let lastParamStart = -1;
+            let curParam = 0;
+            const singleFieldParams : Record<number, BaseSlot> = {};
+            for (let i = 0; i < structOfBracket.fields.length; i++) {
+                if (i == structOfBracket.operators.length || structOfBracket.operators[i].code === ",") {
+                    if (i - lastParamStart == 1 && "code" in structOfBracket.fields[i] && !("quote" in structOfBracket.fields[i])) {
+                        singleFieldParams[curParam] = structOfBracket.fields[i] as BaseSlot;
+                    }
+                    curParam += 1;
+                    lastParamStart = i;
+                }
+            }
+            (Object.entries(singleFieldParams) as unknown as [number, BaseSlot][]).forEach(([paramIndex, slot] : [number, BaseSlot]) => {
+                const context = getContentForACPrefix(structBeforeBracket, true);
+                slot.placeholderSource = {
+                    token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
+                    context: context,
+                    paramIndex: paramIndex,
+                    lastParam: paramIndex == curParam - 1,
+                };
+            });
+        }
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;
         const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (closingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
