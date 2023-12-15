@@ -1056,7 +1056,6 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             }
             (Object.entries(singleFieldParams) as unknown as [number, BaseSlot][]).forEach(([paramIndex, slot] : [number, BaseSlot]) => {
                 const context = getContentForACPrefix(structBeforeBracket, true);
-                console.log("Context is " + context + " for " + JSON.stringify(structBeforeBracket));
                 slot.placeholderSource = {
                     token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
                     context: context,
