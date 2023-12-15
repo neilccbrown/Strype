@@ -195,7 +195,7 @@ export default Vue.extend({
 
         updateACForImportFrom(token: string, module: string) : void {
             this.acRequestIndex += 1;
-            this.acResults = getAvailableItemsForImportFromModule(module);
+            this.acResults = {"": getAvailableItemsForImportFromModule(module)};
             this.showFunctionBrackets = false;
             this.showSuggestionsAC(token);
         },
