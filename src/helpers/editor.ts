@@ -10,6 +10,8 @@ export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
 export enum CustomEventTypes {
+    contextMenuHovered = "contextMenuHovered",
+    requestCaretContextMenuClose="requestCaretContextMenuClose",
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
     editableSlotGotCaret= "slotGotCaret",
@@ -20,14 +22,10 @@ export enum CustomEventTypes {
     requestEditorAutoSaveNow = "requestAutoSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     noneStrypeFilePicked = "nonStrypeFilePicked",
+    acItemHovered="acItemHovered",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     /* FITRUE_isPurePython */
-}
-
-export enum ContextMenuType {
-    frame,
-    caretPaste,
 }
 
 export function getFrameContainerUIID(frameId: number): string {
@@ -340,13 +338,18 @@ export function getCommandsRightPaneContainerId(): string {
     return "commandsContainerDiv";
 }
 
+export function getActiveContextMenu(): HTMLElement | null {
+    // Helper method to get the currently active context menu. 
+    return document.querySelector(".v-context:not([style*='display: none;']):not([hidden])");
+}
+
 export function setContextMenuEventPageXY(event: MouseEvent, positionForMenu?: Position): void {
-    Object.defineProperty(event, "pageX", {
-        value: (positionForMenu?.left != undefined) ? positionForMenu.left: (event.pageX - 60),
+    Object.defineProperty(event, "clientX", {
+        value: (positionForMenu?.left != undefined) ? positionForMenu.left: event.pageX,
         writable: true,
     });
 
-    Object.defineProperty(event, "pageY", {
+    Object.defineProperty(event, "clientY", {
         value: (positionForMenu?.top != undefined) ? positionForMenu.top : ((positionForMenu?.bottom != undefined) ? positionForMenu.bottom : event.pageY),
         writable: true,
     });
@@ -375,33 +378,16 @@ export function adjustContextMenuPosition(event: MouseEvent, contextMenu: HTMLEl
 
 export function handleContextMenuKBInteraction(keyDownStr: string): void {
     // This helper method handles the keyboard interaction with the frames/caret context menu.
-    // Vue-simple-context-menu only handles escape interaction, we need to work out the rest...
+    // Vue-context only handles escape and up/down interaction, we need to work out the rest...
     // Note that the CSS styling for this menu is both using custom classes and overwriting exisitng classes of the component (cf Frame.vue)
-    const contextMenuElement = document.querySelector(".vue-simple-context-menu--active");
+    const contextMenuElement = getActiveContextMenu();
     if(contextMenuElement){
-        if(keyDownStr.toLowerCase() == "arrowdown" || keyDownStr.toLowerCase() == "arrowup"){
-            // Navigating the menu, we change the selection via CSS
-            const navDirection = (keyDownStr.toLowerCase() == "arrowup") ? -1 : 1;
-            const menuItemElements = contextMenuElement.querySelectorAll(".vue-simple-context-menu__item:not(.vue-simple-context-menu__divider)");
-            if(menuItemElements.length > 0){
-                const menuItemsCount = menuItemElements.length;
-                const currentSelectedMenuItemIndex = Array.from(menuItemElements).findIndex((menuItemEl) => menuItemEl.classList.contains("selectedContextMenuItem"));
-                if(currentSelectedMenuItemIndex > -1){
-                    // First we need to deselect the current selected item
-                    Array.from(menuItemElements)[currentSelectedMenuItemIndex].classList.remove("selectedContextMenuItem");
-                    // Then we can select another menu item, next in navigation order, or looping to the start/end of the menu if needed
-                    const newSelectedMenuItemIndex = (((currentSelectedMenuItemIndex + navDirection) % menuItemsCount) + menuItemsCount) % menuItemsCount;
-                    Array.from(menuItemElements)[newSelectedMenuItemIndex].classList.add("selectedContextMenuItem");                      
-                }
-                else{
-                    // No menu item has been yet selected: we select either the first or last one depending on the direction
-                    Array.from(menuItemElements)[(navDirection == -1) ? (menuItemsCount - 1) : 0].classList.add("selectedContextMenuItem");
-                }
-            }
-        }
+        if (keyDownStr.toLowerCase() == "enter"){
+            useStore().ignoreKeyEvent = true; // So the enter key up event won't be picked up by Commands.vue
+            (document.activeElement as HTMLElement)?.click();
+        }   
     }
 }
-
 
 export const fileImportSupportedFormats: string[] = [strypeFileExtension];
 

@@ -7,13 +7,11 @@
         :key="uiid"
         :id="uiid"
     >
-        <vue-simple-context-menu
-            v-show="allowContextMenu"
-            :elementId="uiid+'_pasteContextMenu'"
-            :options="pasteOption"
-            :ref="'pasteContextMenu'"
-            @option-clicked="optionClicked"
-        />
+        <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
+             Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
+        <vue-context ref="menu" @close="appStore.isContextMenuKeyboardShortcutUsed=false">
+            <li><a @click.stop="paste" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.paste")}}</a></li>
+        </vue-context>
         <Caret
             :class="{navigationPosition: true, caret:!this.appStore.isDraggingFrame}"
             :id="caretUIID"
@@ -29,11 +27,11 @@
 //      Imports     //
 //////////////////////
 import Vue, { PropType } from "vue";
+import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import { AllFrameTypesIdentifier, CaretPosition, Position } from "@/types/types";
-import VueSimpleContextMenu, {VueSimpleContextMenuConstructor} from "vue-simple-context-menu";
-import { getCaretUIID, ContextMenuType, adjustContextMenuPosition, setContextMenuEventPageXY } from "@/helpers/editor";
+import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventPageXY, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -44,7 +42,7 @@ export default Vue.extend({
 
     components: {
         Caret,
-        VueSimpleContextMenu,
+        VueContext,
     },
 
     props: {
@@ -54,12 +52,6 @@ export default Vue.extend({
             type: String as PropType<CaretPosition>,
         },
         isFrameDisabled: Boolean,
-    },
-
-    data: function () {
-        return {
-            ContextMenuType, // this is required to be accessible in the template
-        };
     },
 
     computed: {
@@ -73,7 +65,7 @@ export default Vue.extend({
             // The caret is only visible when editing is off, 
             // and either one frame is currently selected 
             // OR a frame is hovered during drag & drop of frames
-            return !(!this.isEditing && (this.caretVisibility === this.caretAssignedPosition || this.appStore.isDraggingFrame) ); 
+            return !(!this.isEditing && (this.caretVisibility === this.caretAssignedPosition || this.appStore.isDraggingFrame)); 
         },
 
         isStaticCaretContainer(): boolean {
@@ -93,19 +85,13 @@ export default Vue.extend({
         uiid(): string {
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
         },
+
         caretUIID(): string {
             return getCaretUIID(this.caretAssignedPosition, this.frameId);
         },
 
         pasteAvailable(): boolean {
             return this.appStore.isCopiedAvailable;
-        },
-
-        pasteOption(): Record<string, string>[] {
-            return this.pasteAvailable? [{name: this.$i18n.t("contextMenu.paste") as string, method: "paste"}] : [{}];
-        },
-        allowContextMenu(): boolean {
-            return this.appStore.contextMenuShownId === this.uiid; 
         },
 
         isCaretBlurred(): boolean {
@@ -131,6 +117,11 @@ export default Vue.extend({
             if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
                 caretContainerElement?.scrollIntoView({block:"center"});
             }
+        }  
+        
+        // Close the context menu if there is edition or loss of blue caret (for when a frame context menu is present, see Frame.vue)
+        if(this.isEditing || this.caretAssignedPosition == CaretPosition.none){
+            ((this.$refs.menu as unknown) as VueContextConstructor).close();
         }        
     },
     
@@ -146,17 +137,17 @@ export default Vue.extend({
         },
 
         handleClick (event: MouseEvent, positionForMenu?: Position): void {
-            // For a weird reason I don't understand, the menu can still be shown in a specifc context, despite the test 
-            // done further in this function: if you had a valid copy, right click to show the menu, didn't paste and then
-            // do the same for an invalid copy at the same caret container, the menu would still show (but paste wouldn't work)
-            // -- hiding the menu here sort that issue.
-            ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).hideContextMenu();
+            if(this.appStore.isContextMenuKeyboardShortcutUsed){
+                // The logic for handling the context menu opened via a keyboard shortcut is handled by App
+                return;
+            }
 
             this.appStore.contextMenuShownId = this.uiid;
+
             if(this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {  
                 // Overwrite readonly properties pageX and set correct value
                 setContextMenuEventPageXY(event, positionForMenu);
-                ((this.$refs.pasteContextMenu as unknown) as VueSimpleContextMenuConstructor).showMenu(event);
+                ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
 
                 this.$nextTick(() => {
                     const contextMenu = document.getElementById(this.uiid);  
@@ -166,17 +157,11 @@ export default Vue.extend({
                     }
                 });
             }
+            //this.caretMenuOptions.push({name: this.$i18n.t("contextMenu.insert") as string, method: "showInsertFrameSubMenu", type: "submenu"});
         },
 
-        // Item is passed anyway in the event, in case the menu is attached to a list
-        optionClicked (event: {item: any; option: {name: string; method: string}}): void {
-            // `event.option.method` holds the name of the method to be called.
-            // In case the menu gets more complex this can clear up the code. However, it is a bit unsafe - in the case you
-            // misstype a method's name.
-            const thisCompProps = Object.entries(this).find((entry) => entry[0] === event.option.method);
-            if(thisCompProps){
-                thisCompProps[1]();
-            }
+        handleContextMenuHover(event: MouseEvent) {
+            this.$root.$emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
         },
 
         toggleCaret(): void {
@@ -198,6 +183,9 @@ export default Vue.extend({
             if(currentShownContextMenuUUID === this.uiid){
                 this.doPaste();
             }
+
+            // The context menu doesn't close because we need to stop the click event propagation (cf. template), we do it here
+            ((this.$refs.menu as unknown) as VueContextConstructor).close();
         },
         
         doPaste() : void {

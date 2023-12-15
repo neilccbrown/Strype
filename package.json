@@ -57,9 +57,9 @@
         "vue-autosize-input": "^0.1.1",
         "vue-browser-detect-plugin": "^0.1.18",
         "vue-burger-menu": "^2.0.5",
+        "vue-context": "^6.0.0",
         "vue-i18n": "^8.27.1",
         "vue-input-autowidth": "^1.0.10",
-        "vue-simple-context-menu": "^3.4.2",
         "vuedraggable": "^2.24.3"
     },
     "devDependencies": {

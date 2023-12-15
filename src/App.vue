@@ -80,14 +80,13 @@ import FrameContainer from "@/components/FrameContainer.vue";
 import Frame from "@/components/Frame.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import CaretContainer from "@/components/CaretContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, ContextMenuType, getCaretContainerRef, getFrameBodyRef, getJointFramesRef } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -97,6 +96,8 @@ import Draggable from "vuedraggable";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
+import CaretContainer from "./components/CaretContainer.vue";
+import { VueContextConstructor } from "vue-context";
 
 //////////////////////
 //     Component    //
@@ -237,7 +238,7 @@ export default Vue.extend({
             "contextmenu",
             (event: MouseEvent) => {
                 // This method can be called either when the mouse has been right-clicked (context menu) or a keyboard shortcut for context menu has been hit
-                if(this.appStore.isContextMenuKeyboardShortcutUsed){
+                if(this.appStore.isContextMenuKeyboardShortcutUsed){                    
                     // Handle the context menu triggered by the keyboard here.
                     // 3 cases should be considered 
                     //  1) we are editing (so in a slot: we do nothing special, because we want to show the native context menu),
@@ -255,13 +256,11 @@ export default Vue.extend({
                             const frameComponent = this.getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
                             if(frameComponent) {
                                 if(areFramesSelected){
-                                    frameComponent.handleClick(event, ContextMenuType.frame, menuPosition);
+                                    (frameComponent as InstanceType<typeof Frame>).handleClick(event, menuPosition);
                                 }
                                 else{
                                     // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
-                                    const caretContainerComponent = (this.appStore.currentFrame.caretPosition == CaretPosition.below)
-                                        ? (frameComponent.$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>)
-                                        : ((frameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>).$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>);
+                                    const caretContainerComponent = this.getCaretContainerComponent(frameComponent);
                                     caretContainerComponent.handleClick(event, menuPosition);
                                 }
                             }
@@ -319,12 +318,17 @@ export default Vue.extend({
 
         // Add en event listener for the mouse up events, it will be used for detecting the end of a drag in the context of slots/text selection.
         document.addEventListener("mouseup", this.checkMouseSelection);
+
+        // Add a listener for the mouse scroll events. We do not want to allow scrolling when the context menu is shown
+        document.addEventListener("wheel", this.blockScrollOnContextMenu, {passive:false});
     },
 
     destroyed() {
         // Removes the listeners
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
         document.removeEventListener("mouseup", this.checkMouseSelection);
+        document.removeEventListener("wheel", this.blockScrollOnContextMenu);
+
     },
 
     mounted() {
@@ -343,7 +347,20 @@ export default Vue.extend({
                 );
             }
         }
-        
+
+        // Register a listener to handle the context menu hovers (cf onContextMenuHover())
+        this.$root.$on(CustomEventTypes.contextMenuHovered, (menuElement: HTMLElement) => this.onContextMenuHover(menuElement));
+
+        // Register a listener for a request to close a caret context menu (used by Frame.vue)
+        this.$root.$on(CustomEventTypes.requestCaretContextMenuClose, () => {
+            // We find the CaretContainer component currently active to properly close the menu using the component close() method.
+            const currentFrameComponent = this.getFrameComponent(this.appStore.currentFrame.id);
+            if(currentFrameComponent){
+                const currentCaretContainerComponent = this.getCaretContainerComponent(currentFrameComponent);
+                ((currentCaretContainerComponent.$refs.menu as unknown) as VueContextConstructor).close();
+            }
+        });
+
         this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (asf: AutoSaveFunction) => {
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
@@ -571,14 +588,13 @@ export default Vue.extend({
             });     
         },
 
-        getFrameComponent(frameId: number, innerLookDetails?: {frameParentComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | InstanceType<typeof FrameBody> | InstanceType<typeof JointFrames>, listOfFrameIdToCheck: number[]}): InstanceType<typeof Frame> | undefined {
+        getFrameComponent(frameId: number, innerLookDetails?: {frameParentComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | InstanceType<typeof FrameBody> | InstanceType<typeof JointFrames>, listOfFrameIdToCheck: number[]}): InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | undefined {
             // This methods gets the (Vue) reference of a frame based on its ID, or undefined if we could not find it.
             // The logic to retrieve the reference relies on the implementation of the editor, as we look in 
             // the frame containers which are supposed to hold the frames, and within frame body/joint when a frame can have children/joint frames.
             // If no root is provided, we assume we search the frame eference everywhere in the editor, meaning we look into the frame containers of App (this)
             // IMPORTANT NOTE: we are getting arrays of refs here when retrieving the refs, because the referenced elements are within a v-for
             // https://laracasts.com/discuss/channels/vue/ref-is-an-array 
-        
             let result = undefined;
             if(innerLookDetails){                
                 for(const childFrameId of innerLookDetails.listOfFrameIdToCheck){
@@ -605,14 +621,24 @@ export default Vue.extend({
             else{
                 // When we look for the frame from the whole editor, we need to find in wich frame container that frame lives.
                 // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
-                const frameContainerId = getFrameContainer(frameId); 
-                const containerElementRefs = this.$refs[getFrameContainerUIID(frameContainerId)];
+                // And if we are already in the container (body), then we just return this component 
+                const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId); 
+                const containerElementRefs = this.$refs[getFrameContainerUIID(frameContainerId)] as (Vue|Element)[];
                 if(containerElementRefs) {
-                    result = this.getFrameComponent(frameId,{frameParentComponent: (containerElementRefs as (Vue|Element)[])[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: this.appStore.frameObjects[frameContainerId].childrenIds});
+                    result = (frameId < 0) 
+                        ? containerElementRefs[0] as InstanceType<typeof FrameContainer>
+                        : this.getFrameComponent(frameId,{frameParentComponent: containerElementRefs[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: this.appStore.frameObjects[frameContainerId].childrenIds});
                 }
             }
 
             return result;
+        },
+
+        getCaretContainerComponent(frameComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer>): InstanceType<typeof CaretContainer> {
+            const caretContainerComponent = (this.appStore.currentFrame.id < 0 || this.appStore.currentFrame.caretPosition == CaretPosition.below)
+                ? (frameComponent.$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>)
+                : ((frameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>).$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>); 
+            return caretContainerComponent;                              
         },
 
         ensureFrameKBShortcutContextMenu(isTargetFrames: boolean): Position {
@@ -655,6 +681,20 @@ export default Vue.extend({
             }
             
             return positionToReturn;                          
+        },
+
+        blockScrollOnContextMenu(event :Event) {
+            if(getActiveContextMenu()){
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        },
+
+        onContextMenuHover(menuTarget: HTMLElement) {
+            // When a context menu entry is hovered, we want to make it as selected. 
+            // If we didn't, then there would be a confusion between a selected item with the keyboard, and another hovered item with the mouse.
+            // Doing so guarantee that only 1 element is selected in the menu
+            menuTarget.focus();
         },
     },
 });
@@ -728,5 +768,99 @@ html,body {
 
 .nohover{
     pointer-events: none;
+}
+
+/**
+ * Style defined for the context menus (based on CSS templates from the Vue-Context component library)
+ * (note that the method onContextMenuHover() in this component handle conflicts between selection and hovering)
+ */
+$black: #333;
+$hover-blue: #5a7bfc;
+$background-grey: #ecf0f1;
+$divider-grey: darken($background-grey, 15%);
+
+.v-context,
+.v-context ul {
+    background-color: $background-grey;
+    display:block;
+    margin:0;
+    padding: 0;
+    min-width:10rem;
+    z-index:1500;
+    position:fixed;
+    list-style:none;
+    max-height:calc(100% - 50px);
+    overflow-y:auto;
+    border-color: transparent;
+    border-bottom-width: 0px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+        sans-serif;
+    box-shadow: 0 3px 6px 0 rgba($black, 0.2);
+    border-radius: 4px;
+}
+
+.v-context > li,
+.v-context ul > li {
+    margin:0;
+    position:relative
+}
+
+.v-context > li > a,
+.v-context ul > li > a {
+    display:block;
+    padding: 5px 10px;
+    color:$black;
+    text-decoration:none;
+    white-space:nowrap;
+    background-color:transparent;
+    border:0
+}
+
+.v-context > li > a:focus,
+.v-context ul > li > a:focus,
+.acItem.acItemSelected {
+    text-decoration:none;
+    color:white !important;
+    background-color: $hover-blue;
+}
+
+.v-context:focus,
+.v-context > li > a:focus,
+.v-context ul:focus,
+.v-context ul > li > a:focus{
+    outline:0
+}
+
+.v-context__sub > a:after{
+    content:"\203A";
+    float:right;
+    padding-left:1rem
+}
+
+.v-context__sub > ul{
+    display:none
+}
+
+.v-context > li {
+    &:first-of-type {
+      margin-top: 4px;
+    }
+
+    &:last-of-type {
+      margin-bottom: 4px;
+    }
+  }
+
+.v-context > ul > li > hr,
+.v-context > li > hr{
+    box-sizing: content-box;
+    height: 1px;
+    background-color: $divider-grey;
+    padding: 3px 0;
+    margin: 0;
+    background-clip: content-box;
+    pointer-events: none;
+    border: none;
 }
 </style>

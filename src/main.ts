@@ -5,7 +5,6 @@ import i18n from "@/i18n";
 import { BootstrapVue } from "bootstrap-vue";
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue/dist/bootstrap-vue.css";
-import "vue-simple-context-menu/dist/vue-simple-context-menu.css";
 import vBlur from "v-blur";
 import { StrypePlatform } from "./types/types";
 

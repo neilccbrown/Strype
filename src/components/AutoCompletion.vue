@@ -5,7 +5,7 @@
                 :style="popupPosition"
                 class="popup"
             >
-                <ul v-show="areResultsToShow()">
+                <ul v-show="areResultsToShow()" @wheel="handleScrollHoverConflict" @scroll="handleScrollHoverConflict" @mousemove="handleScrollHoverConflict">
                     <div 
                         v-for="module in sortCategories(Object.keys(resultsToShow))"
                         :key="UIID+module"
@@ -22,11 +22,13 @@
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
                             class="popUpItems"
-                            :id="UIID+item.index"
+                            :id="UIID+'_'+item.index"
+                            :index="item.index"
                             :item="textForAC(item)"
-                            :key="UIID+item.index"
+                            :key="UIID+'_'+item.index"
                             :selected="item.index==selected"
                             v-on="$listeners"
+                            @[CustomEventTypes.acItemHovered]="handleACItemHover"
                             :isSelectable="true"
                             ref="results"
                             :version="item.version"
@@ -77,6 +79,7 @@ import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
 import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext, getPythonCodeForTypeAndDocumentation } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
+import { CustomEventTypes } from "@/helpers/editor";
 declare const Sk: any;
 
 //////////////////////
@@ -110,6 +113,8 @@ export default Vue.extend({
             selected: 0,
             currentModule: "",
             currentDocumentation: "",
+            CustomEventTypes, // just to be able to use in template 
+            allowHoverSelection: true, // flag used to avoid accidental selection when hovering (see handleACItemHover())
         };
     },
 
@@ -165,7 +170,20 @@ export default Vue.extend({
                     return 2;
                 }
             };
-            return categories.sort((a, b) => getOrder(a) - getOrder(b));
+            
+            // Before returning the categories, we need to reflect the sorting change to the categories' elements indexes
+            // as they may not be in order anymore. This is is required for coherence between the data list and the CSS selection.
+            const sortedCategories = categories.sort((a, b) => getOrder(a) - getOrder(b));
+            let indexValue = 0;
+            sortedCategories.forEach((category) => {
+                this.resultsToShow[category].forEach((acResult) => {
+                    acResult.index = indexValue;
+                    indexValue++;
+                });
+            });
+
+            // Now we can return the categories
+            return sortedCategories;
         },
       
         updateACForModuleImport(token: string) : void {
@@ -300,6 +318,33 @@ export default Vue.extend({
             
         },  
 
+        handleScrollHoverConflict(event: Event){
+            // When we scroll the a/c we ignore mouse hover until the mouse is moved again (see handleACItemHover()).
+            if(event.type == "scroll" || event.type == "wheel"){
+                this.allowHoverSelection = false;
+            }
+            else if(!this.allowHoverSelection && event.type == "mousemove" && (Math.abs((event as MouseEvent).movementX) > 2 || Math.abs((event as MouseEvent).movementY) > 2)) {
+                this.allowHoverSelection = true;
+                this.$nextTick(() => {
+                    // Select the item immediately manually, because otherwise we need to wait that another item is selected for hover to work
+                    const selectedItem = document.querySelector(".acItem:hover");
+                    if(selectedItem){
+                        const indexOfSelected = parseInt(selectedItem.id.replace(this.UIID + "_",""));
+                        this.handleACItemHover(indexOfSelected);
+                    }
+                });
+            }
+        },
+
+        handleACItemHover(selectedItem: number){
+            // We want to set the hovered item as selected. However, we cannot do that systematically:
+            // when the a/c has been scrolled, there is a chance another item get passively hovered as it would "fall under the mouse".
+            // So, we set a flag to detect a mouse move to make sure accidently hovered items don't get selected
+            if(this.allowHoverSelection){
+                this.selected = selectedItem;
+            }
+        },
+
         changeSelection(delta: number): void {
             const newSelection = this.selected + delta;
             
@@ -316,14 +361,15 @@ export default Vue.extend({
 
             // now scroll to the selected view
             const items = document.querySelectorAll(".popUpItems");
-            // the `false` in the method tells it to leave the item at the bottom while scrolling (not scroll and show the selected at the top.
+            // the `false` in the method tells it to leave the item at the bottom while scrolling (not scroll and show the selected at the top).
             items[this.selected].scrollIntoView(false);
-
+            // and we also set the flag to prevent selection by hovering (cf. handleACItemHover())
+            this.allowHoverSelection = false;
         },
 
         getTypeOfSelected(id: string): ("function" | "module" | "variable" | "type")[] {
             // We start by getting the index
-            const indexOfSelected = parseInt(id.replace(this.UIID,""));
+            const indexOfSelected = parseInt(id.replace(this.UIID + "_",""));
             // Here we are making all the ACresult objects in a flatten array (with contact.apply()) in which we are then finding the selected and return its type
             return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type;
         },
