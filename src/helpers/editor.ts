@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isSlotBracketType, isSlotQuoteType, Position, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, Position, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
@@ -696,6 +696,24 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     // If we are here, it means the call to this method has been misused...
     return null;
 }
+
+export function getFunctionCallDefaultText(frameId: number): string {
+    // This method checks what default text (for the slot placeholder) to use in a function call "function name" slot.
+    // Note that if we are not in a situation of an empty function name slot (i.e. some operators exist in the first slot structure other than the brackets)
+    // then we do not return any placeholder text.
+    // Several case may happen:
+    // - we have nothing ever put in the slots (i.e. frame has just been added) OR only the name part is empty --> we show a "method name" default text placeholder
+    // - we have an empty frame without any brackets or operators (just a slot) --> we show "pass" to give an hint to users that they should write this
+    const frameToCheck = useStore().frameObjects[frameId];
+    if(frameToCheck.labelSlotsDict[0].slotStructures.operators.length == 0){
+        return "pass";
+    }
+    else if(frameToCheck.labelSlotsDict[0].slotStructures.operators[0].code == "" 
+        && isFieldBracketedSlot(frameToCheck.labelSlotsDict[0].slotStructures.fields[1]) && frameToCheck.labelSlotsDict[0].slotStructures.fields[1].openingBracketValue=="("){
+        return frameToCheck.frameType.labels[0].defaultText;
+    }
+    return "\u200b";
+} 
 
 /**
  * Used for easing handling events for drag & drop of frames

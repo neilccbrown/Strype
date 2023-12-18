@@ -39,7 +39,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus } from "@/helpers/editor";
+import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText } from "@/helpers/editor";
 import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
@@ -86,15 +86,18 @@ export default Vue.extend({
         },
 
         placeholderText() : string[] {
+            // Look for the placeholder (default) text to put in slots.
+            // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
+            const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty;
             if (this.subSlots.length == 1) {
-                return [this.defaultText];
+                return [(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText];
             }
             else {
-                // Calucate the placeholder texts for the parameter prompts. When no prompt is available we return the default value \u200b,
-                // except for function calls where for the very first slot of the first structure (the function name placeholder) we return the typed-defined placeholder default text
                 return this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
                     ? calculateParamPrompt(slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) 
-                    : ((this.labelIndex == 0 && index == 0) ? this.defaultText: "\u200b"));
+                    : ((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && index == 0) 
+                        ? getFunctionCallDefaultText(this.frameId)
+                        : "\u200b"));
             }
         },
     },
