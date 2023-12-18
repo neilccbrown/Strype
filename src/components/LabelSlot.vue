@@ -66,7 +66,7 @@ import { getLabelSlotUIID, CustomEventTypes, getFrameHeaderUIID, closeBracketCha
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot} from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
 import LabelSlotsStructureVue from "./LabelSlotsStructure.vue";
@@ -248,12 +248,22 @@ export default Vue.extend({
             return this.appStore.isDraggingFrame;
         },
 
-        isFrameEmpty(): boolean {
+        isFrameEmptyAndAtLabelSlotStart(): boolean {
             // This computed property checks that all the (visible) editable slots of a frame, and if applies, its body, are empty
-            const isEmpty = (this.frameId in this.appStore.frameObjects) && !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent) => ((labelSlotContent.shown??true) && 
-                (labelSlotContent.slotStructures.fields.length > 1 || (labelSlotContent.slotStructures.fields[0] as BaseSlot).code.trim().length > 0))) 
+            // (note that if we have nothing but operators, or empty quotes, that is considered as empty)
+            if(!(this.frameId in this.appStore.frameObjects)){
+                return false;
+            }            
+            let firstVisibleLabelSlotsIndex = -1;
+            const isEmpty = !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent, index) => {
+                if((labelSlotContent.shown??true) && firstVisibleLabelSlotsIndex < 0 ){
+                    firstVisibleLabelSlotsIndex = index;
+                }
+                return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures));
+            })
                 || this.appStore.frameObjects[this.frameId].childrenIds.length > 0);
-            return isEmpty;
+            return this.labelSlotsIndex == firstVisibleLabelSlotsIndex && this.slotId == "0" && isEmpty;
+
         },
     },
 
@@ -1183,10 +1193,10 @@ export default Vue.extend({
 
         onBackSpaceKeyDown(event: KeyboardEvent){
             // When the backspace key is hit we delete the container frame when:
-            //  1) there is no text in the slot
+            //  1) there is no text in the slots
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
-            if(this.isFrameEmpty){
+            if(this.isFrameEmptyAndAtLabelSlotStart){
                 this.appStore.ignoreKeyEvent=true;
                 this.appStore.bypassEditableSlotBlurErrorCheck = true;
                 
@@ -1215,7 +1225,7 @@ export default Vue.extend({
         },
 
         onBackSpaceKeyUp(){
-            this.canBackspaceDeleteFrame = this.isFrameEmpty;
+            this.canBackspaceDeleteFrame = this.isFrameEmptyAndAtLabelSlotStart;
             this.requestDelayBackspaceFrameRemoval = false;
         },
 

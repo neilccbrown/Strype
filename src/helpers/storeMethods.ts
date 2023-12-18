@@ -180,6 +180,22 @@ export const getFlatNeighbourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNex
     }
 };
 
+export function isFrameLabelSlotStructWithCodeContent(slotsStruct: SlotsStructure): boolean {
+    let hasContent = false;
+    for(const fieldSlot of slotsStruct.fields){
+        if(isFieldBracketedSlot(fieldSlot)){
+            hasContent ||= isFrameLabelSlotStructWithCodeContent((fieldSlot as SlotsStructure));
+        }
+        else {
+            hasContent ||=  fieldSlot.code.trim().length > 0;
+        }
+        if(hasContent) {
+            break;
+        }
+    }
+    return hasContent;
+}
+
 export const evaluateSlotType = (slot: FieldSlot): SlotType => {
     if(isFieldBracketedSlot(slot)){
         return SlotType.bracket;
