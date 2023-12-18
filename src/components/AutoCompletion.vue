@@ -342,6 +342,8 @@ export default Vue.extend({
             // So, we set a flag to detect a mouse move to make sure accidently hovered items don't get selected
             if(this.allowHoverSelection){
                 this.selected = selectedItem;
+                this.currentModule = this.getModuleOfSelected(0);
+                this.currentDocumentation = this.getCurrentDocumentation();
             }
         },
 
