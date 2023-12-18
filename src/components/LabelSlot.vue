@@ -1228,12 +1228,13 @@ export default Vue.extend({
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
             const currentTextCursorPos = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text, unless there are brackets already in the next slot
+            // (and in any case, we make sure we get into the slot structure)
             const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
             const hasFollowingBracketSlot = (getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true)?.slotType == SlotType.bracket);
-            const isSelectedFunction =  ((typeOfSelected.includes("function") || typeOfSelected.includes("method")) && !hasFollowingBracketSlot);
+            const isSelectedFunction =  typeOfSelected.includes("function") || typeOfSelected.includes("method");
             const newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0))
                 + selectedItem.replace(new RegExp("\\(.*"), "") 
-                + ((isSelectedFunction)?"()":"");
+                + ((isSelectedFunction && !hasFollowingBracketSlot)?"()":"");
             
             // Remove content before the cursor (and put cursor at the beginning):
             this.setSlotContent(this.getSlotContent().substr(currentTextCursorPos));
@@ -1248,6 +1249,16 @@ export default Vue.extend({
                     document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                         new KeyboardEvent("keydown", {
                             key: "ArrowLeft",
+                        })
+                    );
+                });
+            }
+            else if(isSelectedFunction){
+                // And if we have added a function, but didn't have to insert the brackets with a/c, then we go right to get inside the existing brackets
+                this.$nextTick(() => {
+                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                        new KeyboardEvent("keydown", {
+                            key: "ArrowRight",
                         })
                     );
                 });
