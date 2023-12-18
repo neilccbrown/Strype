@@ -1933,8 +1933,7 @@ export const useStore = defineStore("app", {
                 () => {
                     //save state changes
                     this.saveStateChanges(stateBeforeChanges);
-                    // To make sure we are showing the newly added frame, we scroll into view if needed
-                    
+                    // To make sure we are showing the newly added frame, we scroll into view if needed                    
                     const targetDiv =
                         (this.currentFrame && this.currentFrame.caretPosition !== CaretPosition.none) ?
                             // If frame cursor is focused (e.g. after adding blank frame, or try), scroll to that:

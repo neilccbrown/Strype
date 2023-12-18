@@ -18,6 +18,7 @@
                                 <transition-group name="list" tag="p">
                                     <AddFrameCommand
                                         v-for="addFrameCommand in addFrameCommands"
+                                        :id="addFrameCommandUIID(addFrameCommand[0].type.type)"
                                         :key="addFrameCommand[0].type.type"
                                         :type="addFrameCommand[0].type.type"
                                         :shortcut="addFrameCommand[0].shortcuts[0]"
@@ -76,7 +77,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -343,6 +344,10 @@ export default Vue.extend({
     },
 
     methods: {
+        addFrameCommandUIID(commandType: string): string {
+            return getAddFrameCmdElementUIID(commandType);
+        },
+        
         onKeyUp(event: KeyboardEvent) {
             const isEditing = this.appStore.isEditing;
             const ignoreKeyEvent = this.appStore.ignoreKeyEvent;

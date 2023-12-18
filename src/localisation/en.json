@@ -140,7 +140,8 @@
         "undo":"Undo",
         "redo":"Redo",
         "delete":"Delete",
-        "deleteOuter":"Delete Outer"
+        "deleteOuter":"Delete Outer",
+        "insert":"Insert"
     },
     "appMenu": {
         "downloadHex":"Convert to Hex file",

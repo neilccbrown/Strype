@@ -106,7 +106,7 @@ import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventPageXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
+import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 
@@ -421,7 +421,6 @@ export default Vue.extend({
                 return;
             }
 
-
             // Remove all the potential deletable frames
             this.appStore.potentialDeleteFrameIds.splice(0);
             
@@ -544,9 +543,9 @@ export default Vue.extend({
                 enableDisableIndex,
                 disableOrEnableOption
             );
-
-            // Overwrite readonly properties pageX and set correct value
-            setContextMenuEventPageXY(event, positionForMenu);
+            
+            // Overwrite readonly properties clientX and clientY (to position the menu if needed)
+            setContextMenuEventClientXY(event, positionForMenu);             
                 
             ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
             //the menu could have "forcely" been disabled by us to prevent duplicated menu showing in the editable slots
