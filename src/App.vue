@@ -648,7 +648,7 @@ export default Vue.extend({
             // We do it like that: if top of the target position + estimated large menu height for safety can be visible, we make sure the top of the target position, and place the menu with both X and Y offsets from the top;
             // if the top of the target + estimated large menu height can't be visible (for example when we are at the down-most frames) then we make sure the bottom
             // of the target is in view, and place the menu with a X offset based on the bottom positions
-            const menuHeightSpace = (isTargetFrames) ? 300 : 50, menuOffsetY = 5, menuOffsetX = 40;
+            const menuHeightSpace = (isTargetFrames) ? 320 : 90, menuOffsetY = 5, menuOffsetX = 40;
             const firstSelectedTargetElement = (isTargetFrames) 
                 ? document.getElementById(getFrameUIID(this.appStore.selectedFrames[0]))
                 : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible)"); // We want to retrieve the caret container of the currently visible caret

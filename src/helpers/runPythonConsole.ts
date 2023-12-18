@@ -39,8 +39,8 @@ function sInput(prompt: string) {
         const isConsoleTextAreaLocked = consoleTextArea.disabled;
         if(isConsoleTextAreaLocked){
             consoleTextArea.disabled = false;
-            // set the text caret to the end of the prompt
-            consoleTextArea.focus();
+            // set the text caret to the end of the prompt (it may not be immediately caught so we need to give a small delay)
+            setTimeout(() =>  consoleTextArea.focus(), 200);
         }
 
         let initialConsoleTextAreaCaretPos = consoleTextArea.selectionStart;

@@ -91,7 +91,7 @@ export default class Parser {
             // (for UI purpose our multiline comments content always terminates with an extra line return so we need to discard it)
             this.line += ((this.excludeLoopsAndComments) ? 1 : ((commentContent.includes("\n")) ? 1 + commentContent.split("\n").length : 1));
             return (this.excludeLoopsAndComments)
-                ? ""
+                ? "pass" // This will just be an empty code placeholder, so it shouldn't be a problem for the code
                 : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
         }
             

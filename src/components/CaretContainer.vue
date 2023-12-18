@@ -226,15 +226,15 @@ export default Vue.extend({
         },
     
         prepareInsertFrameSubMenu(): void {
-        // The list of frames we can insert depends on the current position, therefore, the submenu options are constructed dynamically
-        // for that specific position we're at.
+            // The list of frames we can insert depends on the current position, therefore, the submenu options are constructed dynamically
+            // for that specific position we're at.
             this.insertFrameMenuItems = [];
             const addFrameCommands = this.appStore.generateAvailableFrameCommands(this.appStore.currentFrame.id, this.appStore.currentFrame.caretPosition);
             Object.values(addFrameCommands).forEach((addFrameCmdDef) => {
                 this.insertFrameMenuItems.push({name: addFrameCmdDef[0].description, method: () => {
-                // This method is called by the submenu and it triggers a click on the AddFrameCommand component,
-                // but we delay it enough so the chain of key events (if applicable) related to the menu terminates,
-                // because otherwise that chain and the key event chain from adding a frame interfer.
+                    // This method is called by the submenu and it triggers a click on the AddFrameCommand component,
+                    // but we delay it enough so the chain of key events (if applicable) related to the menu terminates,
+                    // because otherwise that chain and the key event chain from adding a frame interfer.
                     setTimeout(() => document.getElementById(getAddFrameCmdElementUIID(addFrameCmdDef[0].type.type))?.click(), 250);
                 }});
             });
