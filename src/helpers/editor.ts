@@ -127,6 +127,10 @@ export function getACLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
     return getLabelSlotUIID(slotCoreInfos) + "_AutoCompletion";
 }
 
+export function getAddFrameCmdElementUIID(commandType: string): string {
+    return "addFrameCmd_" + commandType;
+}
+
 export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement): number {
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the start of the selection.
@@ -340,10 +344,12 @@ export function getCommandsRightPaneContainerId(): string {
 
 export function getActiveContextMenu(): HTMLElement | null {
     // Helper method to get the currently active context menu. 
-    return document.querySelector(".v-context:not([style*='display: none;']):not([hidden])");
+    // Explanation: menus have a "v-context" class, and role "menu" (for the root menu in submenus),
+    // we want the menus that are not closed or hidden
+    return document.querySelector(".v-context[role='menu']:not([style*='display: none;']):not([hidden])");
 }
 
-export function setContextMenuEventPageXY(event: MouseEvent, positionForMenu?: Position): void {
+export function setContextMenuEventClientXY(event: MouseEvent, positionForMenu?: Position): void {
     Object.defineProperty(event, "clientX", {
         value: (positionForMenu?.left != undefined) ? positionForMenu.left: event.pageX,
         writable: true,
@@ -385,6 +391,16 @@ export function handleContextMenuKBInteraction(keyDownStr: string): void {
         if (keyDownStr.toLowerCase() == "enter"){
             useStore().ignoreKeyEvent = true; // So the enter key up event won't be picked up by Commands.vue
             (document.activeElement as HTMLElement)?.click();
+            // A submenu parent item would typically not do anything special at click, but we want to get the submenu open
+            if(document.activeElement?.parentElement?.classList.contains("v-context__sub")){
+                // We simulate a right arrow hit which would open the submenu and get into it (we need to do this on the root menu)
+                document.activeElement.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        bubbles: true,
+                        keyCode: 39, // yes, that's deprecated, but the library uses that...
+                    })
+                );
+            }
         }   
     }
 }

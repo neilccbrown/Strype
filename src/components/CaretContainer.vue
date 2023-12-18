@@ -10,7 +10,16 @@
         <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
              Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
         <vue-context ref="menu" @close="appStore.isContextMenuKeyboardShortcutUsed=false">
-            <li><a @click.stop="paste" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.paste")}}</a></li>
+            <li><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.paste")}}</a></li>
+            <li><hr v-if="showPasteMenuItem" /></li>
+            <li class="v-context__sub">
+                <a @click.stop @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.insert")}}</a>
+                <ul class="v-context">
+                    <li v-for="menuItem, index in insertFrameMenuItems" :key="`caretContextMenuItem_${frameId}_${index}`">
+                        <a @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
+                    </li>
+                </ul>
+            </li>
         </vue-context>
         <Caret
             :class="{navigationPosition: true, caret:!this.appStore.isDraggingFrame}"
@@ -31,7 +40,7 @@ import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import { AllFrameTypesIdentifier, CaretPosition, Position } from "@/types/types";
-import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventPageXY, CustomEventTypes } from "@/helpers/editor";
+import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
 
 //////////////////////
@@ -100,6 +109,13 @@ export default Vue.extend({
         },
     },
 
+    data: function () {
+        return {
+            showPasteMenuItem: false,
+            insertFrameMenuItems: [] as {name: string, method: VoidFunction}[],
+        };
+    },
+
     mounted() {
         window.addEventListener("paste", this.pasteIfFocused);
     },
@@ -136,6 +152,11 @@ export default Vue.extend({
             }
         },
 
+        closeContextMenu() {
+            // The context menu doesn't close because we need to stop the click event propagation (cf. template), we do it here
+            ((this.$refs.menu as unknown) as VueContextConstructor).close();
+        },
+
         handleClick (event: MouseEvent, positionForMenu?: Position): void {
             if(this.appStore.isContextMenuKeyboardShortcutUsed){
                 // The logic for handling the context menu opened via a keyboard shortcut is handled by App
@@ -144,20 +165,20 @@ export default Vue.extend({
 
             this.appStore.contextMenuShownId = this.uiid;
 
-            if(this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {  
-                // Overwrite readonly properties pageX and set correct value
-                setContextMenuEventPageXY(event, positionForMenu);
-                ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
+            this.showPasteMenuItem = this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
+            this.prepareInsertFrameSubMenu();
 
-                this.$nextTick(() => {
-                    const contextMenu = document.getElementById(this.uiid);  
-                    if(contextMenu){
-                        // We make sure the menu can be shown completely. 
-                        adjustContextMenuPosition(event, contextMenu, positionForMenu);
-                    }
-                });
-            }
-            //this.caretMenuOptions.push({name: this.$i18n.t("contextMenu.insert") as string, method: "showInsertFrameSubMenu", type: "submenu"});
+            // Overwrite readonly properties clientX and clientY (to position the menu if needed)
+            setContextMenuEventClientXY(event, positionForMenu);
+            ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
+
+            this.$nextTick(() => {
+                const contextMenu = document.getElementById(this.uiid);  
+                if(contextMenu){
+                    // We make sure the menu can be shown completely. 
+                    adjustContextMenuPosition(event, contextMenu, positionForMenu);
+                }
+            });           
         },
 
         handleContextMenuHover(event: MouseEvent) {
@@ -183,9 +204,6 @@ export default Vue.extend({
             if(currentShownContextMenuUUID === this.uiid){
                 this.doPaste();
             }
-
-            // The context menu doesn't close because we need to stop the click event propagation (cf. template), we do it here
-            ((this.$refs.menu as unknown) as VueContextConstructor).close();
         },
         
         doPaste() : void {
@@ -206,9 +224,23 @@ export default Vue.extend({
                 );
             }
         },
+    
+        prepareInsertFrameSubMenu(): void {
+        // The list of frames we can insert depends on the current position, therefore, the submenu options are constructed dynamically
+        // for that specific position we're at.
+            this.insertFrameMenuItems = [];
+            const addFrameCommands = this.appStore.generateAvailableFrameCommands(this.appStore.currentFrame.id, this.appStore.currentFrame.caretPosition);
+            Object.values(addFrameCommands).forEach((addFrameCmdDef) => {
+                this.insertFrameMenuItems.push({name: addFrameCmdDef[0].description, method: () => {
+                // This method is called by the submenu and it triggers a click on the AddFrameCommand component,
+                // but we delay it enough so the chain of key events (if applicable) related to the menu terminates,
+                // because otherwise that chain and the key event chain from adding a frame interfer.
+                    setTimeout(() => document.getElementById(getAddFrameCmdElementUIID(addFrameCmdDef[0].type.type))?.click(), 250);
+                }});
+            });
+        },
     },
 });
-
 </script>
 
 <style lang="scss">
