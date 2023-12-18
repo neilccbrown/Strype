@@ -9,7 +9,7 @@
             "expression":"expression ",
             "value":"value ",
             "variable":"variable ",
-            "funcCall":"function() ",
+            "funcCall":"function name",
             "exception":"exception ",
             "name":"name ",
             "parameters":"parameters ",

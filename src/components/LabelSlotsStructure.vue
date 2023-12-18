@@ -90,7 +90,11 @@ export default Vue.extend({
                 return [this.defaultText];
             }
             else {
-                return this.subSlots.map((slotItem) => slotItem.placeholderSource !== undefined ? calculateParamPrompt(slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) : "\u200b");
+                // Calucate the placeholder texts for the parameter prompts. When no prompt is available we return the default value \u200b,
+                // except for function calls where for the very first slot of the first structure (the function name placeholder) we return the typed-defined placeholder default text
+                return this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
+                    ? calculateParamPrompt(slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) 
+                    : ((this.labelIndex == 0 && index == 0) ? this.defaultText: "\u200b"));
             }
         },
     },
