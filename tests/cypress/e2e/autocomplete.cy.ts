@@ -614,7 +614,7 @@ describe("User-defined items", () => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myParam");
             // Go out of this call and into the main body:
-            cy.get("body").type("{backspace}");
+            cy.get("body").type("{esc}{backspace}");
             cy.wait(500);
             cy.get("body").type("{downarrow}{downarrow}");
         });
@@ -637,7 +637,7 @@ describe("User-defined items", () => {
             checkExactlyOneItem(acIDSel, MYVARS, "myIterator");
             checkNoItems(acIDSel, "imaginaryList");
             // Go out of this call and beneath the loop:
-            cy.get("body").type("{backspace}");
+            cy.get("body").type("{esc}{backspace}");
             cy.wait(500);
             cy.get("body").type("{downarrow}");
         });
