@@ -178,8 +178,7 @@ export default Vue.extend({
             const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty 
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
-                    || (isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1]) 
-                        && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1] as SlotsStructure).openingBracketValue == "(")));
+                    || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
             return {
                 // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
                 // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 

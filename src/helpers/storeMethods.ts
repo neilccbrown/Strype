@@ -776,8 +776,15 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
 
     // Check for precompiled errors (empty slots)
     const frameObject = useStore().frameObjects[slotInfos.frameId];
-    // Optional slot is relevant to a label, therefore, we consider it is actually relevant only if 1 field slot is in the structure
-    const isOptionalSlot = (frameObject.labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.length > 1) 
+    // Optional slot is relevant to a label, therefore, we consider it is actually relevant only if 1 field slost is in the structure
+    // or if we are in the specific case of a function call label that has empty "function name" slot (and brackets)
+    function notEmptyFunctionNameInFunctionCallFrame(): boolean {
+        // This test is in a function only to make the returned value condition "lighter" than if we had a variable (the function is called only when needed)
+        return (useStore().frameObjects[slotInfos.frameId].frameType.type != AllFrameTypesIdentifier.empty
+        || !isFieldBracketedSlot(useStore().frameObjects[slotInfos.frameId].labelSlotsDict[0].slotStructures.fields[1])
+        || slotInfos.slotId != "0");
+    }
+    const isOptionalSlot = (frameObject.labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.length > 1 && notEmptyFunctionNameInFunctionCallFrame()) 
         || (frameObject.frameType.labels[slotInfos.labelSlotsIndex].optionalSlot ?? false);
     if(slotInfos.code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error

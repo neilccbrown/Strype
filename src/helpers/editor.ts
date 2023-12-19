@@ -709,7 +709,7 @@ export function getFunctionCallDefaultText(frameId: number): string {
         return "pass";
     }
     else if(frameToCheck.labelSlotsDict[0].slotStructures.operators[0].code == "" 
-        && isFieldBracketedSlot(frameToCheck.labelSlotsDict[0].slotStructures.fields[1]) && frameToCheck.labelSlotsDict[0].slotStructures.fields[1].openingBracketValue=="("){
+        && isFieldBracketedSlot(frameToCheck.labelSlotsDict[0].slotStructures.fields[1])){
         return frameToCheck.frameType.labels[0].defaultText;
     }
     return "\u200b";
