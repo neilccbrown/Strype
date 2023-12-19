@@ -201,6 +201,7 @@ export default Vue.extend({
             // We do so by simulating a key down event (which exists the current slot)
             const focusCursorInfos = useStore().focusSlotCursorInfos;
             if(useStore().isEditing && focusCursorInfos){
+                useStore().ignoreFocusRequest = false;
                 document.getElementById(getFrameLabelSlotsStructureUIID(focusCursorInfos.slotInfos.frameId, focusCursorInfos.slotInfos.labelSlotsIndex))?.dispatchEvent(
                     new KeyboardEvent("keydown", {
                         key: "ArrowDown",
