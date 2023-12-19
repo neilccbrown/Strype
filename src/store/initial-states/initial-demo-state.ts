@@ -114,7 +114,7 @@ const initialDemoState: EditorFrameObjects = {
     },
 
     4: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
         id: 4,
         isDisabled: false,
         isSelected: false,

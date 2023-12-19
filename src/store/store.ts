@@ -1836,12 +1836,12 @@ export const useStore = defineStore("app", {
                 labelSlotsDict:
                     // For each label defined by the frame type, if the label allows slots, we create an empty "field" slot (code type)
                     // optionalLabel is false by default, and if value is true, the label is hidden when created.
-                    // For an "empty" frame (function call), we set the default slots (of the first label) as "<function name>()" rather than only a single code slot
+                    // For an function call frame, we set the default slots (of the first label) as "<function name>()" rather than only a single code slot
                     frame.labels.filter((el)=> el.showSlots??true).reduce(
                         (acc, cur, idx) => {
                             const labelContent: LabelSlotsContent = {
                                 shown: (!cur?.hidableLabelSlots ?? true),
-                                slotStructures: (frame.type == AllFrameTypesIdentifier.empty) 
+                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall) 
                                     ? {fields: [{code: ""},{openingBracketValue:"(", fields: [{code: ""}], operators: []},{code: ""}], operators: [{code: ""}, {code: ""}]}
                                     : {fields: [{code: ""}], operators: []},
                             };

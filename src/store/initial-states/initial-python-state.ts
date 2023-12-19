@@ -79,7 +79,7 @@ const initialPythonState: EditorFrameObjects = {
     },
 
     2: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
         id: 2,
         isDisabled: false,
         isSelected: false,

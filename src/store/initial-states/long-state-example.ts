@@ -107,7 +107,7 @@ const longStateExample: EditorFrameObjects = {
         multiDragPosition: "",
     },
     4: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
         id: 4,
         isDisabled: false,
         isSelected: false,
@@ -121,7 +121,7 @@ const longStateExample: EditorFrameObjects = {
         multiDragPosition: "",
     },
     5: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
         id: 5,
         isDisabled: false,
         isSelected: false,
@@ -179,7 +179,7 @@ const longStateExample: EditorFrameObjects = {
         multiDragPosition: "",
     },
     9: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
         id: 9,
         isDisabled: false,
         isSelected: false,
@@ -224,7 +224,7 @@ const longStateExample: EditorFrameObjects = {
         multiDragPosition: "",
     },
     14: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
         id: 14,
         isDisabled: false,
         isSelected: false,
@@ -238,7 +238,7 @@ const longStateExample: EditorFrameObjects = {
         multiDragPosition: "",
     },
     15: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
         id: 15,
         isDisabled: false,
         isSelected: false,

@@ -88,14 +88,14 @@ export default Vue.extend({
         placeholderText() : string[] {
             // Look for the placeholder (default) text to put in slots.
             // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
-            const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty;
+            const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
             if (this.subSlots.length == 1) {
                 return [(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText];
             }
             else {
                 return this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
                     ? calculateParamPrompt(slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) 
-                    : ((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && index == 0) 
+                    : ((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
                         ? getFunctionCallDefaultText(this.frameId)
                         : "\u200b"));
             }
@@ -219,12 +219,10 @@ export default Vue.extend({
                                     const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
                                     const cursorInfos = {slotInfos: parseLabelSlotUIID(spanElement.id), cursorPos: pos};
 
-                                    // We check if changes trigger the conversion of an empty frame to a varassign frame (i.e. an empty frame contains a variable assignment
-                                    // If not, we set the new cursor right now
-                                    // We also check here if the changes trigger the conversion of an empty frame to a varassign frame (i.e. an empty frame contains a variable assignment)
+                                    // We also check here if the changes trigger the conversion of a function call frame to a varassign frame (i.e. a funccall frame contains a variable assignment)
                                     // We do not allow a conversion if the focus isn't inside a slot of level 1.
                                     const isEqualSymbolAtFocus = (uiLiteralCode.charAt(focusCursorAbsPos - 1) == "=");
-                                    if(isEqualSymbolAtFocus && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
+                                    if(isEqualSymbolAtFocus && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // Keep information on where we were so we can split the frame properly
                                         const breakAtSlotIndex = parseInt(this.appStore.focusSlotCursorInfos?.slotInfos.slotId as string);
                                         this.appStore.setSlotTextCursors(undefined, undefined);

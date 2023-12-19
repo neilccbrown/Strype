@@ -93,7 +93,7 @@ const initialMicrobitState: EditorFrameObjects = {
         multiDragPosition: "",
     },
     3: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.empty),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
         id: 3,
         isDisabled: false,
         isSelected: false,

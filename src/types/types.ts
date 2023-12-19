@@ -273,7 +273,7 @@ export const JointFrameIdentifiers = {
 
 const StandardFrameTypesIdentifiers = {
     ...CommentFrameTypesIdentifier,
-    empty: "",
+    funccall: "funccall",
     blank: "blank",
     if: "if",
     for: "for",
@@ -296,7 +296,7 @@ export const AllFrameTypesIdentifier = {
 };
 
 export const DefaultFramesDefinition: FramesDefinitions = {
-    type: StandardFrameTypesIdentifiers.empty,
+    type: StandardFrameTypesIdentifiers.funccall,
     labels: [],
     allowChildren: false,
     allowJointChildren: false,
@@ -502,9 +502,9 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     };
 
     // Statements
-    const EmptyDefinition: FramesDefinitions = {
+    const FuncCallDefinition: FramesDefinitions = {
         ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.empty,
+        type: StandardFrameTypesIdentifiers.funccall,
         labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false}],
         colour: "#F6F2E9",
     };
@@ -618,7 +618,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         FinallyDefinition,
         FuncDefDefinition,
         WithDefinition,
-        EmptyDefinition,
+        FuncCallDefinition,
         BlankDefinition,
         ReturnDefinition,
         VarAssignDefinition,

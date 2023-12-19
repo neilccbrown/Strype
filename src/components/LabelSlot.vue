@@ -175,7 +175,7 @@ export default Vue.extend({
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
             const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
-            const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty 
+            const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall 
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
                     || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
