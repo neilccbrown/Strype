@@ -175,7 +175,11 @@ export default Vue.extend({
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
             const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
-            
+            const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.empty 
+                && this.isFrameEmptyAndAtLabelSlotStart
+                && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
+                    || (isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1]) 
+                        && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1] as SlotsStructure).openingBracketValue == "(")));
             return {
                 // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
                 // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
@@ -183,7 +187,7 @@ export default Vue.extend({
                 // to those indicating there is no compulsory value
                 "background-color": ((this.focused) 
                     ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : ((isStructureSingleSlot && !isSlotOptional && this.code.trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
+                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot) && !isSlotOptional && this.code.trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
                     + " !important", 
             };
         }, 
