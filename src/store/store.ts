@@ -6,7 +6,7 @@ import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegr
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUIID } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUIID, SpaceKeyHitStates } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -111,6 +111,8 @@ export const useStore = defineStore("app", {
             contextMenuShownId: "",
 
             isContextMenuKeyboardShortcutUsed: false,
+
+            spaceKeyHitState: SpaceKeyHitStates.none,
 
             projectName: i18n.t("defaultProjName") as string,
 

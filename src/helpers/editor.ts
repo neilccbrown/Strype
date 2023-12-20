@@ -28,6 +28,20 @@ export enum CustomEventTypes {
     /* FITRUE_isPurePython */
 }
 
+export enum SpaceKeyHitStates {
+    // This enum is used for the editor to work out a combination for a space + <key> combination.
+    // We expect the combination to be space down (--> other key down --> other key up) --> space up
+    // The changes of status are like this (expected to be used outside editing code in the slots)
+    // - none (default) when space key has never been hit, or at reset state
+    // - spaceHit when space is hit, if no combination happens it will stay like that
+    // - combinationKeyHit when the other key for combination with space (e.g. "enter") is hit, can only be if state was spaceHit before
+    // - combinationKeyRelease when the other key for combination has been released, can only be if state was combinationKeyHit before
+    //     the following state is combinationKeyHit and then none
+    none, 
+    spaceHit,
+    combinationKeyHit,
+    combinationKeyRelease
+}
 export function getFrameContainerUIID(frameId: number): string {
     return "FrameContainer_" + frameId;
 }
