@@ -70,7 +70,7 @@ describe("Python round-trip", () => {
     // Some of these are semantically invalid but as long as they're syntactically valid,
     // they should work:
     const binary_operators = ["^",">>","<<","==","!=",">=","<=","<",">", "in", "is not", "is", "not in"];
-    const nary_operators = [".","+","-","/","*","%","//","**","&","|", "and", "or"];
+    const nary_operators = ["+","-","/","*","%","//","**","&","|", "and", "or"];
     //const unary_operators = ["not ", "~", "-"];
     const terminals = ["0", "5.2", " - 6.7", "\"hi\"", "'bye'", "True", "False", "None", "foo", "bar_baz"];
     
@@ -80,6 +80,8 @@ describe("Python round-trip", () => {
         "raise 0 and 3 \n",
         "raise 0 is not 3 \n",
         "raise 0 not in 3 \n",
+        "raise (1 + 2 - 3) \n",
+        "raise (1 + 2 - 3) == (4 * 5 / 6) \n",
     ];
     for (const basic of basics) {
         it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic));

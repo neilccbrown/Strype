@@ -161,9 +161,10 @@ export default Vue.extend({
                     Sk.configure({});
                     const parsed = Sk.parse("pasted_content.py", code);
                     console.log("Parsed:\n  " + code + "\nInto:\n  " + JSON.stringify(parsed) + " at " + Date.now());
-                    copyFramesFromParsedPython(parsed["cst"]);
-                    console.log("Worked correctly: " + this.appStore.isSelectionCopied);
-                    this.doPaste();
+                    if (copyFramesFromParsedPython(parsed["cst"])) {
+                        console.log("Worked correctly: " + this.appStore.isSelectionCopied);
+                        this.doPaste();
+                    }
                     // Must take ourselves off the clipboard after:
                     useStore().copiedFrames = {};
                     useStore().copiedSelectionFrameIds = [];

@@ -7,7 +7,7 @@ export interface ParsedConcreteTree {
     value: null | string;
     lineno? : number;
     col_offset?: number;
-    children: ParsedConcreteTree[];
+    children: null | ParsedConcreteTree[];
 }
 
 interface CopyState {
@@ -15,6 +15,20 @@ interface CopyState {
 }
 
 declare const Sk: any;
+
+// Simplifies a tree (by collapsing all single-child nodes into the child) in order to make
+// it easier to read while debugging
+function debugSimplify(p : ParsedConcreteTree) : ParsedConcreteTree {
+    if (p.children == null || p.children.length == 0) {
+        return p;
+    }
+    else if (p.children.length == 1) {
+        return debugSimplify(p.children[0]);
+    }
+    else {
+        return {...p, children: p.children.map(debugSimplify)}; 
+    }
+}
 
 function addFrame(frame: FrameObject, s: CopyState) : CopyState {
     console.log("Added frame: " + JSON.stringify(frame));
@@ -44,11 +58,21 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
     };
 }
 
-export function copyFramesFromParsedPython(parsedBySkulpt: ParsedConcreteTree) : void {
+export function copyFramesFromParsedPython(parsedBySkulpt: ParsedConcreteTree) : boolean {
     useStore().copiedFrames = {};
     useStore().copiedSelectionFrameIds = [];
-    // To avoid problems, choose an ID way outside the existing frames:
-    copyFramesFromPython(parsedBySkulpt, {nextId: 1000000});
+    try {
+        // To avoid problems, choose an ID way outside the existing frames:
+        copyFramesFromPython(parsedBySkulpt, {nextId: 1000000});
+        return true;
+    }
+    catch (e) {
+        console.error(e, "On: " + JSON.stringify(debugSimplify(parsedBySkulpt)));
+        // Don't leave partial content:
+        useStore().copiedFrames = {};
+        useStore().copiedSelectionFrameIds = [];
+        return false;
+    }
 }
 
 function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure) : SlotsStructure {
@@ -59,6 +83,9 @@ function digValue(p : ParsedConcreteTree) : string {
     if (p.value) {
         return p.value;
     }
+    else if (p.children == null) {
+        throw new Error("Node with no value and no children");
+    }
     else if (p.children.length == 1) {
         return digValue(p.children[0]);
     }
@@ -67,7 +94,7 @@ function digValue(p : ParsedConcreteTree) : string {
         return digValue(p.children[0]) + " " + digValue(p.children[1]);
     }
     else {
-        throw new Error("Can't find single operator in " + JSON.stringify(p));
+        throw new Error("Can't find single operator in " + JSON.stringify(debugSimplify(p)));
     }
 }
 
@@ -75,6 +102,9 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     // Handle terminal nodes by just plonking them into a single-field slot:
     if (!p.children && p.value != null) {
         return {fields: [{code: p.value}], operators: []};
+    }
+    else if (p.children == null) {
+        throw new Error("Node with no value and no children");
     }
     
     // Skulpt's parser seems to output a huge amount of dummy nodes with one child,
@@ -86,6 +116,13 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     // Watch out for unary expressions:
     if (p.children[0].value === "-") {
         return concatSlots({fields: [{code: ""}], operators: []}, p.children[0].value, toSlots(p.children[1]));
+    }
+    
+    // Check for brackets:
+    if (p.children[0].value === "(" || p.children[0].value === "[" || p.children[0].value === "{") {
+        const bracketed =  toSlots({...p, children: p.children.slice(1, p.children.length - 1)});
+        // Bracketed items must be surrounded by empty slot and empty operator each side:
+        return {fields: [{code: ""},{...bracketed, openingBracketValue: p.children[0].value}, {code: ""}], operators: [{code: ""}, {code: ""}]};
     }
     
     let cur = toSlots(p.children[0]);
@@ -103,13 +140,20 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     //throw new Error("Unknown expression type: " + p.type);
 }
 
+function children(p : ParsedConcreteTree) : ParsedConcreteTree[] {
+    if (p.children == null) {
+        throw new Error("Null children on node " + JSON.stringify(p));
+    }
+    return p.children;
+}
+
 // Returns the frame ID of the next insertion point for any following statements
 function copyFramesFromPython(parsedBySkulpt: ParsedConcreteTree, s : CopyState) : CopyState {
     console.log("Processing type: " + parsedBySkulpt.type);
     switch (parsedBySkulpt.type) {
     case Sk.ParseTables.sym.file_input:
         // The outer wrapper for the whole file, just dig in:
-        for (const child of parsedBySkulpt.children) {
+        for (const child of children(parsedBySkulpt)) {
             s = copyFramesFromPython(child, s);
         }
         break;
@@ -118,7 +162,7 @@ function copyFramesFromPython(parsedBySkulpt: ParsedConcreteTree, s : CopyState)
     case Sk.ParseTables.sym.small_stmt:
     case Sk.ParseTables.sym.flow_stmt:
         // Wrappers where we just skip to the children:
-        for (const child of parsedBySkulpt.children) {
+        for (const child of children(parsedBySkulpt)) {
             s = copyFramesFromPython(child, s);
         }
         break;
@@ -126,7 +170,7 @@ function copyFramesFromPython(parsedBySkulpt: ParsedConcreteTree, s : CopyState)
         // We do not insert pass frames
         break;
     case Sk.ParseTables.sym.raise_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(parsedBySkulpt.children[1])}}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(parsedBySkulpt)[1])}}), s);
         break;
     }
     return s;
