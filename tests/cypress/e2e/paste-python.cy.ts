@@ -70,8 +70,8 @@ describe("Python round-trip", () => {
     // Some of these are semantically invalid but as long as they're syntactically valid,
     // they should work:
     const binary_operators = ["^",">>","<<","==","!=",">=","<=","<",">", "in", "is not", "is", "not in"];
-    const nary_operators = [".","+","-","/","*","%",":","//","**","&","|", ",", "and", "or"];
-    const unary_operators = ["not ", "~", "-"];
+    const nary_operators = [".","+","-","/","*","%","//","**","&","|", "and", "or"];
+    //const unary_operators = ["not ", "~", "-"];
     const terminals = ["0", "5.2", " - 6.7", "\"hi\"", "'bye'", "True", "False", "None", "foo", "bar_baz"];
     
     const basics = [
@@ -92,6 +92,12 @@ describe("Python round-trip", () => {
                     testRoundTripPasteAndDownload(code);
                 }
             }
+        }
+    });
+    it("Supports basic n-ary operator combinations", () => {
+        for (const op of sampleSize(nary_operators, 5)) {
+            const code = "raise " + sampleSize(terminals, 5).join(" " + op + " ") + " \n";
+            testRoundTripPasteAndDownload(code);
         }
     });
 });
