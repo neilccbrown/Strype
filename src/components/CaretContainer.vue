@@ -42,6 +42,9 @@ import Caret from"@/components/Caret.vue";
 import { AllFrameTypesIdentifier, CaretPosition, Position } from "@/types/types";
 import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
+import { copyFramesFromParsedPython } from "@/helpers/pythonToFrames";
+
+declare const Sk: any;
 
 //////////////////////
 //     Component    //
@@ -142,13 +145,26 @@ export default Vue.extend({
     },
     
     methods: {
-        pasteIfFocused() {
+        pasteIfFocused(event: Event) {
             // A paste via shortcut cannot get the verification that would be done via a click
             // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here
-            if (!this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition) && this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {
-                //we need to update the context menu as if it had been shown
-                this.appStore.contextMenuShownId = this.uiid;
-                this.doPaste();
+            if (!this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition)) {
+                
+                if (this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {
+                    //we need to update the context menu as if it had been shown
+                    this.appStore.contextMenuShownId = this.uiid;
+                    this.doPaste();
+                }
+                else {
+                    const code = (event as ClipboardEvent).clipboardData?.getData("text");
+                    // Have to configure Skulpt even though we're only parsing:
+                    Sk.configure({});
+                    const parsed = Sk.parse("pasted_content.py", code);
+                    console.log("Parsed:\n  " + code + "\nInto:\n  " + JSON.stringify(parsed));
+                    copyFramesFromParsedPython(parsed["cst"]);
+                    console.log("Worked correctly: " + this.appStore.isSelectionCopied);
+                    this.doPaste();
+                }
             }
         },
 
