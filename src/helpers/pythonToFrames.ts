@@ -1,5 +1,6 @@
 import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure} from "@/types/types";
 import {useStore} from "@/store/store";
+import {operators, trimmedKeywordOperators} from "@/helpers/editor";
 
 export interface ParsedConcreteTree {
     type: number;
@@ -50,6 +51,26 @@ export function copyFramesFromParsedPython(parsedBySkulpt: ParsedConcreteTree) :
     copyFramesFromPython(parsedBySkulpt, {nextId: 1000000});
 }
 
+function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure) : SlotsStructure {
+    return {fields: [...lhs.fields, ...rhs.fields], operators: [...lhs.operators, {code: operator}, ...rhs.operators]};
+}
+
+function digValue(p : ParsedConcreteTree) : string {
+    if (p.value) {
+        return p.value;
+    }
+    else if (p.children.length == 1) {
+        return digValue(p.children[0]);
+    }
+    else if (p.type == Sk.ParseTables.sym.comp_op && p.children.length == 2) {
+        // "is not" and "not in" show up as this type, with two children:
+        return digValue(p.children[0]) + " " + digValue(p.children[1]);
+    }
+    else {
+        throw new Error("Can't find single operator in " + JSON.stringify(p));
+    }
+}
+
 function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     // Handle terminal nodes by just plonking them into a single-field slot:
     if (!p.children && p.value != null) {
@@ -62,7 +83,24 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
         return toSlots(p.children[0]);
     }
     
-    throw new Error("Unknown expression type: " + p.type);
+    // Watch out for unary expressions:
+    if (p.children[0].value === "-") {
+        return concatSlots({fields: [{code: ""}], operators: []}, p.children[0].value, toSlots(p.children[1]));
+    }
+    
+    let cur = toSlots(p.children[0]);
+    for (let i = 1; i < p.children.length; i += 2) {
+        const op = digValue(p.children[i]);
+        if (op != null && (operators.includes(op) || trimmedKeywordOperators.includes(op))) {
+            cur = concatSlots(cur, op, toSlots(p.children[i + 1]));
+        }
+        else {
+            throw new Error("Unknown operator: " + p.children[i].type + " \"" + op + "\"");
+        }
+    }
+    return cur;
+    
+    //throw new Error("Unknown expression type: " + p.type);
 }
 
 // Returns the frame ID of the next insertion point for any following statements
