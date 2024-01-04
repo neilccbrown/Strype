@@ -54,7 +54,17 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
     cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
 
     cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
-        expect(p).to.equal(fullCode);
+        // Before comparing, we fix up a few oddities of our generated code:
+        // Get rid of any spaces at end of lines:
+        p = p.replaceAll(/ +\n/g, "\n");
+        // Get rid of spaces before colons at end of line:
+        p = p.replaceAll(/ +:\n/g, ":\n");
+        // Get rid of spaces before closing brackets:
+        p = p.replace(/ +([)\]}])/g, "$1");
+        // Get rid of any multiple spaces between words:
+        p = p.replace(/([^ \n])  +([^ ])/g, "$1 $2");
+        // Print out full version in message (without escaped \n), to make it easier to diff:
+        expect(p, "Expected:\n" + fullCode + "Actual:\n" + p).to.equal(fullCode);
     });
 }
 
