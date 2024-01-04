@@ -1,6 +1,5 @@
+import {sampleSize} from "lodash";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-import {sample, sampleSize} from "lodash";
-
 require("cypress-terminal-report/src/installLogsCollector")();
 
 // Must clear all local storage between tests to reset the state:
@@ -119,5 +118,18 @@ describe("Python round-trip", () => {
             const code = "raise " + sampleSize(terminals, 5).join(" " + op + " ") + " \n";
             testRoundTripPasteAndDownload(code);
         }
+    });
+    
+    // Check that if you paste something that already has indent on every line, we manage to preserver
+    // the relation among the lines correctly:
+    it("Handles multiple lines that are all indented correctly", () => {
+        testRoundTripPasteAndDownload(`
+                    if x > 0:
+                        x = 0
+                        x = 1
+                    else:
+                        x = -1
+                    x = x * x
+        `);
     });
 });
