@@ -44,8 +44,6 @@ import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, g
 import { mapStores } from "pinia";
 import { copyFramesFromParsedPython } from "@/helpers/pythonToFrames";
 
-declare const Sk: any;
-
 //////////////////////
 //     Component    //
 //////////////////////
@@ -157,10 +155,7 @@ export default Vue.extend({
                 }
                 else {
                     const code = (event as ClipboardEvent).clipboardData?.getData("text");
-                    // Have to configure Skulpt even though we're only parsing:
-                    Sk.configure({});
-                    const parsed = Sk.parse("pasted_content.py", code);
-                    if (copyFramesFromParsedPython(parsed["cst"])) {
+                    if (code && copyFramesFromParsedPython(code)) {
                         console.log("Worked correctly: " + this.appStore.isSelectionCopied);
                         this.doPaste();
                     }

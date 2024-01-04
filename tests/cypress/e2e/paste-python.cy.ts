@@ -76,12 +76,7 @@ function testRoundTripPasteAndDownload(code: string, extraPositioning?: string) 
     }
     // Get rid of any Windows file endings:
     code = code.replaceAll(/\r\n/g, "\n");
-    // As it stands, Skulpt's parser doesn't preserve comments, so strip them out until we
-    // support them:
-    code = code.replaceAll(/ *#.*\n/g, "");
-    // Also strip out any blank lines as they are also not preserved
-    code = code.replace(/(^\s*\n)/gm, "");
-    
+        
     (cy.get("body") as any).paste(code);
     checkDownloadedCodeEquals(code);
 }

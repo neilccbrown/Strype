@@ -2,6 +2,7 @@ import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, 
 import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
 
+// Type for the things we get from the Skulpt parser:
 export interface ParsedConcreteTree {
     type: number;
     value: null | string;
@@ -9,14 +10,18 @@ export interface ParsedConcreteTree {
     col_offset?: number;
     children: null | ParsedConcreteTree[];
 }
-
+interface LocatedCommentOrBlankLine {
+    lineNumber: number;
+    content: string | null; // If null, it's a blank line (not a blank comment!)
+}
 interface CopyState {
-    nextId: number;
-    addTo: number[];
-    parent: FrameObject | null;
-    
+    nextId: number; // The next ID to use for a new frame
+    addTo: number[]; // List to add frames to
+    parent: FrameObject | null; // The parent, if any, for borrowing the parent ID
+    pendingComments: LocatedCommentOrBlankLine[]; // Modified in-place
 }
 
+// Declare Skulpt:
 declare const Sk: any;
 
 // Simplifies a tree (by collapsing all single-child nodes into the child) in order to make
@@ -69,13 +74,36 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
     };
 }
 
-export function copyFramesFromParsedPython(parsedBySkulpt: ParsedConcreteTree) : boolean {
+export function copyFramesFromParsedPython(code: string) : boolean {
+    code = code.trimEnd();
+    // Have to configure Skulpt even though we're only parsing:
+    Sk.configure({});
+    const parsed = Sk.parse("pasted_content.py", code);
+    const parsedBySkulpt = parsed["cst"];
+    
+    // Skulpt doesn't preserve blanks or comments so we must find them then later reinsert them
+    // ourselves at the right points:
+    const codeLines = code.split(/\r?\n/);
+    // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
+    const comments : LocatedCommentOrBlankLine[] = [];
+    for (let i = 0; i < codeLines.length; i++) {
+        // Look for # with only space before them, or a # with no quote after:
+        const match = /^ +#(.*)$/.exec(codeLines[i]) ?? /#([^"]+)$/.exec(codeLines[i]);
+        if (match) {
+            comments.push({lineNumber: i + 1, content: match[1]});
+        }
+        else if (codeLines[i].trim() === "") {
+            // Blank line:
+            comments.push({lineNumber: i + 1, content: null});
+        }
+    }
+    
     //console.log("Handling:\n" + debugToString(parsedBySkulpt, "  "));
     useStore().copiedFrames = {};
     useStore().copiedSelectionFrameIds = [];
     try {
         // To avoid problems, choose an ID way outside the existing frames:
-        copyFramesFromPython(parsedBySkulpt, {nextId: 1000000, addTo: useStore().copiedSelectionFrameIds, parent: null});
+        copyFramesFromPython(parsedBySkulpt, {nextId: 1000000, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
         return true;
     }
     catch (e) {
@@ -186,16 +214,34 @@ function makeFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenInd
     }
     const frame = makeFrame(frameType, slots);
     s = addFrame(frame, s);
-    const nextId = copyFramesFromPython(children(p)[childIndexForBody], {nextId: s.nextId, addTo: frame.childrenIds, parent: frame}).nextId;
+    const nextId = copyFramesFromPython(children(p)[childIndexForBody], {...s, addTo: frame.childrenIds, parent: frame}).nextId;
     if (afterwards !== undefined) {
         afterwards(frame);
     }
     return {...s, nextId: nextId};
 }
 
+function flushComments(lineno: number, s: CopyState) {
+    while (s.pendingComments.length > 0 && s.pendingComments[0].lineNumber <= lineno) {
+        if (s.pendingComments[0].content === null) {
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), s);
+        }
+        else {
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: s.pendingComments[0].content}], operators: []}}}), s);
+        }
+        // Remove first item:
+        s.pendingComments.splice(0, 1);
+    }
+    return s;
+}
+
 // Returns the frame ID of the next insertion point for any following statements
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
     console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
+    if (p.lineno) {
+        s = flushComments(p.lineno, s);
+    }
+    
     switch (p.type) {
     case Sk.ParseTables.sym.file_input:
         // The outer wrapper for the whole file, just dig in:
