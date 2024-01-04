@@ -160,7 +160,6 @@ export default Vue.extend({
                     // Have to configure Skulpt even though we're only parsing:
                     Sk.configure({});
                     const parsed = Sk.parse("pasted_content.py", code);
-                    console.log("Parsed:\n  " + code + "\nInto:\n  " + JSON.stringify(parsed) + " at " + Date.now());
                     if (copyFramesFromParsedPython(parsed["cst"])) {
                         console.log("Worked correctly: " + this.appStore.isSelectionCopied);
                         this.doPaste();

@@ -58,9 +58,19 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
     });
 }
 
-function testRoundTripPasteAndDownload(code: string) {
-    focusEditorPasteAndClear();
+function testRoundTripPasteAndDownload(code: string, extraPositioning?: string) {
     // Delete existing:
+    focusEditorPasteAndClear();
+    if (extraPositioning) {
+        cy.get("body").type(extraPositioning);
+    }
+    // Get rid of any Windows file endings:
+    code = code.replaceAll(/\r\n/g, "\n");
+    // As it stands, Skulpt's parser doesn't preserve comments, so strip them out until we
+    // support them:
+    code = code.replaceAll(/ *#.*\n/g, "");
+    // Also strip out any blank lines as they are also not preserved
+    code = code.replace(/(^\s*\n)/gm, "");
     
     (cy.get("body") as any).paste(code);
     checkDownloadedCodeEquals(code);
@@ -86,6 +96,9 @@ describe("Python round-trip", () => {
     for (const basic of basics) {
         it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic));
     }
+    it.only("Allows pasting fixture file with functions", () => {
+        cy.fixture("python-functions.py").then((py) => testRoundTripPasteAndDownload(py, "{uparrow}"));
+    });
     it("Supports basic binary operator combinations", () => {
         for (const op of sampleSize(binary_operators, 3)) {
             for (const lhs of sampleSize(terminals, 2)) {
