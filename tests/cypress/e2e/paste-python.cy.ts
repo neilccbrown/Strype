@@ -1,6 +1,9 @@
 import {sampleSize} from "lodash";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
+import failOnConsoleError from "cypress-fail-on-console-error";
+failOnConsoleError();
+
 
 // Must clear all local storage between tests to reset the state:
 import path from "path";

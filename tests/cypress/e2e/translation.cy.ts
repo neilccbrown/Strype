@@ -1,7 +1,8 @@
-
 // Test that the translation is working properly
 import i18n from "@/i18n";
 import {expect} from "chai";
+import failOnConsoleError from "cypress-fail-on-console-error";
+failOnConsoleError();
 
 /**
  * Given a JQuery with multiple results and an array of expected string content,

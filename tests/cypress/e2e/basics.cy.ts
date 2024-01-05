@@ -1,6 +1,8 @@
 import * as path from "path";
 import {expect} from "chai";
 import i18n from "@/i18n";
+import failOnConsoleError from "cypress-fail-on-console-error";
+failOnConsoleError();
 
 /**
  * A CodeMatch can be an exact string to match a single line frame,

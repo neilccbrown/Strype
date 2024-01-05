@@ -87,6 +87,7 @@
         "chai-sorted": "^0.2.0",
         "cross-env": "^7.0.3",
         "cypress": "^13.5.1",
+        "cypress-fail-on-console-error": "^5.0.3",
         "cypress-terminal-report": "^5.3.9",
         "eslint": "^7",
         "eslint-plugin-vue": "^7.20.0",
