@@ -40,6 +40,28 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
     });
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+Cypress.Commands.add("paste",
+    {prevSubject : true},
+    ($element, data) => {
+        const clipboardData = new DataTransfer();
+        clipboardData.setData("text", data);
+        const pasteEvent = new ClipboardEvent("paste", {
+            bubbles: true,
+            cancelable: true,
+            clipboardData,
+        });
+
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        cy.get($element).then(() => {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            $element[0].dispatchEvent(pasteEvent);
+        });
+    });
+
 function testInsert(insertion : string, result : string) : void {
     it("Tests " + insertion, () => {
         focusEditor();
@@ -50,7 +72,13 @@ function testInsert(insertion : string, result : string) : void {
 
         // TODO test caret position mapping?
         // TODO test splitting the insert like in Java
-    });    
+    });
+    // Test that pasting the code as part of a whole if frame works:
+    it("Tests pasting " + insertion, () => {
+        focusEditor();
+        (cy.get("body") as any).paste("if " + insertion + ":\n    pass");
+        assertState(result);
+    });
 }
 
 // Moves until the position within the slot is the given cursor pos, then executes the given function
@@ -285,7 +313,7 @@ describe("Test brackets", () => {
     });
 });
 
-describe("Stride TestExpressionSlot.testOperators()", () => {
+describe.only("Stride TestExpressionSlot.testOperators()", () => {
     // Any tests that are invalid for Python are commented out.  These include
     // those with !, &&, ||, ..
     
