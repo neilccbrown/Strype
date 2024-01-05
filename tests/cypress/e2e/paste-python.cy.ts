@@ -63,11 +63,12 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
         // Get rid of any multiple spaces between words:
         p = p.replace(/([^ \n])  +([^ ])/g, "$1 $2");
         // Print out full version in message (without escaped \n), to make it easier to diff:
-        expect(p, "Expected:\n" + fullCode + "Actual:\n" + p).to.equal(fullCode);
+        expect(p, "Actual unescaped:\n" + p).to.equal(fullCode);
     });
 }
 
-function testRoundTripPasteAndDownload(code: string, extraPositioning?: string) {
+// if expected is missing, use the original code
+function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, expected?: string) {
     // Delete existing:
     focusEditorPasteAndClear();
     if (extraPositioning) {
@@ -77,7 +78,7 @@ function testRoundTripPasteAndDownload(code: string, extraPositioning?: string) 
     code = code.replaceAll(/\r\n/g, "\n");
         
     (cy.get("body") as any).paste(code);
-    checkDownloadedCodeEquals(code);
+    checkDownloadedCodeEquals(expected ?? code);
 }
 
 describe("Python round-trip", () => {
@@ -86,28 +87,31 @@ describe("Python round-trip", () => {
     const binary_operators = ["^",">>","<<","==","!=",">=","<=","<",">", "in", "is not", "is", "not in"];
     const nary_operators = ["+","-","/","*","%","//","**","&","|", "and", "or"];
     //const unary_operators = ["not ", "~", "-"];
-    const terminals = ["0", "5.2", " - 6.7", "\"hi\"", "'bye'", "True", "False", "None", "foo", "bar_baz"];
+    const terminals = ["0", "5.2", "- 6.7", "\"hi\"", "'bye'", "True", "False", "None", "foo", "bar_baz"];
     
     const basics = [
-        "raise 0 \n",
-        "raise 0 + 1 \n",
-        "raise 0 and 3 \n",
-        "raise 0 is not 3 \n",
-        "raise 0 not in 3 \n",
-        "raise (1 + 2 - 3) \n",
-        "raise (1 + 2 - 3) == (4 * 5 / 6) \n",
+        "raise 0\n",
+        "raise 0 + 1\n",
+        "raise 0 and 3\n",
+        "raise 0 is not 3\n",
+        "raise 0 not in 3\n",
+        "raise (1 + 2 - 3)\n",
+        "raise (1 + 2 - 3) == (4 * 5 / 6)\n",
     ];
     for (const basic of basics) {
         it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic));
     }
-    it.only("Allows pasting fixture file with functions", () => {
+    it("Allows pasting fixture file with functions", () => {
         cy.fixture("python-functions.py").then((py) => testRoundTripPasteAndDownload(py, "{uparrow}"));
+    });
+    it("Allows pasting fixture file with main code", () => {
+        cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py));
     });
     it("Supports basic binary operator combinations", () => {
         for (const op of sampleSize(binary_operators, 3)) {
             for (const lhs of sampleSize(terminals, 2)) {
                 for (const rhs of sampleSize(terminals, 3)) {
-                    const code = "raise " + lhs + " " + op + " " + rhs + " \n";
+                    const code = "raise " + lhs + " " + op + " " + rhs + "\n";
                     testRoundTripPasteAndDownload(code);
                 }
             }
@@ -115,7 +119,7 @@ describe("Python round-trip", () => {
     });
     it("Supports basic n-ary operator combinations", () => {
         for (const op of sampleSize(nary_operators, 5)) {
-            const code = "raise " + sampleSize(terminals, 5).join(" " + op + " ") + " \n";
+            const code = "raise " + sampleSize(terminals, 5).join(" " + op + " ") + "\n";
             testRoundTripPasteAndDownload(code);
         }
     });
@@ -130,6 +134,13 @@ describe("Python round-trip", () => {
                     else:
                         x = -1
                     x = x * x
-        `);
+`, "", `
+if x > 0:
+    x = 0
+    x = 1
+else:
+    x =  - 1
+x = x * x
+`);
     });
 });

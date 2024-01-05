@@ -75,15 +75,34 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
 }
 
 export function copyFramesFromParsedPython(code: string) : boolean {
+    // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
+    const codeLines = code.split(/\r?\n/);
+    // Then find the common amount of indentation on non-blank lines and remove it:
+    let lowestIndent = 999999;
+    for (const codeLine of codeLines) {
+        if (codeLine.trim() != "") {
+            // Is bound to match because even the empty line matches:
+            const indent = (codeLine.match(/^\s*/) as RegExpMatchArray)[0].length;
+            if (indent < lowestIndent) {
+                lowestIndent = indent;
+            }
+        }
+    }
+    // Now remove that indent if it exists:
+    if (lowestIndent > 0) {
+        for (let i = 0; i < codeLines.length; i++) {
+            codeLines[i] = codeLines[i].slice(lowestIndent);
+        }
+    }
+        
     // Have to configure Skulpt even though we're only parsing:
     Sk.configure({});
-    const parsed = Sk.parse("pasted_content.py", code);
+    const parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
     const parsedBySkulpt = parsed["cst"];
     
     // Skulpt doesn't preserve blanks or comments so we must find them then later reinsert them
     // ourselves at the right points:
-    const codeLines = code.split(/\r?\n/);
     // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
     const comments : LocatedCommentOrBlankLine[] = [];
     for (let i = 0; i < codeLines.length; i++) {
@@ -207,10 +226,21 @@ function children(p : ParsedConcreteTree) : ParsedConcreteTree[] {
     return p.children;
 }
 
-function makeFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenIndicesForSlots: number[], childIndexForBody: number, s : CopyState, afterwards? : ((f : FrameObject) => void)) : CopyState {
+function applyIndex(p : ParsedConcreteTree, index: number | number[]) : ParsedConcreteTree {
+    if (typeof(index) === "number") {
+        return children(p)[index];
+    }
+    else {
+        const initial = index[0];
+        const rest = index.slice(1);
+        return applyIndex(children(p)[initial], rest.length == 1 ? rest[0] : rest);
+    }
+}
+
+function makeFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, afterwards? : ((f : FrameObject) => void)) : CopyState {
     const slots : { [index: number]: LabelSlotsContent} = {};
     for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
-        slots[slotIndex] = {slotStructures : toSlots(children(p)[childrenIndicesForSlots[slotIndex]])};
+        slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
     }
     const frame = makeFrame(frameType, slots);
     s = addFrame(frame, s);
@@ -298,16 +328,16 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             if (children(p)[i].value === "else") {
                 // Skip the else and the colon, which are separate tokens:
                 i += 2;
-                s = makeFrameWithBody(p, AllFrameTypesIdentifier.else, [], i, {...s, addTo: ifFrame[0].jointFrameIds}, (f) => {
+                s.nextId = makeFrameWithBody(p, AllFrameTypesIdentifier.else, [], i, {...s, addTo: ifFrame[0].jointFrameIds}, (f) => {
                     f.jointParentId = ifFrame[0].id;
-                });
+                }).nextId;
             }
             else if (children(p)[i].value === "elif") {
                 // Skip the elif:
                 i += 1;
-                s = makeFrameWithBody(p, AllFrameTypesIdentifier.elif, [i], i + 2, {...s, addTo: ifFrame[0].jointFrameIds}, (f) => {
+                s.nextId = makeFrameWithBody(p, AllFrameTypesIdentifier.elif, [i], i + 2, {...s, addTo: ifFrame[0].jointFrameIds}, (f) => {
                     f.jointParentId = ifFrame[0].id;
-                });
+                }).nextId;
                 // Skip the condition and the colon:
                 i += 2;
             }
@@ -322,8 +352,51 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         // First child is keyword, second is the loop var, third is keyword, fourth is collection, fifth is colon, sixth is body
         s = makeFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s);
         break;
+    case Sk.ParseTables.sym.try_stmt: {
+        // First is keyword, second is colon, third is body
+        const tryFrame : FrameObject[] = [];
+        s = makeFrameWithBody(p, AllFrameTypesIdentifier.try, [], 2, s, (f) => tryFrame.push(f));
+        // The except clauses are descendants of the try block, so we must iterate through later children:
+        for (let i = 3; i < children(p).length; i++) {
+            const child = children(p)[i];
+            if (child.type === Sk.ParseTables.sym.except_clause) {
+                // The first child is except keyword.  Everything else is optional, so we have three options:
+                // - Blank except
+                // - Except with single argument
+                // - Except with "x as y" (which we shove into one slot)
+                const grandchildren = children(child);
+                let exceptFrame;
+                if (grandchildren.length == 4 && grandchildren[2].value === "as") {
+                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures:
+                                concatSlots(toSlots(grandchildren[1]), "as", toSlots(grandchildren[3])),
+                    }});
+                }
+                else if (grandchildren.length == 2) {
+                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: toSlots(grandchildren[1])}});
+                }
+                else {
+                    // Shouldn't happen, but skip if so:
+                    continue;
+                }
+                s.nextId = addFrame(exceptFrame, {...s, addTo: tryFrame[0].jointFrameIds}).nextId;
+                // The children of the except actually follow as a sibling of the clause, after the colon (hence i + 2):
+                s.nextId = copyFramesFromPython(children(p)[i+2], {...s, parent: exceptFrame, addTo: exceptFrame.childrenIds}).nextId;
+            }
+            else if (child.value === "finally") {
+                // Weirdly, finally doesn't seem to have a proper node type, it's just a normal child
+                // followed by a colon followed by a body
+                s.nextId = makeFrameWithBody(p, AllFrameTypesIdentifier.finally, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds}).nextId;
+            }
+        }
+        break;
+    }
+    case Sk.ParseTables.sym.with_stmt:
+        // First child is keyword, second is with_item that has [LHS, "as", RHS] as children, third is colon, fourth is body
+        s = makeFrameWithBody(p, AllFrameTypesIdentifier.with, [[1, 0], [1, 2]], 3, s);
+        break;
     case Sk.ParseTables.sym.suite:
-        // I don't really understand what this does, but it seems if we ignore the extra children we can proceed:
+        // I don't really understand what this item is (it seems to have the raw content as extra children),
+        // but it seems if we ignore these extra children we can proceed and it will all work:
         for (const child of children(p)) {
             if (child.type > 250) { // Only count the non-expression nodes
                 s = copyFramesFromPython(child, s);
