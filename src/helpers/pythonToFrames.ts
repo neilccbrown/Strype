@@ -69,7 +69,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
         jointParentId: 0,
         labelSlotsDict: slots,
         multiDragPosition: "",
-        parentId: -100,
+        parentId: 0,
         runTimeError: "",
     };
 }
@@ -237,7 +237,7 @@ function applyIndex(p : ParsedConcreteTree, index: number | number[]) : ParsedCo
     }
 }
 
-function makeFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, afterwards? : ((f : FrameObject) => void)) : CopyState {
+function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, afterwards? : ((f : FrameObject) => void)) : CopyState {
     const slots : { [index: number]: LabelSlotsContent} = {};
     for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
         slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
@@ -322,20 +322,20 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.if_stmt: {
         // First child is keyword, second is the condition, third is colon, fourth is body
         const ifFrame: FrameObject[] = [];
-        s = makeFrameWithBody(p, AllFrameTypesIdentifier.if, [1], 3, s, (f : FrameObject) => ifFrame.push(f));
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.if, [1], 3, s, (f : FrameObject) => ifFrame.push(f));
         // If can have elif, else, so keep going to check for that:
         for (let i = 4; i < children(p).length; i++) {
             if (children(p)[i].value === "else") {
                 // Skip the else and the colon, which are separate tokens:
                 i += 2;
-                s.nextId = makeFrameWithBody(p, AllFrameTypesIdentifier.else, [], i, {...s, addTo: ifFrame[0].jointFrameIds}, (f) => {
+                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i, {...s, addTo: ifFrame[0].jointFrameIds, parent: null}, (f) => {
                     f.jointParentId = ifFrame[0].id;
                 }).nextId;
             }
             else if (children(p)[i].value === "elif") {
                 // Skip the elif:
                 i += 1;
-                s.nextId = makeFrameWithBody(p, AllFrameTypesIdentifier.elif, [i], i + 2, {...s, addTo: ifFrame[0].jointFrameIds}, (f) => {
+                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.elif, [i], i + 2, {...s, addTo: ifFrame[0].jointFrameIds, parent: null}, (f) => {
                     f.jointParentId = ifFrame[0].id;
                 }).nextId;
                 // Skip the condition and the colon:
@@ -346,16 +346,16 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     }
     case Sk.ParseTables.sym.while_stmt:
         // First child is keyword, second is the condition, third is colon, fourth is body
-        s = makeFrameWithBody(p, AllFrameTypesIdentifier.while, [1], 3, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, [1], 3, s);
         break;
     case Sk.ParseTables.sym.for_stmt:
         // First child is keyword, second is the loop var, third is keyword, fourth is collection, fifth is colon, sixth is body
-        s = makeFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s);
         break;
     case Sk.ParseTables.sym.try_stmt: {
         // First is keyword, second is colon, third is body
         const tryFrame : FrameObject[] = [];
-        s = makeFrameWithBody(p, AllFrameTypesIdentifier.try, [], 2, s, (f) => tryFrame.push(f));
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.try, [], 2, s, (f) => tryFrame.push(f));
         // The except clauses are descendants of the try block, so we must iterate through later children:
         for (let i = 3; i < children(p).length; i++) {
             const child = children(p)[i];
@@ -378,21 +378,22 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     // Shouldn't happen, but skip if so:
                     continue;
                 }
-                s.nextId = addFrame(exceptFrame, {...s, addTo: tryFrame[0].jointFrameIds}).nextId;
+                exceptFrame.jointParentId = tryFrame[0].id;
+                s.nextId = addFrame(exceptFrame, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}).nextId;
                 // The children of the except actually follow as a sibling of the clause, after the colon (hence i + 2):
                 s.nextId = copyFramesFromPython(children(p)[i+2], {...s, parent: exceptFrame, addTo: exceptFrame.childrenIds}).nextId;
             }
             else if (child.value === "finally") {
                 // Weirdly, finally doesn't seem to have a proper node type, it's just a normal child
                 // followed by a colon followed by a body
-                s.nextId = makeFrameWithBody(p, AllFrameTypesIdentifier.finally, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds}).nextId;
+                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.finally, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}, (f) => f.jointParentId = tryFrame[0].id).nextId;
             }
         }
         break;
     }
     case Sk.ParseTables.sym.with_stmt:
         // First child is keyword, second is with_item that has [LHS, "as", RHS] as children, third is colon, fourth is body
-        s = makeFrameWithBody(p, AllFrameTypesIdentifier.with, [[1, 0], [1, 2]], 3, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.with, [[1, 0], [1, 2]], 3, s);
         break;
     case Sk.ParseTables.sym.suite:
         // I don't really understand what this item is (it seems to have the raw content as extra children),
@@ -405,7 +406,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         break;
     case Sk.ParseTables.sym.funcdef:
         // First child is keyword, second is the name, third is params, fourth is colon, fifth is body
-        s = makeFrameWithBody(p, AllFrameTypesIdentifier.funcdef, [1, 2], 4, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, [1, 2], 4, s);
         break;
     }
     return s;
