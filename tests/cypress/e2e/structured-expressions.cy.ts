@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
@@ -62,7 +64,7 @@ Cypress.Commands.add("paste",
         });
     });
 
-function testInsert(insertion : string, result : string) : void {
+function testInsert(insertion : string, result : string, canBeTestedWithPaste?: boolean) : void {
     it("Tests " + insertion, () => {
         focusEditor();
         cy.get("body").type("i");
@@ -73,12 +75,16 @@ function testInsert(insertion : string, result : string) : void {
         // TODO test caret position mapping?
         // TODO test splitting the insert like in Java
     });
-    // Test that pasting the code as part of a whole if frame works:
-    it("Tests pasting " + insertion, () => {
-        focusEditor();
-        (cy.get("body") as any).paste("if " + insertion + ":\n    pass");
-        assertState(result);
-    });
+    // Default is true:
+    if (canBeTestedWithPaste ?? true) {
+        // Test that pasting the code as part of a whole if frame works:
+        it("Tests pasting " + insertion, () => {
+            focusEditor();
+            (cy.get("body") as any).paste("if " + insertion + ":\n    pass");
+            // Ignore the dollar because the cursor won't be in there at all:
+            assertState(result.replace("$", ""));
+        });
+    }
 }
 
 // Moves until the position within the slot is the given cursor pos, then executes the given function
@@ -313,7 +319,7 @@ describe("Test brackets", () => {
     });
 });
 
-describe.only("Stride TestExpressionSlot.testOperators()", () => {
+describe("Stride TestExpressionSlot.testOperators()", () => {
     // Any tests that are invalid for Python are commented out.  These include
     // those with !, &&, ||, ..
     
@@ -340,18 +346,18 @@ describe.only("Stride TestExpressionSlot.testOperators()", () => {
     //testInsert("s.length()..10", "{s}.{length}_({})_{}..{10$}");
     // Partials of above:
     testInsert("s.length()", "{s}.{length}_({})_{$}");
-    testInsert("s.length().", "{s}.{length}_({})_{}.{$}");
+    testInsert("s.length().", "{s}.{length}_({})_{}.{$}", false);
     //testInsert("s.length()..", "{s}.{length}_({})_{}..{$}");
     //testInsert("s.length()..1", "{s}.{length}_({})_{}..{1$}");
 });
 
 describe("Stride TestExpressionSlot.testDot()", () => {
-    testInsert(".", "{}.{$}");
+    testInsert(".", "{}.{$}", false);
     testInsert("0.", "{0.$}");
-    testInsert("a.", "{a}.{$}");
+    testInsert("a.", "{a}.{$}", false);
     testInsert("foo()", "{foo}_({})_{$}");
     testInsert("foo().bar()", "{foo}_({})_{}.{bar}_({})_{$}");
-    testInsert("foo+().", "{foo}+{}_({})_{}.{$}");
+    testInsert("foo+().", "{foo}+{}_({})_{}.{$}", false);
 
     testMultiInsert("foo(){.}a", "{foo}_({})_{$a}", "{foo}_({})_{}.{$a}");
 
@@ -362,7 +368,7 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     // With trailing quote
     testInsert("\"hello\"", "{}_“hello”_{$}");
     // Without trailing quote (caret stays in string):
-    testInsert("\"hello", "{}_“hello$”_{}");
+    testInsert("\"hello", "{}_“hello$”_{}", false);
     testInsert("\"hello\"+\"world\"", "{}_“hello”_{}+{}_“world”_{$}");
     testInsert("\"hello\"+\"world\"+(5*6)", "{}_“hello”_{}+{}_“world”_{}+{}_({5}*{6})_{$}");
 
@@ -380,7 +386,7 @@ describe("Stride TestExpressionSlot.testStrings()", () => {
     // With trailing quote
     testInsert("'hello'", "{}_‘hello’_{$}");
     // Without trailing quote (caret stays in string):
-    testInsert("'hello", "{}_‘hello$’_{}");
+    testInsert("'hello", "{}_‘hello$’_{}", false);
     testInsert("'hello'+'world'", "{}_‘hello’_{}+{}_‘world’_{$}");
     testInsert("'hello'+'world'+(5*6)", "{}_‘hello’_{}+{}_‘world’_{}+{}_({5}*{6})_{$}");
 
@@ -507,9 +513,9 @@ describe("Stride TestExpressionSlot.testFloating()", () => {
     testInsert("10e+20", "{10e+20$}");
     testInsert("10e-20", "{10e-20$}");
 
-    testInsert("1.0.3", "{1}.{0}.{3$}");
-    testInsert("1.0.3.4", "{1}.{0}.{3}.{4$}");
-    testInsert("1.0.x3.4", "{1}.{0}.{x3}.{4$}");
+    testInsert("1.0.3", "{1}.{0}.{3$}", false);
+    testInsert("1.0.3.4", "{1}.{0}.{3}.{4$}", false);
+    testInsert("1.0.x3.4", "{1}.{0}.{x3}.{4$}", false);
 
     // The problem here is that + is first an operator, then merged back in,
     // so when we preserve the position after plus, it becomes invalid, so we
@@ -533,7 +539,7 @@ describe("Stride TestExpressionSlot.testFloating()", () => {
     //testMultiInsert("1e-{x}6", "{1e-$6}", "{1e-x$6}");
 
     testInsert("1.0", "{1.0$}");
-    testInsert("1..0", "{1}.{}.{0$}");
+    testInsert("1..0", "{1}.{}.{0$}", false);
     //testBackspace("1..\b0", "{1.$0}", true, false); // backspace after
     //testBackspace("1.\b.0", "{1$.0}", false, true); // delete before
     //testBackspace("a..\bc", "{a}.{$c}", true, false); // backspace after
@@ -545,11 +551,11 @@ describe("Stride TestExpressionSlot.testBrackets()", () => {
     testInsert("a+(b-(c*d))", "{a}+{}_({b}-{}_({c}*{d})_{})_{$}");
 
     // Without close:
-    testInsert("(a+b", "{}_({a}+{b$})_{}");
+    testInsert("(a+b", "{}_({a}+{b$})_{}", false);
 
-    testInsert("(((", "{}_({}_({}_({$})_{})_{})_{}");
-    testInsert("((()", "{}_({}_({}_({})_{$})_{})_{}");
-    testInsert("((())", "{}_({}_({}_({})_{})_{$})_{}");
+    testInsert("(((", "{}_({}_({}_({$})_{})_{})_{}", false);
+    testInsert("((()", "{}_({}_({}_({})_{$})_{})_{}", false);
+    testInsert("((())", "{}_({}_({}_({})_{})_{$})_{}", false);
     testInsert("((()))", "{}_({}_({}_({})_{})_{})_{$}");
 
     testInsert("(a+(b*c)+d)", "{}_({a}+{}_({b}*{c})_{}+{d})_{$}");
@@ -558,7 +564,7 @@ describe("Stride TestExpressionSlot.testBrackets()", () => {
         "{}_({$getWorld}_({})_{})_{}.{getWidth}_({})_{}",
         "{}_({}_({MyWorld})_{$getWorld}_({})_{})_{}.{getWidth}_({})_{}");
 
-    testInsert("a(bc)d", "{a}_({bc})_{d$}");
+    testInsert("a(bc)d", "{a}_({bc})_{d$}", false);
 });
 
 describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
