@@ -1,4 +1,4 @@
-import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure} from "@/types/types";
+import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot} from "@/types/types";
 import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
 
@@ -135,7 +135,23 @@ export function copyFramesFromParsedPython(code: string) : boolean {
 }
 
 function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure) : SlotsStructure {
-    return {fields: [...lhs.fields, ...rhs.fields], operators: [...lhs.operators, {code: operator}, ...rhs.operators]};
+    const joined = {fields: [...lhs.fields, ...rhs.fields], operators: [...lhs.operators, {code: operator}, ...rhs.operators]};
+    // Eliminate any redundant blank operators (i.e. those where the RHS or RHS is a non-bracketed blank:
+    for (let i = 0; i < joined.operators.length; i++) {
+        if (joined.operators[i].code === "") {
+            // Check LHS and RHS:
+            if (!(joined.fields[i] as SlotsStructure)?.openingBracketValue && !(joined.fields[i] as StringSlot)?.quote && !(joined.fields[i+1] as SlotsStructure)?.openingBracketValue && !(joined.fields[i+1] as StringSlot)?.quote) {
+                // We can join the two:
+                joined.fields[i] = {code: (joined.fields[i] as BaseSlot).code + (joined.fields[i+1] as BaseSlot).code};
+                joined.fields.splice(i + 1, 1);
+                joined.operators.splice(i, 1);
+                // Make us re-examine operator i:
+                i -= 1;
+                continue;
+            }
+        }
+    }
+    return joined;
 }
 
 function digValue(p : ParsedConcreteTree) : string {
