@@ -173,6 +173,40 @@ function digValue(p : ParsedConcreteTree) : string {
     }
 }
 
+interface ParseState {
+    seq: ParsedConcreteTree[];
+    nextIndex: number;
+}
+
+// The index of ParseState will be modified in the given item:
+function parseNextTerm(ps : ParseState) : SlotsStructure {
+    // Check for unary operator:
+    const nextVal = ps.seq[ps.nextIndex].value;
+    if (nextVal === "-" || nextVal === "+") {
+        // Unary numbers just go in their own field:
+        try {
+            const valAfterThat = digValue(ps.seq[ps.nextIndex + 1]);
+            if (/^\d+(\.\d+)?$/.test(valAfterThat)) {
+                ps.nextIndex += 2;
+                return {fields: [{code: nextVal + valAfterThat}], operators: []};
+            }
+        }
+        catch (e) {
+            // Not an integer then...
+        }
+        
+        ps.nextIndex += 1;
+        return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
+    }
+    if (nextVal === "not") {
+        ps.nextIndex += 1;
+        return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
+    }
+    const term = ps.seq[ps.nextIndex];
+    ps.nextIndex += 1;
+    return toSlots(term);
+}
+
 function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     // Handle terminal nodes by just plonking them into a single-field slot:
     if (p.children == null || p.children.length == 0) {
@@ -184,12 +218,7 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     if (p.children.length == 1) {
         return toSlots(p.children[0]);
     }
-    
-    // Watch out for unary expressions:
-    if (p.children[0].value === "-" || p.children[0].value === "not") {
-        return concatSlots({fields: [{code: ""}], operators: []}, p.children[0].value, toSlots(p.children[1]));
-    }
-    
+
     // Check for brackets:
     if (p.children[0].value === "(" || p.children[0].value === "[" || p.children[0].value === "{") {
         const bracketed =  toSlots({...p, children: p.children.slice(1, p.children.length - 1)});
@@ -200,37 +229,40 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
         // Bracketed items must be surrounded by empty slot and empty operator each side:
         return {fields: [{code: ""},{...bracketed, openingBracketValue: p.children[0].value}, {code: ""}], operators: [{code: ""}, {code: ""}]};
     }
-    
-    let cur = toSlots(p.children[0]);
-    for (let i = 1; i < p.children.length; i += 2) {
-        if (p.children[i].type === Sk.ParseTables.sym.trailer) {
+
+    const ps = {seq: p.children, nextIndex: 0};
+    let latest = parseNextTerm(ps);
+    while (ps.nextIndex < p.children.length) {
+        if (p.children[ps.nextIndex].type === Sk.ParseTables.sym.trailer) {
             // A suffix, like an array index lookup.  Join it and move forward only by one:
-            const grandchildren = p.children[i].children;
+            const grandchildren = p.children[ps.nextIndex].children;
             if (grandchildren != null && grandchildren[0].value === ".") {
-                cur = concatSlots(cur, ".", toSlots(grandchildren[1]));
+                latest = concatSlots(latest, ".", toSlots(grandchildren[1]));
             }
             else {
                 // Something bracketed:
-                cur = concatSlots(cur, "", toSlots(p.children[i]));
+                latest = concatSlots(latest, "", toSlots(p.children[ps.nextIndex]));
             }
-            i -= 1;
+            ps.nextIndex += 1;
             continue;
         }
+        // Now we expect a binary operator:        
         let op;
         try {
-            op = digValue(p.children[i]);
+            op = digValue(p.children[ps.nextIndex]);
+            ps.nextIndex += 1;
         }
         catch (err) {
-            throw new Error("Cannot find operator " + i + " in:\n" + debugToString(p, ""), {cause: err});
+            throw new Error("Cannot find operator " + ps.nextIndex + " in:\n" + debugToString(p, ""), {cause: err});
         }
         if (op != null && (operators.includes(op) || trimmedKeywordOperators.includes(op))) {
-            cur = concatSlots(cur, op, toSlots(p.children[i + 1]));
+            latest = concatSlots(latest, op, parseNextTerm(ps));
         }
         else {
-            throw new Error("Unknown operator: " + p.children[i].type + " \"" + op + "\"");
+            throw new Error("Unknown operator: " + p.children[ps.nextIndex].type + " \"" + op + "\"");
         }
     }
-    return cur;
+    return latest;
     
     //throw new Error("Unknown expression type: " + p.type);
 }
@@ -283,7 +315,7 @@ function flushComments(lineno: number, s: CopyState) {
 
 // Returns the frame ID of the next insertion point for any following statements
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
-    console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
+    //console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
     if (p.lineno) {
         s = flushComments(p.lineno, s);
     }
