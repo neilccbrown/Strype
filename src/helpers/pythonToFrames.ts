@@ -10,10 +10,12 @@ export interface ParsedConcreteTree {
     col_offset?: number;
     children: null | ParsedConcreteTree[];
 }
+// A comment or blank line, plus a line number location in the original Python:
 interface LocatedCommentOrBlankLine {
     lineNumber: number;
     content: string | null; // If null, it's a blank line (not a blank comment!)
 }
+// The state passed around while copying from Python code into frames
 interface CopyState {
     nextId: number; // The next ID to use for a new frame
     addTo: number[]; // List to add frames to
@@ -25,7 +27,7 @@ interface CopyState {
 declare const Sk: any;
 
 // Simplifies a tree (by collapsing all single-child nodes into the child) in order to make
-// it easier to read while debugging
+// it easier to read while debugging error messages
 function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
     let s = curIndent + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type));
     if (p.value) {
@@ -43,6 +45,8 @@ function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
     }
 }
 
+// Given a frame, assigns it a new ID and adds it to the list specified in the CopyState
+// If it is not a joint frame, set its parent.
 function addFrame(frame: FrameObject, s: CopyState) : CopyState {
     const id = s.nextId;
     frame.id = id;
@@ -62,6 +66,7 @@ function addFrame(frame: FrameObject, s: CopyState) : CopyState {
     return {...s, nextId: s.nextId + 1};
 }
 
+// Makes a basic frame object with the given type and slots, and dummy/default values for all other fields
 function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) : FrameObject {
     return {
         frameType : getFrameDefType(type),
@@ -81,11 +86,28 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
     };
 }
 
+// The main entry point to this module.  Given a string of Python code that the user
+// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
+// ready to be pasted immediately afterwards.
+// Returns a boolean indicating whether we were successful.  A return of false
+// usually indicates that the string wasn't valid Python (e.g. syntactically invalid)
 export function copyFramesFromParsedPython(code: string) : boolean {
     // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
     const codeLines = code.split(/\r?\n/);
     // Then find the common amount of indentation on non-blank lines and remove it:
+    // This way if the user parses in something like this from the middle of some Python:
+    // "    if x > 8:"
+    // "      x = 10"
+    // "    else:"
+    // "      x = 12"
+    // (which is invalid in Python because you can't have a leading indent on the first line),
+    // we interpret it as :
+    // "if x > 8:"
+    // "  x = 10"
+    // "else:"
+    // "  x = 12"
+    // (note that just removing indent on first line wouldn't make the else line up correctly)
     let lowestIndent = 999999;
     for (const codeLine of codeLines) {
         if (codeLine.trim() != "") {
@@ -103,7 +125,7 @@ export function copyFramesFromParsedPython(code: string) : boolean {
         }
     }
         
-    // Have to configure Skulpt even though we're only parsing:
+    // Have to configure Skulpt even though we're only using it for parsing:
     Sk.configure({});
     const parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
     const parsedBySkulpt = parsed["cst"];
@@ -124,7 +146,6 @@ export function copyFramesFromParsedPython(code: string) : boolean {
         }
     }
     
-    //console.log("Handling:\n" + debugToString(parsedBySkulpt, "  "));
     useStore().copiedFrames = {};
     useStore().copiedSelectionFrameIds = [];
     try {
@@ -141,6 +162,8 @@ export function copyFramesFromParsedPython(code: string) : boolean {
     }
 }
 
+// Concatenates two slot structures with the given operator.
+// Eliminates any redundant blank operators.
 function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure) : SlotsStructure {
     const joined = {fields: [...lhs.fields, ...rhs.fields], operators: [...lhs.operators, {code: operator}, ...rhs.operators]};
     // Eliminate any redundant blank operators (i.e. those where the RHS or RHS is a non-bracketed blank:
@@ -161,6 +184,10 @@ function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure)
     return joined;
 }
 
+// Dig down the tree and find the actual value.  Skips down through
+// all parents with a single child.  If there is no value or no children,
+// an error will be thrown.  This shouldn't happen for the items we are
+// calling it on (operators, numeric literals).
 function digValue(p : ParsedConcreteTree) : string {
     if (p.value) {
         return p.value;
@@ -180,6 +207,7 @@ function digValue(p : ParsedConcreteTree) : string {
     }
 }
 
+// The state while parsing a long expression with multiple operands and operators:
 interface ParseState {
     seq: ParsedConcreteTree[];
     nextIndex: number;
@@ -277,10 +305,12 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
         }
     }
     return latest;
-    
-    //throw new Error("Unknown expression type: " + p.type);
 }
 
+// Get the children of the node, and throw an error if they are null.  This
+// should never happen, but if we use p.children then Typescript complains everywhere
+// that it could be null, whereas children(p) satisfies Typescript and gives a useful
+// error if it does turn out to be null.
 function children(p : ParsedConcreteTree) : ParsedConcreteTree[] {
     if (p.children == null) {
         throw new Error("Null children on node " + JSON.stringify(p));
@@ -288,6 +318,7 @@ function children(p : ParsedConcreteTree) : ParsedConcreteTree[] {
     return p.children;
 }
 
+// Given an index into the children (or a sequence of indexes), apply that and get the appropriate child.
 function applyIndex(p : ParsedConcreteTree, index: number | number[]) : ParsedConcreteTree {
     if (typeof(index) === "number") {
         return children(p)[index];
@@ -299,6 +330,8 @@ function applyIndex(p : ParsedConcreteTree, index: number | number[]) : ParsedCo
     }
 }
 
+// Make a frame using the given frame type, the given index/indices of p's children for the slots,
+// the given index for the body, and call addFrame on it.
 function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, afterwards? : ((f : FrameObject) => void)) : CopyState {
     const slots : { [index: number]: LabelSlotsContent} = {};
     for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
@@ -313,6 +346,8 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, child
     return {...s, nextId: nextId};
 }
 
+// Check if there any comments/blanks in s.pendingComments that appear at or before the given line number,
+// and insert them as blanks/comment frames at the given point 
 function flushComments(lineno: number, s: CopyState) {
     while (s.pendingComments.length > 0 && s.pendingComments[0].lineNumber <= lineno) {
         if (s.pendingComments[0].content === null) {
@@ -327,7 +362,8 @@ function flushComments(lineno: number, s: CopyState) {
     return s;
 }
 
-// Returns the frame ID of the next insertion point for any following statements
+// Process the given node in the tree at the current point designed by CopyState 
+// Returns a copy state, including the frame ID of the next insertion point for any following statements
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
     //console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
     if (p.lineno) {
