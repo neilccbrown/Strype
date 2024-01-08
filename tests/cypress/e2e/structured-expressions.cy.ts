@@ -101,9 +101,9 @@ describe("Stride TestExpressionSlot.testBackspace()", () => {
 });
 
 describe("Test word operators", () => {
-    testInsert("a or ", "{a}or{$}");
+    testInsert("a or ", "{a}or{$}", false);
     testInsert("a or b", "{a}or{b$}");
-    testInsert("or b", "{}or{b$}");
+    testInsert("or b", "{}or{b$}", false);
     testInsert("orb", "{orb$}");
     testInsert("not a", "{}not{a$}");
     testInsert("orc or ork", "{orc}or{ork$}");
@@ -113,7 +113,7 @@ describe("Test word operators", () => {
     testInsert("a is b", "{a}is{b$}");
     testInsert("a is not b", "{a}is not{b$}");
     testInsert("a or not b", "{a}or{}not{b$}");
-    testInsert("a and or in b", "{a}and{}or{}in{b$}");
+    testInsert("a and or in b", "{a}and{}or{}in{b$}", false);
     
     testMultiInsert("a is {not }b", "{a}is{$b}", "{a}is not{$b}");
     testMultiInsert("a or {not }b", "{a}or{$b}", "{a}or{}not{$b}");
