@@ -110,6 +110,25 @@ describe("Python round-trip", () => {
     it("Allows pasting fixture file with main code", () => {
         cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py));
     });
+    it("Handles global and assignment commas", () => {
+        testRoundTripPasteAndDownload(`
+def myFunc (param1 , param2):
+    global x
+    global y
+    x , y = param1 , param2
+`, "{uparrow}");
+    });
+    it("Handles import and from import", () => {
+        testRoundTripPasteAndDownload(`
+import x
+import a . b . c
+from x import *
+from x import y
+from a . b . c import x
+from a . b . c import *
+`, "{uparrow}{uparrow}");
+    });
+    
     it("Supports basic binary operator combinations", () => {
         for (const op of sampleSize(binary_operators, 3)) {
             for (const lhs of sampleSize(terminals, 2)) {

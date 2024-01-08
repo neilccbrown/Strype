@@ -382,6 +382,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.small_stmt:
     case Sk.ParseTables.sym.flow_stmt:
     case Sk.ParseTables.sym.compound_stmt:
+    case Sk.ParseTables.sym.import_stmt: 
         // Wrappers where we just skip to the children:
         for (const child of children(p)) {
             s = copyFramesFromPython(child, s);
@@ -410,6 +411,15 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         break;
     case Sk.ParseTables.sym.continue_stmt:
         s = addFrame(makeFrame(AllFrameTypesIdentifier.continue, {}), s);
+        break;
+    case Sk.ParseTables.sym.global_stmt:
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+        break;
+    case Sk.ParseTables.sym.import_name:
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.import, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+        break;
+    case Sk.ParseTables.sym.import_from:
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: toSlots(children(p)[1])}, 1: {slotStructures: toSlots(children(p)[3])}}), s);
         break;
     case Sk.ParseTables.sym.raise_stmt:
         s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(p)[1])}}), s);
