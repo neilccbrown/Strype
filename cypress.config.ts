@@ -5,6 +5,7 @@ export default defineConfig({
     downloadsFolder: "tests/cypress/downloads",
     fixturesFolder:	"tests/cypress/fixtures",
     screenshotsFolder: "tests/cypress/screenshots",
+    supportFolder: "tests/cypress/support",
     videosFolder: "tests/cypress/videos",
     video: true,
     e2e: {
