@@ -90,7 +90,7 @@ describe("Python round-trip", () => {
     const binary_operators = ["^",">>","<<","==","!=",">=","<=","<",">", "in", "is not", "is", "not in"];
     const nary_operators = ["+","-","/","*","%","//","**","&","|", "and", "or"];
     //const unary_operators = ["not ", "~", "-"];
-    const terminals = ["0", "5.2", "- 6.7", "\"hi\"", "'bye'", "True", "False", "None", "foo", "bar_baz"];
+    const terminals = ["0", "5.2", "-6.7", "\"hi\"", "'bye'", "True", "False", "None", "foo", "bar_baz"];
     
     const basics = [
         "raise 0\n",
@@ -142,7 +142,7 @@ if x > 0:
     x = 0
     x = 1
 else:
-    x =  - 1
+    x = -1
 x = x * x
 `);
     });
