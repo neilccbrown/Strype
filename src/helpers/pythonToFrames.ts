@@ -186,7 +186,7 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
         // Unary numbers just go in their own field:
         try {
             const valAfterThat = digValue(ps.seq[ps.nextIndex + 1]);
-            if (/^\d+(\.\d+)?$/.test(valAfterThat)) {
+            if (/^\d+(\.\d+)?([eE][+-]?\d+)?$/.test(valAfterThat)) {
                 ps.nextIndex += 2;
                 return {fields: [{code: nextVal + valAfterThat}], operators: []};
             }
@@ -210,7 +210,14 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
 function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     // Handle terminal nodes by just plonking them into a single-field slot:
     if (p.children == null || p.children.length == 0) {
-        return {fields: [{code: p.value ?? ""}], operators: []};
+        const val = p.value ?? "";
+        if (val.startsWith("\"") || val.startsWith("'")) {
+            const str : StringSlot = {code: val.slice(1, val.length - 1), quote: val.slice(0, 1)};
+            return {fields: [{code: ""}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
+        }
+        else {
+            return {fields: [{code: val}], operators: []};
+        }
     }
     
     // Skulpt's parser seems to output a huge amount of dummy nodes with one child,
