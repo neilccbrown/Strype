@@ -52,6 +52,11 @@ function addFrame(frame: FrameObject, s: CopyState) : CopyState {
         frame.parentId = s.parent.id;
         // Don't need to add to children because that will already be the addTo array
     }
+    else {
+        // The pasting code relies on parent being set to non-zero for non-joint frames,
+        // so we just set it to an invalid integer:
+        frame.parentId = -999;
+    }
     return {...s, nextId: s.nextId + 1};
 }
 
