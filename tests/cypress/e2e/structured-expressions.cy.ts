@@ -463,7 +463,7 @@ describe("Stride TestExpressionSlot.testBackspace()", () => {
 
 describe("Strype test nested brackets", () => {
     testInsert("((a+b)+c())", "{}_({}_({a}+{b})_{}+{c}_({})_{})_{$}");
-    testInsert("((a)c())", "{}_({}_({a})_{c}_({})_{})_{$}");
+    testInsert("((a)c())", "{}_({}_({a})_{c}_({})_{})_{$}", false);
 
     testBackspace("((\b))", "{}_({$})_{}");
     testBackspace("((a))c((\b))", "{}_({}_({a})_{})_{c}_({$})_{}");
@@ -475,13 +475,13 @@ describe("Stride TestExpressionSlot.testFloating()", () => {
 
     testInsert("1.0", "{1.0$}");
     testInsert("10.20", "{10.20$}");
-    testInsert("a.0", "{a}.{0$}");
-    testInsert("1.a", "{1}.{a$}");
-    testInsert("x1.a", "{x1}.{a$}");
+    testInsert("a.0", "{a}.{0$}", false);
+    testInsert("1.a", "{1}.{a$}", false);
+    testInsert("x1.a", "{x1}.{a$}", false);
     testInsert("+1", "{+1$}");
     testInsert("+1.0", "{+1.0$}");
     testInsert("+1.0e5", "{+1.0e5$}");
-    testInsert("+1.0e", "{}+{1}.{0e$}");
+    testInsert("+1.0e", "{}+{1}.{0e$}", false);
     testInsert("+1.0e+5", "{+1.0e+5$}");
     testInsert("+1.0e+5+6", "{+1.0e+5}+{6$}");
     testInsert("3+1", "{3}+{1$}");
