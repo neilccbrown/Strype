@@ -717,10 +717,10 @@ export function getFunctionCallDefaultText(frameId: number): string {
     // then we do not return any placeholder text.
     // Several case may happen:
     // - we have nothing ever put in the slots (i.e. frame has just been added) OR only the name part is empty --> we show a "method name" default text placeholder
-    // - we have a function call frame without any brackets or operators (just a slot) --> we show "pass" to give an hint to users that they should write this
+    // - we have a function call frame without any brackets or operators (just a slot) --> we show "function()".
     const frameToCheck = useStore().frameObjects[frameId];
     if(frameToCheck.labelSlotsDict[0].slotStructures.operators.length == 0){
-        return "pass";
+        return i18n.t("frame.defaultText.simpleFuncCall") as string;
     }
     else if(frameToCheck.labelSlotsDict[0].slotStructures.operators[0].code == "" 
         && isFieldBracketedSlot(frameToCheck.labelSlotsDict[0].slotStructures.fields[1])){

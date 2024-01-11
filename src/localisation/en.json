@@ -10,6 +10,7 @@
             "value":"value ",
             "variable":"variable ",
             "funcCall":"function name",
+            "simpleFuncCall":"function()",
             "exception":"exception ",
             "name":"name ",
             "parameters":"parameters ",
