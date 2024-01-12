@@ -399,7 +399,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             }
             else {
                 // Everything else goes in method call:
-                s = addFrame(makeFrame(AllFrameTypesIdentifier.empty, {0: {slotStructures: toSlots(p)}}), s);
+                s = addFrame(makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: toSlots(p)}}), s);
             }
         }
         break;
