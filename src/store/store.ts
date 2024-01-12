@@ -398,8 +398,10 @@ export const useStore = defineStore("app", {
                 allowedJointCommand[frameShortcut] = filteredCommands[frameShortcut].filter( (x) => allowedJointChildren.includes(x.type.type));
                 
                 // filtered = filtered - forbidden - allJoints
-                // all joints need to be removed here as they may overlap with the forbiden and the allowed ones. Allowed will be added on the next step
-                filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter( (x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame);
+                // all joints need to be removed here as they may overlap with the forbiden and the allowed ones. Allowed will be added on the next step.
+                // if some frames are currently selected, we do not allow statement type frames to appear in the list of commands (we can only wrap the selection)
+                filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
+                    && (state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
 
                 // filtered = filtered + allowed
                 filteredCommands[frameShortcut].push(...allowedJointCommand[frameShortcut]);

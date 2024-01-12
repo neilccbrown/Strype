@@ -236,60 +236,18 @@ export default Vue.extend({
         // We can't know if that is called because of a click or because of the keyboard shortcut - and it's important to know because we need to process
         // things differently based on one or the other. That's why we have a flag on the keyboard shortcut (in keydown even registration) to make the distinction.
         window.addEventListener(
-            "contextmenu",
-            (event: MouseEvent) => {
-                // This method can be called either when the mouse has been right-clicked (context menu) or a keyboard shortcut for context menu has been hit
-                if(this.appStore.isContextMenuKeyboardShortcutUsed){                    
-                    // Handle the context menu triggered by the keyboard here.
-                    // 3 cases should be considered 
-                    //  1) we are editing (so in a slot: we do nothing special, because we want to show the native context menu),
-                    //  2) we are not editing and there is a frame selection: get the frames context menu opened for that selection
-                    //  3) we are not editing and there is no frame selection: get the caret context menu opened for that position (i.e. paste...)
-                    if(!this.appStore.isEditing) {
-                        // We wait for the next tick even to show the menu, because the flag about the key need to be reset
-                        // in the call of this handleClick() (for frames context menu)
-                        const areFramesSelected = (this.appStore.selectedFrames.length > 0);
-                        this.$nextTick(() => {
-                            // Prepare positioning stuff before showing the menu; then use the position informations to call the handleClick method
-                            const menuPosition = this.ensureFrameKBShortcutContextMenu(areFramesSelected);
-                            // We retrieve the element on which we need to call the menu: the first frame of the selection if some frames are selected,
-                            // the current blue caret otherwise
-                            const frameComponent = this.getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
-                            if(frameComponent) {
-                                if(areFramesSelected){
-                                    (frameComponent as InstanceType<typeof Frame>).handleClick(event, menuPosition);
-                                }
-                                else{
-                                    // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
-                                    const caretContainerComponent = this.getCaretContainerComponent(frameComponent);
-                                    caretContainerComponent.handleClick(event, menuPosition);
-                                }
-                            }
-                        });  
-                        // Prevent the default browser's handling of a context menu here
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
-                    }
-                    this.appStore.isContextMenuKeyboardShortcutUsed = false;
-                }
-                else{
-                    // Handling the context menu triggered by a click here.
-                    if(!isElementLabelSlotInput(event.target)){
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
-                    }
-                    else{
-                        const currentCustomMenuId: string = this.appStore.contextMenuShownId;
-                        if(currentCustomMenuId.length > 0){
-                            const customMenu = document.getElementById(getFrameContextMenuUIID(currentCustomMenuId));
-                            customMenu?.setAttribute("hidden", "true");
-                        }
-                    }
-                }
-            }
+            "contextmenu", (event) => this.handleContextMenu(event)
         );
 
         window.addEventListener("keydown", (event: KeyboardEvent) => {
+            if(this.appStore.selectedFrames.length > 0 && (event.key == " " || event.key.toLowerCase() == "enter")){
+                // Wait a bit to process keys before showing the context menu
+                setTimeout(() => {
+                    this.appStore.isContextMenuKeyboardShortcutUsed = true;
+                    this.handleContextMenu(new MouseEvent(""));
+                }, 200);
+            }
+            
             // We need to register if the keyboard shortcut has been used to get the context menu
             // so we set the flag here. It will be reset when the context menu actions are consumed.
             if(event.key.toLowerCase() == "contextmenu"){
@@ -522,6 +480,57 @@ export default Vue.extend({
                     const focusSlotInfo = parseLabelSlotUIID(focusSpanElement.id);
                     this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: docSelection.anchorOffset},
                         {slotInfos: focusSlotInfo, cursorPos: docSelection.focusOffset});
+                }
+            }
+        },
+
+        handleContextMenu(event: MouseEvent) {
+            // This method can be called either when the mouse has been right-clicked (context menu) or a keyboard shortcut for context menu has been hit
+            if(this.appStore.isContextMenuKeyboardShortcutUsed){                    
+                // Handle the context menu triggered by the keyboard here.
+                // 3 cases should be considered 
+                //  1) we are editing (so in a slot: we do nothing special, because we want to show the native context menu),
+                //  2) we are not editing and there is a frame selection: get the frames context menu opened for that selection
+                //  3) we are not editing and there is no frame selection: get the caret context menu opened for that position (i.e. paste...)
+                if(!this.appStore.isEditing) {
+                    // We wait for the next tick even to show the menu, because the flag about the key need to be reset
+                    // in the call of this handleClick() (for frames context menu)
+                    const areFramesSelected = (this.appStore.selectedFrames.length > 0);
+                    this.$nextTick(() => {
+                        // Prepare positioning stuff before showing the menu; then use the position informations to call the handleClick method
+                        const menuPosition = this.ensureFrameKBShortcutContextMenu(areFramesSelected);
+                        // We retrieve the element on which we need to call the menu: the first frame of the selection if some frames are selected,
+                        // the current blue caret otherwise
+                        const frameComponent = this.getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
+                        if(frameComponent) {
+                            if(areFramesSelected){
+                                (frameComponent as InstanceType<typeof Frame>).handleClick(event, menuPosition);
+                            }
+                            else{
+                                // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
+                                const caretContainerComponent = this.getCaretContainerComponent(frameComponent);
+                                caretContainerComponent.handleClick(event, menuPosition);
+                            }
+                        }
+                    });  
+                    // Prevent the default browser's handling of a context menu here
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                }
+                this.appStore.isContextMenuKeyboardShortcutUsed = false;
+            }
+            else{
+                // Handling the context menu triggered by a click here.
+                if(!isElementLabelSlotInput(event.target)){
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                }
+                else{
+                    const currentCustomMenuId: string = this.appStore.contextMenuShownId;
+                    if(currentCustomMenuId.length > 0){
+                        const customMenu = document.getElementById(getFrameContextMenuUIID(currentCustomMenuId));
+                        customMenu?.setAttribute("hidden", "true");
+                    }
                 }
             }
         },
