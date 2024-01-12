@@ -198,9 +198,10 @@ export default Vue.extend({
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
-            // We do so by simulating a key down event (which exists the current slot)
+            // We do so by simulating a key down event (which exits the current slot)
             const focusCursorInfos = useStore().focusSlotCursorInfos;
             if(useStore().isEditing && focusCursorInfos){
+                useStore().ignoreFocusRequest = false;
                 document.getElementById(getFrameLabelSlotsStructureUIID(focusCursorInfos.slotInfos.frameId, focusCursorInfos.slotInfos.labelSlotsIndex))?.dispatchEvent(
                     new KeyboardEvent("keydown", {
                         key: "ArrowDown",

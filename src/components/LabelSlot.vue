@@ -66,7 +66,7 @@ import { getLabelSlotUIID, CustomEventTypes, getFrameHeaderUIID, closeBracketCha
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot} from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
 import LabelSlotsStructureVue from "./LabelSlotsStructure.vue";
@@ -175,7 +175,10 @@ export default Vue.extend({
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
             const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
-            
+            const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall 
+                && this.isFrameEmptyAndAtLabelSlotStart
+                && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
+                    || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
             return {
                 // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
                 // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
@@ -183,7 +186,7 @@ export default Vue.extend({
                 // to those indicating there is no compulsory value
                 "background-color": ((this.focused) 
                     ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : ((isStructureSingleSlot && !isSlotOptional && this.code.trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
+                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot) && !isSlotOptional && this.code.trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
                     + " !important", 
             };
         }, 
@@ -248,12 +251,22 @@ export default Vue.extend({
             return this.appStore.isDraggingFrame;
         },
 
-        isFrameEmpty(): boolean {
+        isFrameEmptyAndAtLabelSlotStart(): boolean {
             // This computed property checks that all the (visible) editable slots of a frame, and if applies, its body, are empty
-            const isEmpty = (this.frameId in this.appStore.frameObjects) && !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent) => ((labelSlotContent.shown??true) && 
-                (labelSlotContent.slotStructures.fields.length > 1 || (labelSlotContent.slotStructures.fields[0] as BaseSlot).code.trim().length > 0))) 
+            // (note that if we have nothing but operators, or empty quotes, that is considered as empty)
+            if(!(this.frameId in this.appStore.frameObjects)){
+                return false;
+            }            
+            let firstVisibleLabelSlotsIndex = -1;
+            const isEmpty = !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent, index) => {
+                if((labelSlotContent.shown??true) && firstVisibleLabelSlotsIndex < 0 ){
+                    firstVisibleLabelSlotsIndex = index;
+                }
+                return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures));
+            })
                 || this.appStore.frameObjects[this.frameId].childrenIds.length > 0);
-            return isEmpty;
+            return this.labelSlotsIndex == firstVisibleLabelSlotsIndex && this.slotId == "0" && isEmpty;
+
         },
     },
 
@@ -1183,10 +1196,10 @@ export default Vue.extend({
 
         onBackSpaceKeyDown(event: KeyboardEvent){
             // When the backspace key is hit we delete the container frame when:
-            //  1) there is no text in the slot
+            //  1) there is no text in the slots
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
-            if(this.isFrameEmpty){
+            if(this.isFrameEmptyAndAtLabelSlotStart){
                 this.appStore.ignoreKeyEvent=true;
                 this.appStore.bypassEditableSlotBlurErrorCheck = true;
                 
@@ -1215,7 +1228,7 @@ export default Vue.extend({
         },
 
         onBackSpaceKeyUp(){
-            this.canBackspaceDeleteFrame = this.isFrameEmpty;
+            this.canBackspaceDeleteFrame = this.isFrameEmptyAndAtLabelSlotStart;
             this.requestDelayBackspaceFrameRemoval = false;
         },
 
@@ -1228,12 +1241,13 @@ export default Vue.extend({
             // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
             const currentTextCursorPos = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text, unless there are brackets already in the next slot
+            // (and in any case, we make sure we get into the slot structure)
             const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
             const hasFollowingBracketSlot = (getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true)?.slotType == SlotType.bracket);
-            const isSelectedFunction =  ((typeOfSelected.includes("function") || typeOfSelected.includes("method")) && !hasFollowingBracketSlot);
+            const isSelectedFunction =  typeOfSelected.includes("function") || typeOfSelected.includes("method");
             const newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0))
                 + selectedItem.replace(new RegExp("\\(.*"), "") 
-                + ((isSelectedFunction)?"()":"");
+                + ((isSelectedFunction && !hasFollowingBracketSlot)?"()":"");
             
             // Remove content before the cursor (and put cursor at the beginning):
             this.setSlotContent(this.getSlotContent().substr(currentTextCursorPos));
@@ -1248,6 +1262,16 @@ export default Vue.extend({
                     document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                         new KeyboardEvent("keydown", {
                             key: "ArrowLeft",
+                        })
+                    );
+                });
+            }
+            else if(isSelectedFunction){
+                // And if we have added a function, but didn't have to insert the brackets with a/c, then we go right to get inside the existing brackets
+                this.$nextTick(() => {
+                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                        new KeyboardEvent("keydown", {
+                            key: "ArrowRight",
                         })
                     );
                 });

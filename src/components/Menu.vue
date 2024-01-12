@@ -853,8 +853,8 @@ export default Vue.extend({
 
 // This essentially acts as the class for the keyboard shortcut spans (for the properties that are ovewritten, other bits are in .strype-menu-kb-shortcut)
 .bm-item-list > * > span {
-    color: #817e7c;
-    font-weight: 400;
+    color: #817e7c !important;
+    font-weight: 400 !important;
 }
 
 .bm-item-list > hr {

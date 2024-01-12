@@ -297,7 +297,7 @@ export default Vue.extend({
                 const codeToInsert = this.mbAPIExampleCodeParts.join("");
                 if(!this.isEditing){
                     // part 1): not editing the code: we create a new method call frame, then add the code in (parts 2 & 3)
-                    this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.empty)).then(() => {
+                    this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then(() => {
                         // as we added a new frame, we need to get the new current frame
                         this.addExampleCodeInSlot({
                             slotInfos: {

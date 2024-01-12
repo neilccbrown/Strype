@@ -68,6 +68,12 @@
             "detail": "vue-cli-service build"
         },
         {
+            "type":"npm",
+            "script":"test:cypress",
+            "group":"test",
+            "label":"test with cypress"
+        },
+        {
             "type": "shell",
             "command": "npm cache clean --force",
             "problemMatcher": [],
