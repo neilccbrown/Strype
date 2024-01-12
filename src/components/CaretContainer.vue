@@ -156,7 +156,6 @@ export default Vue.extend({
                 else {
                     const code = (event as ClipboardEvent).clipboardData?.getData("text");
                     if (code && copyFramesFromParsedPython(code)) {
-                        console.log("Worked correctly: " + this.appStore.isSelectionCopied);
                         this.doPaste();
                     }
                     // Must take ourselves off the clipboard after:
