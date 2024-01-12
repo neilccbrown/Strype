@@ -77,7 +77,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID, handleContextMenuKBInteraction, SpaceKeyHitStates } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -355,33 +355,6 @@ export default Vue.extend({
             // If a modal is open, we let the event be handled by the browser
             if(this.appStore.isModalDlgShown){
                 return;
-            }
-
-            // If we are handling space, we update the space key hit state in case we are doing a key combination sequence
-            if(!this.isEditing && this.appStore.spaceKeyHitState != SpaceKeyHitStates.none){
-                let exit = false;
-                switch(this.appStore.spaceKeyHitState){
-                case SpaceKeyHitStates.spaceHit:
-                    // This is a simple space hit, not a combination, we just update the state flag
-                    this.appStore.spaceKeyHitState = SpaceKeyHitStates.none;
-                    break;
-                case SpaceKeyHitStates.combinationKeyHit:
-                    // This is a key combination with space, and the other key is released: we ignore any process
-                    // the shortcut will be handled elsewhere, we notify that we processed the other key.
-                    this.appStore.spaceKeyHitState = SpaceKeyHitStates.combinationKeyRelease;
-                    exit = true;
-                    break;
-                case SpaceKeyHitStates.combinationKeyRelease:
-                    // This is a key combination with space, and the space key is released: we ignore any process
-                    // we notify that we processed the full combination of keys (reset state)
-                    this.appStore.spaceKeyHitState = SpaceKeyHitStates.none;
-                    exit = true;
-                    break;
-
-                }
-                if(exit) {
-                    return;
-                }
             }
 
             // If a context menu is currently displayed, stop any action here (keyboard interaction is handled for the keydown event)
