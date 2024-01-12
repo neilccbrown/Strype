@@ -577,8 +577,8 @@ export default Vue.extend({
                     deleteEntriesIndexes.forEach((indexValue, index) => {
                         const isDeleteOuter = (index > 0);
                         const menuEntryElement = contextMenu.childNodes[indexValue];
-                        menuEntryElement.addEventListener("mouseenter", () => this.onDeleteEntryContextMenuHover(true, isDeleteOuter));
-                        menuEntryElement.addEventListener("mouseleave", () => this.onDeleteEntryContextMenuHover(false, isDeleteOuter));
+                        menuEntryElement.addEventListener("focusin", () => this.onDeleteEntryContextMenuHover(true, isDeleteOuter));
+                        menuEntryElement.addEventListener("focusout", () => this.onDeleteEntryContextMenuHover(false, isDeleteOuter));
                     });
 
                     // If there are no frame(s) selected by the user already in a multi selection
