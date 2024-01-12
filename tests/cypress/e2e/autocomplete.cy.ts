@@ -4,6 +4,8 @@ import "@testing-library/cypress/add-commands";
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 chai.use(require("chai-sorted"));
+import failOnConsoleError from "cypress-fail-on-console-error";
+failOnConsoleError();
 
 chai.Assertion.addMethod("beLocaleSorted", function () {
     const $element = this._obj;

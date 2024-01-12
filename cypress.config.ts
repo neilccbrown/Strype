@@ -3,8 +3,9 @@ import {rm} from "fs";
 
 export default defineConfig({
     downloadsFolder: "tests/cypress/downloads",
-    fixturesFolder:	false,
+    fixturesFolder:	"tests/cypress/fixtures",
     screenshotsFolder: "tests/cypress/screenshots",
+    supportFolder: "tests/cypress/support",
     videosFolder: "tests/cypress/videos",
     video: true,
     e2e: {
