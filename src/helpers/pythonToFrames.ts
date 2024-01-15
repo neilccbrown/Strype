@@ -149,8 +149,8 @@ export function copyFramesFromParsedPython(code: string) : boolean {
     useStore().copiedFrames = {};
     useStore().copiedSelectionFrameIds = [];
     try {
-        // To avoid problems, choose an ID way outside the existing frames:
-        copyFramesFromPython(parsedBySkulpt, {nextId: 1000000, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
+        // Use the next available ID to avoid clashing with any existing IDs:
+        copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
         return true;
     }
     catch (e) {
