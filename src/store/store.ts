@@ -2037,9 +2037,14 @@ export const useStore = defineStore("app", {
                             }
                         }
                         else{
-                            const prevFramePos = availablePositions[availablePositions.findIndex((e)=> e.frameId===currentFrame.id)-1]; 
-                            const newCurrent = (prevFramePos) ? {id: prevFramePos.frameId, caretPosition: prevFramePos.caretPosition} as CurrentFrame : this.currentFrame;
-                            this.setCurrentFrame({id: newCurrent.id, caretPosition: newCurrent.caretPosition});
+                            // If the frame is a joint frame and the cursor position is below, and we are backspacing,
+                            // there's actually no need to change the cursor position, because we should still be below
+                            // the joint frame's parent:
+                            if (!currentFrame.frameType.isJointFrame || this.currentFrame.caretPosition != CaretPosition.below) {
+                                const prevFramePos = availablePositions[availablePositions.findIndex((e) => e.frameId === currentFrame.id) - 1];
+                                const newCurrent = (prevFramePos) ? {id: prevFramePos.frameId, caretPosition: prevFramePos.caretPosition} as CurrentFrame : this.currentFrame;
+                                this.setCurrentFrame({id: newCurrent.id, caretPosition: newCurrent.caretPosition});
+                            }
                             deleteChildren = true;
                         }
                         frameToDelete.frameId = currentFrame.id;
