@@ -18,7 +18,7 @@ export default defineConfig({
 
             on("task", {
                 deleteFile(filePath) {
-                    console.log("deleting file %s", filePath)
+                    //console.log("deleting file %s", filePath)
 
                     return new Promise((resolve, reject) => {
                         rm(filePath, {maxRetries: 10}, (err) => {
