@@ -82,6 +82,9 @@ function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, 
         
     (cy.get("body") as any).paste(code);
     checkDownloadedCodeEquals(expected ?? code);
+    // Refocus the editor and go to the bottom:
+    cy.get("#frame_id_-3").focus();
+    cy.get("body").type("{end}");
 }
 
 describe("Python round-trip", () => {
@@ -166,5 +169,53 @@ else:
     x = -1
 x = x * x
 `);
+    });
+    
+    it("Allows pasting else/elif at only the right places", () => {
+        // Put the initial if in and clear everything else:
+        const ifCode = "if True:\n    x = -10\n";
+        testRoundTripPasteAndDownload(ifCode);
+        const elseCode = "else:\n    x = -9\n";
+        // Parameterise, to be able to tell them apart:
+        const elifCode = (x : number) => "elif x == " + x + ":\n    x = -" + x + "\n";
+        
+        // Test just the else after if:
+        cy.get("body").type("{end}{uparrow}");
+        (cy.get("body") as any).paste(elseCode);
+        checkDownloadedCodeEquals(ifCode + elseCode);
+        // Delete just the else:
+        cy.get("body").type("{end}{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{uparrow}");
+        
+        // Test with one elif
+        (cy.get("body") as any).paste(elifCode(0));
+        checkDownloadedCodeEquals(ifCode + elifCode(0));
+        // Delete just the elif:
+        cy.get("body").type("{end}{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{uparrow}");
+        
+        // Clear and try if with two elif:
+        (cy.get("body") as any).paste(elifCode(0) + elifCode(1));
+        checkDownloadedCodeEquals(ifCode + elifCode(0) + elifCode(1));
+        // Delete just the two elif:
+        cy.get("body").type("{end}{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{backspace}");
+        checkDownloadedCodeEquals(ifCode);
+        // Now if with three elif and an else:
+        cy.get("body").type("{end}{uparrow}");
+        (cy.get("body") as any).paste(elifCode(0) + elifCode(1) + elifCode(2) + elseCode);
+        checkDownloadedCodeEquals(ifCode + elifCode(0) + elifCode(1) + elifCode(2) + elseCode);
+        // Check deletion works:
+        cy.get("body").type("{end}{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{backspace}");
+        checkDownloadedCodeEquals(ifCode);
     });
 });
