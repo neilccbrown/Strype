@@ -35,12 +35,12 @@ function header(match: CodeMatch) : string | RegExp {
 /**
  * Gets the matching item for a body from a CodeMatch (either the b part or an empty list)
  */
-function body(match: CodeMatch) : CodeMatch[] {
+function body(match: CodeMatch, usePassForEmptyBody? : boolean) : CodeMatch[] {
     if (typeof match === "string" || match instanceof RegExp) {
         return [];
     }
     else {
-        return match.b;
+        return (match.b.length == 0 && (usePassForEmptyBody ?? false)) ? ["pass"] : match.b;
     }
 }
 
@@ -162,7 +162,7 @@ function flatten(codeLines: CodeMatch[]) : (string | RegExp)[] {
     codeLines.forEach((l) => {
         r.push(header(l));
         // flatten the body and increase indent by 4 spaces:
-        flatten(body(l)).forEach((f)=> {
+        flatten(body(l, true)).forEach((f)=> {
             if (f instanceof RegExp) {
                 r.push(new RegExp(/ {4}/.source + f.source));
             }
@@ -304,6 +304,33 @@ describe("Deleting frames", () => {
         checkCodeEquals(defaultImports.concat([
             "foo()",
         ]).concat(defaultMyCode));
+    });
+    it("Lets you delete joint frames with backspace", () => {
+        // Add if, two elif and an else:
+        cy.get("body").type("{end}{backspace}{backspace}iTrue{rightarrow}lx==0{rightarrow}lx==1{rightarrow}e foo(){rightarrow}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s+:/, b:[]},
+            {h: /elif\s+x == 0\s*:/, b:[]},
+            {h: /elif\s+x == 1\s*:/, b:[]},
+            {h: /else\s*:/, b:[
+                "foo()",
+            ]},
+        ]));
+        cy.get("body").type("{end}{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s*:/, b:[]},
+            {h: /elif\s+x == 0\s*:/, b:[]},
+            {h: /elif\s+x == 1\s*:/, b:[]},
+        ]));
+        cy.get("body").type("{end}{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s*:/, b:[]},
+            {h: /elif\s+x == 0\s*:/, b:[]},
+        ]));
+        cy.get("body").type("{end}{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s+:/, b:[]},
+        ]));
     });
 });
 

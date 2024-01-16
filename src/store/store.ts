@@ -1983,6 +1983,11 @@ export const useStore = defineStore("app", {
                 //but here we could have 3+ single frames delete, so we need to also check to selection length.
                 showDeleteMessage = this.selectedFrames.length > 3;
             }
+            else if (this.frameObjects[this.currentFrame.id].jointFrameIds.length > 0 && key === "Backspace") {
+                // If they backspace after a joint frame that has joint frames (e.g. if +else),
+                // delete the last of the joint frames:
+                framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
+            }
             
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
