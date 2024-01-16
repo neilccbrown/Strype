@@ -105,6 +105,7 @@ describe("Python round-trip", () => {
         "raise (1 + 2 - 3) == (4 * 5 / 6)\n",
         // ** binds tighter than unary -, hence the space before:
         "raise foo ** - 6.7 ** False ** True ** 'bye'\n",
+        "try:\n    x = 0\nexcept:\n    x = 1\n",
     ];
     for (const basic of basics) {
         it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic));
@@ -217,5 +218,41 @@ x = x * x
         cy.wait(500);
         cy.get("body").type("{backspace}");
         checkDownloadedCodeEquals(ifCode);
+    });
+
+    it("Allows pasting except/else/finally after a try", () => {
+        // Put the initial if in and clear everything else:
+        const tryCode = "try:\n    x = -10\n";
+        const elseCode = "else:\n    x = -9\n";
+        const finallyCode = "finally:\n    x = -8\n";
+        // Parameterise, to be able to tell them apart:
+        const exceptCode = (errType : string, varName?: string) => "except" + (errType ? " " + errType : "") + (varName ? " as " + varName : "") + ":\n    x = " + (varName ?? "0") + "\n";
+
+        testRoundTripPasteAndDownload(tryCode + finallyCode);
+        // Delete the finally:
+        cy.get("body").type("{end}{backspace}");
+        
+        const testCode = (code : string[]) => {
+            cy.get("body").type("{end}{uparrow}");
+            (cy.get("body") as any).paste(code.join(""));
+            checkDownloadedCodeEquals(tryCode + code.join(""));
+            cy.get("body").type("{end}");
+            for (let i = 0; i < code.length; i++) {
+                cy.wait(500);
+                cy.get("body").type("{backspace}");
+            }
+            checkDownloadedCodeEquals(tryCode);
+        };
+        
+        testCode([exceptCode("")]);
+        testCode([exceptCode(""), finallyCode]);
+        testCode([exceptCode("Exception")]);
+        testCode([exceptCode("Exception"), finallyCode]);
+        testCode([exceptCode("Exception", "e")]);
+        testCode([exceptCode("Exception", "e"), elseCode, finallyCode]);
+        testCode([exceptCode("CustomError"), exceptCode("Exception", "e"), elseCode, finallyCode]);
+        testCode([elseCode]);
+        // This is the potentially tricky case as it can be confused with an if/else at first look: 
+        testCode([elseCode, finallyCode]);
     });
 });
