@@ -124,6 +124,29 @@ export function copyFramesFromParsedPython(code: string) : boolean {
             codeLines[i] = codeLines[i].slice(lowestIndent);
         }
     }
+
+    // Special case: things beginning with joint frames (else, elif, except, finally) are
+    // not parsed by Skulpt as-is (because they lack the main construct before), but we
+    // would like to support parsing them.  So we look for them and try gluing on
+    // the mandatory first part (if, try) then if the only parsed thing is the single compound
+    // frame (because we don't want to allow else, then some other arbitrary frames)
+    // then we take off the head and keep the rest.
+    
+    // So, find first word of first non-blank line:
+    let addedFakeJoinParent = false;
+    const firstNonBlank = codeLines.find((l) => l.trim() != "");
+    if (firstNonBlank) {
+        const leadingIndent = firstNonBlank.replace(/[^ ].*/, "");
+        const firstWord = firstNonBlank.replace(/[^a-z].*/, "");
+        switch(firstWord) {
+        case "else":
+        case "elif":
+            // We glue an if on:
+            codeLines.unshift(leadingIndent + "if True:\n", leadingIndent + "    pass\n");
+            addedFakeJoinParent = true;
+            break;
+        }
+    }
         
     // Have to configure Skulpt even though we're only using it for parsing:
     Sk.configure({});
@@ -151,6 +174,19 @@ export function copyFramesFromParsedPython(code: string) : boolean {
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
         copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
+        if (addedFakeJoinParent) {
+            // Now have to detach that parent again.  If it was joint frames only, there should be one parent on the list:
+            if (useStore().copiedSelectionFrameIds.length == 1) {
+                // Clone the list to avoid modification issues:
+                useStore().copiedSelectionFrameIds = [...useStore().copiedFrames[useStore().copiedSelectionFrameIds[0]].jointFrameIds];
+            }
+            else {
+                // Uh-oh, they had other things after the else, etc.  We can't handle that, so abandon:
+                useStore().copiedFrames = {};
+                useStore().copiedSelectionFrameIds = [];
+                return false;
+            }
+        }
         return true;
     }
     catch (e) {
