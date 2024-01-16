@@ -131,19 +131,31 @@ export function copyFramesFromParsedPython(code: string) : boolean {
     // the mandatory first part (if, try) then if the only parsed thing is the single compound
     // frame (because we don't want to allow else, then some other arbitrary frames)
     // then we take off the head and keep the rest.
-    
+
+    // 0 if we added none, 1 if we added only a parent, 2 if we add a parent and an initial join:
+    let addedFakeJoinParent = 0;
     // So, find first word of first non-blank line:
-    let addedFakeJoinParent = false;
     const firstNonBlank = codeLines.find((l) => l.trim() != "");
     if (firstNonBlank) {
         const leadingIndent = firstNonBlank.replace(/[^ ].*/, "");
         const firstWord = firstNonBlank.replace(/[^a-z].*/, "");
         switch(firstWord) {
-        case "else":
         case "elif":
             // We glue an if on:
             codeLines.unshift(leadingIndent + "if True:\n", leadingIndent + "    pass\n");
-            addedFakeJoinParent = true;
+            addedFakeJoinParent = 1;
+            break;
+        // So else can actually be with "if" or "try".  We take advantage of the fact that if it's with
+        // "if", nothing valid can follow an else.  So it will always be the last item.  With "try"
+        // that's not the case.  But if we always glue a "try" on the front, it will work for the solitary-else
+        // case for "if", and it will work with "try".  So we do that:
+        case "else":
+        case "except":
+        case "finally":
+            // We glue a try on.  We must also glue on an except, because actually "else" is only valid if it follows an "except",
+            // and all three are valid to follow a try/except.
+            codeLines.unshift(leadingIndent + "try:\n", leadingIndent + "    pass\n", leadingIndent + "except:\n", leadingIndent + "    pass\n");
+            addedFakeJoinParent = 2;
             break;
         }
     }
@@ -174,11 +186,11 @@ export function copyFramesFromParsedPython(code: string) : boolean {
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
         copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
-        if (addedFakeJoinParent) {
+        if (addedFakeJoinParent > 0) {
             // Now have to detach that parent again.  If it was joint frames only, there should be one parent on the list:
             if (useStore().copiedSelectionFrameIds.length == 1) {
                 // Clone the list to avoid modification issues:
-                useStore().copiedSelectionFrameIds = [...useStore().copiedFrames[useStore().copiedSelectionFrameIds[0]].jointFrameIds];
+                useStore().copiedSelectionFrameIds = [...useStore().copiedFrames[useStore().copiedSelectionFrameIds[0]].jointFrameIds.slice(addedFakeJoinParent - 1)];
             }
             else {
                 // Uh-oh, they had other things after the else, etc.  We can't handle that, so abandon:
@@ -511,12 +523,18 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 const grandchildren = children(child);
                 let exceptFrame;
                 if (grandchildren.length == 4 && grandchildren[2].value === "as") {
+                    // except ErrorType as varName:
                     exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures:
                                 concatSlots(toSlots(grandchildren[1]), "as", toSlots(grandchildren[3])),
                     }});
                 }
                 else if (grandchildren.length == 2) {
+                    // except varName:
                     exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: toSlots(grandchildren[1])}});
+                }
+                else if (grandchildren.length == 1) {
+                    // Just the except keyword, i.e. blank except:
+                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: {fields: [{code: ""}], operators: []}}});
                 }
                 else {
                     // Shouldn't happen, but skip if so:
@@ -531,6 +549,10 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 // Weirdly, finally doesn't seem to have a proper node type, it's just a normal child
                 // followed by a colon followed by a body
                 s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.finally, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}, (f) => f.jointParentId = tryFrame[0].id).nextId;
+            }
+            else if (child.value === "else") {
+                // else is the same as finally, a normal child then colon then body:
+                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}, (f) => f.jointParentId = tryFrame[0].id).nextId;
             }
         }
         break;
