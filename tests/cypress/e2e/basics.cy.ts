@@ -3,6 +3,8 @@ import {expect} from "chai";
 import i18n from "@/i18n";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require("cypress-terminal-report/src/installLogsCollector")();
 
 /**
  * A CodeMatch can be an exact string to match a single line frame,
@@ -307,11 +309,11 @@ describe("Deleting frames", () => {
     });
     it("Lets you delete joint frames with backspace", () => {
         // Add if, two elif and an else:
-        cy.get("body").type("{end}{backspace}{backspace}iTrue{rightarrow}lx==0{rightarrow}lx==1{rightarrow}e foo(){rightarrow}");
+        cy.get("body").type("{end}{backspace}{backspace}iTrue{rightarrow}lx==0{rightarrow}lx==1{rightarrow}=x=0{rightarrow}e foo(){rightarrow}");
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s+:/, b:[]},
             {h: /elif\s+x == 0\s*:/, b:[]},
-            {h: /elif\s+x == 1\s*:/, b:[]},
+            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
             {h: /else\s*:/, b:[
                 "foo()",
             ]},
@@ -320,7 +322,7 @@ describe("Deleting frames", () => {
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s*:/, b:[]},
             {h: /elif\s+x == 0\s*:/, b:[]},
-            {h: /elif\s+x == 1\s*:/, b:[]},
+            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
         ]));
         cy.get("body").type("{end}{backspace}");
         checkCodeEquals(defaultImports.concat([
@@ -328,6 +330,21 @@ describe("Deleting frames", () => {
             {h: /elif\s+x == 0\s*:/, b:[]},
         ]));
         cy.get("body").type("{end}{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s+:/, b:[]},
+        ]));
+        // Now undo three times and check:
+        cy.get("body").type("{ctrl}zzz");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s+:/, b:[]},
+            {h: /elif\s+x == 0\s*:/, b:[]},
+            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
+            {h: /else\s*:/, b:[
+                "foo()",
+            ]},
+        ]));
+        // Now delete all in one go (helps check cursor placement after delete):
+        cy.get("body").type("{end}{backspace}{backspace}{backspace}");
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s+:/, b:[]},
         ]));
