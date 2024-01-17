@@ -57,7 +57,8 @@
         "forbiddenFrameMove":"The selected frame(s) cannot be moved because it results in illegal code.",
         "functionFrameCantDelete":"A function definition frame cannot be deleted from this caret position when content is not empty.",
         "gdriveConnectToSaveFailed":"The connection to Google Drive has been lost. The synchronisation with Google Drive is stopped, latest changes may not have been saved.",
-        "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive."
+        "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive.",
+        "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}"
     },
     "buttonLabel":{
         "undo":"Undo",

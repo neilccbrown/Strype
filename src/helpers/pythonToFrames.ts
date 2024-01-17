@@ -89,9 +89,9 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
 // The main entry point to this module.  Given a string of Python code that the user
 // has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
 // ready to be pasted immediately afterwards.
-// Returns a boolean indicating whether we were successful.  A return of false
-// usually indicates that the string wasn't valid Python (e.g. syntactically invalid)
-export function copyFramesFromParsedPython(code: string) : boolean {
+// If successful, returns null.  If unsuccessful, returns a string with some info about
+// where the Python parse failed.
+export function copyFramesFromParsedPython(code: string) : string | null {
     // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
     const codeLines = code.split(/\r?\n/);
@@ -162,7 +162,13 @@ export function copyFramesFromParsedPython(code: string) : boolean {
         
     // Have to configure Skulpt even though we're only using it for parsing:
     Sk.configure({});
-    const parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
+    let parsed;
+    try {
+        parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
+    }
+    catch (e) {
+        return (e as any).$offset?.v?.[2]?.$mangled + " line: " + (e as any).traceback?.[0].lineno;
+    }
     const parsedBySkulpt = parsed["cst"];
     
     // Skulpt doesn't preserve blanks or comments so we must find them then later reinsert them
@@ -196,17 +202,17 @@ export function copyFramesFromParsedPython(code: string) : boolean {
                 // Uh-oh, they had other things after the else, etc.  We can't handle that, so abandon:
                 useStore().copiedFrames = {};
                 useStore().copiedSelectionFrameIds = [];
-                return false;
+                return "cannot paste else/elif/except/finally and further content in one paste";
             }
         }
-        return true;
+        return null;
     }
     catch (e) {
         console.error(e, "On:\n" + debugToString(parsedBySkulpt, "  "));
         // Don't leave partial content:
         useStore().copiedFrames = {};
         useStore().copiedSelectionFrameIds = [];
-        return false;
+        return (e as any).$offset?.v?.[2]?.$mangled + " line: " + (e as any).traceback?.[0].lineno;
     }
 }
 

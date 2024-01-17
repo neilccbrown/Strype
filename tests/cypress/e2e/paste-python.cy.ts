@@ -256,3 +256,31 @@ x = x * x
         testCode([elseCode, finallyCode]);
     });
 });
+
+// If error is null, there shouldn't be an error banner
+function assertPasteError(codeToPaste: string, error: RegExp | null) {
+    focusEditorPasteAndClear();
+    (cy.get("body") as any).paste(codeToPaste);
+    if (error != null) {
+        cy.get(".message-banner-container span:first-child").invoke("text").should("match", error);
+        cy.get(".message-banner-cross").click();
+    }
+    // Whether it never existed, or we closed it, it should now not exist:
+    cy.get(".message-banner-container").should("not.exist");
+}
+
+describe.only("Python paste errors", () => {
+    it("Shows no error on blank or valid paste", () => {
+        assertPasteError("", null);
+        assertPasteError("    ", null);
+        assertPasteError("    x = 0", null);
+        assertPasteError("    x", null);
+    });
+    it("Shows an error on invalid paste", () => {
+        assertPasteError("!", /Invalid Python code pasted.*!/);
+        assertPasteError("ifg True:\n    pass", /Invalid Python code pasted.*True/);
+        assertPasteError("if True:\n    invalid%%%", /Invalid Python code pasted.*%%%/);
+        // We have a different message for when we paste an else with more content after (which we can't handle)
+        assertPasteError("else:\n    pass\nprint(\"Hi\")", /else/);
+    });
+});
