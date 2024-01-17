@@ -416,7 +416,7 @@ export default Vue.extend({
             else{
                 this.updateSignInStatus(false);
                 const message = MessageDefinitions.GDriveConnectToSaveFailed;
-                this.appStore.currentMessage = message;
+                this.appStore.showMessage(message, null);
             }
         },
         
@@ -515,8 +515,7 @@ export default Vue.extend({
                     },
                     (reason) => {
                         // If the Strype folder cound't be created, we alert the user (temporary message banner) but we proceed with the save file workflow1
-                        this.appStore.currentMessage = MessageDefinitions.GDriveCantCreateStrypeFolder;
-                        setTimeout(() => this.appStore.currentMessage = MessageDefinitions.NoMessage, 3000);  
+                        this.appStore.showMessage(MessageDefinitions.GDriveCantCreateStrypeFolder, 3000);  
                         // Continue with callback method after check is done
                         checkFolderDoneCallBack(strypeFolderId);
                     });

@@ -31,12 +31,9 @@ export function flash(callerData: Record<string, any>) : void {
                 },
 
                 onUploadSuccessHandler: () => {
-                    useStore().currentMessage = MessageDefinitions.UploadSuccessMicrobit;
+                    useStore().showMessage(MessageDefinitions.UploadSuccessMicrobit, 7000);
 
                     callerData.showProgress = false;
-
-                    //don't leave the message for ever
-                    setTimeout(() => useStore().currentMessage = MessageDefinitions.NoMessage, 7000);
                 },
                 onUploadFailureHandler: (error) => {
                     callerData.showProgress = false;
@@ -45,12 +42,9 @@ export function flash(callerData: Record<string, any>) : void {
                     const msgObj: FormattedMessage = (message.message as FormattedMessage);
                     msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
 
-                    useStore().currentMessage = message;
+                    useStore().showMessage(message, 7000);
 
                     callerData.showProgress = false;
-
-                    //don't leave the message for ever
-                    setTimeout(() => useStore().currentMessage = MessageDefinitions.NoMessage, 7000);
                 },
             };
             flashData(webUSBListener, parserElements.compiler);
