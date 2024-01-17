@@ -2396,7 +2396,7 @@ export const useStore = defineStore("app", {
                 }                
             }
             else{
-                const message = MessageDefinitions.UploadEditorFileError;
+                const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
                 const msgObj: FormattedMessage = (message.message as FormattedMessage);
                 msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
                 this.currentMessage = message;

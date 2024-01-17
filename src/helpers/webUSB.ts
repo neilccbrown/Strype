@@ -8,6 +8,7 @@ import { parseCodeAndGetParseElements } from "@/parser/parser";
 import { getAppSimpleMsgDlgId } from "./editor";
 import { vm } from "@/main";
 import i18n from "@/i18n";
+import { cloneDeep } from "lodash";
 
 export function flash(callerData: Record<string, any>) : void {
     let proceed = true;
@@ -40,7 +41,7 @@ export function flash(callerData: Record<string, any>) : void {
                 onUploadFailureHandler: (error) => {
                     callerData.showProgress = false;
 
-                    const message = MessageDefinitions.UploadFailureMicrobit;
+                    const message = cloneDeep(MessageDefinitions.UploadFailureMicrobit);
                     const msgObj: FormattedMessage = (message.message as FormattedMessage);
                     msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
 
