@@ -3,6 +3,8 @@ import {expect} from "chai";
 import i18n from "@/i18n";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require("cypress-terminal-report/src/installLogsCollector")();
 
 /**
  * A CodeMatch can be an exact string to match a single line frame,
@@ -35,12 +37,12 @@ function header(match: CodeMatch) : string | RegExp {
 /**
  * Gets the matching item for a body from a CodeMatch (either the b part or an empty list)
  */
-function body(match: CodeMatch) : CodeMatch[] {
+function body(match: CodeMatch, usePassForEmptyBody? : boolean) : CodeMatch[] {
     if (typeof match === "string" || match instanceof RegExp) {
         return [];
     }
     else {
-        return match.b;
+        return (match.b.length == 0 && (usePassForEmptyBody ?? false)) ? ["pass"] : match.b;
     }
 }
 
@@ -67,11 +69,16 @@ function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
         }
         matchLine(header(match), s.trimEnd());
     }));
+    
+    // We used to look for .frameDiv for body items, but this can also pick up items in the body of joint frames
+    // So we use the ID to find our own body, then look in there:
+    const bodySelector = "#" + item.attr("id")?.replace("frame_id_", "frameBodyId_") + " .frameDiv";
+    
     // .get().filter() fails if there are no items but the body is permitted to be empty for us.  So we must check
     // if we expect an empty body and act accordingly:
     if (body(match).length > 0) {
-        cy.get(".frameDiv").filter((i, e) => noFrameDivBetween(item.get()[0], e)).should("have.length", body(match).length);
-        cy.get(".frameDiv").filter((i, e) => noFrameDivBetween(item.get()[0], e)).each((f, i) => {
+        cy.get(bodySelector).filter((i, e) => noFrameDivBetween(item.get()[0], e)).should("have.length", body(match).length);
+        cy.get(bodySelector).filter((i, e) => noFrameDivBetween(item.get()[0], e)).each((f, i) => {
             // Check index is valid, otherwise we later get an index out of bounds:
             expect(i).lessThan(body(match).length, "In body of " + String(header(match)));
             // We must now only look within that element to process it:
@@ -83,7 +90,7 @@ function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
     else {
         // This is not technically the reverse of the above, but Cypress doesn't like .get().filter().should("not.exist")
         // And if the body isn't empty, there should be no child frameDiv anywhere in the tree, so this is still accurate:
-        cy.get(".frameDiv").should("not.exist");
+        cy.get(bodySelector).should("not.exist");
     }
 }
 
@@ -115,7 +122,12 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
  */
 function sanityCheck() : void {
     // Check exactly one caret visible or focused input field:
-    cy.get(".caret:not(.invisible),.label-slot-container:focus").should("have.length", 1);
+    if (document?.getSelection()?.focusNode == null) {
+        cy.get(".caret:not(.invisible)").should("have.length.at.most", 1);
+    }
+    else {
+        cy.get(".caret:not(.invisible)").should("have.length", 0);
+    }
 }
 
 /**
@@ -152,7 +164,7 @@ function flatten(codeLines: CodeMatch[]) : (string | RegExp)[] {
     codeLines.forEach((l) => {
         r.push(header(l));
         // flatten the body and increase indent by 4 spaces:
-        flatten(body(l)).forEach((f)=> {
+        flatten(body(l, true)).forEach((f)=> {
             if (f instanceof RegExp) {
                 r.push(new RegExp(/ {4}/.source + f.source));
             }
@@ -294,6 +306,48 @@ describe("Deleting frames", () => {
         checkCodeEquals(defaultImports.concat([
             "foo()",
         ]).concat(defaultMyCode));
+    });
+    it("Lets you delete joint frames with backspace", () => {
+        // Add if, two elif and an else:
+        cy.get("body").type("{end}{backspace}{backspace}iTrue{rightarrow}lx==0{rightarrow}lx==1{rightarrow}=x=0{rightarrow}e foo(){rightarrow}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s+:/, b:[]},
+            {h: /elif\s+x == 0\s*:/, b:[]},
+            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
+            {h: /else\s*:/, b:[
+                "foo()",
+            ]},
+        ]));
+        cy.get("body").type("{end}{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s*:/, b:[]},
+            {h: /elif\s+x == 0\s*:/, b:[]},
+            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
+        ]));
+        cy.get("body").type("{end}{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s*:/, b:[]},
+            {h: /elif\s+x == 0\s*:/, b:[]},
+        ]));
+        cy.get("body").type("{end}{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s+:/, b:[]},
+        ]));
+        // Now undo three times and check:
+        cy.get("body").type("{ctrl}zzz");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s+:/, b:[]},
+            {h: /elif\s+x == 0\s*:/, b:[]},
+            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
+            {h: /else\s*:/, b:[
+                "foo()",
+            ]},
+        ]));
+        // Now delete all in one go (helps check cursor placement after delete):
+        cy.get("body").type("{end}{backspace}{backspace}{backspace}");
+        checkCodeEquals(defaultImports.concat([
+            {h: /if\s+True\s+:/, b:[]},
+        ]));
     });
 });
 

@@ -39,10 +39,11 @@ import Vue, { PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import { AllFrameTypesIdentifier, CaretPosition, Position } from "@/types/types";
+import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { copyFramesFromParsedPython } from "@/helpers/pythonToFrames";
+import { cloneDeep } from "lodash";
 
 //////////////////////
 //     Component    //
@@ -155,8 +156,21 @@ export default Vue.extend({
                 }
                 else {
                     const code = (event as ClipboardEvent).clipboardData?.getData("text");
-                    if (code && copyFramesFromParsedPython(code)) {
-                        this.doPaste();
+                    // Note we don't permanently trim the code because we need to preserve leading indent.
+                    // But we trim for the purposes of checking if there's any content at all:
+                    if (code?.trim()) {
+                        const error = copyFramesFromParsedPython(code);
+                        if (error) {
+                            useStore().currentMessage = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
+                            const msgObj = useStore().currentMessage.message as FormattedMessage;
+                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
+
+                            //don't leave the message for ever
+                            setTimeout(() => useStore().currentMessage = MessageDefinitions.NoMessage, 5000);
+                        }
+                        else {
+                            this.doPaste();
+                        }
                     }
                     // Must take ourselves off the clipboard after:
                     useStore().copiedFrames = {};

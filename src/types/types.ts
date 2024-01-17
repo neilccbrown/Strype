@@ -749,10 +749,10 @@ export const MessageTypes = {
     uploadEditorFileSucces: "uploadEditorFileSuccess",
     forbiddenFrameMove: "forbiddenFrameMove",
     functionFrameCantDelete: "functionFrameCantDelete",
-    pythonInputWarning: "pythonInputWarning",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
     gdriveCantCreateStrypeFolder:"gdriveCantCreateStrypeFolder",
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
+    invalidPythonParsePaste: "invalidPythonParsePaste",
 };
 
 //empty message
@@ -853,12 +853,6 @@ const FunctionFrameCantDelete: MessageDefinition = {
     message: "messageBannerMessage.functionFrameCantDelete",
 };
 
-const PythonInputWarning: MessageDefinition = {
-    ...NoMessage,
-    type: MessageTypes.pythonInputWarning,
-    message: "messageBannerMessage.pythonInputWarning",
-};
-
 const GDriveConnectToSaveFailed: MessageDefinition = {
     type: MessageTypes.gdriveConnectToSaveFailed,
     message: "messageBannerMessage.gdriveConnectToSaveFailed",
@@ -870,6 +864,17 @@ const GDriveCantCreateStrypeFolder: MessageDefinition = {
     ...NoMessage,
     type: MessageTypes.gdriveCantCreateStrypeFolder,
     message: "messageBannerMessage.gdriveCantCreateStrypeFolder",
+};
+
+const InvalidPythonParsePaste: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.invalidPythonParsePaste,
+    message: {
+        path: "messageBannerMessage.invalidPythonParsePaste",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
+        },
+    },
 };
 
 
@@ -886,9 +891,9 @@ export const MessageDefinitions = {
     UploadEditorFileSuccess,
     ForbiddenFrameMove,
     FunctionFrameCantDelete,
-    PythonInputWarning,
     GDriveConnectToSaveFailed,
     GDriveCantCreateStrypeFolder,
+    InvalidPythonParsePaste,
 };
 
 //WebUSB listener

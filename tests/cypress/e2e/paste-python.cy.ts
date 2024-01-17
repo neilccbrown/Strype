@@ -82,6 +82,9 @@ function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, 
         
     (cy.get("body") as any).paste(code);
     checkDownloadedCodeEquals(expected ?? code);
+    // Refocus the editor and go to the bottom:
+    cy.get("#frame_id_-3").focus();
+    cy.get("body").type("{end}");
 }
 
 describe("Python round-trip", () => {
@@ -102,6 +105,7 @@ describe("Python round-trip", () => {
         "raise (1 + 2 - 3) == (4 * 5 / 6)\n",
         // ** binds tighter than unary -, hence the space before:
         "raise foo ** - 6.7 ** False ** True ** 'bye'\n",
+        "try:\n    x = 0\nexcept:\n    x = 1\n",
     ];
     for (const basic of basics) {
         it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic));
@@ -166,5 +170,117 @@ else:
     x = -1
 x = x * x
 `);
+    });
+    
+    it("Allows pasting else/elif at only the right places", () => {
+        // Put the initial if in and clear everything else:
+        const ifCode = "if True:\n    x = -10\n";
+        testRoundTripPasteAndDownload(ifCode);
+        const elseCode = "else:\n    x = -9\n";
+        // Parameterise, to be able to tell them apart:
+        const elifCode = (x : number) => "elif x == " + x + ":\n    x = -" + x + "\n";
+        
+        // Test just the else after if:
+        cy.get("body").type("{end}{uparrow}");
+        (cy.get("body") as any).paste(elseCode);
+        checkDownloadedCodeEquals(ifCode + elseCode);
+        // Delete just the else:
+        cy.get("body").type("{end}{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{uparrow}");
+        
+        // Test with one elif
+        (cy.get("body") as any).paste(elifCode(0));
+        checkDownloadedCodeEquals(ifCode + elifCode(0));
+        // Delete just the elif:
+        cy.get("body").type("{end}{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{uparrow}");
+        
+        // Clear and try if with two elif:
+        (cy.get("body") as any).paste(elifCode(0) + elifCode(1));
+        checkDownloadedCodeEquals(ifCode + elifCode(0) + elifCode(1));
+        // Delete just the two elif:
+        cy.get("body").type("{end}{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{backspace}");
+        checkDownloadedCodeEquals(ifCode);
+        // Now if with three elif and an else:
+        cy.get("body").type("{end}{uparrow}");
+        (cy.get("body") as any).paste(elifCode(0) + elifCode(1) + elifCode(2) + elseCode);
+        checkDownloadedCodeEquals(ifCode + elifCode(0) + elifCode(1) + elifCode(2) + elseCode);
+        // Check deletion works:
+        cy.get("body").type("{end}{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{backspace}");
+        cy.wait(500);
+        cy.get("body").type("{backspace}");
+        checkDownloadedCodeEquals(ifCode);
+    });
+
+    it("Allows pasting except/else/finally after a try", () => {
+        // Put the initial if in and clear everything else:
+        const tryCode = "try:\n    x = -10\n";
+        const elseCode = "else:\n    x = -9\n";
+        const finallyCode = "finally:\n    x = -8\n";
+        // Parameterise, to be able to tell them apart:
+        const exceptCode = (errType : string, varName?: string) => "except" + (errType ? " " + errType : "") + (varName ? " as " + varName : "") + ":\n    x = " + (varName ?? "0") + "\n";
+
+        testRoundTripPasteAndDownload(tryCode + finallyCode);
+        // Delete the finally:
+        cy.get("body").type("{end}{backspace}");
+        
+        const testCode = (code : string[]) => {
+            cy.get("body").type("{end}{uparrow}");
+            (cy.get("body") as any).paste(code.join(""));
+            checkDownloadedCodeEquals(tryCode + code.join(""));
+            cy.get("body").type("{end}");
+            for (let i = 0; i < code.length; i++) {
+                cy.wait(500);
+                cy.get("body").type("{backspace}");
+            }
+            checkDownloadedCodeEquals(tryCode);
+        };
+        
+        testCode([exceptCode("")]);
+        testCode([exceptCode(""), finallyCode]);
+        testCode([exceptCode("Exception")]);
+        testCode([exceptCode("Exception"), finallyCode]);
+        testCode([exceptCode("Exception", "e")]);
+        testCode([exceptCode("Exception", "e"), elseCode, finallyCode]);
+        testCode([exceptCode("CustomError"), exceptCode("Exception", "e"), elseCode, finallyCode]);
+        testCode([elseCode]);
+        // This is the potentially tricky case as it can be confused with an if/else at first look: 
+        testCode([elseCode, finallyCode]);
+    });
+});
+
+// If error is null, there shouldn't be an error banner
+function assertPasteError(codeToPaste: string, error: RegExp | null) {
+    focusEditorPasteAndClear();
+    (cy.get("body") as any).paste(codeToPaste);
+    if (error != null) {
+        cy.get(".message-banner-container span:first-child").invoke("text").should("match", error);
+        cy.get(".message-banner-cross").click();
+    }
+    // Whether it never existed, or we closed it, it should now not exist:
+    cy.get(".message-banner-container").should("not.exist");
+}
+
+describe.only("Python paste errors", () => {
+    it("Shows no error on blank or valid paste", () => {
+        assertPasteError("", null);
+        assertPasteError("    ", null);
+        assertPasteError("    x = 0", null);
+        assertPasteError("    x", null);
+    });
+    it("Shows an error on invalid paste", () => {
+        assertPasteError("!", /Invalid Python code pasted.*!/);
+        assertPasteError("ifg True:\n    pass", /Invalid Python code pasted.*True/);
+        assertPasteError("if True:\n    invalid%%%", /Invalid Python code pasted.*%%%/);
+        // We have a different message for when we paste an else with more content after (which we can't handle)
+        assertPasteError("else:\n    pass\nprint(\"Hi\")", /else/);
     });
 });

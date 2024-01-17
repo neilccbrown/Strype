@@ -259,7 +259,7 @@ export const getFrameSectionIdFromFrameId = (frameId: number): number => {
     // (We know when we reached a frame section when the id of that frame is negative; all frame sections are defined with a negative index.) 
     let parentId = frameId;
     while(parentId > 0){
-        parentId = getParent(useStore().frameObjects[frameId]);
+        parentId = getParent(useStore().frameObjects[parentId]);
     }    
     return parentId;
 };

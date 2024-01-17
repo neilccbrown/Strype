@@ -1999,6 +1999,11 @@ export const useStore = defineStore("app", {
                 //but here we could have 3+ single frames delete, so we need to also check to selection length.
                 showDeleteMessage = this.selectedFrames.length > 3;
             }
+            else if (this.frameObjects[this.currentFrame.id].jointFrameIds.length > 0 && key === "Backspace") {
+                // If they backspace after a joint frame that has joint frames (e.g. if +else),
+                // delete the last of the joint frames:
+                framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
+            }
             
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
@@ -2046,9 +2051,14 @@ export const useStore = defineStore("app", {
                             }
                         }
                         else{
-                            const prevFramePos = availablePositions[availablePositions.findIndex((e)=> e.frameId===currentFrame.id)-1]; 
-                            const newCurrent = (prevFramePos) ? {id: prevFramePos.frameId, caretPosition: prevFramePos.caretPosition} as CurrentFrame : this.currentFrame;
-                            this.setCurrentFrame({id: newCurrent.id, caretPosition: newCurrent.caretPosition});
+                            // If the frame is a joint frame and the cursor position is below, and we are backspacing,
+                            // there's actually no need to change the cursor position, because we should still be below
+                            // the joint frame's parent:
+                            if (!currentFrame.frameType.isJointFrame || this.currentFrame.caretPosition != CaretPosition.below) {
+                                const prevFramePos = availablePositions[availablePositions.findIndex((e) => e.frameId === currentFrame.id) - 1];
+                                const newCurrent = (prevFramePos) ? {id: prevFramePos.frameId, caretPosition: prevFramePos.caretPosition} as CurrentFrame : this.currentFrame;
+                                this.setCurrentFrame({id: newCurrent.id, caretPosition: newCurrent.caretPosition});
+                            }
                             deleteChildren = true;
                         }
                         frameToDelete.frameId = currentFrame.id;
@@ -2578,6 +2588,8 @@ export const useStore = defineStore("app", {
             this.saveStateChanges(stateBeforeChanges);
         
             this.unselectAllFrames();
+            
+            //console.log("After: " + JSON.stringify(this.frameObjects, null, 2));
         },
 
         pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
@@ -2629,21 +2641,48 @@ export const useStore = defineStore("app", {
         pasteSelection(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const areCopiedJointFrames = this.copiedFrames[this.copiedSelectionFrameIds[0]].frameType.isJointFrame;
-            const isClickedJointFrame = this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
+            
+            let index;
+            let pasteToParentId;
+            if (areCopiedJointFrames) {
+                let targetId;
+                if (payload.caretPosition == CaretPosition.below) {
+                    targetId = this.frameObjects[payload.clickedFrameId].parentId;
+                    index = this.getIndexInParent(payload.clickedFrameId) + 1;
+                }
+                else {
+                    targetId = payload.clickedFrameId;
+                    index = 0;
+                }
 
-            // Clicked is joint ? parent of clicked is its joint parent ELSE clicked is the real parent
-            const clickedParentId = (isClickedJointFrame) ? this.frameObjects[payload.clickedFrameId].jointParentId : this.frameObjects[payload.clickedFrameId].parentId;
-
-            // Index is 0 if we paste in the body OR we paste a JointFrame Below JointParent
-            const index = (payload.caretPosition === CaretPosition.body || ( payload.caretPosition === CaretPosition.below && areCopiedJointFrames && !isClickedJointFrame)) ? 
-                0 : 
-                this.getIndexInParent(payload.clickedFrameId)+1;
-
-            // If the caret is below and it is not a joint frame, parent is the clicked's parent 
-            const pasteToParentId = (payload.caretPosition === CaretPosition.body || (areCopiedJointFrames && !isClickedJointFrame) ) ?
-                payload.clickedFrameId:   
-                clickedParentId;
+                // For joint frames, there's two possible positions that are valid for pasting:
+                // - We are inside the body of the main parent frame (e.g. if, try).  For this, isJointFrame==false but allowJointChildren==true 
+                // - We are inside the body of one of the joined frames (e.g. else, finally).  For this, isJointFrame==true
+                const isClickedJointFrame = this.frameObjects[targetId].frameType.isJointFrame;
+                const isClickedJointParent = this.frameObjects[targetId].frameType.allowJointChildren;
                 
+                // If we are a joint parent, we paste with us as parent.  If we are a joint child, we paste using our parent
+                if (isClickedJointFrame) {
+                    pasteToParentId = this.frameObjects[targetId].jointParentId;
+                }
+                else if (isClickedJointParent) {
+                    pasteToParentId = this.frameObjects[targetId].id;
+                }
+                else {
+                    // Invalid position to paste a joint frame
+                    return;
+                }
+
+                //console.log("Joint: " + areCopiedJointFrames + " and " + isClickedJointFrame + " clicked parent: " + clickedParentId + " paste to: " + pasteToParentId + " payload: " + JSON.stringify(payload));
+            }
+            else {
+                pasteToParentId = (payload.caretPosition === CaretPosition.body) ?
+                    payload.clickedFrameId :
+                    this.frameObjects[payload.clickedFrameId].parentId;
+                index = (payload.caretPosition === CaretPosition.body) ?
+                    0 :
+                    this.getIndexInParent(payload.clickedFrameId) + 1;
+            }
             // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
             this.copySelectedFramesToPosition(
                 {
