@@ -2588,6 +2588,8 @@ export const useStore = defineStore("app", {
             this.saveStateChanges(stateBeforeChanges);
         
             this.unselectAllFrames();
+            
+            //console.log("After: " + JSON.stringify(this.frameObjects, null, 2));
         },
 
         pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
