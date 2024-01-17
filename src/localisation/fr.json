@@ -57,7 +57,8 @@
         "forbiddenFrameMove":"Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné.",
         "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
         "gdriveConnectToSaveFailed":"La connexion à Google Drive a été perdue. La synchronisation avec Google Drive est interrompue, les dernières modifications n'ont peut-être pas été sauvegardées.",
-        "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive."
+        "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive.",
+        "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}"
     },
     "buttonLabel":{
         "undo":"Annuler",
