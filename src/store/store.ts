@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -77,7 +77,12 @@ export const useStore = defineStore("app", {
             // Flag to indicate when an action of selection spans across slots
             isSelectingMultiSlots : false,
 
+            // Do not write to this directly (except for assigning NoMessage), use the
+            // showMessage helper instead as that also updates currentMessageId
             currentMessage: MessageDefinitions.NoMessage,
+            // Keep track of which message is being shown, so we only close on timeout
+            // if it's the same message
+            currentMessageId: 0,
 
             preCompileErrors: [] as string[],
 
@@ -635,6 +640,19 @@ export const useStore = defineStore("app", {
             //change the API description content here, as we don't want to construct the textual API description every time we need it
             getAPIItemTextualDescriptions(true);
             /* FITRUE_isMicrobit */
+        },
+        
+        showMessage(newMessage: MessageDefinition, timeoutMillis: number | null) {
+            this.currentMessage = newMessage;
+            const ourId = ++this.currentMessageId;
+            if (timeoutMillis != null) {
+                setTimeout(() => {
+                    // Close it, but only if it is still the same message showing:
+                    if (ourId === this.currentMessageId) {
+                        this.currentMessage = MessageDefinitions.NoMessage;
+                    }
+                }, timeoutMillis);
+            }
         },
 
         updateStateBeforeChanges(release: boolean) {
@@ -1652,10 +1670,8 @@ export const useStore = defineStore("app", {
                     }
 
                     //alert the user about a forbidden move
-                    this.currentMessage = MessageDefinitions.ForbiddenFrameMove;
-    
-                    //don't leave the message for ever
-                    setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 3000);         
+                    this.showMessage(MessageDefinitions.ForbiddenFrameMove, 3000);
+                    
                     return;
                 }
             }
@@ -1759,10 +1775,10 @@ export const useStore = defineStore("app", {
             
             if(isEmptyList){
                 //no undo or redo can performed: inform the user on a temporary message
-                this.currentMessage = (isUndo) ? MessageDefinitions.NoUndo : MessageDefinitions.NoRedo;
-
-                //don't leave the message for ever
-                setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 2000);
+                this.showMessage(
+                    (isUndo) ? MessageDefinitions.NoUndo : MessageDefinitions.NoRedo,
+                    2000
+                );
             }
             else{
                 //a undo/redo can be performed: do the action
@@ -2029,10 +2045,8 @@ export const useStore = defineStore("app", {
                             }
                             else{
                                 //just show the user a message and do nothing else
-                                this.currentMessage = MessageDefinitions.FunctionFrameCantDelete;
+                                this.showMessage(MessageDefinitions.FunctionFrameCantDelete, 7000);
                 
-                                //don't leave the message for ever
-                                setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 7000);
                                 return;
                             }
                         }
@@ -2084,10 +2098,7 @@ export const useStore = defineStore("app", {
 
             //we show the message of large deletion after saving state changes as this is not to be notified.
             if(showDeleteMessage){
-                this.currentMessage = MessageDefinitions.LargeDeletion;
-
-                //don't leave the message for ever
-                setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 7000);
+                this.showMessage(MessageDefinitions.LargeDeletion, 7000);
             }
         },
         
@@ -2406,10 +2417,10 @@ export const useStore = defineStore("app", {
                 }                
             }
             else{
-                const message = MessageDefinitions.UploadEditorFileError;
+                const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
                 const msgObj: FormattedMessage = (message.message as FormattedMessage);
                 msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
-                this.currentMessage = message;
+                this.showMessage(message, null);
             }
 
             payload.callBack(isStateJSONStrValid);
@@ -2423,10 +2434,7 @@ export const useStore = defineStore("app", {
             this.setAppLang(this.appLang);
             
             if(payload.showMessage) {
-                this.currentMessage = MessageDefinitions.UploadEditorFileSuccess;
-
-                //don't leave the message for ever
-                setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 5000);  
+                this.showMessage(MessageDefinitions.UploadEditorFileSuccess, 5000);  
             }
         },
 
@@ -2900,10 +2908,7 @@ export const useStore = defineStore("app", {
                     }
 
                     //alert the user about a forbidden move
-                    this.currentMessage = MessageDefinitions.ForbiddenFrameMove;
-    
-                    //don't leave the message for ever
-                    setTimeout(() => this.currentMessage = MessageDefinitions.NoMessage, 3000);         
+                    this.showMessage(MessageDefinitions.ForbiddenFrameMove, 3000);         
                     this.makeSelectedFramesVisible();
                     return;
                 }

@@ -27,7 +27,7 @@ export function downloadHex(showImagePopup?: boolean): void {
         vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
     }
     else if (showImagePopup){
-        useStore().currentMessage = MessageDefinitions.DownloadHex;
+        useStore().showMessage(MessageDefinitions.DownloadHex, null);
     }
 }
 

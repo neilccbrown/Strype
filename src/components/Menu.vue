@@ -131,6 +131,7 @@ import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile 
 import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import { watch } from "@vue/composition-api";
+import { cloneDeep } from "lodash";
 
 //////////////////////
 //     Component    //
@@ -561,11 +562,11 @@ export default Vue.extend({
                 }
                 else {
                     //alert the user this file format isn't supported (in case the file browser filter doesn't work on the browser)
-                    const message = MessageDefinitions.UploadEditorFileNotSupported;
+                    const message = cloneDeep(MessageDefinitions.UploadEditorFileNotSupported);
                     const msgObj: FormattedMessage = (message.message as FormattedMessage);
                     msgObj.args[FormattedMessageArgKeyValuePlaceholders.list.key] = msgObj.args.list.replace(FormattedMessageArgKeyValuePlaceholders.list.placeholderName, this.acceptedInputFileFormat);
 
-                    this.appStore.currentMessage = message;
+                    this.appStore.showMessage(message, null);
                 }
                 
                 //reset the input file element value to empty (so further changes can be notified)
