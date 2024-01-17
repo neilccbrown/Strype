@@ -749,7 +749,6 @@ export const MessageTypes = {
     uploadEditorFileSucces: "uploadEditorFileSuccess",
     forbiddenFrameMove: "forbiddenFrameMove",
     functionFrameCantDelete: "functionFrameCantDelete",
-    pythonInputWarning: "pythonInputWarning",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
     gdriveCantCreateStrypeFolder:"gdriveCantCreateStrypeFolder",
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
@@ -853,12 +852,6 @@ const FunctionFrameCantDelete: MessageDefinition = {
     message: "messageBannerMessage.functionFrameCantDelete",
 };
 
-const PythonInputWarning: MessageDefinition = {
-    ...NoMessage,
-    type: MessageTypes.pythonInputWarning,
-    message: "messageBannerMessage.pythonInputWarning",
-};
-
 const GDriveConnectToSaveFailed: MessageDefinition = {
     type: MessageTypes.gdriveConnectToSaveFailed,
     message: "messageBannerMessage.gdriveConnectToSaveFailed",
@@ -886,7 +879,6 @@ export const MessageDefinitions = {
     UploadEditorFileSuccess,
     ForbiddenFrameMove,
     FunctionFrameCantDelete,
-    PythonInputWarning,
     GDriveConnectToSaveFailed,
     GDriveCantCreateStrypeFolder,
 };
