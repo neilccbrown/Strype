@@ -767,10 +767,11 @@ export default Vue.extend({
 }
 
 .menu-icon-entry {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     display: block;
     margin: auto;
+    font-size: 14px;
 }
 
 .menu-icon-centered-entry {
@@ -805,8 +806,8 @@ export default Vue.extend({
 #feedbackLink {
     color: #3467FE;
     width:24px;
-    font-size: 22px;
-    margin:auto;
+    font-size: 20px;
+    margin-left:10px;
     display: block;
     bottom:0px;
     position:absolute;    

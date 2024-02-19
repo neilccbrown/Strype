@@ -1,55 +1,56 @@
 <template>
     <div class="commands">
-        <div class="project-name-container">
-            <span class="project-name">{{projectName}}</span>
-            <div v-if="isSyncingInGoogleDrive" :title="autoSaveGDriveTooltip">
-                <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="gdrive-logo"/>   
-                <span class="gdrive-sync-label" v-if="isSyncingInGoogleDrive && !isEditorContentModifiedFlag" v-t="'appMessage.autosaveGDrive'" />
-            </div>
-        </div>     
-        <div @mousedown.prevent.stop @mouseup.prevent.stop>
-            /* IFTRUE_isMicrobit
-            <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
-                <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
-            FITRUE_isMicrobit */
-                    <div :id="commandsContainerUUID" class="command-tab-content" >
-                        <div id="addFramePanel">
-                            <div class="frameCommands">
-                                <transition-group name="list" tag="p">
-                                    <AddFrameCommand
-                                        v-for="addFrameCommand in addFrameCommands"
-                                        :id="addFrameCommandUIID(addFrameCommand[0].type.type)"
-                                        :key="addFrameCommand[0].type.type"
-                                        :type="addFrameCommand[0].type.type"
-                                        :shortcut="addFrameCommand[0].shortcuts[0]"
-                                        :symbol="
-                                            addFrameCommand[0].symbol !== undefined
-                                                ? addFrameCommand[0].symbol
-                                                : addFrameCommand[0].shortcuts[0]
-                                        "
-                                        :description="addFrameCommand[0].description"
-                                        :tooltip="addFrameCommand[0].tooltip"
-                                        :index="
-                                            addFrameCommand[0].index!==undefined
-                                            ? addFrameCommand[0].index
-                                            : 0
-                                        "
-                                    />
-                                </transition-group>
+        <div class="no-console-commands">
+            <div class="project-name-container">
+                <span class="project-name">{{projectName}}</span>
+                <div v-if="isSyncingInGoogleDrive" :title="autoSaveGDriveTooltip">
+                    <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="gdrive-logo"/>   
+                    <span class="gdrive-sync-label" v-if="isSyncingInGoogleDrive && !isEditorContentModifiedFlag" v-t="'appMessage.autosaveGDrive'" />
+                </div>
+            </div>     
+            <div @mousedown.prevent.stop @mouseup.prevent.stop>
+                /* IFTRUE_isMicrobit
+                <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
+                    <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
+                FITRUE_isMicrobit */
+                        <div :id="commandsContainerUUID" class="command-tab-content" >
+                            <div id="addFramePanel">
+                                <div class="frameCommands">
+                                    <transition-group name="list" tag="p">
+                                        <AddFrameCommand
+                                            v-for="addFrameCommand in addFrameCommands"
+                                            :id="addFrameCommandUIID(addFrameCommand[0].type.type)"
+                                            :key="addFrameCommand[0].type.type"
+                                            :type="addFrameCommand[0].type.type"
+                                            :shortcut="addFrameCommand[0].shortcuts[0]"
+                                            :symbol="
+                                                addFrameCommand[0].symbol !== undefined
+                                                    ? addFrameCommand[0].symbol
+                                                    : addFrameCommand[0].shortcuts[0]
+                                            "
+                                            :description="addFrameCommand[0].description"
+                                            :tooltip="addFrameCommand[0].tooltip"
+                                            :index="
+                                                addFrameCommand[0].index!==undefined
+                                                ? addFrameCommand[0].index
+                                                : 0
+                                            "
+                                        />
+                                    </transition-group>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                /* IFTRUE_isMicrobit 
-                </b-tab>
-                    <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
-                        <APIDiscovery  class="command-tab-content"/>
+                    /* IFTRUE_isMicrobit 
                     </b-tab>
-                FITRUE_isMicrobit */
-            </b-tabs>
+                        <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
+                            <APIDiscovery  class="command-tab-content"/>
+                        </b-tab>
+                    FITRUE_isMicrobit */
+                </b-tabs>
+            </div>
+            <text id="userCode"></text>
+            <span id="keystrokeSpan"></span>
         </div>
-        <text id="userCode"></text>
-        <span id="keystrokeSpan"></span>
-
         /* IFTRUE_isPurePython
         <python-console class="run-code-container" ref="pythonConsoleComponent"/>
         FITRUE_isPurePython */
@@ -473,6 +474,9 @@ export default Vue.extend({
     display: flex;
     flex-direction: column;
     height: 100vh;
+    /* IFTRUE_isMicrobit */
+    padding:0px 15px;
+    /* FITRUE_isMicrobit */
 }
 
 .cmd-progress-container {
@@ -486,6 +490,10 @@ export default Vue.extend({
   position: absolute;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.no-console-commands {
+    overflow-y: auto;
 }
 
 .progress-bar-text {
@@ -510,7 +518,7 @@ export default Vue.extend({
 
 .run-code-container {
     /* IFTRUE_isPurePython */
-    margin-bottom: 4px;
+    margin: 0px 5px 5px 5px;
     /* FITRUE_isPurePython */
     /* IFTRUE_isMicrobit */
     margin-bottom: 90px;
