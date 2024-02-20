@@ -170,3 +170,18 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
         });
     });
 }
+
+// Entry point function for running interactive Turtle code with Skulpt - the UI is responsible for calling it,
+// and providing the code (usually, user defined code) and the div element to display the out on a canvas.
+export function runTurtleCanvas(aDivElement: HTMLDivElement, userCode: string): void {
+    if(!Sk.TurtleGraphics){
+        Sk.TurtleGraphics = {};
+    }
+    Sk.TurtleGraphics.target = aDivElement.id;
+    console.log("SK.TurtleGraphics = " + JSON.stringify(Sk.TurtleGraphics));
+    Sk.configure({read:builtinRead});
+    Sk.misceval.asyncToPromise(function() {
+        console.log(document.getElementById(aDivElement.id));
+        return Sk.importMainWithBody("<stdin>",false,userCode,true);
+    });
+}

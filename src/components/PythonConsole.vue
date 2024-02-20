@@ -7,10 +7,12 @@
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
                 {{this.consoleDisplayCtrlLabel}}
             </button>
+            <button @click="runCodeOnPyTurtleCanvas">test turtle</button>
         </div>
         <textarea 
             id="pythonConsole"
             ref="pythonConsole"
+            v-if="!showTurtleCanvas"
             @focus="onFocus()"
             @change="onChange"
             @wheel.stop
@@ -20,6 +22,7 @@
             spellcheck="false"
         >    
         </textarea>
+        <div v-if="showTurtleCanvas" id="pythonTurtleCanvas" ref="pythonTurtleCanvas"/>
     </div>
 </template>
 
@@ -27,9 +30,9 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
-import { runPythonConsole } from "@/helpers/runPythonConsole";
+import { runPythonConsole, runTurtleCanvas } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasEditorCodeErrors, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
@@ -46,6 +49,7 @@ export default Vue.extend({
         return {
             isLargeConsole: false,
             runningState: RunningState.NotRunning,
+            showTurtleCanvas: false,
         };
     },
 
@@ -77,6 +81,7 @@ export default Vue.extend({
         consoleDisplayCtrlLabel(): string {
             return " " + ((this.isLargeConsole) ? i18n.t("console.collapse") as string : i18n.t("console.expand") as string);           
         },
+        
         consoleRunLabel(): string {
             switch (this.runningState) {
             case RunningState.NotRunning:
@@ -144,6 +149,25 @@ export default Vue.extend({
                     }
                 }); 
             }, 1000);           
+        },
+
+        runCodeOnPyTurtleCanvas(){
+            // Show the canvas
+            this.showTurtleCanvas = true;
+
+            this.$nextTick(() => {
+                // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
+                if(hasEditorCodeErrors()) {
+                    this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    return;
+                }
+
+                const parser = new Parser();
+                const userCode = parser.getFullCode();
+                runTurtleCanvas(this.$refs.pythonTurtleCanvas as HTMLDivElement, userCode);
+            });
+
         },
 
         onFocus(): void {
@@ -266,5 +290,13 @@ export default Vue.extend({
     #pythonConsole::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 5px;
+    }
+
+    #pythonTurtleCanvas {
+        width:100%;
+        min-height: 5vh;
+        max-height: 30vh;
+        background-color: white;
+        flex-grow: 2;
     }
 </style>
