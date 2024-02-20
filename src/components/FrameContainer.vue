@@ -258,7 +258,7 @@ export default Vue.extend({
 <style lang="scss">
 .frame-container {
     margin-bottom: 5px;
-    margin-left:10px;
+    margin-left:0px;
 }
 
 .frame-container-btn-collapse {

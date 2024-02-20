@@ -1,7 +1,7 @@
 
 <template>
     <div :class="{largeConsoleDiv: isLargeConsole}">
-        <div id="consoleControlsDiv">           
+        <div id="consoleControlsDiv" :class="{'expanded-console': isLargeConsole}">           
             <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
             <button @click="toggleConsoleDisplay">
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
@@ -47,6 +47,28 @@ export default Vue.extend({
             isLargeConsole: false,
             runningState: RunningState.NotRunning,
         };
+    },
+
+    mounted(){
+        // Observe when the console (textarea) positon changes: buttons need to be positioned accordingly
+        // (note that we only do this for appearance reasons: before, the buttons were naturally positioned above the textarea, but that means that
+        // if we want to show a scoll in the commands, there will be a gap between the commands and the textarea when the console is extended, the gap
+        // being the space the button takes in a natural position. We cheat by stacking the buttons and the texarea and positioning the buttons manually)
+        const pythonConsole = document.getElementById("pythonConsole");
+        const consoleControlsDiv = document.getElementById("consoleControlsDiv");
+        if(pythonConsole != undefined && consoleControlsDiv != undefined){
+            const consolePosChangeObserver = new ResizeObserver((entries) => {
+                for (const entry of entries) {
+                    if (entry.contentBoxSize) {
+                        // Setting "bottom" doesn't seem to do the right thing, "top" works fine..
+                        consoleControlsDiv.style.top = (this.isLargeConsole)
+                            ? "5px"
+                            : "auto";   
+                    }
+                }
+            });
+            consolePosChangeObserver.observe(pythonConsole);
+        }
     },
 
     computed:{
@@ -188,15 +210,22 @@ export default Vue.extend({
         bottom:0px;
         left:0px;
         position:fixed;
+        margin: 0px !important;
     }
 
     .largeConsoleDiv #pythonConsole {
-        max-height: 50vh;
+        max-height: 45vh;
     }
 
     #consoleControlsDiv {
         display: flex;
-        column-gap: 5px;
+        column-gap: 5px;        
+        padding-top: 5px;
+    }
+
+    #consoleControlsDiv.expanded-console {
+        position: absolute;
+        padding-top: 0 !important;
     }
 
     .show-error-icon {
@@ -212,13 +241,12 @@ export default Vue.extend({
     
     #pythonConsole {
         width:100%;
-        min-height: 5vh;
+        min-height: 15vh;
         max-height: 30vh;
-        font-size: 12px;
         background-color: #0a090c;
         color: white;
         flex-grow: 2;
-        font-size: 17px;
+        font-size: 15px;
         tab-size: 8;
         font-family: monospace;
     }

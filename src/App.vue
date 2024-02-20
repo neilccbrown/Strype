@@ -17,51 +17,57 @@
             </div>
         </div>
         <div class="row">
-            <!-- These data items are to enable testing: -->
-            <div id="editor" class="col-8" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
-                <div class="top">
-                    <MessageBanner 
-                        v-if="showMessage"
-                    />
-                </div>
-                <div class="row no-gutters" >
-                    <Menu 
-                        :id="menuUIID" 
-                        @app-showprogress="applyShowAppProgress"
-                        @app-reset-project="resetStrypeProject"
-                        class="noselect"
-                    />
-                    <div class="col">
-                        <div 
-                            :id="editorUIID" 
-                            :class="{'editor-code-div noselect':true, 'small-editor-code-div': isLargePythonConsole}" 
-                            @click.self="onEditorClick"
-                        >
-                            <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
-                            <Draggable
-                                :list="[1,2]"
-                                :move="onMoveFrameContainer"
-                                :group="draggableGroup"
-                                key="draggable-shadow-editor"
-                                forceFallback="true"
-                                delay="5000"
-                            >
-                                <FrameContainer
-                                    v-for="container in containerFrames"
-                                    :key="container.frameType.type + '-id:' + container.id"
-                                    :id="getFrameContainerUIID(container.id)"
-                                    :ref="getFrameContainerUIID(container.id)"
-                                    :frameId="container.id"
-                                    :containerLabel="container.frameType.labels[0].label"
-                                    :caretVisibility="container.caretVisibility"
-                                    :frameType="container.frameType"
-                                />
-                            </Draggable>
+            <Splitpanes class="strype-split-theme">
+                <Pane key="1" size="66" min-size="33">
+                    <!-- These data items are to enable testing: -->
+                    <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
+                        <div class="top">
+                            <MessageBanner 
+                                v-if="showMessage"
+                            />
+                        </div>
+                        <div class="row no-gutters" >
+                            <Menu 
+                                :id="menuUIID" 
+                                @app-showprogress="applyShowAppProgress"
+                                @app-reset-project="resetStrypeProject"
+                                class="noselect"
+                            />
+                            <div class="col">
+                                <div 
+                                    :id="editorUIID" 
+                                    :class="{'editor-code-div noselect':true, 'small-editor-code-div': isLargePythonConsole}" 
+                                    @click.self="onEditorClick"
+                                >
+                                    <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
+                                    <Draggable
+                                        :list="[1,2]"
+                                        :move="onMoveFrameContainer"
+                                        :group="draggableGroup"
+                                        key="draggable-shadow-editor"
+                                        forceFallback="true"
+                                        delay="5000"
+                                    >
+                                        <FrameContainer
+                                            v-for="container in containerFrames"
+                                            :key="container.frameType.type + '-id:' + container.id"
+                                            :id="getFrameContainerUIID(container.id)"
+                                            :ref="getFrameContainerUIID(container.id)"
+                                            :frameId="container.id"
+                                            :containerLabel="container.frameType.labels[0].label"
+                                            :caretVisibility="container.caretVisibility"
+                                            :frameType="container.frameType"
+                                        />
+                                    </Draggable>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <Commands :id="commandsContainerId" class="col-4 noselect" />
+                </Pane>
+                <Pane key="2" size="34">
+                    <Commands :id="commandsContainerId" class="noselect" />
+                </Pane>
+            </SplitPanes>
         </div>
         <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
@@ -84,6 +90,7 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
+import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu } from "./helpers/editor";
@@ -113,6 +120,8 @@ export default Vue.extend({
         Draggable,
         ModalDlg,
         SimpleMsgModalDlg,
+        Splitpanes,
+        Pane,
     },
 
     data: function() {
@@ -736,7 +745,7 @@ html,body {
 
 #app {
     font-family: 'Source Sans Pro', sans-serif;
-    font-size: 17px;
+    font-size: 15px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: #2c3e50;
@@ -872,5 +881,175 @@ $divider-grey: darken($background-grey, 15%);
     background-clip: content-box;
     pointer-events: none;
     border: none;
+}
+
+/* 
+ * The following classes are to be used for styling the spliters component.
+ * We just don't include the default CSS of the component and change whichever
+ * part of the styling we want to change, like the background colours for instance.
+ */
+.splitpanes {
+	display: -webkit-box;
+	display: -ms-flexbox;
+	display: flex;
+	width: 100%;
+	height: 100%
+}
+
+.splitpanes--vertical {
+	-webkit-box-orient: horizontal;
+	-webkit-box-direction: normal;
+	-ms-flex-direction: row;
+	flex-direction: row
+}
+
+.splitpanes--horizontal {
+	-webkit-box-orient: vertical;
+	-webkit-box-direction: normal;
+	-ms-flex-direction: column;
+	flex-direction: column
+}
+
+.splitpanes--dragging * {
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none
+}
+
+.splitpanes__pane {
+	width: 100%;
+	height: 100%;
+	overflow: hidden
+}
+
+.splitpanes--vertical .splitpanes__pane {
+	-webkit-transition: width .2s ease-out;
+	-o-transition: width .2s ease-out;
+	transition: width .2s ease-out
+}
+
+.splitpanes--horizontal .splitpanes__pane {
+	-webkit-transition: height .2s ease-out;
+	-o-transition: height .2s ease-out;
+	transition: height .2s ease-out
+}
+
+.splitpanes--dragging .splitpanes__pane {
+	-webkit-transition: none;
+	-o-transition: none;
+	transition: none
+}
+
+.splitpanes__splitter {
+	-ms-touch-action: none;
+	touch-action: none
+}
+
+.splitpanes--vertical>.splitpanes__splitter {
+	min-width: 1px;
+	cursor: col-resize
+}
+
+.splitpanes--horizontal>.splitpanes__splitter {
+	min-height: 1px;
+	cursor: row-resize
+}
+
+.splitpanes.strype-split-theme .splitpanes__pane {
+	background-color: transparent;
+}
+
+.splitpanes.strype-split-theme .splitpanes__splitter {
+	//background-color: #fff;
+    background-color: transparent;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	position: relative;
+	-ms-flex-negative: 0;
+	flex-shrink: 0
+}
+
+/*
+.splitpanes.strype-split-theme .splitpanes__splitter:before,
+.splitpanes.strype-split-theme .splitpanes__splitter:after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	background-color: #00000026;
+	-webkit-transition: background-color .3s;
+	-o-transition: background-color .3s;
+	transition: background-color .3s
+}
+
+.splitpanes.strype-split-theme .splitpanes__splitter:hover:before,
+.splitpanes.strype-split-theme .splitpanes__splitter:hover:after {
+	background-color: #00000040;
+}*/
+
+.splitpanes.strype-split-theme .splitpanes__splitter:first-child {
+	cursor: auto
+}
+
+.strype-split-theme.splitpanes .splitpanes .splitpanes__splitter {
+	z-index: 1
+}
+
+.strype-split-theme.splitpanes--vertical>.splitpanes__splitter,
+.strype-split-theme .splitpanes--vertical>.splitpanes__splitter {
+	width: 2px;
+	//border-left: 1px solid #eee;
+    border-right: 1px solid #383b40;
+	margin-left: -1px
+}
+
+.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:before,
+.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:after,
+.strype-split-theme .splitpanes--vertical>.splitpanes__splitter:before,
+.strype-split-theme .splitpanes--vertical>.splitpanes__splitter:after {
+	-webkit-transform: translateY(-50%);
+	-ms-transform: translateY(-50%);
+	transform: translateY(-50%);
+	width: 1px;
+	height: 30px
+}
+
+.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:before,
+.strype-split-theme .splitpanes--vertical>.splitpanes__splitter:before {
+	margin-left: -2px
+}
+
+.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:after,
+.strype-split-theme .splitpanes--vertical>.splitpanes__splitter:after {
+	margin-left: 1px
+}
+
+.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter,
+.strype-split-theme .splitpanes--horizontal>.splitpanes__splitter {
+	height: 7px;
+	border-top: 1px solid #eee;
+	margin-top: -1px
+}
+
+.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
+.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:after,
+.strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:before,
+.strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:after {
+	-webkit-transform: translateX(-50%);
+	-ms-transform: translateX(-50%);
+	transform: translate(-50%);
+	width: 30px;
+	height: 1px
+}
+
+.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
+.strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:before {
+	margin-top: -2px
+}
+
+.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:after,
+.strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:after {
+	margin-top: 1px
 }
 </style>
