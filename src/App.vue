@@ -829,7 +829,7 @@ $divider-grey: darken($background-grey, 15%);
 .v-context ul > li > a {
     display:block;
     padding: 5px 10px;
-    color:$black;
+    color:$black !important;
     text-decoration:none;
     white-space:nowrap;
     background-color:transparent;
