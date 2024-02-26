@@ -25,6 +25,8 @@ export enum CustomEventTypes {
     acItemHovered="acItemHovered",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
+    pythonConsoleRequestFocus = "pythonConsoleReqFocus",
+    pythonConsoleAfterInput = "pythonConsoleAfterInput",
     /* FITRUE_isPurePython */
 }
 

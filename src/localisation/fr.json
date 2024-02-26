@@ -176,6 +176,7 @@
     "console": {
         "run":"Exécuter",
         "runtimeErrorConsole": "Erreur d'exécution",
+        "show": "Afficher console",
         "expand":"Agrandir",
         "collapse":"Réduire"
     }

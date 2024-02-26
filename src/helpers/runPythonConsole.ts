@@ -4,6 +4,7 @@ import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import Vue from "vue";
+import { CustomEventTypes } from "./editor";
 
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
@@ -30,17 +31,17 @@ function builtinRead(x: any) {
 }
 
 // The function used for "transpiling" the input function of Python to some JS handled by Skulpt.
-// THe function is to be registered against the Skulpt object.
+// The function is to be registered against the Skulpt object.
 function sInput(prompt: string) {
-    // the function returns a promise to give a result back later...
+    // When we encounter an input call, we make sure the console has focus (i.e. turtle is not shown, for example)
     return new Promise(function(resolve,reject){
         outf(prompt); 
         // make the text area enabled to allow the user to type something (if it was disabled)
         const isConsoleTextAreaLocked = consoleTextArea.disabled;
         if(isConsoleTextAreaLocked){
             consoleTextArea.disabled = false;
-            // set the text caret to the end of the prompt (it may not be immediately caught so we need to give a small delay)
-            setTimeout(() =>  consoleTextArea.focus(), 200);
+            // Send an event to request focus (we will handle it on the Vue side)
+            consoleTextArea.dispatchEvent(new Event(CustomEventTypes.pythonConsoleRequestFocus));            
         }
 
         let initialConsoleTextAreaCaretPos = consoleTextArea.selectionStart;
@@ -80,6 +81,8 @@ function sInput(prompt: string) {
                 // restore the textare disable status if required
                 if(isConsoleTextAreaLocked){
                     consoleTextArea.disabled = true;
+                    // We may need to do more action after input is done
+                    consoleTextArea.dispatchEvent(new Event(CustomEventTypes.pythonConsoleAfterInput));
                 }
                 // cancel the event (we are doing a line return ourselves anyway)
                 event.stopImmediatePropagation();
@@ -114,10 +117,20 @@ function sInput(prompt: string) {
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
-export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
+export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
     consoleTextArea = aConsoleTextArea;
     Sk.pre = consoleTextArea.id;
+    // Set the Turtle environment here:
+    if(!Sk.TurtleGraphics){
+        Sk.TurtleGraphics = {};
+    }
+    if(aTurtleDiv){
+        Sk.TurtleGraphics.target = aTurtleDiv.id;
+        console.log("SK.TurtleGraphics = " + JSON.stringify(Sk.TurtleGraphics));
+    }
+    
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
+    
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);
     }, {
@@ -171,17 +184,3 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, userCode
     });
 }
 
-// Entry point function for running interactive Turtle code with Skulpt - the UI is responsible for calling it,
-// and providing the code (usually, user defined code) and the div element to display the out on a canvas.
-export function runTurtleCanvas(aDivElement: HTMLDivElement, userCode: string): void {
-    if(!Sk.TurtleGraphics){
-        Sk.TurtleGraphics = {};
-    }
-    Sk.TurtleGraphics.target = aDivElement.id;
-    console.log("SK.TurtleGraphics = " + JSON.stringify(Sk.TurtleGraphics));
-    Sk.configure({read:builtinRead});
-    Sk.misceval.asyncToPromise(function() {
-        console.log(document.getElementById(aDivElement.id));
-        return Sk.importMainWithBody("<stdin>",false,userCode,true);
-    });
-}
