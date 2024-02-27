@@ -113,6 +113,9 @@ describe("Python round-trip", () => {
     it("Allows pasting fixture file with functions", () => {
         cy.fixture("python-functions.py").then((py) => testRoundTripPasteAndDownload(py, "{uparrow}"));
     });
+    it("Allows pasting fixture file with bubble sort function", () => {
+        cy.fixture("python-bubble.py").then((py) => testRoundTripPasteAndDownload(py, "{uparrow}"));
+    });
     it("Allows pasting fixture file with main code", () => {
         cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py));
     });
@@ -269,7 +272,7 @@ function assertPasteError(codeToPaste: string, error: RegExp | null) {
     cy.get(".message-banner-container").should("not.exist");
 }
 
-describe.only("Python paste errors", () => {
+describe("Python paste errors", () => {
     it("Shows no error on blank or valid paste", () => {
         assertPasteError("", null);
         assertPasteError("    ", null);
