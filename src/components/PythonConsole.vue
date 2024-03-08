@@ -49,7 +49,7 @@ export default Vue.extend({
         return {
             isLargeConsole: false,
             runningState: RunningState.NotRunning,
-            includeTurtleCanvas: true,
+            includeTurtleCanvas: false, // by default, Turtle isn't visible - it will be activated when we detect the import (see event registration in mounted())
             showingTurtleCanvas: false,
             interruptedTurtle: false,
         };
@@ -75,10 +75,18 @@ export default Vue.extend({
             });
             consolePosChangeObserver.observe(pythonConsole);
 
-            //Register an event listener on the textarea for the request focus event
+            // Register an event listener on the textarea for the request focus event
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleRequestFocus, this.handleConsoleFocusRequest);
-            //Register an event listener on the textarea for handling post-input
+            // Register an event listener on the textarea for handling post-input
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
+            // Register an event listener on this component for the notification of the turtle library import usage
+            document.getElementById("pythonConsole")?.addEventListener(CustomEventTypes.notifyTurtleUsaged, (event) => {
+                this.includeTurtleCanvas = (event as CustomEvent).detail;
+                if(!this.includeTurtleCanvas) {
+                    // If we don't show turtle anymore, we should make sure we get back on the console...
+                    this.showingTurtleCanvas = false;
+                }
+            });    
         }
     },
 
