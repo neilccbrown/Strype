@@ -7,6 +7,7 @@ import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {getMatchingBracket} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
+import i18n from "@/i18n";
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
@@ -157,9 +158,13 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
 export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
     const soFar : AcResultsWithCategory = {};
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
+    const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
     loopImportFrames: for (let i = 0; i < imports.length; i++) {
         const frame = imports[i];
-        if (!frame.isDisabled && frame.frameType.type === AllFrameTypesIdentifier.fromimport) {
+        if (!frame.isDisabled && (frame.frameType.type === AllFrameTypesIdentifier.fromimport || frame.frameType.type === AllFrameTypesIdentifier.import)) {
+            // We need to distinguish 2 cases: when explicit imports are done with "from...import..." or just "import...".
+            // In the latter, we add the module under the section "Imported modules" in the A/C.
+            const isSimpleImport = (frame.frameType.type === AllFrameTypesIdentifier.import);
             let module = "";
             for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
                 module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
@@ -173,7 +178,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                 }
             }
             
-            if (frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
+            if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
                 // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
                 // the contents of the specific module:
@@ -193,29 +198,36 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                 /* FITRUE_isPurePython */
             }
             else {
-                soFar[module] = [];
-                
-                let allItems : AcResultType[] = [];
-
-                /* IFTRUE_isMicrobit */
-                const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
-                if (allMicrobitItems) {
-                    allItems = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
+                if(isSimpleImport && (soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(module) == 0))){
+                    // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
+                    const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
+                    soFar[importedModulesCategory] = [{acResult: module, documentation: moduleDoc, type:["module"], version: 0}];
                 }
-                /* FITRUE_isMicrobit */
-
-                /* IFTRUE_isPurePython */
-                const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
-                if (allSkulptItems) {
-                    allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
-                }
-                /* FITRUE_isPurePython */
+                else{
+                    soFar[module] = [];
                 
-                // Find the relevant item from allItems (if it exists):
-                for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                    const item = allItems.find((ac) => ac.acResult === (f as BaseSlot).code.trim());
-                    if (item) {
-                        soFar[module].push(item);
+                    let allItems : AcResultType[] = [];
+
+                    /* IFTRUE_isMicrobit */
+                    const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
+                    if (allMicrobitItems) {
+                        allItems = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
+                    }
+                    /* FITRUE_isMicrobit */
+
+                    /* IFTRUE_isPurePython */
+                    const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+                    if (allSkulptItems) {
+                        allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
+                    }
+                    /* FITRUE_isPurePython */
+                
+                    // Find the relevant item from allItems (if it exists):
+                    for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
+                        const item = allItems.find((ac) => ac.acResult === (f as BaseSlot).code.trim());
+                        if (item) {
+                            soFar[module].push(item);
+                        }
                     }
                 }
             }

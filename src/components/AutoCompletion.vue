@@ -162,12 +162,15 @@ export default Vue.extend({
                 else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
                     return 1;
                 }
+                else if (cat === this.$i18n.t("autoCompletion.importedModules")) {
+                    return 2;
+                }
                 // Python in-built is after any custom imports:
                 else if (cat === "Python") {
-                    return 3;
+                    return 4;
                 }
                 else {
-                    return 2;
+                    return 3;
                 }
             };
             
@@ -309,9 +312,11 @@ export default Vue.extend({
 
             //if there are resutls
             if(this.areResultsToShow()) {
-                // set the first module as the selected one
-                this.currentModule = Object.keys(this.resultsToShow)[0];
-
+                // The results's categories should also be sorted here otherwise we have a difference between what will be returned and the UI!
+                this.sortCategories(Object.keys(this.resultsToShow));
+                // Set the first module (in the sense of indexed modules) as the selected one
+                this.currentModule = (Object.entries(this.resultsToShow)
+                    .find((catIndexedACRes) => catIndexedACRes[1].some((indexedACRes) => indexedACRes.index == 0))?.[0]) ?? "";
                 this.currentDocumentation = this.getCurrentDocumentation();
                 
             }

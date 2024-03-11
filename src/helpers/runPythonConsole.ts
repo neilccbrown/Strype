@@ -126,7 +126,6 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, aTurtleD
     }
     if(aTurtleDiv){
         Sk.TurtleGraphics.target = aTurtleDiv.id;
-        console.log("SK.TurtleGraphics = " + JSON.stringify(Sk.TurtleGraphics));
     }
     
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});

@@ -1242,9 +1242,10 @@ export default Vue.extend({
             const currentTextCursorPos = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
             // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text, unless there are brackets already in the next slot
             // (and in any case, we make sure we get into the slot structure)
+            // Note that we can't add parenthesis if we are in a from...import... frame!
             const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
             const hasFollowingBracketSlot = (getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true)?.slotType == SlotType.bracket);
-            const isSelectedFunction =  typeOfSelected.includes("function") || typeOfSelected.includes("method");
+            const isSelectedFunction =  (this.frameType.localeCompare(AllFrameTypesIdentifier.fromimport) != 0) && (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
             const newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0))
                 + selectedItem.replace(new RegExp("\\(.*"), "") 
                 + ((isSelectedFunction && !hasFollowingBracketSlot)?"()":"");
