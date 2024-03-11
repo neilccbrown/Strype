@@ -1,6 +1,9 @@
-import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot} from "@/types/types";
+import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot, ContainerTypesIdentifiers} from "@/types/types";
 import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
+import i18n from "@/i18n";
+
+const TOP_LEVEL_TEMP_ID = -999;
 
 // Type for the things we get from the Skulpt parser:
 export interface ParsedConcreteTree {
@@ -60,7 +63,7 @@ function addFrame(frame: FrameObject, s: CopyState) : CopyState {
         else {
             // The pasting code relies on parent being set to non-zero for non-joint frames,
             // so we just set it to an invalid integer:
-            frame.parentId = -999;
+            frame.parentId = TOP_LEVEL_TEMP_ID;
         }
     }
     return {...s, nextId: s.nextId + 1};
@@ -192,6 +195,13 @@ export function copyFramesFromParsedPython(code: string) : string | null {
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
         copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
+        // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
+        if(!canPastePythonAtStrypeLocation()){
+            useStore().copiedFrames = {};
+            useStore().copiedSelectionFrameIds = [];
+            return i18n.t("messageBannerMessage.incompatiblePythonStrypeSection") as string;
+        }
+
         if (addedFakeJoinParent > 0) {
             // Now have to detach that parent again.  If it was joint frames only, there should be one parent on the list:
             if (useStore().copiedSelectionFrameIds.length == 1) {
@@ -202,7 +212,7 @@ export function copyFramesFromParsedPython(code: string) : string | null {
                 // Uh-oh, they had other things after the else, etc.  We can't handle that, so abandon:
                 useStore().copiedFrames = {};
                 useStore().copiedSelectionFrameIds = [];
-                return "cannot paste else/elif/except/finally and further content in one paste";
+                return i18n.t("messageBannerMessage.wrongPythonStructCopied") as string;
             }
         }
         return null;
@@ -588,4 +598,45 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         break;
     }
     return s;
+}
+
+// This function makes a simple sanity check on the copied Python code (as frames then): we make sure that it "fits" the current Strype location
+function canPastePythonAtStrypeLocation(): boolean {
+    // In more details, we check the same-leve (top level) frames in the copy:
+    // - in the "import" section, only imports can be copied,
+    // - in the "function definition" section, only function definitions can be copied
+    // - in the "main code" section or inside a function definition frame, only code that doesn't contain imports or function definitions can be copied (and "global" for main code)
+    const topLevelCopiedFrames = Object.values(useStore().copiedFrames).filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
+
+    // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
+    // and check when found the location if the match between the current Strype location and the copied Python code frames is possible
+    let foundStrypeLocation = false, canCopyCodeInStrypeLocation = true;
+    // If are below a frame, we look for its parent right away, otheriwse we can use that fraome
+    let navigFrameId = (useStore().currentFrame.caretPosition == CaretPosition.below) ? useStore().frameObjects[useStore().currentFrame.id].parentId : useStore().currentFrame.id;
+    do{
+        const frameType = useStore().frameObjects[navigFrameId].frameType;
+        switch(frameType.type){
+        case ContainerTypesIdentifiers.framesMainContainer:
+            canCopyCodeInStrypeLocation = !topLevelCopiedFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
+            foundStrypeLocation = true;
+            break;
+        case AllFrameTypesIdentifier.funcdef:
+            canCopyCodeInStrypeLocation = !topLevelCopiedFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
+            foundStrypeLocation = true;
+            break;
+        case ContainerTypesIdentifiers.funcDefsContainer:
+            canCopyCodeInStrypeLocation = !topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.funcdef);
+            foundStrypeLocation = true;
+            break;
+        case ContainerTypesIdentifiers.importsContainer:
+            canCopyCodeInStrypeLocation = !topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.import && frame.frameType.type != AllFrameTypesIdentifier.fromimport);
+            foundStrypeLocation = true;
+            break;
+        default:
+            navigFrameId = useStore().frameObjects[navigFrameId].parentId;
+            break;
+        }
+    }while(!foundStrypeLocation);
+
+    return canCopyCodeInStrypeLocation;
 }
