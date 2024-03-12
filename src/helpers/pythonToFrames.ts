@@ -606,6 +606,7 @@ function canPastePythonAtStrypeLocation(): boolean {
     // - in the "import" section, only imports can be copied,
     // - in the "function definition" section, only function definitions can be copied
     // - in the "main code" section or inside a function definition frame, only code that doesn't contain imports or function definitions can be copied (and "global" for main code)
+    // Comments can also be imported in all sections. 
     const topLevelCopiedFrames = Object.values(useStore().copiedFrames).filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
 
     // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
@@ -625,11 +626,11 @@ function canPastePythonAtStrypeLocation(): boolean {
             foundStrypeLocation = true;
             break;
         case ContainerTypesIdentifiers.funcDefsContainer:
-            canCopyCodeInStrypeLocation = !topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.funcdef);
+            canCopyCodeInStrypeLocation = !topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.funcdef && frame.frameType.type != AllFrameTypesIdentifier.comment);
             foundStrypeLocation = true;
             break;
         case ContainerTypesIdentifiers.importsContainer:
-            canCopyCodeInStrypeLocation = !topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.import && frame.frameType.type != AllFrameTypesIdentifier.fromimport);
+            canCopyCodeInStrypeLocation = !topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.import && frame.frameType.type != AllFrameTypesIdentifier.fromimport && frame.frameType.type != AllFrameTypesIdentifier.comment);
             foundStrypeLocation = true;
             break;
         default:
