@@ -7,7 +7,7 @@
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
                 {{this.consoleDisplayCtrlLabel}}
             </button>
-            <button v-if="includeTurtleCanvas" @click="showTurtleCanvas">test turtle</button>
+            <button v-if="includeTurtleCanvas" @click="showTurtleCanvas">&#128034; Turtle</button>
         </div>
         <textarea 
             id="pythonConsole"
