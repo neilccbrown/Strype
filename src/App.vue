@@ -73,6 +73,7 @@
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
+        <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
     </div>
 </template>
 
@@ -105,6 +106,7 @@ import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdA
 import { cloneDeep } from "lodash";
 import CaretContainer from "./components/CaretContainer.vue";
 import { VueContextConstructor } from "vue-context";
+import { BACKEND_SKULPT_DIV_ID } from "./autocompletion/ac-skulpt";
 
 //////////////////////
 //     Component    //
@@ -199,6 +201,10 @@ export default Vue.extend({
 
         importDiffVersionModalDlgId(): string {
             return getImportDiffVersionModalDlgId();
+        },
+
+        getSkulptBackendTurtleDivId(): string {
+            return BACKEND_SKULPT_DIV_ID;
         },
     },
 

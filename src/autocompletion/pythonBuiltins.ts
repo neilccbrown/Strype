@@ -32,4 +32,5 @@ export const pythonBuiltins : Record<string, { type: "module", documentation?: s
     "tokenize": {type: "module", documentation: "Tokenizer for Python source."},
     "types": {type: "module", documentation: "Dynamic type creation and names for built-in types."},
     "webbrowser": {type: "module", documentation: "Convenient web-browser controller."},
+    "turtle": {type: "module", documentation: "Implementation of the Turtle graphics."},
 };

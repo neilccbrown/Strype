@@ -12498,5 +12498,1088 @@
                 }
             ]
         }
+    ],
+    "turtle": [
+        {
+            "acResult": "Screen",
+            "documentation": "Return the singleton screen object.\nIf none exists at the moment, create a new one and return it,\nelse return the existing one.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "Turtle",
+            "documentation": "RawTurtle auto-creating (scrolled) canvas.\n\nWhen a Turtle object is created or a function derived from some\nTurtle method is called a TurtleScreen object is automatically created.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "self"
+                },
+                {
+                    "name": "shape",
+                    "defaultValue": "True"
+                },
+                {
+                    "name": "undobuffersize",
+                    "defaultValue": "1000"
+                },
+                {
+                    "name": "visible",
+                    "defaultValue": "classic"
+                }
+            ]
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__loader__",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__spec__",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "back",
+            "documentation": "Move the turtle backward by distance.\n\nAliases: back | backward | bk\n\nArgument:\ndistance -- a number\n\nMove the turtle backward by distance ,opposite to the direction the\nturtle is headed. Do not change the turtle's heading.\n\nExample:\n>>> position()\n(0.00, 0.00)\n>>> backward(30)\n>>> position()\n(-30.00, 0.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "distance"
+                }
+            ]
+        },
+        {
+            "acResult": "backward",
+            "documentation": "Move the turtle backward by distance.\n\nAliases: back | backward | bk\n\nArgument:\ndistance -- a number\n\nMove the turtle backward by distance ,opposite to the direction the\nturtle is headed. Do not change the turtle's heading.\n\nExample:\n>>> position()\n(0.00, 0.00)\n>>> backward(30)\n>>> position()\n(-30.00, 0.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "distance"
+                }
+            ]
+        },
+        {
+            "acResult": "begin_fill",
+            "documentation": "Called just before drawing a shape to be filled.\n\nNo argument.\n\nExample:\n>>> color(\"black\", \"red\")\n>>> begin_fill()\n>>> circle(60)\n>>> end_fill()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "bgcolor",
+            "documentation": "Set or return backgroundcolor of the TurtleScreen.\n\nArguments (if given): a color string or three numbers\nin the range 0..colormode or a 3-tuple of such numbers.\n\nExample:\n>>> bgcolor(\"orange\")\n>>> bgcolor()\n'orange'\n>>> bgcolor(0.5,0,0.5)\n>>> bgcolor()\n'#800080'",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "bgpic",
+            "documentation": "Set background image or return name of current backgroundimage.\n\nOptional argument:\npicname -- a string, name of a gif-file or \"nopic\".\n\nIf picname is a filename, set the corresponding image as background.\nIf picname is \"nopic\", delete backgroundimage, if present.\nIf picname is None, return the filename of the current backgroundimage.\n\nExample:\n>>> bgpic()\n'nopic'\n>>> bgpic(\"landscape.gif\")\n>>> bgpic()\n'landscape.gif'",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "picname",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "bk",
+            "documentation": "Move the turtle backward by distance.\n\nAliases: back | backward | bk\n\nArgument:\ndistance -- a number\n\nMove the turtle backward by distance ,opposite to the direction the\nturtle is headed. Do not change the turtle's heading.\n\nExample:\n>>> position()\n(0.00, 0.00)\n>>> backward(30)\n>>> position()\n(-30.00, 0.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "distance"
+                }
+            ]
+        },
+        {
+            "acResult": "bye",
+            "documentation": "Shut the turtlegraphics window.\n\nExample:\n>>> bye()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "circle",
+            "documentation": "Draw a circle with given radius.\n\nArguments:\nradius -- a number\nextent (optional) -- a number\nsteps (optional) -- an integer\n\nDraw a circle with given radius. The center is radius units left\nof the turtle; extent - an angle - determines which part of the\ncircle is drawn. If extent is not given, draw the entire circle.\nIf extent is not a full circle, one endpoint of the arc is the\ncurrent pen position. Draw the arc in counterclockwise direction\nif radius is positive, otherwise in clockwise direction. Finally\nthe direction of the turtle is changed by the amount of extent.\n\nAs the circle is approximated by an inscribed regular polygon,\nsteps determines the number of steps to use. If not given,\nit will be calculated automatically. Maybe used to draw regular\npolygons.\n\ncall: circle(radius)                  # full circle\n--or: circle(radius, extent)          # arc\n--or: circle(radius, extent, steps)\n--or: circle(radius, steps=6)         # 6-sided polygon\n\nExample:\n>>> circle(50)\n>>> circle(120, 180)  # semicircle",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "radius"
+                },
+                {
+                    "name": "extent",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "steps",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "clear",
+            "documentation": "Delete the turtle's drawings from the screen. Do not move \n\nNo arguments.\n\nDelete the turtle's drawings from the screen. Do not move \nState and position of the turtle as well as drawings of other\nturtles are not affected.\n\nExamples:\n>>> clear()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "clearscreen",
+            "documentation": "Delete all drawings and all turtles from the TurtleScreen.\n\nNo argument.\n\nReset empty TurtleScreen to its initial state: white background,\nno backgroundimage, no eventbindings and tracing on.\n\nExample:\n>>> clear()\n\nNote: this method is not available as function.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "clone",
+            "documentation": "Create and return a clone of the \n\nNo argument.\n\nCreate and return a clone of the turtle with same position, heading\nand turtle properties.\n\nExample (for a Turtle instance named mick):\nmick = Turtle()\njoe = mick.clone()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "color",
+            "documentation": "Return or set the pencolor and fillcolor.\n\nArguments:\nSeveral input formats are allowed.\nThey use 0, 1, 2, or 3 arguments as follows:\n\ncolor()\n    Return the current pencolor and the current fillcolor\n    as a pair of color specification strings as are returned\n    by pencolor and fillcolor.\ncolor(colorstring), color((r,g,b)), color(r,g,b)\n    inputs as in pencolor, set both, fillcolor and pencolor,\n    to the given value.\ncolor(colorstring1, colorstring2),\ncolor((r1,g1,b1), (r2,g2,b2))\n    equivalent to pencolor(colorstring1) and fillcolor(colorstring2)\n    and analogously, if the other input format is used.\n\nIf turtleshape is a polygon, outline and interior of that polygon\nis drawn with the newly set colors.\nFor more info see: pencolor, fillcolor\n\nExample:\n>>> color('red', 'green')\n>>> color()\n('red', 'green')\n>>> colormode(255)\n>>> color((40, 80, 120), (160, 200, 240))\n>>> color()\n('#285078', '#a0c8f0')",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "degrees",
+            "documentation": "Set angle measurement units to degrees.\n\nOptional argument:\nfullcircle -  a number\n\nSet angle measurement units, i. e. set number\nof 'degrees' for a full circle. Default value is\n360 degrees.\n\nExample:\n>>> left(90)\n>>> heading()\n90\n\nChange angle measurement unit to grad (also known as gon,\ngrade, or gradian and equals 1/100-th of the right angle.)\n>>> degrees(400.0)\n>>> heading()\n100",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "fullcircle",
+                    "defaultValue": "360.0"
+                }
+            ]
+        },
+        {
+            "acResult": "delay",
+            "documentation": "Return or set the drawing delay in milliseconds.\n\nOptional argument:\ndelay -- positive integer\n\nExample:\n>>> delay(15)\n>>> delay()\n15",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "delay",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "distance",
+            "documentation": "Return the distance from the turtle to (x,y) in turtle step units.\n\nArguments:\nx -- a number   or  a pair/vector of numbers   or   a turtle instance\ny -- a number       None                            None\n\ncall: distance(x, y)         # two coordinates\n--or: distance((x, y))       # a pair (tuple) of coordinates\n--or: distance(vec)          # e.g. as returned by pos()\n--or: distance(mypen)        # where mypen is another turtle\n\nExample:\n>>> pos()\n(0.00, 0.00)\n>>> distance(30,40)\n50.0\n>>> pen = Turtle()\n>>> pen.forward(77)\n>>> distance(pen)\n77.0",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "done",
+            "documentation": "Starts event loop - calling Tkinter's mainloop function.\n\nNo argument.\n\nMust be last statement in a turtle graphics program.\nMust NOT be used if a script is run from within IDLE in -n mode\n(No subprocess) - for interactive use of turtle graphics.\n\nExample:\n>>> mainloop()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "dot",
+            "documentation": "Draw a dot with diameter size, using color.\n\nOptional arguments:\nsize -- an integer >= 1 (if given)\ncolor -- a colorstring or a numeric color tuple\n\nDraw a circular dot with diameter size, using color.\nIf size is not given, the maximum of pensize+4 and 2*pensize is used.\n\nExample:\n>>> dot()\n>>> fd(50); dot(20, \"blue\"); fd(50)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "size",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "down",
+            "documentation": "Pull the pen down -- drawing when moving.\n\nAliases: pendown | pd | down\n\nNo argument.\n\nExample:\n>>> pendown()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "end_fill",
+            "documentation": "Fill the shape drawn after the call begin_fill().\n\nNo argument.\n\nExample:\n>>> color(\"black\", \"red\")\n>>> begin_fill()\n>>> circle(60)\n>>> end_fill()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "exitonclick",
+            "documentation": "Go into mainloop until the mouse is clicked.\n\nNo arguments.\n\nBind bye() method to mouseclick on TurtleScreen.\nIf \"using_IDLE\" - value in configuration dictionary is False\n(default value), enter mainloop.\nIf IDLE with -n switch (no subprocess) is used, this value should be\nset to True in turtle.cfg. In this case IDLE's mainloop\nis active also for the client script.\n\nThis is a method of the Screen-class and not available for\nTurtleScreen instances.\n\nExample:\n>>> exitonclick()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "fd",
+            "documentation": "Move the turtle forward by the specified distance.\n\nAliases: forward | fd\n\nArgument:\ndistance -- a number (integer or float)\n\nMove the turtle forward by the specified distance, in the direction\nthe turtle is headed.\n\nExample:\n>>> position()\n(0.00, 0.00)\n>>> forward(25)\n>>> position()\n(25.00,0.00)\n>>> forward(-75)\n>>> position()\n(-50.00,0.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "distance"
+                }
+            ]
+        },
+        {
+            "acResult": "fill",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "fillcolor",
+            "documentation": "Return or set the fillcolor.\n\nArguments:\nFour input formats are allowed:\n  - fillcolor()\n    Return the current fillcolor as color specification string,\n    possibly in hex-number format (see example).\n    May be used as input to another color/pencolor/fillcolor call.\n  - fillcolor(colorstring)\n    s is a Tk color specification string, such as \"red\" or \"yellow\"\n  - fillcolor((r, g, b))\n    *a tuple* of r, g, and b, which represent, an RGB color,\n    and each of r, g, and b are in the range 0..colormode,\n    where colormode is either 1.0 or 255\n  - fillcolor(r, g, b)\n    r, g, and b represent an RGB color, and each of r, g, and b\n    are in the range 0..colormode\n\nIf turtleshape is a polygon, the interior of that polygon is drawn\nwith the newly set fillcolor.\n\nExample:\n>>> fillcolor('violet')\n>>> col = pencolor()\n>>> fillcolor(col)\n>>> fillcolor(0, .5, 0)",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "forward",
+            "documentation": "Move the turtle forward by the specified distance.\n\nAliases: forward | fd\n\nArgument:\ndistance -- a number (integer or float)\n\nMove the turtle forward by the specified distance, in the direction\nthe turtle is headed.\n\nExample:\n>>> position()\n(0.00, 0.00)\n>>> forward(25)\n>>> position()\n(25.00,0.00)\n>>> forward(-75)\n>>> position()\n(-50.00,0.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "distance"
+                }
+            ]
+        },
+        {
+            "acResult": "getpen",
+            "documentation": "Return the Turtleobject itself.\n\nNo argument.\n\nOnly reasonable use: as a function to return the 'anonymous turtle':\n\nExample:\n>>> pet = getturtle()\n>>> pet.fd(50)\n>>> pet\n<Turtle object at 0x0187D810>\n>>> turtles()\n[<Turtle object at 0x0187D810>]",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getscreen",
+            "documentation": "Return the TurtleScreen object, the turtle is drawing  on.\n\nNo argument.\n\nReturn the TurtleScreen object, the turtle is drawing  on.\nSo TurtleScreen-methods can be called for that object.\n\nExample:\n>>> ts = getscreen()\n>>> ts\n<TurtleScreen object at 0x0106B770>\n>>> ts.bgcolor(\"pink\")",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getturtle",
+            "documentation": "Return the Turtleobject itself.\n\nNo argument.\n\nOnly reasonable use: as a function to return the 'anonymous turtle':\n\nExample:\n>>> pet = getturtle()\n>>> pet.fd(50)\n>>> pet\n<Turtle object at 0x0187D810>\n>>> turtles()\n[<Turtle object at 0x0187D810>]",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "goto",
+            "documentation": "Move turtle to an absolute position.\n\nAliases: setpos | setposition | goto:\n\nArguments:\nx -- a number      or     a pair/vector of numbers\ny -- a number             None\n\ncall: goto(x, y)         # two coordinates\n--or: goto((x, y))       # a pair (tuple) of coordinates\n--or: goto(vec)          # e.g. as returned by pos()\n\nMove turtle to an absolute position. If the pen is down,\na line will be drawn. The turtle's orientation does not change.\n\nExample:\n>>> tp = pos()\n>>> tp\n(0.00, 0.00)\n>>> setpos(60,30)\n>>> pos()\n(60.00,30.00)\n>>> setpos((20,80))\n>>> pos()\n(20.00,80.00)\n>>> setpos(tp)\n>>> pos()\n(0.00,0.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "heading",
+            "documentation": "Return the turtle's current heading.\n\nNo arguments.\n\nExample:\n>>> left(67)\n>>> heading()\n67.0",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "hideturtle",
+            "documentation": "Makes the turtle invisible.\n\nAliases: hideturtle | ht\n\nNo argument.\n\nIt's a good idea to do this while you're in the\nmiddle of a complicated drawing, because hiding\nthe turtle speeds up the drawing observably.\n\nExample:\n>>> hideturtle()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "home",
+            "documentation": "Move turtle to the origin - coordinates (0,0).\n\nNo arguments.\n\nMove turtle to the origin - coordinates (0,0) and set its\nheading to its start-orientation (which depends on mode).\n\nExample:\n>>> home()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "ht",
+            "documentation": "Makes the turtle invisible.\n\nAliases: hideturtle | ht\n\nNo argument.\n\nIt's a good idea to do this while you're in the\nmiddle of a complicated drawing, because hiding\nthe turtle speeds up the drawing observably.\n\nExample:\n>>> hideturtle()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "isdown",
+            "documentation": "Return True if pen is down, False if it's up.\n\nNo argument.\n\nExample:\n>>> penup()\n>>> isdown()\nFalse\n>>> pendown()\n>>> isdown()\nTrue",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "isvisible",
+            "documentation": "Return True if the Turtle is shown, False if it's hidden.\n\nNo argument.\n\nExample:\n>>> hideturtle()\n>>> print isvisible():\nFalse",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "left",
+            "documentation": "Turn turtle left by angle units.\n\nAliases: left | lt\n\nArgument:\nangle -- a number (integer or float)\n\nTurn turtle left by angle units. (Units are by default degrees,\nbut can be set via the degrees() and radians() functions.)\nAngle orientation depends on mode. (See this.)\n\nExample:\n>>> heading()\n22.0\n>>> left(45)\n>>> heading()\n67.0",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "angle"
+                }
+            ]
+        },
+        {
+            "acResult": "listen",
+            "documentation": "Set focus on TurtleScreen (in order to collect key-events)\n\nNo arguments.\nDummy arguments are provided in order\nto be able to pass listen to the onclick method.\n\nExample:\n>>> listen()",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "xdummy",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "ydummy",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "lt",
+            "documentation": "Turn turtle left by angle units.\n\nAliases: left | lt\n\nArgument:\nangle -- a number (integer or float)\n\nTurn turtle left by angle units. (Units are by default degrees,\nbut can be set via the degrees() and radians() functions.)\nAngle orientation depends on mode. (See this.)\n\nExample:\n>>> heading()\n22.0\n>>> left(45)\n>>> heading()\n67.0",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "angle"
+                }
+            ]
+        },
+        {
+            "acResult": "mainloop",
+            "documentation": "Starts event loop - calling Tkinter's mainloop function.\n\nNo argument.\n\nMust be last statement in a turtle graphics program.\nMust NOT be used if a script is run from within IDLE in -n mode\n(No subprocess) - for interactive use of turtle graphics.\n\nExample:\n>>> mainloop()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "onclick",
+            "documentation": "Bind fun to mouse-click event on this turtle on canvas.\n\nArguments:\nfun --  a function with two arguments, to which will be assigned\n        the coordinates of the clicked point on the canvas.\nbtn --  number of the mouse-button defaults to 1 (left mouse button).\nadd --  True or False. If True, new binding will be added, otherwise\n        it will replace a former binding.\n\nExample for the anonymous turtle, i. e. the procedural way:\n\n>>> def turn(x, y):\n...     left(360)\n...\n>>> onclick(turn)  # Now clicking into the turtle will turn it.\n>>> onclick(None)  # event-binding will be removed",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "fun"
+                },
+                {
+                    "name": "btn",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "add",
+                    "defaultValue": "1"
+                }
+            ]
+        },
+        {
+            "acResult": "ondrag",
+            "documentation": "Bind fun to mouse-move event on this turtle on canvas.\n\nArguments:\nfun -- a function with two arguments, to which will be assigned\n       the coordinates of the clicked point on the canvas.\nbtn -- number of the mouse-button defaults to 1 (left mouse button).\n\nEvery sequence of mouse-move-events on a turtle is preceded by a\nmouse-click event on that \n\nExample:\n>>> ondrag(goto)\n\nSubsequently clicking and dragging a Turtle will move it\nacross the screen thereby producing handdrawings (if pen is\ndown).",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "fun"
+                },
+                {
+                    "name": "btn",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "add",
+                    "defaultValue": "1"
+                }
+            ]
+        },
+        {
+            "acResult": "onkey",
+            "documentation": "Bind fun to key-release event of key.\n\nArguments:\nfun -- a function with no arguments\nkey -- a string: key (e.g. \"a\") or key-symbol (e.g. \"space\")\n\nIn order to be able to register key-events, TurtleScreen\nmust have focus. (See method listen.)\n\nExample:\n\n>>> def f():\n...     fd(50)\n...     lt(60)\n...\n>>> onkey(f, \"Up\")\n>>> listen()\n\nSubsequently the turtle can be moved by repeatedly pressing\nthe up-arrow key, consequently drawing a hexagon",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "fun"
+                },
+                {
+                    "name": "key"
+                }
+            ]
+        },
+        {
+            "acResult": "onrelease",
+            "documentation": "Bind fun to mouse-button-release event on this turtle on canvas.\n\nArguments:\nfun -- a function with two arguments, to which will be assigned\n        the coordinates of the clicked point on the canvas.\nbtn --  number of the mouse-button defaults to 1 (left mouse button).\n\nExample (for a MyTurtle instance named joe):\n>>> class MyTurtle(Turtle):\n...     def glow(self,x,y):\n...             self.fillcolor(\"red\")\n...     def unglow(self,x,y):\n...             self.fillcolor(\"\")\n...\n>>> joe = MyTurtle()\n>>> joe.onclick(joe.glow)\n>>> joe.onrelease(joe.unglow)\n\nClicking on joe turns fillcolor red, unclicking turns it to\ntransparent.",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "fun"
+                },
+                {
+                    "name": "btn",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "add",
+                    "defaultValue": "1"
+                }
+            ]
+        },
+        {
+            "acResult": "onscreenclick",
+            "documentation": "Bind fun to mouse-click event on canvas.\n\nArguments:\nfun -- a function with two arguments, the coordinates of the\n       clicked point on the canvas.\nbtn -- the number of the mouse-button, defaults to 1\n\nExample (for a TurtleScreen instance named screen)\n\n>>> onclick(goto)\n>>> # Subsequently clicking into the TurtleScreen will\n>>> # make the turtle move to the clicked point.\n>>> onclick(None)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "fun"
+                },
+                {
+                    "name": "btn",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "add",
+                    "defaultValue": "1"
+                }
+            ]
+        },
+        {
+            "acResult": "ontimer",
+            "documentation": "Install a timer, which calls fun after t milliseconds.\n\nArguments:\nfun -- a function with no arguments.\nt -- a number >= 0\n\nExample:\n\n>>> running = True\n>>> def f():\n...     if running:\n...             fd(50)\n...             lt(60)\n...             ontimer(f, 250)\n...\n>>> f()   # makes the turtle marching around\n>>> running = False",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "fun"
+                },
+                {
+                    "name": "t",
+                    "defaultValue": "0"
+                }
+            ]
+        },
+        {
+            "acResult": "pd",
+            "documentation": "Pull the pen down -- drawing when moving.\n\nAliases: pendown | pd | down\n\nNo argument.\n\nExample:\n>>> pendown()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pencolor",
+            "documentation": "Return or set the pencolor.\n\nArguments:\nFour input formats are allowed:\n  - pencolor()\n    Return the current pencolor as color specification string,\n    possibly in hex-number format (see example).\n    May be used as input to another color/pencolor/fillcolor call.\n  - pencolor(colorstring)\n    s is a Tk color specification string, such as \"red\" or \"yellow\"\n  - pencolor((r, g, b))\n    *a tuple* of r, g, and b, which represent, an RGB color,\n    and each of r, g, and b are in the range 0..colormode,\n    where colormode is either 1.0 or 255\n  - pencolor(r, g, b)\n    r, g, and b represent an RGB color, and each of r, g, and b\n    are in the range 0..colormode\n\nIf turtleshape is a polygon, the outline of that polygon is drawn\nwith the newly set pencolor.\n\nExample:\n>>> pencolor('brown')\n>>> tup = (0.2, 0.8, 0.55)\n>>> pencolor(tup)\n>>> pencolor()\n'#33cc8c'",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pendown",
+            "documentation": "Pull the pen down -- drawing when moving.\n\nAliases: pendown | pd | down\n\nNo argument.\n\nExample:\n>>> pendown()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pensize",
+            "documentation": "Set or return the line thickness.\n\nAliases:  pensize | width\n\nArgument:\nwidth -- positive number\n\nSet the line thickness to width or return it. If resizemode is set\nto \"auto\" and turtleshape is a polygon, that polygon is drawn with\nthe same line thickness. If no argument is given, current pensize\nis returned.\n\nExample:\n>>> pensize()\n1\n>>> pensize(10)   # from here on lines of width 10 are drawn",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "width",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "penup",
+            "documentation": "Pull the pen up -- no drawing when moving.\n\nAliases: penup | pu | up\n\nNo argument\n\nExample:\n>>> penup()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pos",
+            "documentation": "Return the turtle's current location (x,y), as a Vec2D-vector.\n\nAliases: pos | position\n\nNo arguments.\n\nExample:\n>>> pos()\n(0.00, 240.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "position",
+            "documentation": "Return the turtle's current location (x,y), as a Vec2D-vector.\n\nAliases: pos | position\n\nNo arguments.\n\nExample:\n>>> pos()\n(0.00, 240.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pu",
+            "documentation": "Pull the pen up -- no drawing when moving.\n\nAliases: penup | pu | up\n\nNo argument\n\nExample:\n>>> penup()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "radians",
+            "documentation": "Set the angle measurement units to radians.\n\nNo arguments.\n\nExample:\n>>> heading()\n90\n>>> radians()\n>>> heading()\n1.5707963267948966",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "register_shape",
+            "documentation": "Adds a turtle shape to TurtleScreen's shapelist.\n\nArguments:\n(1) name is the name of a gif-file and shape is None.\n    Installs the corresponding image shape.\n    !! Image-shapes DO NOT rotate when turning the turtle,\n    !! so they do not display the heading of the turtle!\n(2) name is an arbitrary string and shape is a tuple\n    of pairs of coordinates. Installs the corresponding\n    polygon shape\n(3) name is an arbitrary string and shape is a\n    (compound) Shape object. Installs the corresponding\n    compound shape.\nTo use a shape, you have to issue the command shape(shapename).\n\ncall: register_shape(\"turtle.gif\")\n--or: register_shape(\"tri\", ((0,0), (10,10), (-10,10)))\n\nExample:\n>>> register_shape(\"triangle\", ((5,-3),(0,5),(-5,-3)))",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "name"
+                },
+                {
+                    "name": "shape",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "reset",
+            "documentation": "Delete the turtle's drawings and restore its default values.\n\nNo argument.\n\nDelete the turtle's drawings from the screen, re-center the turtle\nand set variables to the default values.\n\nExample:\n>>> position()\n(0.00,-22.00)\n>>> heading()\n100.0\n>>> reset()\n>>> position()\n(0.00,0.00)\n>>> heading()\n0.0",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "resetscreen",
+            "documentation": "Reset all Turtles on the Screen to their initial state.\n\nNo argument.\n\nExample:\n>>> reset()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "right",
+            "documentation": "Turn turtle right by angle units.\n\nAliases: right | rt\n\nArgument:\nangle -- a number (integer or float)\n\nTurn turtle right by angle units. (Units are by default degrees,\nbut can be set via the degrees() and radians() functions.)\nAngle orientation depends on mode. (See this.)\n\nExample:\n>>> heading()\n22.0\n>>> right(45)\n>>> heading()\n337.0",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "angle"
+                }
+            ]
+        },
+        {
+            "acResult": "rt",
+            "documentation": "Turn turtle right by angle units.\n\nAliases: right | rt\n\nArgument:\nangle -- a number (integer or float)\n\nTurn turtle right by angle units. (Units are by default degrees,\nbut can be set via the degrees() and radians() functions.)\nAngle orientation depends on mode. (See this.)\n\nExample:\n>>> heading()\n22.0\n>>> right(45)\n>>> heading()\n337.0",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "angle"
+                }
+            ]
+        },
+        {
+            "acResult": "seth",
+            "documentation": "Set the orientation of the turtle to to_angle.\n\nAliases:  setheading | seth\n\nArgument:\nto_angle -- a number (integer or float)\n\nSet the orientation of the turtle to to_angle.\nHere are some common directions in degrees:\n\n standard - mode:          logo-mode:\n-------------------|--------------------\n   0 - east                0 - north\n  90 - north              90 - east\n 180 - west              180 - south\n 270 - south             270 - west\n\nExample:\n>>> setheading(90)\n>>> heading()\n90",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "to_angle"
+                }
+            ]
+        },
+        {
+            "acResult": "setheading",
+            "documentation": "Set the orientation of the turtle to to_angle.\n\nAliases:  setheading | seth\n\nArgument:\nto_angle -- a number (integer or float)\n\nSet the orientation of the turtle to to_angle.\nHere are some common directions in degrees:\n\n standard - mode:          logo-mode:\n-------------------|--------------------\n   0 - east                0 - north\n  90 - north              90 - east\n 180 - west              180 - south\n 270 - south             270 - west\n\nExample:\n>>> setheading(90)\n>>> heading()\n90",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "to_angle"
+                }
+            ]
+        },
+        {
+            "acResult": "setpos",
+            "documentation": "Move turtle to an absolute position.\n\nAliases: setpos | setposition | goto:\n\nArguments:\nx -- a number      or     a pair/vector of numbers\ny -- a number             None\n\ncall: goto(x, y)         # two coordinates\n--or: goto((x, y))       # a pair (tuple) of coordinates\n--or: goto(vec)          # e.g. as returned by pos()\n\nMove turtle to an absolute position. If the pen is down,\na line will be drawn. The turtle's orientation does not change.\n\nExample:\n>>> tp = pos()\n>>> tp\n(0.00, 0.00)\n>>> setpos(60,30)\n>>> pos()\n(60.00,30.00)\n>>> setpos((20,80))\n>>> pos()\n(20.00,80.00)\n>>> setpos(tp)\n>>> pos()\n(0.00,0.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "setposition",
+            "documentation": "Move turtle to an absolute position.\n\nAliases: setpos | setposition | goto:\n\nArguments:\nx -- a number      or     a pair/vector of numbers\ny -- a number             None\n\ncall: goto(x, y)         # two coordinates\n--or: goto((x, y))       # a pair (tuple) of coordinates\n--or: goto(vec)          # e.g. as returned by pos()\n\nMove turtle to an absolute position. If the pen is down,\na line will be drawn. The turtle's orientation does not change.\n\nExample:\n>>> tp = pos()\n>>> tp\n(0.00, 0.00)\n>>> setpos(60,30)\n>>> pos()\n(60.00,30.00)\n>>> setpos((20,80))\n>>> pos()\n(20.00,80.00)\n>>> setpos(tp)\n>>> pos()\n(0.00,0.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "setundobuffer",
+            "documentation": "Set or disable undobuffer.\n\nArgument:\nsize -- an integer or None\n\nIf size is an integer an empty undobuffer of given size is installed.\nSize gives the maximum number of turtle-actions that can be undone\nby the undo() function.\nIf size is None, no undobuffer is present.\n\nExample:\n>>> setundobuffer(42)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "size"
+                }
+            ]
+        },
+        {
+            "acResult": "setup",
+            "documentation": "Set the size and position of the main window.\n\nArguments:\nwidth: as integer a size in pixels, as float a fraction of the \n  Default is 50% of \nheight: as integer the height in pixels, as float a fraction of the\n   Default is 75% of \nstartx: if positive, starting position in pixels from the left\n  edge of the screen, if negative from the right edge\n  Default, startx=None is to center window horizontally.\nstarty: if positive, starting position in pixels from the top\n  edge of the screen, if negative from the bottom edge\n  Default, starty=None is to center window vertically.\n\nExamples:\n>>> setup (width=200, height=200, startx=0, starty=0)\n\nsets window to 200x200 pixels, in upper left of screen\n\n>>> setup(width=.75, height=0.5, startx=None, starty=None)\n\nsets window to 75% of screen by 50% of screen and centers",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "width",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "height",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "startx",
+                    "defaultValue": "0.75"
+                },
+                {
+                    "name": "starty",
+                    "defaultValue": "0.5"
+                }
+            ]
+        },
+        {
+            "acResult": "setworldcoordinates",
+            "documentation": "Set up a user defined coordinate-system.\n\nArguments:\nllx -- a number, x-coordinate of lower left corner of canvas\nlly -- a number, y-coordinate of lower left corner of canvas\nurx -- a number, x-coordinate of upper right corner of canvas\nury -- a number, y-coordinate of upper right corner of canvas\n\nSet up user coodinat-system and switch to mode 'world' if necessary.\nThis performs a reset. If mode 'world' is already active,\nall drawings are redrawn according to the new coordinates.\n\nBut ATTENTION: in user-defined coordinatesystems angles may appear\ndistorted. (see Screen.mode())\n\nExample:\n>>> setworldcoordinates(-10,-0.5,50,1.5)\n>>> for _ in range(36):\n...     left(10)\n...     forward(0.5)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "llx"
+                },
+                {
+                    "name": "lly"
+                },
+                {
+                    "name": "urx"
+                },
+                {
+                    "name": "ury"
+                }
+            ]
+        },
+        {
+            "acResult": "setx",
+            "documentation": "Set the turtle's first coordinate to x\n\nArgument:\nx -- a number (integer or float)\n\nSet the turtle's first coordinate to x, leave second coordinate\nunchanged.\n\nExample:\n>>> position()\n(0.00, 240.00)\n>>> setx(10)\n>>> position()\n(10.00, 240.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "x"
+                }
+            ]
+        },
+        {
+            "acResult": "sety",
+            "documentation": "Set the turtle's second coordinate to y\n\nArgument:\ny -- a number (integer or float)\n\nSet the turtle's first coordinate to x, second coordinate remains\nunchanged.\n\nExample:\n>>> position()\n(0.00, 40.00)\n>>> sety(-10)\n>>> position()\n(0.00, -10.00)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "y"
+                }
+            ]
+        },
+        {
+            "acResult": "shape",
+            "documentation": "Set turtle shape to shape with given name / return current shapename.\n\nOptional argument:\nname -- a string, which is a valid shapename\n\nSet turtle shape to shape with given name or, if name is not given,\nreturn name of current shape.\nShape with name must exist in the TurtleScreen's shape dictionary.\nInitially there are the following polygon shapes:\n'arrow', 'turtle', 'circle', 'square', 'triangle', 'classic'.\nTo learn about how to deal with shapes see Screen-method register_shape.\n\nExample:\n>>> shape()\n'arrow'\n>>> shape(\"turtle\")\n>>> shape()\n'turtle'",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "name",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "showturtle",
+            "documentation": "Makes the turtle visible.\n\nAliases: showturtle | st\n\nNo argument.\n\nExample:\n>>> hideturtle()\n>>> showturtle()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "speed",
+            "documentation": "Return or set the turtle's speed.\n\nOptional argument:\nspeed -- an integer in the range 0..10 or a speedstring (see below)\n\nSet the turtle's speed to an integer value in the range 0 .. 10.\nIf no argument is given: return current speed.\n\nIf input is a number greater than 10 or smaller than 0.5,\nspeed is set to 0.\nSpeedstrings  are mapped to speedvalues in the following way:\n    'fastest' :  0\n    'fast'    :  10\n    'normal'  :  6\n    'slow'    :  3\n    'slowest' :  1\nspeeds from 1 to 10 enforce increasingly faster animation of\nline drawing and turtle turning.\n\nAttention:\nspeed = 0 : *no* animation takes place. forward/back makes turtle jump\nand likewise left/right make the turtle turn instantly.\n\nExample:\n>>> speed(3)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "speed",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "st",
+            "documentation": "Makes the turtle visible.\n\nAliases: showturtle | st\n\nNo argument.\n\nExample:\n>>> hideturtle()\n>>> showturtle()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "stamp",
+            "documentation": "Stamp a copy of the turtleshape onto the canvas and return its id.\n\nNo argument.\n\nStamp a copy of the turtle shape onto the canvas at the current\nturtle position. Return a stamp_id for that stamp, which can be\nused to delete it by calling clearstamp(stamp_id).\n\nExample:\n>>> color(\"blue\")\n>>> stamp()\n13\n>>> fd(50)",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "title",
+            "documentation": "Set title of turtle-window\n\nArgument:\ntitlestring -- a string, to appear in the titlebar of the\n               turtle graphics window.\n\nThis is a method of Screen-class. Not available for TurtleScreen-\nobjects.\n\nExample:\n>>> title(\"Welcome to the turtle-zoo!\")",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "titlestring"
+                }
+            ]
+        },
+        {
+            "acResult": "towards",
+            "documentation": "Return the angle of the line from the turtle's position to (x, y).\n\nArguments:\nx -- a number   or  a pair/vector of numbers   or   a turtle instance\ny -- a number       None                            None\n\ncall: distance(x, y)         # two coordinates\n--or: distance((x, y))       # a pair (tuple) of coordinates\n--or: distance(vec)          # e.g. as returned by pos()\n--or: distance(mypen)        # where mypen is another turtle\n\nReturn the angle, between the line from turtle-position to position\nspecified by x, y and the turtle's start orientation. (Depends on\nmodes - \"standard\" or \"logo\")\n\nExample:\n>>> pos()\n(10.00, 10.00)\n>>> towards(0,0)\n225.0",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "tracer",
+            "documentation": "Turns turtle animation on/off and set delay for update drawings.\n\nOptional arguments:\nn -- nonnegative  integer\ndelay -- nonnegative  integer\n\nIf n is given, only each n-th regular screen update is really performed.\n(Can be used to accelerate the drawing of complex graphics.)\nSecond arguments sets delay value (see RawTurtle.delay())\n\nExample:\n>>> tracer(8, 25)\n>>> dist = 2\n>>> for i in range(200):\n...     fd(dist)\n...     rt(90)\n...     dist += 2",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "n",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "delay",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "turtles",
+            "documentation": "Return the list of turtles on the \n\nExample:\n>>> turtles()\n[<turtle.Turtle object at 0x00E11FB0>]",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "undo",
+            "documentation": "undo (repeatedly) the last turtle action.\n\nNo argument.\n\nundo (repeatedly) the last turtle action.\nNumber of available undo actions is determined by the size of\nthe undobuffer.\n\nExample:\n>>> for i in range(4):\n...     fd(50); lt(80)\n...\n>>> for i in range(8):\n...     undo()\n...",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "undobufferentries",
+            "documentation": "Return count of entries in the undobuffer.\n\nNo argument.\n\nExample:\n>>> while undobufferentries():\n...     undo()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "up",
+            "documentation": "Pull the pen up -- no drawing when moving.\n\nAliases: penup | pu | up\n\nNo argument\n\nExample:\n>>> penup()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "documentation": "Perform a TurtleScreen update.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "width",
+            "documentation": "Set or return the line thickness.\n\nAliases:  pensize | width\n\nArgument:\nwidth -- positive number\n\nSet the line thickness to width or return it. If resizemode is set\nto \"auto\" and turtleshape is a polygon, that polygon is drawn with\nthe same line thickness. If no argument is given, current pensize\nis returned.\n\nExample:\n>>> pensize()\n1\n>>> pensize(10)   # from here on lines of width 10 are drawn",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "width",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
+            "acResult": "window_height",
+            "documentation": "Return the height of the turtle window.\n\nExample:\n>>> window_height()\n480",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "window_width",
+            "documentation": "Return the width of the turtle window.\n\nExample:\n>>> window_width()\n640",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "documentation": "Write text at the current turtle position.\n\nArguments:\narg -- info, which is to be written to the TurtleScreen\nmove (optional) -- True/False\nalign (optional) -- one of the strings \"left\", \"center\" or right\"\nfont (optional) -- a triple (fontname, fontsize, fonttype)\n\nWrite text - the string representation of arg - at the current\nturtle position according to align (\"left\", \"center\" or right\")\nand with the given font.\nIf move is True, the pen is moved to the bottom-right corner\nof the text. By default, move is False.\n\nExample:\n>>> write('Home = ', True, align=\"center\")\n>>> write((0,0), True)",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "arg"
+                },
+                {
+                    "name": "move",
+                    "defaultValue": "('Arial', 8, 'normal')"
+                },
+                {
+                    "name": "align",
+                    "defaultValue": "left"
+                },
+                {
+                    "name": "font",
+                    "defaultValue": "False"
+                }
+            ]
+        },
+        {
+            "acResult": "xcor",
+            "documentation": "Return the turtle's x coordinate.\n\nNo arguments.\n\nExample:\n>>> reset()\n>>> left(60)\n>>> forward(100)\n>>> print xcor()\n50.0",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "ycor",
+            "documentation": "Return the turtle's y coordinate\n---\nNo arguments.\n\nExample:\n>>> reset()\n>>> left(60)\n>>> forward(100)\n>>> print ycor()\n86.6025403784",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        }
     ]
 }
