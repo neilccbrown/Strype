@@ -158,7 +158,6 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
 export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
     const soFar : AcResultsWithCategory = {};
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
-    const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
     loopImportFrames: for (let i = 0; i < imports.length; i++) {
         const frame = imports[i];
         if (!frame.isDisabled && (frame.frameType.type === AllFrameTypesIdentifier.fromimport || frame.frameType.type === AllFrameTypesIdentifier.import)) {
@@ -169,71 +168,86 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
             for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
                 module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
                 if (j < frame.labelSlotsDict[0].slotStructures.operators.length) {
-                    // Should be a dot:
-                    if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== ".") {
+                    // Should be a dot or a comma (for simple imports):
+                    if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== "." && (!isSimpleImport || (isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "," ))) {
                         // Error; ignore this import
                         continue loopImportFrames;
+                    }
+                    else if(isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code === "," ){
+                        // When we import several modules at once we process them one by
+                        doGetAllExplicitelyImportedItems(frame, module, true, soFar);
+                        module = "";
+                        continue;
                     }
                     module += frame.labelSlotsDict[0].slotStructures.operators[j].code;
                 }
             }
-            
-            if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
-                
-                // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
-                // the contents of the specific module:
-                
-                /* IFTRUE_isMicrobit */
-                const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
-                if (allMicrobitItems) {
-                    soFar[module] = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
-                }
-                /* FITRUE_isMicrobit */
 
-                /* IFTRUE_isPurePython */
-                const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
-                if (allSkulptItems) {
-                    soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
-                }
-                /* FITRUE_isPurePython */
+            doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar);
+        }
+    }
+    return soFar;
+}
+
+function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory){
+    const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
+    if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
+                
+        // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
+        // the contents of the specific module:
+        
+        /* IFTRUE_isMicrobit */
+        const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
+        if (allMicrobitItems) {
+            soFar[module] = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
+        }
+        /* FITRUE_isMicrobit */
+
+        /* IFTRUE_isPurePython */
+        const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+        if (allSkulptItems) {
+            soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
+        }
+        /* FITRUE_isPurePython */
+    }
+    else {
+        if(isSimpleImport){
+            if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(module) == 0)){
+                // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
+                const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
+                const imports = soFar[importedModulesCategory]??[];
+                imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
+                soFar[importedModulesCategory] = imports;
             }
-            else {
-                if(isSimpleImport && (soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(module) == 0))){
-                    // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
-                    const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
-                    soFar[importedModulesCategory] = [{acResult: module, documentation: moduleDoc, type:["module"], version: 0}];
-                }
-                else{
-                    soFar[module] = [];
-                
-                    let allItems : AcResultType[] = [];
+        }
+        else{
+            soFar[module] = [];
+        
+            let allItems : AcResultType[] = [];
 
-                    /* IFTRUE_isMicrobit */
-                    const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
-                    if (allMicrobitItems) {
-                        allItems = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
-                    }
-                    /* FITRUE_isMicrobit */
+            /* IFTRUE_isMicrobit */
+            const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
+            if (allMicrobitItems) {
+                allItems = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
+            }
+            /* FITRUE_isMicrobit */
 
-                    /* IFTRUE_isPurePython */
-                    const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
-                    if (allSkulptItems) {
-                        allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
-                    }
-                    /* FITRUE_isPurePython */
-                
-                    // Find the relevant item from allItems (if it exists):
-                    for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                        const item = allItems.find((ac) => ac.acResult === (f as BaseSlot).code.trim());
-                        if (item) {
-                            soFar[module].push(item);
-                        }
-                    }
+            /* IFTRUE_isPurePython */
+            const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+            if (allSkulptItems) {
+                allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
+            }
+            /* FITRUE_isPurePython */
+        
+            // Find the relevant item from allItems (if it exists):
+            for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
+                const item = allItems.find((ac) => ac.acResult === (f as BaseSlot).code.trim());
+                if (item) {
+                    soFar[module].push(item);
                 }
             }
         }
     }
-    return soFar;
 }
 
 export function getAvailableModulesForImport() : AcResultsWithCategory {
