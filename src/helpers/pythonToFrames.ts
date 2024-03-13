@@ -668,7 +668,7 @@ function canPastePythonAtStrypeLocation(): boolean {
         return !(topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.funcdef && frame.frameType.type != AllFrameTypesIdentifier.comment)
             || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type)));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
-        return !copiedPythonToFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.comment].includes(frame.frameType.type));
+        return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.comment].includes(frame.frameType.type));
     default:
         // We shouldn't reach this but for safety we return false
         return false;

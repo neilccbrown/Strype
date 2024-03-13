@@ -125,7 +125,11 @@ def myFunc (param1 , param2):
     global x
     global y
     x , y = param1 , param2
-`, "{uparrow}");
+`, "{uparrow}", `def myFunc (param1 , param2):
+    global x
+    global y
+    x , y = param1 , param2
+`);
     });
     it("Handles import and from import", () => {
         testRoundTripPasteAndDownload(`
@@ -135,7 +139,13 @@ from x import *
 from x import y
 from a . b . c import x
 from a . b . c import *
-`, "{uparrow}{uparrow}");
+`, "{uparrow}{uparrow}",`import x
+import a . b . c
+from x import *
+from x import y
+from a . b . c import x
+from a . b . c import *
+`);
     });
     
     it("Supports basic binary operator combinations", () => {
