@@ -280,7 +280,8 @@ export default Vue.extend({
         margin: 0px !important;
     }
 
-    .largeConsoleDiv #pythonConsole {
+    .largeConsoleDiv #pythonConsole,
+    .largeConsoleDiv #pythonTurtleCanvas {
         max-height: 45vh;
     }
 
@@ -293,6 +294,10 @@ export default Vue.extend({
     #consoleControlsDiv.expanded-console {
         position: absolute;
         padding-top: 0 !important;
+    }
+
+    #consoleControlsDiv button {
+        z-index: 10;
     }
 
     .show-error-icon {
