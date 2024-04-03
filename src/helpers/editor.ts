@@ -27,7 +27,7 @@ export enum CustomEventTypes {
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
-    notifyTurtleUsaged = "turtleUsage",
+    notifyTurtleUsage = "turtleUsage",
     /* FITRUE_isPurePython */
 }
 
@@ -1324,5 +1324,5 @@ export function checkIsTurtleImported(): void {
     });
    
     // We notify the console about the presence or absence of the turtle module
-    document.getElementById("pythonConsole")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsaged, {detail: hasTurtleImported}));
+    document.getElementById("pythonConsole")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
 }

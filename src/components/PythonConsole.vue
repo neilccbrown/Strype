@@ -52,18 +52,19 @@ export default Vue.extend({
             includeTurtleCanvas: false, // by default, Turtle isn't visible - it will be activated when we detect the import (see event registration in mounted())
             showingTurtleCanvas: false,
             interruptedTurtle: false,
+            consolePosChangeObserver: {} as ResizeObserver,
         };
     },
 
     mounted(){
-        // Observe when the console (textarea) positon changes: buttons need to be positioned accordingly
+        // Observe when the console (textarea) or turtle div positon changes: buttons need to be positioned accordingly
         // (note that we only do this for appearance reasons: before, the buttons were naturally positioned above the textarea, but that means that
         // if we want to show a scoll in the commands, there will be a gap between the commands and the textarea when the console is extended, the gap
         // being the space the button takes in a natural position. We cheat by stacking the buttons and the texarea and positioning the buttons manually)
         const pythonConsole = document.getElementById("pythonConsole");
         const consoleControlsDiv = document.getElementById("consoleControlsDiv");
         if(pythonConsole != undefined && consoleControlsDiv != undefined){
-            const consolePosChangeObserver = new ResizeObserver((entries) => {
+            this.consolePosChangeObserver = new ResizeObserver((entries) => {
                 for (const entry of entries) {
                     if (entry.contentBoxSize) {
                         // Setting "bottom" doesn't seem to do the right thing, "top" works fine..
@@ -73,18 +74,20 @@ export default Vue.extend({
                     }
                 }
             });
-            consolePosChangeObserver.observe(pythonConsole);
+            this.consolePosChangeObserver.observe(pythonConsole);
 
             // Register an event listener on the textarea for the request focus event
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleRequestFocus, this.handleConsoleFocusRequest);
             // Register an event listener on the textarea for handling post-input
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
             // Register an event listener on this component for the notification of the turtle library import usage
-            document.getElementById("pythonConsole")?.addEventListener(CustomEventTypes.notifyTurtleUsaged, (event) => {
+            document.getElementById("pythonConsole")?.addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
                 this.includeTurtleCanvas = (event as CustomEvent).detail;
-                if(!this.includeTurtleCanvas) {
-                    // If we don't show turtle anymore, we should make sure we get back on the console...
+                const pythonTurtleCanvas = document.getElementById("pythonTurtleCanvas");
+                if(!this.includeTurtleCanvas && pythonTurtleCanvas != undefined) {
+                    // If we don't show turtle anymore, we should make sure we get back on the console and stop observing changes...
                     this.showingTurtleCanvas = false;
+                    this.consolePosChangeObserver.unobserve(pythonTurtleCanvas);
                 }
             });    
         }
@@ -184,7 +187,13 @@ export default Vue.extend({
         showTurtleCanvas(): void {
             // This method is only making sure the Turtle canvas is put to the foreground.
             this.showingTurtleCanvas = true; 
-
+            // We will need to observe the changes on the turtle div now, but we need to wait for it to be available in the DOM!
+            this.$nextTick(() => {
+                const pythonTurtleCanvas = document.getElementById("pythonTurtleCanvas");
+                if(pythonTurtleCanvas){
+                    this.consolePosChangeObserver.observe(pythonTurtleCanvas);
+                }
+            });
         },
 
         onFocus(): void {
