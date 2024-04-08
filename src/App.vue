@@ -16,6 +16,12 @@
                 </div>
             </div>
         </div>
+        <Splitpanes id="largePythonConsoleSplitersOverlay" class="strype-split-theme" v-if="isLargePythonConsole" horizontal @resize=onLargePythonSplitPaneResize>
+            <pane key="1" :size="pythonConsoleSpliterOverlayTopPaneSize">
+            </pane>
+            <pane key="2" min-size="15" max-size="75">
+            </pane>
+        </Splitpanes>
         <div class="row">
             <Splitpanes class="strype-split-theme">
                 <Pane key="1" size="66" min-size="33">
@@ -205,6 +211,26 @@ export default Vue.extend({
 
         getSkulptBackendTurtleDivId(): string {
             return BACKEND_SKULPT_DIV_ID;
+        },
+
+        pythonConsoleSpliterOverlayTopPaneSize(): number {
+            // The expected value is a percentage number.
+            // When the Python console isn't enlarged, we don't really care and return 0,
+            // but when it is enlarged, we need to compute the ratio taken by the display part of the console
+            // (the textarea or the Turtle div) to position the slider at the right place
+            if(!this.isLargePythonConsole){
+                return 0;
+            }
+            else{
+                // The full height of the App is given by the body element, so we can use it to compute the ratio, however,
+                // we need to wait for the DOM to be ready, so we do it a bit later
+                const fullAppHeight = (document.querySelector("body") as HTMLBodyElement).clientHeight;
+                const pythonConsoleDisplayElement = ((document.querySelector("#pythonConsole") as HTMLTextAreaElement).style.display == "none") 
+                    ? (document.querySelector("#pythonTurtleDiv") as HTMLDivElement)
+                    : (document.querySelector("#pythonConsole") as HTMLTextAreaElement); 
+                const pythonConsoleDisplayElementY = pythonConsoleDisplayElement.getBoundingClientRect().y;
+                return pythonConsoleDisplayElementY * 100 / fullAppHeight;           
+            }
         },
     },
 
@@ -725,6 +751,23 @@ export default Vue.extend({
             // Doing so guarantee that only 1 element is selected in the menu
             menuTarget.focus();
         },
+
+        onLargePythonSplitPaneResize(event: any){
+            // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
+            // It will dictate the size of the Python console (enlarged), providing we are not lower than 
+            // 15 (cf style definitions in PythonConsole.vue, and with set a maximum of 90)
+            const lowerPanelSize = event[1].size;
+            if(lowerPanelSize >= 15 && lowerPanelSize <= 75){
+                // As the splitter works in percentage, and the full app height is which of the body, we can compute the height/position
+                // of the editor and the Python console.
+                const fullAppHeight= (document.getElementsByTagName("body")[0].clientHeight);
+                const buttonContainerHeight = (document.querySelector("#consoleControlsDiv") as HTMLDivElement).clientHeight;
+                const editorNewMaxHeight = fullAppHeight * (1 - lowerPanelSize /100) - buttonContainerHeight;
+                (document.querySelector(".run-code-container.largeConsoleDiv") as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                (document.getElementsByClassName("small-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
+
+            }
+        },
     },
 });
 </script>
@@ -891,6 +934,20 @@ $divider-grey: darken($background-grey, 15%);
     background-clip: content-box;
     pointer-events: none;
     border: none;
+}
+
+// Styling of the "large python console" splitter overlay (used to simulate a splitter above the console/Turtle area)
+// It must be full width and heigh, overlaying from (0,0), and we use events to apply the splitting ratio back to the console/Turtle area
+#largePythonConsoleSplitersOverlay {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top:0;
+    left:0;
+}
+
+#largePythonConsoleSplitersOverlay .splitpanes__splitter {
+    z-index: 10;
 }
 
 /* 

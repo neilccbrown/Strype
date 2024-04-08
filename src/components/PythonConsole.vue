@@ -7,12 +7,12 @@
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
                 {{this.consoleDisplayCtrlLabel}}
             </button>
-            <button v-if="includeTurtleCanvas" @click="showTurtleCanvas">&#128034; Turtle</button>
+            <button v-if="includeTurtleGraphics" @click="showTurtleCanvas">&#128034; Turtle</button>
         </div>
         <textarea 
             id="pythonConsole"
             ref="pythonConsole"
-            v-show="!showingTurtleCanvas"
+            v-show="!showingTurtleGraphics"
             @focus="onFocus()"
             @change="onChange"
             @wheel.stop
@@ -22,7 +22,7 @@
             spellcheck="false"
         >    
         </textarea>
-        <div v-if="includeTurtleCanvas" v-show="showingTurtleCanvas" id="pythonTurtleCanvas" ref="pythonTurtleCanvas"/>
+        <div v-if="includeTurtleGraphics" v-show="showingTurtleGraphics" id="pythonTurtleDiv" ref="pythonTurtleDiv"/>
     </div>
 </template>
 
@@ -49,45 +49,26 @@ export default Vue.extend({
         return {
             isLargeConsole: false,
             runningState: RunningState.NotRunning,
-            includeTurtleCanvas: false, // by default, Turtle isn't visible - it will be activated when we detect the import (see event registration in mounted())
-            showingTurtleCanvas: false,
+            includeTurtleGraphics: false, // by default, Turtle isn't visible - it will be activated when we detect the import (see event registration in mounted())
+            showingTurtleGraphics: false,
             interruptedTurtle: false,
-            consolePosChangeObserver: {} as ResizeObserver,
         };
     },
 
     mounted(){
-        // Observe when the console (textarea) or turtle div positon changes: buttons need to be positioned accordingly
-        // (note that we only do this for appearance reasons: before, the buttons were naturally positioned above the textarea, but that means that
-        // if we want to show a scoll in the commands, there will be a gap between the commands and the textarea when the console is extended, the gap
-        // being the space the button takes in a natural position. We cheat by stacking the buttons and the texarea and positioning the buttons manually)
         const pythonConsole = document.getElementById("pythonConsole");
-        const consoleControlsDiv = document.getElementById("consoleControlsDiv");
-        if(pythonConsole != undefined && consoleControlsDiv != undefined){
-            this.consolePosChangeObserver = new ResizeObserver((entries) => {
-                for (const entry of entries) {
-                    if (entry.contentBoxSize) {
-                        // Setting "bottom" doesn't seem to do the right thing, "top" works fine..
-                        consoleControlsDiv.style.top = (this.isLargeConsole)
-                            ? "5px"
-                            : "auto";   
-                    }
-                }
-            });
-            this.consolePosChangeObserver.observe(pythonConsole);
-
+        if(pythonConsole != undefined){
             // Register an event listener on the textarea for the request focus event
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleRequestFocus, this.handleConsoleFocusRequest);
             // Register an event listener on the textarea for handling post-input
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
             // Register an event listener on this component for the notification of the turtle library import usage
             document.getElementById("pythonConsole")?.addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
-                this.includeTurtleCanvas = (event as CustomEvent).detail;
-                const pythonTurtleCanvas = document.getElementById("pythonTurtleCanvas");
-                if(!this.includeTurtleCanvas && pythonTurtleCanvas != undefined) {
+                this.includeTurtleGraphics = (event as CustomEvent).detail;
+                const pythonTurtleDiv = document.getElementById("pythonTurtleDiv");
+                if(!this.includeTurtleGraphics && pythonTurtleDiv != undefined) {
                     // If we don't show turtle anymore, we should make sure we get back on the console and stop observing changes...
-                    this.showingTurtleCanvas = false;
-                    this.consolePosChangeObserver.unobserve(pythonTurtleCanvas);
+                    this.showingTurtleGraphics = false;
                 }
             });    
         }
@@ -105,7 +86,7 @@ export default Vue.extend({
             case RunningState.NotRunning:
                 return "▶ " + i18n.t("console.run");
             case RunningState.Running:
-                return (this.showingTurtleCanvas) ? "\u2771 " + i18n.t("console.show") : "◼ " + i18n.t("console.stop");
+                return (this.showingTurtleGraphics) ? "\u2771 " + i18n.t("console.show") : "◼ " + i18n.t("console.stop");
             case RunningState.RunningAwaitingStop:
                 return i18n.t("console.stopping") as string;
             }
@@ -119,16 +100,16 @@ export default Vue.extend({
             // - not running when nothing happens, click will trigger "running"
             // - running when some code is running, click will trigger "running awaiting stop" when we are not in Turtle, or "show console" otherwise
             // - running awaiting stop will do nothing, unless when we are in Turtle it will get to "show console"
-            // - show console is a pseudo states, when we are in Turtle and need to get back to the console -- it is only implied by the flag "showingTurtleCanvas" value
+            // - show console is a pseudo states, when we are in Turtle and need to get back to the console -- it is only implied by the flag "showingTurtleGraphics" value
             switch (this.runningState) {
             case RunningState.NotRunning:
                 this.runningState = RunningState.Running;
                 this.runCodeOnPyConsole();
                 return;
             case RunningState.Running:
-                if(this.showingTurtleCanvas){
+                if(this.showingTurtleGraphics){
                     // Just gets back to the console
-                    this.showingTurtleCanvas = false;
+                    this.showingTurtleGraphics = false;
                 }
                 else{
                     // Skulpt checks this property regularly while running, via a callback,
@@ -137,9 +118,9 @@ export default Vue.extend({
                 }
                 return;
             case RunningState.RunningAwaitingStop:
-                if(this.showingTurtleCanvas){
+                if(this.showingTurtleGraphics){
                     // Just gets back to the console
-                    this.showingTurtleCanvas = false;
+                    this.showingTurtleGraphics = false;
                 }
                 // Else, nothing more we can do at the moment, just waiting for Skulpt to see it
                 return;
@@ -170,7 +151,7 @@ export default Vue.extend({
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
                 // Trigger the actual console launch
-                runPythonConsole(console, this.$refs.pythonTurtleCanvas as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
+                runPythonConsole(console, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // As the UI should update first, we do it in the next tick
                 this.$nextTick().then(() => {
@@ -186,20 +167,13 @@ export default Vue.extend({
 
         showTurtleCanvas(): void {
             // This method is only making sure the Turtle canvas is put to the foreground.
-            this.showingTurtleCanvas = true; 
-            // We will need to observe the changes on the turtle div now, but we need to wait for it to be available in the DOM!
-            this.$nextTick(() => {
-                const pythonTurtleCanvas = document.getElementById("pythonTurtleCanvas");
-                if(pythonTurtleCanvas){
-                    this.consolePosChangeObserver.observe(pythonTurtleCanvas);
-                }
-            });
+            this.showingTurtleGraphics = true; 
         },
 
         onFocus(): void {
             this.appStore.isEditing = false;
-            if(this.includeTurtleCanvas){
-                this.showingTurtleCanvas = false;
+            if(this.includeTurtleGraphics){
+                this.showingTurtleGraphics = false;
             }
         },
 
@@ -208,9 +182,9 @@ export default Vue.extend({
             // (typically when the Python input() function is encountered)
             
             //First we switch between Turtle and the console shall the Turtle be showing at the moment
-            if(this.includeTurtleCanvas && this.showingTurtleCanvas){
+            if(this.includeTurtleGraphics && this.showingTurtleGraphics){
                 this.interruptedTurtle = true;
-                this.showingTurtleCanvas = false;
+                this.showingTurtleGraphics = false;
             }
 
             //In any case, then we focus the console (keep setTimeout rather than nextTick to have enough time to be effective)
@@ -220,9 +194,9 @@ export default Vue.extend({
         handlePostInputConsole(): void {
             // This method is responsible for handling what to do after the console input (Python) has been invoked.
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
-            if(this.includeTurtleCanvas && this.interruptedTurtle){
+            if(this.includeTurtleGraphics && this.interruptedTurtle){
                 this.interruptedTurtle = false;
-                this.showingTurtleCanvas = true;
+                this.showingTurtleGraphics = true;
             }
         },
 
@@ -246,7 +220,8 @@ export default Vue.extend({
         toggleConsoleDisplay(){
             this.isLargeConsole = !this.isLargeConsole;
             // Other parts of the UI need to be updated when the console default size is changed, so we emit an event
-            document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonConsoleDisplayChanged, {detail: this.isLargeConsole}));
+            // (in case we rely on the current changes, we do it a bit later)
+            this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonConsoleDisplayChanged, {detail: this.isLargeConsole})));
         },
 
         reachFirstError(): void {
@@ -290,8 +265,8 @@ export default Vue.extend({
     }
 
     .largeConsoleDiv #pythonConsole,
-    .largeConsoleDiv #pythonTurtleCanvas {
-        max-height: 45vh;
+    .largeConsoleDiv #pythonTurtleDiv {
+        max-height: none;
     }
 
     #consoleControlsDiv {
@@ -301,7 +276,6 @@ export default Vue.extend({
     }
 
     #consoleControlsDiv.expanded-console {
-        position: absolute;
         padding-top: 0 !important;
     }
 
@@ -349,7 +323,7 @@ export default Vue.extend({
         border-radius: 5px;
     }
 
-    #pythonTurtleCanvas {
+    #pythonTurtleDiv {
         width:100%;
         min-height: 15vh;
         max-height: 30vh;
