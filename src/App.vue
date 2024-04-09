@@ -24,7 +24,7 @@
         </Splitpanes>
         <div class="row">
             <Splitpanes class="strype-split-theme">
-                <Pane key="1" size="66" min-size="33">
+                <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
                     <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
                         <div class="top">
