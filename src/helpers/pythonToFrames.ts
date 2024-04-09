@@ -108,7 +108,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
 // where the Python parse failed.
 export function copyFramesFromParsedPython(code: string) : string | null {
     // Retrieve the current Strype location
-    getCurrentStrypeLocation();
+    findCurrentStrypeLocation();
     // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
     // if we are currently inside the imports or function definitions sections in Strype, we can also trim the start of the code
@@ -620,7 +620,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
 }
 
 // Function to check the current position in Strype 
-function getCurrentStrypeLocation(): void{
+function findCurrentStrypeLocation(): void{
     // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
     // If are below a frame, we look for its parent right away, otheriwse we can use that fraome
     let navigFrameId = (useStore().currentFrame.caretPosition == CaretPosition.below) ? useStore().frameObjects[useStore().currentFrame.id].parentId : useStore().currentFrame.id;

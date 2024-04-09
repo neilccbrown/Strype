@@ -314,13 +314,12 @@ export default Vue.extend({
             if(this.areResultsToShow()) {
                 // The results's categories should also be sorted here otherwise we have a difference between what will be returned and the UI!
                 this.sortCategories(Object.keys(this.resultsToShow));
-                // Set the first module (in the sense of indexed modules) as the selected one
+                // We want to select the entry (to get its module) which is marked as 0 (in "index" property of the IndexedAcResult object -- NOT the first element of the sorted list).
                 this.currentModule = (Object.entries(this.resultsToShow)
-                    .find((catIndexedACRes) => catIndexedACRes[1].some((indexedACRes) => indexedACRes.index == 0))?.[0]) ?? "";
-                this.currentDocumentation = this.getCurrentDocumentation();
-                
+                    .find((catIndexedACRes) => catIndexedACRes[1].some((indexedACRes) => indexedACRes.index == 0)) // here we find which category has its property "index" at 0 ([1] is to get the Object value)
+                    ?.[0]) ?? ""; // if we have found (we should) the right entry, we get its key value (hence ?.[0]) which is the module, or empty to keep TS happy.
+                this.currentDocumentation = this.getCurrentDocumentation();   
             }
-            
         },  
 
         handleScrollHoverConflict(event: Event){

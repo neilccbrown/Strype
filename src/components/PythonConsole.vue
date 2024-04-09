@@ -108,7 +108,7 @@ export default Vue.extend({
                 return;
             case RunningState.Running:
                 if(this.showingTurtleGraphics){
-                    // Just gets back to the console
+                    // Just gets back to the console because we want the user to be able to get back to the console if Turtle is showing and they click the "show console" tab
                     this.showingTurtleGraphics = false;
                 }
                 else{

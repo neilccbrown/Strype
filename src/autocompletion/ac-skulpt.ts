@@ -162,7 +162,8 @@ if not isinstance(itemDocumentation, str):
 
 export function configureSkulptForAutoComplete() : void {
     Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
-    // We also need to set some Turtle environment for Skulpt -- note that the output DIV is NOT the one visible by users
+    // We also need to set some Turtle environment for Skulpt -- note that the output DIV is NOT the one visible by users,
+    // because this environment is only used for our backend processes of the code for autocompletion.
     if(!Sk.TurtleGraphics){
         Sk.TurtleGraphics = {};
         // Create a DIV in the BODY element if the "backend" Turtle output DIV doesn't exist.
