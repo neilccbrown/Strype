@@ -42,7 +42,7 @@
                             <div class="col">
                                 <div 
                                     :id="editorUIID" 
-                                    :class="{'editor-code-div noselect':true, 'small-editor-code-div': isLargePythonConsole}" 
+                                    :class="{'editor-code-div noselect':true, 'large-editor-code-div':!isLargePythonConsole, 'small-editor-code-div': isLargePythonConsole}" 
                                     @click.self="onEditorClick"
                                 >
                                     <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
@@ -815,12 +815,15 @@ html,body {
 
 .editor-code-div {
     overflow-y: auto;
-    height: 100vh;
-    max-height: 100vh;
 }
 
 .small-editor-code-div {
     max-height: 50vh;
+}
+
+.large-editor-code-div {
+    height: 100vh !important;
+    max-height: 100vh !important;
 }
 
 .top {
@@ -1095,7 +1098,7 @@ $divider-grey: darken($background-grey, 15%);
 .strype-split-theme.splitpanes--horizontal>.splitpanes__splitter,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter {
 	height: 7px;
-	border-top: 1px solid #eee;
+	border-top: 1px solid transparent;
 	margin-top: -1px
 }
 
