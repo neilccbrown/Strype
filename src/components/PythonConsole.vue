@@ -128,10 +128,10 @@ export default Vue.extend({
         },
         
         runCodeOnPyConsole() {
-            const console = this.$refs.pythonConsole as HTMLTextAreaElement;
-            console.value = "";
+            const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
+            pythonConsole.value = "";
             // Make sure the text area is disabled when we run the code
-            console.disabled = true;
+            pythonConsole.disabled = true;
             this.appStore.wasLastRuntimeErrorFrameId =  undefined;
             // Make sure there is no document selection for our editor
             this.appStore.setSlotTextCursors(undefined, undefined);
@@ -142,7 +142,9 @@ export default Vue.extend({
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
                 if(hasPrecompiledCodeError()) {
                     this.$nextTick().then(() => {
-                        this.reachFirstError();                        
+                        this.reachFirstError();   
+                        // If we have an error, the code didn't actually run so we need to reflect this properly in the running state
+                        this.runningState = RunningState.NotRunning;            
                     }); 
                     return;
                 }
@@ -151,7 +153,7 @@ export default Vue.extend({
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
                 // Trigger the actual console launch
-                runPythonConsole(console, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
+                runPythonConsole(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // As the UI should update first, we do it in the next tick
                 this.$nextTick().then(() => {
