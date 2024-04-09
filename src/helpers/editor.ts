@@ -25,6 +25,9 @@ export enum CustomEventTypes {
     acItemHovered="acItemHovered",
     /* IFTRUE_isPurePython */
     pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
+    pythonConsoleRequestFocus = "pythonConsoleReqFocus",
+    pythonConsoleAfterInput = "pythonConsoleAfterInput",
+    notifyTurtleUsage = "turtleUsage",
     /* FITRUE_isPurePython */
 }
 
@@ -1296,4 +1299,30 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
         }
     }
     return count;
+}
+
+/**
+ * Turtle  related bits for the editor
+ */
+
+// This method checks if the turtle module is imported in the editor's frame
+export function checkIsTurtleImported(): void {
+    let hasTurtleImported=false;
+    
+    Object.values(useStore().frameObjects).forEach((frame) => {
+        // If the frame is disabled, or is not an import/for...import frame, it definitely do not imports turtle.
+        if(frame.isDisabled || (frame.frameType.type != AllFrameTypesIdentifier.import && frame.frameType.type != AllFrameTypesIdentifier.fromimport)) {
+            return;
+        }
+
+        // Whichever "import..." or "from...import...", we look for "turtle" in the first label.
+        // The module must be using the same case, and we don't accept "turtle.xxx"
+        const importedModules = (frame.labelSlotsDict[0].slotStructures.fields as BaseSlot[])
+            .map((slot)=>slot.code)
+            .reduce((accModules, currentSlotVal,i) => (accModules + ((i > 0) ? frame.labelSlotsDict[0].slotStructures.operators[i-1].code : "") + currentSlotVal), "");
+        hasTurtleImported ||= importedModules.split(",").some((module) => module.localeCompare("turtle")==0);
+    });
+   
+    // We notify the console about the presence or absence of the turtle module
+    document.getElementById("pythonConsole")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
 }

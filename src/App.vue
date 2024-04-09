@@ -16,6 +16,12 @@
                 </div>
             </div>
         </div>
+        <Splitpanes id="largePythonConsoleSplitersOverlay" class="strype-split-theme" v-if="isLargePythonConsole" horizontal @resize=onLargePythonSplitPaneResize>
+            <pane key="1" :size="pythonConsoleSpliterOverlayTopPaneSize">
+            </pane>
+            <pane key="2" min-size="15" max-size="75">
+            </pane>
+        </Splitpanes>
         <div class="row">
             <Splitpanes class="strype-split-theme">
                 <Pane key="1" size="66" min-size="33">
@@ -73,6 +79,7 @@
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
+        <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
     </div>
 </template>
 
@@ -93,7 +100,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, checkIsTurtleImported } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -105,6 +112,7 @@ import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdA
 import { cloneDeep } from "lodash";
 import CaretContainer from "./components/CaretContainer.vue";
 import { VueContextConstructor } from "vue-context";
+import { BACKEND_SKULPT_DIV_ID } from "./autocompletion/ac-skulpt";
 
 //////////////////////
 //     Component    //
@@ -199,6 +207,30 @@ export default Vue.extend({
 
         importDiffVersionModalDlgId(): string {
             return getImportDiffVersionModalDlgId();
+        },
+
+        getSkulptBackendTurtleDivId(): string {
+            return BACKEND_SKULPT_DIV_ID;
+        },
+
+        pythonConsoleSpliterOverlayTopPaneSize(): number {
+            // The expected value is a percentage number.
+            // When the Python console isn't enlarged, we don't really care and return 0,
+            // but when it is enlarged, we need to compute the ratio taken by the display part of the console
+            // (the textarea or the Turtle div) to position the slider at the right place
+            if(!this.isLargePythonConsole){
+                return 0;
+            }
+            else{
+                // The full height of the App is given by the body element, so we can use it to compute the ratio, however,
+                // we need to wait for the DOM to be ready, so we do it a bit later
+                const fullAppHeight = (document.querySelector("body") as HTMLBodyElement).clientHeight;
+                const pythonConsoleDisplayElement = ((document.querySelector("#pythonConsole") as HTMLTextAreaElement).style.display == "none") 
+                    ? (document.querySelector("#pythonTurtleDiv") as HTMLDivElement)
+                    : (document.querySelector("#pythonConsole") as HTMLTextAreaElement); 
+                const pythonConsoleDisplayElementY = pythonConsoleDisplayElement.getBoundingClientRect().y;
+                return pythonConsoleDisplayElementY * 100 / fullAppHeight;           
+            }
         },
     },
 
@@ -357,6 +389,10 @@ export default Vue.extend({
 
         // Listen to event for requesting the autosave now
         this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => this.autoSaveState.forEach((asf) => asf.function(saveReason)));
+
+        // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
+        // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
+        checkIsTurtleImported();
     },
 
     methods: {
@@ -715,6 +751,23 @@ export default Vue.extend({
             // Doing so guarantee that only 1 element is selected in the menu
             menuTarget.focus();
         },
+
+        onLargePythonSplitPaneResize(event: any){
+            // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
+            // It will dictate the size of the Python console (enlarged), providing we are not lower than 
+            // 15 (cf style definitions in PythonConsole.vue, and with set a maximum of 90)
+            const lowerPanelSize = event[1].size;
+            if(lowerPanelSize >= 15 && lowerPanelSize <= 75){
+                // As the splitter works in percentage, and the full app height is which of the body, we can compute the height/position
+                // of the editor and the Python console.
+                const fullAppHeight= (document.getElementsByTagName("body")[0].clientHeight);
+                const buttonContainerHeight = (document.querySelector("#consoleControlsDiv") as HTMLDivElement).clientHeight;
+                const editorNewMaxHeight = fullAppHeight * (1 - lowerPanelSize /100) - buttonContainerHeight;
+                (document.querySelector(".run-code-container.largeConsoleDiv") as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                (document.getElementsByClassName("small-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
+
+            }
+        },
     },
 });
 </script>
@@ -829,7 +882,7 @@ $divider-grey: darken($background-grey, 15%);
 .v-context ul > li > a {
     display:block;
     padding: 5px 10px;
-    color:$black;
+    color:$black !important;
     text-decoration:none;
     white-space:nowrap;
     background-color:transparent;
@@ -881,6 +934,20 @@ $divider-grey: darken($background-grey, 15%);
     background-clip: content-box;
     pointer-events: none;
     border: none;
+}
+
+// Styling of the "large python console" splitter overlay (used to simulate a splitter above the console/Turtle area)
+// It must be full width and heigh, overlaying from (0,0), and we use events to apply the splitting ratio back to the console/Turtle area
+#largePythonConsoleSplitersOverlay {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top:0;
+    left:0;
+}
+
+#largePythonConsoleSplitersOverlay .splitpanes__splitter {
+    z-index: 10;
 }
 
 /* 

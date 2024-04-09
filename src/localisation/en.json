@@ -58,7 +58,9 @@
         "functionFrameCantDelete":"A function definition frame cannot be deleted from this caret position when content is not empty.",
         "gdriveConnectToSaveFailed":"The connection to Google Drive has been lost. The synchronisation with Google Drive is stopped, latest changes may not have been saved.",
         "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive.",
-        "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}"
+        "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}",
+        "wrongPythonStructCopied":"cannot paste else/elif/except/finally and further content in one paste",
+        "incompatiblePythonStrypeSection":"the copied Python code cannot be pasted in the current Strype section"
     },
     "buttonLabel":{
         "undo":"Undo",
@@ -513,6 +515,7 @@
         "stop":"Stop",
         "stopping":"Stopping...",
         "stopButtonPressed":"Stop button pressed",
+        "show": "Show console",
         "runtimeErrorConsole": "Runtime error",
         "expand":"Expand",
         "collapse":"Collapse"

@@ -1,5 +1,5 @@
 import Compiler from "@/compiler/compiler";
-import { hasEditorCodeErrors } from "@/helpers/editor";
+import { checkIsTurtleImported, hasEditorCodeErrors } from "@/helpers/editor";
 import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
@@ -183,6 +183,9 @@ export default class Parser {
         if(excludeLoopsAndComments){
             this.excludeLoopsAndComments = excludeLoopsAndComments;
         }
+
+        // We look if Turtle has been imported to notify the editor UI
+        checkIsTurtleImported();
 
         //console.time();
         output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0));

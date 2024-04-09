@@ -9,6 +9,12 @@ declare const Sk: any;
 
 const INDENT = "    ";
 
+// The ID of a DIV that is used for "backend" operations with Skulpt, like a/c or retrieving
+// documentation. Strype includes such DIV in the UI (NOT the Turtle output visible for users),
+// but any mechanism using Skulpt for "backend" jobs that do not use Strype will need to create a
+// DIV element with *this* ID.
+export const BACKEND_SKULPT_DIV_ID = "backEndSkulptDiv";
+
 
 // Functions to check / replace the input function of Python, as this should not be run when the a/c is running
 function getMatchesForCodeInputFunction(code: string) : CodeMatchIterable {
@@ -156,4 +162,16 @@ if not isinstance(itemDocumentation, str):
 
 export function configureSkulptForAutoComplete() : void {
     Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
+    // We also need to set some Turtle environment for Skulpt -- note that the output DIV is NOT the one visible by users,
+    // because this environment is only used for our backend processes of the code for autocompletion.
+    if(!Sk.TurtleGraphics){
+        Sk.TurtleGraphics = {};
+        // Create a DIV in the BODY element if the "backend" Turtle output DIV doesn't exist.
+        if(document.getElementById(BACKEND_SKULPT_DIV_ID) == undefined){
+            const turtleDiv = document.createElement("div");
+            turtleDiv.id = BACKEND_SKULPT_DIV_ID;
+            document.getElementsByTagName("body")[0].appendChild(turtleDiv);
+        }       
+        Sk.TurtleGraphics.target = BACKEND_SKULPT_DIV_ID;
+    }    
 }

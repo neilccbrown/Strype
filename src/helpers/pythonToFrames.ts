@@ -1,6 +1,9 @@
-import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot} from "@/types/types";
+import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot, ContainerTypesIdentifiers} from "@/types/types";
 import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
+import i18n from "@/i18n";
+
+const TOP_LEVEL_TEMP_ID = -999;
 
 // Type for the things we get from the Skulpt parser:
 export interface ParsedConcreteTree {
@@ -25,6 +28,18 @@ interface CopyState {
 
 // Declare Skulpt:
 declare const Sk: any;
+
+// The different "locations" in Strype 
+enum STRYPE_LOCATION {
+    UNKNOWN,
+    MAIN_CODE_SECTION,
+    IN_FUNCDEF,
+    FUNCDEF_SECTION,
+    IMPORTS_SECTION
+}
+
+// The current location in Strype is updated everytime a paste of code is requested
+let currentStrypeLocation = STRYPE_LOCATION.UNKNOWN;
 
 // Simplifies a tree (by collapsing all single-child nodes into the child) in order to make
 // it easier to read while debugging error messages
@@ -60,7 +75,7 @@ function addFrame(frame: FrameObject, s: CopyState) : CopyState {
         else {
             // The pasting code relies on parent being set to non-zero for non-joint frames,
             // so we just set it to an invalid integer:
-            frame.parentId = -999;
+            frame.parentId = TOP_LEVEL_TEMP_ID;
         }
     }
     return {...s, nextId: s.nextId + 1};
@@ -92,8 +107,15 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
 // If successful, returns null.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
 export function copyFramesFromParsedPython(code: string) : string | null {
+    // Retrieve the current Strype location
+    findCurrentStrypeLocation();
     // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
+    // if we are currently inside the imports or function definitions sections in Strype, we can also trim the start of the code
+    if(currentStrypeLocation == STRYPE_LOCATION.IMPORTS_SECTION || currentStrypeLocation == STRYPE_LOCATION.FUNCDEF_SECTION){
+        code = code.trimStart();
+    }
+
     const codeLines = code.split(/\r?\n/);
     // Then find the common amount of indentation on non-blank lines and remove it:
     // This way if the user parses in something like this from the middle of some Python:
@@ -192,6 +214,13 @@ export function copyFramesFromParsedPython(code: string) : string | null {
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
         copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
+        // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
+        if(!canPastePythonAtStrypeLocation()){
+            useStore().copiedFrames = {};
+            useStore().copiedSelectionFrameIds = [];
+            return i18n.t("messageBannerMessage.incompatiblePythonStrypeSection") as string;
+        }
+
         if (addedFakeJoinParent > 0) {
             // Now have to detach that parent again.  If it was joint frames only, there should be one parent on the list:
             if (useStore().copiedSelectionFrameIds.length == 1) {
@@ -202,7 +231,7 @@ export function copyFramesFromParsedPython(code: string) : string | null {
                 // Uh-oh, they had other things after the else, etc.  We can't handle that, so abandon:
                 useStore().copiedFrames = {};
                 useStore().copiedSelectionFrameIds = [];
-                return "cannot paste else/elif/except/finally and further content in one paste";
+                return i18n.t("messageBannerMessage.wrongPythonStructCopied") as string;
             }
         }
         return null;
@@ -588,4 +617,60 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         break;
     }
     return s;
+}
+
+// Function to check the current position in Strype 
+function findCurrentStrypeLocation(): void{
+    // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
+    // If are below a frame, we look for its parent right away, otheriwse we can use that fraome
+    let navigFrameId = (useStore().currentFrame.caretPosition == CaretPosition.below) ? useStore().frameObjects[useStore().currentFrame.id].parentId : useStore().currentFrame.id;
+    do{
+        const frameType = useStore().frameObjects[navigFrameId].frameType;
+        switch(frameType.type){
+        case ContainerTypesIdentifiers.framesMainContainer:
+            currentStrypeLocation = STRYPE_LOCATION.MAIN_CODE_SECTION;
+            break;
+        case AllFrameTypesIdentifier.funcdef:
+            currentStrypeLocation = STRYPE_LOCATION.IN_FUNCDEF;
+            break;
+        case ContainerTypesIdentifiers.funcDefsContainer:
+            currentStrypeLocation = STRYPE_LOCATION.FUNCDEF_SECTION;
+            break;
+        case ContainerTypesIdentifiers.importsContainer:
+            currentStrypeLocation = STRYPE_LOCATION.IMPORTS_SECTION;
+            break;
+        default:
+            navigFrameId = useStore().frameObjects[navigFrameId].parentId;
+            currentStrypeLocation = STRYPE_LOCATION.UNKNOWN;
+            break;
+        }
+    }while(currentStrypeLocation == STRYPE_LOCATION.UNKNOWN);
+}
+
+// This function makes a simple sanity check on the copied Python code (as frames then): we make sure that it "fits" the current Strype location
+function canPastePythonAtStrypeLocation(): boolean {
+    // In more details, we check the same-leve (top level) frames in the copy:
+    // - in the "import" section, only imports can be copied,
+    // - in the "function definition" section, only function definitions can be copied
+    // - in the "main code" section or inside a function definition frame, only code that doesn't contain imports or function definitions can be copied (and "global" for main code)
+    // Comments can also be imported in all sections. 
+    
+    const copiedPythonToFrames = Object.values(useStore().copiedFrames);
+    const topLevelCopiedFrames = copiedPythonToFrames.filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
+    const topLevelCopiedFrameIds = topLevelCopiedFrames.flatMap((frame) => frame.id);
+    // Check if the match between the current Strype location and the copied Python code frames is possible
+    switch(currentStrypeLocation){
+    case STRYPE_LOCATION.MAIN_CODE_SECTION:
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
+    case  STRYPE_LOCATION.IN_FUNCDEF:
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
+    case  STRYPE_LOCATION.FUNCDEF_SECTION:
+        return !(topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.funcdef && frame.frameType.type != AllFrameTypesIdentifier.comment)
+            || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type)));
+    case  STRYPE_LOCATION.IMPORTS_SECTION:
+        return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.comment].includes(frame.frameType.type));
+    default:
+        // We shouldn't reach this but for safety we return false
+        return false;
+    }
 }

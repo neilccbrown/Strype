@@ -58,7 +58,9 @@
         "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
         "gdriveConnectToSaveFailed":"La connexion à Google Drive a été perdue. La synchronisation avec Google Drive est interrompue, les dernières modifications n'ont peut-être pas été sauvegardées.",
         "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive.",
-        "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}"
+        "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
+        "wrongPythonStructCopied":"impossible de coller else/elif/except/finally suivi d'autre contenu en une fois",
+        "incompatiblePythonStrypeSection":"le code Python copié ne peut pas être collé dans la section actuelle de Strype"
     },
     "buttonLabel":{
         "undo":"Annuler",
@@ -176,6 +178,7 @@
     "console": {
         "run":"Exécuter",
         "runtimeErrorConsole": "Erreur d'exécution",
+        "show": "Afficher console",
         "expand":"Agrandir",
         "collapse":"Réduire"
     }
