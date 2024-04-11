@@ -177,9 +177,13 @@
   
     "console": {
         "run":"Exécuter",
+        "stop":"Arrêter",
+        "stopping":"Arrêt...",
+        "stopButtonPressed":"Bouton arrêt cliqué",
         "runtimeErrorConsole": "Erreur d'exécution",
-        "show": "Afficher console",
         "expand":"Agrandir",
-        "collapse":"Réduire"
+        "collapse":"Réduire",
+        "show": "Afficher console",
+        "TurtleGraphics":"Afficher Tortue graphique"
     }
   }

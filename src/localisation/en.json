@@ -515,9 +515,10 @@
         "stop":"Stop",
         "stopping":"Stopping...",
         "stopButtonPressed":"Stop button pressed",
-        "show": "Show console",
         "runtimeErrorConsole": "Runtime error",
         "expand":"Expand",
-        "collapse":"Collapse"
+        "collapse":"Collapse",
+        "show": "Show console",
+        "TurtleGraphics":"Show Turtle Graphics"
     }
 }

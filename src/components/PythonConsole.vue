@@ -3,16 +3,20 @@
     <div :class="{largeConsoleDiv: isLargeConsole}">
         <div id="consoleControlsDiv" :class="{'expanded-console': isLargeConsole}">           
             <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
-            <button @click="toggleConsoleDisplay">
+            <button @click="toggleConsoleSize">
                 <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
                 {{this.consoleDisplayCtrlLabel}}
             </button>
-            <button v-if="includeTurtleGraphics" @click="showTurtleCanvas">&#128034; Turtle</button>
+            <div class="flex-padding"/>
+            <b-tabs v-show="includeTurtleGraphics" id="consoleDisplayTabs" v-model="consoleDisplayTabIndex" no-key-nav>
+                <b-tab :title="'\u2771\u23BD'" title-link-class="console-display-toggle" active></b-tab>
+                <b-tab :title="'\uD83D\uDC22'" title-link-class="console-display-toggle"></b-tab>
+            </b-tabs>
         </div>
         <textarea 
             id="pythonConsole"
             ref="pythonConsole"
-            v-show="!showingTurtleGraphics"
+            v-show="consoleDisplayTabIndex==0"
             @focus="onFocus()"
             @change="onChange"
             @wheel.stop
@@ -22,7 +26,7 @@
             spellcheck="false"
         >    
         </textarea>
-        <div v-if="includeTurtleGraphics" v-show="showingTurtleGraphics" id="pythonTurtleDiv" ref="pythonTurtleDiv"/>
+        <div v-if="includeTurtleGraphics" v-show="consoleDisplayTabIndex==1" id="pythonTurtleDiv" ref="pythonTurtleDiv"/>
     </div>
 </template>
 
@@ -50,7 +54,7 @@ export default Vue.extend({
             isLargeConsole: false,
             runningState: RunningState.NotRunning,
             includeTurtleGraphics: false, // by default, Turtle isn't visible - it will be activated when we detect the import (see event registration in mounted())
-            showingTurtleGraphics: false,
+            consoleDisplayTabIndex: 0, // the index of the console display tabs (console/turtle), we use it equally as a flag to indicate if we are on Turtle
             interruptedTurtle: false,
         };
     },
@@ -68,10 +72,20 @@ export default Vue.extend({
                 const pythonTurtleDiv = document.getElementById("pythonTurtleDiv");
                 if(!this.includeTurtleGraphics && pythonTurtleDiv != undefined) {
                     // If we don't show turtle anymore, we should make sure we get back on the console and stop observing changes...
-                    this.showingTurtleGraphics = false;
+                    this.consoleDisplayTabIndex = 0;
                 }
             });    
         }
+    },
+
+    updated(){
+        // When the component is updated, we add tooltips to the console display tabs (console/Turtle) programmatically.
+        // We cannot define them directly in the template because the tabs are generated with Bootstrap, and "title" is used by Bootstrap
+        // as an attribute to show the tab's text. But as we know the tabs are rendered as li elements, we can just add the attribute there.
+        // (We do this in the updated hook for 2 reasons: first because Bootstrap won't generate the DOM right in when the component is mounted,
+        // but mainly because we need to be able to have the right translation if the app locale is changed.)
+        document.querySelectorAll("#consoleDisplayTabs li")
+            .forEach((listEl, index) => listEl.setAttribute("title", (index == 0) ? i18n.t("console.show") as string : i18n.t("console.TurtleGraphics") as string));
     },
 
     computed:{
@@ -86,42 +100,31 @@ export default Vue.extend({
             case RunningState.NotRunning:
                 return "▶ " + i18n.t("console.run");
             case RunningState.Running:
-                return (this.showingTurtleGraphics) ? "\u2771 " + i18n.t("console.show") : "◼ " + i18n.t("console.stop");
+                return "◼ " + i18n.t("console.stop");
             case RunningState.RunningAwaitingStop:
                 return i18n.t("console.stopping") as string;
+            default: return "";
             }
-            return "";
         },
     },
 
     methods: {
         runClicked() {
-            // The console has a 3+1-ways states:
+            // The console execution has a 3-ways states:
             // - not running when nothing happens, click will trigger "running"
-            // - running when some code is running, click will trigger "running awaiting stop" when we are not in Turtle, or "show console" otherwise
-            // - running awaiting stop will do nothing, unless when we are in Turtle it will get to "show console"
-            // - show console is a pseudo states, when we are in Turtle and need to get back to the console -- it is only implied by the flag "showingTurtleGraphics" value
+            // - running when some code is running, click will trigger "running awaiting stop"
+            // - running awaiting stop will do nothing
             switch (this.runningState) {
             case RunningState.NotRunning:
                 this.runningState = RunningState.Running;
                 this.runCodeOnPyConsole();
                 return;
             case RunningState.Running:
-                if(this.showingTurtleGraphics){
-                    // Just gets back to the console because we want the user to be able to get back to the console if Turtle is showing and they click the "show console" tab
-                    this.showingTurtleGraphics = false;
-                }
-                else{
-                    // Skulpt checks this property regularly while running, via a callback,
-                    // so just setting the variable is enough to "request" a stop 
-                    this.runningState = RunningState.RunningAwaitingStop;
-                }
+                // Skulpt checks this property regularly while running, via a callback,
+                // so just setting the variable is enough to "request" a stop 
+                this.runningState = RunningState.RunningAwaitingStop;
                 return;
             case RunningState.RunningAwaitingStop:
-                if(this.showingTurtleGraphics){
-                    // Just gets back to the console
-                    this.showingTurtleGraphics = false;
-                }
                 // Else, nothing more we can do at the moment, just waiting for Skulpt to see it
                 return;
             }
@@ -159,23 +162,19 @@ export default Vue.extend({
                 this.$nextTick().then(() => {
                     checkEditorCodeErrors();
                     this.appStore.errorCount = countEditorCodeErrors();
-                    // If there is an error, we reach it
+                    // If there is an error, we reach it and, if Turtle is active, we make sure we show the Python console
                     if(this.appStore.errorCount > 0){
                         this.reachFirstError();
+                        this.consoleDisplayTabIndex = 0;
                     }
                 }); 
             }, 1000);           
         },
 
-        showTurtleCanvas(): void {
-            // This method is only making sure the Turtle canvas is put to the foreground.
-            this.showingTurtleGraphics = true; 
-        },
-
         onFocus(): void {
             this.appStore.isEditing = false;
             if(this.includeTurtleGraphics){
-                this.showingTurtleGraphics = false;
+                this.consoleDisplayTabIndex = 0;
             }
         },
 
@@ -184,9 +183,9 @@ export default Vue.extend({
             // (typically when the Python input() function is encountered)
             
             //First we switch between Turtle and the console shall the Turtle be showing at the moment
-            if(this.includeTurtleGraphics && this.showingTurtleGraphics){
+            if(this.includeTurtleGraphics && this.consoleDisplayTabIndex == 1){
                 this.interruptedTurtle = true;
-                this.showingTurtleGraphics = false;
+                this.consoleDisplayTabIndex = 0;
             }
 
             //In any case, then we focus the console (keep setTimeout rather than nextTick to have enough time to be effective)
@@ -198,7 +197,7 @@ export default Vue.extend({
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
             if(this.includeTurtleGraphics && this.interruptedTurtle){
                 this.interruptedTurtle = false;
-                this.showingTurtleGraphics = true;
+                this.consoleDisplayTabIndex = 1;
             }
         },
 
@@ -219,7 +218,7 @@ export default Vue.extend({
             }
         },
 
-        toggleConsoleDisplay(){
+        toggleConsoleSize(){
             this.isLargeConsole = !this.isLargeConsole;
             // Other parts of the UI need to be updated when the console default size is changed, so we emit an event
             // (in case we rely on the current changes, we do it a bit later)
@@ -275,6 +274,11 @@ export default Vue.extend({
         display: flex;
         column-gap: 5px;        
         padding-top: 5px;
+        width:100%;
+    }
+
+    .flex-padding {
+        flex-grow: 2;
     }
 
     #consoleControlsDiv.expanded-console {
@@ -289,7 +293,19 @@ export default Vue.extend({
         padding: 0px 2px; 
         border: 2px solid #d66;
     }
-    
+
+    .python-display-switch {
+        display: flex;
+    }
+
+    .console-display-toggle {
+        color: black;
+    }
+
+    .console-display-toggle:hover {
+        color: black;
+    }
+
     textarea {
         -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
         -moz-box-sizing: border-box;    /* Firefox, other Gecko */
