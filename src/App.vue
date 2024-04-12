@@ -1070,7 +1070,7 @@ $divider-grey: darken($background-grey, 15%);
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter {
 	width: 2px;
 	//border-left: 1px solid #eee;
-    border-right: 1px solid #383b40;
+    border-right: 1px solid transparent;
 	margin-left: -1px
 }
 
