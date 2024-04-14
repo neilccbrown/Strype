@@ -3,10 +3,6 @@
     <div :class="{largeConsoleDiv: isLargeConsole}">
         <div id="consoleControlsDiv" :class="{'expanded-console': isLargeConsole}">           
             <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
-            <button @click="toggleConsoleSize">
-                <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
-                {{this.consoleDisplayCtrlLabel}}
-            </button>
             <div class="flex-padding"/>
             <b-tabs v-show="includeTurtleGraphics" id="consoleDisplayTabs" v-model="consoleDisplayTabIndex" no-key-nav>
                 <b-tab :title="'\u2771\u23BD'" title-link-class="console-display-toggle" active></b-tab>
@@ -27,6 +23,8 @@
         >    
         </textarea>
         <div v-if="includeTurtleGraphics" v-show="consoleDisplayTabIndex==1" id="pythonTurtleDiv" ref="pythonTurtleDiv"/>
+        <span @click="toggleConsoleSize" :class="{'console-display-size-button fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,
+         'dark-mode': (consoleDisplayTabIndex==0)}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
     </div>
 </template>
 
@@ -90,10 +88,6 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
-
-        consoleDisplayCtrlLabel(): string {
-            return " " + ((this.isLargeConsole) ? i18n.t("console.collapse") as string : i18n.t("console.expand") as string);           
-        },
         
         consoleRunLabel(): string {
             switch (this.runningState) {
@@ -289,6 +283,18 @@ export default Vue.extend({
         z-index: 10;
     }
 
+    .console-display-size-button {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        color: black;
+        cursor: pointer;
+    }
+
+    .console-display-size-button.dark-mode {        
+        color: white !important;
+    }
+
     .show-error-icon {
         padding: 0px 2px; 
         border: 2px solid #d66;
@@ -310,6 +316,7 @@ export default Vue.extend({
         -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
         -moz-box-sizing: border-box;    /* Firefox, other Gecko */
         box-sizing: border-box;         /* Opera/IE 8+ */
+        resize: none !important;
     }
     
     #pythonConsole {
