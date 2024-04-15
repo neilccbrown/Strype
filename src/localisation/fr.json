@@ -183,7 +183,8 @@
         "runtimeErrorConsole": "Erreur d'exécution",
         "expand":"Agrandir",
         "collapse":"Réduire",
-        "show": "Afficher console",
-        "TurtleGraphics":"Afficher Tortue graphique"
+        "pythonConsole": "Console",
+        "TurtleGraphics":"Turtle Graphics",
+        "importTurtle":"Importe le module 'turtle' dans ton code pour utiliser Turtle Graphics"
     }
   }

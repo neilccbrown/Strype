@@ -2,12 +2,14 @@
 <template>
     <div :class="{largeConsoleDiv: isLargeConsole}">
         <div id="consoleControlsDiv" :class="{'expanded-console': isLargeConsole}">           
-            <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
-            <div class="flex-padding"/>
-            <b-tabs v-show="includeTurtleGraphics" id="consoleDisplayTabs" v-model="consoleDisplayTabIndex" no-key-nav>
-                <b-tab :title="'\u2771\u23BD'" title-link-class="console-display-toggle" active></b-tab>
-                <b-tab :title="'\uD83D\uDC22'" title-link-class="console-display-toggle"></b-tab>
+            <b-tabs id="consoleDisplayTabs" v-model="consoleDisplayTabIndex" no-key-nav>
+                <b-tab :title="'\u2771\u23BD '+$t('console.show')" title-link-class="console-display-toggle" active></b-tab>
+                <b-tab :title="'\uD83D\uDC22 '+$t('console.TurtleGraphics')" title-link-class="console-display-toggle"></b-tab>
             </b-tabs>
+            <div class="flex-padding"/>
+            <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
+            <!-- This span is placed it as a workaround, it cannot be placed inside the Turtle div, because running Turtle will delete it if it was in -->
+            <span id="noTurtleSpan" v-if="consoleDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('console.importTurtle')}}</span>                    
         </div>
         <textarea 
             id="pythonConsole"
@@ -22,7 +24,8 @@
             spellcheck="false"
         >    
         </textarea>
-        <div v-if="includeTurtleGraphics" v-show="consoleDisplayTabIndex==1" id="pythonTurtleDiv" ref="pythonTurtleDiv"/>
+        <div v-show="consoleDisplayTabIndex==1" id="pythonTurtleDiv" ref="pythonTurtleDiv">
+        </div>
         <span @click="toggleConsoleSize" :class="{'console-display-size-button fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,
          'dark-mode': (consoleDisplayTabIndex==0)}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
     </div>
@@ -51,7 +54,7 @@ export default Vue.extend({
         return {
             isLargeConsole: false,
             runningState: RunningState.NotRunning,
-            includeTurtleGraphics: false, // by default, Turtle isn't visible - it will be activated when we detect the import (see event registration in mounted())
+            turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
             consoleDisplayTabIndex: 0, // the index of the console display tabs (console/turtle), we use it equally as a flag to indicate if we are on Turtle
             interruptedTurtle: false,
         };
@@ -66,24 +69,14 @@ export default Vue.extend({
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
             // Register an event listener on this component for the notification of the turtle library import usage
             document.getElementById("pythonConsole")?.addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
-                this.includeTurtleGraphics = (event as CustomEvent).detail;
+                this.turtleGraphicsImported = (event as CustomEvent).detail;
                 const pythonTurtleDiv = document.getElementById("pythonTurtleDiv");
-                if(!this.includeTurtleGraphics && pythonTurtleDiv != undefined) {
-                    // If we don't show turtle anymore, we should make sure we get back on the console and stop observing changes...
-                    this.consoleDisplayTabIndex = 0;
+                if(!this.turtleGraphicsImported && pythonTurtleDiv != undefined) {
+                    // If we don't import turtle anymore, we "clear" any potential graphics to have the "import Turtle" message clearly showing.
+                    document.querySelectorAll("#pythonTurtleDiv canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
                 }
             });    
         }
-    },
-
-    updated(){
-        // When the component is updated, we add tooltips to the console display tabs (console/Turtle) programmatically.
-        // We cannot define them directly in the template because the tabs are generated with Bootstrap, and "title" is used by Bootstrap
-        // as an attribute to show the tab's text. But as we know the tabs are rendered as li elements, we can just add the attribute there.
-        // (We do this in the updated hook for 2 reasons: first because Bootstrap won't generate the DOM right in when the component is mounted,
-        // but mainly because we need to be able to have the right translation if the app locale is changed.)
-        document.querySelectorAll("#consoleDisplayTabs li")
-            .forEach((listEl, index) => listEl.setAttribute("title", (index == 0) ? i18n.t("console.show") as string : i18n.t("console.TurtleGraphics") as string));
     },
 
     computed:{
@@ -167,9 +160,7 @@ export default Vue.extend({
 
         onFocus(): void {
             this.appStore.isEditing = false;
-            if(this.includeTurtleGraphics){
-                this.consoleDisplayTabIndex = 0;
-            }
+            this.consoleDisplayTabIndex = 0;
         },
 
         handleConsoleFocusRequest(): void {
@@ -177,7 +168,7 @@ export default Vue.extend({
             // (typically when the Python input() function is encountered)
             
             //First we switch between Turtle and the console shall the Turtle be showing at the moment
-            if(this.includeTurtleGraphics && this.consoleDisplayTabIndex == 1){
+            if(this.consoleDisplayTabIndex == 1){
                 this.interruptedTurtle = true;
                 this.consoleDisplayTabIndex = 0;
             }
@@ -189,7 +180,7 @@ export default Vue.extend({
         handlePostInputConsole(): void {
             // This method is responsible for handling what to do after the console input (Python) has been invoked.
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
-            if(this.includeTurtleGraphics && this.interruptedTurtle){
+            if(this.turtleGraphicsImported && this.interruptedTurtle){
                 this.interruptedTurtle = false;
                 this.consoleDisplayTabIndex = 1;
             }
@@ -267,8 +258,9 @@ export default Vue.extend({
     #consoleControlsDiv {
         display: flex;
         column-gap: 5px;        
-        padding-top: 5px;
         width:100%;
+        background-color: rgb(240,240,240);
+        position: relative; // that's for the workaround positioning of the "no turtle" span, see template
     }
 
     .flex-padding {
@@ -281,6 +273,12 @@ export default Vue.extend({
 
     #consoleControlsDiv button {
         z-index: 10;
+        border-radius: 10px;
+        border: 1px solid transparent;
+    }
+
+    #consoleControlsDiv button:hover {
+        border-color: lightgray !important;
     }
 
     .console-display-size-button {
@@ -310,6 +308,7 @@ export default Vue.extend({
 
     .console-display-toggle:hover {
         color: black;
+        background-color: lightgray !important;
     }
 
     textarea {
@@ -355,4 +354,10 @@ export default Vue.extend({
         background-color: white;
         flex-grow: 2;
     }
+    
+    #noTurtleSpan {
+        position: absolute;
+        top: 45px;
+        left: 10px;
+    }    
 </style>
