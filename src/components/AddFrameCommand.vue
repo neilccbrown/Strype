@@ -49,6 +49,7 @@ export default Vue.extend({
 .frame-cmd-container {
     margin: 5px;
     cursor: pointer;
+    display: table; // This is only to avoid the div to spans to the RHS edge of the pane (and be all the way clickable)
 }
 
 .frame-cmd-btn {

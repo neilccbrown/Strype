@@ -515,9 +515,11 @@
         "stop":"Stop",
         "stopping":"Stopping...",
         "stopButtonPressed":"Stop button pressed",
-        "show": "Show console",
         "runtimeErrorConsole": "Runtime error",
         "expand":"Expand",
-        "collapse":"Collapse"
+        "collapse":"Collapse",
+        "pythonConsole": "Console",
+        "TurtleGraphics":"Turtle Graphics",
+        "importTurtle":"Import the module 'turtle' in your code to use Turtle Graphics."
     }
 }

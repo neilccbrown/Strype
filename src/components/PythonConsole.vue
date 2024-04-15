@@ -2,17 +2,19 @@
 <template>
     <div :class="{largeConsoleDiv: isLargeConsole}">
         <div id="consoleControlsDiv" :class="{'expanded-console': isLargeConsole}">           
+            <b-tabs id="consoleDisplayTabs" v-model="consoleDisplayTabIndex" no-key-nav>
+                <b-tab :title="'\u2771\u23BD '+$t('console.pythonConsole')" title-link-class="console-display-toggle" active></b-tab>
+                <b-tab :title="'\uD83D\uDC22 '+$t('console.TurtleGraphics')" title-link-class="console-display-toggle"></b-tab>
+            </b-tabs>
+            <div class="flex-padding"/>
             <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
-            <button @click="toggleConsoleDisplay">
-                <i :class="{fas: true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}"></i>
-                {{this.consoleDisplayCtrlLabel}}
-            </button>
-            <button v-if="includeTurtleGraphics" @click="showTurtleCanvas">&#128034; Turtle</button>
+            <!-- This span is placed it as a workaround, it cannot be placed inside the Turtle div, because running Turtle will delete it if it was in -->
+            <span id="noTurtleSpan" v-if="consoleDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('console.importTurtle')}}</span>                    
         </div>
         <textarea 
             id="pythonConsole"
             ref="pythonConsole"
-            v-show="!showingTurtleGraphics"
+            v-show="consoleDisplayTabIndex==0"
             @focus="onFocus()"
             @change="onChange"
             @wheel.stop
@@ -22,7 +24,10 @@
             spellcheck="false"
         >    
         </textarea>
-        <div v-if="includeTurtleGraphics" v-show="showingTurtleGraphics" id="pythonTurtleDiv" ref="pythonTurtleDiv"/>
+        <div v-show="consoleDisplayTabIndex==1" id="pythonTurtleDiv" ref="pythonTurtleDiv">
+        </div>
+        <span @click="toggleConsoleSize" :class="{'console-display-size-button fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,
+         'dark-mode': (consoleDisplayTabIndex==0)}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
     </div>
 </template>
 
@@ -49,8 +54,8 @@ export default Vue.extend({
         return {
             isLargeConsole: false,
             runningState: RunningState.NotRunning,
-            includeTurtleGraphics: false, // by default, Turtle isn't visible - it will be activated when we detect the import (see event registration in mounted())
-            showingTurtleGraphics: false,
+            turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
+            consoleDisplayTabIndex: 0, // the index of the console display tabs (console/turtle), we use it equally as a flag to indicate if we are on Turtle
             interruptedTurtle: false,
         };
     },
@@ -64,11 +69,11 @@ export default Vue.extend({
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
             // Register an event listener on this component for the notification of the turtle library import usage
             document.getElementById("pythonConsole")?.addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
-                this.includeTurtleGraphics = (event as CustomEvent).detail;
+                this.turtleGraphicsImported = (event as CustomEvent).detail;
                 const pythonTurtleDiv = document.getElementById("pythonTurtleDiv");
-                if(!this.includeTurtleGraphics && pythonTurtleDiv != undefined) {
-                    // If we don't show turtle anymore, we should make sure we get back on the console and stop observing changes...
-                    this.showingTurtleGraphics = false;
+                if(!this.turtleGraphicsImported && pythonTurtleDiv != undefined) {
+                    // If we don't import turtle anymore, we "clear" any potential graphics to have the "import Turtle" message clearly showing.
+                    document.querySelectorAll("#pythonTurtleDiv canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
                 }
             });    
         }
@@ -76,62 +81,47 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
-
-        consoleDisplayCtrlLabel(): string {
-            return " " + ((this.isLargeConsole) ? i18n.t("console.collapse") as string : i18n.t("console.expand") as string);           
-        },
         
         consoleRunLabel(): string {
             switch (this.runningState) {
             case RunningState.NotRunning:
                 return "▶ " + i18n.t("console.run");
             case RunningState.Running:
-                return (this.showingTurtleGraphics) ? "\u2771 " + i18n.t("console.show") : "◼ " + i18n.t("console.stop");
+                return "◼ " + i18n.t("console.stop");
             case RunningState.RunningAwaitingStop:
                 return i18n.t("console.stopping") as string;
+            default: return "";
             }
-            return "";
         },
     },
 
     methods: {
         runClicked() {
-            // The console has a 3+1-ways states:
+            // The console execution has a 3-ways states:
             // - not running when nothing happens, click will trigger "running"
-            // - running when some code is running, click will trigger "running awaiting stop" when we are not in Turtle, or "show console" otherwise
-            // - running awaiting stop will do nothing, unless when we are in Turtle it will get to "show console"
-            // - show console is a pseudo states, when we are in Turtle and need to get back to the console -- it is only implied by the flag "showingTurtleGraphics" value
+            // - running when some code is running, click will trigger "running awaiting stop"
+            // - running awaiting stop will do nothing
             switch (this.runningState) {
             case RunningState.NotRunning:
                 this.runningState = RunningState.Running;
                 this.runCodeOnPyConsole();
                 return;
             case RunningState.Running:
-                if(this.showingTurtleGraphics){
-                    // Just gets back to the console because we want the user to be able to get back to the console if Turtle is showing and they click the "show console" tab
-                    this.showingTurtleGraphics = false;
-                }
-                else{
-                    // Skulpt checks this property regularly while running, via a callback,
-                    // so just setting the variable is enough to "request" a stop 
-                    this.runningState = RunningState.RunningAwaitingStop;
-                }
+                // Skulpt checks this property regularly while running, via a callback,
+                // so just setting the variable is enough to "request" a stop 
+                this.runningState = RunningState.RunningAwaitingStop;
                 return;
             case RunningState.RunningAwaitingStop:
-                if(this.showingTurtleGraphics){
-                    // Just gets back to the console
-                    this.showingTurtleGraphics = false;
-                }
                 // Else, nothing more we can do at the moment, just waiting for Skulpt to see it
                 return;
             }
         },
         
         runCodeOnPyConsole() {
-            const console = this.$refs.pythonConsole as HTMLTextAreaElement;
-            console.value = "";
+            const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
+            pythonConsole.value = "";
             // Make sure the text area is disabled when we run the code
-            console.disabled = true;
+            pythonConsole.disabled = true;
             this.appStore.wasLastRuntimeErrorFrameId =  undefined;
             // Make sure there is no document selection for our editor
             this.appStore.setSlotTextCursors(undefined, undefined);
@@ -142,7 +132,9 @@ export default Vue.extend({
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
                 if(hasPrecompiledCodeError()) {
                     this.$nextTick().then(() => {
-                        this.reachFirstError();                        
+                        this.reachFirstError();   
+                        // If we have an error, the code didn't actually run so we need to reflect this properly in the running state
+                        this.runningState = RunningState.NotRunning;            
                     }); 
                     return;
                 }
@@ -151,30 +143,24 @@ export default Vue.extend({
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
                 // Trigger the actual console launch
-                runPythonConsole(console, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
+                runPythonConsole(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // As the UI should update first, we do it in the next tick
                 this.$nextTick().then(() => {
                     checkEditorCodeErrors();
                     this.appStore.errorCount = countEditorCodeErrors();
-                    // If there is an error, we reach it
+                    // If there is an error, we reach it and, if Turtle is active, we make sure we show the Python console
                     if(this.appStore.errorCount > 0){
                         this.reachFirstError();
+                        this.consoleDisplayTabIndex = 0;
                     }
                 }); 
             }, 1000);           
         },
 
-        showTurtleCanvas(): void {
-            // This method is only making sure the Turtle canvas is put to the foreground.
-            this.showingTurtleGraphics = true; 
-        },
-
         onFocus(): void {
             this.appStore.isEditing = false;
-            if(this.includeTurtleGraphics){
-                this.showingTurtleGraphics = false;
-            }
+            this.consoleDisplayTabIndex = 0;
         },
 
         handleConsoleFocusRequest(): void {
@@ -182,9 +168,9 @@ export default Vue.extend({
             // (typically when the Python input() function is encountered)
             
             //First we switch between Turtle and the console shall the Turtle be showing at the moment
-            if(this.includeTurtleGraphics && this.showingTurtleGraphics){
+            if(this.consoleDisplayTabIndex == 1){
                 this.interruptedTurtle = true;
-                this.showingTurtleGraphics = false;
+                this.consoleDisplayTabIndex = 0;
             }
 
             //In any case, then we focus the console (keep setTimeout rather than nextTick to have enough time to be effective)
@@ -194,9 +180,9 @@ export default Vue.extend({
         handlePostInputConsole(): void {
             // This method is responsible for handling what to do after the console input (Python) has been invoked.
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
-            if(this.includeTurtleGraphics && this.interruptedTurtle){
+            if(this.turtleGraphicsImported && this.interruptedTurtle){
                 this.interruptedTurtle = false;
-                this.showingTurtleGraphics = true;
+                this.consoleDisplayTabIndex = 1;
             }
         },
 
@@ -217,7 +203,7 @@ export default Vue.extend({
             }
         },
 
-        toggleConsoleDisplay(){
+        toggleConsoleSize(){
             this.isLargeConsole = !this.isLargeConsole;
             // Other parts of the UI need to be updated when the console default size is changed, so we emit an event
             // (in case we rely on the current changes, we do it a bit later)
@@ -272,7 +258,13 @@ export default Vue.extend({
     #consoleControlsDiv {
         display: flex;
         column-gap: 5px;        
-        padding-top: 5px;
+        width:100%;
+        background-color: rgb(240,240,240);
+        position: relative; // that's for the workaround positioning of the "no turtle" span, see template
+    }
+
+    .flex-padding {
+        flex-grow: 2;
     }
 
     #consoleControlsDiv.expanded-console {
@@ -281,17 +273,49 @@ export default Vue.extend({
 
     #consoleControlsDiv button {
         z-index: 10;
+        border-radius: 10px;
+        border: 1px solid transparent;
+    }
+
+    #consoleControlsDiv button:hover {
+        border-color: lightgray !important;
+    }
+
+    .console-display-size-button {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        color: black;
+        cursor: pointer;
+    }
+
+    .console-display-size-button.dark-mode {        
+        color: white !important;
     }
 
     .show-error-icon {
         padding: 0px 2px; 
         border: 2px solid #d66;
     }
-    
+
+    .python-display-switch {
+        display: flex;
+    }
+
+    .console-display-toggle {
+        color: black;
+    }
+
+    .console-display-toggle:hover {
+        color: black;
+        background-color: lightgray !important;
+    }
+
     textarea {
         -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
         -moz-box-sizing: border-box;    /* Firefox, other Gecko */
         box-sizing: border-box;         /* Opera/IE 8+ */
+        resize: none !important;
     }
     
     #pythonConsole {
@@ -330,4 +354,10 @@ export default Vue.extend({
         background-color: white;
         flex-grow: 2;
     }
+    
+    #noTurtleSpan {
+        position: absolute;
+        top: 45px;
+        left: 10px;
+    }    
 </style>
