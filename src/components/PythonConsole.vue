@@ -3,7 +3,7 @@
     <div :class="{largeConsoleDiv: isLargeConsole}">
         <div id="consoleControlsDiv" :class="{'expanded-console': isLargeConsole}">           
             <b-tabs id="consoleDisplayTabs" v-model="consoleDisplayTabIndex" no-key-nav>
-                <b-tab :title="'\u2771\u23BD '+$t('console.show')" title-link-class="console-display-toggle" active></b-tab>
+                <b-tab :title="'\u2771\u23BD '+$t('console.pythonConsole')" title-link-class="console-display-toggle" active></b-tab>
                 <b-tab :title="'\uD83D\uDC22 '+$t('console.TurtleGraphics')" title-link-class="console-display-toggle"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
