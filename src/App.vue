@@ -16,7 +16,7 @@
                 </div>
             </div>
         </div>
-        <Splitpanes id="largePythonConsoleSplitersOverlay" class="strype-split-theme" v-if="isLargePythonConsole" horizontal @resize=onLargePythonSplitPaneResize>
+        <Splitpanes id="largePythonConsoleSplitersOverlay" class="strype-split-theme" v-show="isLargePythonConsole" horizontal @resize=onLargePythonSplitPaneResize>
             <pane key="1">
             </pane>
             <pane key="2" min-size="20" max-size="80" size="50">
