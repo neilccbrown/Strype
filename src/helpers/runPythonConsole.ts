@@ -4,7 +4,7 @@ import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import Vue from "vue";
-import { CustomEventTypes } from "./editor";
+import { CustomEventTypes, setPythonExecAreaExpandButtonPos } from "./editor";
 
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
@@ -112,6 +112,8 @@ function sInput(prompt: string) {
         consoleTextArea.addEventListener("compositionstart", consoleCompositionListener);
         consoleTextArea.addEventListener("compositionend", consoleCompositionListener);
 
+        // We check if the expand/collapse button needs to be repositioned.
+        setPythonExecAreaExpandButtonPos();
     });
 }
 

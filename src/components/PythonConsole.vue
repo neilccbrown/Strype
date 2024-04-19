@@ -1,6 +1,6 @@
 
 <template>
-    <div :class="{largeConsoleDiv: isLargeConsole}">
+    <div :class="{largeConsoleDiv: isLargeConsole}" ref="peaComponent">
         <div id="consoleControlsDiv" :class="{'expanded-console': isLargeConsole}">           
             <b-tabs id="consoleDisplayTabs" v-model="consoleDisplayTabIndex" no-key-nav>
                 <b-tab :title="'\u2771\u23BD '+$t('console.pythonConsole')" title-link-class="console-display-toggle" active></b-tab>
@@ -11,23 +11,28 @@
             <!-- This span is placed it as a workaround, it cannot be placed inside the Turtle div, because running Turtle will delete it if it was in -->
             <span id="noTurtleSpan" v-if="consoleDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('console.importTurtle')}}</span>                    
         </div>
-        <textarea 
-            id="pythonConsole"
-            ref="pythonConsole"
-            v-show="consoleDisplayTabIndex==0"
-            @focus="onFocus()"
-            @change="onChange"
-            @wheel.stop
-            @keydown.self.stop="handleKeyEvent"
-            @keyup.self="handleKeyEvent"
-            disabled
-            spellcheck="false"
-        >    
-        </textarea>
-        <div v-show="consoleDisplayTabIndex==1" id="pythonTurtleDiv" ref="pythonTurtleDiv">
+        <div id="tabContentContainerDiv">
+            <textarea 
+                id="pythonConsole"
+                ref="pythonConsole"
+                v-show="consoleDisplayTabIndex==0"
+                @focus="onFocus()"
+                @change="onChange"
+                @wheel.stop
+                @keydown.self.stop="handleKeyEvent"
+                @keyup.self="handleKeyEvent"
+                disabled
+                spellcheck="false"
+            >    
+            </textarea>
+            <div v-show="consoleDisplayTabIndex==1" id="pythonTurtleContainerDiv">
+                <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
+                    <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
+                </div>
+            </div>
+            <span @click="toggleConsoleSize" :class="{'console-display-size-button fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,
+            'dark-mode': (consoleDisplayTabIndex==0),'hidden': !isHovered}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
         </div>
-        <span @click="toggleConsoleSize" :class="{'console-display-size-button fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,
-         'dark-mode': (consoleDisplayTabIndex==0)}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
     </div>
 </template>
 
@@ -57,10 +62,15 @@ export default Vue.extend({
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
             consoleDisplayTabIndex: 0, // the index of the console display tabs (console/turtle), we use it equally as a flag to indicate if we are on Turtle
             interruptedTurtle: false,
+            isHovered: false,
         };
     },
 
     mounted(){
+        // Register an event listen on hover (in/out) to handle some styling
+        (this.$refs.peaComponent as HTMLDivElement).addEventListener("mouseenter", () => this.isHovered = true);
+        (this.$refs.peaComponent as HTMLDivElement).addEventListener("mouseleave", () => this.isHovered = false);
+
         const pythonConsole = document.getElementById("pythonConsole");
         if(pythonConsole != undefined){
             // Register an event listener on the textarea for the request focus event
@@ -95,6 +105,13 @@ export default Vue.extend({
         },
     },
 
+    watch: {
+        consoleDisplayTabIndex(){
+            // When we change tab, we also check the position of the expand/collapse button
+            setPythonExecAreaExpandButtonPos();
+        },
+    },
+
     methods: {
         runClicked() {
             // The console execution has a 3-ways states:
@@ -120,6 +137,8 @@ export default Vue.extend({
         runCodeOnPyConsole() {
             const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
             pythonConsole.value = "";
+            setPythonExecAreaExpandButtonPos();
+            
             // Make sure the text area is disabled when we run the code
             pythonConsole.disabled = true;
             this.appStore.wasLastRuntimeErrorFrameId =  undefined;
@@ -143,7 +162,10 @@ export default Vue.extend({
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
                 // Trigger the actual console launch
-                runPythonConsole(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => this.runningState = RunningState.NotRunning);
+                runPythonConsole(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => {
+                    this.runningState = RunningState.NotRunning;
+                    setPythonExecAreaExpandButtonPos();
+                });
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // As the UI should update first, we do it in the next tick
                 this.$nextTick().then(() => {
@@ -201,10 +223,15 @@ export default Vue.extend({
                 // With Safari, we don't get the focus back to the editor, so we need to explicitly give it to the right element.
                 document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus(); 
             }
+
+            // As typing may result in the scrollbar appearing, we can check the position of the expand/collapse button here
+            setPythonExecAreaExpandButtonPos();
         },
 
         toggleConsoleSize(){
             this.isLargeConsole = !this.isLargeConsole;
+            setPythonExecAreaExpandButtonPos();
+            
             // Other parts of the UI need to be updated when the console default size is changed, so we emit an event
             // (in case we rely on the current changes, we do it a bit later)
             this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonConsoleDisplayChanged, {detail: this.isLargeConsole})));
@@ -311,6 +338,12 @@ export default Vue.extend({
         background-color: lightgray !important;
     }
 
+    #tabContentContainerDiv {
+        flex-grow: 2;
+        width: 100%;
+        max-height: 30vh;
+    }
+
     textarea {
         -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
         -moz-box-sizing: border-box;    /* Firefox, other Gecko */
@@ -320,11 +353,9 @@ export default Vue.extend({
     
     #pythonConsole {
         width:100%;
-        min-height: 15vh;
-        max-height: 30vh;
+        height: 100%;
         background-color: #0a090c;
         color: white;
-        flex-grow: 2;
         font-size: 15px;
         tab-size: 8;
         font-family: monospace;
@@ -347,12 +378,22 @@ export default Vue.extend({
         border-radius: 5px;
     }
 
-    #pythonTurtleDiv {
+    #pythonTurtleContainerDiv {
         width:100%;
-        min-height: 15vh;
-        max-height: 30vh;
+        height: 100%;
+        background-color: grey;
+        overflow:auto;
+    }
+
+    #pythonTurtleContainerDiv > div {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #pythonTurtleDiv {
         background-color: white;
-        flex-grow: 2;
+        margin:5px;
     }
     
     #noTurtleSpan {

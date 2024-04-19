@@ -746,6 +746,9 @@ export default Vue.extend({
                 (document.getElementsByClassName("small-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
 
             }
+
+            // Update the Python Execution Area expand button position
+            setPythonExecAreaExpandButtonPos();
         },
     },
 });

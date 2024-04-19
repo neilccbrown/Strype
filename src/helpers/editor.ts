@@ -5,6 +5,7 @@ import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
+import scssVars  from "@/assets/style/_export.module.scss";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1325,4 +1326,37 @@ export function checkIsTurtleImported(): void {
    
     // We notify the console about the presence or absence of the turtle module
     document.getElementById("pythonConsole")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+}
+
+// This method set the Python Execution Area expand/collapse button position based on the presence of scrollbars
+// (It is put here as we need to call at different points in the code.)
+export function setPythonExecAreaExpandButtonPos(): void{
+    // We need to know in which context we are : Python console, or Turtle.
+    // The general idea is to override the CSS styling by directly applying style when needed (the case a scrollbar is present).
+    // We find out the size of the scroll bar, add a margin of 2px, to displace the button by that size.
+    // (To be sure the UI layout is correctly updated before computing, we wait a bit.)
+    setTimeout(() => {
+        const pythonConsoleTextArea = document.getElementById("pythonConsole");
+        const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
+        const peaExpandButton = document.getElementsByClassName("console-display-size-button")[0] as HTMLSpanElement;
+        if(pythonConsoleTextArea && pythonTurtleContainerDiv){
+            // First get the natural position offset of the button, so can compute the new position:
+            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaExpandButtonPosOffset as string).replace("px",""));
+    
+            // Then, look for the scrollbars
+            if(pythonConsoleTextArea.style.display != "none"){
+                // In the Python console, we wrap the text, only the vertical scrollbar can appear.
+                const scrollDiff = pythonConsoleTextArea.getBoundingClientRect().width - pythonConsoleTextArea.clientWidth;
+                peaExpandButton.style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
+                peaExpandButton.style.bottom = "";
+            }
+            else{
+                // In the Turtle container, any of the scrollbars can appear.
+                const scrollDiffW = pythonTurtleContainerDiv.getBoundingClientRect().width - pythonTurtleContainerDiv.clientWidth,
+                    scrollDiffH = pythonTurtleContainerDiv.getBoundingClientRect().height - pythonTurtleContainerDiv.clientHeight;
+                peaExpandButton.style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiffW + 2) + "px" : "";
+                peaExpandButton.style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalPosOffset + scrollDiffH + 2) + "px" : "";
+            }
+        }
+    }, 100);
 }
