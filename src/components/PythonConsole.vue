@@ -8,8 +8,6 @@
             </b-tabs>
             <div class="flex-padding"/>
             <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
-            <!-- This span is placed it as a workaround, it cannot be placed inside the Turtle div, because running Turtle will delete it if it was in -->
-            <span id="noTurtleSpan" v-if="consoleDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('console.importTurtle')}}</span>                    
         </div>
         <div id="tabContentContainerDiv">
             <textarea 
@@ -30,8 +28,10 @@
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
                 </div>
             </div>
-            <span @click="toggleConsoleSize" :class="{'console-display-size-button fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,
-            'dark-mode': (consoleDisplayTabIndex==0),'hidden': !isHovered}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
+            <div :class="{'console-display-size-button': true,'dark-mode': (consoleDisplayTabIndex==0)}">
+                <span @click="toggleConsoleSize" :class="{'fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,'hidden': !isHovered}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
+            </div>
+            <span id="noTurtleSpan" v-if="consoleDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('console.importTurtle')}}</span> 
         </div>
     </div>
 </template>
@@ -287,7 +287,6 @@ export default Vue.extend({
         column-gap: 5px;        
         width:100%;
         background-color: rgb(240,240,240);
-        position: relative; // that's for the workaround positioning of the "no turtle" span, see template
     }
 
     .flex-padding {
@@ -310,14 +309,28 @@ export default Vue.extend({
 
     .console-display-size-button {
         position: absolute;
-        bottom: 10px;
-        right: 10px;
+        bottom: $strype-python-exec-area-expand-button-pos-offset;
+        right: $strype-python-exec-area-expand-button-pos-offset;
         color: black;
         cursor: pointer;
+        padding: 8px;
     }
 
     .console-display-size-button.dark-mode {        
         color: white !important;
+    }
+
+    .console-display-size-button:hover {        
+        background: rgb(151, 151, 151) !important;
+        border-radius: 50px;
+    }
+
+    .console-display-size-button.dark-mode:hover {        
+        background: rgb(69, 68, 68) !important;
+    }
+
+    .console-display-size-button span{        
+        display: block; // to ensure the containing div wraps the span tight
     }
 
     .show-error-icon {
@@ -342,6 +355,7 @@ export default Vue.extend({
         flex-grow: 2;
         width: 100%;
         max-height: 30vh;
+        position: relative;
     }
 
     textarea {
@@ -398,7 +412,7 @@ export default Vue.extend({
     
     #noTurtleSpan {
         position: absolute;
-        top: 45px;
+        top: 10px;
         left: 10px;
     }    
 </style>

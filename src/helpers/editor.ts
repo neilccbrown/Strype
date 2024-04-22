@@ -1338,7 +1338,7 @@ export function setPythonExecAreaExpandButtonPos(): void{
     setTimeout(() => {
         const pythonConsoleTextArea = document.getElementById("pythonConsole");
         const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
-        const peaExpandButton = document.getElementsByClassName("console-display-size-button")[0] as HTMLSpanElement;
+        const peaExpandButton = document.getElementsByClassName("console-display-size-button")[0] as HTMLDivElement;
         if(pythonConsoleTextArea && pythonTurtleContainerDiv){
             // First get the natural position offset of the button, so can compute the new position:
             const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaExpandButtonPosOffset as string).replace("px",""));
