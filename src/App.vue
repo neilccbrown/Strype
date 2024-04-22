@@ -22,7 +22,8 @@
             <pane key="2" min-size="20" max-size="80" size="50">
             </pane>
         </Splitpanes>
-        <div class="row">
+        <!-- Keep the style position of the row div to get proper z order layout of the app -->
+        <div class="row" style="position: relative;">
             <Splitpanes class="strype-split-theme">
                 <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
