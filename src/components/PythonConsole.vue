@@ -28,8 +28,8 @@
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
                 </div>
             </div>
-            <div :class="{'console-display-size-button': true,'dark-mode': (consoleDisplayTabIndex==0)}">
-                <span @click="toggleConsoleSize" :class="{'fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,'hidden': !isHovered}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
+            <div @click="toggleConsoleSize" :class="{'console-display-size-button': true,'dark-mode': (consoleDisplayTabIndex==0)}">
+                <span :class="{'fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,'hidden': !isHovered}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
             </div>
             <span id="noTurtleSpan" v-if="consoleDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('console.importTurtle')}}</span> 
         </div>
