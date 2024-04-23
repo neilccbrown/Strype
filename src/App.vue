@@ -101,7 +101,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, checkIsTurtleImported } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, checkIsTurtleImported, setPythonExecutionAreaTabsContentMaxHeight, manuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -735,17 +735,23 @@ export default Vue.extend({
 
         onLargePythonSplitPaneResize(event: any){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
-            // It will dictate the size of the Python console (enlarged), providing we are not lower than 
-            // 15 (cf style definitions in PythonConsole.vue, and with set a maximum of 90)
+            // It will dictate the size of the Python console (enlarged, with a rangf betwee 15 to 80% of the vh)
             const lowerPanelSize = event[1].size;
             if(lowerPanelSize >= 20 && lowerPanelSize <= 80){
                 // As the splitter works in percentage, and the full app height is which of the body, we can compute the height/position
                 // of the editor and the Python console.
                 const fullAppHeight= (document.getElementsByTagName("body")[0].clientHeight);
                 const editorNewMaxHeight = fullAppHeight * (1 - lowerPanelSize /100);
-                (document.querySelector(".run-code-container.largeConsoleDiv") as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                // When the user has used the splitter slider to resize the Python run module, we set a flag in the store: as we play with styling we need to know (see PythonRunModule.vue)
+                manuallyResizedEditorHeightFlag(editorNewMaxHeight);
+                // Set the editor's max height (fitting within the first pane's height)
                 (document.getElementsByClassName("small-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
-
+                // Set the Python Execution Area's position
+                (document.querySelector(".run-code-container.largeConsoleDiv") as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                // Set the max height of the Python Execution Area's tab content
+                setPythonExecutionAreaTabsContentMaxHeight();
+                // Trigger a resized event (for scaling the Turtle canvas properly)
+                document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.peaResized));
             }
 
             // Update the Python Execution Area expand button position

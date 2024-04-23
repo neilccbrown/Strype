@@ -29,6 +29,7 @@ export enum CustomEventTypes {
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyTurtleUsage = "turtleUsage",
+    peaResized = "pythonExecutionAreaResized",
     /* FITRUE_isPurePython */
 }
 
@@ -1326,6 +1327,22 @@ export function checkIsTurtleImported(): void {
    
     // We notify the console about the presence or absence of the turtle module
     document.getElementById("pythonConsole")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+}
+
+// UI-related method to calculate and set the max height of the Python Execution Area tabs content.
+// We need to "fix" the size of the tabs container so the elements of the Exec Area, when the console is enlarged, are correctly flowing in the page
+// and stay within the splitters (which are overlayed in App.vue).
+let manuallyResizedEditorHeight: number | undefined; // Flag used below and by App.vue - do not store this in store, it's session-lived only.
+export function manuallyResizedEditorHeightFlag(value: number): void {
+    manuallyResizedEditorHeight = value;
+}
+export function setPythonExecutionAreaTabsContentMaxHeight(): void {
+    const fullAppHeight= (document.getElementsByTagName("body")[0].clientHeight);
+    // We will need to use the editor's max height in our calculation - if the user has ever manually resized the Python Exec Area, then we set flag
+    // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
+    const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
+    const pythonExecAreaTabsAreaHeight = (document.getElementById("consoleControlsDiv") as HTMLDivElement).getBoundingClientRect().height;
+    (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - pythonExecAreaTabsAreaHeight) + "px");
 }
 
 // This method set the Python Execution Area expand/collapse button position based on the presence of scrollbars

@@ -128,6 +128,9 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, aTurtleD
     }
     if(aTurtleDiv){
         Sk.TurtleGraphics.target = aTurtleDiv.id;
+        // Our default canvas has a size of 400x300 (as default Python's)
+        Sk.TurtleGraphics.width = 400;
+        Sk.TurtleGraphics.height = 300;
     }
     
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});

@@ -23,7 +23,7 @@
                 spellcheck="false"
             >    
             </textarea>
-            <div v-show="consoleDisplayTabIndex==1" id="pythonTurtleContainerDiv">
+            <div v-show="consoleDisplayTabIndex==1" id="pythonTurtleContainerDiv" @wheel.stop>
                 <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
                 </div>
@@ -42,7 +42,7 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { runPythonConsole } from "@/helpers/runPythonConsole";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
@@ -72,11 +72,15 @@ export default Vue.extend({
         (this.$refs.peaComponent as HTMLDivElement).addEventListener("mouseleave", () => this.isHovered = false);
 
         const pythonConsole = document.getElementById("pythonConsole");
-        if(pythonConsole != undefined){
+        const turtlePlaceholderDiv = document.getElementById("pythonTurtleDiv");
+        const tabContentContainerDiv = document.getElementById("tabContentContainerDiv");
+        if(pythonConsole != undefined && turtlePlaceholderDiv != undefined && tabContentContainerDiv != undefined){
             // Register an event listener on the textarea for the request focus event
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleRequestFocus, this.handleConsoleFocusRequest);
+
             // Register an event listener on the textarea for handling post-input
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
+
             // Register an event listener on this component for the notification of the turtle library import usage
             document.getElementById("pythonConsole")?.addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
                 this.turtleGraphicsImported = (event as CustomEvent).detail;
@@ -86,6 +90,26 @@ export default Vue.extend({
                     document.querySelectorAll("#pythonTurtleDiv canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
                 }
             });    
+
+            // Register a mutation observer on the Turtle div placeholder to know when canvases are added/removed,
+            // so we can, in turn, set a resize observer on these canvases to compute how to scale them.
+            // (Note: that is very important because every time the user code is run, Skulpt regenerates the canvases)
+            const turtleDivPlaceholderObserver = new MutationObserver(() => {
+                // We don't need to change the canvas size for EVERY canvases added by Skulpt, we only do it on the first one added.
+                if(document.querySelectorAll("#pythonTurtleDiv canvas").length == 1){
+                    this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv);
+                }
+            });
+            turtleDivPlaceholderObserver.observe(turtlePlaceholderDiv, {childList: true});   
+            
+            // Register an observer when the tab content dimension changes: we need to reflect this on the canvas scaling (cf. above)
+            // DO NOT use ResizeObserver to do so: it gets messy with the events loop ("ResizeObserver loop completed with undelivered notifications.")
+            tabContentContainerDiv.addEventListener("pythonExecutionAreaResized", () => {
+                // We should only scale the canvas if there is at lease a canvas to scale! (i.e. we show turtle graphics...)
+                if (document.querySelectorAll("#pythonTurtleDiv canvas").length > 0) {
+                    this.$nextTick(() =>this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv));
+                }
+            });
         }
     },
 
@@ -230,11 +254,61 @@ export default Vue.extend({
 
         toggleConsoleSize(){
             this.isLargeConsole = !this.isLargeConsole;
+            // We handle the styling for the console tab sizing here.
+            if(!this.isLargeConsole){
+                // When the console is minimized, we remove any max height styling that had been added when enlarging the console: defined CSS will be used.
+                (document.getElementById("tabContentContainerDiv") as HTMLDivElement).style.maxHeight = "";
+            }
+            else{
+                // When the console is maximized, we set the max height via styling: this rules over CSS.
+                setPythonExecutionAreaTabsContentMaxHeight();
+            }
+            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.peaResized));
+
             setPythonExecAreaExpandButtonPos();
             
             // Other parts of the UI need to be updated when the console default size is changed, so we emit an event
             // (in case we rely on the current changes, we do it a bit later)
             this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonConsoleDisplayChanged, {detail: this.isLargeConsole})));
+        },
+
+        scaleTurtleCanvas(tabContentContainerDiv: HTMLElement, turtlePlaceholderDiv: HTMLElement){
+            // Resize and scale the console display accordingly to the Turtle canvas:
+            // - scale the placeholder to fit the shortest dimension in the viewport (the tab) and preserve the canvas ratio
+            // - set the placeholder container (the flex div) to the correct dimension to make sure the positioning (centered) is preserved
+            //    and the scrolls are right -- SCALING WITH CSS DOES NOT MAKES THE DOM SEEING NEW DIMENSIONS
+            const turtleCanvas = document.querySelector("#pythonTurtleDiv canvas") as HTMLCanvasElement;
+            const canvasW = turtleCanvas.width;
+            const canvasH = turtleCanvas.height;
+            const isCanvasWShortest = (canvasW < canvasH);
+                
+            // The parent keeps a 5px margin around the turtle placeholder div, so we need to take it into account when computing the scaling.
+            // Also, we check if a scrollbar would be generated to accomodate it
+            const tabContentElementBoundingClientRect = tabContentContainerDiv.getBoundingClientRect();
+            const {width: tabContentW, height: tabContentH} = tabContentElementBoundingClientRect;
+            const preCheckTurtleCanvasScaleRatio = (isCanvasWShortest) ? ((tabContentW - 10.0) / canvasW) : ((tabContentH - 10.0) / canvasH);
+            // To deal with scrollbars, first pass: we look if doing a simple ratio to fit the smallest dimension implies the largest to overflow
+            const preCheckLargestSideScrollOffset = (isCanvasWShortest) 
+                ? ((canvasH*preCheckTurtleCanvasScaleRatio > (tabContentH - 10)) ? 20 : 0)
+                : ((canvasW*preCheckTurtleCanvasScaleRatio > (tabContentW - 10)) ? 20 : 0);
+            // Second pass:we get the new scale ratio that would include the largest dimension's scroll bar, but as we scale both W and H, will the largest
+            // dimension's scrollbar actually still be required? if so, we keep the new scale ratio, if not, we don't and will accept having 2 scrollbars
+            // and the keep the preCheck scale ratio.
+            const preCheck2TurtleCanvasScaleRatio = (isCanvasWShortest) ? ((tabContentW - 10.0 - preCheckLargestSideScrollOffset) / canvasW) : ((tabContentH - 10.0 - preCheckLargestSideScrollOffset) / canvasH);
+            const preCheck2LargestSideScrollOffset = (isCanvasWShortest) 
+                ? ((canvasH*preCheck2TurtleCanvasScaleRatio > (tabContentH - 10)) ? 20 : 0)
+                : ((canvasW*preCheck2TurtleCanvasScaleRatio > (tabContentW - 10)) ? 20 : 0);
+            const largestSideScrollOffset = (preCheckLargestSideScrollOffset > 0) 
+                ? (preCheck2LargestSideScrollOffset > 0) ? 20 : 0 
+                : 0;
+            const turtleCanvasScaleRatio = (largestSideScrollOffset > 0) ? preCheck2TurtleCanvasScaleRatio : preCheckTurtleCanvasScaleRatio;
+            (turtlePlaceholderDiv as HTMLDivElement).style.scale = ""+turtleCanvasScaleRatio;
+   
+            // We can now set the dimension of the flex div to fit to the scaled content new dimensions: 
+            // the rule is: check what is each dimension of the scaled canvas and use the max between that scaled dimension and the tab content dimension
+            // (to make sure we don't fit to a smaller size than the tab content itself!)
+            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.width = Math.max((canvasW * turtleCanvasScaleRatio + 10), tabContentW - ((isCanvasWShortest) ? largestSideScrollOffset : 0)) +"px";
+            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.height = Math.max((canvasH * turtleCanvasScaleRatio + 10), tabContentH - ((isCanvasWShortest) ? 0 : largestSideScrollOffset)) +"px";
         },
 
         reachFirstError(): void {
@@ -275,11 +349,6 @@ export default Vue.extend({
         left:0px;
         position:fixed;
         margin: 0px !important;
-    }
-
-    .largeConsoleDiv #pythonConsole,
-    .largeConsoleDiv #pythonTurtleDiv {
-        max-height: none;
     }
 
     #consoleControlsDiv {
