@@ -279,7 +279,7 @@ export default Vue.extend({
 
         /* IFTRUE_isPurePython */
         // Listen to the Python execution area size change events (as the editor needs to be resized too)
-        document.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, (event) => {
+        document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
             this.isExpandedPythonExecArea = (event as CustomEvent).detail;
         });
         /* FITRUE_isPurePython */
@@ -752,7 +752,7 @@ export default Vue.extend({
                 // Set the max height of the Python Execution Area's tab content
                 setPythonExecutionAreaTabsContentMaxHeight();
                 // Trigger a resized event (for scaling the Turtle canvas properly)
-                document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.peaResized));
+                document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             }
 
             // Update the Python Execution Area expand button position

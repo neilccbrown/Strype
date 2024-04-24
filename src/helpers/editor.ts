@@ -25,11 +25,11 @@ export enum CustomEventTypes {
     noneStrypeFilePicked = "nonStrypeFilePicked",
     acItemHovered="acItemHovered",
     /* IFTRUE_isPurePython */
-    pythonExecAreaSizeChanged = "peaSizeyChanged",
+    pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyTurtleUsage = "turtleUsage",
-    peaResized = "pythonExecutionAreaResized",
+    pythonExecAreaSizeChanged = "peaSizeChanged",
     /* FITRUE_isPurePython */
 }
 

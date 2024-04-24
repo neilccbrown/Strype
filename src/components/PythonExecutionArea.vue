@@ -28,7 +28,7 @@
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
                 </div>
             </div>
-            <div @click="togglePEASize" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
+            <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
                 <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
             </div>
             <span id="noTurtleSpan" v-if="peaDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('PEA.importTurtle')}}</span> 
@@ -104,7 +104,7 @@ export default Vue.extend({
             
             // Register an observer when the tab content dimension changes: we need to reflect this on the canvas scaling (cf. above)
             // DO NOT use ResizeObserver to do so: it gets messy with the events loop ("ResizeObserver loop completed with undelivered notifications.")
-            tabContentContainerDiv.addEventListener("pythonExecutionAreaResized", () => {
+            tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, () => {
                 // We should only scale the canvas if there is at lease a canvas to scale! (i.e. we show turtle graphics...)
                 if (document.querySelectorAll("#pythonTurtleDiv canvas").length > 0) {
                     this.$nextTick(() =>this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv));
@@ -252,7 +252,7 @@ export default Vue.extend({
             setPythonExecAreaExpandButtonPos();
         },
 
-        togglePEASize(){
+        toggleExpandCollapse(){
             this.isExpandedPEA = !this.isExpandedPEA;
             // We handle the styling for the Python Execution Area (PEA)'s tab content sizing here.
             if(!this.isExpandedPEA){
@@ -263,13 +263,13 @@ export default Vue.extend({
                 // When the PEA is maximized, we set the max height via styling: this rules over CSS.
                 setPythonExecutionAreaTabsContentMaxHeight();
             }
-            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.peaResized));
+            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
 
             setPythonExecAreaExpandButtonPos();
             
             // Other parts of the UI need to be updated when the PEA default size is changed, so we emit an event
             // (in case we rely on the current changes, we do it a bit later)
-            this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged, {detail: this.isExpandedPEA})));
+            this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaExpandCollapseChanged, {detail: this.isExpandedPEA})));
         },
 
         scaleTurtleCanvas(tabContentContainerDiv: HTMLElement, turtlePlaceholderDiv: HTMLElement){
