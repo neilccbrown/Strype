@@ -1,19 +1,19 @@
 
 <template>
-    <div :class="{largeConsoleDiv: isLargeConsole}" ref="peaComponent">
-        <div id="consoleControlsDiv" :class="{'expanded-console': isLargeConsole}">           
-            <b-tabs id="consoleDisplayTabs" v-model="consoleDisplayTabIndex" no-key-nav>
-                <b-tab :title="'\u2771\u23BD '+$t('console.pythonConsole')" title-link-class="console-display-toggle" active></b-tab>
-                <b-tab :title="'\uD83D\uDC22 '+$t('console.TurtleGraphics')" title-link-class="console-display-toggle"></b-tab>
+    <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA}" ref="peaComponent">
+        <div id="peaControlsDiv">           
+            <b-tabs v-model="peaDisplayTabIndex" no-key-nav>
+                <b-tab :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
+                <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
-            <button @click="runClicked" :title="$t('console.run') + ' (Ctrl+Enter)'">{{this.consoleRunLabel}}</button>
+            <button @click="runClicked" :title="$t('PEA.run') + ' (Ctrl+Enter)'">{{this.runCodeButtonLabel}}</button>
         </div>
         <div id="tabContentContainerDiv">
             <textarea 
                 id="pythonConsole"
                 ref="pythonConsole"
-                v-show="consoleDisplayTabIndex==0"
+                v-show="peaDisplayTabIndex==0"
                 @focus="onFocus()"
                 @change="onChange"
                 @wheel.stop
@@ -23,15 +23,15 @@
                 spellcheck="false"
             >    
             </textarea>
-            <div v-show="consoleDisplayTabIndex==1" id="pythonTurtleContainerDiv" @wheel.stop>
+            <div v-show="peaDisplayTabIndex==1" id="pythonTurtleContainerDiv" @wheel.stop>
                 <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
                 </div>
             </div>
-            <div @click="toggleConsoleSize" :class="{'console-display-size-button': true,'dark-mode': (consoleDisplayTabIndex==0),'hidden': !isHovered}">
-                <span :class="{'fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
+            <div @click="togglePEASize" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
+                <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
             </div>
-            <span id="noTurtleSpan" v-if="consoleDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('console.importTurtle')}}</span> 
+            <span id="noTurtleSpan" v-if="peaDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('PEA.importTurtle')}}</span> 
         </div>
     </div>
 </template>
@@ -40,7 +40,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
-import { runPythonConsole } from "@/helpers/runPythonConsole";
+import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
 import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -53,23 +53,23 @@ enum RunningState {
 }
 
 export default Vue.extend({
-    name: "PythonConsole",
+    name: "PythonExecutionArea",
 
     data: function() {
         return {
-            isLargeConsole: false,
+            isExpandedPEA: false,
             runningState: RunningState.NotRunning,
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
-            consoleDisplayTabIndex: 0, // the index of the console display tabs (console/turtle), we use it equally as a flag to indicate if we are on Turtle
+            peaDisplayTabIndex: 0, // the index of the PEA tab (console/turtle), we use it equally as a flag to indicate if we are on Turtle
             interruptedTurtle: false,
-            isHovered: false,
+            isTabContentHovered: false,
         };
     },
 
     mounted(){
-        // Register an event listen on the tab container on hover (in/out) to handle some styling
-        (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseenter", () => this.isHovered = true);
-        (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseleave", () => this.isHovered = false);
+        // Register an event listen on the tab content container on hover (in/out) to handle some styling
+        (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseenter", () => this.isTabContentHovered = true);
+        (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseleave", () => this.isTabContentHovered = false);
 
         const pythonConsole = document.getElementById("pythonConsole");
         const turtlePlaceholderDiv = document.getElementById("pythonTurtleDiv");
@@ -82,7 +82,7 @@ export default Vue.extend({
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
 
             // Register an event listener on this component for the notification of the turtle library import usage
-            document.getElementById("pythonConsole")?.addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
+            (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
                 this.turtleGraphicsImported = (event as CustomEvent).detail;
                 const pythonTurtleDiv = document.getElementById("pythonTurtleDiv");
                 if(!this.turtleGraphicsImported && pythonTurtleDiv != undefined) {
@@ -116,21 +116,21 @@ export default Vue.extend({
     computed:{
         ...mapStores(useStore),
         
-        consoleRunLabel(): string {
+        runCodeButtonLabel(): string {
             switch (this.runningState) {
             case RunningState.NotRunning:
-                return "▶ " + i18n.t("console.run");
+                return "▶ " + i18n.t("PEA.run");
             case RunningState.Running:
-                return "◼ " + i18n.t("console.stop");
+                return "◼ " + i18n.t("PEA.stop");
             case RunningState.RunningAwaitingStop:
-                return i18n.t("console.stopping") as string;
+                return i18n.t("PEA.stopping") as string;
             default: return "";
             }
         },
     },
 
     watch: {
-        consoleDisplayTabIndex(){
+        peaDisplayTabIndex(){
             // When we change tab, we also check the position of the expand/collapse button
             setPythonExecAreaExpandButtonPos();
         },
@@ -138,14 +138,14 @@ export default Vue.extend({
 
     methods: {
         runClicked() {
-            // The console execution has a 3-ways states:
+            // The Python code execution has a 3-ways states:
             // - not running when nothing happens, click will trigger "running"
             // - running when some code is running, click will trigger "running awaiting stop"
             // - running awaiting stop will do nothing
             switch (this.runningState) {
             case RunningState.NotRunning:
                 this.runningState = RunningState.Running;
-                this.runCodeOnPyConsole();
+                this.execPythonCode();
                 return;
             case RunningState.Running:
                 // Skulpt checks this property regularly while running, via a callback,
@@ -158,7 +158,7 @@ export default Vue.extend({
             }
         },
         
-        runCodeOnPyConsole() {
+        execPythonCode() {
             const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
             pythonConsole.value = "";
             setPythonExecAreaExpandButtonPos();
@@ -185,8 +185,8 @@ export default Vue.extend({
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
-                // Trigger the actual console launch
-                runPythonConsole(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => {
+                // Trigger the actual Python code execution launch
+                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => {
                     this.runningState = RunningState.NotRunning;
                     setPythonExecAreaExpandButtonPos();
                 });
@@ -198,7 +198,7 @@ export default Vue.extend({
                     // If there is an error, we reach it and, if Turtle is active, we make sure we show the Python console
                     if(this.appStore.errorCount > 0){
                         this.reachFirstError();
-                        this.consoleDisplayTabIndex = 0;
+                        this.peaDisplayTabIndex = 0;
                     }
                 }); 
             }, 1000);           
@@ -206,7 +206,7 @@ export default Vue.extend({
 
         onFocus(): void {
             this.appStore.isEditing = false;
-            this.consoleDisplayTabIndex = 0;
+            this.peaDisplayTabIndex = 0;
         },
 
         handleConsoleFocusRequest(): void {
@@ -214,9 +214,9 @@ export default Vue.extend({
             // (typically when the Python input() function is encountered)
             
             //First we switch between Turtle and the console shall the Turtle be showing at the moment
-            if(this.consoleDisplayTabIndex == 1){
+            if(this.peaDisplayTabIndex == 1){
                 this.interruptedTurtle = true;
-                this.consoleDisplayTabIndex = 0;
+                this.peaDisplayTabIndex = 0;
             }
 
             //In any case, then we focus the console (keep setTimeout rather than nextTick to have enough time to be effective)
@@ -228,7 +228,7 @@ export default Vue.extend({
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
             if(this.turtleGraphicsImported && this.interruptedTurtle){
                 this.interruptedTurtle = false;
-                this.consoleDisplayTabIndex = 1;
+                this.peaDisplayTabIndex = 1;
             }
         },
 
@@ -252,37 +252,37 @@ export default Vue.extend({
             setPythonExecAreaExpandButtonPos();
         },
 
-        toggleConsoleSize(){
-            this.isLargeConsole = !this.isLargeConsole;
-            // We handle the styling for the console tab sizing here.
-            if(!this.isLargeConsole){
-                // When the console is minimized, we remove any max height styling that had been added when enlarging the console: defined CSS will be used.
+        togglePEASize(){
+            this.isExpandedPEA = !this.isExpandedPEA;
+            // We handle the styling for the Python Execution Area (PEA)'s tab content sizing here.
+            if(!this.isExpandedPEA){
+                // When the PEA is minimized, we remove any max height styling that had been added when enlarging the PEA: defined CSS will be used.
                 (document.getElementById("tabContentContainerDiv") as HTMLDivElement).style.maxHeight = "";
             }
             else{
-                // When the console is maximized, we set the max height via styling: this rules over CSS.
+                // When the PEA is maximized, we set the max height via styling: this rules over CSS.
                 setPythonExecutionAreaTabsContentMaxHeight();
             }
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.peaResized));
 
             setPythonExecAreaExpandButtonPos();
             
-            // Other parts of the UI need to be updated when the console default size is changed, so we emit an event
+            // Other parts of the UI need to be updated when the PEA default size is changed, so we emit an event
             // (in case we rely on the current changes, we do it a bit later)
-            this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonConsoleDisplayChanged, {detail: this.isLargeConsole})));
+            this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged, {detail: this.isExpandedPEA})));
         },
 
         scaleTurtleCanvas(tabContentContainerDiv: HTMLElement, turtlePlaceholderDiv: HTMLElement){
-            // Resize and scale the console display accordingly to the Turtle canvas:
+            // Resize and scale the Python Exec Area (PEA) Turtle container accordingly to the Turtle canvas:
             // - scale the placeholder to fit the shortest dimension in the viewport (the tab) and preserve the canvas ratio
             // - set the placeholder container (the flex div) to the correct dimension to make sure the positioning (centered) is preserved
-            //    and the scrolls are right -- SCALING WITH CSS DOES NOT MAKES THE DOM SEEING NEW DIMENSIONS
+            //    and the scrolls are right -- SCALING WITH CSS DOES NOT MAKES THE DOM "SEEING" NEW DIMENSIONS
             const turtleCanvas = document.querySelector("#pythonTurtleDiv canvas") as HTMLCanvasElement;
             const canvasW = turtleCanvas.width;
             const canvasH = turtleCanvas.height;
             const isCanvasWShortest = (canvasW < canvasH);
                 
-            // The parent keeps a 5px margin around the turtle placeholder div, so we need to take it into account when computing the scaling.
+            // The Turtle div keeps a 5px margin around the Turtle canvases, so we need to take it into account when computing the scaling.
             // Also, we check if a scrollbar would be generated to accomodate it
             const tabContentElementBoundingClientRect = tabContentContainerDiv.getBoundingClientRect();
             const {width: tabContentW, height: tabContentH} = tabContentElementBoundingClientRect;
@@ -304,7 +304,7 @@ export default Vue.extend({
             const turtleCanvasScaleRatio = (largestSideScrollOffset > 0) ? preCheck2TurtleCanvasScaleRatio : preCheckTurtleCanvasScaleRatio;
             (turtlePlaceholderDiv as HTMLDivElement).style.scale = ""+turtleCanvasScaleRatio;
    
-            // We can now set the dimension of the flex div to fit to the scaled content new dimensions: 
+            // We can now set the dimension of the flex div (containing the Turtle div) to fit to the scaled content new dimensions: 
             // the rule is: check what is each dimension of the scaled canvas and use the max between that scaled dimension and the tab content dimension
             // (to make sure we don't fit to a smaller size than the tab content itself!)
             (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.width = Math.max((canvasW * turtleCanvasScaleRatio + 10), tabContentW - ((isCanvasWShortest) ? largestSideScrollOffset : 0)) +"px";
@@ -342,7 +342,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-    .largeConsoleDiv {
+    .expanded-PEA {
         width: 100vw;
         top:50vh;
         bottom:0px;
@@ -351,7 +351,7 @@ export default Vue.extend({
         margin: 0px !important;
     }
 
-    #consoleControlsDiv {
+    #peaControlsDiv {
         display: flex;
         column-gap: 5px;        
         width:100%;
@@ -362,21 +362,17 @@ export default Vue.extend({
         flex-grow: 2;
     }
 
-    #consoleControlsDiv.expanded-console {
-        padding-top: 0 !important;
-    }
-
-    #consoleControlsDiv button {
+    #peaControlsDiv button {
         z-index: 10;
         border-radius: 10px;
         border: 1px solid transparent;
     }
 
-    #consoleControlsDiv button:hover {
+    #peaControlsDiv button:hover {
         border-color: lightgray !important;
     }
 
-    .console-display-size-button {
+    .pea-toggle-size-button {
         position: absolute;
         bottom: $strype-python-exec-area-expand-button-pos-offset;
         right: $strype-python-exec-area-expand-button-pos-offset;
@@ -385,20 +381,20 @@ export default Vue.extend({
         padding: 8px;
     }
 
-    .console-display-size-button.dark-mode {        
+    .pea-toggle-size-button.dark-mode {        
         color: white !important;
     }
 
-    .console-display-size-button:hover {        
+    .pea-toggle-size-button:hover {        
         background: rgb(151, 151, 151) !important;
         border-radius: 50px;
     }
 
-    .console-display-size-button.dark-mode:hover {        
+    .pea-toggle-size-button.dark-mode:hover {        
         background: rgb(69, 68, 68) !important;
     }
 
-    .console-display-size-button span{        
+    .pea-toggle-size-button span{        
         display: block; // to ensure the containing div wraps the span tight
     }
 
@@ -407,15 +403,11 @@ export default Vue.extend({
         border: 2px solid #d66;
     }
 
-    .python-display-switch {
-        display: flex;
-    }
-
-    .console-display-toggle {
+    .pea-display-tab {
         color: black;
     }
 
-    .console-display-toggle:hover {
+    .pea-display-tab:hover {
         color: black;
         background-color: lightgray !important;
     }

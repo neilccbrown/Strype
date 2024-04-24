@@ -119,7 +119,7 @@ function sInput(prompt: string) {
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
-export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
+export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
     consoleTextArea = aConsoleTextArea;
     Sk.pre = consoleTextArea.id;
     // Set the Turtle environment here:
@@ -142,7 +142,7 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, aTurtleD
         // "*" says handle all types of suspensions
         "*": () => {
             if (!keepRunning()) {
-                throw i18n.t("console.stopButtonPressed");
+                throw i18n.t("PEA.stopButtonPressed");
             }
         }});
     // Show error in Python console if error happens

@@ -175,7 +175,7 @@
         "1":"Explore micro:bit"
     },
   
-    "console": {
+    "PEA": {
         "run":"Exécuter",
         "stop":"Arrêter",
         "stopping":"Arrêt...",
@@ -183,7 +183,7 @@
         "runtimeErrorConsole": "Erreur d'exécution",
         "expand":"Agrandir",
         "collapse":"Réduire",
-        "pythonConsole": "Console",
+        "console": "Console",
         "TurtleGraphics":"Turtle Graphics",
         "importTurtle":"Importe le module 'turtle' dans ton code pour utiliser Turtle Graphics"
     }

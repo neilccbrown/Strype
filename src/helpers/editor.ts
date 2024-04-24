@@ -25,7 +25,7 @@ export enum CustomEventTypes {
     noneStrypeFilePicked = "nonStrypeFilePicked",
     acItemHovered="acItemHovered",
     /* IFTRUE_isPurePython */
-    pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
+    pythonExecAreaSizeChanged = "peaSizeyChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyTurtleUsage = "turtleUsage",
@@ -1325,12 +1325,12 @@ export function checkIsTurtleImported(): void {
         hasTurtleImported ||= importedModules.split(",").some((module) => module.localeCompare("turtle")==0);
     });
    
-    // We notify the console about the presence or absence of the turtle module
-    document.getElementById("pythonConsole")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+    // We notify the Python exec area about the presence or absence of the turtle module
+    document.getElementById("peaComponent")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
 }
 
 // UI-related method to calculate and set the max height of the Python Execution Area tabs content.
-// We need to "fix" the size of the tabs container so the elements of the Exec Area, when the console is enlarged, are correctly flowing in the page
+// We need to "fix" the size of the tabs container so the elements of the Exec Area, when it's enlarged, are correctly flowing in the page
 // and stay within the splitters (which are overlayed in App.vue).
 let manuallyResizedEditorHeight: number | undefined; // Flag used below and by App.vue - do not store this in store, it's session-lived only.
 export function manuallyResizedEditorHeightFlag(value: number): void {
@@ -1341,7 +1341,7 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     // We will need to use the editor's max height in our calculation - if the user has ever manually resized the Python Exec Area, then we set flag
     // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
-    const pythonExecAreaTabsAreaHeight = (document.getElementById("consoleControlsDiv") as HTMLDivElement).getBoundingClientRect().height;
+    const pythonExecAreaTabsAreaHeight = (document.getElementById("peaControlsDiv") as HTMLDivElement).getBoundingClientRect().height;
     (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - pythonExecAreaTabsAreaHeight) + "px");
 }
 
@@ -1355,7 +1355,7 @@ export function setPythonExecAreaExpandButtonPos(): void{
     setTimeout(() => {
         const pythonConsoleTextArea = document.getElementById("pythonConsole");
         const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
-        const peaExpandButton = document.getElementsByClassName("console-display-size-button")[0] as HTMLDivElement;
+        const peaExpandButton = document.getElementsByClassName("pea-toggle-size-button")[0] as HTMLDivElement;
         if(pythonConsoleTextArea && pythonTurtleContainerDiv){
             // First get the natural position offset of the button, so can compute the new position:
             const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaExpandButtonPosOffset as string).replace("px",""));

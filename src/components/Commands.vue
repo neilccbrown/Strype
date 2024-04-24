@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <div class="no-console-commands">
+        <div class="no-PEA-commands">
             <div class="project-name-container">
                 <span class="project-name">{{projectName}}</span>
                 <div v-if="isSyncingInGoogleDrive" :title="autoSaveGDriveTooltip">
@@ -52,10 +52,10 @@
             <span id="keystrokeSpan"></span>
         </div>
         /* IFTRUE_isPurePython
-        <python-console class="run-code-container" ref="pythonConsoleComponent"/>
+        <python-execution-area class="python-exec-area-container" ref="pythonExecAreaComponent"/>
         FITRUE_isPurePython */
         /* IFTRUE_isMicrobit      
-        <div class="run-code-container">  
+        <div class="python-exec-area-container">  
             <div v-if="showProgress" class="progress cmd-progress-container">
                 <div 
                     class="progress-bar progress-bar-striped bg-info" 
@@ -87,7 +87,7 @@ import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 /* IFTRUE_isPurePython */
-import PythonConsole from "@/components/PythonConsole.vue";
+import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
 /* FITRUE_isPurePython */
 /* IFTRUE_isMicrobit */
@@ -105,7 +105,7 @@ export default Vue.extend({
         APIDiscovery,
         /* FITRUE_isMicrobit */
         /* IFTRUE_isPurePython */
-        PythonConsole, 
+        PythonExecutionArea, 
         /* FITRUE_isPurePython */
     },
 
@@ -242,8 +242,8 @@ export default Vue.extend({
                 }
                 
                 // If ctrl-enter/cmd-enter is pressed, run the code: 
-                if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter" && this.$refs.pythonConsoleComponent) {
-                    (this.$refs.pythonConsoleComponent as InstanceType<typeof PythonConsole>).runCodeOnPyConsole();
+                if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter" && this.$refs.pythonExecAreaComponent) {
+                    (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).execPythonCode();
                 }
 
                 const isEditing = this.appStore.isEditing;
@@ -492,7 +492,7 @@ export default Vue.extend({
   transform: translate(-50%, -50%);
 }
 
-.no-console-commands {
+.no-PEA-commands {
     overflow-y: auto;
 }
 
@@ -516,7 +516,7 @@ export default Vue.extend({
     color:#666666;
 }
 
-.run-code-container {
+.python-exec-area-container {
     /* IFTRUE_isPurePython */
     margin: 0px 5px 5px 5px;
     /* FITRUE_isPurePython */
