@@ -28,8 +28,8 @@
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
                 </div>
             </div>
-            <div @click="toggleConsoleSize" :class="{'console-display-size-button': true,'dark-mode': (consoleDisplayTabIndex==0)}">
-                <span :class="{'fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole,'hidden': !isHovered}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
+            <div @click="toggleConsoleSize" :class="{'console-display-size-button': true,'dark-mode': (consoleDisplayTabIndex==0),'hidden': !isHovered}">
+                <span :class="{'fas': true, 'fa-expand': !isLargeConsole, 'fa-compress': isLargeConsole}" :title="$t((isLargeConsole)?'console.collapse':'console.expand')"></span>
             </div>
             <span id="noTurtleSpan" v-if="consoleDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('console.importTurtle')}}</span> 
         </div>
@@ -67,9 +67,9 @@ export default Vue.extend({
     },
 
     mounted(){
-        // Register an event listen on hover (in/out) to handle some styling
-        (this.$refs.peaComponent as HTMLDivElement).addEventListener("mouseenter", () => this.isHovered = true);
-        (this.$refs.peaComponent as HTMLDivElement).addEventListener("mouseleave", () => this.isHovered = false);
+        // Register an event listen on the tab container on hover (in/out) to handle some styling
+        (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseenter", () => this.isHovered = true);
+        (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseleave", () => this.isHovered = false);
 
         const pythonConsole = document.getElementById("pythonConsole");
         const turtlePlaceholderDiv = document.getElementById("pythonTurtleDiv");
