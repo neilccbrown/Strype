@@ -1333,8 +1333,11 @@ export function checkIsTurtleImported(): void {
 // We need to "fix" the size of the tabs container so the elements of the Exec Area, when it's enlarged, are correctly flowing in the page
 // and stay within the splitters (which are overlayed in App.vue).
 let manuallyResizedEditorHeight: number | undefined; // Flag used below and by App.vue - do not store this in store, it's session-lived only.
-export function manuallyResizedEditorHeightFlag(value: number): void {
+export function setManuallyResizedEditorHeightFlag(value: number): void {
     manuallyResizedEditorHeight = value;
+}
+export function getManuallyResizedEditorHeightFlag(): number | undefined {
+    return manuallyResizedEditorHeight;
 }
 export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     const fullAppHeight= (document.getElementsByTagName("body")[0].clientHeight);
