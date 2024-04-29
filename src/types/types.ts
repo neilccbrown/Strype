@@ -748,6 +748,7 @@ export const MessageTypes = {
     uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
     uploadEditorFileSucces: "uploadEditorFileSuccess",
     forbiddenFrameMove: "forbiddenFrameMove",
+    forbiddenFramePaste: "forbiddenFramePaste",
     functionFrameCantDelete: "functionFrameCantDelete",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
     gdriveCantCreateStrypeFolder:"gdriveCantCreateStrypeFolder",
@@ -847,6 +848,12 @@ const ForbiddenFrameMove: MessageDefinition = {
     message: "messageBannerMessage.forbiddenFrameMove",
 };
 
+const ForbiddenFramePaste: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.forbiddenFramePaste,
+    message: "messageBannerMessage.forbiddenFramePaste",
+};
+
 const FunctionFrameCantDelete: MessageDefinition = {
     ...NoMessage,
     type: MessageTypes.functionFrameCantDelete,
@@ -890,6 +897,7 @@ export const MessageDefinitions = {
     UploadEditorFileNotSupported,
     UploadEditorFileSuccess,
     ForbiddenFrameMove,
+    ForbiddenFramePaste,
     FunctionFrameCantDelete,
     GDriveConnectToSaveFailed,
     GDriveCantCreateStrypeFolder,

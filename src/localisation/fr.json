@@ -55,6 +55,7 @@
         "uploadEditorFileNotSupported":"Ce format de fichier n'est pas supporté. Extension de fichier attendue: {list}. Votre code n'a pas été modifié.",
         "uploadEditorFileSuccess":"Le chargement de fichier pour l'éditeur a été réalisé avec succès. Votre code a été chargé.",
         "forbiddenFrameMove":"Le ou les cadres sélectionnés ne peuvent pas être déplacés car ils produiraient un code erroné.",
+        "forbiddenFramePaste":"Le ou les cadres sélectionnés ne peuvent pas être collés car ils produiraient un code erroné.",
         "functionFrameCantDelete":"Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
         "gdriveConnectToSaveFailed":"La connexion à Google Drive a été perdue. La synchronisation avec Google Drive est interrompue, les dernières modifications n'ont peut-être pas été sauvegardées.",
         "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive.",

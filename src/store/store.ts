@@ -2696,12 +2696,16 @@ export const useStore = defineStore("app", {
         },
 
         copyFrame(frameId: number) {
+            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
+            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopyFrame(frameId);
             this.updateNextAvailableId();
         },
 
         copySelection() {
+            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
+            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopySelection();
             this.updateNextAvailableId();

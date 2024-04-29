@@ -146,20 +146,28 @@ export default Vue.extend({
     methods: {
         pasteIfFocused(event: Event) {
             // A paste via shortcut cannot get the verification that would be done via a click
-            // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here
+            // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here.
+            // We should know the action is about pasting frames or text if some text is present in the clipboard (we clear it when copying frames)
             if (!this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition)) {
-                
-                if (this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition)) {
+                const pythonCode = (event as ClipboardEvent).clipboardData?.getData("text");
+                if (this.pasteAvailable && (pythonCode == undefined || pythonCode.trim().length == 0)) {
+                    // We check if pasting frames is possible here, if not, show a message.
                     //we need to update the context menu as if it had been shown
-                    this.appStore.contextMenuShownId = this.uiid;
-                    this.doPaste();
+                    const isPasteAllowedAtFrame = this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
+                    if(isPasteAllowedAtFrame){
+                        this.appStore.contextMenuShownId = this.uiid;
+                        this.doPaste();
+                    }
+                    else{
+                        this.appStore.showMessage(MessageDefinitions.ForbiddenFramePaste, 3000);
+                        return;
+                    }
                 }
                 else {
-                    const code = (event as ClipboardEvent).clipboardData?.getData("text");
                     // Note we don't permanently trim the code because we need to preserve leading indent.
                     // But we trim for the purposes of checking if there's any content at all:
-                    if (code?.trim()) {
-                        const error = copyFramesFromParsedPython(code);
+                    if (pythonCode?.trim()) {
+                        const error = copyFramesFromParsedPython(pythonCode);
                         if (error) {
                             useStore().currentMessage = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
                             const msgObj = useStore().currentMessage.message as FormattedMessage;
