@@ -256,7 +256,7 @@ export default Vue.extend({
                 
                 // If ctrl-enter/cmd-enter is pressed, run the code: 
                 if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter" && this.$refs.pythonExecAreaComponent) {
-                    (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).execPythonCode();
+                    (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).runClicked();
                 }
 
                 const isEditing = this.appStore.isEditing;
