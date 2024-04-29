@@ -24,7 +24,7 @@
         </Splitpanes>
         <!-- Keep the style position of the row div to get proper z order layout of the app -->
         <div class="row" style="position: relative;">
-            <Splitpanes class="strype-split-theme">
+            <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>>
                 <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
                     <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
@@ -302,6 +302,12 @@ export default Vue.extend({
 
         // Add a listener for the mouse scroll events. We do not want to allow scrolling when the context menu is shown
         document.addEventListener("wheel", this.blockScrollOnContextMenu, {passive:false});
+
+        // Add a listener for the whole window resize.
+        window.addEventListener("resize",() => {
+            // Re-scale the Turtle canvas.
+            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+        });
     },
 
     destroyed() {
@@ -758,6 +764,11 @@ export default Vue.extend({
 
             // Update the Python Execution Area expand button position
             setPythonExecAreaExpandButtonPos();
+        },
+
+        onStrypeCommandsSplitPaneResize(){
+            // When the Stryle commands are resized, we need to also update the Turtle canvas
+            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
     },
 });
