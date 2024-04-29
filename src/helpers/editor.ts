@@ -350,8 +350,12 @@ export function getCommandsRightPaneContainerId(): string {
 export function getActiveContextMenu(): HTMLElement | null {
     // Helper method to get the currently active context menu. 
     // Explanation: menus have a "v-context" class, and role "menu" (for the root menu in submenus),
-    // we want the menus that are not closed or hidden
-    return document.querySelector(".v-context[role='menu']:not([style*='display: none;']):not([hidden])");
+    // we want the menus that are not closed or hidden nor empty
+    const foundNoneHiddenContextMenu = document.querySelector(".v-context[role='menu']:not([style*='display: none;']):not([hidden])");
+    if(foundNoneHiddenContextMenu && foundNoneHiddenContextMenu.childElementCount == 0){
+        return null;
+    }
+    return foundNoneHiddenContextMenu as HTMLElement | null;    
 }
 
 export function setContextMenuEventClientXY(event: MouseEvent, positionForMenu?: Position): void {
