@@ -115,7 +115,6 @@ export default Vue.extend({
             progressPercent: 0,
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
-            keydownStr: "", // this is required to be check keyboard values on keyup, because on international keyboards, the value returned on keyup is different than keydown's
         };
     },
 
@@ -220,7 +219,12 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                this.keydownStr = event.key;
+                
+                if (event.repeat) {
+                    // Ignore all repeated keypresses, only process the initial press:
+                    return;
+                }
+                
                 //if we requested to log keystroke, display the keystroke event in an unobtrusive location
                 //when editing, we don't show the keystroke for basic keys (like [a-zA-Z0-1]), only those whose key value is longer than 1
                 if(this.appStore.showKeystroke && (!this.appStore.isEditing || event.key.match(/^.{2,}$/))){
@@ -244,6 +248,8 @@ export default Vue.extend({
                 // If ctrl-enter/cmd-enter is pressed, run the code: 
                 if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter" && this.$refs.pythonConsoleComponent) {
                     (this.$refs.pythonConsoleComponent as InstanceType<typeof PythonConsole>).runCodeOnPyConsole();
+                    // Don't then process the keypress for other purposes:
+                    return;
                 }
 
                 const isEditing = this.appStore.isEditing;
@@ -298,6 +304,52 @@ export default Vue.extend({
                     return;
                 }
 
+                const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
+
+                if(event.key == "Escape"){
+                    if(this.appStore.areAnyFramesSelected){
+                        this.appStore.unselectAllFrames();
+                        this.appStore.makeSelectedFramesVisible();
+                    }
+                }
+                else {
+                    if(!isEditing && !this.appStore.isAppMenuOpened){
+                        // Cases when there is no editing:
+                        if(!(event.ctrlKey || event.metaKey)){
+                            if(event.key == "Delete" || event.key == "Backspace"){
+                                if(!ignoreKeyEvent && !event.repeat){
+                                    //delete a frame or a frame selection
+                                    this.appStore.deleteFrames(event.key);
+                                    event.stopImmediatePropagation();
+                                }
+                                else{
+                                    this.appStore.ignoreKeyEvent = false;
+                                }
+                            }
+                            //add the frame in the editor if allowed
+                            else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined || Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == event.key.toLowerCase()) !== undefined){
+                                if(!ignoreKeyEvent){
+                                    // We can add the frame by its original shortcut or hidden one
+                                    const isOriginalShortcut = (this.addFrameCommands[event.key.toLowerCase()] != undefined);
+                                    this.appStore.addFrameWithCommand(
+                                        (isOriginalShortcut)
+                                            ? this.addFrameCommands[event.key.toLowerCase()][0].type
+                                            : (Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == event.key.toLowerCase()) as AddFrameCommandDef[])[0].type
+                                    );
+                                }
+                                else{
+                                    this.appStore.ignoreKeyEvent = false;
+                                }
+                            }
+                        }
+                        else if(event.key == " "){
+                            // If ctrl/meta + space is activated on caret, we add a new functional call frame and trigger the a/c
+                            this.appStore.addFrameWithCommand(this.addFrameCommands[event.key.toLowerCase()][0].type);
+                            this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                        }
+                    }
+                }
+
                 //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")
                 if(!isEditing && !this.appStore.isAppMenuOpened && !(event.ctrlKey || event.metaKey) && (event.key.match(/^[a-z A-Z=]$/) || event.key === "Backspace")){
                     event.preventDefault();
@@ -316,17 +368,11 @@ export default Vue.extend({
             }
         );
 
-        window.addEventListener("keyup", this.onKeyUp);
-        
         document.addEventListener(CustomEventTypes.editorAddFrameCommandsUpdated, () => {
             // When the frame commands have been updated (i.e. language changed), we need to get this component to be re-rendered:
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
-    },
-    
-    beforeDestroy() {
-        window.removeEventListener("keyup", this.onKeyUp);
     },
 
     mounted() {
@@ -347,67 +393,6 @@ export default Vue.extend({
     methods: {
         addFrameCommandUIID(commandType: string): string {
             return getAddFrameCmdElementUIID(commandType);
-        },
-        
-        onKeyUp(event: KeyboardEvent) {
-            const isEditing = this.appStore.isEditing;
-            const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
-
-            // If a modal is open, we let the event be handled by the browser
-            if(this.appStore.isModalDlgShown){
-                return;
-            }
-
-            // If a context menu is currently displayed, stop any action here (keyboard interaction is handled for the keydown event)
-            if(!isEditing && this.appStore.contextMenuShownId.length > 0 && getActiveContextMenu()){
-                event.stopImmediatePropagation();
-                event.preventDefault();
-                return;
-            }
-        
-            if(event.key == "Escape"){
-                if(this.appStore.areAnyFramesSelected){
-                    this.appStore.unselectAllFrames();
-                    this.appStore.makeSelectedFramesVisible();
-                }
-            }
-            else {
-                if(!isEditing && !this.appStore.isAppMenuOpened){
-                    // Cases when there is no editing:
-                    if(!(event.ctrlKey || event.metaKey)){
-                        if(event.key == "Delete" || event.key == "Backspace"){
-                            if(!ignoreKeyEvent){
-                                //delete a frame or a frame selection
-                                this.appStore.deleteFrames(event.key);
-                                event.stopImmediatePropagation();
-                            }
-                            else{
-                                this.appStore.ignoreKeyEvent = false;
-                            }
-                        }
-                        //add the frame in the editor if allowed
-                        else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined || Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == this.keydownStr.toLowerCase()) !== undefined){
-                            if(!ignoreKeyEvent){
-                                // We can add the frame by its original shortcut or hidden one
-                                const isOriginalShortcut = (this.addFrameCommands[event.key.toLowerCase()] != undefined);
-                                this.appStore.addFrameWithCommand(
-                                    (isOriginalShortcut) 
-                                        ? this.addFrameCommands[event.key.toLowerCase()][0].type
-                                        : (Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == this.keydownStr.toLowerCase()) as AddFrameCommandDef[])[0].type
-                                );
-                            }
-                            else{
-                                this.appStore.ignoreKeyEvent = false;
-                            }
-                        }
-                    }
-                    else if(event.key == " "){
-                        // If ctrl/meta + space is activated on caret, we add a new functional call frame and trigger the a/c
-                        this.appStore.addFrameWithCommand(this.addFrameCommands[event.key.toLowerCase()][0].type);
-                        this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
-                    }
-                }
-            }
         },
         
         handleAppScroll(event: WheelEvent) {
