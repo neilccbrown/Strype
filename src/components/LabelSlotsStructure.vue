@@ -311,6 +311,11 @@ export default Vue.extend({
                         ctrlKey: event.ctrlKey,
                         metaKey: event.metaKey,
                     }));
+                if (event.key.toLowerCase() == "backspace" || event.key == "ArrowUp" || event.key == "ArrowDown") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                }
             }
             // Let through various shortcuts like Ctrl-A, Ctrl-C, etc, so that they trigger the in-built
             // actions of selectAll, copy, etc; as well as up/down and derivates keys IF WE ARE IN A COMMENT FRAME.

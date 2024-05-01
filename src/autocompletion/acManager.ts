@@ -52,7 +52,7 @@ export function getCandidatesForAC(slotCode: SlotsStructure, location: number[])
             let fieldIndex = location[0];
             const ourField = slotCode.fields[fieldIndex];
             // We only offer completions for basic slots that are not string literals:
-            if ("code" in ourField && !("quote" in ourField)) {
+            if (ourField != undefined && ("code" in ourField && !("quote" in ourField))) {
                 let prefix = "";
                 // Glue together any previous slots that are joined by dots (or blank operators):
                 if (fieldIndex > 0 && slotCode.operators[fieldIndex - 1].code === ".") {

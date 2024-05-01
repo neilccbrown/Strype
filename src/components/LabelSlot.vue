@@ -532,8 +532,6 @@ export default Vue.extend({
                     // Make sure there is no longer a selection
                     this.appStore.setSlotTextCursors(undefined, undefined);
                     document.getSelection()?.removeAllRanges();
-
-                    this.appStore.ignoreKeyEvent = true;
                 }
             }
             else if(event.shiftKey && canReachAnotherCommentLine){
@@ -788,7 +786,6 @@ export default Vue.extend({
                 // In any other scenario, we capture the key ourselves to handle the UI changes
                 event.preventDefault();
                 event.stopPropagation();
-                this.appStore.ignoreKeyEvent = true;
                 let insertKey = true;
 
                 // Check that if we are in a string slot, all characters but the quote of that string are allowed
@@ -1055,7 +1052,6 @@ export default Vue.extend({
         deleteSlots(event: KeyboardEvent, chainedActionFunction?: VoidFunction){
             event.preventDefault();
             event.stopImmediatePropagation();
-            this.appStore.ignoreKeyEvent = true;
 
             // Save the current state only if we are NOT in a chained action workflow
             let stateBeforeChanges: any = null;
@@ -1200,7 +1196,10 @@ export default Vue.extend({
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
             if(this.isFrameEmptyAndAtLabelSlotStart){
-                this.appStore.ignoreKeyEvent=true;
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                event.preventDefault();
+
                 this.appStore.bypassEditableSlotBlurErrorCheck = true;
                 
                 // If the user had already released the key up, no point waiting, we delete straight away
