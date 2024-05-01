@@ -274,41 +274,27 @@ export default Vue.extend({
 
         scaleTurtleCanvas(tabContentContainerDiv: HTMLElement, turtlePlaceholderDiv: HTMLElement){
             // Resize and scale the Python Exec Area (PEA) Turtle container accordingly to the Turtle canvas:
-            // - scale the placeholder to fit the shortest dimension in the viewport (the tab) and preserve the canvas ratio
+            // - scale the placeholder to fit the viewport (the tab content) and preserve the canvas ratio, no scroll bar should appear
             // - set the placeholder container (the flex div) to the correct dimension to make sure the positioning (centered) is preserved
-            //    and the scrolls are right -- SCALING WITH CSS DOES NOT MAKES THE DOM "SEEING" NEW DIMENSIONS
+            //    -- SCALING WITH CSS DOES NOT MAKES THE DOM "SEEING" NEW DIMENSIONS
             const turtleCanvas = document.querySelector("#pythonTurtleDiv canvas") as HTMLCanvasElement;
             const canvasW = turtleCanvas.width;
             const canvasH = turtleCanvas.height;
-            const isCanvasWShortest = (canvasW < canvasH);
-                
-            // The Turtle div keeps a 5px margin around the Turtle canvases, so we need to take it into account when computing the scaling.
-            // Also, we check if a scrollbar would be generated to accomodate it
             const tabContentElementBoundingClientRect = tabContentContainerDiv.getBoundingClientRect();
             const {width: tabContentW, height: tabContentH} = tabContentElementBoundingClientRect;
-            const preCheckTurtleCanvasScaleRatio = (isCanvasWShortest) ? ((tabContentW - 10.0) / canvasW) : ((tabContentH - 10.0) / canvasH);
-            // To deal with scrollbars, first pass: we look if doing a simple ratio to fit the smallest dimension implies the largest to overflow
-            const preCheckLargestSideScrollOffset = (isCanvasWShortest) 
-                ? ((canvasH*preCheckTurtleCanvasScaleRatio > (tabContentH - 10)) ? 20 : 0)
-                : ((canvasW*preCheckTurtleCanvasScaleRatio > (tabContentW - 10)) ? 20 : 0);
-            // Second pass:we get the new scale ratio that would include the largest dimension's scroll bar, but as we scale both W and H, will the largest
-            // dimension's scrollbar actually still be required? if so, we keep the new scale ratio, if not, we don't and will accept having 2 scrollbars
-            // and the keep the preCheck scale ratio.
-            const preCheck2TurtleCanvasScaleRatio = (isCanvasWShortest) ? ((tabContentW - 10.0 - preCheckLargestSideScrollOffset) / canvasW) : ((tabContentH - 10.0 - preCheckLargestSideScrollOffset) / canvasH);
-            const preCheck2LargestSideScrollOffset = (isCanvasWShortest) 
-                ? ((canvasH*preCheck2TurtleCanvasScaleRatio > (tabContentH - 10)) ? 20 : 0)
-                : ((canvasW*preCheck2TurtleCanvasScaleRatio > (tabContentW - 10)) ? 20 : 0);
-            const largestSideScrollOffset = (preCheckLargestSideScrollOffset > 0) 
-                ? (preCheck2LargestSideScrollOffset > 0) ? 20 : 0 
-                : 0;
-            const turtleCanvasScaleRatio = (largestSideScrollOffset > 0) ? preCheck2TurtleCanvasScaleRatio : preCheckTurtleCanvasScaleRatio;
+               
+            // Scale to fit: we scale to fit whichever dimension will be scaled-limited by the viewport.
+            // The Turtle div keeps a 5px margin around the Turtle canvases, so we need to take it into account when computing the scaling.
+            const preCheckTurtleCanvasWScaleRatio =  ((tabContentW - 10.0) / canvasW);
+            const preCheckTurtleCanvasHSCaleRatio = ((tabContentH - 10.0) / canvasH);
+            const turtleCanvasScaleRatio = Math.min(preCheckTurtleCanvasWScaleRatio, preCheckTurtleCanvasHSCaleRatio);
             (turtlePlaceholderDiv as HTMLDivElement).style.scale = ""+turtleCanvasScaleRatio;
    
             // We can now set the dimension of the flex div (containing the Turtle div) to fit to the scaled content new dimensions: 
             // the rule is: check what is each dimension of the scaled canvas and use the max between that scaled dimension and the tab content dimension
             // (to make sure we don't fit to a smaller size than the tab content itself!)
-            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.width = Math.max((canvasW * turtleCanvasScaleRatio + 10), tabContentW - ((isCanvasWShortest) ? largestSideScrollOffset : 0)) +"px";
-            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.height = Math.max((canvasH * turtleCanvasScaleRatio + 10), tabContentH - ((isCanvasWShortest) ? 0 : largestSideScrollOffset)) +"px";
+            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.width = Math.max((canvasW * turtleCanvasScaleRatio + 10), tabContentW) +"px";
+            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.height = Math.max((canvasH * turtleCanvasScaleRatio + 10), tabContentH) +"px";
         },
 
         reachFirstError(): void {
@@ -415,7 +401,7 @@ export default Vue.extend({
     #tabContentContainerDiv {
         flex-grow: 2;
         width: 100%;
-        max-height: 30vh;
+        max-height: 60vh;
         position: relative;
     }
 
