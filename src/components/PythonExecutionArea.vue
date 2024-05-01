@@ -429,7 +429,7 @@ export default Vue.extend({
     #pythonConsole {
         width:100%;
         height: 100%;
-        background-color: #0a090c;
+        background-color: #333;
         color: white;
         font-size: 15px;
         tab-size: 8;
@@ -446,7 +446,7 @@ export default Vue.extend({
         width: 8px;
     }    
     #pythonConsole::-webkit-scrollbar-track {
-        background: #0a090c;
+        background: #333;
     }
     #pythonConsole::-webkit-scrollbar-thumb {
         background: #888;
