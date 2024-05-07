@@ -1348,7 +1348,8 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     // We will need to use the editor's max height in our calculation - if the user has ever manually resized the Python Exec Area, then we set flag
     // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
-    const pythonExecAreaTabsAreaHeight = (document.getElementById("peaControlsDiv") as HTMLDivElement).getBoundingClientRect().height;
+    // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
+    const pythonExecAreaTabsAreaHeight = (document.querySelector("#peaControlsDiv li") as HTMLLIElement).getBoundingClientRect().height;
     (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - pythonExecAreaTabsAreaHeight) + "px");
 }
 
