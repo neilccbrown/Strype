@@ -52,6 +52,7 @@
             <span id="keystrokeSpan"></span>
         </div>
         /* IFTRUE_isPurePython
+        <div class="flex-padding"/>
         <python-execution-area class="python-exec-area-container" ref="pythonExecAreaComponent"/>
         FITRUE_isPurePython */
         /* IFTRUE_isMicrobit      
@@ -552,6 +553,17 @@ export default Vue.extend({
     color:#666666;
 }
 
+// The transition group places the "add frame" commands inside a p element
+.frameCommands p {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+}
+
+.flex-padding {
+    flex-grow: 2;
+}
+
 .python-exec-area-container {
     /* IFTRUE_isPurePython */
     margin: 0px 5px 5px 5px;
@@ -559,8 +571,8 @@ export default Vue.extend({
     /* IFTRUE_isMicrobit */
     margin-bottom: 90px;
     overflow: hidden; // that is used to keep the margin https://stackoverflow.com/questions/44165725/flexbox-preventing-margins-from-being-respected
-    /* FITRUE_isMicrobit */
     flex-grow: 3;
+    /* FITRUE_isMicrobit */
     display: flex;
     flex-direction: column;    
     align-items: flex-start;

@@ -1385,3 +1385,23 @@ export function setPythonExecAreaExpandButtonPos(): void{
         }
     }, 100);
 }
+
+/** 
+ * These methods are used to control the height of the "Add frame" commands,
+ * to allow the commands to be displayed in columns when they can't be shown as one column.
+ * See Commands.vue for the HTML template logics.
+ */
+export function resetAddFrameCommandContainerHeight(): void{
+    (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = "";
+}
+
+export function computeAddFrameCommandContainerHeight(): void{
+    // When the container div overflows, we remove the overflow extra height to the p element containing the commands
+    // so that we can shorten the p height to trigger the commands to be displayed in columns.  
+    const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
+    const noPEACommandsH =  Math.round(document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height);
+    if(noPEACommandsH < scrollContainerH){
+        const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
+        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+    }
+}

@@ -42,7 +42,7 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, resetAddFrameCommandContainerHeight, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
@@ -105,11 +105,18 @@ export default Vue.extend({
             // Register an observer when the tab content dimension changes: we need to reflect this on the canvas scaling (cf. above)
             // DO NOT use ResizeObserver to do so: it gets messy with the events loop ("ResizeObserver loop completed with undelivered notifications.")
             tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, () => {
-                // We should only scale the canvas if there is at lease a canvas to scale! (i.e. we show turtle graphics...)
+                resetAddFrameCommandContainerHeight();
+
+                // We should only scale the canvas if there is at least a canvas to scale! (i.e. we show turtle graphics...)
                 if (document.querySelectorAll("#pythonTurtleDiv canvas").length > 0) {
-                    this.$nextTick(() =>this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv));
+                    setTimeout(() => this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv), 100);                    
                 }
+
+                setTimeout(() => computeAddFrameCommandContainerHeight(), 100);
             });
+
+            // First time the PEA is mounted, we need to resize the "Add Frame" commands area if needed
+            setTimeout(() => computeAddFrameCommandContainerHeight(), 500);
         }
     },
 
@@ -257,7 +264,13 @@ export default Vue.extend({
             // We handle the styling for the Python Execution Area (PEA)'s tab content sizing here.
             if(!this.isExpandedPEA){
                 // When the PEA is minimized, we remove any max height styling that had been added when enlarging the PEA: defined CSS will be used.
-                (document.getElementById("tabContentContainerDiv") as HTMLDivElement).style.maxHeight = "";
+                const tabContentDiv = (document.getElementById("tabContentContainerDiv") as HTMLDivElement);
+                tabContentDiv.style.maxHeight = "";
+                tabContentDiv.style.height = "";
+                // We can now reset the dimension of the flex div (containing the Turtle div) to set it to default size
+                const turtlePlaceholderContainer = document.getElementById("pythonTurtleContainerDiv") as HTMLDivElement;
+                (turtlePlaceholderContainer.children[0] as HTMLDivElement).style.width = "";
+                (turtlePlaceholderContainer.children[0] as HTMLDivElement).style.height = "";
             }
             else{
                 // When the PEA is maximized, we set the max height via styling: this rules over CSS.
@@ -281,8 +294,15 @@ export default Vue.extend({
             const canvasW = turtleCanvas.width;
             const canvasH = turtleCanvas.height;
             const tabContentElementBoundingClientRect = tabContentContainerDiv.getBoundingClientRect();
-            const {width: tabContentW, height: tabContentH} = tabContentElementBoundingClientRect;
-               
+            let {width: tabContentW, height: tabContentH} = tabContentElementBoundingClientRect;
+
+            // If we are minimising the PEA, we make sure we don't expand the tab container more than the default 4:3 ratio.
+            // (larger canvas will expand the PEA, but we want to keep it at a consistent size all the time.)
+            if(!this.isExpandedPEA){
+                tabContentH = tabContentW * 0.75;
+                tabContentContainerDiv.style.height = tabContentH+"px";
+            }
+
             // Scale to fit: we scale to fit whichever dimension will be scaled-limited by the viewport.
             // The Turtle div keeps a 5px margin around the Turtle canvases, so we need to take it into account when computing the scaling.
             const preCheckTurtleCanvasWScaleRatio =  ((tabContentW - 10.0) / canvasW);
@@ -344,10 +364,6 @@ export default Vue.extend({
         background-color: rgb(240,240,240);
     }
 
-    .flex-padding {
-        flex-grow: 2;
-    }
-
     #peaControlsDiv button {
         z-index: 10;
         border-radius: 10px;
@@ -403,6 +419,7 @@ export default Vue.extend({
         width: 100%;
         max-height: 60vh;
         position: relative;
+        aspect-ratio: 4/3;
     }
 
     textarea {
