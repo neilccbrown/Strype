@@ -2110,7 +2110,6 @@ export const useStore = defineStore("app", {
             // Furthermore, we make sure that the frame hasn't been already deleted: in case a long press, we don't want to have many deletion
             // triggered from "stacked" calls to this method
             if(this.frameObjects[frameId]){
-                this.ignoreKeyEvent = true;
                 this.deleteFrames("Backspace");  
             }
         },

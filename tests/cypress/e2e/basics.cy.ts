@@ -52,7 +52,7 @@ function body(match: CodeMatch, usePassForEmptyBody? : boolean) : CodeMatch[] {
  * Then gets all the body items and matches them against the body of the CodeMatch.
  */
 function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
-    cy.get(".frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").should((parts) => {
+    cy.get(".frame-header").first().within((h) => cy.get(".labelSlot-input,.frame-keyword").should((parts) => {
         let s = "";
         for (let i = 0; i < parts.length; i++) {
             const p : any = parts[i];
@@ -184,6 +184,7 @@ function flatten(codeLines: CodeMatch[]) : (string | RegExp)[] {
 function checkCodeEquals(codeLines : CodeMatch[]) : void {
     sanityCheck();
     cy.root().then((r) => cy.get(".frameDiv").filter((i, e) => noFrameDivBetween(r.get()[0], e)).each((f, i) => cy.wrap(f).within((f2) => {
+        expect(i).lessThan(codeLines.length, "Found line #" + (i + 1) + " but only expected " + codeLines.length + " lines");
         matchFrameText(f2, codeLines[i]);
     })));
     const downloadsFolder = Cypress.config("downloadsFolder");
@@ -368,5 +369,35 @@ describe("Wrapping frames", () => {
                 "baz()",
             ]},
         ]).concat(defaultMyCode));
+    });
+});
+
+
+describe("Copying key combination", () => {
+    it("Check C inserts a comment", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        cy.get("body").type("{downArrow}{downArrow}");
+        cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
+        cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c"});
+        cy.get("body").type("Hello");
+        checkCodeEquals(defaultImports.concat(defaultMyCode).concat([/# ?Hello/]));
+    });
+    it("Does not insert a comment frame on Ctrl+C, when C is released first", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        cy.get("body").type("{shift}{downArrow}{downArrow}");
+        cy.get("body").type("{ctrl}", {release: false});
+        cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
+        cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c"});
+        cy.get("body").type("{ctrl}");
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+    });
+    it("Does not insert a comment frame on Ctrl+C, when C is released second", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        cy.get("body").type("{shift}{downArrow}{downArrow}");
+        cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
+        cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c", ctrlKey: true});
+        cy.get("body").trigger("keyup", {keycode: 17, key: "Control", code: "ControlLeft"}); // Release Ctrl
+        cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c", ctrlKey: false}); // Release C
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
     });
 });
