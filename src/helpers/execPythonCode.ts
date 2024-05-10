@@ -4,7 +4,7 @@ import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import Vue from "vue";
-import { CustomEventTypes } from "./editor";
+import { CustomEventTypes, setPythonExecAreaExpandButtonPos } from "./editor";
 
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
@@ -112,12 +112,14 @@ function sInput(prompt: string) {
         consoleTextArea.addEventListener("compositionstart", consoleCompositionListener);
         consoleTextArea.addEventListener("compositionend", consoleCompositionListener);
 
+        // We check if the expand/collapse button needs to be repositioned.
+        setPythonExecAreaExpandButtonPos();
     });
 }
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
-export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
+export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
     consoleTextArea = aConsoleTextArea;
     Sk.pre = consoleTextArea.id;
     // Set the Turtle environment here:
@@ -126,6 +128,9 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, aTurtleD
     }
     if(aTurtleDiv){
         Sk.TurtleGraphics.target = aTurtleDiv.id;
+        // Our default canvas has a size of 400x300 (as default Python's)
+        Sk.TurtleGraphics.width = 400;
+        Sk.TurtleGraphics.height = 300;
     }
     
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
@@ -137,7 +142,7 @@ export function runPythonConsole(aConsoleTextArea: HTMLTextAreaElement, aTurtleD
         // "*" says handle all types of suspensions
         "*": () => {
             if (!keepRunning()) {
-                throw i18n.t("console.stopButtonPressed");
+                throw i18n.t("PEA.stopButtonPressed");
             }
         }});
     // Show error in Python console if error happens

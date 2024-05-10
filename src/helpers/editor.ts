@@ -5,6 +5,7 @@ import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
+import scssVars  from "@/assets/style/_export.module.scss";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -24,10 +25,11 @@ export enum CustomEventTypes {
     noneStrypeFilePicked = "nonStrypeFilePicked",
     acItemHovered="acItemHovered",
     /* IFTRUE_isPurePython */
-    pythonConsoleDisplayChanged = "pythonConsoleDisplayChanged",
+    pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyTurtleUsage = "turtleUsage",
+    pythonExecAreaSizeChanged = "peaSizeChanged",
     /* FITRUE_isPurePython */
 }
 
@@ -348,8 +350,12 @@ export function getCommandsRightPaneContainerId(): string {
 export function getActiveContextMenu(): HTMLElement | null {
     // Helper method to get the currently active context menu. 
     // Explanation: menus have a "v-context" class, and role "menu" (for the root menu in submenus),
-    // we want the menus that are not closed or hidden
-    return document.querySelector(".v-context[role='menu']:not([style*='display: none;']):not([hidden])");
+    // we want the menus that are not closed or hidden nor empty
+    const foundNoneHiddenContextMenu = document.querySelector(".v-context[role='menu']:not([style*='display: none;']):not([hidden])");
+    if(foundNoneHiddenContextMenu && foundNoneHiddenContextMenu.childElementCount == 0){
+        return null;
+    }
+    return foundNoneHiddenContextMenu as HTMLElement | null;    
 }
 
 export function setContextMenuEventClientXY(event: MouseEvent, positionForMenu?: Position): void {
@@ -1323,6 +1329,79 @@ export function checkIsTurtleImported(): void {
         hasTurtleImported ||= importedModules.split(",").some((module) => module.localeCompare("turtle")==0);
     });
    
-    // We notify the console about the presence or absence of the turtle module
-    document.getElementById("pythonConsole")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+    // We notify the Python exec area about the presence or absence of the turtle module
+    document.getElementById("peaComponent")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+}
+
+// UI-related method to calculate and set the max height of the Python Execution Area tabs content.
+// We need to "fix" the size of the tabs container so the elements of the Exec Area, when it's enlarged, are correctly flowing in the page
+// and stay within the splitters (which are overlayed in App.vue).
+let manuallyResizedEditorHeight: number | undefined; // Flag used below and by App.vue - do not store this in store, it's session-lived only.
+export function setManuallyResizedEditorHeightFlag(value: number): void {
+    manuallyResizedEditorHeight = value;
+}
+export function getManuallyResizedEditorHeightFlag(): number | undefined {
+    return manuallyResizedEditorHeight;
+}
+export function setPythonExecutionAreaTabsContentMaxHeight(): void {
+    const fullAppHeight= (document.getElementsByTagName("body")[0].clientHeight);
+    // We will need to use the editor's max height in our calculation - if the user has ever manually resized the Python Exec Area, then we set flag
+    // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
+    const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
+    // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
+    const pythonExecAreaTabsAreaHeight = (document.querySelector("#peaControlsDiv li") as HTMLLIElement).getBoundingClientRect().height;
+    (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - pythonExecAreaTabsAreaHeight) + "px");
+}
+
+// This method set the Python Execution Area expand/collapse button position based on the presence of scrollbars
+// (It is put here as we need to call at different points in the code.)
+export function setPythonExecAreaExpandButtonPos(): void{
+    // We need to know in which context we are : Python console, or Turtle.
+    // The general idea is to override the CSS styling by directly applying style when needed (the case a scrollbar is present).
+    // We find out the size of the scroll bar, add a margin of 2px, to displace the button by that size.
+    // (To be sure the UI layout is correctly updated before computing, we wait a bit.)
+    setTimeout(() => {
+        const pythonConsoleTextArea = document.getElementById("pythonConsole");
+        const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
+        const peaExpandButton = document.getElementsByClassName("pea-toggle-size-button")[0] as HTMLDivElement;
+        if(pythonConsoleTextArea && pythonTurtleContainerDiv){
+            // First get the natural position offset of the button, so can compute the new position:
+            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaExpandButtonPosOffset as string).replace("px",""));
+    
+            // Then, look for the scrollbars
+            if(pythonConsoleTextArea.style.display != "none"){
+                // In the Python console, we wrap the text, only the vertical scrollbar can appear.
+                const scrollDiff = pythonConsoleTextArea.getBoundingClientRect().width - pythonConsoleTextArea.clientWidth;
+                peaExpandButton.style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
+                peaExpandButton.style.bottom = "";
+            }
+            else{
+                // In the Turtle container, any of the scrollbars can appear.
+                const scrollDiffW = pythonTurtleContainerDiv.getBoundingClientRect().width - pythonTurtleContainerDiv.clientWidth,
+                    scrollDiffH = pythonTurtleContainerDiv.getBoundingClientRect().height - pythonTurtleContainerDiv.clientHeight;
+                peaExpandButton.style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiffW + 2) + "px" : "";
+                peaExpandButton.style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalPosOffset + scrollDiffH + 2) + "px" : "";
+            }
+        }
+    }, 100);
+}
+
+/** 
+ * These methods are used to control the height of the "Add frame" commands,
+ * to allow the commands to be displayed in columns when they can't be shown as one column.
+ * See Commands.vue for the HTML template logics.
+ */
+export function resetAddFrameCommandContainerHeight(): void{
+    (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = "";
+}
+
+export function computeAddFrameCommandContainerHeight(): void{
+    // When the container div overflows, we remove the overflow extra height to the p element containing the commands
+    // so that we can shorten the p height to trigger the commands to be displayed in columns.  
+    const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
+    const noPEACommandsH =  Math.round(document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height);
+    if(noPEACommandsH < scrollContainerH){
+        const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
+        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+    }
 }

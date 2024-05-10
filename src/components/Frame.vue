@@ -52,7 +52,7 @@
                     v-if="hasRuntimeError || wasLastRuntimeError"
                     ref="errorPopover"
                     :target="frameHeaderId"
-                    :title="$t((hasRuntimeError) ? 'console.runtimeErrorConsole' : 'errorMessage.pastFrameErrTitle')"
+                    :title="$t((hasRuntimeError) ? 'PEA.runtimeErrorConsole' : 'errorMessage.pastFrameErrTitle')"
                     triggers="hover"
                     :content="(hasRuntimeError) ? runTimeErrorMessage : runtimeErrorAtLastRunMsg"
                     :custom-class="(hasRuntimeError) ? 'error-popover modified-title-popover': 'error-popover'"

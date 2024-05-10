@@ -16,14 +16,15 @@
                 </div>
             </div>
         </div>
-        <Splitpanes id="largePythonConsoleSplitersOverlay" class="strype-split-theme" v-if="isLargePythonConsole" horizontal @resize=onLargePythonSplitPaneResize>
+        <Splitpanes id="expandedPythonExecAreaSplitersOverlay" class="strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
             <pane key="1">
             </pane>
             <pane key="2" min-size="20" max-size="80" size="50">
             </pane>
         </Splitpanes>
-        <div class="row">
-            <Splitpanes class="strype-split-theme">
+        <!-- Keep the style position of the row div to get proper z order layout of the app -->
+        <div class="row" style="position: relative;">
+            <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>>
                 <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
                     <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
@@ -42,7 +43,7 @@
                             <div class="col">
                                 <div 
                                     :id="editorUIID" 
-                                    :class="{'editor-code-div noselect':true, 'large-editor-code-div':!isLargePythonConsole, 'small-editor-code-div': isLargePythonConsole}" 
+                                    :class="{'editor-code-div noselect':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
                                     @click.self="onEditorClick"
                                 >
                                     <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
@@ -100,7 +101,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, checkIsTurtleImported } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, checkIsTurtleImported, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -140,7 +141,7 @@ export default Vue.extend({
             progressbarMessage: "",
             autoSaveTimerId: -1,
             resetStrypeProjectFlag:false,
-            isLargePythonConsole: false,
+            isExpandedPythonExecArea: false,
             autoSaveState: [] as AutoSaveFunction[],
         };
     },
@@ -277,9 +278,9 @@ export default Vue.extend({
         });
 
         /* IFTRUE_isPurePython */
-        // Listen to the Python console display change events (as the editor needs to be resized too)
-        document.addEventListener(CustomEventTypes.pythonConsoleDisplayChanged, (event) => {
-            this.isLargePythonConsole = (event as CustomEvent).detail;
+        // Listen to the Python execution area size change events (as the editor needs to be resized too)
+        document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
+            this.isExpandedPythonExecArea = (event as CustomEvent).detail;
         });
         /* FITRUE_isPurePython */
 
@@ -301,6 +302,12 @@ export default Vue.extend({
 
         // Add a listener for the mouse scroll events. We do not want to allow scrolling when the context menu is shown
         document.addEventListener("wheel", this.blockScrollOnContextMenu, {passive:false});
+
+        // Add a listener for the whole window resize.
+        window.addEventListener("resize",() => {
+            // Re-scale the Turtle canvas.
+            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+        });
     },
 
     destroyed() {
@@ -732,20 +739,36 @@ export default Vue.extend({
             menuTarget.focus();
         },
 
-        onLargePythonSplitPaneResize(event: any){
+        onExpandedPythonExecAreaSplitPaneResize(event: any){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
-            // It will dictate the size of the Python console (enlarged), providing we are not lower than 
-            // 15 (cf style definitions in PythonConsole.vue, and with set a maximum of 90)
+            // It will dictate the size of the Python execution area (expanded, with a range between 20% and 80% of the vh)
             const lowerPanelSize = event[1].size;
             if(lowerPanelSize >= 20 && lowerPanelSize <= 80){
                 // As the splitter works in percentage, and the full app height is which of the body, we can compute the height/position
-                // of the editor and the Python console.
+                // of the editor and of the Python execution area.
                 const fullAppHeight= (document.getElementsByTagName("body")[0].clientHeight);
                 const editorNewMaxHeight = fullAppHeight * (1 - lowerPanelSize /100);
-                (document.querySelector(".run-code-container.largeConsoleDiv") as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
-                (document.getElementsByClassName("small-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
-
+                // When the user has used the splitter slider to resize the Python execution area, we set a flag in the store: 
+                // as we play with styling we need to know (see PythonExecutionArea.vue)
+                setManuallyResizedEditorHeightFlag(editorNewMaxHeight);
+                // Set the editor's max height (fitting within the first pane's height); as well as the "frame commands" panel's
+                (document.getElementsByClassName("cropped-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
+                (document.getElementsByClassName("no-PEA-commands")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
+                // Set the Python Execution Area's position
+                (document.querySelector(".python-exec-area-container.expanded-PEA") as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                // Set the max height of the Python Execution Area's tab content
+                setPythonExecutionAreaTabsContentMaxHeight();
+                // Trigger a resized event (for scaling the Turtle canvas properly)
+                document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             }
+
+            // Update the Python Execution Area expand button position
+            setPythonExecAreaExpandButtonPos();
+        },
+
+        onStrypeCommandsSplitPaneResize(){
+            // When the Stryle commands are resized, we need to also update the Turtle canvas
+            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
     },
 });
@@ -796,11 +819,11 @@ html,body {
     overflow-y: auto;
 }
 
-.small-editor-code-div {
+.cropped-editor-code-div {
     max-height: 50vh;
 }
 
-.large-editor-code-div {
+.full-height-editor-code-div {
     height: 100vh !important;
     max-height: 100vh !important;
 }
@@ -918,9 +941,9 @@ $divider-grey: darken($background-grey, 15%);
     border: none;
 }
 
-// Styling of the "large python console" splitter overlay (used to simulate a splitter above the console/Turtle area)
-// It must be full width and heigh, overlaying from (0,0), and we use events to apply the splitting ratio back to the console/Turtle area
-#largePythonConsoleSplitersOverlay {
+// Styling of the expanded Python execution area splitter overlay (used to simulate a splitter above the Python execution area)
+// It must be full width and heigh, overlaying from (0,0), and we use events to apply the splitting ratio back to the Python execution area
+#expandedPythonExecAreaSplitersOverlay {
     width: 100vw;
     height: 100vh;
     position: absolute;
@@ -928,7 +951,7 @@ $divider-grey: darken($background-grey, 15%);
     left:0;
 }
 
-#largePythonConsoleSplitersOverlay .splitpanes__splitter {
+#expandedPythonExecAreaSplitersOverlay .splitpanes__splitter {
     z-index: 10;
 }
 

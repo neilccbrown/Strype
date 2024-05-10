@@ -55,6 +55,7 @@
         "uploadEditorFileNotSupported":"This file format is not supported. Expected file extension: {list}. Your code has not changed.",
         "uploadEditorFileSuccess":"The editor file upload is successful. Your code has been loaded.",
         "forbiddenFrameMove":"The selected frame(s) cannot be moved because it results in illegal code.",
+        "forbiddenFramePaste":"The selected frame(s) cannot be pasted because it results in illegal code.",
         "functionFrameCantDelete":"A function definition frame cannot be deleted from this caret position when content is not empty.",
         "gdriveConnectToSaveFailed":"The connection to Google Drive has been lost. The synchronisation with Google Drive is stopped, latest changes may not have been saved.",
         "gdriveCantCreateStrypeFolder":"Strype could not create a default \"Strype\" folder in Google Drive.",
@@ -510,7 +511,7 @@
         "0":"Add Frame",
         "1":"Explore micro:bit"
     },
-    "console": {
+    "PEA": {
         "run":"Run",
         "stop":"Stop",
         "stopping":"Stopping...",
@@ -518,7 +519,7 @@
         "runtimeErrorConsole": "Runtime error",
         "expand":"Expand",
         "collapse":"Collapse",
-        "pythonConsole": "Console",
+        "console": "Console",
         "TurtleGraphics":"Turtle Graphics",
         "importTurtle":"Import the module 'turtle' in your code to use Turtle Graphics."
     }

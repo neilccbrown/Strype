@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <div class="no-console-commands">
+        <div :class="{'no-PEA-commands': true, 'cropped': isExpandedPEA}" @wheel.stop>
             <div class="project-name-container">
                 <span class="project-name">{{projectName}}</span>
                 <div v-if="isSyncingInGoogleDrive" :title="autoSaveGDriveTooltip">
@@ -52,10 +52,11 @@
             <span id="keystrokeSpan"></span>
         </div>
         /* IFTRUE_isPurePython
-        <python-console class="run-code-container" ref="pythonConsoleComponent"/>
+        <div class="flex-padding"/>
+        <python-execution-area class="python-exec-area-container" ref="pythonExecAreaComponent"/>
         FITRUE_isPurePython */
         /* IFTRUE_isMicrobit      
-        <div class="run-code-container">  
+        <div class="python-exec-area-container">  
             <div v-if="showProgress" class="progress cmd-progress-container">
                 <div 
                     class="progress-bar progress-bar-striped bg-info" 
@@ -78,7 +79,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -87,7 +88,7 @@ import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 /* IFTRUE_isPurePython */
-import PythonConsole from "@/components/PythonConsole.vue";
+import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
 /* FITRUE_isPurePython */
 /* IFTRUE_isMicrobit */
@@ -105,7 +106,7 @@ export default Vue.extend({
         APIDiscovery,
         /* FITRUE_isMicrobit */
         /* IFTRUE_isPurePython */
-        PythonConsole, 
+        PythonExecutionArea, 
         /* FITRUE_isPurePython */
     },
 
@@ -115,6 +116,7 @@ export default Vue.extend({
             progressPercent: 0,
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
+            isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to fit the other parts of the commands)
         };
     },
 
@@ -174,12 +176,24 @@ export default Vue.extend({
             if(currentFrame.isDisabled && ((currentFrame.caretVisibility === CaretPosition.body) ? true : !this.appStore.canAddFrameBelowDisabled(currentFrame.id))){
                 return {};
             }
-            
+
             return this.appStore.generateAvailableFrameCommands(this.appStore.currentFrame.id, this.appStore.currentFrame.caretPosition);
         },
 
         progressPercentWidthStyle(): string {
             return "width: " + this.progressPercent + "%;";
+        },
+    },
+
+    watch: {
+        addFrameCommands(){
+            // When the commands list is regenerated, the height of the frame commands list may change, and so may the Python Exec Area.
+            // So to make sure that the Turtle canvas is still showing in the right scaling, if Turtle is showing then we rescale a bit later.
+            // Keep this in the watch rather directly inside the corresponding computed property as computed property shouldn't contain time functions.
+            if(document.getElementById("pythonTurtleContainerDiv")?.style.display != "none"){
+                setTimeout(() => document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged)),
+                    800);
+            }
         },
     },
 
@@ -193,7 +207,7 @@ export default Vue.extend({
                     setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);    
                 }
             );
-            
+
             window.addEventListener(
                 "mousedown",
                 (event: MouseEvent) => {
@@ -246,8 +260,8 @@ export default Vue.extend({
                 }
                 
                 // If ctrl-enter/cmd-enter is pressed, run the code: 
-                if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter" && this.$refs.pythonConsoleComponent) {
-                    (this.$refs.pythonConsoleComponent as InstanceType<typeof PythonConsole>).runCodeOnPyConsole();
+                if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter" && this.$refs.pythonExecAreaComponent) {
+                    (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).runClicked();
                     // Don't then process the keypress for other purposes:
                     return;
                 }
@@ -373,6 +387,25 @@ export default Vue.extend({
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
+            
+        /* IFTRUE_isPurePython */
+        // Listen to the Python execution area size change events (as the other commands max height need to be ammended)
+        document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
+            this.isExpandedPEA = (event as CustomEvent).detail;
+            // The maximum height of the "frame commands" (the part that doesn't contain the Python Execution Area)
+            // should be set to the same as the editor when the PEA is expanded, otherwise we remove the style.
+            this.$nextTick(() => {
+                const noPEACommandsDiv = document.getElementsByClassName("no-PEA-commands")[0] as HTMLDivElement;
+                if(this.isExpandedPEA){
+                    // If the editor's size was manually set by moving the splitter, we use that value, otherwise, we use 50vh.
+                    noPEACommandsDiv.style.maxHeight = (getManuallyResizedEditorHeightFlag()) ? getManuallyResizedEditorHeightFlag()+"px" : "50vh";
+                }
+                else{
+                    noPEACommandsDiv.style.maxHeight ="";
+                }
+            });
+        });
+        /* FITRUE_isPurePython */
     },
 
     mounted() {
@@ -477,8 +510,12 @@ export default Vue.extend({
   transform: translate(-50%, -50%);
 }
 
-.no-console-commands {
+.no-PEA-commands {
     overflow-y: auto;
+}
+
+.no-PEA-commands.cropped {
+    max-height: 50vh;
 }
 
 .progress-bar-text {
@@ -501,15 +538,26 @@ export default Vue.extend({
     color:#666666;
 }
 
-.run-code-container {
+// The transition group places the "add frame" commands inside a p element
+.frameCommands p {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+}
+
+.flex-padding {
+    flex-grow: 2;
+}
+
+.python-exec-area-container {
     /* IFTRUE_isPurePython */
     margin: 0px 5px 5px 5px;
     /* FITRUE_isPurePython */
     /* IFTRUE_isMicrobit */
     margin-bottom: 90px;
-    /* FITRUE_isMicrobit */
     overflow: hidden; // that is used to keep the margin https://stackoverflow.com/questions/44165725/flexbox-preventing-margins-from-being-respected
     flex-grow: 3;
+    /* FITRUE_isMicrobit */
     display: flex;
     flex-direction: column;    
     align-items: flex-start;

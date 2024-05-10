@@ -257,7 +257,7 @@ export const useStore = defineStore("app", {
             return false;
         },
         
-        generateAvailableFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition) => {
+        generateAvailableFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition, lookingForTargetPos?: boolean) => {
             // If we are currently editing there are no frame command to show...
             if(state.isEditing) {
                 return {} as  {[id: string]: AddFrameCommandDef[]};
@@ -404,9 +404,9 @@ export const useStore = defineStore("app", {
                 
                 // filtered = filtered - forbidden - allJoints
                 // all joints need to be removed here as they may overlap with the forbiden and the allowed ones. Allowed will be added on the next step.
-                // if some frames are currently selected, we do not allow statement type frames to appear in the list of commands (we can only wrap the selection)
+                // unless we are checking for a target position, if some frames are currently selected, we do not allow statement type frames to appear in the list of commands (we can only wrap the selection)
                 filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
-                    && (state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
+                    && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
 
                 // filtered = filtered + allowed
                 filteredCommands[frameShortcut].push(...allowedJointCommand[frameShortcut]);
@@ -507,7 +507,7 @@ export const useStore = defineStore("app", {
 
         isPositionAllowsSelectedFrames(){
             return (targetFrameId: number, targetCaretPosition: CaretPosition, areFramesCopied: boolean) => {   
-                const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
+                const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition, true);
 
                 const selectedFramesIds = (areFramesCopied) ? this.copiedSelectionFrameIds : this.selectedFrames;
                 const sourceList = (areFramesCopied) ? this.copiedFrames : this.frameObjects;
@@ -2695,12 +2695,16 @@ export const useStore = defineStore("app", {
         },
 
         copyFrame(frameId: number) {
+            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
+            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopyFrame(frameId);
             this.updateNextAvailableId();
         },
 
         copySelection() {
+            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
+            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopySelection();
             this.updateNextAvailableId();

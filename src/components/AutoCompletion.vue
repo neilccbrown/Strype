@@ -292,7 +292,7 @@ export default Vue.extend({
             for (const module in this.acResults) {
                 // Filter the list based on the token
                 const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
-                    element.acResult.toLowerCase().startsWith(token));
+                    element.acResult.toLowerCase().startsWith(token.toLowerCase()));
 
                 // Don't put empty lists in resultsToShow
                 if (filteredResults.length == 0) {
