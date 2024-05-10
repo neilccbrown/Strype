@@ -109,7 +109,11 @@ export default Vue.extend({
 
                 // We should only scale the canvas if there is at least a canvas to scale! (i.e. we show turtle graphics...)
                 if (document.querySelectorAll("#pythonTurtleDiv canvas").length > 0) {
-                    setTimeout(() => this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv), 100);                    
+                    setTimeout(() => {
+                        if(document.querySelectorAll("#pythonTurtleDiv canvas").length > 0){
+                            this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv);
+                        }
+                    }, 100);                    
                 }
 
                 setTimeout(() => computeAddFrameCommandContainerHeight(), 100);
