@@ -7,12 +7,14 @@ import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaExpandButtonPos } from "./editor";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
+const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG;
 
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
 // a Sk object that is FROM THE SKULPT LIBRARY, it is the main entry point of Skulpt
 let consoleTextArea: HTMLTextAreaElement = {} as HTMLTextAreaElement; 
 declare const Sk: any;
+let codeExecStateRunningCheckFn: () => boolean | undefined;
 
 // The function used for "output" from Skulpt, to be registered against the Skulpt object
 function outf(text: string) { 
@@ -90,7 +92,9 @@ function sInput(prompt: string) {
                 event.stopImmediatePropagation();
                 event.preventDefault();
                 // now we can return the promise with the input text
-                resolve(inputText);                
+                resolve(inputText);   
+                // Clear the timer used to check interruptions
+                clearTimeout(checkInterruptionHandle);             
                 return;
             }
             
@@ -114,6 +118,24 @@ function sInput(prompt: string) {
         consoleTextArea.addEventListener("compositionstart", consoleCompositionListener);
         consoleTextArea.addEventListener("compositionend", consoleCompositionListener);
 
+        // When we are waiting for user input, it is possible the user has request the execution of their code to be stopped,
+        // therefore, we shouldn't hang on this method and exit as soon as possible. To do so, we need to regularly check if
+        // stopping the code execution has been requested: if so, we reject the input and make sure we leave in a clean UI state.
+        const checkInterruptionHandle = setInterval(() => {
+            if (codeExecStateRunningCheckFn && !codeExecStateRunningCheckFn()) {
+                clearTimeout(checkInterruptionHandle);
+                if(isConsoleTextAreaLocked){
+                    consoleTextArea.disabled = true;
+                }
+                // remove keyup handler from #console
+                consoleTextArea.removeEventListener("keydown", consoleKeyListener);
+                consoleTextArea.removeEventListener("compositionstart", consoleCompositionListener);
+                consoleTextArea.removeEventListener("compositionend", consoleCompositionListener);
+                reject(STRYPE_RUN_ACTION_MSG);
+                return;
+            }
+        }, 1000);
+
         // We check if the expand/collapse button needs to be repositioned.
         setPythonExecAreaExpandButtonPos();
     });
@@ -123,6 +145,7 @@ function sInput(prompt: string) {
 // and providing the code (usually, user defined code) and the text area to display the output
 export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
     consoleTextArea = aConsoleTextArea;
+    codeExecStateRunningCheckFn = keepRunning;
     Sk.pre = consoleTextArea.id;
     // Set the Turtle environment here:
     if(!Sk.TurtleGraphics){
@@ -173,10 +196,13 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
             const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.t("errorMessage.EOFError") as string;
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
-            consoleTextArea.value += ("< " + noLineSkulptErrStr + " >");
-            // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
-            Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
-            useStore().wasLastRuntimeErrorFrameId = frameId;         
+            // Exception: if we have a "running action" message, we don't show anything (no message and no error).
+            if(!skulptErrStr.startsWith(STRYPE_INPUT_INTERRUPT_ERR_MSG)){
+                consoleTextArea.value += ("< " + noLineSkulptErrStr + " >");
+                // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
+                Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
+                useStore().wasLastRuntimeErrorFrameId = frameId;      
+            }   
         }
         else{
             // In case we couldn't get the line and the frame correctly, we just display a simple message,
