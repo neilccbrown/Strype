@@ -180,7 +180,6 @@
         "run":"Exécuter",
         "stop":"Arrêter",
         "stopping":"Arrêt...",
-        "stopButtonPressed":"Bouton arrêt cliqué",
         "runtimeErrorConsole": "Erreur d'exécution",
         "expand":"Agrandir",
         "collapse":"Réduire",

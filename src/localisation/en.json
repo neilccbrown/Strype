@@ -515,7 +515,6 @@
         "run":"Run",
         "stop":"Stop",
         "stopping":"Stopping...",
-        "stopButtonPressed":"Stop button pressed",
         "runtimeErrorConsole": "Runtime error",
         "expand":"Expand",
         "collapse":"Collapse",

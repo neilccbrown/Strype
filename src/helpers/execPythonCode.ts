@@ -6,6 +6,8 @@ import i18n from "@/i18n";
 import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaExpandButtonPos } from "./editor";
 
+const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
+
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
 // a Sk object that is FROM THE SKULPT LIBRARY, it is the main entry point of Skulpt
@@ -142,7 +144,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         // "*" says handle all types of suspensions
         "*": () => {
             if (!keepRunning()) {
-                throw i18n.t("PEA.stopButtonPressed");
+                throw STRYPE_RUN_ACTION_MSG;
             }
         }});
     // Show error in Python console if error happens
@@ -177,8 +179,11 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
             useStore().wasLastRuntimeErrorFrameId = frameId;         
         }
         else{
-            // In case we couldn't get the line and the frame correctly, we just display a simple message
-            consoleTextArea.value += ("< " + skulptErrStr + " >");
+            // In case we couldn't get the line and the frame correctly, we just display a simple message,
+            // EXCEPT if we have a "running action" message, which doesn't need to be displayed as the UI already gives cues.
+            if(skulptErrStr.localeCompare(STRYPE_RUN_ACTION_MSG) != 0){
+                consoleTextArea.value += ("< " + skulptErrStr + " >");
+            }
         }
         executionFinished();
         // We will have added text either way, now scroll to bottom:
