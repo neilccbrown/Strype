@@ -164,14 +164,12 @@ export function configureSkulptForAutoComplete() : void {
     Sk.configure({output:(t:string) => console.log("Python said: " + t), yieldLimit:100,  killableWhile: true, killableFor: true});
     // We also need to set some Turtle environment for Skulpt -- note that the output DIV is NOT the one visible by users,
     // because this environment is only used for our backend processes of the code for autocompletion.
-    if(!Sk.TurtleGraphics){
-        Sk.TurtleGraphics = {};
-        // Create a DIV in the BODY element if the "backend" Turtle output DIV doesn't exist.
-        if(document.getElementById(BACKEND_SKULPT_DIV_ID) == undefined){
-            const turtleDiv = document.createElement("div");
-            turtleDiv.id = BACKEND_SKULPT_DIV_ID;
-            document.getElementsByTagName("body")[0].appendChild(turtleDiv);
-        }       
-        Sk.TurtleGraphics.target = BACKEND_SKULPT_DIV_ID;
-    }    
+    Sk.TurtleGraphics = {};
+    // Create a DIV in the BODY element if the "backend" Turtle output DIV doesn't exist.
+    if(document.getElementById(BACKEND_SKULPT_DIV_ID) == undefined){
+        const turtleDiv = document.createElement("div");
+        turtleDiv.id = BACKEND_SKULPT_DIV_ID;
+        document.getElementsByTagName("body")[0].appendChild(turtleDiv);
+    }       
+    Sk.TurtleGraphics.target = BACKEND_SKULPT_DIV_ID; 
 }
