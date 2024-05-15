@@ -148,14 +148,21 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
     codeExecStateRunningCheckFn = keepRunning;
     Sk.pre = consoleTextArea.id;
     // Set the Turtle environment here:
-    if(!Sk.TurtleGraphics){
-        Sk.TurtleGraphics = {};
-    }
+    Sk.TurtleGraphics = {};
     if(aTurtleDiv){
         Sk.TurtleGraphics.target = aTurtleDiv.id;
         // Our default canvas has a size of 400x300 (as default Python's)
         Sk.TurtleGraphics.width = 400;
         Sk.TurtleGraphics.height = 300;
+    }
+
+    // Wrapper function for handling when Skulpt execution is finished
+    function handleExecutionFinished(): void {
+        // To make sure we don't get weird things happening on the Turtle, we don't keep Skulpt having a relation with the UI for Turtle
+        // so that the UI will stay "idle" until the next run.
+        Sk.TurtleGraphics = {};
+        // Other actions requested by the caller of the execPythonCode function
+        executionFinished();
     }
     
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
@@ -172,7 +179,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         }});
     // Show error in Python console if error happens
     myPromise.then(() => {
-        executionFinished();
+        handleExecutionFinished();
         return;
     },
     (err: any) => {
@@ -211,7 +218,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
                 consoleTextArea.value += ("< " + skulptErrStr + " >");
             }
         }
-        executionFinished();
+        handleExecutionFinished();
         // We will have added text either way, now scroll to bottom:
         Vue.nextTick(() => {
             consoleTextArea.scrollTop = consoleTextArea.scrollHeight;

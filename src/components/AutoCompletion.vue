@@ -221,9 +221,11 @@ export default Vue.extend({
                 const codeToRun = getPythonCodeForNamesInContext(userCode, context);
                 configureSkulptForAutoComplete();
                 try {
-                    await Sk.misceval.asyncToPromise(function () {
+                    const promise = await Sk.misceval.asyncToPromise(function () {
                         return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
                     });
+                    // We need to make sure we clear the TurtleGraphics property after Skulpt has run to avoid undesired effects in future Skulpt runs.
+                    promise.then(() => Sk.TurtleGraphics = {});
                     if (ourAcRequest == this.acRequestIndex) {
                         const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
                             acResult: s,
