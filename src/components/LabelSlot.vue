@@ -817,9 +817,13 @@ export default Vue.extend({
                     || isStringQuote
                     ){
                         // If we are in the LHS of a function definition or of a for, then we just don't allow the operator, bracket or quotes.
+                        // For a for though, we allow comma as we may have something as "for a,b in xxx".
                         // For imports, we only allow comma and * (comma in import frame, coma and * in RHS from (* isn't treated as operator in this case)).
-                        const forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for].includes(this.frameType)
+                        let forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for].includes(this.frameType)
                             && this.labelSlotsIndex == 0;
+                        if(forbidOperator && this.frameType == AllFrameTypesIdentifier.for && this.keyDownStr == ","){
+                            forbidOperator = false;
+                        }
                         insertKey = !forbidOperator;
                         if(!forbidOperator && (this.frameType == AllFrameTypesIdentifier.fromimport || this.frameType == AllFrameTypesIdentifier.import)){
                             // If we're in some import frame, we check we match the rule mentioned above
