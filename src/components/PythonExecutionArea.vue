@@ -176,7 +176,7 @@ export default Vue.extend({
             
             // Make sure the text area is disabled when we run the code
             pythonConsole.disabled = true;
-            this.appStore.wasLastRuntimeErrorFrameId =  undefined;
+            this.appStore.wasLastRuntimeErrorFrameId = undefined;
             // Make sure there is no document selection for our editor
             this.appStore.setSlotTextCursors(undefined, undefined);
                 
@@ -200,19 +200,27 @@ export default Vue.extend({
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => {
                     this.runningState = RunningState.NotRunning;
                     setPythonExecAreaExpandButtonPos();
+                    // A runtime error may happen whenever the user code failed, therefore we should check if an error
+                    // when Skulpt indicates the code execution has finished.
+                    this.checkNonePrecompiledErrors();
                 });
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
-                // As the UI should update first, we do it in the next tick
-                this.$nextTick().then(() => {
-                    checkEditorCodeErrors();
-                    this.appStore.errorCount = countEditorCodeErrors();
-                    // If there is an error, we reach it and, if Turtle is active, we make sure we show the Python console
-                    if(this.appStore.errorCount > 0){
-                        this.reachFirstError();
-                        this.peaDisplayTabIndex = 0;
-                    }
-                }); 
+                // Note that a run time error can still occur later.                
+                this.checkNonePrecompiledErrors();
             }, 1000);           
+        },
+
+        checkNonePrecompiledErrors(){
+            // As the UI should update first, we do it in the next tick. 
+            this.$nextTick().then(() => {
+                checkEditorCodeErrors();
+                this.appStore.errorCount = countEditorCodeErrors();
+                // If there is an error, we reach it and, if Turtle is active, we make sure we show the Python console
+                if(this.appStore.errorCount > 0){
+                    this.reachFirstError();
+                    this.peaDisplayTabIndex = 0;
+                }
+            });
         },
 
         onFocus(): void {
