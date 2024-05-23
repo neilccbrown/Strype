@@ -174,7 +174,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                         continue loopImportFrames;
                     }
                     else if(isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code === "," ){
-                        // When we import several modules at once we process them one by
+                        // When we import several modules at once we process them one by one
                         doGetAllExplicitelyImportedItems(frame, module, true, soFar);
                         module = "";
                         continue;
@@ -183,7 +183,10 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                 }
             }
 
-            doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar);
+            // If the module is empty (which happens when user has only added a frame), we skip it
+            if(module.length > 0) {
+                doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar);
+            }
         }
     }
     return soFar;
