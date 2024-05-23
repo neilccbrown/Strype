@@ -24,7 +24,7 @@
         </Splitpanes>
         <!-- Keep the style position of the row div to get proper z order layout of the app -->
         <div class="row" style="position: relative;">
-            <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>>
+            <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
                 <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
                     <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
