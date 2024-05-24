@@ -217,10 +217,12 @@ export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: str
         if(isSimpleImport){
             if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(module) == 0)){
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
-                const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
-                const imports = soFar[importedModulesCategory]??[];
-                imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
-                soFar[importedModulesCategory] = imports;
+                if(pythonBuiltins[module]){
+                    const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
+                    const imports = soFar[importedModulesCategory]??[];
+                    imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
+                    soFar[importedModulesCategory] = imports;
+                }
             }
         }
         else{
