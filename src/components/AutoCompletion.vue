@@ -364,9 +364,10 @@ export default Vue.extend({
             // We want to set the hovered item as selected. However, we cannot do that systematically:
             // when the a/c has been scrolled, there is a chance another item get passively hovered as it would "fall under the mouse".
             // So, we set a flag to detect a mouse move to make sure accidently hovered items don't get selected
-            if(this.allowHoverSelection){
+            if(this.allowHoverSelection){      
                 this.selected = selectedItem;
-                this.currentModule = this.getModuleOfSelected(0);
+                // We retrieve the module with CSS, it is just easier than trying to deduce it from the a/c content!
+                this.currentModule = this.getModuleOfSelected();
                 this.currentDocumentation = this.getCurrentDocumentation();
             }
         },
@@ -400,24 +401,34 @@ export default Vue.extend({
             return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type;
         },
 
-        getModuleOfSelected(delta: number): string {
+        getModuleOfSelected(delta?: number): string {
+            // Gets the module of the current selection. There are 2 ways of achieving this: using the a/c content object resultsToShow or CSS.
+            // If no delta is given as argument of the method, then we search with CSS (which is the case when using the mouse to select an item).
+            if(delta != undefined){
+                const numItemsInCurrModule = this.resultsToShow[this.currentModule].length;
 
-            const numItemsInCurrModule = this.resultsToShow[this.currentModule].length;
-
-            // if the selected is out of bounds, i.e.  (selected < indexOfFirstElement OR selected>indexOfLastElement)
-            if ( this.selected < this.resultsToShow[this.currentModule][0].index 
+                // if the selected is out of bounds, i.e.  (selected < indexOfFirstElement OR selected>indexOfLastElement)
+                if ( this.selected < this.resultsToShow[this.currentModule][0].index 
                 ||
                 this.selected > this.resultsToShow[this.currentModule][numItemsInCurrModule -1].index
-            ){
+                ){
                 // We want all the (non-zero result) modules
-                const listOfAllModules = Object.keys(this.resultsToShow);
-                const allModulesLength = listOfAllModules.length;
-                const currentModuleIndex = listOfAllModules.indexOf(this.currentModule);
-                // The following frames the newSelectionIndex to the results array (it's like a modulo that works for negative numbers as well)
-                // It frames ANY number (negative or positive) to the bounds of [0 ... modulesLength]
-                return listOfAllModules[(((currentModuleIndex+delta)%allModulesLength)+allModulesLength)%allModulesLength];
+                    const listOfAllModules = Object.keys(this.resultsToShow);
+                    const allModulesLength = listOfAllModules.length;
+                    const currentModuleIndex = listOfAllModules.indexOf(this.currentModule);
+                    // The following frames the newSelectionIndex to the results array (it's like a modulo that works for negative numbers as well)
+                    // It frames ANY number (negative or positive) to the bounds of [0 ... modulesLength]
+                    return listOfAllModules[(((currentModuleIndex+delta)%allModulesLength)+allModulesLength)%allModulesLength];
+                }
+                return this.currentModule;
             }
-            return this.currentModule;
+            else{
+                // With CSS, we simply look up the parent of the *hovered* item (one of the LIs) and retrieve its data-title attribute.
+                // There SHOULD be a selection, but in case something is messed up and we don't retrieve, we'll return the current module.
+                // (we use "hover" because when this method is called, the new selection isn't yet reflected in the change of styling);
+                const selectedLIElementParent = document.querySelector("li.acItem:hover")?.parentElement;
+                return (selectedLIElementParent?.getAttribute("data-title")) ?? this.currentModule;
+            }
         },
 
         getCurrentDocumentation(): string {
