@@ -192,7 +192,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
     return soFar;
 }
 
-function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory){
+export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory): void {
     const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 

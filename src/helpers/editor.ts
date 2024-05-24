@@ -1311,10 +1311,10 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
  * Turtle  related bits for the editor
  */
 
-// This method checks if the turtle module is imported in the editor's frame
-export function checkIsTurtleImported(): void {
-    let hasTurtleImported=false;
-    
+// This method acts the turtle module being imported or not in the editor's frame
+export function actOnTurtleImport(): void {
+    let hasTurtleImported = false;
+   
     Object.values(useStore().frameObjects).forEach((frame) => {
         // If the frame is disabled, or is not an import/for...import frame, it definitely do not imports turtle.
         if(frame.isDisabled || (frame.frameType.type != AllFrameTypesIdentifier.import && frame.frameType.type != AllFrameTypesIdentifier.fromimport)) {
@@ -1328,7 +1328,7 @@ export function checkIsTurtleImported(): void {
             .reduce((accModules, currentSlotVal,i) => (accModules + ((i > 0) ? frame.labelSlotsDict[0].slotStructures.operators[i-1].code : "") + currentSlotVal), "");
         hasTurtleImported ||= importedModules.split(",").some((module) => module.localeCompare("turtle")==0);
     });
-   
+
     // We notify the Python exec area about the presence or absence of the turtle module
     document.getElementById("peaComponent")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
 }

@@ -6,7 +6,7 @@ import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegr
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUIID, checkIsTurtleImported } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUIID, actOnTurtleImport } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -2433,7 +2433,7 @@ export const useStore = defineStore("app", {
             this.setAppLang(this.appLang);
 
             // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
-            checkIsTurtleImported();
+            actOnTurtleImport();
             
             if(payload.showMessage) {
                 this.showMessage(MessageDefinitions.UploadEditorFileSuccess, 5000);  
