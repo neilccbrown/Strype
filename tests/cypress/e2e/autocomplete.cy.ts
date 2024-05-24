@@ -735,8 +735,9 @@ describe("Nested modules", () => {
         cy.get("body").type(" " + targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
-            // Because it's fetched dynamically, we won't know parameter names:
-            checkExactlyOneItem(acIDSel, targetModule, targetFunction + "()");
+            // The modules we are retrieving are generated in our API files (see changes of commit 3073c074090c68dfb5cfc633686aa3916e55f0ca),
+            // therefore, we will have the parameters in the autocompletion data.
+            checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
             checkNoItems(acIDSel, "abs");
         });
     });
