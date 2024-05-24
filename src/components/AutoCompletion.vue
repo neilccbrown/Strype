@@ -407,18 +407,21 @@ export default Vue.extend({
             if(delta != undefined){
                 const numItemsInCurrModule = this.resultsToShow[this.currentModule].length;
 
-                // if the selected is out of bounds, i.e.  (selected < indexOfFirstElement OR selected>indexOfLastElement)
-                if ( this.selected < this.resultsToShow[this.currentModule][0].index 
-                ||
-                this.selected > this.resultsToShow[this.currentModule][numItemsInCurrModule -1].index
-                ){
-                // We want all the (non-zero result) modules
-                    const listOfAllModules = Object.keys(this.resultsToShow);
-                    const allModulesLength = listOfAllModules.length;
-                    const currentModuleIndex = listOfAllModules.indexOf(this.currentModule);
-                    // The following frames the newSelectionIndex to the results array (it's like a modulo that works for negative numbers as well)
-                    // It frames ANY number (negative or positive) to the bounds of [0 ... modulesLength]
-                    return listOfAllModules[(((currentModuleIndex+delta)%allModulesLength)+allModulesLength)%allModulesLength];
+                // If the selected is out of bounds, i.e.  (selected < indexOfFirstElement OR selected>indexOfLastElement) within this module's items
+                if (this.selected < this.resultsToShow[this.currentModule][0].index 
+                    || this.selected > this.resultsToShow[this.currentModule][numItemsInCurrModule -1].index){
+                    // We need to find out the module corresponding to the item that will be selected,
+                    // we cannot rely on the order of the modules in this.resultsToShow as they are not the same as the UI,
+                    // we rely on the "index" property of the a/c item of the items instead: it's are ordered as per the UI.
+                    const selectedResultItem = Object.entries(this.resultsToShow)
+                        .find((resultsToShowForModule) => resultsToShowForModule[1]
+                            .find((resultToShowForModule) => resultToShowForModule.index == this.selected) != undefined);
+                    if(selectedResultItem){
+                        // We should get a result. If for some reason we don't, then the module returned will be the current one...
+                        return selectedResultItem[0];
+                    }
+
+
                 }
                 return this.currentModule;
             }
