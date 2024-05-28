@@ -98,6 +98,8 @@ export default Vue.extend({
                 // We don't need to change the canvas size for EVERY canvases added by Skulpt, we only do it on the first one added.
                 if(document.querySelectorAll("#pythonTurtleDiv canvas").length == 1){
                     this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv);
+                    // When a canvas has been added we can select the TUrtle tab
+                    this.peaDisplayTabIndex = 1;
                 }
             });
             turtleDivPlaceholderObserver.observe(turtlePlaceholderDiv, {childList: true});   
