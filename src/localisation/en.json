@@ -156,7 +156,7 @@
         "saveProjectTooltip":"Save project to this device or to Google Drive",
         "saveAsProject":"Save as...",
         "saveAsProjectTooltip":"Save as a new project to this device or to Google Drive",
-        "resetProject":"Reset",
+        "resetProject":"New project",
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
         "lang":"Language: "
