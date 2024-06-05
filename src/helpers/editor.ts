@@ -30,6 +30,8 @@ export enum CustomEventTypes {
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyTurtleUsage = "turtleUsage",
     pythonExecAreaSizeChanged = "peaSizeChanged",
+    skulptMouseEventListenerOff = "skMouseEventsOff",
+    skulptTimerEventListenerOff = "skTimerEventsOff",
     /* FITRUE_isPurePython */
 }
 

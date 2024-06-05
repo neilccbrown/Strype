@@ -143,7 +143,8 @@ function sInput(prompt: string) {
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
-export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean, executionFinished: () => any): void{
+export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean,
+                               executionFinished: (isListeningKeyEvents: boolean, isListeningMouseEvents: boolean,isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction) => any): void{
     consoleTextArea = aConsoleTextArea;
     codeExecStateRunningCheckFn = keepRunning;
     Sk.pre = consoleTextArea.id;
@@ -154,15 +155,30 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         // Our default canvas has a size of 400x300 (as default Python's)
         Sk.TurtleGraphics.width = 400;
         Sk.TurtleGraphics.height = 300;
+        // Provide custom names for the custom events exposed by Skulpt for listening when mouse [resp. timer] events are off.
+        // That's only ease of using our existing custom events naming mechanism, and because we "clear" the TurtleGraphics object
+        // everytime an execution is finished (see below)
+        Sk.TurtleGraphics.MouseEventsListenerOffEventName = CustomEventTypes.skulptMouseEventListenerOff;
+        Sk.TurtleGraphics.TimerEventsListenerOffEventName = CustomEventTypes.skulptTimerEventListenerOff;
     }
 
     // Wrapper function for handling when Skulpt execution is finished
     function handleExecutionFinished(): void {
+        // Before clearning TurtleGraphics (see below) we need to keep a reference on a few event listener related things.
+        // Note that some user code may provoke the execution loop of Skulpt to finish while still having the UI listening
+        // for events, that's why we need to keep track of whenever some events are still being listened by the UI to consider
+        // whether the code execution is finished or not (for the UI/user point of view...)
+        const isTurtleListeningKB = Sk.TurtleGraphics.isListeningKeyEvents;
+        const isTurtleListeningMouse = Sk.TurtleGraphics.isListeningMouseEvents;
+        const isTurtleListeningTimer = Sk.TurtleGraphics.isListeningTimerEvents;
+        // Only set the "stop listener" function property hook if Turtle is still listening some events
+        const stopTurtleListeners = (isTurtleListeningKB || isTurtleListeningMouse || isTurtleListeningTimer) ? Sk.TurtleGraphics.reset : undefined;
         // To make sure we don't get weird things happening on the Turtle, we don't keep Skulpt having a relation with the UI for Turtle
         // so that the UI will stay "idle" until the next run.
         Sk.TurtleGraphics = {};
+
         // Other actions requested by the caller of the execPythonCode function
-        executionFinished();
+        executionFinished(isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
     }
     
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
@@ -225,4 +241,3 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         });
     });
 }
-
