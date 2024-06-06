@@ -71,15 +71,18 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot} from "@/types/types";
+import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, doGetAllExplicitelyImportedItems} from "@/autocompletion/acManager";
 import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext, getPythonCodeForTypeAndDocumentation } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
 import { CustomEventTypes } from "@/helpers/editor";
+import { makeFrame } from "@/helpers/pythonToFrames";
+import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
+
 declare const Sk: any;
 
 //////////////////////
@@ -227,20 +230,35 @@ export default Vue.extend({
                     // We need to make sure we clear the TurtleGraphics property after Skulpt has run to avoid undesired effects in future Skulpt runs.
                     Sk.TurtleGraphics = {};
                     if (ourAcRequest == this.acRequestIndex) {
-                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
-                            acResult: s,
-                            documentation: "",
-                            type: [],
-                            version: 0,
-                        })) as AcResultType[];
-                        for (const item of items) {
-                            const codeForDocs = getPythonCodeForTypeAndDocumentation(userCode, context + "." + item.acResult);
-                            await Sk.misceval.asyncToPromise(function () {
-                                return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
-                            });
-                            item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
-                            item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
+                        // If the context is given and that's a first level context (i.e. module) we retrieve the a/c content from our generated API Json file.
+                        // Otherwise, we get the content via Skulpt.
+                        let items: AcResultType[] = [];
+                        if(skulptPythonAPI[context as keyof typeof skulptPythonAPI]){
+                            // We could retrieve directly from the JSON object, but for sanity, let's employ the same mechanism
+                            // used to retrieve a module content elsewhere in the code.
+                            const moduleAcResWithCat : AcResultsWithCategory = {};
+                            const mockFromImportModuleFrame = makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: {fields: [{code: context}], operators: []}}, 1: {slotStructures: {fields: [{code: "*"}], operators: []}}});
+                            doGetAllExplicitelyImportedItems(mockFromImportModuleFrame, context, false, moduleAcResWithCat);
+                            items = moduleAcResWithCat[context];
                         }
+                        else{
+                            items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
+                                acResult: s,
+                                documentation: "",
+                                type: [],
+                                version: 0,
+                            })) as AcResultType[];                       
+                              
+                            for (const item of items) {
+                                const codeForDocs = getPythonCodeForTypeAndDocumentation(userCode, context + "." + item.acResult);
+                                await Sk.misceval.asyncToPromise(function () {
+                                    return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
+                                });
+                                item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
+                                item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
+                            }
+                        }                      
+
                         if (ourAcRequest == this.acRequestIndex) {
                             this.acResults = {[context]: items};
                             this.showSuggestionsAC(token);
@@ -346,9 +364,10 @@ export default Vue.extend({
             // We want to set the hovered item as selected. However, we cannot do that systematically:
             // when the a/c has been scrolled, there is a chance another item get passively hovered as it would "fall under the mouse".
             // So, we set a flag to detect a mouse move to make sure accidently hovered items don't get selected
-            if(this.allowHoverSelection){
+            if(this.allowHoverSelection){      
                 this.selected = selectedItem;
-                this.currentModule = this.getModuleOfSelected(0);
+                // We retrieve the module with CSS, it is just easier than trying to deduce it from the a/c content!
+                this.currentModule = this.getModuleOfSelected();
                 this.currentDocumentation = this.getCurrentDocumentation();
             }
         },
@@ -382,24 +401,37 @@ export default Vue.extend({
             return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type;
         },
 
-        getModuleOfSelected(delta: number): string {
+        getModuleOfSelected(delta?: number): string {
+            // Gets the module of the current selection. There are 2 ways of achieving this: using the a/c content object resultsToShow or CSS.
+            // If no delta is given as argument of the method, then we search with CSS (which is the case when using the mouse to select an item).
+            if(delta != undefined){
+                const numItemsInCurrModule = this.resultsToShow[this.currentModule].length;
 
-            const numItemsInCurrModule = this.resultsToShow[this.currentModule].length;
+                // If the selected is out of bounds, i.e.  (selected < indexOfFirstElement OR selected>indexOfLastElement) within this module's items
+                if (this.selected < this.resultsToShow[this.currentModule][0].index 
+                    || this.selected > this.resultsToShow[this.currentModule][numItemsInCurrModule -1].index){
+                    // We need to find out the module corresponding to the item that will be selected,
+                    // we cannot rely on the order of the modules in this.resultsToShow as they are not the same as the UI,
+                    // we rely on the "index" property of the a/c item of the items instead: it's are ordered as per the UI.
+                    const selectedResultItem = Object.entries(this.resultsToShow)
+                        .find((resultsToShowForModule) => resultsToShowForModule[1]
+                            .find((resultToShowForModule) => resultToShowForModule.index == this.selected) != undefined);
+                    if(selectedResultItem){
+                        // We should get a result. If for some reason we don't, then the module returned will be the current one...
+                        return selectedResultItem[0];
+                    }
 
-            // if the selected is out of bounds, i.e.  (selected < indexOfFirstElement OR selected>indexOfLastElement)
-            if ( this.selected < this.resultsToShow[this.currentModule][0].index 
-                ||
-                this.selected > this.resultsToShow[this.currentModule][numItemsInCurrModule -1].index
-            ){
-                // We want all the (non-zero result) modules
-                const listOfAllModules = Object.keys(this.resultsToShow);
-                const allModulesLength = listOfAllModules.length;
-                const currentModuleIndex = listOfAllModules.indexOf(this.currentModule);
-                // The following frames the newSelectionIndex to the results array (it's like a modulo that works for negative numbers as well)
-                // It frames ANY number (negative or positive) to the bounds of [0 ... modulesLength]
-                return listOfAllModules[(((currentModuleIndex+delta)%allModulesLength)+allModulesLength)%allModulesLength];
+
+                }
+                return this.currentModule;
             }
-            return this.currentModule;
+            else{
+                // With CSS, we simply look up the parent of the *hovered* item (one of the LIs) and retrieve its data-title attribute.
+                // There SHOULD be a selection, but in case something is messed up and we don't retrieve, we'll return the current module.
+                // (we use "hover" because when this method is called, the new selection isn't yet reflected in the change of styling);
+                const selectedLIElementParent = document.querySelector("li.acItem:hover")?.parentElement;
+                return (selectedLIElementParent?.getAttribute("data-title")) ?? this.currentModule;
+            }
         },
 
         getCurrentDocumentation(): string {

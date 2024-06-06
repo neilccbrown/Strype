@@ -817,9 +817,13 @@ export default Vue.extend({
                     || isStringQuote
                     ){
                         // If we are in the LHS of a function definition or of a for, then we just don't allow the operator, bracket or quotes.
+                        // For a for though, we allow comma as we may have something as "for a,b in xxx".
                         // For imports, we only allow comma and * (comma in import frame, coma and * in RHS from (* isn't treated as operator in this case)).
-                        const forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for].includes(this.frameType)
+                        let forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for].includes(this.frameType)
                             && this.labelSlotsIndex == 0;
+                        if(forbidOperator && this.frameType == AllFrameTypesIdentifier.for && this.keyDownStr == ","){
+                            forbidOperator = false;
+                        }
                         insertKey = !forbidOperator;
                         if(!forbidOperator && (this.frameType == AllFrameTypesIdentifier.fromimport || this.frameType == AllFrameTypesIdentifier.import)){
                             // If we're in some import frame, we check we match the rule mentioned above
@@ -1237,18 +1241,61 @@ export default Vue.extend({
             if(selectedItem === undefined) {
                 return;
             }
-            // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
+
             const currentTextCursorPos = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
-            // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text, unless there are brackets already in the next slot
-            // (and in any case, we make sure we get into the slot structure)
-            // Note that we can't add parenthesis if we are in a from...import... frame!
-            const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
-            const hasFollowingBracketSlot = (getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true)?.slotType == SlotType.bracket);
-            const isSelectedFunction =  (this.frameType.localeCompare(AllFrameTypesIdentifier.fromimport) != 0) && (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
-            const newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0))
+            let newCode = "";
+            let isSelectedFunction = false;
+
+            // We set the code to what it was up to the point before the token, and we replace the token with the selected Item.
+            // We distinguish 2 cases: from..import.. or import.. frames that contains submodule notation (see below) and everything else.
+            const labelSlotStructOperators = this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators;
+            let isInSubModuleImportPathPart = ((this.frameType == AllFrameTypesIdentifier.import || this.frameType == AllFrameTypesIdentifier.fromimport) 
+                && this.labelSlotsIndex == 0 && labelSlotStructOperators.length > 0);
+            if(isInSubModuleImportPathPart){
+                // We set that flag in 2 pass to make the test easier to read: first we check we're inside an import.. or from..import.. 1st slot (the above statement)
+                // then we look if we're inside a path module: that is within a slot that is surrounded by the "." operator
+                const slotIndex = parseInt(this.slotId);
+                isInSubModuleImportPathPart = ((slotIndex > 0 && labelSlotStructOperators.length >= slotIndex && labelSlotStructOperators[slotIndex - 1].code == ".") 
+                    || (slotIndex < labelSlotStructOperators.length && labelSlotStructOperators[slotIndex].code == "."));
+            }
+            if(isInSubModuleImportPathPart){
+                // The case of a when are editing the modules of an import (import.. or from..import.. frames) is a bit specific:
+                // we need to consider the whole scope of the module/submodule(s) path to generate a sensible output once the a/c item is selected.
+                // That is, we need to take account of any existing path bits prior the current position.
+                // (For ease of code edition in the app, we don't scrap things post current position, for example to let users insert a module somewhere within the imported module list)
+                const slotIndex = parseInt(this.slotId);
+                let firstModulePathPartSlotIndex = -1; // default value -1 indicates there are no other parts of the module path before the current position
+                for(let opIndex = slotIndex - 1; opIndex >= 0; opIndex--){
+                    // From the current location, we look up the preceding operators (if any) until we reach the start of the label slots or a comma 
+                    // indicating the previous module in the import
+                    if(labelSlotStructOperators[opIndex].code == "."){
+                        firstModulePathPartSlotIndex = opIndex; // As we have Slot(i), Operator(i), Slot(i+1) the preceding slot before that operator has index "opIndex"
+                        continue;
+                    }
+                    if(labelSlotStructOperators[opIndex].code == ",") {
+                        break;
+                    }
+                }
+                
+                // Now that we know "how far" the module path spans, we delete any extra path bits following our position
+                // and replace the current slot with the right content from the a/c (that is, taking consideration of the text before the caret in the slot,
+                // and anything that preceeds the current slot with regards to the module path)
+                newCode = (slotIndex > firstModulePathPartSlotIndex && firstModulePathPartSlotIndex > -1) 
+                    ? selectedItem.split(".").slice(slotIndex).join(".")
+                    : selectedItem;
+            }
+            else{
+                // If the selected AC results is a method or a function we need to add parenthesis to the autocompleted text, unless there are brackets already in the next slot
+                // (and in any case, we make sure we get into the slot structure)
+                // Note that we can't add parenthesis if we are in a from...import... frame!
+                const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
+                const hasFollowingBracketSlot = (getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true)?.slotType == SlotType.bracket);
+                isSelectedFunction =  (this.frameType.localeCompare(AllFrameTypesIdentifier.fromimport) != 0) && (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
+                newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0))
                 + selectedItem.replace(new RegExp("\\(.*"), "") 
                 + ((isSelectedFunction && !hasFollowingBracketSlot)?"()":"");
-            
+            }
+
             // Remove content before the cursor (and put cursor at the beginning):
             this.setSlotContent(this.getSlotContent().substr(currentTextCursorPos));
             const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0};
@@ -1256,26 +1303,29 @@ export default Vue.extend({
             setDocumentSelection(slotCursorInfo, slotCursorInfo);
             // Then "paste" in the completion:
             this.onCodePasteImpl(newCode);
-            // Slight hack; if it ended in a bracket, go left one place to end up back in the bracket:
-            if (newCode.endsWith(")")) {
-                this.$nextTick(() => {
-                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
-                        new KeyboardEvent("keydown", {
-                            key: "ArrowLeft",
-                        })
-                    );
-                });
-            }
-            else if(isSelectedFunction){
+
+            if(!isInSubModuleImportPathPart) {
+                // Slight hack; if it ended in a bracket, go left one place to end up back in the bracket:
+                if (newCode.endsWith(")")) {
+                    this.$nextTick(() => {
+                        document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                            new KeyboardEvent("keydown", {
+                                key: "ArrowLeft",
+                            })
+                        );
+                    });
+                }
+                else if(isSelectedFunction){
                 // And if we have added a function, but didn't have to insert the brackets with a/c, then we go right to get inside the existing brackets
-                this.$nextTick(() => {
-                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
-                        new KeyboardEvent("keydown", {
-                            key: "ArrowRight",
-                        })
-                    );
-                });
-            }
+                    this.$nextTick(() => {
+                        document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                            new KeyboardEvent("keydown", {
+                                key: "ArrowRight",
+                            })
+                        );
+                    });
+                }
+            }        
             
             this.showAC = this.debugAC;
             this.acRequested = false;

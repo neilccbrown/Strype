@@ -174,7 +174,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                         continue loopImportFrames;
                     }
                     else if(isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code === "," ){
-                        // When we import several modules at once we process them one by
+                        // When we import several modules at once we process them one by one
                         doGetAllExplicitelyImportedItems(frame, module, true, soFar);
                         module = "";
                         continue;
@@ -183,13 +183,16 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                 }
             }
 
-            doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar);
+            // If the module is empty (which happens when user has only added a frame), we skip it
+            if(module.length > 0) {
+                doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar);
+            }
         }
     }
     return soFar;
 }
 
-function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory){
+export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory): void {
     const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
@@ -214,10 +217,12 @@ function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, is
         if(isSimpleImport){
             if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(module) == 0)){
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
-                const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
-                const imports = soFar[importedModulesCategory]??[];
-                imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
-                soFar[importedModulesCategory] = imports;
+                if(pythonBuiltins[module]){
+                    const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
+                    const imports = soFar[importedModulesCategory]??[];
+                    imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
+                    soFar[importedModulesCategory] = imports;
+                }
             }
         }
         else{
