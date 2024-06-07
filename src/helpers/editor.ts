@@ -1175,7 +1175,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         .replaceAll(/(^\s*|[+\-*/%<>&|^=!,]\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))(?=$|(\s*[ +\-*/%<>&|^=!,]))/g,
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing the decimal separator
-        .replaceAll(/(\s*|[+\-*/%<>&|^=!,]\s*)(((\d+(\.\d*)|\.\d+)([eE][0]?\d+)?j?))($|(\s*[ +\-*/%<>&|^=!,]))/g,
+        .replaceAll(/(\s*|[+\-*/%<>&|^=!,]\s*)(((\d+(\.\d*))([eE][0]?\d+)?j?))($|(\s*[ +\-*/%<>&|^=!,]))/g,
             (...params) => blankReplacer(3, ["."], ...params));
 
     const resStructSlot: SlotsStructure = {fields: [], operators:[]};
