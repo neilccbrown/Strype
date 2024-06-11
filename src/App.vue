@@ -213,6 +213,10 @@ export default Vue.extend({
         getSkulptBackendTurtleDivId(): string {
             return BACKEND_SKULPT_DIV_ID;
         },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
     },
 
     created() {
@@ -526,7 +530,7 @@ export default Vue.extend({
                 //  3) we are not editing and there is no frame selection: get the caret context menu opened for that position (i.e. paste...)
                 if(!this.appStore.isEditing) {
                     // We only show a context menu if we are not executing the user's code
-                    if((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) == PythonExecRunningState.NotRunning) {
+                    if(!this.isPythonExecuting) {
                         // We wait for the next tick even to show the menu, because the flag about the key need to be reset
                         // in the call of this handleClick() (for frames context menu)
                         const areFramesSelected = (this.appStore.selectedFrames.length > 0);
@@ -574,8 +578,14 @@ export default Vue.extend({
             // Contrary to the keyboard selection, we do not have a very easy way to control the mouse selection,
             // and the browser's handling selection may end up with a wrong selection in the sense of our slot structure.
             // (However it will not exceed the scope of the frame label slots struct the selection is currently in.)
-            // When the mouse button is released we check that we have a mutli slot selectiond that it is coherent, if not we updated it.
+            // When the mouse button is released we check that we have a multi slot selection that it is coherent, if not we updated it.
             // Note that calling this on dragend event won't work, I think because the event is captured by the frame drag and drop already
+
+            if(this.isPythonExecuting){
+                // We have no selection possible when the user's code is being executed.
+                return;
+            }
+            
             this.$nextTick(() => {
                 const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
                 const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;

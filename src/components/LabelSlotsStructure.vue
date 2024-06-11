@@ -34,7 +34,7 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
@@ -46,7 +46,7 @@ import {calculateParamPrompt} from "@/autocompletion/acManager";
 
 
 export default Vue.extend({
-    name: "LabelSlotsStructure.vue",
+    name: "LabelSlotsStructure",
 
     components:{
         LabelSlot,
@@ -111,7 +111,8 @@ export default Vue.extend({
 
     methods:{
         isEditableSlot(slotType: SlotType): boolean {
-            return isLabelSlotEditable(slotType);
+            // We check the slot is editable by its characterics; if the user's code is being executed, we just flag it as uneditable.
+            return ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) == PythonExecRunningState.NotRunning) && isLabelSlotEditable(slotType);
         },
 
         getSlotCode(slot: FlatSlotBase): string {
@@ -254,6 +255,7 @@ export default Vue.extend({
                                             };
                                             // Set focus to the right slot (first of RHS)
                                             (newContent[1].slotStructures.fields[0] as BaseSlot).focused = true;
+
                                             this.appStore.frameObjects[this.frameId].labelSlotsDict = newContent;
 
                                             // We need to reposition the cursor again, we shoud be in the SAME slot as we were, except that 
