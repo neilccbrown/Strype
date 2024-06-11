@@ -7,7 +7,7 @@
                 <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
-            <button @click="runClicked" :title="$t('PEA.run') + ' (Ctrl+Enter)'">{{this.runCodeButtonLabel}}</button>
+            <button @click="runClicked" :title="$t('PEA.run') + ' (Ctrl+Enter)'"><span :class="{'run-state-animated': isPythonExecuting}">{{this.runCodeButtonIconText}}</span><span>{{this.runCodeButtonLabel}}</span></button>
         </div>
         <div id="tabContentContainerDiv">
             <textarea 
@@ -138,13 +138,29 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        isPythonExecuting(): boolean {
+            return useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
+        },
+
+        runCodeButtonIconText(): string {
+            switch (useStore().pythonExecRunningState) {
+            case PythonExecRunningState.NotRunning:
+                return "▶";
+            case PythonExecRunningState.Running:
+                return "◼";
+            case PythonExecRunningState.RunningAwaitingStop:
+                return "";
+            default: return "";
+            }
+        },
         
         runCodeButtonLabel(): string {
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
-                return "▶ " + i18n.t("PEA.run");
+                return " " + i18n.t("PEA.run");
             case PythonExecRunningState.Running:
-                return "◼ " + i18n.t("PEA.stop");
+                return " " + i18n.t("PEA.stop");
             case PythonExecRunningState.RunningAwaitingStop:
                 return i18n.t("PEA.stopping") as string;
             default: return "";
@@ -427,10 +443,29 @@ export default Vue.extend({
         z-index: 10;
         border-radius: 10px;
         border: 1px solid transparent;
+        outline: none;
     }
 
     #peaControlsDiv button:hover {
         border-color: lightgray !important;
+    }
+
+    .run-state-animated {
+        animation: pulse 2s infinite;
+        display: inline-block; // necessary to get transform CSS working
+        color: red;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1.5);
+        }
+        50% {
+            transform: scale(1);
+        }
+        100% {
+            transform: scale(1.5);
+        }
     }
 
     .pea-toggle-size-button {
