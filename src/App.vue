@@ -100,7 +100,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
@@ -525,26 +525,29 @@ export default Vue.extend({
                 //  2) we are not editing and there is a frame selection: get the frames context menu opened for that selection
                 //  3) we are not editing and there is no frame selection: get the caret context menu opened for that position (i.e. paste...)
                 if(!this.appStore.isEditing) {
-                    // We wait for the next tick even to show the menu, because the flag about the key need to be reset
-                    // in the call of this handleClick() (for frames context menu)
-                    const areFramesSelected = (this.appStore.selectedFrames.length > 0);
-                    this.$nextTick(() => {
-                        // Prepare positioning stuff before showing the menu; then use the position informations to call the handleClick method
-                        const menuPosition = this.ensureFrameKBShortcutContextMenu(areFramesSelected);
-                        // We retrieve the element on which we need to call the menu: the first frame of the selection if some frames are selected,
-                        // the current blue caret otherwise
-                        const frameComponent = this.getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
-                        if(frameComponent) {
-                            if(areFramesSelected){
-                                (frameComponent as InstanceType<typeof Frame>).handleClick(event, menuPosition);
+                    // We only show a context menu if we are not executing the user's code
+                    if((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) == PythonExecRunningState.NotRunning) {
+                        // We wait for the next tick even to show the menu, because the flag about the key need to be reset
+                        // in the call of this handleClick() (for frames context menu)
+                        const areFramesSelected = (this.appStore.selectedFrames.length > 0);
+                        this.$nextTick(() => {
+                            // Prepare positioning stuff before showing the menu; then use the position informations to call the handleClick method
+                            const menuPosition = this.ensureFrameKBShortcutContextMenu(areFramesSelected);
+                            // We retrieve the element on which we need to call the menu: the first frame of the selection if some frames are selected,
+                            // the current blue caret otherwise
+                            const frameComponent = this.getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
+                            if(frameComponent) {
+                                if(areFramesSelected){
+                                    (frameComponent as InstanceType<typeof Frame>).handleClick(event, menuPosition);
+                                }
+                                else{
+                                    // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
+                                    const caretContainerComponent = this.getCaretContainerComponent(frameComponent);
+                                    caretContainerComponent.handleClick(event, menuPosition);
+                                }
                             }
-                            else{
-                                // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
-                                const caretContainerComponent = this.getCaretContainerComponent(frameComponent);
-                                caretContainerComponent.handleClick(event, menuPosition);
-                            }
-                        }
-                    });  
+                        });  
+                    }
                     // Prevent the default browser's handling of a context menu here
                     event.stopImmediatePropagation();
                     event.preventDefault();
