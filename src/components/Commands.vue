@@ -81,7 +81,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -327,7 +327,7 @@ export default Vue.extend({
                     }
                 }
                 else {
-                    if(!isEditing && !this.appStore.isAppMenuOpened){
+                    if(!isEditing && !this.appStore.isAppMenuOpened && ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) == PythonExecRunningState.NotRunning)){
                         // Cases when there is no editing:
                         if(!(event.ctrlKey || event.metaKey)){
                             if(event.key == "Delete" || event.key == "Backspace"){

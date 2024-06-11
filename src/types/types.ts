@@ -1001,6 +1001,13 @@ export enum StrypePlatform {
     microbit = "mb",
 }
 
+// This enum represents the different possible states the user code Python execution can take
+export enum PythonExecRunningState {
+    NotRunning,
+    Running,
+    RunningAwaitingStop,
+}
+
 export enum StrypeSyncTarget {
     none, // Nothing set up (note that auto save is always available on WebStores)
     fs, // The local file system (note that this is only for us to know saving has been requested once, there is NO auto-sync to the local FS)
