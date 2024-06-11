@@ -637,7 +637,7 @@ export default Vue.extend({
             // This methods gets the (Vue) reference of a frame based on its ID, or undefined if we could not find it.
             // The logic to retrieve the reference relies on the implementation of the editor, as we look in 
             // the frame containers which are supposed to hold the frames, and within frame body/joint when a frame can have children/joint frames.
-            // If no root is provided, we assume we search the frame eference everywhere in the editor, meaning we look into the frame containers of App (this)
+            // If no root is provided, we assume we search the frame reference everywhere in the editor, meaning we look into the frame containers of App (this)
             // IMPORTANT NOTE: we are getting arrays of refs here when retrieving the refs, because the referenced elements are within a v-for
             // https://laracasts.com/discuss/channels/vue/ref-is-an-array 
             let result = undefined;
@@ -659,6 +659,10 @@ export default Vue.extend({
                             // Check joints if we didn't find anything in the children
                             const jointFramesComponent = (childFrameComponent.$refs[getJointFramesRef()] as InstanceType<typeof FrameBody>); // There is 1 joint frames strcut in a frame, no v-for is used, we have 1 element
                             result = this.getFrameComponent(frameId, {frameParentComponent: jointFramesComponent, listOfFrameIdToCheck: this.appStore.frameObjects[childFrameId].jointFrameIds});
+                        }
+
+                        if(result){
+                            break;
                         }
                     }
                 }
