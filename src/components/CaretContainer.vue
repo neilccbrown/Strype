@@ -39,7 +39,7 @@ import Vue, { PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
+import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState} from "@/types/types";
 import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { copyFramesFromParsedPython } from "@/helpers/pythonToFrames";
@@ -101,6 +101,10 @@ export default Vue.extend({
             return getCaretUIID(this.caretAssignedPosition, this.frameId);
         },
 
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
         pasteAvailable(): boolean {
             return this.appStore.isCopiedAvailable;
         },
@@ -148,7 +152,7 @@ export default Vue.extend({
             // A paste via shortcut cannot get the verification that would be done via a click
             // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here.
             // We should know the action is about pasting frames or text if some text is present in the clipboard (we clear it when copying frames)
-            if (!this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition)) {
+            if (!this.isPythonExecuting && !this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition)) {
                 const pythonCode = (event as ClipboardEvent).clipboardData?.getData("text");
                 if (this.pasteAvailable && (pythonCode == undefined || pythonCode.trim().length == 0)) {
                     // We check if pasting frames is possible here, if not, show a message.
@@ -193,6 +197,11 @@ export default Vue.extend({
         },
 
         handleClick (event: MouseEvent, positionForMenu?: Position): void {
+            // Do not show any menu if the user's code is being executed
+            if(this.isPythonExecuting){
+                return;
+            }
+            
             if(this.appStore.isContextMenuKeyboardShortcutUsed){
                 // The logic for handling the context menu opened via a keyboard shortcut is handled by App
                 return;

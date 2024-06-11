@@ -103,7 +103,7 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
@@ -242,6 +242,10 @@ export default Vue.extend({
             return this.appStore.contextMenuShownId === this.uiid; 
         },
 
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
         selectedPosition(): string {
             return this.appStore.getFrameSelectionPosition(this.frameId);
         },
@@ -361,10 +365,10 @@ export default Vue.extend({
 
     methods: {
         onKeyDown(event: KeyboardEvent) {
-            // Cutting/copying by shortcut is only available for a frame selection*.
+            // Cutting/copying by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
-            if(this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
+            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
                 if(event.key.toLowerCase() === "c"){
                     this.copy();
                 }
@@ -426,8 +430,8 @@ export default Vue.extend({
             
             this.appStore.contextMenuShownId = this.uiid;
 
-            // only show the frame menu if we are not editing
-            if(this.appStore.isEditing){
+            // only show the frame menu if we are not editing and not executing the user Python code
+            if(this.appStore.isEditing || this.isPythonExecuting){
                 return;
             }
 
