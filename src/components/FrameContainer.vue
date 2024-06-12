@@ -22,7 +22,7 @@
                 forceFallback="true"
                 :animation="300"
                 swapThreshold = "0.2"
-                :disabled="isEditing"
+                :disabled="isEditing || isPythonExecuting"
                 :key="'Draggable-Container-'+this.frameId"
                 :id="'Draggable-Container-'+this.frameId"
                 @start ="handleMultiDrag"
@@ -57,7 +57,7 @@ import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import Draggable from "vuedraggable";
-import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier } from "@/types/types";
+import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { getCaretContainerRef, getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
@@ -169,6 +169,10 @@ export default Vue.extend({
                     ? getFrameDefType(AllFrameTypesIdentifier.import).colour
                     : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
             };
+        },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
     },
 

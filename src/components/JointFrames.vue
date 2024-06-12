@@ -7,7 +7,7 @@
             forceFallback="true"
             animation="200"
             swapThreshold = "0.2"
-            :disabled="isEditing"
+            :disabled="isEditing || isPythonExecuting"
             :key="'Draggable-Joint-'+this.jointParentId"
             @start="handleMultiDrag"
             @end="multiDragEnd"
@@ -38,7 +38,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import Draggable from "vuedraggable";
-import { FrameObject } from "@/types/types";
+import { FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
@@ -93,6 +93,10 @@ export default Vue.extend({
 
         isEditing(): boolean {
             return this.appStore.isEditing;
+        },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
     },
 

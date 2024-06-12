@@ -54,6 +54,7 @@
                                         key="draggable-shadow-editor"
                                         forceFallback="true"
                                         delay="5000"
+                                        :disabled="isPythonExecuting"
                                     >
                                         <FrameContainer
                                             v-for="container in containerFrames"

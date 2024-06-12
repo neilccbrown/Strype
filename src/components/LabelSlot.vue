@@ -22,7 +22,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @contentPastedInSlot="onCodePaste"
-            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
+            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: isPythonExecuting}"
             :id="UIID"
             :key="UIID"
             :style="spanBackgroundStyle"
@@ -270,6 +270,10 @@ export default Vue.extend({
             return this.labelSlotsIndex == firstVisibleLabelSlotsIndex && this.slotId == "0" && isEmpty;
 
         },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
     },
 
     methods: {
@@ -322,7 +326,7 @@ export default Vue.extend({
         // (the spans don't get focus anymore because the containg editable div grab it)
         onGetCaret(event: MouseEvent): void {
             // If the user's code is being executed, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
-            if((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning){
+            if(this.isPythonExecuting){
                 event.stopImmediatePropagation();
                 event.stopPropagation();
                 event.preventDefault();
@@ -1378,6 +1382,10 @@ export default Vue.extend({
     content: attr(placeholder);
     font-style: italic;
     color: #bbb;
+}
+
+.labelSlot-input.readonly {
+    cursor: pointer;
 }
 
 .errorSlot {
