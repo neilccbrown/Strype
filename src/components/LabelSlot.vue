@@ -337,6 +337,9 @@ export default Vue.extend({
                     if(frameComponent){
                         // The frame component can only be a frame (and not a frame container) since we've clicked on a slot...
                         (frameComponent as InstanceType<typeof Frame>).changeToggledCaretPosition(event.clientY, frameDiv);
+                        // Even if visually and logically in the app the slot doesn't have focus, the browser will see differently
+                        // (a click happened on the span...) - to make sure no undesirable effect occur, we set the focus on the frame div
+                        (document.getElementById(getFrameUIID(frameComponent.frameId)))?.focus();
                     }
                 }
                 return;
