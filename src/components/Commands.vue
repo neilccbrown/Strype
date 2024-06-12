@@ -267,6 +267,7 @@ export default Vue.extend({
                 }
 
                 const isEditing = this.appStore.isEditing;
+                const isPythonExecuting = ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
 
                 // If a context menu is currently displayed, we handle the menu keyboard interaction here
                 // (note that preventing the event here also prevents the keyboard scrolling of the page)
@@ -327,7 +328,7 @@ export default Vue.extend({
                     }
                 }
                 else {
-                    if(!isEditing && !this.appStore.isAppMenuOpened && ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) == PythonExecRunningState.NotRunning)){
+                    if(!isEditing && !this.appStore.isAppMenuOpened && !isPythonExecuting){
                         // Cases when there is no editing:
                         if(!(event.ctrlKey || event.metaKey)){
                             if(event.key == "Delete" || event.key == "Backspace"){
@@ -360,6 +361,39 @@ export default Vue.extend({
                             // If ctrl/meta + space is activated on caret, we add a new functional call frame and trigger the a/c
                             this.appStore.addFrameWithCommand(this.addFrameCommands[event.key.toLowerCase()][0].type);
                             this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                        }
+                    }
+                    else if(isPythonExecuting){
+                        // The special case when the user's code is being executing, we want to handle the key events carefully.
+                        // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
+                        // and if it's not active AND the Python Execution console hasn't go focus, we prevents events.
+                        if(!event.altKey && !event.ctrlKey && !event.metaKey){
+                            const turtlePlaceholder = document.getElementById("pythonTurtleDiv");
+                            const isTurtleShowing = turtlePlaceholder?.style.display != "none";
+                            if(turtlePlaceholder && isTurtleShowing && document.activeElement?.id != turtlePlaceholder.id){
+                                // Give focus to the Turtle graphics first to make sure it will respond.
+                                turtlePlaceholder.focus();
+                                // Then we can forward the key event.
+                                setTimeout(() => {
+                                    turtlePlaceholder.dispatchEvent(new KeyboardEvent("keydown", {
+                                        keyCode: event.keyCode,
+                                    }));
+                                    turtlePlaceholder.dispatchEvent(new KeyboardEvent("keyup", {
+                                        key: event.key,
+                                        keyCode: event.keyCode,
+                                    }));
+                                }, 500);
+                            }
+
+                            if(document.activeElement?.id === "pythonConsole"){
+                                // Don't interfere with the Python Execution console if it's having focus
+                                return;
+                            }
+
+                            event.stopImmediatePropagation();
+                            event.stopPropagation(),
+                            event.preventDefault();
+                            return;
                         }
                     }
                 }

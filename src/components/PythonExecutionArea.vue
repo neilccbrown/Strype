@@ -566,6 +566,7 @@ export default Vue.extend({
     #pythonTurtleDiv {
         background-color: white;
         margin:5px;
+        outline: none;
     }
     
     #noTurtleSpan {
