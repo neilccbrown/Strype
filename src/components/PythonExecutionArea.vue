@@ -7,7 +7,7 @@
                 <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
-            <button @click="runClicked" :title="$t('PEA.run') + ' (Ctrl+Enter)'"><span :class="{'run-state-animated': isPythonExecuting}">{{this.runCodeButtonIconText}}</span><span>{{this.runCodeButtonLabel}}</span></button>
+            <button @click="runClicked" :title="$t('PEA.run') + ' (Ctrl+Enter)'"><span :class="{'python-running': isPythonExecuting}">{{this.runCodeButtonIconText}}</span><span>{{this.runCodeButtonLabel}}</span></button>
         </div>
         <div id="tabContentContainerDiv">
             <textarea 
@@ -450,22 +450,8 @@ export default Vue.extend({
         border-color: lightgray !important;
     }
 
-    .run-state-animated {
-        animation: pulse 2s infinite;
-        display: inline-block; // necessary to get transform CSS working
+    .python-running {
         color: red;
-    }
-
-    @keyframes pulse {
-        0% {
-            transform: scale(1.5);
-        }
-        50% {
-            transform: scale(1);
-        }
-        100% {
-            transform: scale(1.5);
-        }
     }
 
     .pea-toggle-size-button {
