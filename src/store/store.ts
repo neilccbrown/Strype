@@ -279,8 +279,8 @@ export const useStore = defineStore("app", {
 
             // The RULE for the JOINTS is:
             // We allow joint addition only at the end of the body 
-            // however, *programmatically* with might have something to check upon the BELOW position of a joint frame (for example when moving frames)
-            // in that case, we do as if we were *inside* the joint frame 
+            // however, *programmatically* we might have something to check upon the BELOW position of a joint frame (for example when moving frames)
+            // in that case, we do as if we were *inside* the joint frame (not that we are dealing with TRUE joint, not the parent of structure)
 
             // Two possible cases:
             // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame; OR if we are in a moving condition as explained above (M)
@@ -297,10 +297,10 @@ export const useStore = defineStore("app", {
             //if we are in the joint context
             if(focusedFrame!==undefined) {
 
-                // (c) -> I am either in a joint parent
+                // (c) -> I am either in a joint parent, we can't add any child if we're below, there is no next child to check.
                 if(focusedFrame.frameType.allowJointChildren ) {
                     allowedJointChildren = [...focusedFrame.frameType.jointFrameTypes];
-                    nextJointChildID = focusedFrame.jointFrameIds[0]??-100;
+                    nextJointChildID = (caretPosition == CaretPosition.below && focusedFrame.id == frameId) ? -100 : (focusedFrame.jointFrameIds[0]??-100);
                 }
                 // (c) -> Or a joint child
                 else if(focusedFrame.jointParentId>0){
@@ -316,20 +316,26 @@ export const useStore = defineStore("app", {
 
                     const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
 
-                    // -100 means there is no next Joint Child => focused is the last
+                    // -100 means there is no next Joint Child => focused is the last joint or end of joint structure (i.e. below root)
                     if(nextJointChildID === -100){
-                        // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
-                        //    OR special case if we are in TRY statement: we can't show ELSE at any case
-                        // else show them all
-                        if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
-                            allowedJointChildren.splice(allowedJointChildren.indexOf(AllFrameTypesIdentifier.else), 1); 
+                        // Below the root, no joint frame can be added.
+                        if((frameId == focusedFrame.id && caretPosition == CaretPosition.below && focusedFrame.frameType.allowJointChildren)){
+                            allowedJointChildren.splice(0, allowedJointChildren.length);
                         }
-                        else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
-                            allowedJointChildren.splice(
-                                0,
-                                allowedJointChildren.indexOf(focusedFrame.frameType.type)+1 //delete from the beginning to the current frame type
-                            );                        
-                        } 
+                        else{
+                            // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
+                            //    OR special case if we are in TRY statement: we can't show ELSE at any case
+                            // else show them all
+                            if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
+                                allowedJointChildren.splice(allowedJointChildren.indexOf(AllFrameTypesIdentifier.else), 1); 
+                            }
+                            else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
+                                allowedJointChildren.splice(
+                                    0,
+                                    allowedJointChildren.indexOf(focusedFrame.frameType.type)+1 //delete from the beginning to the current frame type
+                                );                        
+                            } 
+                        }
                     }
                     // on the presence of a next child
                     else{
@@ -1655,16 +1661,21 @@ export const useStore = defineStore("app", {
                 // The target position for joint frames needs to be found out according to this rule:
                 // - if we are moving a frame within the SAME group:
                 //   - if we move the frame upwards, the target is the element *before* the newIndex position of the joint frames 
-                //     so if newIndex is 0, then we look at the joint parent of the structure
+                //     so if newIndex is 0, then we look at the joint parent of the structure; VERY IMPORTANTLY, in that case we check the allowed frames
+                //     from the body content of the parent rather that below the parent, because below the parent is an ambiguous position (below the parent
+                //     when that parent have joints is actually after the WHOLE structure, so targetting inside the body clears off any doubt)
                 //   - if we move the frame downwards, the target is at the newIndex position of the joint frames 
                 // - if we are moving a frame within a DIFFERENT group:
                 //   - the target is the element *before* the newIndex position of the destination joint frames 
                 //     (so same check as above is newIndex is 0)
                 const jointFrameTargetIndex = (eventType==="moved" && oldIndex < newIndex) ? newIndex + 1 : newIndex;
+                const isJointTargettingBelowRoot = (isJointFrame && jointFrameIds.length > 0 && jointFrameTargetIndex > 0);
                 const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
-                    ? !this.isPositionAllowsFrame((jointFrameTargetIndex > 0) ? this.frameObjects[payload.eventParentId].jointFrameIds[jointFrameTargetIndex - 1] : payload.eventParentId,
-                        CaretPosition.below,
-                        payload.event[eventType].element.id)
+                    ? !this.isPositionAllowsFrame((jointFrameTargetIndex > 0) 
+                        ? this.frameObjects[payload.eventParentId].jointFrameIds[jointFrameTargetIndex - 1] 
+                        : this.frameObjects[payload.eventParentId].childrenIds.at(-1) ?? payload.eventParentId,
+                    (isJointTargettingBelowRoot) ? ((this.frameObjects[payload.eventParentId].childrenIds.length > 0) ? CaretPosition.below : CaretPosition.body) : CaretPosition.below,
+                    payload.event[eventType].element.id)
                     : false;
 
                 if((!isJointFrame && !this.isPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
