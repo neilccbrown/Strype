@@ -105,7 +105,7 @@ import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
@@ -803,7 +803,7 @@ export default Vue.extend({
         },
 
         cut(): void {
-            //cut prepares a copy, then we delete the selection / frame copied
+            // Cut prepares a copy, then we delete the selection / frame copied
             if(this.isPartOfSelection){
                 this.appStore.copySelection(); 
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
@@ -811,9 +811,39 @@ export default Vue.extend({
             }
             else{
                 this.appStore.copyFrame(this.frameId);
-                //when deleting the specific frame, we place the caret below and simulate "backspace"
-                this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below} as CurrentFrame);
-                this.appStore.deleteFrames("Backspace");
+                // When deleting the specific frame, we usually place the caret below and simulate "backspace".
+                // In the situation of a whole joint frame structure (like an if/elif/else), we need to repeat the deletion
+                // for each joint of the structure (otherwise, it will only delete the last one).
+                // In the case of a joint frame (like the else part), the frame "below" doesn't exist: we need to get the right position
+                const numberOfJoints = this.appStore.frameObjects[this.frameId].jointFrameIds.length;
+                let deletionCommand = "Backspace";
+                if(this.isJointFrame){
+                    // If we are cutting the joint of a joit frame structure, we need to position the caret properly:
+                    // if we are cutting the last joint, then we position the caret below the root of the structure (and do the backspace deletion);
+                    // if we are cutting a non terminating joint frame, we need to get inside the previous joint part (or the root) and make the 
+                    // deletion with a "delete" comment instead.
+                    const rootJointFrameId = this.appStore.frameObjects[this.frameId].jointParentId;
+                    const indexOfJoint = this.appStore.frameObjects[rootJointFrameId].jointFrameIds.findIndex((fId) => fId == this.frameId);
+                    const isLastJoint = (this.appStore.frameObjects[rootJointFrameId].jointFrameIds.length == indexOfJoint + 1);
+                    if(isLastJoint){
+                        this.appStore.setCurrentFrame({id: rootJointFrameId, caretPosition: CaretPosition.below} as CurrentFrame);
+                    }
+                    else{
+                        deletionCommand = "Delete";
+                        const aboveFrameIdToGetTo = (indexOfJoint > 0) ? getLastSibling(this.frameId) : rootJointFrameId;
+                        const previousJointLastChildFrameId = this.appStore.frameObjects[aboveFrameIdToGetTo]
+                            .childrenIds.at(-1);
+                        this.appStore.setCurrentFrame({id: (previousJointLastChildFrameId != undefined) ? previousJointLastChildFrameId : aboveFrameIdToGetTo,
+                            caretPosition: (previousJointLastChildFrameId != undefined) ? CaretPosition.below : CaretPosition.body} as CurrentFrame);
+                    }
+                }
+                else{
+                    this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below} as CurrentFrame);
+                }
+                this.appStore.deleteFrames(deletionCommand);
+                for(let i = 0; i < numberOfJoints; i++){
+                    this.appStore.deleteFrames(deletionCommand);
+                }
             }                    
         },
 
