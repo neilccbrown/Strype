@@ -22,6 +22,7 @@
                 :id="uiid"
                 @mousedown.left="hideCaretAtClick"
                 @click="toggleCaret($event)"
+                @mouseup.left="toggleCaret($event)"
                 @contextmenu="handleClick($event)"
                 tabindex="-1"
             >
@@ -669,6 +670,19 @@ export default Vue.extend({
                 frameDivParent = frameDivParent.parentElement as HTMLDivElement;
             }            
             if(frameDivParent.id !== this.uiid){
+                return;
+            }
+
+            if(event.type == "mouseup" && this.isPythonExecuting){
+                // A workaround for a very annoying side effect of cancelling the drag and drop of frames when Python is running:
+                // some attempt of DnD in different groups would just die, without giving back a caret.
+                // Therefore, to make sure we always have a frame caret showing up eventually, we wait a bit to see if there is no caret visible,
+                // and if so trigger the caret toggle.
+                setTimeout(() => {
+                    if(!document.querySelector(".caret.disabled:not(.invisible)")){
+                        this.changeToggledCaretPosition(event.clientY, frameDivParent);
+                    }
+                }, 500);
                 return;
             }
 
