@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, Position, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, Position, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
@@ -222,14 +222,15 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
-    frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {    
+    frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
         if(delimiters && (delimiters.startSlotUIID == spanElement.id || delimiters.stopSlotUIID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
         if(!ignoreSpan) {
             // The code is extracted from the span; if requested, we only transform the string quotes to have a clear context to refer to in the parser, regardless the content of the strings
             // (so for example, if in the string slot a used typed "test\" (without double quotes!), the parsing would not be disturbed by the non terminating escaping "\" at the end)
-            if(isSlotQuoteType(parseLabelSlotUIID(spanElement.id).slotType)){
+            const labelSlotCoreInfos = parseLabelSlotUIID(spanElement.id);
+            if(isSlotQuoteType(labelSlotCoreInfos.slotType)){
                 hasStringSlots = true;
                 switch(spanElement.textContent){
                 case UIDoubleQuotesCharacters[0]:
@@ -261,7 +262,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
                 const spanElementContentLength = (spanElement.textContent?.length??0);
-                if((trimmedKeywordOperators.includes(spanElement.textContent??""))){
+                if(!isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
                     // Reinsert the spaces in the literal code
                     uiLiteralCode = uiLiteralCode.substring(0, uiLiteralCode.length - spanElementContentLength) 

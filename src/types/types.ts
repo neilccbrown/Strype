@@ -97,6 +97,10 @@ export function isSlotBracketType(type: SlotType): boolean {
     return (type & SlotType.bracket) > 0;
 }
 
+export function isSlotStringLiteralType(type: SlotType): boolean {
+    return (type == 1);
+}
+
 export interface EditorFrameObjects {
     [id: number]: FrameObject;
 }
