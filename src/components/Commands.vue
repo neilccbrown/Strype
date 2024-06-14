@@ -233,7 +233,6 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                
                 if (event.repeat) {
                     // Ignore all repeated keypresses, only process the initial press:
                     return;
@@ -344,6 +343,9 @@ export default Vue.extend({
                             //add the frame in the editor if allowed
                             else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined || Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == event.key.toLowerCase()) !== undefined){
                                 if(!ignoreKeyEvent){
+                                    event.stopImmediatePropagation();
+                                    event.stopPropagation(),
+                                    event.preventDefault();
                                     // We can add the frame by its original shortcut or hidden one
                                     const isOriginalShortcut = (this.addFrameCommands[event.key.toLowerCase()] != undefined);
                                     this.appStore.addFrameWithCommand(
