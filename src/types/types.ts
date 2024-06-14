@@ -225,6 +225,12 @@ export interface AddFrameCommandDef {
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
+export interface AddShorthandFrameCommandDef {
+    type: FramesDefinitions;
+    codeContent: string; // a default code content to add in the first slot of the frame (used by hidden frames)
+    goNextSlot?: boolean; // indicates whether the text cursor should move to the next slot (i.e. added "print" in a function call, we want to go inside the brackets)
+}
+
 // This is an array with all the frame Definitions objects.
 // Note that the slot variable of each objects tells if the
 // Label needs an editable slot as well attached to it.

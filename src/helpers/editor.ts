@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, Position, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, Position, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions } from "./storeMethods";
 import { strypeFileExtension } from "./common";
@@ -528,6 +528,8 @@ export function getNearestErrorIndex(): number {
 
 // Helper function to generate the frame commands on demand. 
 // Calls will happen when the frames are created the first time, and whenever the language is changed
+// IMPORTANT : make sure that the shortcut assigned to a frame IS NOT assigned to a shorthand frame (see hiddenShorthandFrames) 
+// unless conflicts are clearly impossible.
 export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
         "i": [
@@ -707,6 +709,18 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     // If we are here, it means the call to this method has been misused...
     return null;
 }
+
+// This shorthand frames are enhanced frames because they contain some default code value. 
+// Therefore they are treated separately in the code and in the UI. They do not show in the frame command panel.
+// IMPORTANT : make sure that the shortcut assigned to a frame IS NOT assigned to a normal frame (see generateAllFrameCommandsDefs()) 
+// unless conflicts are clearly impossible. Shortcut is not shown, so we don't need to define it elsewhere than in the indexes.
+export const hiddenShorthandFrames: {[id: string]: AddShorthandFrameCommandDef} = {
+    "p": {
+        codeContent:"print", // No need for the brackets: they're already included in the function call frame by default
+        goNextSlot: true,
+        type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+    },
+};
 
 export function getFunctionCallDefaultText(frameId: number): string {
     // This method checks what default text (for the slot placeholder) to use in a function call "function name" slot.

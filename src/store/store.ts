@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -1812,7 +1812,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        async addFrameWithCommand(frame: FramesDefinitions) {
+        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
@@ -1887,6 +1887,11 @@ export const useStore = defineStore("app", {
                     ),
             };
 
+            // In the special case a hidden shorthand frame addition, we add the code content in the first slot of the frame (by design)
+            if(hiddenShorthandFrameDetails && isFieldBaseSlot(newFrame.labelSlotsDict[0].slotStructures.fields[0])){
+                (newFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code = hiddenShorthandFrameDetails.codeContent;
+            }
+
             // Add the frame id to its parent's childrenIds list
             listToUpdate.splice(
                 indexToAdd,
@@ -1958,31 +1963,53 @@ export const useStore = defineStore("app", {
 
             this.updateNextAvailableId();
         
-            //"move" the caret along, using the newly computed positions
+            // "Move" the caret along, using the newly computed positions
             await this.leftRightKey(
                 {
                     key: "ArrowRight",
                     availablePositions: availablePositions,
                 }
-            ).then(
-                () => {
-                    //save state changes
-                    this.saveStateChanges(stateBeforeChanges);
-                    // To make sure we are showing the newly added frame, we scroll into view if needed                    
-                    const targetDiv =
-                        (this.currentFrame && this.currentFrame.caretPosition !== CaretPosition.none) ?
-                            // If frame cursor is focused (e.g. after adding blank frame, or try), scroll to that:
-                            document.getElementById(getCaretUIID(this.currentFrame.caretPosition, this.currentFrame.id))
-                            // Otherwise scroll to the frame header (e.g. for method call, if, while):
-                            : document.getElementById(getFrameHeaderUIID(newFrame.id));
-                    
-                    const targetBoundingRect = targetDiv?.getBoundingClientRect();
-                    if (targetDiv && targetBoundingRect && (targetBoundingRect.top + targetBoundingRect.height > document.documentElement.clientHeight)) {
-                        document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
+            ).then(() => {
+                if(hiddenShorthandFrameDetails){
+                    // When code is added from a shorthand frame, we need to position the focus (text cursor) properly
+                    const newSlotCursorInfos = {...this.focusSlotCursorInfos} as SlotCursorInfos;
+                    if(hiddenShorthandFrameDetails.goNextSlot){
+                        // If "go next slot" is set to true, we move to the next slot
+                        const nextSlot = getFlatNeighbourFieldSlotInfos(newSlotCursorInfos.slotInfos, true);
+                        if(nextSlot) {
+                            newSlotCursorInfos.slotInfos = nextSlot;
+                        }
+                        // Explicitly set the focused property to the focused slot
+                        this.setFocusEditableSlot({frameSlotInfos: newSlotCursorInfos.slotInfos, 
+                            caretPosition: (hiddenShorthandFrameDetails.type.allowChildren) ? CaretPosition.body : CaretPosition.below});              
                     }
-                    this.lastAddedFrameIds = newFrame.id;
+                    else{
+                        // Stay in the same slot, we move to end of the slot
+                        newSlotCursorInfos.cursorPos = hiddenShorthandFrameDetails.codeContent.length;
+                    }
+                    this.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
+                    setDocumentSelection(newSlotCursorInfos, newSlotCursorInfos);
                 }
-            );
+            })
+                .then(
+                    () => {
+                    //save state changes
+                        this.saveStateChanges(stateBeforeChanges);
+                        // To make sure we are showing the newly added frame, we scroll into view if needed                    
+                        const targetDiv =
+                            (this.currentFrame && this.currentFrame.caretPosition !== CaretPosition.none) ?
+                                // If frame cursor is focused (e.g. after adding blank frame, or try), scroll to that:
+                                document.getElementById(getCaretUIID(this.currentFrame.caretPosition, this.currentFrame.id))
+                                // Otherwise scroll to the frame header (e.g. for method call, if, while):
+                                : document.getElementById(getFrameHeaderUIID(newFrame.id));
+                        
+                        const targetBoundingRect = targetDiv?.getBoundingClientRect();
+                        if (targetDiv && targetBoundingRect && (targetBoundingRect.top + targetBoundingRect.height > document.documentElement.clientHeight)) {
+                            document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
+                        }
+                        this.lastAddedFrameIds = newFrame.id;
+                    }
+                );
         },
 
         deleteFrames(key: string, ignoreBackState?: boolean){
