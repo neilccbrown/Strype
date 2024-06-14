@@ -7,7 +7,7 @@
                 <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
-            <button @click="runClicked" :title="$t('PEA.run') + ' (Ctrl+Enter)'"><span :class="{'python-running': isPythonExecuting}">{{this.runCodeButtonIconText}}</span><span>{{this.runCodeButtonLabel}}</span></button>
+            <button @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'"><span :class="{'python-running': isPythonExecuting}">{{this.runCodeButtonIconText}}</span><span>{{this.runCodeButtonLabel}}</span></button>
         </div>
         <div id="tabContentContainerDiv">
             <textarea 
