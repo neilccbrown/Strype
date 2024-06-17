@@ -63,6 +63,10 @@ export default Vue.extend({
             peaDisplayTabIndex: 0, // the index of the PEA tab (console/turtle), we use it equally as a flag to indicate if we are on Turtle
             interruptedTurtle: false,
             isTabContentHovered: false,
+            isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
+            isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
+            isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
+            stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
         };
     },
 
@@ -98,6 +102,8 @@ export default Vue.extend({
                 // We don't need to change the canvas size for EVERY canvases added by Skulpt, we only do it on the first one added.
                 if(document.querySelectorAll("#pythonTurtleDiv canvas").length == 1){
                     this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv);
+                    // When a canvas has been added we can select the TUrtle tab
+                    this.peaDisplayTabIndex = 1;
                 }
             });
             turtleDivPlaceholderObserver.observe(turtlePlaceholderDiv, {childList: true});   
@@ -121,6 +127,16 @@ export default Vue.extend({
 
             // First time the PEA is mounted, we need to resize the "Add Frame" commands area if needed
             setTimeout(() => computeAddFrameCommandContainerHeight(), 500);
+
+            // Register to the window event listener for Skulpt Turtle mouse and timer events listening off notification
+            window.addEventListener(CustomEventTypes.skulptMouseEventListenerOff, () => {
+                this.isTurtleListeningMouseEvents=false; 
+                this.updateTurtleListeningEvents();
+            });
+            window.addEventListener(CustomEventTypes.skulptTimerEventListenerOff, () => {
+                this.isTurtleListeningTimerEvents=false; 
+                this.updateTurtleListeningEvents();
+            });
         }
     },
 
@@ -137,6 +153,10 @@ export default Vue.extend({
                 return i18n.t("PEA.stopping") as string;
             default: return "";
             }
+        },
+
+        isTurtleListeningEvents(): boolean {
+            return this.isTurtleListeningKeyEvents || this.isTurtleListeningMouseEvents || this.isTurtleListeningTimerEvents;
         },
     },
 
@@ -159,13 +179,37 @@ export default Vue.extend({
                 this.execPythonCode();
                 return;
             case RunningState.Running:
-                // Skulpt checks this property regularly while running, via a callback,
+                // There are 2 possible scenarios, which depends on the user code:
+                // 1) the code contains some "event" listening functions but is written in a way that Turtle execution ends (Skulpt) and still listens:
+                // 2) there is no "event" listening function in the code, or the code is written in a way that Turtle execution keeps pending (Skulpt)
+
+                // Case 1): we know we are in this case when we have registered a function to call to "manually" stop the listeners,
+                // that is all that needs to be done, Skulpt has already effectively terminated, we can just call the function and change the state.
+                if(this.stopTurtleUIEventListeners){
+                    this.isTurtleListeningKeyEvents = false;
+                    this.isTurtleListeningMouseEvents = false;
+                    this.isTurtleListeningTimerEvents = false;
+                    this.updateTurtleListeningEvents();
+                    return;
+                }
+
+                // Case 2): Skulpt checks this property regularly while running, via a callback,
                 // so just setting the variable is enough to "request" a stop 
                 this.runningState = RunningState.RunningAwaitingStop;
                 return;
             case RunningState.RunningAwaitingStop:
                 // Else, nothing more we can do at the moment, just waiting for Skulpt to see it
                 return;
+            }
+        },
+        
+        updateTurtleListeningEvents(): void {
+            // We should check if we are still in need to maintain the running state as "Running" (just for listening the events)
+            // but if the state is already stopped (which can have been naturally from Skulpt then we don't need to do anything)
+            if(this.runningState == RunningState.Running && this.stopTurtleUIEventListeners){
+                this.stopTurtleUIEventListeners(true);
+                this.stopTurtleUIEventListeners = undefined;
+                this.runningState = RunningState.NotRunning;
             }
         },
         
@@ -197,8 +241,15 @@ export default Vue.extend({
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
                 // Trigger the actual Python code execution launch
-                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, () => {
-                    this.runningState = RunningState.NotRunning;
+                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, (isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
+                    // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
+                    this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
+                    this.isTurtleListeningMouseEvents = !!isTurtleListeningMouseEvents; 
+                    this.isTurtleListeningTimerEvents = !!isTurtleListeningTimerEvents;
+                    this.stopTurtleUIEventListeners = stopTurtleListeners;
+                    if(!this.isTurtleListeningEvents) {
+                        this.runningState = RunningState.NotRunning;
+                    }
                     setPythonExecAreaExpandButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.

@@ -156,7 +156,7 @@
       "saveProjectTooltip":"Enregister le projet vers cet appareil ou vers Google Drive",
       "saveAsProject":"Enregistrer sous...",
       "saveAsProjectTooltip":"Enregister comme un nouveau projet vers cet appareil ou vers Google Drive",
-      "resetProject":"Réinitialiser",
+      "resetProject":"Nouveau projet",
       "resetProjectTooltip":"Réinitialiser l'éditeur avec le projet par default de Strype",
       "prefs":"Préférences",
       "lang":"Langue: "

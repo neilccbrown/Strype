@@ -654,6 +654,8 @@ function canPastePythonAtStrypeLocation(): boolean {
     // - in the "function definition" section, only function definitions can be copied
     // - in the "main code" section or inside a function definition frame, only code that doesn't contain imports or function definitions can be copied (and "global" for main code)
     // Comments can also be imported in all sections. 
+    // We remove any blank frames that could exist for an imports or function definitions section top frames: they are not required in the editor.
+    // Nevertheless, for this test method to complete, we still need to accept blanks to be inside imports and function definitions for validation.
     
     const copiedPythonToFrames = Object.values(useStore().copiedFrames);
     const topLevelCopiedFrames = copiedPythonToFrames.filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
@@ -665,12 +667,28 @@ function canPastePythonAtStrypeLocation(): boolean {
     case  STRYPE_LOCATION.IN_FUNCDEF:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case  STRYPE_LOCATION.FUNCDEF_SECTION:
-        return !(topLevelCopiedFrames.some((frame) => frame.frameType.type != AllFrameTypesIdentifier.funcdef && frame.frameType.type != AllFrameTypesIdentifier.comment)
+        removeTopLevelBlankFrames();
+        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
             || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type)));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
-        return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.comment].includes(frame.frameType.type));
+        removeTopLevelBlankFrames();
+        return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
     default:
         // We shouldn't reach this but for safety we return false
         return false;
     }
+}
+
+function removeTopLevelBlankFrames(): void {
+    // Remove blank frames in the first level of the copied frames. T
+    // This is useful when copying Python code that had line breaks between the function defs or the imports:
+    // our editor do not allow adding blank frames, so they shouldn't be kept when pasted.
+    const copiedPythonToFrames = Object.values(useStore().copiedFrames);
+    const topLevelCopiedFrames = copiedPythonToFrames.filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
+    const topLevelBlankFramesIds = topLevelCopiedFrames.filter((frame) => frame.frameType.type === AllFrameTypesIdentifier.blank)
+        .map((frame) => frame.id);
+    topLevelBlankFramesIds.forEach((frameId) => {
+        delete useStore().copiedFrames[frameId];
+        useStore().copiedSelectionFrameIds.splice(useStore().copiedSelectionFrameIds.indexOf(frameId), 1);
+    });
 }
