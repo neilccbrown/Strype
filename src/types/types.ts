@@ -97,6 +97,10 @@ export function isSlotBracketType(type: SlotType): boolean {
     return (type & SlotType.bracket) > 0;
 }
 
+export function isSlotStringLiteralType(type: SlotType): boolean {
+    return (type == SlotType.string);
+}
+
 export interface EditorFrameObjects {
     [id: number]: FrameObject;
 }
@@ -223,6 +227,12 @@ export interface AddFrameCommandDef {
     symbol?: string; // The symbol to show in the key shortcut button when the key it's not easily reprenstable (e.g. "⌴" for space)
     tooltip: string; // If needed, the tooltip content that explains the role of a frame - localised
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
+}
+
+export interface AddShorthandFrameCommandDef {
+    type: FramesDefinitions;
+    codeContent: string; // a default code content to add in the first slot of the frame (used by hidden frames)
+    goNextSlot?: boolean; // indicates whether the text cursor should move to the next slot (i.e. added "print" in a function call, we want to go inside the brackets)
 }
 
 // This is an array with all the frame Definitions objects.
@@ -999,6 +1009,13 @@ export interface StateAppObjects {
 export enum StrypePlatform {
     standard = "std",
     microbit = "mb",
+}
+
+// This enum represents the different possible states the user code Python execution can take
+export enum PythonExecRunningState {
+    NotRunning,
+    Running,
+    RunningAwaitingStop,
 }
 
 export enum StrypeSyncTarget {

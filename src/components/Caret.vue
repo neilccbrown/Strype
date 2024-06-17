@@ -1,11 +1,13 @@
 <template>
-    <div :class="{invisible: isInvisible}"></div>
+    <div :class="{invisible: isInvisible, disabled: isPythonExecuting}"></div>
 </template>
 
 <script lang="ts">
 //////////////////////
 import Vue from "vue";
-
+import { useStore } from "@/store/store";
+import { mapStores } from "pinia";
+import { PythonExecRunningState } from "@/types/types";
 //////////////////////
 /**
  * Caret is used as a vertical cursor for browsing
@@ -19,6 +21,14 @@ export default Vue.extend({
     props: {
         isInvisible: Boolean,
     },
+
+    computed:{
+        ...mapStores(useStore),
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+    },
 });
 </script>
 
@@ -28,6 +38,10 @@ export default Vue.extend({
     background-color: #3467FE;
     border-radius: 6px;
     height: $caret-height;
+}
+
+.caret.disabled {
+    background-color: #b8bac0;
 }
 
 .caret-drop {

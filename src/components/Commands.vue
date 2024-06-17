@@ -79,9 +79,9 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, handleContextMenuKBInteraction } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, handleContextMenuKBInteraction, hiddenShorthandFrames } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -233,11 +233,12 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                
                 if (event.repeat) {
                     // Ignore all repeated keypresses, only process the initial press:
                     return;
                 }
+
+                const eventKeyLowCase = event.key.toLowerCase();
                 
                 //if we requested to log keystroke, display the keystroke event in an unobtrusive location
                 //when editing, we don't show the keystroke for basic keys (like [a-zA-Z0-1]), only those whose key value is longer than 1
@@ -252,21 +253,22 @@ export default Vue.extend({
                     return;
                 }
 
-                if((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
+                if((event.ctrlKey || event.metaKey) && (eventKeyLowCase === "z" || eventKeyLowCase === "y")) {
                     //undo-redo
-                    this.appStore.undoRedo((event.key.toLowerCase() === "z"));
+                    this.appStore.undoRedo((eventKeyLowCase === "z"));
                     event.preventDefault();
                     return;
                 }
                 
                 // If ctrl-enter/cmd-enter is pressed, run the code: 
-                if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "enter" && this.$refs.pythonExecAreaComponent) {
+                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs.pythonExecAreaComponent) {
                     (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).runClicked();
                     // Don't then process the keypress for other purposes:
                     return;
                 }
 
                 const isEditing = this.appStore.isEditing;
+                const isPythonExecuting = ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
 
                 // If a context menu is currently displayed, we handle the menu keyboard interaction here
                 // (note that preventing the event here also prevents the keyboard scrolling of the page)
@@ -327,8 +329,10 @@ export default Vue.extend({
                     }
                 }
                 else {
-                    if(!isEditing && !this.appStore.isAppMenuOpened){
+                    if(!isEditing && !this.appStore.isAppMenuOpened && !isPythonExecuting){
                         // Cases when there is no editing:
+                        const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined 
+                            && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));
                         if(!(event.ctrlKey || event.metaKey)){
                             if(event.key == "Delete" || event.key == "Backspace"){
                                 if(!ignoreKeyEvent && !event.repeat){
@@ -340,16 +344,26 @@ export default Vue.extend({
                                     this.appStore.ignoreKeyEvent = false;
                                 }
                             }
-                            //add the frame in the editor if allowed
-                            else if(this.addFrameCommands[event.key.toLowerCase()] !== undefined || Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == event.key.toLowerCase()) !== undefined){
+                            //add the frame in the editor if allowed or the special cases of hidden frames
+                            else if(this.addFrameCommands[eventKeyLowCase] !== undefined || Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == eventKeyLowCase) !== undefined
+                                || isHiddenShorthandFrameCommand){
                                 if(!ignoreKeyEvent){
-                                    // We can add the frame by its original shortcut or hidden one
-                                    const isOriginalShortcut = (this.addFrameCommands[event.key.toLowerCase()] != undefined);
-                                    this.appStore.addFrameWithCommand(
-                                        (isOriginalShortcut)
-                                            ? this.addFrameCommands[event.key.toLowerCase()][0].type
-                                            : (Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == event.key.toLowerCase()) as AddFrameCommandDef[])[0].type
-                                    );
+                                    event.stopImmediatePropagation();
+                                    event.stopPropagation(),
+                                    event.preventDefault();
+                                    if(isHiddenShorthandFrameCommand) {
+                                        // Adding a shorthand frame required to 1) add the frame itself
+                                        this.appStore.addFrameWithCommand(hiddenShorthandFrames[eventKeyLowCase].type, hiddenShorthandFrames[eventKeyLowCase]);
+                                    }
+                                    else{
+                                        // We can add the frame by its original shortcut or hidden one
+                                        const isOriginalShortcut = (this.addFrameCommands[eventKeyLowCase] != undefined);
+                                        this.appStore.addFrameWithCommand(
+                                            (isOriginalShortcut)
+                                                ? this.addFrameCommands[eventKeyLowCase][0].type
+                                                : (Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == eventKeyLowCase) as AddFrameCommandDef[])[0].type
+                                        );
+                                    }
                                 }
                                 else{
                                     this.appStore.ignoreKeyEvent = false;
@@ -358,8 +372,41 @@ export default Vue.extend({
                         }
                         else if(event.key == " "){
                             // If ctrl/meta + space is activated on caret, we add a new functional call frame and trigger the a/c
-                            this.appStore.addFrameWithCommand(this.addFrameCommands[event.key.toLowerCase()][0].type);
+                            this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
                             this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                        }
+                    }
+                    else if(isPythonExecuting){
+                        // The special case when the user's code is being executing, we want to handle the key events carefully.
+                        // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
+                        // and if it's not active AND the Python Execution console hasn't go focus, we prevents events.
+                        if(!event.altKey && !event.ctrlKey && !event.metaKey){
+                            const turtlePlaceholder = document.getElementById("pythonTurtleDiv");
+                            const isTurtleShowing = turtlePlaceholder?.style.display != "none";
+                            if(turtlePlaceholder && isTurtleShowing && document.activeElement?.id != turtlePlaceholder.id){
+                                // Give focus to the Turtle graphics first to make sure it will respond.
+                                turtlePlaceholder.focus();
+                                // Then we can forward the key event.
+                                setTimeout(() => {
+                                    turtlePlaceholder.dispatchEvent(new KeyboardEvent("keydown", {
+                                        keyCode: event.keyCode,
+                                    }));
+                                    turtlePlaceholder.dispatchEvent(new KeyboardEvent("keyup", {
+                                        key: event.key,
+                                        keyCode: event.keyCode,
+                                    }));
+                                }, 500);
+                            }
+
+                            if(document.activeElement?.id === "pythonConsole"){
+                                // Don't interfere with the Python Execution console if it's having focus
+                                return;
+                            }
+
+                            event.stopImmediatePropagation();
+                            event.stopPropagation(),
+                            event.preventDefault();
+                            return;
                         }
                     }
                 }

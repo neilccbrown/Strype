@@ -1,6 +1,6 @@
 <template>
-    <div class="frame-cmd-container" @click="onClick" :title=tooltip>
-        <button class="frame-cmd-btn">{{ symbol }}</button>
+    <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting}" @click="onClick" :title=tooltip>
+        <button class="frame-cmd-btn" :disabled=isPythonExecuting>{{ symbol }}</button>
         <span>{{ description }}</span>
     </div>
 </template>
@@ -13,6 +13,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { findAddCommandFrameType } from "@/helpers/editor";
+import { PythonExecRunningState } from "@/types/types";
 
 //////////////////////
 //     Component    //
@@ -31,14 +32,20 @@ export default Vue.extend({
 
     computed: {
         ...mapStores(useStore),
+
+        isPythonExecuting(): boolean {
+            return (useStore().pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
     },
 
     methods: {
         onClick(): void {
-            //add the frame in the editor
-            const addFrameCommandType = findAddCommandFrameType(this.shortcut, this.index);
-            if(addFrameCommandType != null){
-                this.appStore.addFrameWithCommand(addFrameCommandType);
+            //add the frame in the editor if the panel is not disabled
+            if(!this.isPythonExecuting) {
+                const addFrameCommandType = findAddCommandFrameType(this.shortcut, this.index);
+                if(addFrameCommandType != null){
+                    this.appStore.addFrameWithCommand(addFrameCommandType);
+                }
             }
         },
     },
@@ -51,6 +58,12 @@ export default Vue.extend({
     cursor: pointer;
 }
 
+.frame-cmd-container.disabled {
+    cursor: default;
+    color: rgb(180, 180, 180);
+}
+
+
 .frame-cmd-btn {
     margin-right: 5px;
     cursor: pointer;
@@ -58,6 +71,10 @@ export default Vue.extend({
     background-color: #fefefe;
     border-radius: 4px;
     border: 1px solid #d0d0d0;
+}
+
+.frame-cmd-btn:disabled {
+    cursor: default;
 }
 
 .section-enter-active, .section-leave-active {

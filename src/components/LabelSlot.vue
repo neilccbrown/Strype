@@ -22,7 +22,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @contentPastedInSlot="onCodePaste"
-            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised}"
+            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: isPythonExecuting}"
             :id="UIID"
             :key="UIID"
             :style="spanBackgroundStyle"
@@ -62,15 +62,17 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUIID, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUIID } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot} from "@/types/types";
+import { getLabelSlotUIID, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUIID, getFrameUIID } from "@/helpers/editor";
+import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState} from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
-import LabelSlotsStructureVue from "./LabelSlotsStructure.vue";
+import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
+import App from "@/App.vue";
+import Frame from "@/components/Frame.vue";
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -268,6 +270,10 @@ export default Vue.extend({
             return this.labelSlotsIndex == firstVisibleLabelSlotsIndex && this.slotId == "0" && isEmpty;
 
         },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
     },
 
     methods: {
@@ -319,6 +325,26 @@ export default Vue.extend({
         // Event callback equivalent to what would happen for a focus event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onGetCaret(event: MouseEvent): void {
+            // If the user's code is being executed, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
+            if(this.isPythonExecuting){
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                event.preventDefault();
+                // Call the method which handles a click on the frame instead, we need to find the associated frame object
+                const frameDiv = document.getElementById(getFrameUIID(this.frameId)) as HTMLDivElement;
+                if(frameDiv){
+                    const frameComponent = (this.$root.$children[0] as InstanceType<typeof App>).getFrameComponent(this.frameId);
+                    if(frameComponent){
+                        // The frame component can only be a frame (and not a frame container) since we've clicked on a slot...
+                        (frameComponent as InstanceType<typeof Frame>).changeToggledCaretPosition(event.clientY, frameDiv);
+                        // Even if visually and logically in the app the slot doesn't have focus, the browser will see differently
+                        // (a click happened on the span...) - to make sure no undesirable effect occur, we set the focus on the frame div
+                        (document.getElementById(getFrameUIID(frameComponent.frameId)))?.focus();
+                    }
+                }
+                return;
+            }
+            
             this.isFirstChange = true;
 
             // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
@@ -947,7 +973,7 @@ export default Vue.extend({
             }   
             
             // Refactor the slots after the changes have been performed
-            (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(getLabelSlotUIID(focusSlotCursorInfos.slotInfos), stateBeforeChanges);
+            (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(getLabelSlotUIID(focusSlotCursorInfos.slotInfos), stateBeforeChanges);
         },
 
         handleFastUDNavKeys(event: KeyboardEvent){
@@ -1098,7 +1124,7 @@ export default Vue.extend({
                             : ((neighbourOperatorSlotContent.includes(" ")) ? neighbourOperatorSlotContent.substring(0, neighbourOperatorSlotContent.indexOf(" ")) : neighbourOperatorSlotContent[0]);
                         (neighbourOperatorSlot as BaseSlot).code = newOperatorContent;
                         // We don't actually require slot to be regenerated, but we need to mark the action for undo/redo
-                        this.$nextTick(() => (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(this.UIID, stateBeforeChanges));
+                        this.$nextTick(() => (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(this.UIID, stateBeforeChanges));
                     }
                     else{
                         const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);
@@ -1122,7 +1148,7 @@ export default Vue.extend({
                             // In any case, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
                             // (in this scenario, we don't emit a "requestSlotsRefactoring" event, because if we delete using backspace, "this" component will actually not exist anymore
                             // and it looks like Vue will pick that up and not fire the listener.)
-                            (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(slotUIID, stateBeforeChanges);
+                            (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(slotUIID, stateBeforeChanges);
                         });
                     }
                 }
@@ -1177,7 +1203,7 @@ export default Vue.extend({
                     // In any case, except if we are in a chain of actions, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
                     // As we deleted some slots, we need to call the refactoring on the resulting focused slot:
                     if(chainedActionFunction == undefined) {
-                        this.$nextTick(() => (this.$parent as InstanceType<typeof LabelSlotsStructureVue>).checkSlotRefactoring(resultingSlotUIID, stateBeforeChanges));
+                        this.$nextTick(() => (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(resultingSlotUIID, stateBeforeChanges));
                     }
                     else{
                         // we continue doing the chained action if a function has been specified
@@ -1359,6 +1385,10 @@ export default Vue.extend({
     content: attr(placeholder);
     font-style: italic;
     color: #bbb;
+}
+
+.labelSlot-input.readonly {
+    cursor: pointer;
 }
 
 .errorSlot {

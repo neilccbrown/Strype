@@ -22,6 +22,7 @@
                 :id="uiid"
                 @mousedown.left="hideCaretAtClick"
                 @click="toggleCaret($event)"
+                @mouseup.left="toggleCaret($event)"
                 @contextmenu="handleClick($event)"
                 tabindex="-1"
             >
@@ -103,9 +104,9 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
@@ -242,6 +243,10 @@ export default Vue.extend({
             return this.appStore.contextMenuShownId === this.uiid; 
         },
 
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
         selectedPosition(): string {
             return this.appStore.getFrameSelectionPosition(this.frameId);
         },
@@ -361,10 +366,10 @@ export default Vue.extend({
 
     methods: {
         onKeyDown(event: KeyboardEvent) {
-            // Cutting/copying by shortcut is only available for a frame selection*.
+            // Cutting/copying by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
-            if(this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
+            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
                 if(event.key.toLowerCase() === "c"){
                     this.copy();
                 }
@@ -426,8 +431,8 @@ export default Vue.extend({
             
             this.appStore.contextMenuShownId = this.uiid;
 
-            // only show the frame menu if we are not editing
-            if(this.appStore.isEditing){
+            // only show the frame menu if we are not editing and not executing the user Python code
+            if(this.appStore.isEditing || this.isPythonExecuting){
                 return;
             }
 
@@ -653,6 +658,12 @@ export default Vue.extend({
         },
 
         toggleCaret(event: MouseEvent): void {
+            // When the event is called on "click" AND the shift key is hold
+            // we do nothing because that will be already handled in the mouseup event.
+            if(event.type == "click" && event.shiftKey){
+                return;
+            }
+
             const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
 
             // This checks the propagated click events, and prevents the parent frame to handle the event as well. 
@@ -668,10 +679,23 @@ export default Vue.extend({
                 return;
             }
 
-            this.changeToggledCaretPosition(event.clientY, frameDivParent);
+            if(event.type == "mouseup" && this.isPythonExecuting){
+                // A workaround for a very annoying side effect of cancelling the drag and drop of frames when Python is running:
+                // some attempt of DnD in different groups would just die, without giving back a caret.
+                // Therefore, to make sure we always have a frame caret showing up eventually, we wait a bit to see if there is no caret visible,
+                // and if so trigger the caret toggle.
+                setTimeout(() => {
+                    if(!document.querySelector(".caret.disabled:not(.invisible)")){
+                        this.changeToggledCaretPosition(event.clientY, frameDivParent);
+                    }
+                }, 500);
+                return;
+            }
+
+            this.changeToggledCaretPosition(event.clientY, frameDivParent, event.shiftKey);
         },
 
-        changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement): void{
+        changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement, selectClick?: boolean): void{
             const frameRect = frameClickedDiv.getBoundingClientRect();
             const headerRect = document.querySelector("#"+this.uiid+ " .frame-header")?.getBoundingClientRect();
             if(headerRect){            
@@ -738,6 +762,28 @@ export default Vue.extend({
                         newCaretPosition.caretPosition = CaretPosition.below;
                     }
                 }
+
+                // Before we toggle the caret, there is on last check to make: if we are doing a shift-click selection,
+                // we need to make sure the selection is valid, and if it is, also have the selection rendered in the UI.
+                // A selection of frames with shift+click is valid if those frames have the same parent (same level frames).
+                if(selectClick){
+                    const originFrameParentId = (this.appStore.currentFrame.caretPosition == CaretPosition.body)
+                        ? this.appStore.currentFrame.id
+                        : this.appStore.frameObjects[this.appStore.currentFrame.id].parentId;
+                    const targetFrameParentId = (newCaretPosition.caretPosition == CaretPosition.body)
+                        ? newCaretPosition.frameId
+                        : this.appStore.frameObjects[newCaretPosition.frameId].parentId;
+                    // The selection is valid we can put this selection in effect, otherwise we get back to the initial position..
+                    if(originFrameParentId == targetFrameParentId && (this.appStore.currentFrame.id != newCaretPosition.frameId)){
+                        this.appStore.shiftClickSelection(
+                            {clickedFrameId:newCaretPosition.frameId, clickedCaretPosition: newCaretPosition.caretPosition as CaretPosition}
+                        );
+                    }
+                    else{
+                        this.appStore.toggleCaret({id: this.appStore.currentFrame.id, caretPosition: this.appStore.currentFrame.caretPosition});
+                    }
+                    return;
+                }
                 
                 this.appStore.toggleCaret({id: newCaretPosition.frameId, caretPosition: newCaretPosition.caretPosition as CaretPosition});
             }
@@ -799,7 +845,7 @@ export default Vue.extend({
         },
 
         cut(): void {
-            //cut prepares a copy, then we delete the selection / frame copied
+            // Cut prepares a copy, then we delete the selection / frame copied
             if(this.isPartOfSelection){
                 this.appStore.copySelection(); 
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
@@ -807,9 +853,39 @@ export default Vue.extend({
             }
             else{
                 this.appStore.copyFrame(this.frameId);
-                //when deleting the specific frame, we place the caret below and simulate "backspace"
-                this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below} as CurrentFrame);
-                this.appStore.deleteFrames("Backspace");
+                // When deleting the specific frame, we usually place the caret below and simulate "backspace".
+                // In the situation of a whole joint frame structure (like an if/elif/else), we need to repeat the deletion
+                // for each joint of the structure (otherwise, it will only delete the last one).
+                // In the case of a joint frame (like the else part), the frame "below" doesn't exist: we need to get the right position
+                const numberOfJoints = this.appStore.frameObjects[this.frameId].jointFrameIds.length;
+                let deletionCommand = "Backspace";
+                if(this.isJointFrame){
+                    // If we are cutting the joint of a joit frame structure, we need to position the caret properly:
+                    // if we are cutting the last joint, then we position the caret below the root of the structure (and do the backspace deletion);
+                    // if we are cutting a non terminating joint frame, we need to get inside the previous joint part (or the root) and make the 
+                    // deletion with a "delete" comment instead.
+                    const rootJointFrameId = this.appStore.frameObjects[this.frameId].jointParentId;
+                    const indexOfJoint = this.appStore.frameObjects[rootJointFrameId].jointFrameIds.findIndex((fId) => fId == this.frameId);
+                    const isLastJoint = (this.appStore.frameObjects[rootJointFrameId].jointFrameIds.length == indexOfJoint + 1);
+                    if(isLastJoint){
+                        this.appStore.setCurrentFrame({id: rootJointFrameId, caretPosition: CaretPosition.below} as CurrentFrame);
+                    }
+                    else{
+                        deletionCommand = "Delete";
+                        const aboveFrameIdToGetTo = (indexOfJoint > 0) ? getLastSibling(this.frameId) : rootJointFrameId;
+                        const previousJointLastChildFrameId = this.appStore.frameObjects[aboveFrameIdToGetTo]
+                            .childrenIds.at(-1);
+                        this.appStore.setCurrentFrame({id: (previousJointLastChildFrameId != undefined) ? previousJointLastChildFrameId : aboveFrameIdToGetTo,
+                            caretPosition: (previousJointLastChildFrameId != undefined) ? CaretPosition.below : CaretPosition.body} as CurrentFrame);
+                    }
+                }
+                else{
+                    this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below} as CurrentFrame);
+                }
+                this.appStore.deleteFrames(deletionCommand);
+                for(let i = 0; i < numberOfJoints; i++){
+                    this.appStore.deleteFrames(deletionCommand);
+                }
             }                    
         },
 

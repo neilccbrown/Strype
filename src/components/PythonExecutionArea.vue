@@ -7,7 +7,7 @@
                 <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
-            <button @click="runClicked" :title="$t('PEA.run') + ' (Ctrl+Enter)'">{{this.runCodeButtonLabel}}</button>
+            <button @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'"><span :class="{'python-running': isPythonExecuting}">{{this.runCodeButtonIconText}}</span><span>{{this.runCodeButtonLabel}}</span></button>
         </div>
         <div id="tabContentContainerDiv">
             <textarea 
@@ -44,13 +44,7 @@ import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
 import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, resetAddFrameCommandContainerHeight, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
-import { SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
-
-enum RunningState {
-    NotRunning,
-    Running,
-    RunningAwaitingStop,
-}
+import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
 export default Vue.extend({
     name: "PythonExecutionArea",
@@ -58,7 +52,6 @@ export default Vue.extend({
     data: function() {
         return {
             isExpandedPEA: false,
-            runningState: RunningState.NotRunning,
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
             peaDisplayTabIndex: 0, // the index of the PEA tab (console/turtle), we use it equally as a flag to indicate if we are on Turtle
             interruptedTurtle: false,
@@ -71,6 +64,9 @@ export default Vue.extend({
     },
 
     mounted(){
+        // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
+        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+        
         // Register an event listen on the tab content container on hover (in/out) to handle some styling
         (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseenter", () => this.isTabContentHovered = true);
         (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseleave", () => this.isTabContentHovered = false);
@@ -142,14 +138,30 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        isPythonExecuting(): boolean {
+            return useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
+        },
+
+        runCodeButtonIconText(): string {
+            switch (useStore().pythonExecRunningState) {
+            case PythonExecRunningState.NotRunning:
+                return "▶";
+            case PythonExecRunningState.Running:
+                return "◼";
+            case PythonExecRunningState.RunningAwaitingStop:
+                return "";
+            default: return "";
+            }
+        },
         
         runCodeButtonLabel(): string {
-            switch (this.runningState) {
-            case RunningState.NotRunning:
-                return "▶ " + i18n.t("PEA.run");
-            case RunningState.Running:
-                return "◼ " + i18n.t("PEA.stop");
-            case RunningState.RunningAwaitingStop:
+            switch (useStore().pythonExecRunningState) {
+            case PythonExecRunningState.NotRunning:
+                return " " + i18n.t("PEA.run");
+            case PythonExecRunningState.Running:
+                return " " + i18n.t("PEA.stop");
+            case PythonExecRunningState.RunningAwaitingStop:
                 return i18n.t("PEA.stopping") as string;
             default: return "";
             }
@@ -173,12 +185,12 @@ export default Vue.extend({
             // - not running when nothing happens, click will trigger "running"
             // - running when some code is running, click will trigger "running awaiting stop"
             // - running awaiting stop will do nothing
-            switch (this.runningState) {
-            case RunningState.NotRunning:
-                this.runningState = RunningState.Running;
+            switch (useStore().pythonExecRunningState) {
+            case PythonExecRunningState.NotRunning:
+                useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 this.execPythonCode();
                 return;
-            case RunningState.Running:
+            case PythonExecRunningState.Running:
                 // There are 2 possible scenarios, which depends on the user code:
                 // 1) the code contains some "event" listening functions but is written in a way that Turtle execution ends (Skulpt) and still listens:
                 // 2) there is no "event" listening function in the code, or the code is written in a way that Turtle execution keeps pending (Skulpt)
@@ -195,9 +207,9 @@ export default Vue.extend({
 
                 // Case 2): Skulpt checks this property regularly while running, via a callback,
                 // so just setting the variable is enough to "request" a stop 
-                this.runningState = RunningState.RunningAwaitingStop;
+                useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;
                 return;
-            case RunningState.RunningAwaitingStop:
+            case PythonExecRunningState.RunningAwaitingStop:
                 // Else, nothing more we can do at the moment, just waiting for Skulpt to see it
                 return;
             }
@@ -206,10 +218,10 @@ export default Vue.extend({
         updateTurtleListeningEvents(): void {
             // We should check if we are still in need to maintain the running state as "Running" (just for listening the events)
             // but if the state is already stopped (which can have been naturally from Skulpt then we don't need to do anything)
-            if(this.runningState == RunningState.Running && this.stopTurtleUIEventListeners){
+            if(useStore().pythonExecRunningState == PythonExecRunningState.Running && this.stopTurtleUIEventListeners){
                 this.stopTurtleUIEventListeners(true);
                 this.stopTurtleUIEventListeners = undefined;
-                this.runningState = RunningState.NotRunning;
+                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
             }
         },
         
@@ -232,7 +244,7 @@ export default Vue.extend({
                     this.$nextTick().then(() => {
                         this.reachFirstError();   
                         // If we have an error, the code didn't actually run so we need to reflect this properly in the running state
-                        this.runningState = RunningState.NotRunning;            
+                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;            
                     }); 
                     return;
                 }
@@ -241,14 +253,14 @@ export default Vue.extend({
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
                 // Trigger the actual Python code execution launch
-                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, (isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
+                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
                     this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
                     this.isTurtleListeningMouseEvents = !!isTurtleListeningMouseEvents; 
                     this.isTurtleListeningTimerEvents = !!isTurtleListeningTimerEvents;
                     this.stopTurtleUIEventListeners = stopTurtleListeners;
                     if(!this.isTurtleListeningEvents) {
-                        this.runningState = RunningState.NotRunning;
+                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     }
                     setPythonExecAreaExpandButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
@@ -431,10 +443,15 @@ export default Vue.extend({
         z-index: 10;
         border-radius: 10px;
         border: 1px solid transparent;
+        outline: none;
     }
 
     #peaControlsDiv button:hover {
         border-color: lightgray !important;
+    }
+
+    .python-running {
+        color: red;
     }
 
     .pea-toggle-size-button {
@@ -535,6 +552,7 @@ export default Vue.extend({
     #pythonTurtleDiv {
         background-color: white;
         margin:5px;
+        outline: none;
     }
     
     #noTurtleSpan {

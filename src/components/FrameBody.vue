@@ -20,7 +20,7 @@
                 forceFallback="true"
                 animation= "200"
                 swapThreshold = "0.2"
-                :disabled="isEditing"
+                :disabled="isEditing || isPythonExecuting"
                 :key="'Draggable-Body-'+this.frameId"
                 @start="handleMultiDrag"
                 @end="multiDragEnd"
@@ -55,7 +55,7 @@ import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Draggable from "vuedraggable";
-import { AllFrameTypesIdentifier, CaretPosition, DraggableGroupTypes, FrameObject } from "@/types/types";
+import { AllFrameTypesIdentifier, CaretPosition, DraggableGroupTypes, FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { getCaretContainerRef, getFrameBodyUIID, getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
 
@@ -143,6 +143,10 @@ export default Vue.extend({
             }
             // For compatibility with previous versions of the store
             return false;                       
+        },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
     },
 

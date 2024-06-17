@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -65,6 +65,10 @@ export const useStore = defineStore("app", {
             commandsTabIndex: 0, 
 
             isEditing: false,
+
+            // This flag indicates if the user code is being executed in the Python Execution Area
+            pythonExecRunningState: PythonExecRunningState.NotRunning,
+
 
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
@@ -275,8 +279,8 @@ export const useStore = defineStore("app", {
 
             // The RULE for the JOINTS is:
             // We allow joint addition only at the end of the body 
-            // however, *programmatically* with might have something to check upon the BELOW position of a joint frame (for example when moving frames)
-            // in that case, we do as if we were *inside* the joint frame 
+            // however, *programmatically* we might have something to check upon the BELOW position of a joint frame (for example when moving frames)
+            // in that case, we do as if we were *inside* the joint frame (not that we are dealing with TRUE joint, not the parent of structure)
 
             // Two possible cases:
             // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame; OR if we are in a moving condition as explained above (M)
@@ -293,10 +297,10 @@ export const useStore = defineStore("app", {
             //if we are in the joint context
             if(focusedFrame!==undefined) {
 
-                // (c) -> I am either in a joint parent
+                // (c) -> I am either in a joint parent, we can't add any child if we're below, there is no next child to check.
                 if(focusedFrame.frameType.allowJointChildren ) {
                     allowedJointChildren = [...focusedFrame.frameType.jointFrameTypes];
-                    nextJointChildID = focusedFrame.jointFrameIds[0]??-100;
+                    nextJointChildID = (caretPosition == CaretPosition.below && focusedFrame.id == frameId) ? -100 : (focusedFrame.jointFrameIds[0]??-100);
                 }
                 // (c) -> Or a joint child
                 else if(focusedFrame.jointParentId>0){
@@ -312,20 +316,26 @@ export const useStore = defineStore("app", {
 
                     const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
 
-                    // -100 means there is no next Joint Child => focused is the last
+                    // -100 means there is no next Joint Child => focused is the last joint or end of joint structure (i.e. below root)
                     if(nextJointChildID === -100){
-                        // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
-                        //    OR special case if we are in TRY statement: we can't show ELSE at any case
-                        // else show them all
-                        if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
-                            allowedJointChildren.splice(allowedJointChildren.indexOf(AllFrameTypesIdentifier.else), 1); 
+                        // Below the root, no joint frame can be added.
+                        if((frameId == focusedFrame.id && caretPosition == CaretPosition.below && focusedFrame.frameType.allowJointChildren)){
+                            allowedJointChildren.splice(0, allowedJointChildren.length);
                         }
-                        else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
-                            allowedJointChildren.splice(
-                                0,
-                                allowedJointChildren.indexOf(focusedFrame.frameType.type)+1 //delete from the beginning to the current frame type
-                            );                        
-                        } 
+                        else{
+                            // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
+                            //    OR special case if we are in TRY statement: we can't show ELSE at any case
+                            // else show them all
+                            if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
+                                allowedJointChildren.splice(allowedJointChildren.indexOf(AllFrameTypesIdentifier.else), 1); 
+                            }
+                            else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
+                                allowedJointChildren.splice(
+                                    0,
+                                    allowedJointChildren.indexOf(focusedFrame.frameType.type)+1 //delete from the beginning to the current frame type
+                                );                        
+                            } 
+                        }
                     }
                     // on the presence of a next child
                     else{
@@ -1651,16 +1661,21 @@ export const useStore = defineStore("app", {
                 // The target position for joint frames needs to be found out according to this rule:
                 // - if we are moving a frame within the SAME group:
                 //   - if we move the frame upwards, the target is the element *before* the newIndex position of the joint frames 
-                //     so if newIndex is 0, then we look at the joint parent of the structure
+                //     so if newIndex is 0, then we look at the joint parent of the structure; VERY IMPORTANTLY, in that case we check the allowed frames
+                //     from the body content of the parent rather that below the parent, because below the parent is an ambiguous position (below the parent
+                //     when that parent have joints is actually after the WHOLE structure, so targetting inside the body clears off any doubt)
                 //   - if we move the frame downwards, the target is at the newIndex position of the joint frames 
                 // - if we are moving a frame within a DIFFERENT group:
                 //   - the target is the element *before* the newIndex position of the destination joint frames 
                 //     (so same check as above is newIndex is 0)
                 const jointFrameTargetIndex = (eventType==="moved" && oldIndex < newIndex) ? newIndex + 1 : newIndex;
+                const isJointTargettingBelowRoot = (isJointFrame && jointFrameIds.length > 0 && jointFrameTargetIndex > 0);
                 const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
-                    ? !this.isPositionAllowsFrame((jointFrameTargetIndex > 0) ? this.frameObjects[payload.eventParentId].jointFrameIds[jointFrameTargetIndex - 1] : payload.eventParentId,
-                        CaretPosition.below,
-                        payload.event[eventType].element.id)
+                    ? !this.isPositionAllowsFrame((jointFrameTargetIndex > 0) 
+                        ? this.frameObjects[payload.eventParentId].jointFrameIds[jointFrameTargetIndex - 1] 
+                        : this.frameObjects[payload.eventParentId].childrenIds.at(-1) ?? payload.eventParentId,
+                    (isJointTargettingBelowRoot) ? ((this.frameObjects[payload.eventParentId].childrenIds.length > 0) ? CaretPosition.below : CaretPosition.body) : CaretPosition.below,
+                    payload.event[eventType].element.id)
                     : false;
 
                 if((!isJointFrame && !this.isPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
@@ -1797,7 +1812,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        async addFrameWithCommand(frame: FramesDefinitions) {
+        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
@@ -1872,6 +1887,11 @@ export const useStore = defineStore("app", {
                     ),
             };
 
+            // In the special case a hidden shorthand frame addition, we add the code content in the first slot of the frame (by design)
+            if(hiddenShorthandFrameDetails && isFieldBaseSlot(newFrame.labelSlotsDict[0].slotStructures.fields[0])){
+                (newFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code = hiddenShorthandFrameDetails.codeContent;
+            }
+
             // Add the frame id to its parent's childrenIds list
             listToUpdate.splice(
                 indexToAdd,
@@ -1943,31 +1963,53 @@ export const useStore = defineStore("app", {
 
             this.updateNextAvailableId();
         
-            //"move" the caret along, using the newly computed positions
+            // "Move" the caret along, using the newly computed positions
             await this.leftRightKey(
                 {
                     key: "ArrowRight",
                     availablePositions: availablePositions,
                 }
-            ).then(
-                () => {
-                    //save state changes
-                    this.saveStateChanges(stateBeforeChanges);
-                    // To make sure we are showing the newly added frame, we scroll into view if needed                    
-                    const targetDiv =
-                        (this.currentFrame && this.currentFrame.caretPosition !== CaretPosition.none) ?
-                            // If frame cursor is focused (e.g. after adding blank frame, or try), scroll to that:
-                            document.getElementById(getCaretUIID(this.currentFrame.caretPosition, this.currentFrame.id))
-                            // Otherwise scroll to the frame header (e.g. for method call, if, while):
-                            : document.getElementById(getFrameHeaderUIID(newFrame.id));
-                    
-                    const targetBoundingRect = targetDiv?.getBoundingClientRect();
-                    if (targetDiv && targetBoundingRect && (targetBoundingRect.top + targetBoundingRect.height > document.documentElement.clientHeight)) {
-                        document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
+            ).then(() => {
+                if(hiddenShorthandFrameDetails){
+                    // When code is added from a shorthand frame, we need to position the focus (text cursor) properly
+                    const newSlotCursorInfos = {...this.focusSlotCursorInfos} as SlotCursorInfos;
+                    if(hiddenShorthandFrameDetails.goNextSlot){
+                        // If "go next slot" is set to true, we move to the next slot
+                        const nextSlot = getFlatNeighbourFieldSlotInfos(newSlotCursorInfos.slotInfos, true);
+                        if(nextSlot) {
+                            newSlotCursorInfos.slotInfos = nextSlot;
+                        }
+                        // Explicitly set the focused property to the focused slot
+                        this.setFocusEditableSlot({frameSlotInfos: newSlotCursorInfos.slotInfos, 
+                            caretPosition: (hiddenShorthandFrameDetails.type.allowChildren) ? CaretPosition.body : CaretPosition.below});              
                     }
-                    this.lastAddedFrameIds = newFrame.id;
+                    else{
+                        // Stay in the same slot, we move to end of the slot
+                        newSlotCursorInfos.cursorPos = hiddenShorthandFrameDetails.codeContent.length;
+                    }
+                    this.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
+                    setDocumentSelection(newSlotCursorInfos, newSlotCursorInfos);
                 }
-            );
+            })
+                .then(
+                    () => {
+                    //save state changes
+                        this.saveStateChanges(stateBeforeChanges);
+                        // To make sure we are showing the newly added frame, we scroll into view if needed                    
+                        const targetDiv =
+                            (this.currentFrame && this.currentFrame.caretPosition !== CaretPosition.none) ?
+                                // If frame cursor is focused (e.g. after adding blank frame, or try), scroll to that:
+                                document.getElementById(getCaretUIID(this.currentFrame.caretPosition, this.currentFrame.id))
+                                // Otherwise scroll to the frame header (e.g. for method call, if, while):
+                                : document.getElementById(getFrameHeaderUIID(newFrame.id));
+                        
+                        const targetBoundingRect = targetDiv?.getBoundingClientRect();
+                        if (targetDiv && targetBoundingRect && (targetBoundingRect.top + targetBoundingRect.height > document.documentElement.clientHeight)) {
+                            document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
+                        }
+                        this.lastAddedFrameIds = newFrame.id;
+                    }
+                );
         },
 
         deleteFrames(key: string, ignoreBackState?: boolean){
@@ -1999,8 +2041,8 @@ export const useStore = defineStore("app", {
                 //but here we could have 3+ single frames delete, so we need to also check to selection length.
                 showDeleteMessage = this.selectedFrames.length > 3;
             }
-            else if (this.frameObjects[this.currentFrame.id].jointFrameIds.length > 0 && key === "Backspace") {
-                // If they backspace after a joint frame that has joint frames (e.g. if +else),
+            else if (this.currentFrame.caretPosition == CaretPosition.below && this.frameObjects[this.currentFrame.id].jointFrameIds.length > 0 && key === "Backspace") {
+                // If they backspace after a joint frame structure that has joint frames (e.g. if +else),
                 // delete the last of the joint frames:
                 framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
             }
@@ -2169,6 +2211,10 @@ export const useStore = defineStore("app", {
             }
             else {
                 currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.frameId === this.currentFrame.id); 
+                // When we are at a frame blue caret position, shift+left/right should behaves as if shift wasn't used
+                if(payload.isShiftKeyHold) {
+                    payload.isShiftKeyHold = false;
+                }
             }
             
             // The next position depends whether we are selection text:
@@ -2299,6 +2345,7 @@ export const useStore = defineStore("app", {
             stateCopy["DAPWrapper"] = {};
             stateCopy["previousDAPWrapper"] = {};
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
+            stateCopy["pythonExecRunningState"] = PythonExecRunningState.NotRunning;
             
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
@@ -2806,10 +2853,6 @@ export const useStore = defineStore("app", {
 
             const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.frameId === this.currentFrame.id && item.caretPosition === this.currentFrame.caretPosition);
             const indexOfTarget: number = listOfCaretPositions.findIndex((item)=> item.frameId === payload.clickedFrameId && item.caretPosition === payload.clickedCaretPosition);
-            
-            if(indexOfCurrent === indexOfTarget) {
-                return;
-            }
 
             // is the targetFrame bellow or above the origin frame
             const direction = (indexOfCurrent < indexOfTarget)?"ArrowDown" : "ArrowUp" ;
