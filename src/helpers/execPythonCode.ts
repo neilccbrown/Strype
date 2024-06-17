@@ -144,7 +144,7 @@ function sInput(prompt: string) {
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
 export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean,
-                               executionFinished: (isListeningKeyEvents: boolean, isListeningMouseEvents: boolean,isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction) => any): void{
+                               executionFinished: (isListeningKeyEvents: boolean, isListeningMouseEvents: boolean, isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => any): void{
     consoleTextArea = aConsoleTextArea;
     codeExecStateRunningCheckFn = keepRunning;
     Sk.pre = consoleTextArea.id;
