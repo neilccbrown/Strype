@@ -132,8 +132,8 @@ describe("Stride TestExpressionSlot.testFloating()", () => {
     testInsert("10e+20", "{10e+20$}");
     testInsert("10e-20", "{10e-20$}");
 
-    testInsert("1.0.3", "{1}.{0}.{3$}", false);
-    testInsert("1.0.3.4", "{1}.{0}.{3}.{4$}", false);
+    testInsert("1.0.3", "{1}.{0.3$}", false);
+    testInsert("1.0.3.4", "{1}.{0}.{3.4$}", false);
     testInsert("1.0.x3.4", "{1}.{0}.{x3}.{4$}", false);
 
     // The problem here is that + is first an operator, then merged back in,
