@@ -2853,10 +2853,6 @@ export const useStore = defineStore("app", {
 
             const indexOfCurrent: number = listOfCaretPositions.findIndex((item)=> item.frameId === this.currentFrame.id && item.caretPosition === this.currentFrame.caretPosition);
             const indexOfTarget: number = listOfCaretPositions.findIndex((item)=> item.frameId === payload.clickedFrameId && item.caretPosition === payload.clickedCaretPosition);
-            
-            if(indexOfCurrent === indexOfTarget) {
-                return;
-            }
 
             // is the targetFrame bellow or above the origin frame
             const direction = (indexOfCurrent < indexOfTarget)?"ArrowDown" : "ArrowUp" ;

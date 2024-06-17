@@ -2,7 +2,6 @@
     <div 
         :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer}"
         @click.exact.prevent.stop="toggleCaret()"
-        @click.shift.exact.prevent.stop="frameSelection()"
         @contextmenu.prevent.stop="handleClick($event)"
         :key="uiid"
         :id="uiid"
@@ -232,12 +231,6 @@ export default Vue.extend({
         toggleCaret(): void {
             this.appStore.toggleCaret(
                 {id:this.frameId, caretPosition: this.caretAssignedPosition}
-            );
-        },
-
-        frameSelection(): void {
-            this.appStore.shiftClickSelection(
-                {clickedFrameId:this.frameId, clickedCaretPosition: this.caretAssignedPosition}
             );
         },
 

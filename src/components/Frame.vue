@@ -658,6 +658,12 @@ export default Vue.extend({
         },
 
         toggleCaret(event: MouseEvent): void {
+            // When the event is called on "click" AND the shift key is hold
+            // we do nothing because that will be already handled in the mouseup event.
+            if(event.type == "click" && event.shiftKey){
+                return;
+            }
+
             const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
 
             // This checks the propagated click events, and prevents the parent frame to handle the event as well. 
@@ -686,10 +692,10 @@ export default Vue.extend({
                 return;
             }
 
-            this.changeToggledCaretPosition(event.clientY, frameDivParent);
+            this.changeToggledCaretPosition(event.clientY, frameDivParent, event.shiftKey);
         },
 
-        changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement): void{
+        changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement, selectClick?: boolean): void{
             const frameRect = frameClickedDiv.getBoundingClientRect();
             const headerRect = document.querySelector("#"+this.uiid+ " .frame-header")?.getBoundingClientRect();
             if(headerRect){            
@@ -755,6 +761,28 @@ export default Vue.extend({
                     else{
                         newCaretPosition.caretPosition = CaretPosition.below;
                     }
+                }
+
+                // Before we toggle the caret, there is on last check to make: if we are doing a shift-click selection,
+                // we need to make sure the selection is valid, and if it is, also have the selection rendered in the UI.
+                // A selection of frames with shift+click is valid if those frames have the same parent (same level frames).
+                if(selectClick){
+                    const originFrameParentId = (this.appStore.currentFrame.caretPosition == CaretPosition.body)
+                        ? this.appStore.currentFrame.id
+                        : this.appStore.frameObjects[this.appStore.currentFrame.id].parentId;
+                    const targetFrameParentId = (newCaretPosition.caretPosition == CaretPosition.body)
+                        ? newCaretPosition.frameId
+                        : this.appStore.frameObjects[newCaretPosition.frameId].parentId;
+                    // The selection is valid we can put this selection in effect, otherwise we get back to the initial position..
+                    if(originFrameParentId == targetFrameParentId && (this.appStore.currentFrame.id != newCaretPosition.frameId)){
+                        this.appStore.shiftClickSelection(
+                            {clickedFrameId:newCaretPosition.frameId, clickedCaretPosition: newCaretPosition.caretPosition as CaretPosition}
+                        );
+                    }
+                    else{
+                        this.appStore.toggleCaret({id: this.appStore.currentFrame.id, caretPosition: this.appStore.currentFrame.caretPosition});
+                    }
+                    return;
                 }
                 
                 this.appStore.toggleCaret({id: newCaretPosition.frameId, caretPosition: newCaretPosition.caretPosition as CaretPosition});
