@@ -243,7 +243,7 @@ export default Vue.extend({
                 // Trigger the actual Python code execution launch
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => this.runningState != RunningState.RunningAwaitingStop, (isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
-                    this.isTurtleListeningKeyEvents = isTurtleListeningKeyEvents; 
+                    this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
                     this.isTurtleListeningMouseEvents = !!isTurtleListeningMouseEvents; 
                     this.isTurtleListeningTimerEvents = !!isTurtleListeningTimerEvents;
                     this.stopTurtleUIEventListeners = stopTurtleListeners;
