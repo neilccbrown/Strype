@@ -2211,6 +2211,10 @@ export const useStore = defineStore("app", {
             }
             else {
                 currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.frameId === this.currentFrame.id); 
+                // When we are at a frame blue caret position, shift+left/right should behaves as if shift wasn't used
+                if(payload.isShiftKeyHold) {
+                    payload.isShiftKeyHold = false;
+                }
             }
             
             // The next position depends whether we are selection text:
