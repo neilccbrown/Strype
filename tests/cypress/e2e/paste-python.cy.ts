@@ -63,8 +63,6 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
         p = p.replaceAll(/ +:\n/g, ":\n");
         // Get rid of spaces before closing brackets:
         p = p.replace(/ +([)\]}])/g, "$1");
-        // Get rid of any multiple spaces between words:
-        p = p.replace(/([^ \n])  +([^ ])/g, "$1 $2");
         // Print out full version in message (without escaped \n), to make it easier to diff:
         expect(p, "Actual unescaped:\n" + p).to.equal(fullCode);
     });

@@ -313,8 +313,8 @@ describe("Deleting frames", () => {
         cy.get("body").type("{end}{backspace}{backspace}iTrue{rightarrow}lx==0{rightarrow}lx==1{rightarrow}=x=0{rightarrow}e foo(){rightarrow}");
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s+:/, b:[]},
-            {h: /elif\s+x == 0\s*:/, b:[]},
-            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
+            {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
+            {h: /elif\s+x\s*==\s*1\s*:/, b:[/x\s*=\s*0/]},
             {h: /else\s*:/, b:[
                 "foo()",
             ]},
@@ -322,13 +322,13 @@ describe("Deleting frames", () => {
         cy.get("body").type("{end}{backspace}");
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s*:/, b:[]},
-            {h: /elif\s+x == 0\s*:/, b:[]},
-            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
+            {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
+            {h: /elif\s+x\s*==\s*1\s*:/, b:[/x\s*=\s*0/]},
         ]));
         cy.get("body").type("{end}{backspace}");
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s*:/, b:[]},
-            {h: /elif\s+x == 0\s*:/, b:[]},
+            {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
         ]));
         cy.get("body").type("{end}{backspace}");
         checkCodeEquals(defaultImports.concat([
@@ -338,8 +338,8 @@ describe("Deleting frames", () => {
         cy.get("body").type("{ctrl}zzz");
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s+:/, b:[]},
-            {h: /elif\s+x == 0\s*:/, b:[]},
-            {h: /elif\s+x == 1\s*:/, b:[/x\s*=\s*0/]},
+            {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
+            {h: /elif\s+x\s*==\s*1\s*:/, b:[/x\s*=\s*0/]},
             {h: /else\s*:/, b:[
                 "foo()",
             ]},
