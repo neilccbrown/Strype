@@ -22,7 +22,7 @@
                 :id="uiid"
                 @mousedown.left="hideCaretAtClick"
                 @click="toggleCaret($event)"
-                @mouseup.left="toggleCaret($event)"
+                @mouseup.left.self="toggleCaret($event)"
                 @contextmenu="handleClick($event)"
                 tabindex="-1"
             >
