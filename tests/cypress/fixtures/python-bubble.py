@@ -1,5 +1,5 @@
 def bubbleSort (arr):
-    n =len(arr)
+    n = len(arr)
     # optimize code, so if the array is already sorted, it doesn't need
     # to go through the entire process
     swapped = False

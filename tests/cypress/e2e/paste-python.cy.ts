@@ -104,7 +104,7 @@ describe("Python round-trip", () => {
         "raise (1+2-3)\n",
         "raise (1+2-3)==(4*5/6)\n",
         // ** binds tighter than unary -, hence the space before:
-        "raise foo ** - 6.7 ** False ** True ** 'bye'\n",
+        "raise foo**-6.7**False**True**'bye'\n",
         "try:\n    x = 0\nexcept:\n    x = 1\n",
     ];
     for (const basic of basics) {
