@@ -856,7 +856,7 @@ export default Vue.extend({
                             insertKey = (this.frameType == AllFrameTypesIdentifier.fromimport && (this.keyDownStr == "*" || this.keyDownStr == "," || this.keyDownStr == ".")) 
                                 || (this.frameType == AllFrameTypesIdentifier.import && (this.keyDownStr == "," || this.keyDownStr == "."));
                         }
-                        if(!forbidOperator){
+                        if(!forbidOperator && insertKey){
                             if(isBracket || isStringQuote){
                                 insertKey = false;
                                 // When an opening bracket is typed and there is no text highlighted, we check if we need to "skipped" that input: if we are at the end of an editable slot, and the next slot is a bracketed structure
