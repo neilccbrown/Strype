@@ -63,7 +63,7 @@ import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getLabelSlotUIID, CustomEventTypes, getFrameHeaderUIID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUIID, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUIID, getFrameUIID } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState} from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -1104,8 +1104,34 @@ export default Vue.extend({
                     else{
                         const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content);
                         const parser = new Parser();
-                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, true).code;
                         cursorOffset = tempcursorOffset;
+
+                        // We do a small check here to avoid as much as we can invalid pasted code inside imports.
+                        // If we are in an import or from...import frame, we do nothing upon the detection of a string, 
+                        // a bracket structur or an operators different than "," and "." and for import frame only, "as".
+                        let pastedInvalidCode = false; 
+                        if(this.frameType == AllFrameTypesIdentifier.import || this.frameType == AllFrameTypesIdentifier.fromimport){
+                            if(tempSlots.fields.some((field) => isFieldStringSlot(field) || isFieldBracketedSlot(field))){
+                                pastedInvalidCode = true;
+                            }
+                            else{
+                                const isSimpleImport = (this.frameType == AllFrameTypesIdentifier.import);
+                                if(tempSlots.operators.some((operator) => operator.code != "," && operator.code != "." && (!isSimpleImport || (isSimpleImport && operator.code != "as")))){
+                                    pastedInvalidCode = true;
+                                }
+                            }
+                        } 
+                        if(pastedInvalidCode){
+                            // Show an error message to the user, and do nothing else.
+                            this.appStore.currentMessage = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
+                            const msgObj = this.appStore.currentMessage.message as FormattedMessage;
+                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, this.$i18n.t("errorMessage.unexpectedCharsPython") as string);
+
+                            //don't leave the message for ever
+                            setTimeout(() => this.appStore.currentMessage = MessageDefinitions.NoMessage, 5000);
+                            return;
+                        }
                     }
                 }
                 // part 2
