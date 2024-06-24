@@ -175,7 +175,7 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                 module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
                 if (j < frame.labelSlotsDict[0].slotStructures.operators.length) {
                     // Should be a dot or a comma or "as" (for simple imports):
-                    if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== "." && (!isSimpleImport || (isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "," ))) {
+                    if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== "." && (!isSimpleImport || (isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "," && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "as"))) {
                         // Error; ignore this import
                         continue loopImportFrames;
                     }
@@ -239,7 +239,7 @@ export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: str
             const realModule = (importedAliasedModules[module]) ? importedAliasedModules[module] : module;
             if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)){
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
-                if(pythonBuiltins[module]){
+                if(pythonBuiltins[realModule]){
                     const moduleDoc = (pythonBuiltins[realModule].documentation ?? ""); 
                     const imports = soFar[importedModulesCategory]??[];
                     imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
