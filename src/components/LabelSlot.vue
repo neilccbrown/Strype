@@ -750,6 +750,46 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
             }
+            // If the frame is an import frame, pressing space will automatically add the "as" operator when it makes sense to do so (see details below),
+            // when we press space and we are just before  an "as", we go to the next slot.
+            // In other cases and anywhere for "from... import" frames, pressing space will result in no action.
+            // To simplify, if text is selected, pressing space does nothing.
+            else if (!event.ctrlKey && event.key === " " && this.frameType === AllFrameTypesIdentifier.import){
+                // Case 1) we are in front of "as", we move to next editable slot (we can assume we have a flat structure, brackets and quotes are not allowed in imports...)
+                if(!hasTextSelection && this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length > parseInt(this.slotId) && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators[parseInt(this.slotId)] as BaseSlot).code == "as"){
+                    // Simulate a tab key press to make sure we go to the next slot
+                    document.getElementById(getFrameLabelSlotsStructureUIID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                        new KeyboardEvent(event.type, {
+                            key: "Tab",
+                        })
+                    );
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                // Case 2) detect if we should add an "as" or do nothing. We can add an as when we are at the end of a slot that is not empty (just to avoid doing something when people 
+                // wrongly press space thinking they want to mark a separation from a comma), and not preceded by "as"  (followed is tackled above),
+                else if(!hasTextSelection && this.code.length > 0 && selectionEnd == this.code.length && (this.slotId == "0" || ((this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators[parseInt(this.slotId) - 1] as BaseSlot).code != "as"))){
+                    // Insert the operator and empty field
+                    this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.splice(parseInt(this.slotId), 0, {code:"as"});
+                    this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields.splice(parseInt(this.slotId) + 1, 0, {code:""});
+                    // Set focus in the next slot (move right)
+                    this.$nextTick(() => {    
+                        this.appStore.leftRightKey({key: "ArrowRight"})
+                            // In order to get undo/redo dealing with the change of slot structure properly
+                            .then(() => this.appStore.saveStateChanges(stateBeforeChanges as Record<string, any>));    
+                    });               
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                else{
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            }
+            else if (!event.ctrlKey && event.key === " " && this.frameType === AllFrameTypesIdentifier.fromimport){
+                event.preventDefault();
+                event.stopPropagation();
+            }
             // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors
             else if(event.key === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && selectionStart == 0){
                 event.preventDefault();
@@ -835,10 +875,13 @@ export default Vue.extend({
                     const isStringQuote = stringQuoteCharacters.includes(event.key);
                     if(isSymbolicOperator 
                     || isBang
-                    || keywordOperatorsWithSurroundSpaces.some((operator) => {
-                        textualOperator = operator.trim();
-                        return (potentialOutput.includes(operator) || potentialOutput.startsWith(textualOperator + " "));
-                    })
+                    || keywordOperatorsWithSurroundSpaces
+                        // Remove "as" operator from the list, we can't add it textually in import and any other frames do not use this operator
+                        .filter((operator) => operator != " as ")
+                        .some((operator) => {
+                            textualOperator = operator.trim();
+                            return (potentialOutput.includes(operator) || potentialOutput.startsWith(textualOperator + " "));
+                        })
                     || isBracket
                     || isStringQuote
                     ){

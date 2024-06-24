@@ -262,7 +262,8 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
                 const spanElementContentLength = (spanElement.textContent?.length??0);
-                if(!isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
+                const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUIID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
+                if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
                     // Reinsert the spaces in the literal code
                     uiLiteralCode = uiLiteralCode.substring(0, uiLiteralCode.length - spanElementContentLength) 
@@ -838,9 +839,10 @@ export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
 export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",">>","<<",
     "==","=","!=",">=","<=","<",">",","];
 // Note that for those textual operator keywords, we only have space surrounding the single words: double words don't need
-// as they will always come from a combination of writing one word then the other (the first will be added as operator)
+// as they will always come from a combination of writing one word then the other (the first will be added as operator);
+// "as" is added in the operator list for imports, but it will be discarded when not dealing with import frames.
 // Important that the longer operators come before the shorter ones with the same prefix:
-export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not "];
+export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as "];
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
 
 
@@ -1199,28 +1201,32 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // "u" flag is necessary for unicode escapes
     const cannotPrecedeKeywordOps = /^(\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|\p{Nl}|\p{Mn}|\p{Mc}|\p{Nd}|\p{Pc}|_)$/u;
     while(hasOperator){
-        // When we look for operators, there is one exception: we discard "*" (and "**" why not) when are in a from import frame, we will treat it as text.
+        // When we look for operators, there is 2 exceptions:
+        // - we discard "*" (and "**" why not) when are in a from import frame, we will treat it as text
+        // - "as" is only relevant for import frames, we ignore it otherwise
         const isInFromImportFrame = (frameType == AllFrameTypesIdentifier.fromimport);
-        const operatorPosList : OpFound[] = ((isInFromImportFrame) ? allOperators.filter((opDef) => !opDef.match.includes("*")) : allOperators).flatMap((operator : OpDef) => {
-            if (operator.keywordOperator) {
+        const isInImportFrame = (frameType == AllFrameTypesIdentifier.import);
+        const operatorPosList : OpFound[] = ((isInFromImportFrame) ? allOperators.filter((opDef) => !opDef.match.includes("*") && opDef.match != " as ") : allOperators.filter((opDef) => isInImportFrame || opDef.match != " as "))
+            .flatMap((operator : OpDef) => {
+                if (operator.keywordOperator) {
                 // "g" flag is necessary to make it obey the lastIndex item as a place to start:
-                const regex = new RegExp(operator.match.trim().replaceAll(" ", "\\s+") + " ", "g");
-                regex.lastIndex = lookOffset;
-                let result = regex.exec(blankedStringCodeLiteral);
-                while (result != null) {
+                    const regex = new RegExp(operator.match.trim().replaceAll(" ", "\\s+") + " ", "g");
+                    regex.lastIndex = lookOffset;
+                    let result = regex.exec(blankedStringCodeLiteral);
+                    while (result != null) {
                     // Only a valid result if preceded by non-text character:
-                    if ((result.index == 0 || !cannotPrecedeKeywordOps.exec(blankedStringCodeLiteral.substring(result.index - 1, result.index)))) {
-                        return {...operator, pos: result.index, length: result[0].length} as OpFound;
+                        if ((result.index == 0 || !cannotPrecedeKeywordOps.exec(blankedStringCodeLiteral.substring(result.index - 1, result.index)))) {
+                            return {...operator, pos: result.index, length: result[0].length} as OpFound;
+                        }
+                        // Otherwise search again:
+                        result = regex.exec(blankedStringCodeLiteral);
                     }
-                    // Otherwise search again:
-                    result = regex.exec(blankedStringCodeLiteral);
+                    return {...operator, pos: -1, length: 0} as OpFound;
                 }
-                return {...operator, pos: -1, length: 0} as OpFound;
-            }
-            else {
-                return {...operator, pos: blankedStringCodeLiteral.indexOf(operator.match, lookOffset), length: operator.match.length} as OpFound;
-            }
-        });
+                else {
+                    return {...operator, pos: blankedStringCodeLiteral.indexOf(operator.match, lookOffset), length: operator.match.length} as OpFound;
+                }
+            });
         hasOperator = operatorPosList.some((operatorPos) => operatorPos.pos > -1);
         if(hasOperator){
             // Look for the first operator of the string inside the list
