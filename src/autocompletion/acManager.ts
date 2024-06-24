@@ -9,6 +9,9 @@ import {getMatchingBracket} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 
+let importedAliasedModules: {[alias: string]: string} = {};
+
+
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
 export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) : string {
@@ -156,6 +159,9 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
 }
 
 export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
+    // Reset the aliases dictionary
+    importedAliasedModules = {};
+
     const soFar : AcResultsWithCategory = {};
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
     loopImportFrames: for (let i = 0; i < imports.length; i++) {
@@ -168,14 +174,28 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
             for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
                 module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
                 if (j < frame.labelSlotsDict[0].slotStructures.operators.length) {
-                    // Should be a dot or a comma (for simple imports):
+                    // Should be a dot or a comma or "as" (for simple imports):
                     if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== "." && (!isSimpleImport || (isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "," ))) {
                         // Error; ignore this import
                         continue loopImportFrames;
                     }
-                    else if(isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code === "," ){
+                    else if(isSimpleImport && (frame.labelSlotsDict[0].slotStructures.operators[j].code === "," || frame.labelSlotsDict[0].slotStructures.operators[j].code === "as")){
                         // When we import several modules at once we process them one by one
-                        doGetAllExplicitelyImportedItems(frame, module, true, soFar);
+                        if(frame.labelSlotsDict[0].slotStructures.operators[j].code == "as") {
+                            // If we have an alias, we feed the module alias dictionary so we can know what module
+                            // the alias refers to, and we use the name of alias as module for a/c.
+                            // If no alias name is provided, we don't add the module/alias at all
+                            const aliasName = (frame.labelSlotsDict[0].slotStructures.fields[j + 1] as BaseSlot).code;
+                            if(aliasName.length > 0){
+                                importedAliasedModules[aliasName] = module;
+                                doGetAllExplicitelyImportedItems(frame, aliasName, true, soFar);    
+                                // We already retrieved the alias, so we skip a slot for the next module
+                                j++;
+                            }                 
+                        }
+                        else{
+                            doGetAllExplicitelyImportedItems(frame, module, true, soFar);
+                        }
                         module = "";
                         continue;
                     }
@@ -215,10 +235,12 @@ export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: str
     }
     else {
         if(isSimpleImport){
-            if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(module) == 0)){
+            // The module name might be an alias: we need to get the right module to retrieve the data.
+            const realModule = (importedAliasedModules[module]) ? importedAliasedModules[module] : module;
+            if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)){
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
                 if(pythonBuiltins[module]){
-                    const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
+                    const moduleDoc = (pythonBuiltins[realModule].documentation ?? ""); 
                     const imports = soFar[importedModulesCategory]??[];
                     imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
                     soFar[importedModulesCategory] = imports;
