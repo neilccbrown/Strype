@@ -330,7 +330,7 @@ function getParamPrompt(params: string[], targetParamIndex: number, lastParam: b
 }
 
 // Gets the parameter name prompt for the given autocomplete details (context+token)
-// for the given parameter.
+// for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
 export function calculateParamPrompt(context: string, token: string, paramIndex: number, lastParam: boolean) : string {
     if (!context) {
         // If context is blank, we know that the function must be one of:
@@ -349,7 +349,7 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
                 return getParamPrompt(builtinFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
             }
             else {
-                return "";
+                return "\u200b";
             }
         }
         const importedFunc = Object.values(getAllExplicitlyImportedItems()).flat().find((f) => f.acResult === token);
@@ -358,12 +358,12 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
                 return getParamPrompt(importedFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
             }
             else {
-                return "";
+                return "\u200b";
             }
         }
 
         // Didn't find it anywhere, so we just don't know:
-        return "";
+        return "\u200b";
     }
     else {
         // If the context matches an imported module, we can look it up there.        
@@ -376,7 +376,7 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
         // doesn't have an inspect module to reflect params
 
         // So unfortunately, we just can't help with param names.
-        return "";
+        return "\u200b";
     }
 
 }
