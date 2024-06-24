@@ -76,12 +76,4 @@ export default Vue.extend({
 .frame-cmd-btn:disabled {
     cursor: default;
 }
-
-.section-enter-active, .section-leave-active {
-  transition: opacity .2s ease;
-}
-.section-enter, .section-leave-to
-{
-  opacity: 0;
-}
 </style>

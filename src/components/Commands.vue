@@ -16,7 +16,7 @@
                         <div :id="commandsContainerUUID" class="command-tab-content" >
                             <div id="addFramePanel">
                                 <div class="frameCommands">
-                                    <transition-group name="list" tag="p">
+                                    <p>
                                         <AddFrameCommand
                                             v-for="addFrameCommand in addFrameCommands"
                                             :id="addFrameCommandUIID(addFrameCommand[0].type.type)"
@@ -36,7 +36,7 @@
                                                 : 0
                                             "
                                         />
-                                    </transition-group>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -585,7 +585,6 @@ export default Vue.extend({
     color:#666666;
 }
 
-// The transition group places the "add frame" commands inside a p element
 .frameCommands p {
     display: flex;
     flex-direction: column;
@@ -614,15 +613,6 @@ export default Vue.extend({
 .cmd-button {
     padding: 1px 6px 1px 6px !important;
     margin-top: 5px;
-}
-
-.list-enter-active, .list-leave-active {
-  transition: all .5s;
-}
-
-.list-enter, .list-leave-to {
-  opacity: 0;
-  transform: translate3d(3);
 }
 
 .commands-tab {
