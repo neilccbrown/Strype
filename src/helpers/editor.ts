@@ -1348,8 +1348,9 @@ export function actOnTurtleImport(): void {
         // The module must be using the same case, and we don't accept "turtle.xxx"
         const importedModules = (frame.labelSlotsDict[0].slotStructures.fields as BaseSlot[])
             .map((slot)=>slot.code)
-            .reduce((accModules, currentSlotVal,i) => (accModules + ((i > 0) ? frame.labelSlotsDict[0].slotStructures.operators[i-1].code : "") + currentSlotVal), "");
-        hasTurtleImported ||= importedModules.split(",").some((module) => module.localeCompare("turtle")==0);
+            // We add spaces around the modules so we can also extract "as" (aliases)
+            .reduce((accModules, currentSlotVal,i) => (accModules + ((i > 0) ? " " + frame.labelSlotsDict[0].slotStructures.operators[i-1].code + " " : "") + currentSlotVal), "");
+        hasTurtleImported ||= importedModules.split(" , ").some((module) => module.localeCompare("turtle") == 0 || module.startsWith("turtle as "));
     });
 
     // We notify the Python exec area about the presence or absence of the turtle module
