@@ -63,6 +63,8 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
         p = p.replaceAll(/ +:\n/g, ":\n");
         // Get rid of spaces before closing brackets:
         p = p.replace(/ +([)\]}])/g, "$1");
+        // Get rid of any multiple spaces between words:
+        p = p.replace(/([^ \n])  +([^ ])/g, "$1 $2");
         // Print out full version in message (without escaped \n), to make it easier to diff:
         expect(p, "Actual unescaped:\n" + p).to.equal(fullCode);
     });
@@ -95,12 +97,12 @@ describe("Python round-trip", () => {
     
     const basics = [
         "raise 0\n",
-        "raise 0 + 1\n",
+        "raise 0+1\n",
         "raise 0 and 3\n",
         "raise 0 is not 3\n",
         "raise 0 not in 3\n",
-        "raise (1 + 2 - 3)\n",
-        "raise (1 + 2 - 3) == (4 * 5 / 6)\n",
+        "raise (1+2-3)\n",
+        "raise (1+2-3)==(4*5/6)\n",
         // ** binds tighter than unary -, hence the space before:
         "raise foo ** - 6.7 ** False ** True ** 'bye'\n",
         "try:\n    x = 0\nexcept:\n    x = 1\n",
@@ -123,10 +125,10 @@ def myFunc (param1 , param2):
     global x
     global y
     x , y = param1 , param2
-`, "{uparrow}", `def myFunc (param1 , param2):
+`, "{uparrow}", `def myFunc (param1,param2):
     global x
     global y
-    x , y = param1 , param2
+    x,y = param1,param2
 `);
     });
     it("Handles import and from import", () => {
@@ -138,11 +140,11 @@ from x import y
 from a . b . c import x
 from a . b . c import *
 `, "{uparrow}{uparrow}",`import x
-import a . b . c
+import a.b.c
 from x import *
 from x import y
-from a . b . c import x
-from a . b . c import *
+from a.b.c import x
+from a.b.c import *
 `);
     });
     
@@ -150,7 +152,9 @@ from a . b . c import *
         for (const op of sampleSize(binary_operators, 3)) {
             for (const lhs of sampleSize(terminals, 2)) {
                 for (const rhs of sampleSize(terminals, 3)) {
-                    const code = "raise " + lhs + " " + op + " " + rhs + "\n";
+                    // Keep a space between operands only for keyword operators (they all contains "i")
+                    const operatorSpacing = (op.includes("i")) ? " " : ""; 
+                    const code = "raise " + lhs + operatorSpacing + op + operatorSpacing + rhs + "\n";
                     testRoundTripPasteAndDownload(code);
                 }
             }
@@ -158,7 +162,9 @@ from a . b . c import *
     });
     it("Supports basic n-ary operator combinations", () => {
         for (const op of sampleSize(nary_operators, 5)) {
-            const code = "raise " + sampleSize(terminals, 5).join(" " + op + " ") + "\n";
+            // Keep a space between operands only for keyword operators (they all contains "i")
+            const operatorSpacing = (["and", "or"].includes(op)) ? " " : "";
+            const code = "raise " + sampleSize(terminals, 5).join(operatorSpacing + op + operatorSpacing) + "\n";
             testRoundTripPasteAndDownload(code);
         }
     });
@@ -174,12 +180,12 @@ from a . b . c import *
                         x = -1
                     x = x * x
 `, "", `
-if x > 0:
+if x>0:
     x = 0
     x = 1
 else:
     x = -1
-x = x * x
+x = x*x
 `);
     });
     
@@ -189,7 +195,7 @@ x = x * x
         testRoundTripPasteAndDownload(ifCode);
         const elseCode = "else:\n    x = -9\n";
         // Parameterise, to be able to tell them apart:
-        const elifCode = (x : number) => "elif x == " + x + ":\n    x = -" + x + "\n";
+        const elifCode = (x : number) => "elif x==" + x + ":\n    x = -" + x + "\n";
         
         // Test just the else after if:
         cy.get("body").type("{end}{uparrow}");
