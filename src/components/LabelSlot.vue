@@ -1104,7 +1104,7 @@ export default Vue.extend({
                     else{
                         const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content);
                         const parser = new Parser();
-                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, true).code;
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.
@@ -1140,7 +1140,7 @@ export default Vue.extend({
                         + inputSpanField.textContent.substring(selectionEnd);
                 // part 3: the orignal cursor position is at the end of the copied string, and we add the offset that is generated while parsing the code
                 // so that for example when we copied a non terminated code, the cursor will stay inside the non terminated bit.
-                const newPos = selectionStart + content.length + cursorOffset;
+                const newPos = selectionStart + correctedPastedCode.length + cursorOffset;
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4

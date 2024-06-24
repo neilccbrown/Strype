@@ -1,5 +1,5 @@
 import Compiler from "@/compiler/compiler";
-import { actOnTurtleImport, hasEditorCodeErrors } from "@/helpers/editor";
+import { actOnTurtleImport, hasEditorCodeErrors, trimmedKeywordOperators } from "@/helpers/editor";
 import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
@@ -105,7 +105,7 @@ export default class Parser {
             if(label.showSlots??true){
                 // Record each slots' vertical positions for that label.
                 const currentPosition = output.length;
-                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, true);
+                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition);
                 labelSlotsPositionLengths[labelSlotsIndex] = {
                     slotStarts: slotStartsLengthsAndCode.slotStarts, 
                     slotLengths: slotStartsLengthsAndCode.slotLengths,
@@ -440,7 +440,7 @@ export default class Parser {
         return this.framePositionMap;
     }
 
-    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, niceSpaces?: boolean): LabelSlotPositionsAndCode {
+    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number): LabelSlotPositionsAndCode {
         // To retrieve this information, we procede with the following: 
         // we get the flat map of the slots and operate a consumer at each iteration to retrieve the infos we need
         let code = "";
@@ -463,17 +463,17 @@ export default class Parser {
                 code += flatSlot.code;
             }
             else if(flatSlot.type == SlotType.operator){
-                // an operator, if not blank, is shown in the code and we keep spaces surrounding it
+                // an operator, if not blank, is shown in the code and we keep spaces surrounding it (for keyword operators)
                 // there could be an error on an operator, so we included it in the slot positions
                 if(flatSlot.code.length > 0){
-                    // Add extra 2 characters for the surrounding spaces the optional flag "niceSpaces" is set
-                    const niceSpaceValue = (niceSpaces) ? " " : "";
-                    addSlotInPositionLengths(flatSlot.code.length + ((niceSpaces) ? 2 : 0), flatSlot.id, niceSpaceValue + flatSlot.code + niceSpaceValue, flatSlot.type);
+                    // Add extra 2 characters for the surrounding spaces
+                    const operatorSpace = (trimmedKeywordOperators.includes(flatSlot.code)) ? " " : "";
+                    addSlotInPositionLengths(flatSlot.code.length + 2, flatSlot.id, operatorSpace + flatSlot.code + operatorSpace, flatSlot.type);
                 }
             }
             else{        
                 // that's an editable (code) slot, we get the position and length for that slot
-                addSlotInPositionLengths(flatSlot.code.length, flatSlot.id, flatSlot.code, flatSlot.type);
+                addSlotInPositionLengths(flatSlot.code.trim().length, flatSlot.id, flatSlot.code.trim(), flatSlot.type);
             }
         });
         return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 
