@@ -260,9 +260,10 @@ export default Vue.extend({
                     return;
                 }
                 
-                // If ctrl-enter/cmd-enter is pressed, run the code: 
+                // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
                 if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs.pythonExecAreaComponent) {
-                    (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).runClicked();
+                    ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
+                    ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
                     // Don't then process the keypress for other purposes:
                     return;
                 }
