@@ -313,6 +313,13 @@ export default Vue.extend({
             // Re-scale the Turtle canvas.
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         });
+
+        // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
+        setTimeout(() => {
+            const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos) : ("caret_"+this.appStore.currentFrame.caretPosition+"_of_frame_"+this.appStore.currentFrame.id);
+            document.getElementById(htmlElementToShowId)?.scrollIntoView();
+        }, 1000);
+       
     },
 
     destroyed() {

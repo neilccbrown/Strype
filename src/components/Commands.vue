@@ -233,8 +233,8 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                if (event.repeat) {
-                    // Ignore all repeated keypresses, only process the initial press:
+                if (event.repeat && !(!this.appStore.isEditing &&  ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key))) {
+                    // For all keys except Arrows when not editing, ignore all repeated keypresses, only process the initial press:
                     return;
                 }
 
@@ -282,6 +282,10 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor
                 if (!isEditing && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    event.preventDefault();
+                    
                     if(this.appStore.ignoreKeyEvent){
                         this.appStore.ignoreKeyEvent = false;
                         return;
@@ -299,9 +303,7 @@ export default Vue.extend({
                     else if(event.key == "Home" || event.key == "End"){
                         // For the "home" and "end" key, we move the blue caret to the first or last position of the current main section the caret is in.
                         // This is overriding the natural browser behaviour that scrolls to the top or bottom of the page (at least with Chrome)
-                        event.stopImmediatePropagation();
-                        event.stopPropagation();
-                        event.preventDefault();
+                       
                         // Look for the section we're in
                         const sectionId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
                         // Update the caret to the first/last position within this section
@@ -315,8 +317,6 @@ export default Vue.extend({
                         // At this stage, tab and left/right arrows are handled only if not editing: editing cases are directly handled by LabelSlotsStructure.
                         // We start by getting from the DOM all the available caret and editable slot positions
                         this.appStore.leftRightKey({ key: event.key, isShiftKeyHold: event.shiftKey});
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
                     }
                     return;
                 }

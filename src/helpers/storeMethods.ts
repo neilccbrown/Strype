@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUIID, getMatchingBracket, parseLabelSlotUIID } from "./editor";
 import { nextTick } from "@vue/composition-api";
@@ -500,6 +500,14 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
             return false;
         }
     });
+
+    // If we have managed to load the state, then we might need to make sure the caret is in view
+    if(success){
+        setTimeout(() => {
+            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUIID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : ("caret_"+useStore().currentFrame.caretPosition+"_of_frame_"+useStore().currentFrame.id);
+            document.getElementById(htmlElementToShowId)?.scrollIntoView();
+        }, 1000);
+    }   
     return success;
 };
 
