@@ -362,6 +362,18 @@ export function getActiveContextMenu(): HTMLElement | null {
     return foundNoneHiddenContextMenu as HTMLElement | null;    
 }
 
+export function isContextMenuItemSelected(): boolean {
+    // Helper menu to know if a context menu has an option selected (in other words, the menu is having the focus).
+    // We first look if a menu is active, then if it is, we 
+    const aShowingContextMenu = getActiveContextMenu();
+    if(aShowingContextMenu != null){
+        return (aShowingContextMenu.querySelector("a:focus") != null);
+    }
+    else {
+        return false;
+    }
+}
+
 export function setContextMenuEventClientXY(event: MouseEvent, positionForMenu?: Position): void {
     Object.defineProperty(event, "clientX", {
         value: (positionForMenu?.left != undefined) ? positionForMenu.left: event.pageX,
