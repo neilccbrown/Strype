@@ -371,7 +371,7 @@ export default Vue.extend({
                                 }
                             }
                         }
-                        else if(event.key == " "){
+                        else if(event.key == " " && this.appStore.selectedFrames.length == 0){
                             // If ctrl/meta + space is activated on caret, we add a new functional call frame and trigger the a/c
                             this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
                             this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
