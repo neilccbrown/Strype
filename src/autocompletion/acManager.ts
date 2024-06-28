@@ -9,9 +9,6 @@ import {getMatchingBracket} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 
-let importedAliasedModules: {[alias: string]: string} = {};
-
-
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
 export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) : string {
@@ -160,7 +157,7 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
 
 export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
     // Reset the aliases dictionary
-    importedAliasedModules = {};
+    const importedAliasedModules: {[alias: string]: string} = {};
 
     const soFar : AcResultsWithCategory = {};
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
@@ -188,13 +185,13 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                             const aliasName = (frame.labelSlotsDict[0].slotStructures.fields[j + 1] as BaseSlot).code;
                             if(aliasName.length > 0){
                                 importedAliasedModules[aliasName] = module;
-                                doGetAllExplicitelyImportedItems(frame, aliasName, true, soFar);    
+                                doGetAllExplicitelyImportedItems(frame, aliasName, true, soFar, importedAliasedModules);    
                                 // We already retrieved the alias, so we skip a slot for the next module
                                 j++;
                             }                 
                         }
                         else{
-                            doGetAllExplicitelyImportedItems(frame, module, true, soFar);
+                            doGetAllExplicitelyImportedItems(frame, module, true, soFar, importedAliasedModules);
                         }
                         module = "";
                         continue;
@@ -205,14 +202,14 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
 
             // If the module is empty (which happens when user has only added a frame), we skip it
             if(module.length > 0) {
-                doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar);
+                doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar, importedAliasedModules);
             }
         }
     }
     return soFar;
 }
 
-export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory): void {
+export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, importedAliasedModules: {[alias: string]: string}): void {
     const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
