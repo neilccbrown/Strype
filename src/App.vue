@@ -102,7 +102,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -267,7 +267,7 @@ export default Vue.extend({
         );
 
         window.addEventListener("keydown", (event: KeyboardEvent) => {
-            if(this.appStore.selectedFrames.length > 0 && (event.key == " " || event.key.toLowerCase() == "enter")){
+            if(this.appStore.selectedFrames.length > 0 && (event.key == " " || event.key.toLowerCase() == "enter") && !isContextMenuItemSelected()){
                 // Wait a bit to process keys before showing the context menu
                 setTimeout(() => {
                     this.appStore.isContextMenuKeyboardShortcutUsed = true;
@@ -313,6 +313,13 @@ export default Vue.extend({
             // Re-scale the Turtle canvas.
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         });
+
+        // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
+        setTimeout(() => {
+            const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos) : ("caret_"+this.appStore.currentFrame.caretPosition+"_of_frame_"+this.appStore.currentFrame.id);
+            document.getElementById(htmlElementToShowId)?.scrollIntoView();
+        }, 1000);
+       
     },
 
     destroyed() {

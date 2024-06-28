@@ -101,7 +101,8 @@
         "gdriveConnectionSaveToUnloadPageFailed":"Could not connect to Google Drive when trying to save the current project.Try to sign-in again to save the current project before leaving Strype.",
         "gdrivePermissionsNotMet":"Strype requires at least one access permission to use Googe Drive.",
         "gdriveReadOnly":"This Drive file is read-only, syncing to Drive has been turned off.",
-        "gdriveWrongFile":"Please select a Strype file (extension \".spy\")."
+        "gdriveWrongFile":"Please select a Strype file (extension \".spy\").",
+        "unexpectedCharsPython": "unexpected character(s)"
     },
     "appMessage": {
         "editorFileUpload":"Uploading your file to the editor...",

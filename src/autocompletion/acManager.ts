@@ -156,6 +156,9 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
 }
 
 export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
+    // Reset the aliases dictionary
+    const importedAliasedModules: {[alias: string]: string} = {};
+
     const soFar : AcResultsWithCategory = {};
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
     loopImportFrames: for (let i = 0; i < imports.length; i++) {
@@ -168,14 +171,28 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
             for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
                 module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
                 if (j < frame.labelSlotsDict[0].slotStructures.operators.length) {
-                    // Should be a dot or a comma (for simple imports):
-                    if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== "." && (!isSimpleImport || (isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "," ))) {
+                    // Should be a dot or a comma or "as" (for simple imports):
+                    if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== "." && (!isSimpleImport || (isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "," && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "as"))) {
                         // Error; ignore this import
                         continue loopImportFrames;
                     }
-                    else if(isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code === "," ){
+                    else if(isSimpleImport && (frame.labelSlotsDict[0].slotStructures.operators[j].code === "," || frame.labelSlotsDict[0].slotStructures.operators[j].code === "as")){
                         // When we import several modules at once we process them one by one
-                        doGetAllExplicitelyImportedItems(frame, module, true, soFar);
+                        if(frame.labelSlotsDict[0].slotStructures.operators[j].code == "as") {
+                            // If we have an alias, we feed the module alias dictionary so we can know what module
+                            // the alias refers to, and we use the name of alias as module for a/c.
+                            // If no alias name is provided, we don't add the module/alias at all
+                            const aliasName = (frame.labelSlotsDict[0].slotStructures.fields[j + 1] as BaseSlot).code;
+                            if(aliasName.length > 0){
+                                importedAliasedModules[aliasName] = module;
+                                doGetAllExplicitelyImportedItems(frame, aliasName, true, soFar, importedAliasedModules);    
+                                // We already retrieved the alias, so we skip a slot for the next module
+                                j++;
+                            }                 
+                        }
+                        else{
+                            doGetAllExplicitelyImportedItems(frame, module, true, soFar, importedAliasedModules);
+                        }
                         module = "";
                         continue;
                     }
@@ -185,14 +202,14 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
 
             // If the module is empty (which happens when user has only added a frame), we skip it
             if(module.length > 0) {
-                doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar);
+                doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar, importedAliasedModules);
             }
         }
     }
     return soFar;
 }
 
-export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory): void {
+export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, importedAliasedModules: {[alias: string]: string}): void {
     const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
@@ -215,10 +232,12 @@ export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: str
     }
     else {
         if(isSimpleImport){
-            if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(module) == 0)){
+            // The module name might be an alias: we need to get the right module to retrieve the data.
+            const realModule = (importedAliasedModules[module]) ? importedAliasedModules[module] : module;
+            if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)){
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
-                if(pythonBuiltins[module]){
-                    const moduleDoc = (pythonBuiltins[module].documentation ?? ""); 
+                if(pythonBuiltins[realModule]){
+                    const moduleDoc = (pythonBuiltins[realModule].documentation ?? ""); 
                     const imports = soFar[importedModulesCategory]??[];
                     imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
                     soFar[importedModulesCategory] = imports;
@@ -308,7 +327,7 @@ function getParamPrompt(params: string[], targetParamIndex: number, lastParam: b
 }
 
 // Gets the parameter name prompt for the given autocomplete details (context+token)
-// for the given parameter.
+// for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
 export function calculateParamPrompt(context: string, token: string, paramIndex: number, lastParam: boolean) : string {
     if (!context) {
         // If context is blank, we know that the function must be one of:
@@ -327,7 +346,7 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
                 return getParamPrompt(builtinFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
             }
             else {
-                return "";
+                return "\u200b";
             }
         }
         const importedFunc = Object.values(getAllExplicitlyImportedItems()).flat().find((f) => f.acResult === token);
@@ -336,12 +355,12 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
                 return getParamPrompt(importedFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
             }
             else {
-                return "";
+                return "\u200b";
             }
         }
 
         // Didn't find it anywhere, so we just don't know:
-        return "";
+        return "\u200b";
     }
     else {
         // If the context matches an imported module, we can look it up there.        
@@ -354,7 +373,7 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
         // doesn't have an inspect module to reflect params
 
         // So unfortunately, we just can't help with param names.
-        return "";
+        return "\u200b";
     }
 
 }

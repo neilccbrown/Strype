@@ -16,7 +16,7 @@
                         <div :id="commandsContainerUUID" class="command-tab-content" >
                             <div id="addFramePanel">
                                 <div class="frameCommands">
-                                    <transition-group name="list" tag="p">
+                                    <p>
                                         <AddFrameCommand
                                             v-for="addFrameCommand in addFrameCommands"
                                             :id="addFrameCommandUIID(addFrameCommand[0].type.type)"
@@ -36,7 +36,7 @@
                                                 : 0
                                             "
                                         />
-                                    </transition-group>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -233,8 +233,8 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                if (event.repeat) {
-                    // Ignore all repeated keypresses, only process the initial press:
+                if (event.repeat && !(!this.appStore.isEditing &&  ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key))) {
+                    // For all keys except Arrows when not editing, ignore all repeated keypresses, only process the initial press:
                     return;
                 }
 
@@ -260,9 +260,10 @@ export default Vue.extend({
                     return;
                 }
                 
-                // If ctrl-enter/cmd-enter is pressed, run the code: 
+                // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
                 if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs.pythonExecAreaComponent) {
-                    (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).runClicked();
+                    ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
+                    ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
                     // Don't then process the keypress for other purposes:
                     return;
                 }
@@ -281,6 +282,10 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor
                 if (!isEditing && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    event.preventDefault();
+                    
                     if(this.appStore.ignoreKeyEvent){
                         this.appStore.ignoreKeyEvent = false;
                         return;
@@ -298,9 +303,7 @@ export default Vue.extend({
                     else if(event.key == "Home" || event.key == "End"){
                         // For the "home" and "end" key, we move the blue caret to the first or last position of the current main section the caret is in.
                         // This is overriding the natural browser behaviour that scrolls to the top or bottom of the page (at least with Chrome)
-                        event.stopImmediatePropagation();
-                        event.stopPropagation();
-                        event.preventDefault();
+                       
                         // Look for the section we're in
                         const sectionId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
                         // Update the caret to the first/last position within this section
@@ -314,8 +317,6 @@ export default Vue.extend({
                         // At this stage, tab and left/right arrows are handled only if not editing: editing cases are directly handled by LabelSlotsStructure.
                         // We start by getting from the DOM all the available caret and editable slot positions
                         this.appStore.leftRightKey({ key: event.key, isShiftKeyHold: event.shiftKey});
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
                     }
                     return;
                 }
@@ -370,7 +371,7 @@ export default Vue.extend({
                                 }
                             }
                         }
-                        else if(event.key == " "){
+                        else if(event.key == " " && this.appStore.selectedFrames.length == 0){
                             // If ctrl/meta + space is activated on caret, we add a new functional call frame and trigger the a/c
                             this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
                             this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
@@ -585,7 +586,6 @@ export default Vue.extend({
     color:#666666;
 }
 
-// The transition group places the "add frame" commands inside a p element
 .frameCommands p {
     display: flex;
     flex-direction: column;
@@ -614,15 +614,6 @@ export default Vue.extend({
 .cmd-button {
     padding: 1px 6px 1px 6px !important;
     margin-top: 5px;
-}
-
-.list-enter-active, .list-leave-active {
-  transition: all .5s;
-}
-
-.list-enter, .list-leave-to {
-  opacity: 0;
-  transform: translate3d(3);
 }
 
 .commands-tab {

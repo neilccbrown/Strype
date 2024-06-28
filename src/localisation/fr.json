@@ -61,7 +61,8 @@
         "gdriveCantCreateStrypeFolder":"Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive.",
         "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
         "wrongPythonStructCopied":"impossible de coller else/elif/except/finally suivi d'autre contenu en une fois",
-        "incompatiblePythonStrypeSection":"le code Python copié ne peut pas être collé dans la section actuelle de Strype"
+        "incompatiblePythonStrypeSection":"le code Python copié ne peut pas être collé dans la section actuelle de Strype",
+        "unexpectedCharsPython": "caractère(s) inattendu(s)"
     },
     "buttonLabel":{
         "undo":"Annuler",

@@ -79,7 +79,7 @@ import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, doGetAllExplicitelyImportedItems} from "@/autocompletion/acManager";
 import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext, getPythonCodeForTypeAndDocumentation } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
-import { CustomEventTypes } from "@/helpers/editor";
+import { CustomEventTypes, parseLabelSlotUIID } from "@/helpers/editor";
 import { makeFrame } from "@/helpers/pythonToFrames";
 import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 
@@ -196,7 +196,11 @@ export default Vue.extend({
             this.acRequestIndex += 1;
             this.acResults = getAvailableModulesForImport();
             this.showFunctionBrackets = false;
-            this.showSuggestionsAC(token);
+            // Only show imports if the slot isn't following "as" (so we need to check the operator)
+            const {frameId, slotId} = parseLabelSlotUIID(this.slotId);
+            if(parseInt(slotId) == 0 || (this.appStore.frameObjects[frameId].labelSlotsDict[0].slotStructures.operators[parseInt(slotId) - 1] as BaseSlot).code != "as"){
+                this.showSuggestionsAC(token);
+            }
         },
 
         updateACForImportFrom(token: string, module: string) : void {
@@ -238,7 +242,7 @@ export default Vue.extend({
                             // used to retrieve a module content elsewhere in the code.
                             const moduleAcResWithCat : AcResultsWithCategory = {};
                             const mockFromImportModuleFrame = makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: {fields: [{code: context}], operators: []}}, 1: {slotStructures: {fields: [{code: "*"}], operators: []}}});
-                            doGetAllExplicitelyImportedItems(mockFromImportModuleFrame, context, false, moduleAcResWithCat);
+                            doGetAllExplicitelyImportedItems(mockFromImportModuleFrame, context, false, moduleAcResWithCat, {});
                             items = moduleAcResWithCat[context];
                         }
                         else{
