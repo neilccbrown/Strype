@@ -242,7 +242,7 @@ export default Vue.extend({
                             // used to retrieve a module content elsewhere in the code.
                             const moduleAcResWithCat : AcResultsWithCategory = {};
                             const mockFromImportModuleFrame = makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: {fields: [{code: context}], operators: []}}, 1: {slotStructures: {fields: [{code: "*"}], operators: []}}});
-                            doGetAllExplicitelyImportedItems(mockFromImportModuleFrame, context, false, moduleAcResWithCat);
+                            doGetAllExplicitelyImportedItems(mockFromImportModuleFrame, context, false, moduleAcResWithCat, {});
                             items = moduleAcResWithCat[context];
                         }
                         else{
