@@ -152,6 +152,7 @@ export enum DraggableGroupTypes {
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
+    dragAndDrop = "dnd", // this is a special case for handling the UI with drag and drop, see Frame.vue (hideCaretAtClick())
     none = "none",
 }
 

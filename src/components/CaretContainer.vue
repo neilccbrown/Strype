@@ -24,6 +24,7 @@
             :class="{navigationPosition: true, caret:!this.appStore.isDraggingFrame}"
             :id="caretUIID"
             :isInvisible="isInvisible"
+            :isTransparentForDnD="isTransparentForDnD"
             v-blur="isCaretBlurred"
         />
     </div>
@@ -75,7 +76,11 @@ export default Vue.extend({
             // The caret is only visible when editing is off, 
             // and either one frame is currently selected 
             // OR a frame is hovered during drag & drop of frames
-            return !(!this.isEditing && (this.caretVisibility === this.caretAssignedPosition || this.appStore.isDraggingFrame)); 
+            return !(!this.isEditing && (this.caretVisibility === this.caretAssignedPosition || this.caretVisibility == CaretPosition.dragAndDrop) || this.appStore.isDraggingFrame); 
+        },
+
+        isTransparentForDnD(): boolean {
+            return (this.caretVisibility == CaretPosition.dragAndDrop);
         },
 
         isStaticCaretContainer(): boolean {
@@ -131,7 +136,7 @@ export default Vue.extend({
 
     updated() {
         // Ensure the caret (during navigation) is visible in the page viewport
-        if(this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
+        if(this.caretVisibility !== CaretPosition.none  && this.caretVisibility != CaretPosition.dragAndDrop && this.caretVisibility === this.caretAssignedPosition) {
             const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
             const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
             //is caret outside the viewport?
@@ -141,7 +146,7 @@ export default Vue.extend({
         }  
         
         // Close the context menu if there is edition or loss of blue caret (for when a frame context menu is present, see Frame.vue)
-        if(this.isEditing || this.caretAssignedPosition == CaretPosition.none){
+        if(this.isEditing || this.caretAssignedPosition == CaretPosition.none || this.caretAssignedPosition == CaretPosition.dragAndDrop){
             ((this.$refs.menu as unknown) as VueContextConstructor).close();
         }        
     },
