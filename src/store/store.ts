@@ -2997,8 +2997,13 @@ export const useStore = defineStore("app", {
                 indexOfFirstSelected += firstSelctedIncrement;
             });
 
-            // In the end, unselect all frames
+            // In the end, unselect all frames and make sure we place the frame cursor properly
             if(eventType !== "added") {
+                if(this.currentFrame.caretPosition == CaretPosition.body){
+                    // The only issue for the caret when moving several frames is when the caret was at the "body" position:
+                    // as the parent has changed, we need to set the new parent's body position for the caret.
+                    Vue.set(this.currentFrame, "id", this.frameObjects[this.selectedFrames[0]].parentId);
+                }
                 this.makeSelectedFramesVisible();
                 this.unselectAllFrames();
                 //save the state changes for undo/redo
