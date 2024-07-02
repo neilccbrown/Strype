@@ -1,5 +1,5 @@
 <template>
-    <div :class="{invisible: isInvisible, disabled: isPythonExecuting}"></div>
+    <div :class="{invisible: isInvisible, transparent: isTransparentForDnD, disabled: isPythonExecuting}"></div>
 </template>
 
 <script lang="ts">
@@ -20,6 +20,7 @@ export default Vue.extend({
 
     props: {
         isInvisible: Boolean,
+        isTransparentForDnD: Boolean,
     },
 
     computed:{
@@ -54,5 +55,9 @@ export default Vue.extend({
 .invisible {
     background-color: transparent !important;
     height: 0px;
+}
+
+.transparent {
+    background-color: transparent !important;
 }
 </style>

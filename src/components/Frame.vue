@@ -639,13 +639,19 @@ export default Vue.extend({
                 return;
             }
 
-            // Force the caret to become invisible at click. That is required for being able to show a drag and drop "image" that 
+            // If we are currently running the code, we cannot do drag and drop, therefore there is no need to hide the caret.
+            if(this.isPythonExecuting){
+                return;
+            }
+
+            // Force the caret to become "transparent" at click. That is required for being able to show a drag and drop "image" that 
             // doesn't contain the blue caret if we drag the frame which currently holds the caret. The caret visibility will be restored
             // either when the drop of a drag and drop happens or when click is notified (cf. toggleCaret()) if the drag and drop had not be performed.
-            // Note: we do it directly in JS as reactive change via store is too late for the rendering.
+            // Note: we do it directly in JS as reactive change via store is too late for the rendering, and we do not use the same styling than when
+            // the caret is invisible (for example when clicking on a slot) to avoid issues with the loop of mouse events when the DOM changes.
             for(const navigationCaret of document.getElementsByClassName("caret")){
                 if(!navigationCaret.classList.contains("invisible")){
-                    navigationCaret.classList.add("invisible");
+                    navigationCaret.classList.add("transparent");
                 }
             }
 
@@ -653,17 +659,11 @@ export default Vue.extend({
             Vue.set(
                 this.appStore.frameObjects[this.appStore.currentFrame.id],
                 "caretVisibility",
-                CaretPosition.none
+                CaretPosition.dragAndDrop
             );
         },
 
         toggleCaret(event: MouseEvent): void {
-            // When the event is called on "click" AND the shift key is hold
-            // we do nothing because that will be already handled in the mouseup event.
-            if(event.type == "click" && event.shiftKey){
-                return;
-            }
-
             const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
 
             // This checks the propagated click events, and prevents the parent frame to handle the event as well. 
@@ -676,21 +676,6 @@ export default Vue.extend({
                 frameDivParent = frameDivParent.parentElement as HTMLDivElement;
             }            
             if(frameDivParent.id !== this.uiid){
-                return;
-            }
-
-            if(event.type == "mouseup" && !event.shiftKey){
-                if(this.isPythonExecuting){
-                // A workaround for a very annoying side effect of cancelling the drag and drop of frames when Python is running:
-                // some attempt of DnD in different groups would just die, without giving back a caret.
-                // Therefore, to make sure we always have a frame caret showing up eventually, we wait a bit to see if there is no caret visible,
-                // and if so trigger the caret toggle.
-                    setTimeout(() => {
-                        if(!document.querySelector(".caret.disabled:not(.invisible)")){
-                            this.changeToggledCaretPosition(event.clientY, frameDivParent);
-                        }
-                    }, 500);
-                }
                 return;
             }
 
@@ -786,7 +771,6 @@ export default Vue.extend({
                     }
                     return;
                 }
-                
                 this.appStore.toggleCaret({id: newCaretPosition.frameId, caretPosition: newCaretPosition.caretPosition as CaretPosition});
             }
         },
