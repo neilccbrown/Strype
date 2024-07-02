@@ -664,6 +664,11 @@ export default Vue.extend({
         },
 
         toggleCaret(event: MouseEvent): void {
+            // When a mouseup event happens during drag and drop, we ignore the caret change, we handle with the D&D mechanism.
+            if(event.type == "mouseup" && this.isDragging){
+                return;
+            }
+
             const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
 
             // This checks the propagated click events, and prevents the parent frame to handle the event as well. 
