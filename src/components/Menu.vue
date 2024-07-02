@@ -624,27 +624,30 @@ export default Vue.extend({
         },
 
         handleKeyEvent(event: KeyboardEvent){
-            this.appStore.ignoreKeyEvent = true;
+            // The menu must be visible (open) when handle events (we may have focus on the menu for example when click on "undo", but the menu is closed)
+            if(this.showMenu){
+                this.appStore.ignoreKeyEvent = true;
 
-            if(event.type == "keyup" && event.key == "Enter"){
+                if(event.type == "keyup" && event.key == "Enter"){
                 // When the enter key is hit, we trigger the action bound to the click for the selected menu element
                 // and we cancel the natural key up event so it does not get sent to the editor (otherwise, will add a blank frame)
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                event.stopPropagation();
-                (document.activeElement as HTMLElement).click();
-            }
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    (document.activeElement as HTMLElement).click();
+                }
 
 
-            if(event.type == "keydown" && ["Tab", "ArrowDown", "ArrowUp"].includes(event.key)){
+                if(event.type == "keydown" && ["Tab", "ArrowDown", "ArrowUp"].includes(event.key)){
                 // When the tab key is hit, we handle the menu entry selection ourselves, because the default behaviour won't do it properly.
                 // We loop through the available elements that can have focus. Note the modulo is done here based on this (https://web.archive.org/web/20090717035140if_/javascript.about.com/od/problemsolving/a/modulobug.htm)
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                event.stopPropagation();
-                const newTabindexValue = (this.currentTabindexValue +  ((event.shiftKey || event.key == "ArrowUp") ? -1 : 1));
-                this.currentTabindexValue = ((newTabindexValue % this.retrievedTabindexesCount) + this.retrievedTabindexesCount) % this.retrievedTabindexesCount;
-                (document.querySelector(".bm-menu  [tabindex='" + this.currentTabindexValue + "']") as HTMLElement).focus();
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    const newTabindexValue = (this.currentTabindexValue +  ((event.shiftKey || event.key == "ArrowUp") ? -1 : 1));
+                    this.currentTabindexValue = ((newTabindexValue % this.retrievedTabindexesCount) + this.retrievedTabindexesCount) % this.retrievedTabindexesCount;
+                    (document.querySelector(".bm-menu  [tabindex='" + this.currentTabindexValue + "']") as HTMLElement).focus();
+                }
             }
         },
 
