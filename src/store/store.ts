@@ -2999,10 +2999,18 @@ export const useStore = defineStore("app", {
 
             // In the end, unselect all frames and make sure we place the frame cursor properly
             if(eventType !== "added") {
-                if(this.currentFrame.caretPosition == CaretPosition.body){
-                    // The only issue for the caret when moving several frames is when the caret was at the "body" position:
-                    // as the parent has changed, we need to set the new parent's body position for the caret.
-                    Vue.set(this.currentFrame, "id", this.frameObjects[this.selectedFrames[0]].parentId);
+                if(!isJointFrame && !this.selectedFrames.includes(this.currentFrame.id)){
+                    // When the selection has been made "upwards", the caret above the selection can either be at the body of the parent
+                    // the selection was, or at below the frame just above the selection.
+                    // When we move the selection, the caret position needs to be updated regarding where we moved the selection (either below the frame under
+                    // which we dropped the selection, or the parent's body in which we dropped the selection).
+                    const selectionChildIndexInTarget = this.frameObjects[this.frameObjects[this.selectedFrames[0]].parentId].childrenIds
+                        .findIndex((frameId) => frameId == this.selectedFrames[0]);
+                    const targetCursorId = (selectionChildIndexInTarget > 0) 
+                        ? this.frameObjects[this.frameObjects[this.selectedFrames[0]].parentId].childrenIds[selectionChildIndexInTarget - 1]
+                        : this.frameObjects[this.selectedFrames[0]].parentId;
+                    const targetCursorPosition = (selectionChildIndexInTarget > 0) ? CaretPosition.below : CaretPosition.body;
+                    this.currentFrame = {id: targetCursorId, caretPosition: targetCursorPosition};
                 }
                 this.makeSelectedFramesVisible();
                 this.unselectAllFrames();
