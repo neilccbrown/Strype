@@ -82,6 +82,7 @@ import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUIID } from "@/helpers/editor";
 import { makeFrame } from "@/helpers/pythonToFrames";
 import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
+import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 
 declare const Sk: any;
 
@@ -245,6 +246,16 @@ export default Vue.extend({
                             doGetAllExplicitelyImportedItems(mockFromImportModuleFrame, context, false, moduleAcResWithCat, {});
                             items = moduleAcResWithCat[context];
                         }
+                        /* IFTRUE_isMicrobit */
+                        else if(microbitPythonAPI[("microbit." + context) as keyof typeof microbitPythonAPI]){
+                            // We could retrieve directly from the JSON object, but for sanity, let's employ the same mechanism
+                            // used to retrieve a module content elsewhere in the code.
+                            const moduleAcResWithCat : AcResultsWithCategory = {};
+                            const mockFromImportModuleFrame = makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: {fields: [{code: "microbit." + context}], operators: []}}, 1: {slotStructures: {fields: [{code: "*"}], operators: []}}});
+                            doGetAllExplicitelyImportedItems(mockFromImportModuleFrame, "microbit." + context, false, moduleAcResWithCat, {});
+                            items = moduleAcResWithCat["microbit." + context];
+                        }
+                        /* FITRUE_isMicrobit */
                         else{
                             items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
                                 acResult: s,
