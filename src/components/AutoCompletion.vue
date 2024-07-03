@@ -220,6 +220,11 @@ export default Vue.extend({
             if (token === null) {
                 this.showSuggestionsAC("");
             }
+            else if (context !== "" && imported[context as keyof typeof imported]) {
+                const items = imported[context as keyof typeof imported];
+                this.acResults = {[context]: items};
+                this.showSuggestionsAC(token);
+            }
             else if (context !== "") {
                 // There is context, ask Skulpt for a dir() of that context
                 const parser = new Parser();
@@ -235,27 +240,20 @@ export default Vue.extend({
                     if (ourAcRequest == this.acRequestIndex) {
                         // If the context is given and that's a first level context (i.e. module) we retrieve the a/c content from our generated API Json file.
                         // Otherwise, we get the content via Skulpt.
-                        let items: AcResultType[] = [];
-                        if (imported[context as keyof typeof imported]) {
-                            items = imported[context as keyof typeof imported];
-                            console.log("Found items: " + JSON.stringify(items));
-                        }
-                        else{
-                            items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
-                                acResult: s,
-                                documentation: "",
-                                type: [],
-                                version: 0,
-                            })) as AcResultType[];                       
+                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
+                            acResult: s,
+                            documentation: "",
+                            type: [],
+                            version: 0,
+                        })) as AcResultType[];                       
                               
-                            for (const item of items) {
-                                const codeForDocs = getPythonCodeForTypeAndDocumentation(userCode, context + "." + item.acResult);
-                                await Sk.misceval.asyncToPromise(function () {
-                                    return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
-                                });
-                                item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
-                                item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
-                            }
+                        for (const item of items) {
+                            const codeForDocs = getPythonCodeForTypeAndDocumentation(userCode, context + "." + item.acResult);
+                            await Sk.misceval.asyncToPromise(function () {
+                                return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
+                            });
+                            item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
+                            item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
                         }                      
 
                         if (ourAcRequest == this.acRequestIndex) {
