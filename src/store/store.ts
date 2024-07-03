@@ -1937,12 +1937,13 @@ export const useStore = defineStore("app", {
             if (this.selectedFrames.length > 0 && frame.allowChildren) {
                 this.isWrappingFrame = true;
                 this.copySelection();
-                //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
-                this.deleteFrames("Delete");
+                // For deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
+                this.deleteFrames("Delete", true);
                 this.pasteSelection(
                     {
                         clickedFrameId: newFrame.id,
                         caretPosition: CaretPosition.body,
+                        ignoreStateBackup: true,
                     }
                 );
                 // Find the frame before, if any:
@@ -2553,7 +2554,7 @@ export const useStore = defineStore("app", {
 
         // This method can be used to copy the selected frames to a position.
         // This can be a paste event or a duplicate event.
-        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}) {
+        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}, ignoreStateBackup?: boolean) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             // -100 is chosen so that TS won't complain for non-initialised variable
             let newIndex = payload.newIndex??-100;
@@ -2633,8 +2634,10 @@ export const useStore = defineStore("app", {
                     ));
             }
 
-            //save state changes
-            this.saveStateChanges(stateBeforeChanges);
+            //save state changes unless requested not to
+            if(!ignoreStateBackup) {
+                this.saveStateChanges(stateBeforeChanges);
+            }
         
             this.unselectAllFrames();
             
@@ -2687,7 +2690,7 @@ export const useStore = defineStore("app", {
             );
         },
 
-        pasteSelection(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
+        pasteSelection(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const areCopiedJointFrames = this.copiedFrames[this.copiedSelectionFrameIds[0]].frameType.isJointFrame;
             
@@ -2737,7 +2740,8 @@ export const useStore = defineStore("app", {
                 {
                     newParentId: pasteToParentId,
                     newIndex: index,
-                }
+                },
+                payload.ignoreStateBackup
             );
         },
 
