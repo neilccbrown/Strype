@@ -59,7 +59,7 @@ const checkAddedValues = (obj: {[id: string]: any}, result: ObjectPropertyDiff[]
         const objValue = obj[objProperty];
         
         if(typeof objValue === "object") {
-            //if we have an emty array/object we save it directly,
+            //if we have an empty array/object we save it directly,
             //otherwise, we check deeper recursively
             if(Object.entries(objValue).length == 0){
                 result.push({propertyPathWithArrayFlag: path + pathSeparator + objProperty, value: objValue});
