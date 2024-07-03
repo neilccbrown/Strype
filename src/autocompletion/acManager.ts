@@ -155,7 +155,7 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     }
 }
 
-export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
+export function getAllExplicitlyImportedItems(context: string) : AcResultsWithCategory {
     // Reset the aliases dictionary
     const importedAliasedModules: {[alias: string]: string} = {};
 
@@ -165,7 +165,8 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
         const frame = imports[i];
         if (!frame.isDisabled && (frame.frameType.type === AllFrameTypesIdentifier.fromimport || frame.frameType.type === AllFrameTypesIdentifier.import)) {
             // We need to distinguish 2 cases: when explicit imports are done with "from...import..." or just "import...".
-            // In the latter, we add the module under the section "Imported modules" in the A/C.
+            // In the latter, if context is empty, we add the module under the section "Imported modules" in the A/C.
+            // Otherwise we only add it if the module matches the context.
             const isSimpleImport = (frame.frameType.type === AllFrameTypesIdentifier.import);
             let module = "";
             for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
@@ -185,13 +186,13 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
                             const aliasName = (frame.labelSlotsDict[0].slotStructures.fields[j + 1] as BaseSlot).code;
                             if(aliasName.length > 0){
                                 importedAliasedModules[aliasName] = module;
-                                doGetAllExplicitelyImportedItems(frame, aliasName, true, soFar, importedAliasedModules);    
+                                doGetAllExplicitlyImportedItems(frame, aliasName, true, soFar, context, importedAliasedModules);    
                                 // We already retrieved the alias, so we skip a slot for the next module
                                 j++;
                             }                 
                         }
                         else{
-                            doGetAllExplicitelyImportedItems(frame, module, true, soFar, importedAliasedModules);
+                            doGetAllExplicitlyImportedItems(frame, module, true, soFar, context, importedAliasedModules);
                         }
                         module = "";
                         continue;
@@ -202,15 +203,16 @@ export function getAllExplicitlyImportedItems() : AcResultsWithCategory {
 
             // If the module is empty (which happens when user has only added a frame), we skip it
             if(module.length > 0) {
-                doGetAllExplicitelyImportedItems(frame, module, isSimpleImport, soFar, importedAliasedModules);
+                doGetAllExplicitlyImportedItems(frame, module, isSimpleImport, soFar, context, importedAliasedModules);
             }
         }
     }
     return soFar;
 }
 
-export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, importedAliasedModules: {[alias: string]: string}): void {
+function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}): void {
     const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
+    console.log("Getting imports for module " + module + " context " + context + " simple " + isSimpleImport + " aliases " + JSON.stringify(importedAliasedModules));
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
         // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
@@ -231,15 +233,15 @@ export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: str
         /* FITRUE_isPurePython */
     }
     else {
-        if(isSimpleImport){
-            // The module name might be an alias: we need to get the right module to retrieve the data.
-            const realModule = (importedAliasedModules[module]) ? importedAliasedModules[module] : module;
-            if(soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)){
+        // The module name might be an alias: we need to get the right module to retrieve the data.
+        const realModule = (importedAliasedModules[module]) ? importedAliasedModules[module] : module;
+        if(isSimpleImport && context != module) {
+            if (soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)) {
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
-                if(pythonBuiltins[realModule]){
-                    const moduleDoc = (pythonBuiltins[realModule].documentation ?? ""); 
-                    const imports = soFar[importedModulesCategory]??[];
-                    imports.push({acResult: module, documentation: moduleDoc, type:["module"], version: 0});
+                if (pythonBuiltins[realModule]) {
+                    const moduleDoc = (pythonBuiltins[realModule].documentation ?? "");
+                    const imports = soFar[importedModulesCategory] ?? [];
+                    imports.push({acResult: module, documentation: moduleDoc, type: ["module"], version: 0});
                     soFar[importedModulesCategory] = imports;
                 }
             }
@@ -250,24 +252,29 @@ export function doGetAllExplicitelyImportedItems(frame: FrameObject, module: str
             let allItems : AcResultType[] = [];
 
             /* IFTRUE_isMicrobit */
-            const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
+            const allMicrobitItems : AcResultType[] = microbitPythonAPI[realModule as keyof typeof microbitPythonAPI] as AcResultType[];
             if (allMicrobitItems) {
                 allItems = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
             }
             /* FITRUE_isMicrobit */
 
             /* IFTRUE_isPurePython */
-            const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+            const allSkulptItems : AcResultType[] = skulptPythonAPI[realModule as keyof typeof skulptPythonAPI] as AcResultType[];
             if (allSkulptItems) {
                 allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
             }
             /* FITRUE_isPurePython */
         
             // Find the relevant item from allItems (if it exists):
-            for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                const item = allItems.find((ac) => ac.acResult === (f as BaseSlot).code.trim());
-                if (item) {
-                    soFar[module].push(item);
+            if (isSimpleImport) {
+                soFar[module].push(...allItems);
+            }
+            else {
+                for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
+                    const item = allItems.find((ac) => ac.acResult === (f as BaseSlot).code.trim());
+                    if (item) {
+                        soFar[module].push(item);
+                    }
                 }
             }
         }
@@ -349,7 +356,7 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
                 return "\u200b";
             }
         }
-        const importedFunc = Object.values(getAllExplicitlyImportedItems()).flat().find((f) => f.acResult === token);
+        const importedFunc = Object.values(getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token);
         if (importedFunc !== undefined) {
             if (importedFunc.params) {
                 return getParamPrompt(importedFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
