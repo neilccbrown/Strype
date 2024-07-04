@@ -500,13 +500,7 @@ describe("Modules", () => {
     });
     
     it("Offers auto-completion for imported modules", () => {
-        if (Cypress.env("mode") == "microbit") {
-            // This test is currently failing in microbit because we can't ask Skulpt for the contents
-            // of imported modules.  It will need more work, so for now we skip it.
-            // TODO make this work on microbit
-            return;
-        }
-        
+        // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON        
         focusEditorAC();
         // Go up to imports and add an import frame:
         cy.get("body").type("{uparrow}{uparrow}i");
@@ -526,7 +520,7 @@ describe("Modules", () => {
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
-            checkExactlyOneItem(acIDSel, "time", "sleep()");
+            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") === "microbit" ? "sleep(seconds)" : "sleep()");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "AssertionError");
             // Type first letter of the target:
@@ -718,11 +712,7 @@ describe("Nested modules", () => {
     const targetFunctionWithParam = Cypress.env("mode") == "microbit" ? "get_x()" : "urlopen(url)";
     
     it("Offers auto-completion for modules with names a.b when imported as a.b", () => {
-        if (Cypress.env("mode") == "microbit") {
-            // This doesn't work on microbit because we can't dynamically ask
-            // Skulpt for the members of accelerometer.
-            return;
-        }
+        // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON
         focusEditorAC();
         // Go up to imports and add an import frame:
         cy.get("body").type("{uparrow}{uparrow}i");
@@ -807,6 +797,67 @@ describe("Nested modules", () => {
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             });
         }
+    });
+});
+
+describe("Imported items", () => {
+    const targetModule = "time";
+    const targetFunction = Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()";
+
+    it("Doesn't offer auto-complete when module is not imported", () => {
+        focusEditorAC();
+        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            // Should show nothing available if we haven't imported the module:
+            checkNoneAvailable(acIDSel);
+            checkNoItems(acIDSel, targetFunction);
+        }, true);
+    });
+
+    it("Offers auto-complete when module is imported", () => {
+        focusEditorAC();
+        // Go up to imports and add an import frame:
+        cy.get("body").type("{uparrow}{uparrow}i");
+        cy.wait(500);
+        // Type whole module as one item:
+        cy.get("body").type(targetModule);
+        cy.get("body").type("{rightarrow}");
+        // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            // Should show because it's imported:
+            checkExactlyOneItem(acIDSel, targetModule, targetFunction);
+            checkNoItems(acIDSel, "abs");
+        });
+    });
+
+    it("Doesn't offer auto-complete on original name when module is imported using as", () => {
+        focusEditorAC();
+        // Go up to imports and add an import frame:
+        cy.get("body").type("{uparrow}{uparrow}i");
+        cy.wait(500);
+        // Space bar alone should give us the "as", so this imports as "t":
+        cy.get("body").type(targetModule + " t{rightarrow}");
+        // Back down to main body, add a function frame and type "<module>." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            // Should show nothing available if we haven't imported the module itself, only used a from:
+            checkNoneAvailable(acIDSel);
+            checkNoItems(acIDSel, targetFunction);
+        }, true);
+        // Then if we delete back to "t" and type ".":
+        cy.get("body").type("{backspace}{backspace}{backspace}{backspace}.{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            // Should show because we're using the correct alias now:
+            checkExactlyOneItem(acIDSel, "t", targetFunction);
+            checkNoItems(acIDSel, "abs");
+        });
     });
 });
 

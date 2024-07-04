@@ -82,7 +82,7 @@ function addFrame(frame: FrameObject, s: CopyState) : CopyState {
 }
 
 // Makes a basic frame object with the given type and slots, and dummy/default values for all other fields
-export function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) : FrameObject {
+function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) : FrameObject {
     return {
         frameType : getFrameDefType(type),
         caretVisibility: CaretPosition.none,

@@ -71,17 +71,15 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier} from "@/types/types";
+import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, doGetAllExplicitelyImportedItems} from "@/autocompletion/acManager";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
 import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext, getPythonCodeForTypeAndDocumentation } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUIID } from "@/helpers/editor";
-import { makeFrame } from "@/helpers/pythonToFrames";
-import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 
 declare const Sk: any;
 
@@ -217,9 +215,15 @@ export default Vue.extend({
             this.showFunctionBrackets = true;
             this.acRequestIndex += 1;
             const ourAcRequest = this.acRequestIndex;
+            const imported = getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token === null) {
                 this.showSuggestionsAC("");
+            }
+            else if (context !== "" && imported[context as keyof typeof imported]) {
+                const items = imported[context as keyof typeof imported];
+                this.acResults = {[context]: items};
+                this.showSuggestionsAC(token);
             }
             else if (context !== "") {
                 // There is context, ask Skulpt for a dir() of that context
@@ -236,31 +240,20 @@ export default Vue.extend({
                     if (ourAcRequest == this.acRequestIndex) {
                         // If the context is given and that's a first level context (i.e. module) we retrieve the a/c content from our generated API Json file.
                         // Otherwise, we get the content via Skulpt.
-                        let items: AcResultType[] = [];
-                        if(skulptPythonAPI[context as keyof typeof skulptPythonAPI]){
-                            // We could retrieve directly from the JSON object, but for sanity, let's employ the same mechanism
-                            // used to retrieve a module content elsewhere in the code.
-                            const moduleAcResWithCat : AcResultsWithCategory = {};
-                            const mockFromImportModuleFrame = makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: {fields: [{code: context}], operators: []}}, 1: {slotStructures: {fields: [{code: "*"}], operators: []}}});
-                            doGetAllExplicitelyImportedItems(mockFromImportModuleFrame, context, false, moduleAcResWithCat, {});
-                            items = moduleAcResWithCat[context];
-                        }
-                        else{
-                            items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
-                                acResult: s,
-                                documentation: "",
-                                type: [],
-                                version: 0,
-                            })) as AcResultType[];                       
+                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
+                            acResult: s,
+                            documentation: "",
+                            type: [],
+                            version: 0,
+                        })) as AcResultType[];                       
                               
-                            for (const item of items) {
-                                const codeForDocs = getPythonCodeForTypeAndDocumentation(userCode, context + "." + item.acResult);
-                                await Sk.misceval.asyncToPromise(function () {
-                                    return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
-                                });
-                                item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
-                                item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
-                            }
+                        for (const item of items) {
+                            const codeForDocs = getPythonCodeForTypeAndDocumentation(userCode, context + "." + item.acResult);
+                            await Sk.misceval.asyncToPromise(function () {
+                                return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
+                            });
+                            item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
+                            item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
                         }                      
 
                         if (ourAcRequest == this.acRequestIndex) {
@@ -297,7 +290,6 @@ export default Vue.extend({
                 }));
                 
                 // Add any items imported via a "from ... import ..." frame
-                const imported = getAllExplicitlyImportedItems();
                 this.acResults = {...this.acResults, ...imported};
                 
                 // We know everything we need, we can immediately show the autocomplete:
