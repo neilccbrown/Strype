@@ -212,7 +212,6 @@ export function getAllExplicitlyImportedItems(context: string) : AcResultsWithCa
 
 function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}): void {
     const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
-    console.log("Getting imports for module " + module + " context " + context + " simple " + isSimpleImport + " aliases " + JSON.stringify(importedAliasedModules));
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
         // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
