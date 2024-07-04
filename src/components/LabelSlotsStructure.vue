@@ -220,12 +220,14 @@ export default Vue.extend({
                                     const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
                                     const cursorInfos = {slotInfos: parseLabelSlotUIID(spanElement.id), cursorPos: pos};
 
-                                    // We also check here if the changes trigger the conversion of a function call frame to a varassign frame (i.e. a funccall frame contains a variable assignment)
+                                    // We also check here if the changes trigger the conversion of a function call frame to a varassign frame (i.e. a funccall frame contains a variable assignment).
+                                    // If the parsed code slot structure results in having a first operator (except empty, dot and comma) equals to "=" then we convert, being in a label slot structure of index 0.
                                     // We do not allow a conversion if the focus isn't inside a slot of level 1.
-                                    const isEqualSymbolAtFocus = (uiLiteralCode.charAt(focusCursorAbsPos - 1) == "=");
-                                    if(isEqualSymbolAtFocus && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
-                                        // Keep information on where we were so we can split the frame properly
-                                        const breakAtSlotIndex = parseInt(this.appStore.focusSlotCursorInfos?.slotInfos.slotId as string);
+                                    const isVarAssignSlotStructure = (parsedCodeRes.slots.operators.length > 0 && parsedCodeRes.slots.operators
+                                        .find((opSlot, index) => (opSlot.code == "=" && !parsedCodeRes.slots.operators.slice(0,index).some((opSlot) => !["", ".", ","].includes(opSlot.code)))));
+                                    if(isVarAssignSlotStructure && this.labelIndex == 0 && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
+                                        // We need to break at the slot preceding the first "=" operator.
+                                        const breakAtSlotIndex = parsedCodeRes.slots.operators.findIndex((opSlot) => opSlot.code == "=");
                                         this.appStore.setSlotTextCursors(undefined, undefined);
 
                                         this.$nextTick(() => {
