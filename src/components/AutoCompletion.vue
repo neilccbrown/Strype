@@ -116,6 +116,10 @@ export default Vue.extend({
             currentDocumentation: "",
             CustomEventTypes, // just to be able to use in template 
             allowHoverSelection: true, // flag used to avoid accidental selection when hovering (see handleACItemHover())
+            lastFrameId: -100, // Remember details of most recent autocomplete update, so we don't do it more often than needed
+            lastTokenStartedUnderscore: true,
+            lastContext: undefined as string | undefined,
+            lastUserCode: undefined as string | undefined,
         };
     },
 
@@ -212,6 +216,27 @@ export default Vue.extend({
         // token is the string token being edited, or null if it's invalid to show code completion here
         // context is the part before any preceding dot before us 
         async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
+            const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
+            const parser = new Parser();
+            const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
+            
+            // If nothing relevant changed, no need to recalculate, just update based on latest token:
+            if (this.lastFrameId == frameId &&
+                this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&
+                this.lastContext === context &&
+                this.lastUserCode === userCode) {
+                
+                this.showSuggestionsAC(token ?? "");
+                return;
+            }
+            else {
+                // Remember the details from the AC update we are about to do:
+                this.lastFrameId = frameId;
+                this.lastTokenStartedUnderscore = tokenStartsWithUnderscore;
+                this.lastContext = context;
+                this.lastUserCode = userCode;
+            }
+            
             this.showFunctionBrackets = true;
             this.acRequestIndex += 1;
             const ourAcRequest = this.acRequestIndex;
@@ -227,8 +252,6 @@ export default Vue.extend({
             }
             else if (context !== "") {
                 // There is context, ask Skulpt for a dir() of that context
-                const parser = new Parser();
-                const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
                 const codeToRun = getPythonCodeForNamesInContext(userCode, context);
                 configureSkulptForAutoComplete();
                 try {

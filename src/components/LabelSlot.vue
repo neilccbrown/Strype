@@ -45,7 +45,7 @@
         </b-popover>
 
         <AutoCompletion
-            v-if="focused && showAC"
+            v-show="focused && showAC"
             :class="{ac: true, hidden: !acRequested}"
             :slotId="UIID"
             ref="AC"
