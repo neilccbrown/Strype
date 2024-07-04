@@ -5,8 +5,68 @@
 import importlib
 import inspect
 import json
+import pydoc
 import re
 import sys
+
+def parse_arguments(text, func_name):
+    # Split the text into lines
+    lines = text.splitlines()
+    
+    # Find the first line that (ignoring whitespace) starts with func_name + "("
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line.startswith(func_name + "("):
+            # Extract the part after func_name + "("
+            argument_part = stripped_line[len(func_name + "("):]
+            # Initialize variables to store arguments
+            arguments = []
+            current_arg = ''
+            in_quotes = False
+            quote_char = ''
+            
+            # Parse the argument part
+            just_had_square_bracket = False
+            for char in argument_part:
+                if char in ('"', "'") and not in_quotes:
+                    in_quotes = True
+                    quote_char = char
+                elif char == quote_char and in_quotes:
+                    in_quotes = False
+                    quote_char = ''
+                elif char == '[' and not in_quotes:
+                    just_had_square_bracket = True
+                    continue
+                elif char == ',' and just_had_square_bracket and not in_quotes:
+                    # Square bracket can be used like this: 
+                    # foo(required [, optional])
+                    # So we treat it like a comma followed by )
+                    # i.e. we add the current arg and stop
+                    arguments.append(current_arg.strip())
+                    current_arg = ''
+                    break
+                elif (char == ')' or char == '*' or (char == '.' and current_arg.isspace())) and not in_quotes:
+                    # * is special args, leading dot is part of "..." and we stop at that too.
+                    current_arg = ''
+                    break
+                elif char == ',' and not in_quotes:
+                    arguments.append(current_arg.strip())
+                    current_arg = ''
+                else:
+                    current_arg += char
+                just_had_square_bracket = False
+            
+            # Append the last argument if any
+            if current_arg:
+                arguments.append(current_arg.strip())
+            
+            # Filter out arguments containing '='
+            filtered_arguments = [arg for arg in arguments if '=' not in arg]
+            
+            return filtered_arguments
+    
+    return None  # Return None if no suitable line is found
+
 
 targetAPI = json.load(sys.stdin)
 for mod in targetAPI:
@@ -52,6 +112,13 @@ for mod in targetAPI:
                         item['params'].append(details)
                         
             except:
+                try:
+                    args = parse_arguments(pydoc.render_doc(mod + "." + item['acResult']), item['acResult'])
+                    if args:
+                        item['params'] = args 
+                except:
+                    pass
                 pass 
+
 
 json.dump(targetAPI, sys.stdout, indent=4)
