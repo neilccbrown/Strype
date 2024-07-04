@@ -13,11 +13,11 @@ def parse_arguments(text, func_name):
     # Split the text into lines
     lines = text.splitlines()
     
-    # Find the first line that (ignoring whitespace) starts with "print("
+    # Find the first line that (ignoring whitespace) starts with func_name + "("
     for line in lines:
         stripped_line = line.strip()
         if stripped_line.startswith(func_name + "("):
-            # Extract the part after "print("
+            # Extract the part after func_name + "("
             argument_part = stripped_line[len(func_name + "("):]
             # Initialize variables to store arguments
             arguments = []
