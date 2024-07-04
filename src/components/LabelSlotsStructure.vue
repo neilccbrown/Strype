@@ -224,7 +224,7 @@ export default Vue.extend({
                                     // If the parsed code slot structure results in having a first operator (except empty, dot and comma) equals to "=" then we convert, being in a label slot structure of index 0.
                                     // We do not allow a conversion if the focus isn't inside a slot of level 1.
                                     const isVarAssignSlotStructure = (parsedCodeRes.slots.operators.length > 0 && parsedCodeRes.slots.operators
-                                        .find((opSlot, index) => (opSlot.code == "=" && !parsedCodeRes.slots.operators.slice(0,index).some((opSlot) => !["", ".", ","].includes(opSlot.code)))));
+                                        .find((opSlot, index) => (opSlot.code == "=" && parsedCodeRes.slots.operators.slice(0,index).every((opSlot) => ["", ".", ","].includes(opSlot.code)))));
                                     if(isVarAssignSlotStructure && this.labelIndex == 0 && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.
                                         const breakAtSlotIndex = parsedCodeRes.slots.operators.findIndex((opSlot) => opSlot.code == "=");
