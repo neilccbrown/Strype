@@ -582,11 +582,15 @@ export default Vue.extend({
                 this.appStore.isEditing = false;
             }
         },
+        
+        getSelectedACItem() : Element | null {
+            return document.querySelector("#" + this.$el.id + " .acItem.acItemSelected");
+        },
 
         onTabKeyDown(event: KeyboardEvent){
             // We replicate the default browser behaviour when tab is pressed AND we're not having AC on, otherwise just do nothing
             // (the default behaviour doesn't work at least on Windows+Chrome)
-            if(!(this.showAC && this.acRequested && document.querySelector(".acItem.acItemSelected"))) {
+            if(!(this.showAC && this.acRequested && this.getSelectedACItem())) {
                 // First move the cursor to the correct end of the slot
                 const goToNextSlot = !event.shiftKey;
                 const newCursorPosition = (goToNextSlot) ? this.code.length : 0;
@@ -615,11 +619,11 @@ export default Vue.extend({
             }
 
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
-            if(this.showAC && this.acRequested && document.querySelector(".acItem.acItemSelected")) {
+            if(this.showAC && this.acRequested && this.getSelectedACItem()) {
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
-                this.acItemClicked(document.querySelector(".acItem.acItemSelected")?.id??"");
+                this.acItemClicked(this.getSelectedACItem()?.id??"");
             }
             // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot,
             // except for comment frame that will generate a line return when Control/Shift is combined with Enter
