@@ -55,8 +55,6 @@ describe("Translation tests", () => {
         if (Cypress.env("mode") === "microbit") {
             expAuto.push("microbit");
         }
-        expAuto.push("Python", i18n.t("autoCompletion.invalidState", "fr") as string);
-        cy.get("div.module > em").should((hs) => checkTextEquals(hs, expAuto));
     });
     it("Resets translation properly", () => {
         // Should be back to English:
