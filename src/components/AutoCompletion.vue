@@ -417,7 +417,7 @@ export default Vue.extend({
             // We start by getting the index
             const indexOfSelected = parseInt(id.replace(this.UIID + "_",""));
             // Here we are making all the ACresult objects in a flatten array (with contact.apply()) in which we are then finding the selected and return its type
-            return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type;
+            return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type ?? [];
         },
 
         getModuleOfSelected(delta?: number): string {
