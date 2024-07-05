@@ -116,7 +116,6 @@ export default Vue.extend({
             currentDocumentation: "",
             CustomEventTypes, // just to be able to use in template 
             allowHoverSelection: true, // flag used to avoid accidental selection when hovering (see handleACItemHover())
-            lastFrameId: -100, // Remember details of most recent autocomplete update, so we don't do it more often than needed
             lastTokenStartedUnderscore: true,
             lastContext: undefined as string | undefined,
             lastUserCode: undefined as string | undefined,
@@ -221,8 +220,7 @@ export default Vue.extend({
             const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
             
             // If nothing relevant changed, no need to recalculate, just update based on latest token:
-            if (this.lastFrameId == frameId &&
-                this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&
+            if (this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&
                 this.lastContext === context &&
                 this.lastUserCode === userCode) {
                 
@@ -231,7 +229,6 @@ export default Vue.extend({
             }
             else {
                 // Remember the details from the AC update we are about to do:
-                this.lastFrameId = frameId;
                 this.lastTokenStartedUnderscore = tokenStartsWithUnderscore;
                 this.lastContext = context;
                 this.lastUserCode = userCode;
