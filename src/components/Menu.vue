@@ -23,28 +23,32 @@
                     <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
                     <br/>
                 </div>
-                <label v-t="'appMessage.loadToTarget'" :for="loadProjectProjectSelectId" class="load-save-label"/>
-                <select :name="loadProjectProjectSelectId" :ref="loadProjectProjectSelectId">
-                    <option :value="syncFSValue" v-t="'appMessage.targetFS'" :selected="getSyncTargetStatus(syncFSValue)"/>
-                    <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive</option>
-                </select>
+                <div>
+                    <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
+                    <b-button-group :ref="loadProjectTargetButtonGpId" size="sm">
+                        <b-button :value="syncGDValue" :variant="(getSyncTargetStatus(syncGDValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)">Google Drive</b-button>
+                        <b-button :value="syncFSValue" :variant="(getSyncTargetStatus(syncFSValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)" v-t="'appMessage.targetFS'"></b-button>
+                    </b-button-group> 
+                </div>
             </ModalDlg>
             <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick" v-b-modal="saveLinkModalName" :title="$t('appMenu.saveProjectTooltip')">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
             <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'" :title="$t('appMenu.saveAsProjectTooltip')"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
                 <label v-t="'appMessage.fileName'" class="load-save-label"/>
-                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus"/>  
+                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off"/>
+                <div>
+                    <span v-t="'appMessage.saveToTarget'" class="load-save-label"/>
+                    <b-button-group :ref="saveProjectTargetButtonGpId" size="sm">
+                        <b-button :value="syncGDValue" :variant="(getSyncTargetStatus(syncGDValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)">Google Drive</b-button>
+                        <b-button :value="syncFSValue" :variant="(getSyncTargetStatus(syncFSValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)" v-t="'appMessage.targetFS'"></b-button>
+                    </b-button-group>
+                </div>
+                <br/>
                 <div v-show="showGDSaveLocation">
                     <label v-t="'appMessage.gdriveLocation'" class="load-save-label"/>
                     <span class="load-save-label">{{currentDriveLocation}}</span>
                     <b-button v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
-                    </div>
-                <br/>    
-                <label v-t="'appMessage.saveToTarget'" :for="saveProjectProjectSelectId" class="load-save-label" />
-                <select :name="saveProjectProjectSelectId" :ref="saveProjectProjectSelectId" @change="onSaveTargetSelectChange">
-                    <option :value="syncFSValue" v-t="'appMessage.targetFS'" :selected="getSyncTargetStatus(syncFSValue)" />
-                    <option :value="syncGDValue" :selected="getSyncTargetStatus(syncGDValue)">Google Drive</option>
-                </select>
+                </div>
             </ModalDlg>
             <div class="menu-separator-div"></div>
             <!-- reset section -->
@@ -152,8 +156,10 @@ export default Vue.extend({
             retrievedTabindexesCount: -1,
             // The tabindex of the currently focused element of the menu
             currentTabindexValue: 0,
+            // The temporary sync target that we use to handle the UI of the target selection
+            tempSyncTarget: StrypeSyncTarget.none,
             // The current selection for the sync target (local to this component, not in the store)            
-            localSyncTarget: StrypeSyncTarget.fs,
+            localSyncTarget: StrypeSyncTarget.gd,
             showGDSaveLocation: false,
             // Flag to know if a request to change with a different folder location for Googe Drive has been requested
             saveAtOtherLocation: false,
@@ -218,7 +224,6 @@ export default Vue.extend({
             return "googleDriveComponent";
         },
 
-
         isSynced(): boolean {
             return this.appStore.syncTarget != StrypeSyncTarget.none;
         },
@@ -252,7 +257,7 @@ export default Vue.extend({
             return "load-strype-project-modal-dlg";
         },
 
-        loadProjectProjectSelectId(): string {
+        loadProjectTargetButtonGpId(): string {
             return "loadProjectProjectSelect";
         },
         
@@ -272,7 +277,7 @@ export default Vue.extend({
             return (!this.isSynced) ? this.saveProjectModalDlgId : "";
         },  
 
-        saveProjectProjectSelectId(): string {
+        saveProjectTargetButtonGpId(): string {
             return "saveProjectProjectSelect";
         },
         
@@ -356,25 +361,40 @@ export default Vue.extend({
             }
         },
 
+        changeTempSyncTarget(target: StrypeSyncTarget, isSaveAction?: boolean) {
+            this.tempSyncTarget = target;
+            if(isSaveAction){
+                this.onSaveTargetChanged();
+            }
+        },
+
         getSyncTargetStatus(target: StrypeSyncTarget): boolean {
-            if((this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>)?.saveExistingGDProjectInfos.isCopyFileRequested){
+            // If there is no saved value in the store, the default value is Google Drive.
+            // When the UI temporary value is set, it prevails (that's only temporary to allow the switch.
+            if(this.tempSyncTarget != StrypeSyncTarget.none){
+                return (this.tempSyncTarget == target);
+            }
+
+            if(this.appStore.syncTarget == StrypeSyncTarget.none || (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>)?.saveExistingGDProjectInfos.isCopyFileRequested){
                 return target == StrypeSyncTarget.gd; 
             }
             return target == this.appStore.syncTarget;
         },
 
-        getTargetSelectVal(isActionSave: boolean): number {
-            // Get the target selected in a target select HTML element; 
+        getTargetSelectVal(isActionSave: boolean): StrypeSyncTarget {
+            // Get the target selected as the selected button from the button group; 
             // of the "save" action popup if isActionSave is true, of the "load" action popup otherwise
             // In the case we do not use the dialog popup ("Save" action when synced), then we keep current synced destination
-            const refId = (isActionSave) ? this.saveProjectProjectSelectId : this.loadProjectProjectSelectId;
+            const refId = (isActionSave) ? this.saveProjectTargetButtonGpId : this.loadProjectTargetButtonGpId;
             if(!this.$refs[refId]){
                 return this.appStore.syncTarget;
             }
-            return parseInt((this.$refs[refId] as HTMLSelectElement).value);
+            // The new UI (changing combobox to buttons) means we can't directly check the HTML component to get the selection (unless using CSS).
+            // Instead, we use the temp flag we've added in this Menu component, or the value for Google Drive (default) is no changed has been made.
+            return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : StrypeSyncTarget.gd;
         },
 
-        onSaveTargetSelectChange(){
+        onSaveTargetChanged(){
             this.showGDSaveLocation = (this.getTargetSelectVal(true) == this.syncGDValue);
         },
 
@@ -396,7 +416,7 @@ export default Vue.extend({
                 // so we wait a bit to generate a focus/click in the input.
                 // We also check which target is selected to update target-depend UI in the modal.
                 setTimeout(() => {
-                    this.onSaveTargetSelectChange();
+                    this.onSaveTargetChanged();
                     const saveFileNameInputElement = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement);
                     // If the save as is opened because the user requested to create a copy of a file name, we use the file stored in the save existing file infos
                     // because if there are consecutive attempts with different names (that all already exist) we want to show the last attempted name
@@ -417,12 +437,20 @@ export default Vue.extend({
             if(dlgId == this.saveProjectModalDlgId){
                 (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveExistingGDProjectInfos.isCopyFileRequested = false;  
             }
-
-            if(event.trigger == "ok" || event.trigger == "event"){
+            if(event.trigger == "cancel" || event.trigger == "esc"){
+                // Reset the temporary sync file flag
+                this.tempSyncTarget = StrypeSyncTarget.none;
+            }
+            else if(event.trigger == "ok" || event.trigger == "event"){
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){
+                    // Retrieve the target selected, if nothing has been selected explicitly
+                    if(this.tempSyncTarget != StrypeSyncTarget.none) {
+                        this.localSyncTarget =  this.tempSyncTarget;
+                    } 
+                    this.tempSyncTarget = StrypeSyncTarget.none;
+                    
                     // We force saving the current project anyway just in case
-                    this.localSyncTarget = this.getTargetSelectVal(false);
                     this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.loadProject);
                     // The remaining parts of the loading process will be only done once saving is complete (cf loadProject())                    
                 }
@@ -437,6 +465,7 @@ export default Vue.extend({
                     }
                     
                     const selectValue = this.getTargetSelectVal(true);
+                    this.tempSyncTarget = StrypeSyncTarget.none;
                     if(selectValue != StrypeSyncTarget.gd){
                         if(!canBrowserSaveFilePicker && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
@@ -651,6 +680,29 @@ export default Vue.extend({
             }
         },
 
+        onTargetButtonKeyDown(event: KeyboardEvent, isSaveAction: boolean) {
+            // Handle some basic keyboard logic for the target selection.
+            // Space should allow a switch of target.
+            if(event.key == " "){
+                // We get the list of toggle button for the target (button)'s parent, and look for the next one (first if we're on the last)
+                const buttonGroupElement = this.$refs[(isSaveAction) ? this.saveProjectTargetButtonGpId : this.loadProjectTargetButtonGpId];
+                if(buttonGroupElement){
+                    const switchButtons = (buttonGroupElement as Element).children;
+                    if(switchButtons){
+                        const currentSwitchPos = [...switchButtons].findIndex((switchEl) => switchEl.classList.contains("btn-primary"));
+                        const newSwitchPos = (currentSwitchPos == switchButtons.length - 1) ? 0 : currentSwitchPos + 1;
+                        (switchButtons.item(newSwitchPos) as HTMLButtonElement).focus();
+                        (switchButtons.item(newSwitchPos) as HTMLButtonElement).click();
+                        // Prevent the default behaviour
+                        event.stopImmediatePropagation();
+                        event.stopPropagation();
+                        event.preventDefault();
+                    }
+                }
+
+            }
+        },
+
         performUndoRedo(isUndo: boolean): void {
             this.appStore.undoRedo(isUndo);
         },
@@ -804,6 +856,32 @@ export default Vue.extend({
     color: white;
     background-color: #d66;
     border-radius: 50%;
+}
+
+.toggle-button {
+    outline: none;
+}
+
+
+.toggle-button.btn-outline-primary:hover {
+    // Overwrite the default Bootstrap scheme
+    background-color: #d1e5fb !important;
+    color: #007bff !important;
+}
+
+.toggle-button.btn-primary:hover {
+    // Overwrite the default Bootstrap scheme
+    background-color: #007bff !important;
+    color: white !important;
+}
+
+.toggle-button:focus {
+    box-shadow: none !important;
+    border: 1px solid black !important;
+}
+
+.toggle-button.btn-primary:focus {
+    background-color: #007bff !important;   
 }
 
 #feedbackLink {
