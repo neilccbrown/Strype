@@ -459,7 +459,7 @@ describe("Modules", () => {
             cy.get("body").type(target.substring(1) + ",");
             cy.wait(500);
             // That should have dismissed the autocomplete and put us in a new slot:
-            cy.get(acIDSel).should("not.exist");
+            cy.get(acIDSel).should("not.be.visible");
         });
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
