@@ -2,7 +2,7 @@
     <div>
         <div class="frame-header-div">
             <div
-                class="next-to-eachother"
+                class="next-to-eachother label-slots-struct-wrapper"
                 v-for="(item, index) in labels"
                 :key="item.label + frameId"
             >
@@ -90,6 +90,11 @@ export default Vue.extend({
 
 .next-to-eachother {
     display: flex;
+}
+
+.label-slots-struct-wrapper  {
+    max-width:100%;
+    flex-wrap:wrap;
 }
 
 .hidden {

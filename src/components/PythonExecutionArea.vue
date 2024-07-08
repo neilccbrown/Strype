@@ -401,19 +401,23 @@ export default Vue.extend({
                     const errorElement = errors[0];
                     // We focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
                     // we put the focus in the first slot that is editable.
+                    // There might be some other UI events that would restore the frame cursors (i.e. after getting input in the textarea console),
+                    // so we give a bit of time before setting the focus.
                     const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
                         ? parseLabelSlotUIID(errorElement.id)
                         : {frameId: parseFrameHeaderUIID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
-                    const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
-                    this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
-                    setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
-                    // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
-                    if(isElementUIIDFrameHeader(errorElement.id)){
-                        document.getElementById(getLabelSlotUIID(errorSlotInfos))?.click();
-                    }
-                    else{
-                        errorElement.click();
-                    }
+                    setTimeout(() => {
+                        const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
+                        this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
+                        setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
+                        // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
+                        if(isElementUIIDFrameHeader(errorElement.id)){
+                            document.getElementById(getLabelSlotUIID(errorSlotInfos))?.click();
+                        }
+                        else{
+                            errorElement.click();
+                        }
+                    }, 200);
                 }
             });
         },
