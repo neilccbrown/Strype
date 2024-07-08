@@ -431,5 +431,7 @@ export default Vue.extend({
 <style lang="scss">
 .label-slot-container{
     outline: none;
+    max-width: 100%;
+    flex-wrap: wrap;
 }
 </style>
