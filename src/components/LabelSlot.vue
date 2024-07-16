@@ -1107,14 +1107,15 @@ export default Vue.extend({
                         });
                     }
                     else{
-                        const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content);
+                        const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
+                        const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
                         correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.
                         // If we are in an import or from...import frame, we do nothing upon the detection of a string, 
-                        // a bracket structur or an operators different than "," and "." and for import frame only, "as".
+                        // a bracket structure or an operator different than "," and "." and, for import frame only, "as".
                         let pastedInvalidCode = false; 
                         if(this.frameType == AllFrameTypesIdentifier.import || this.frameType == AllFrameTypesIdentifier.fromimport){
                             if(tempSlots.fields.some((field) => isFieldStringSlot(field) || isFieldBracketedSlot(field))){
