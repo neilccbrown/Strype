@@ -584,7 +584,8 @@ export default Vue.extend({
         },
         
         getSelectedACItem() : Element | null {
-            return document.querySelector("#" + this.$el.id + " .acItem.acItemSelected");
+            // As commas are special tokens in HTML selectors syntax, we need to parse them so the selector matches the element id correctly (our slot IDs may have commas).
+            return document.querySelector("#" + this.$el.id.replaceAll(",","\\,")+ " .acItem.acItemSelected");
         },
 
         onTabKeyDown(event: KeyboardEvent){
