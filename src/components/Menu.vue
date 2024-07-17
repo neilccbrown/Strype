@@ -648,6 +648,11 @@ export default Vue.extend({
                     this.appStore.ignoreKeyEvent = false;
                 }                
             }
+            
+            // We want to show the menu right border only whent the menu is opened (because otherwise it lays on the side of the page)
+            // so we change the burger menu style programmatically here accordingly (only the size will change, the rest is in CSS, see .bm-menu)
+            (document.querySelector(".bm-menu") as HTMLDivElement).style.borderRightWidth = (isMenuOpening) ? "1px" : "0px";
+
             this.appStore.isAppMenuOpened = isMenuOpening;
             this.showMenu = isMenuOpening;
         },
@@ -918,7 +923,8 @@ export default Vue.extend({
 .bm-menu {
     background-color: #e2e7e0 !important;
     padding-top: 25px !important;
-    border-right: black 1px solid !important;
+    // The border is partly designed by CSS, the width is dynamically assigned according to the menu state, see toggleMenuOnOff()
+    border-right: black 0px solid;   
 }
 
 .bm-item-list {
