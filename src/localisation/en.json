@@ -117,7 +117,7 @@
         "emptyCodeError":"The code cannot be empty.",
         "loadToTarget":"Open from",
         "saveToTarget":"Save to",
-        "targetFS":"this device",
+        "targetFS":"This device",
         "fileName":"File Name:",
         "gdriveFileAlreadyExists":"A project with the same name already exists in the Drive location.\nWould you like to replace it?",
         "gdriveLockedFileAlreadyExists":"This project is locked in the Drive location.\nIt cannot be saved with this name.",
