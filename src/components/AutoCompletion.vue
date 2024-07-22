@@ -403,7 +403,7 @@ export default Vue.extend({
             this.currentDocumentation = this.getCurrentDocumentation();
 
             // now scroll to the selected view
-            const items = document.querySelectorAll(".popUpItems");
+            const items = this.$el.querySelectorAll(".popUpItems");
             // the `false` in the method tells it to leave the item at the bottom while scrolling (not scroll and show the selected at the top).
             items[this.selected].scrollIntoView(false);
             // and we also set the flag to prevent selection by hovering (cf. handleACItemHover())

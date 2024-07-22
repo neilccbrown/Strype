@@ -280,8 +280,9 @@ export default Vue.extend({
                     return;
                 }
 
-                // Prevent default scrolling and navigation in the editor
-                if (!isEditing && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
+                // (then we jus leave the PEA handling it, see at the end of these conditions for related code)
+                if (!isEditing && !(isPythonExecuting && (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();

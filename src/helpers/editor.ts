@@ -1221,12 +1221,12 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         const operatorPosList : OpFound[] = ((isInFromImportFrame) ? allOperators.filter((opDef) => !opDef.match.includes("*") && opDef.match != " as ") : allOperators.filter((opDef) => isInImportFrame || opDef.match != " as "))
             .flatMap((operator : OpDef) => {
                 if (operator.keywordOperator) {
-                // "g" flag is necessary to make it obey the lastIndex item as a place to start:
+                    // "g" flag is necessary to make it obey the lastIndex item as a place to start:
                     const regex = new RegExp(operator.match.trim().replaceAll(" ", "\\s+") + " ", "g");
                     regex.lastIndex = lookOffset;
                     let result = regex.exec(blankedStringCodeLiteral);
                     while (result != null) {
-                    // Only a valid result if preceded by non-text character:
+                        // Only a valid result if preceded by non-text character:
                         if ((result.index == 0 || !cannotPrecedeKeywordOps.exec(blankedStringCodeLiteral.substring(result.index - 1, result.index)))) {
                             return {...operator, pos: result.index, length: result[0].length} as OpFound;
                         }

@@ -584,7 +584,8 @@ export default Vue.extend({
         },
         
         getSelectedACItem() : Element | null {
-            return document.querySelector("#" + this.$el.id + " .acItem.acItemSelected");
+            // As commas are special tokens in HTML selectors syntax, we need to parse them so the selector matches the element id correctly (our slot IDs may have commas).
+            return document.querySelector("#" + this.$el.id.replaceAll(",","\\,")+ " .acItem.acItemSelected");
         },
 
         onTabKeyDown(event: KeyboardEvent){
@@ -1106,14 +1107,15 @@ export default Vue.extend({
                         });
                     }
                     else{
-                        const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content);
+                        const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
+                        const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
                         correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.
                         // If we are in an import or from...import frame, we do nothing upon the detection of a string, 
-                        // a bracket structur or an operators different than "," and "." and for import frame only, "as".
+                        // a bracket structure or an operator different than "," and "." and, for import frame only, "as".
                         let pastedInvalidCode = false; 
                         if(this.frameType == AllFrameTypesIdentifier.import || this.frameType == AllFrameTypesIdentifier.fromimport){
                             if(tempSlots.fields.some((field) => isFieldStringSlot(field) || isFieldBracketedSlot(field))){
