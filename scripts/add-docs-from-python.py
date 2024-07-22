@@ -61,7 +61,7 @@ def parse_arguments(text, func_name):
                 arguments.append(current_arg.strip())
             
             # Filter out arguments containing '='
-            filtered_arguments = [arg for arg in arguments if '=' not in arg]
+            filtered_arguments = [{"name": arg} for arg in arguments if '=' not in arg]
             
             return filtered_arguments
     
