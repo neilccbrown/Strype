@@ -815,10 +815,11 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
     // We wil need to recreate the slot ID while parsing each slots of the frame to check errors on them
     // so we use the FlatSlotBase generator (only on that frame), and apply the error checks for each flat slot
     // ONLY on code type slots
-    Object.values(useStore().frameObjects[frameId].labelSlotsDict).forEach((labelSlotStruct, labelSlotsIndex) => {
+    const frameObject = useStore().frameObjects[frameId];
+    Object.values(frameObject.labelSlotsDict).forEach((labelSlotStruct, labelSlotsIndex) => {
         generateFlatSlotBases(labelSlotStruct.slotStructures, "", (flatSlot: FlatSlotBase) => {
             if(isSlotCodeType(flatSlot.type)){
-                checkPrecompiledErrorsForSlot({
+                const slotInfos = {
                     frameId: frameId,
                     labelSlotsIndex: labelSlotsIndex,
                     slotId: flatSlot.id,
@@ -829,7 +830,20 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
                     // These other properties are not important
                     initCode: "",
                     isFirstChange: true,
-                });
+                };
+                if (frameObject.isDisabled) {
+                    // If frame is disabled, just clear the error and don't do any checks:
+                    useStore().setSlotErroneous(
+                        {
+                            ...slotInfos,
+                            error: "",
+                        }
+                    );
+                }
+                else {
+                    // If the frame is enabled, actually check for errors:
+                    checkPrecompiledErrorsForSlot(slotInfos);
+                }
             }
         });
     });
