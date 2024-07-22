@@ -89,7 +89,7 @@
         "dataNotObject" :"the data doesn't describe an object",
         "stateWrongPlatform":"the file was generated from a different Strype platform that the current Strype platform",
         "stateWrongFrameTypeName":"a problem occured while retrieving the frames' types",
-        "emptyEditableSlot":"Input slot cannot be empty",
+        "emptyEditableSlot":"Slot cannot be empty",
         "errorTitle":"Error",
         "pastFrameErrTitle": "Runtime error at last run",
         "errorUserDefinedFuncMsg":"User-defined function\nthis function definition contains errors",

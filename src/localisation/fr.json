@@ -90,7 +90,7 @@
       "dataNotObject" :"les données de décrivent pas un object",
       "stateWrongPlatform":"le fichier a été créé à partir d'une differente plateforme Strype que la plateforme Strype actuelle",
       "stateWrongFrameTypeName":"un problème est survenu lors de la récupération des types de cadres",
-      "emptyEditableSlot":"Le champ de saisie ne peut pas être vide",
+      "emptyEditableSlot":"Le champ ne peut pas être vide",
       "errorTitle":"Erreur",
       "pastFrameErrTitle": "Erreur d'exécution lors de la dernière exécution",
       "errorUserDefinedFuncMsg":"Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
