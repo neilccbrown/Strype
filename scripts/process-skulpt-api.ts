@@ -18,7 +18,7 @@ import "../public/js/skulpt-stdlib";
 import { pythonBuiltins } from "../src/autocompletion/pythonBuiltins";
 import {
     configureSkulptForAutoComplete,
-    getPythonCodeForNamesInContext,
+    getPythonCodeForNamesInContext, getPythonCodeForClassMethods,
     getPythonCodeForTypeAndDocumentation,
 } from "../src/autocompletion/ac-skulpt";
 import {AcResultsWithCategory, AcResultType} from "../src/types/ac-types";
@@ -34,12 +34,29 @@ const modules : string[] = Object.keys(pythonBuiltins).filter((k) => pythonBuilt
 // promise chain that adds each item to the list until there is nothing left to process, then we output them
 // all and tell the browser to exit:
 
+
+// Get the class methods for a particular Python class, then pass the list of names to the "andThen" function.
+// If there is an error, andThen will not be called.
+function getClassMethods(userCode: string, moduleName: string | null, className: string, andThen: (methodNames : string[]) => void) {
+    const codeToRun = getPythonCodeForClassMethods(userCode, moduleName, className);
+    Sk.misceval.asyncToPromise(function() {
+        return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
+    }, {}).then(() => {
+        const names = Sk.ffi.remapToJs(Sk.globals["acs"]) as string[];
+        andThen(names);
+    },
+    (err: any) => {
+        console.log("Error running static autocomplete code: " + err + "Code was:\n" + codeToRun);
+    });
+}
+
 function getDetailsForListOfItems(module: string | null, items: AcResultType[], next: number, atEnd: () => void) {
     if (next >= items.length) {
         atEnd();
         return;
     }
-    const codeToRun = getPythonCodeForTypeAndDocumentation(module ? "import " + module + "\n" : "", (module ? module + "." : "") + items[next].acResult);
+    const userCode = module ? "import " + module + "\n" : "";
+    const codeToRun = getPythonCodeForTypeAndDocumentation(userCode, (module ? module + "." : "") + items[next].acResult);
     Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
     }, {}).then(() => {
@@ -50,7 +67,18 @@ function getDetailsForListOfItems(module: string | null, items: AcResultType[], 
         if (items[next].type === null || items[next].type === undefined || items[next].documentation === null || items[next].documentation === undefined) {
             console.log("Undefined type or documentation for " + module + "." + items[next].acResult);
         }
-        getDetailsForListOfItems(module, items, next + 1, atEnd);
+        // If the item is a type, get any class methods:
+        if (items[next].type.includes("type")) {
+            getClassMethods(userCode, module, items[next].acResult, (more) => {
+                items.push(...more.map((n) => {
+                    return {acResult: n, documentation: "", type: ["function"], version: 0} as AcResultType;
+                }));
+                getDetailsForListOfItems(module, items, next + 1, atEnd);
+            });
+        }
+        else {
+            getDetailsForListOfItems(module, items, next + 1, atEnd);
+        }
     },
     (err: any) => {
         console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);

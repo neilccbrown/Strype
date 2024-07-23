@@ -862,7 +862,7 @@ describe("Imported items", () => {
 });
 
 describe("Underscore handling", () => {
-    const importFunc = Cypress.env("mode") === "microbit" ? "__import__(name)" : "__import__()";
+    const importFunc = Cypress.env("mode") === "microbit" ? "__import__(name)" : "__import__(name)";
     
     it("Does not offer underscore items at top-level until typed", () => {
         focusEditorAC();

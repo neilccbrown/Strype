@@ -1282,7 +1282,9 @@
             "documentation": "Prints the values to a stream, or to sys.stdout by default.\nOptional keyword arguments:\nfile:  a file-like object (stream); defaults to the current sys.stdout.\nsep:   string inserted between values, default a space.\nend:   string appended after the last value, default a newline.\nflush: whether to forcibly flush the stream.",
             "version": 0,
             "params": [
-                "value"
+                {
+                    "name": "value"
+                }
             ]
         },
         {

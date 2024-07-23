@@ -358,7 +358,9 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
         const importedFunc = Object.values(getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token);
         if (importedFunc !== undefined) {
             if (importedFunc.params) {
-                return getParamPrompt(importedFunc.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+                // If item is a type and a function, it's a constructor, so the first parameter is self, which we ignore:
+                const callParams = importedFunc.type.includes("function") && importedFunc.type.includes("type") && importedFunc.params.length >= 1 ? importedFunc.params.slice(1) : importedFunc.params;
+                return getParamPrompt(callParams.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
             }
             else {
                 return "\u200b";
@@ -372,7 +374,9 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
         // If the context matches an imported module, we can look it up there.        
         const fromModule = getAvailableItemsForImportFromModule(context).find((ac) => ac.acResult === token);
         if (fromModule?.params !== undefined) {
-            return getParamPrompt(fromModule.params.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+            // If item is a type and a function, it's a constructor, so the first parameter is self, which we ignore:
+            const callParams = fromModule.type.includes("function") && fromModule.type.includes("type") && fromModule.params.length >= 1 ? fromModule.params.slice(1) : fromModule.params;
+            return getParamPrompt(callParams.filter((p) => p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
         }
 
         // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt
