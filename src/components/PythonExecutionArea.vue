@@ -71,6 +71,14 @@ export default Vue.extend({
         (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseenter", () => this.isTabContentHovered = true);
         (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseleave", () => this.isTabContentHovered = false);
 
+        // Have to use nextTick because Bootstrap won't have created the actual HTML parts until then:
+        this.$nextTick(() => document.querySelectorAll("#peaControlsDiv .nav-item a").forEach((el) => {
+            // When a tab header is clicked, lose focus, because we want focus back to the editor:
+            el.addEventListener("click", (e) => {
+                (el as HTMLElement).blur();
+            });
+        }));
+
         const pythonConsole = document.getElementById("pythonConsole");
         const turtlePlaceholderDiv = document.getElementById("pythonTurtleDiv");
         const tabContentContainerDiv = document.getElementById("tabContentContainerDiv");

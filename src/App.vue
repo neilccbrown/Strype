@@ -445,10 +445,6 @@ export default Vue.extend({
             return getFrameContainerUIID(frameId);
         },
 
-        toggleEdition(): void {
-            this.appStore.isEditing = false;
-        },
-
         messageTop(): boolean {
             return this.appStore.currentMessage.type !== MessageTypes.imageDisplay;
         },
