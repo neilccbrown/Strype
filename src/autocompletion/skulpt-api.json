@@ -1235,6 +1235,22 @@
                     "defaultValue": "None"
                 }
             ]
+        },
+        {
+            "acResult": "bool.from_bytes",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "dict.fromkeys",
+            "documentation": "Create a new dictionary with keys from iterable and values set to value.",
+            "type": [
+                "function"
+            ],
+            "version": 0
         }
     ],
     "test": [
@@ -1416,7 +1432,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x1015f5bb0>"
+                    "defaultValue": "<unittest.loader.TestLoader object at 0x10195bbb0>"
                 },
                 {
                     "name": "failfast",
@@ -1542,7 +1558,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x100fa3050>"
+                    "defaultValue": "<object object at 0x1015071b0>"
                 },
                 {
                     "name": "timeout",
@@ -1970,6 +1986,38 @@
                     "name": "field_names"
                 }
             ]
+        },
+        {
+            "acResult": "Counter.fromkeys",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "OrderedDict.fromkeys",
+            "documentation": "Create a new dictionary with keys from iterable and values set to value.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_chain.from_iterable",
+            "documentation": "chain.from_iterable(iterable) --> chain object\n\nAlternate chain() constructor taking a single iterable argument\nthat evaluates lazily.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "defaultdict.fromkeys",
+            "documentation": "Create a new dictionary with keys from iterable and values set to value.",
+            "type": [
+                "function"
+            ],
+            "version": 0
         }
     ],
     "copy": [
@@ -2067,7 +2115,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1029328b0>"
+                    "defaultValue": "<function deepcopy at 0x1020abaf0>"
                 }
             ]
         },
@@ -2109,7 +2157,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1029328b0>"
+                    "defaultValue": "<function deepcopy at 0x1020abaf0>"
                 }
             ]
         },
@@ -2137,7 +2185,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1029328b0>"
+                    "defaultValue": "<function deepcopy at 0x1020abaf0>"
                 }
             ]
         },
@@ -2179,7 +2227,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x1029328b0>"
+                    "defaultValue": "<function deepcopy at 0x1020abaf0>"
                 },
                 {
                     "name": "listiter",
@@ -2252,6 +2300,14 @@
             "type": [
                 "function",
                 "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "long.from_bytes",
+            "documentation": "",
+            "type": [
+                "function"
             ],
             "version": 0
         }
@@ -2356,6 +2412,134 @@
             "type": [
                 "function",
                 "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "date.fromisocalendar",
+            "documentation": "int -> date corresponding to a proleptic Gregorian ordinal.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "date.fromisoformat",
+            "documentation": "str -> Construct a date from the output of date.isoformat()",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "date.fromordinal",
+            "documentation": "int -> date corresponding to a proleptic Gregorian ordinal.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "date.fromtimestamp",
+            "documentation": "timestamp -> local date from a POSIX timestamp (like time.time()).",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "date.today",
+            "documentation": "Current date or datetime:  same as self.__class__.fromtimestamp(time.time()).",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.combine",
+            "documentation": "date, time -> datetime with same date and time fields",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.fromisocalendar",
+            "documentation": "int -> date corresponding to a proleptic Gregorian ordinal.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.fromisoformat",
+            "documentation": "string -> datetime from datetime.isoformat() output",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.fromordinal",
+            "documentation": "int -> date corresponding to a proleptic Gregorian ordinal.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.fromtimestamp",
+            "documentation": "timestamp[, tz] -> tz's local time from POSIX timestamp.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.now",
+            "documentation": "Returns new datetime object representing current time local to tz.\n\n  tz\n    Timezone object.\n\nIf no tz is specified, uses local timezone.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.strptime",
+            "documentation": "string, format -> new datetime parsed from a string (like time.strptime()).",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.today",
+            "documentation": "Current date or datetime:  same as self.__class__.fromtimestamp(time.time()).",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.utcfromtimestamp",
+            "documentation": "Construct a naive UTC datetime from a POSIX timestamp.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "datetime.utcnow",
+            "documentation": "Return a new datetime representing UTC day and time.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "time.fromisoformat",
+            "documentation": "string -> time from time.isoformat() output",
+            "type": [
+                "function"
             ],
             "version": 0
         }
@@ -3006,7 +3190,7 @@
         },
         {
             "acResult": "currentScript",
-            "documentation": "proxy for a javascript object",
+            "documentation": "",
             "type": [],
             "version": 0
         },
@@ -4824,6 +5008,14 @@
                 "type"
             ],
             "version": 0
+        },
+        {
+            "acResult": "chain.from_iterable",
+            "documentation": "chain.from_iterable(iterable) --> chain object\n\nAlternate chain() constructor taking a single iterable argument\nthat evaluates lazily.",
+            "type": [
+                "function"
+            ],
+            "version": 0
         }
     ],
     "keyword": [
@@ -5684,6 +5876,14 @@
             "acResult": "__spec__",
             "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "Integral.from_bytes",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
             "version": 0
         }
     ],
@@ -10844,6 +11044,14 @@
                     "defaultValue": "0"
                 }
             ]
+        },
+        {
+            "acResult": "RegexFlag.from_bytes",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
         }
     ],
     "signal": [
@@ -12399,6 +12607,38 @@
             "acResult": "__spec__",
             "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "BooleanType.from_bytes",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "DictType.fromkeys",
+            "documentation": "Create a new dictionary with keys from iterable and values set to value.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "DictionaryType.fromkeys",
+            "documentation": "Create a new dictionary with keys from iterable and values set to value.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "IntType.from_bytes",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
             "version": 0
         }
     ],

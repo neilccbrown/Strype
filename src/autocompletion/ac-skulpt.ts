@@ -127,6 +127,32 @@ except Exception as e:
     return (userCode + inspectionCode);
 }
 
+// Get Python code to get the list of class methods of moduleName.className into a list of strings named "acs"
+// Each item in acs will be className.method (but no module name), e.g. for int it would be "int.from_bytes"
+export function getPythonCodeForClassMethods(userCode: string, moduleName: string | null, className: string) : string {
+    userCode = processUserCodeForAC(userCode);
+    
+    const fullyQualifiedClassName = moduleName ? (moduleName + "." + className) : className;
+
+    const inspectionCode = `
+# Get all attributes of the class
+attributes = dir(${fullyQualifiedClassName})
+
+# Filter the static methods
+acs = []
+for attr_name in attributes:
+    if not attr_name.startswith("_"):
+        try:
+            attr = getattr(${fullyQualifiedClassName}, attr_name)
+            # Check it is a class method:
+            if callable(attr) and getattr(attr, "__self__") is ${fullyQualifiedClassName}:
+                acs.append("${className}." + attr_name)
+        except:
+            pass
+`;
+    return userCode + inspectionCode;
+}
+
 /**
  * Generates some Python code to access the type and documentation of the itemToQuery.
  * @param userCode User code to run before querying the item
