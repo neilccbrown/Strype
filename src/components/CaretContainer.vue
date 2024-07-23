@@ -139,9 +139,9 @@ export default Vue.extend({
         if(this.caretVisibility !== CaretPosition.none  && this.caretVisibility != CaretPosition.dragAndDrop && this.caretVisibility === this.caretAssignedPosition) {
             const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
             const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
-            //is caret outside the viewport?
+            //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
             if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
-                caretContainerElement?.scrollIntoView({block:"center"});
+                setTimeout(() => caretContainerElement?.scrollIntoView({block:"nearest"}), 500);
             }
         }  
         

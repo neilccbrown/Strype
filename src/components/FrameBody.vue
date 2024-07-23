@@ -5,7 +5,6 @@
     >
         <div>
             <CaretContainer
-            :id="uiid+'_caret_container'"
             :ref="getCaretContainerRef"
             :frameId="this.frameId"
             :caretVisibility="this.caretVisibility"
