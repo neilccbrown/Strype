@@ -393,6 +393,15 @@ export default Vue.extend({
                     caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
                 }
             );
+            
+            if (!this.code) {
+                // If code is empty, on Firefox we need to force the focus because a click on the placeholder
+                // text does not actually set the caret into this span:
+                this.$nextTick(() => {
+                    const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
+                    setDocumentSelection(slotCursorInfo, slotCursorInfo);
+                });
+            }
 
             // Reset the flag here as we have consumed the focus event (cf. directives > focus)
             useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
