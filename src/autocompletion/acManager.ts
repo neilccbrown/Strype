@@ -221,6 +221,12 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
         const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
         if (allMicrobitItems) {
             soFar[module] = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
+            // Check if the context (e.g. compass) exactly matches a re-exported module in microbit.
+            // If so, copy the contents of microbit.<context> into an item named <context>
+            const reExported = allMicrobitItems.find((ac) => ac.acResult === context && ac.type.includes("module"));
+            if (reExported && microbitPythonAPI["microbit." + reExported.acResult as keyof typeof microbitPythonAPI]) {
+                soFar[reExported.acResult] = [...(microbitPythonAPI["microbit." + reExported.acResult as keyof typeof microbitPythonAPI] as AcResultType[]).filter((x) => !x.acResult.startsWith("_"))];
+            }
         }
         /* FITRUE_isMicrobit */
 
