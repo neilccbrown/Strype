@@ -1126,7 +1126,16 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         }
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (closingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
+        let actualCodeClosingBracketPos = closingBracketPos;
+        const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
+        codeLiteral.match(new RegExp(quotesPlaceholdersExp, "g"))?.forEach((placeholder) => {
+            // If the content of the brackets contained any string, the value of the closing bracket position is for a code WITH the string quotes placeholders.
+            // Therefore, if we want to use that to check what is the new cursor position in the parsing of the code after the bracket, we need to do so without
+            // the string placeholders, if any. When a placeholder is found, we remove its length - 1 to the positin, as it would match 1 quote.
+            actualCodeClosingBracketPos -= (placeholder.length - 1);
+        });
+
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
