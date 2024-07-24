@@ -48,6 +48,7 @@
             <div
                 :style="popupDocumentationPosition"
                 class="popup"
+                v-show="areResultsToShow()"
             >
                 <ul class="limitWidthUl">
                     <PopUpItem
