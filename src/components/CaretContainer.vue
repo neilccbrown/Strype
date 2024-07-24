@@ -128,6 +128,9 @@ export default Vue.extend({
 
     mounted() {
         window.addEventListener("paste", this.pasteIfFocused);
+        // When a frame is added, we need to make sure it will be visible in the view port. This is particularly true
+        // when a paste or duplicate action is performed.
+        this.putCaretContainerInView();
     },
 
     destroyed() {
@@ -136,14 +139,7 @@ export default Vue.extend({
 
     updated() {
         // Ensure the caret (during navigation) is visible in the page viewport
-        if(this.caretVisibility !== CaretPosition.none  && this.caretVisibility != CaretPosition.dragAndDrop && this.caretVisibility === this.caretAssignedPosition) {
-            const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
-            const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
-            //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
-            if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
-                setTimeout(() => caretContainerElement?.scrollIntoView({block:"nearest"}), 500);
-            }
-        }  
+        this.putCaretContainerInView();
         
         // Close the context menu if there is edition or loss of blue caret (for when a frame context menu is present, see Frame.vue)
         if(this.isEditing || this.caretAssignedPosition == CaretPosition.none || this.caretAssignedPosition == CaretPosition.dragAndDrop){
@@ -152,6 +148,17 @@ export default Vue.extend({
     },
     
     methods: {
+        putCaretContainerInView(){
+            if(this.caretVisibility !== CaretPosition.none  && this.caretVisibility != CaretPosition.dragAndDrop && this.caretVisibility === this.caretAssignedPosition) {
+                const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
+                const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
+                //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
+                if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
+                    setTimeout(() => caretContainerElement?.scrollIntoView({block:"nearest"}), 500);
+                }
+            }  
+        },
+
         pasteIfFocused(event: Event) {
             // A paste via shortcut cannot get the verification that would be done via a click
             // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here.
