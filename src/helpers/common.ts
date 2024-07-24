@@ -58,7 +58,7 @@ const checkAddedValues = (obj: {[id: string]: any}, result: ObjectPropertyDiff[]
     for(const objProperty in obj){
         const objValue = obj[objProperty];
         
-        if(typeof objValue === "object") {
+        if(objValue != null && typeof objValue === "object") {
             //if we have an empty array/object we save it directly,
             //otherwise, we check deeper recursively
             if(Object.entries(objValue).length == 0){

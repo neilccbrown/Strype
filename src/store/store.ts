@@ -20,6 +20,13 @@ let initialState: StateAppObject = initialStates["initialPythonState"];
 initialState = initialStates["initialMicrobitState"];
 /* FITRUE_isMicrobit */
 
+// These are deliberately held outside the store because:
+// (a) we used to blank them on page load anyway
+// (b) there was a bug where sometimes we could end up diffing-the-diffs which led to quadratic memory and CPU consumption.
+const diffToPreviousState : ObjectPropertyDiff[][] = [];
+const diffToNextState: ObjectPropertyDiff[][] = [];
+
+
 export const useStore = defineStore("app", {
     state: () => {
         return {
@@ -93,10 +100,6 @@ export const useStore = defineStore("app", {
             errorCount: 0,
 
             wasLastRuntimeErrorFrameId: undefined as number | undefined,
-
-            diffToPreviousState: [] as ObjectPropertyDiff[][],
-
-            diffToNextState: [] as ObjectPropertyDiff[][],
             
             // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
             copiedFrameId: -100 as number,
@@ -563,7 +566,7 @@ export const useStore = defineStore("app", {
         },
         
         isUndoRedoEmpty: (state) => (action: string) => {
-            return (action === "undo") ? state.diffToPreviousState.length === 0 : state.diffToNextState.length === 0;
+            return (action === "undo") ? diffToPreviousState.length === 0 : diffToNextState.length === 0;
         },
 
         isSelectionCopied: (state) => {
@@ -1259,8 +1262,8 @@ export const useStore = defineStore("app", {
             } );
 
             //undo redo is cleared
-            this.diffToPreviousState.splice(0,this.diffToPreviousState.length);
-            this.diffToNextState.splice(0,this.diffToNextState.length);
+            diffToPreviousState.splice(0, diffToPreviousState.length);
+            diffToNextState.splice(0, diffToNextState.length);
             
             //copied frames are cleared
             this.copiedFrameId = -100;
@@ -1335,19 +1338,19 @@ export const useStore = defineStore("app", {
             stateCopy.isEditing = !this.isEditing;
 
             const diffs = getObjectPropertiesDifferences(stateCopy, previousState);
-            this.diffToPreviousState.push(diffs);
+            diffToPreviousState.push(diffs);
 
             // Don't exceed the maximum of undo steps allowed
-            if(this.diffToPreviousState.length > undoMaxSteps) {
-                this.diffToPreviousState.splice(
+            if(diffToPreviousState.length > undoMaxSteps) {
+                diffToPreviousState.splice(
                     0,
                     1
                 );
             }
             //we clear the diffToNextState content as we are now starting a new sequence of actions
-            this.diffToNextState.splice(
+            diffToNextState.splice(
                 0,
-                this.diffToNextState.length
+                diffToNextState.length
             );
         },
 
@@ -1373,12 +1376,12 @@ export const useStore = defineStore("app", {
             // Performing the change if there is any change recorded in the state
             let changeList = [] as ObjectPropertyDiff[];
             if(isUndo) {
-                changeList = this.diffToPreviousState.pop()??[];
+                changeList = diffToPreviousState.pop()??[];
             }
             else {
-                changeList = this.diffToNextState.pop()??[];
+                changeList = diffToNextState.pop()??[];
             }
-
+            
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             if(changeList.length > 0){
                 // This flag stores the arrays that need to be "cleaned" (i.e., removing the null elements)
@@ -1492,6 +1495,7 @@ export const useStore = defineStore("app", {
                 // Keep the arrays of changes in sync with undo/redo sequences
                 // The state reference is sightly modified for using the critical positions that will be required for redo                
                 this.currentFrame = this.lastCriticalActionPositioning.lastCriticalCaretPosition;
+                console.log("Changing focus to " + JSON.stringify(this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos));
                 if(this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos){
                     this.isEditing = true;
                     this.anchorSlotCursorInfos = this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos;
@@ -1525,10 +1529,10 @@ export const useStore = defineStore("app", {
 
                 const stateDifferences = getObjectPropertiesDifferences(stateCopy, stateBeforeChanges);
                 if(isUndo){
-                    this.diffToNextState.push(stateDifferences);
+                    diffToNextState.push(stateDifferences);
                 }
                 else{
-                    this.diffToPreviousState.push(stateDifferences);        
+                    diffToPreviousState.push(stateDifferences);        
                 }
             }
         },  
@@ -1719,7 +1723,7 @@ export const useStore = defineStore("app", {
             //previous state to replace it with the difference between the state even before and now;            
             let stateBeforeChanges = {};
             if(!frameSlotInfos.isFirstChange){
-                this.diffToPreviousState.pop();
+                diffToPreviousState.pop();
                 (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.initCode;  
             }
 
@@ -1786,7 +1790,7 @@ export const useStore = defineStore("app", {
 
         undoRedo(isUndo: boolean) {
             //check if the undo/redo list is empty BEFORE doing any action
-            const isEmptyList = (isUndo) ? this.diffToPreviousState.length == 0 : this.diffToNextState.length == 0;
+            const isEmptyList = (isUndo) ? diffToPreviousState.length == 0 : diffToNextState.length == 0;
             
             if(isEmptyList){
                 //no undo or redo can performed: inform the user on a temporary message
@@ -2336,9 +2340,6 @@ export const useStore = defineStore("app", {
              */
             const stateCopy = JSON.parse(JSON.stringify(this.$state));
             //clear the microbit DAP infos, copy frames, message banner and undo/redo related stuff as there is no need for storing them
-            stateCopy["stateBeforeChanges"] = {};
-            stateCopy["diffToPreviousState"] = [];
-            stateCopy["diffToNextState"] = [];
             stateCopy["stateBeforeChanges"] = {};
             stateCopy["copiedFrames"] = {};
             stateCopy.copiedFrameId = -100;
