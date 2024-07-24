@@ -5,7 +5,7 @@
             spellcheck="false"
             :disabled="isDisabled"
             :placeholder="defaultText"
-            :contenteditable="isEditableSlot"
+            :contenteditable="isEditableSlot && !(isDisabled || isPythonExecuting)"
             @click.stop="onGetCaret"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
@@ -22,7 +22,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @contentPastedInSlot="onCodePaste"
-            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: isPythonExecuting}"
+            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
             :id="UIID"
             :key="UIID"
             :style="spanBackgroundStyle"
@@ -325,8 +325,8 @@ export default Vue.extend({
         // Event callback equivalent to what would happen for a focus event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onGetCaret(event: MouseEvent): void {
-            // If the user's code is being executed, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
-            if(this.isPythonExecuting){
+            // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
+            if(this.isPythonExecuting || this.isDisabled){
                 event.stopImmediatePropagation();
                 event.stopPropagation();
                 event.preventDefault();
@@ -1473,6 +1473,7 @@ export default Vue.extend({
 
 .labelSlot-input.readonly {
     cursor: pointer;
+    user-select: none;
 }
 
 .errorSlot {
