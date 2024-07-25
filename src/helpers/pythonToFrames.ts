@@ -316,7 +316,7 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
         ps.nextIndex += 1;
         return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
     }
-    if (nextVal === "not") {
+    if (nextVal === "not" || nextVal === ":") {
         ps.nextIndex += 1;
         return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
     }
@@ -358,15 +358,16 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     const ps = {seq: p.children, nextIndex: 0};
     let latest = parseNextTerm(ps);
     while (ps.nextIndex < p.children.length) {
-        if (p.children[ps.nextIndex].type === Sk.ParseTables.sym.trailer) {
+        const child = p.children[ps.nextIndex];
+        if (child.type === Sk.ParseTables.sym.trailer) {
             // A suffix, like an array index lookup.  Join it and move forward only by one:
-            const grandchildren = p.children[ps.nextIndex].children;
+            const grandchildren = child.children;
             if (grandchildren != null && grandchildren[0].value === ".") {
                 latest = concatSlots(latest, ".", toSlots(grandchildren[1]));
             }
             else {
                 // Something bracketed:
-                latest = concatSlots(latest, "", toSlots(p.children[ps.nextIndex]));
+                latest = concatSlots(latest, "", toSlots(child));
             }
             ps.nextIndex += 1;
             continue;
@@ -374,17 +375,23 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
         // Now we expect a binary operator:        
         let op;
         try {
-            op = digValue(p.children[ps.nextIndex]);
+            op = digValue(child);
             ps.nextIndex += 1;
         }
         catch (err) {
             throw new Error("Cannot find operator " + ps.nextIndex + " in:\n" + debugToString(p, ""), {cause: err});
         }
         if (op != null && (operators.includes(op) || trimmedKeywordOperators.includes(op))) {
-            latest = concatSlots(latest, op, parseNextTerm(ps));
+            if (op == ":" && ps.nextIndex == ps.seq.length) {
+                // Can be blank on RHS of colon
+                latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
+            }
+            else {
+                latest = concatSlots(latest, op, parseNextTerm(ps));
+            }
         }
         else {
-            throw new Error("Unknown operator: " + p.children[ps.nextIndex].type + " \"" + op + "\"");
+            throw new Error("Unknown operator: " + child.type + " \"" + op + "\"");
         }
     }
     return latest;

@@ -301,3 +301,23 @@ describe("Python paste errors", () => {
         assertPasteError("else:\n    pass\nprint(\"Hi\")", /else/);
     });
 });
+
+describe("Python complex function", () => {
+    it("Allows pasting complex function", () => {
+        testRoundTripPasteAndDownload(`def displayBoard (missedLetters,correctLetters,secretWord):
+    print("Misses:"+str(len(missedLetters)))
+    print()
+    print("Missed letters:",end=' ')
+    for letter in missedLetters:
+        print(letter,end=' ')
+    print()
+    blanks = '_'*len(secretWord)
+    for i in range(len(secretWord)):
+        if secretWord[i] in correctLetters:
+            blanks = blanks[:i]+secretWord[i]+blanks[i+1:]
+    for letter in blanks:
+        print(letter,end=' ')
+    print()
+`, "{uparrow}");
+    });
+});
