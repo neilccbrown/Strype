@@ -258,7 +258,7 @@ export default Vue.extend({
             // If there are no frames in this container, a click should toggle the caret of this container
             if (this.frames.length == 0) {
                 this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.body});
-                event.consume();
+                event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
             }
@@ -278,7 +278,7 @@ export default Vue.extend({
                         caretPosition: CaretPosition.below,
                     });
                 }
-                event.consume();
+                event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
             }
