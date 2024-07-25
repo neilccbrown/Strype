@@ -316,7 +316,7 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
         ps.nextIndex += 1;
         return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
     }
-    if (nextVal === "not") {
+    if (nextVal === "not" || nextVal === ":") {
         ps.nextIndex += 1;
         return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
     }
@@ -382,7 +382,13 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             throw new Error("Cannot find operator " + ps.nextIndex + " in:\n" + debugToString(p, ""), {cause: err});
         }
         if (op != null && (operators.includes(op) || trimmedKeywordOperators.includes(op))) {
-            latest = concatSlots(latest, op, parseNextTerm(ps));
+            if (op == ":" && ps.nextIndex == ps.seq.length) {
+                // Can be blank on RHS of colon
+                latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
+            }
+            else {
+                latest = concatSlots(latest, op, parseNextTerm(ps));
+            }
         }
         else {
             throw new Error("Unknown operator: " + child.type + " \"" + op + "\"");
