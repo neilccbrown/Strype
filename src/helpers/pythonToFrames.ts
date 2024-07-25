@@ -358,15 +358,16 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     const ps = {seq: p.children, nextIndex: 0};
     let latest = parseNextTerm(ps);
     while (ps.nextIndex < p.children.length) {
-        if (p.children[ps.nextIndex].type === Sk.ParseTables.sym.trailer) {
+        const child = p.children[ps.nextIndex];
+        if (child.type === Sk.ParseTables.sym.trailer) {
             // A suffix, like an array index lookup.  Join it and move forward only by one:
-            const grandchildren = p.children[ps.nextIndex].children;
+            const grandchildren = child.children;
             if (grandchildren != null && grandchildren[0].value === ".") {
                 latest = concatSlots(latest, ".", toSlots(grandchildren[1]));
             }
             else {
                 // Something bracketed:
-                latest = concatSlots(latest, "", toSlots(p.children[ps.nextIndex]));
+                latest = concatSlots(latest, "", toSlots(child));
             }
             ps.nextIndex += 1;
             continue;
@@ -374,7 +375,7 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
         // Now we expect a binary operator:        
         let op;
         try {
-            op = digValue(p.children[ps.nextIndex]);
+            op = digValue(child);
             ps.nextIndex += 1;
         }
         catch (err) {
@@ -384,7 +385,7 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             latest = concatSlots(latest, op, parseNextTerm(ps));
         }
         else {
-            throw new Error("Unknown operator: " + p.children[ps.nextIndex].type + " \"" + op + "\"");
+            throw new Error("Unknown operator: " + child.type + " \"" + op + "\"");
         }
     }
     return latest;
