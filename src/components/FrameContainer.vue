@@ -1,5 +1,5 @@
 <template>
-    <div class="frame-container" :style="frameStyle" @click="onOuterContainerClick">
+    <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick">
         <div class="frame-container-header">
             <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
@@ -264,10 +264,10 @@ export default Vue.extend({
             }
         },
         onOuterContainerClick(event : any): void {
-            var containerFramesBottom = (this.$refs.containerFrames as HTMLElement).getBoundingClientRect().bottom;
+            var containerFramesBounds = (this.$refs.containerFrames as HTMLElement).getBoundingClientRect();
             
             // Was the click beneath the bottom of the frame container?
-            if (event.clientY > containerFramesBottom) {
+            if (event.clientY > containerFramesBounds.bottom) {
                 // Select the lowest frame cursor position:
                 if (this.frames.length == 0) {
                     this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.body});
@@ -278,6 +278,13 @@ export default Vue.extend({
                         caretPosition: CaretPosition.below,
                     });
                 }
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+            else if (event.clientY < containerFramesBounds.top) {
+                // Select the highest frame cursor position:
+                this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.body});
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
@@ -323,5 +330,12 @@ export default Vue.extend({
 .frame-container-minheight {
     min-height: $frame-container-min-height;
 }
-
+.frame-container-header {
+    // Stop it taking up full width, to allow click to select top frame cursor instead of folding:
+    display: inline-block;
+    padding-right: 5px;
+}
+.frame-container-header * {
+    cursor: pointer;
+}
 </style>
