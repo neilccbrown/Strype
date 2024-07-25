@@ -176,7 +176,7 @@ export default Vue.extend({
             "keydown",
             (event: KeyboardEvent) => {
                 //handle the Ctrl/Meta + O for opening a project, and Ctrl/Meta + S command for saving the project
-                if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey)){
+                if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey) && (!event.shiftKey)){
                     event.stopImmediatePropagation();
                     event.preventDefault();
                     const linkIdToSimulate = (event.key.toLowerCase() === "s") ? this.saveProjectLinkId : this.loadProjectLinkId;
