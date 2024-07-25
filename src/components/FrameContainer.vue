@@ -1,12 +1,12 @@
 <template>
-    <div class="frame-container" :style="frameStyle">
+    <div class="frame-container" :style="frameStyle" @click="onOuterContainerClick">
         <div class="frame-container-header">
             <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
-        <div :id="this.frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1">
+        <div :id="this.frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
             <CaretContainer
                 :frameId="this.frameId"
                 :ref="getCaretContainerRef"
@@ -141,7 +141,7 @@ export default Vue.extend({
             // For the main code, add 200px at the bottom so you can scroll down to put the last bit of code
             // above the bottom of the window.
             if (this.frameId == -3) {
-                defaultStyle["margin-bottom"] = "200px";
+                defaultStyle["padding-bottom"] = "200px";
             }
             return defaultStyle;
         },
@@ -254,10 +254,33 @@ export default Vue.extend({
             this.appStore.makeSelectedFramesVisible();
         },
 
-        onFrameContainerClick(): void  {
+        onFrameContainerClick(event: any): void {
             // If there are no frames in this container, a click should toggle the caret of this container
-            if(this.frames.length == 0){
+            if (this.frames.length == 0) {
                 this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.body});
+                event.consume();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+        },
+        onOuterContainerClick(event : any): void {
+            var containerFramesBottom = (this.$refs.containerFrames as HTMLElement).getBoundingClientRect().bottom;
+            
+            // Was the click beneath the bottom of the frame container?
+            if (event.clientY > containerFramesBottom) {
+                // Select the lowest frame cursor position:
+                if (this.frames.length == 0) {
+                    this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.body});
+                }
+                else {
+                    this.appStore.toggleCaret({
+                        id: this.frames[this.frames.length - 1].id,
+                        caretPosition: CaretPosition.below,
+                    });
+                }
+                event.consume();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
             }
         },
     },
@@ -267,7 +290,8 @@ export default Vue.extend({
 
 <style lang="scss">
 .frame-container {
-    margin-bottom: 5px;
+    padding-bottom: 15px;
+    margin-bottom: 0px;
     margin-left:0px;
 }
 
@@ -290,8 +314,7 @@ export default Vue.extend({
 
 .container-frames {
     margin-left: 14px; // 1px less than for the right margin to wake the rendering neat
-    margin-right: 15px;  
-    margin-bottom: 15px;
+    margin-right: 15px;
     border-radius: 8px;
     border: 1px solid #B4B4B4;
     outline: none;
