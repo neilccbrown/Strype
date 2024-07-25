@@ -133,11 +133,17 @@ export default Vue.extend({
         },
 
         frameStyle(): Record<string, string> {
-            return {
+            const defaultStyle : Record<string, string> = {
                 "background-color": `${
                     (this.frameType as FramesDefinitions).colour
                 } !important`,
             };
+            // For the main code, add 200px at the bottom so you can scroll down to put the last bit of code
+            // above the bottom of the window.
+            if (this.frameId == -3) {
+                defaultStyle["margin-bottom"] = "200px";
+            }
+            return defaultStyle;
         },
 
         id(): string {
