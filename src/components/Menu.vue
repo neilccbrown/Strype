@@ -114,7 +114,7 @@
             <span class="menu-icon-entry menu-icon-centered-entry error-count-span" :title="$t('appMessage.editorErrors')" @mousedown.self.stop.prevent>{{errorCount}}</span>
             <i :class="{'fas fa-chevron-down menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex >= errorCount - 1)}" @mousedown.self.stop.prevent="navigateToErrorRequested=true" @click="goToError($event, true)"/>
         </div>
-        <a id="feedbackLink" href="/feedback" target="_blank"><i class="far fa-comment" :title="$t('action.feedbackLink')"></i></a>
+        <!--a id="feedbackLink" href="/feedback" target="_blank"><i class="far fa-comment" :title="$t('action.feedbackLink')"></i></a-->
     </div>
 </template>
 
@@ -242,7 +242,7 @@ export default Vue.extend({
 
         currentDriveLocation(): string {
             const currentLocation = this.appStore.strypeProjectLocationAlias??"";
-            return (currentLocation.length > 0) ? (this.$i18n.t("appMessage.folderX", {folder: currentLocation}) as string) : "Strype";
+            return (currentLocation.length > 0) ? currentLocation : "Strype";
         },       
 
         loadProjectLinkId(): string {
