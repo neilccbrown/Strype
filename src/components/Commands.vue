@@ -235,6 +235,11 @@ export default Vue.extend({
             (event: KeyboardEvent) => {
                 if (event.repeat && !(!this.appStore.isEditing &&  ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key))) {
                     // For all keys except Arrows when not editing, ignore all repeated keypresses, only process the initial press:
+                    
+                    // For enter, prevent repeat as this can cause issues, e.g. repeated triggering of the Run button on Mac:
+                    if (event.key.toLowerCase() == "enter") {
+                        event.preventDefault();
+                    }
                     return;
                 }
 
@@ -264,7 +269,13 @@ export default Vue.extend({
                 if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs.pythonExecAreaComponent) {
                     ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
                     ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
+                    // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
+                    ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
+                    
                     // Don't then process the keypress for other purposes:
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
                     return;
                 }
 
