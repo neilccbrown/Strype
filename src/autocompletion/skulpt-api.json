@@ -665,6 +665,30 @@
             "version": 0
         },
         {
+            "acResult": "float",
+            "documentation": "Convert a string or number to a floating point number, if possible.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "x",
+                    "defaultValue": "0"
+                }
+            ]
+        },
+        {
+            "acResult": "int",
+            "documentation": "int(x=0) -> integer\nint(x, base=10) -> integer\n\nConvert a number or string to an integer, or return 0 if no arguments\nare given.  If x is a number, return x.__int__().  For floating point\nnumbers, this truncates towards zero.\n\nIf x is not a number or if base is given, then x must be a string,\nbytes, or bytearray instance representing an integer literal in the\ngiven base.  The literal can be preceded by '+' or '-' and be surrounded\nby whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.\nBase 0 means to interpret the base from the string as an integer literal.\n>>> int('0b100', base=0)\n4",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
             "acResult": "bool",
             "documentation": "bool(x) -> bool\n\nReturns True when the argument x is true, False otherwise.\nThe builtins True and False are the only two instances of the class bool.\nThe class bool is a subclass of the class int, and cannot be subclassed.",
             "type": [
@@ -748,6 +772,12 @@
                     "defaultValue": "()"
                 }
             ]
+        },
+        {
+            "acResult": "long",
+            "documentation": "",
+            "type": [],
+            "version": 0
         },
         {
             "acResult": "method",
@@ -1006,6 +1036,15 @@
             "version": 0
         },
         {
+            "acResult": "super",
+            "documentation": "super() -> same as super(__class__, <first argument>)\nsuper(type) -> unbound super object\nsuper(type, obj) -> bound super object; requires isinstance(obj, type)\nsuper(type, type2) -> bound super object; requires issubclass(type2, type)\nTypical use to call a cooperative superclass method:\nclass C(B):\n    def meth(self, arg):\n        super().meth(arg)\nThis works for class methods too:\nclass C(B):\n    @classmethod\n    def cmeth(cls, arg):\n        super().cmeth(arg)\n",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
             "acResult": "unichr",
             "documentation": "",
             "type": [],
@@ -1017,6 +1056,12 @@
             "type": [
                 "function"
             ],
+            "version": 0
+        },
+        {
+            "acResult": "apply",
+            "documentation": "",
+            "type": [],
             "version": 0
         },
         {
@@ -1175,6 +1220,27 @@
             ]
         },
         {
+            "acResult": "eval",
+            "documentation": "Evaluate the given source in the context of globals and locals.\n\nThe source may be a string representing a Python expression\nor a code object as returned by compile().\nThe globals must be a dictionary and locals can be any mapping,\ndefaulting to the current globals and locals.\nIf only globals is given, locals defaults to it.",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "source"
+                },
+                {
+                    "name": "globals",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "locals",
+                    "defaultValue": "None"
+                }
+            ]
+        },
+        {
             "acResult": "exec",
             "documentation": "Execute the given source in the context of globals and locals.\n\nThe source may be a string representing one or more Python statements\nor a code object as returned by compile().\nThe globals must be a dictionary and locals can be any mapping,\ndefaulting to the current globals and locals.\nIf only globals is given, locals defaults to it.",
             "type": [
@@ -1235,6 +1301,14 @@
                     "defaultValue": "None"
                 }
             ]
+        },
+        {
+            "acResult": "int.from_bytes",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
         },
         {
             "acResult": "bool.from_bytes",
@@ -1432,7 +1506,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x10195bbb0>"
+                    "defaultValue": "<unittest.loader.TestLoader object at 0x107c39ac0>"
                 },
                 {
                     "name": "failfast",
@@ -1558,7 +1632,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x1015071b0>"
+                    "defaultValue": "<object object at 0x104fe81c0>"
                 },
                 {
                     "name": "timeout",
@@ -2115,7 +2189,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1020abaf0>"
+                    "defaultValue": "<function deepcopy at 0x108389f70>"
                 }
             ]
         },
@@ -2157,7 +2231,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1020abaf0>"
+                    "defaultValue": "<function deepcopy at 0x108389f70>"
                 }
             ]
         },
@@ -2185,7 +2259,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1020abaf0>"
+                    "defaultValue": "<function deepcopy at 0x108389f70>"
                 }
             ]
         },
@@ -2227,7 +2301,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x1020abaf0>"
+                    "defaultValue": "<function deepcopy at 0x108389f70>"
                 },
                 {
                     "name": "listiter",
