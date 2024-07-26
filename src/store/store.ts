@@ -100,6 +100,11 @@ export const useStore = defineStore("app", {
             errorCount: 0,
 
             wasLastRuntimeErrorFrameId: undefined as number | undefined,
+
+            // The state diffs are removed from the store, but we need to keep reactivity working, so we only keep counters instead
+            diffToPreviousStateCounter: 0,
+
+            diffToNextStateCounter: 0,
             
             // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
             copiedFrameId: -100 as number,
@@ -566,7 +571,7 @@ export const useStore = defineStore("app", {
         },
         
         isUndoRedoEmpty: (state) => (action: string) => {
-            return (action === "undo") ? diffToPreviousState.length === 0 : diffToNextState.length === 0;
+            return (action === "undo") ? state.diffToPreviousStateCounter == 0 : state.diffToNextStateCounter == 0;
         },
 
         isSelectionCopied: (state) => {
@@ -1264,6 +1269,8 @@ export const useStore = defineStore("app", {
             //undo redo is cleared
             diffToPreviousState.splice(0, diffToPreviousState.length);
             diffToNextState.splice(0, diffToNextState.length);
+            this.diffToPreviousStateCounter = 0;
+            this.diffToNextStateCounter = 0;
             
             //copied frames are cleared
             this.copiedFrameId = -100;
@@ -1347,11 +1354,14 @@ export const useStore = defineStore("app", {
                     1
                 );
             }
+            this.diffToPreviousStateCounter = diffToPreviousState.length;
+
             //we clear the diffToNextState content as we are now starting a new sequence of actions
             diffToNextState.splice(
                 0,
                 diffToNextState.length
             );
+            this.diffToNextStateCounter = 0;
         },
 
         applyStateUndoRedoChanges(isUndo: boolean){
@@ -1377,9 +1387,11 @@ export const useStore = defineStore("app", {
             let changeList = [] as ObjectPropertyDiff[];
             if(isUndo) {
                 changeList = diffToPreviousState.pop()??[];
+                this.diffToPreviousStateCounter--;
             }
             else {
                 changeList = diffToNextState.pop()??[];
+                this.diffToNextStateCounter--;
             }
             
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
@@ -1530,9 +1542,11 @@ export const useStore = defineStore("app", {
                 const stateDifferences = getObjectPropertiesDifferences(stateCopy, stateBeforeChanges);
                 if(isUndo){
                     diffToNextState.push(stateDifferences);
+                    this.diffToNextStateCounter++;
                 }
                 else{
-                    diffToPreviousState.push(stateDifferences);        
+                    diffToPreviousState.push(stateDifferences);    
+                    this.diffToPreviousStateCounter++;    
                 }
             }
         },  
@@ -1724,6 +1738,7 @@ export const useStore = defineStore("app", {
             let stateBeforeChanges = {};
             if(!frameSlotInfos.isFirstChange){
                 diffToPreviousState.pop();
+                this.diffToPreviousStateCounter--;
                 (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.initCode;  
             }
 
@@ -1790,7 +1805,7 @@ export const useStore = defineStore("app", {
 
         undoRedo(isUndo: boolean) {
             //check if the undo/redo list is empty BEFORE doing any action
-            const isEmptyList = (isUndo) ? diffToPreviousState.length == 0 : diffToNextState.length == 0;
+            const isEmptyList = (isUndo) ? this.diffToPreviousStateCounter == 0 : this.diffToNextStateCounter == 0;
             
             if(isEmptyList){
                 //no undo or redo can performed: inform the user on a temporary message
