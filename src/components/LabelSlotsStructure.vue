@@ -62,6 +62,7 @@ export default Vue.extend({
     data: function() {
         return {
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
+            isFocused: false,
         };
     },
 
@@ -90,6 +91,11 @@ export default Vue.extend({
             // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
             const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
             if (this.subSlots.length == 1) {
+                // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
+                const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??false) && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
+                if(isOptionalEmpty && !this.isFocused){
+                    return [" "];
+                }
                 return [(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText];
             }
             else {
@@ -380,6 +386,7 @@ export default Vue.extend({
         },
 
         onFocus(){
+            this.isFocused = true;
             // When the application gains focus again, the browser might try to give the first span of a div the focus (because the div may have been focused)
             // even if we have the blue caret showing. We do not let this happen.
             if(this.appStore.ignoreFocusRequest && this.appStore.focusSlotCursorInfos == undefined){
@@ -389,6 +396,7 @@ export default Vue.extend({
         },
 
         blurEditableSlot(){
+            this.isFocused = false;
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){
                 this.appStore.bypassEditableSlotBlurErrorCheck = false;
