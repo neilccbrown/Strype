@@ -2043,8 +2043,9 @@ export const useStore = defineStore("app", {
                 key = "Backspace";
                 framesIdToDelete = this.selectedFrames.reverse();
                 //this flag to show the delete message is set on a per frame deletion basis,
-                //but here we could have 3+ single frames delete, so we need to also check to selection length.
-                showDeleteMessage = this.selectedFrames.length > 3;
+                //but here we could have 3+ single frames delete, so we need to also check to selection lengths
+                //unless we are wrapping the frames
+                showDeleteMessage = !this.isWrappingFrame && this.selectedFrames.length > 3;
             }
             else if (this.currentFrame.caretPosition == CaretPosition.below && this.frameObjects[this.currentFrame.id].jointFrameIds.length > 0 && key === "Backspace") {
                 // If they backspace after a joint frame structure that has joint frames (e.g. if +else),
@@ -2052,6 +2053,7 @@ export const useStore = defineStore("app", {
                 framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
             }
             
+            let deleteWithBackspaceInBody = false;
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
                 //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
@@ -2089,6 +2091,7 @@ export const useStore = defineStore("app", {
                             if(currentFrame.childrenIds.length === 0 || currentFrame.frameType.type !== AllFrameTypesIdentifier.funcdef){
                                 //just move the cursor one level up
                                 this.changeCaretWithKeyboard(key);
+                                deleteWithBackspaceInBody = true;
                             }
                             else{
                                 //just show the user a message and do nothing else
@@ -2115,7 +2118,7 @@ export const useStore = defineStore("app", {
                 //Delete the frame if a frame to delete has been found
                 if(frameToDelete.frameId > 0){
                     //before actually deleting the frame(s), we check if the user should be notified of a large deletion
-                    if(countRecursiveChildren(frameToDelete.frameId, 3) >= 3){
+                    if(!this.isWrappingFrame && !deleteWithBackspaceInBody && countRecursiveChildren(frameToDelete.frameId, 3) >= 3){
                         showDeleteMessage = true;
                     }
 
