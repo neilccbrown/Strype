@@ -125,8 +125,7 @@
         "autoSaveGDriveTooltip":"Project will automatically be saved to Google Drive every {freq} minutes.",
         "selectFolder":"Select a folder",
         "selectStrypeFile":"Select a Strype project",
-        "folderX":"\"{folder}\" folder",
-        "gdriveLocation":"Location:",
+        "gdriveLocation":"Folder:",
         "gdriveAllStrypeFiles":"All Strype files",
         "gdriveTab":"My Drive",
         "editorErrors":"Errors"

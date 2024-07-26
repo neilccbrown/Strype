@@ -242,7 +242,7 @@ export default Vue.extend({
 
         currentDriveLocation(): string {
             const currentLocation = this.appStore.strypeProjectLocationAlias??"";
-            return (currentLocation.length > 0) ? (this.$i18n.t("appMessage.folderX", {folder: currentLocation}) as string) : "Strype";
+            return (currentLocation.length > 0) ? currentLocation : "Strype";
         },       
 
         loadProjectLinkId(): string {
