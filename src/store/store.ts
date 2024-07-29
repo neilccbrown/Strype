@@ -100,6 +100,11 @@ export const useStore = defineStore("app", {
             errorCount: 0,
 
             wasLastRuntimeErrorFrameId: undefined as number | undefined,
+
+            // The state diffs are removed from the store, but we need to keep reactivity working, so we only keep counters instead
+            diffToPreviousStateCounter: 0,
+
+            diffToNextStateCounter: 0,
             
             // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
             copiedFrameId: -100 as number,
@@ -566,7 +571,7 @@ export const useStore = defineStore("app", {
         },
         
         isUndoRedoEmpty: (state) => (action: string) => {
-            return (action === "undo") ? diffToPreviousState.length === 0 : diffToNextState.length === 0;
+            return (action === "undo") ? state.diffToPreviousStateCounter == 0 : state.diffToNextStateCounter == 0;
         },
 
         isSelectionCopied: (state) => {
@@ -1264,6 +1269,8 @@ export const useStore = defineStore("app", {
             //undo redo is cleared
             diffToPreviousState.splice(0, diffToPreviousState.length);
             diffToNextState.splice(0, diffToNextState.length);
+            this.diffToPreviousStateCounter = 0;
+            this.diffToNextStateCounter = 0;
             
             //copied frames are cleared
             this.copiedFrameId = -100;
@@ -1347,11 +1354,14 @@ export const useStore = defineStore("app", {
                     1
                 );
             }
+            this.diffToPreviousStateCounter = diffToPreviousState.length;
+
             //we clear the diffToNextState content as we are now starting a new sequence of actions
             diffToNextState.splice(
                 0,
                 diffToNextState.length
             );
+            this.diffToNextStateCounter = 0;
         },
 
         applyStateUndoRedoChanges(isUndo: boolean){
@@ -1377,9 +1387,11 @@ export const useStore = defineStore("app", {
             let changeList = [] as ObjectPropertyDiff[];
             if(isUndo) {
                 changeList = diffToPreviousState.pop()??[];
+                this.diffToPreviousStateCounter--;
             }
             else {
                 changeList = diffToNextState.pop()??[];
+                this.diffToNextStateCounter--;
             }
             
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
@@ -1495,7 +1507,6 @@ export const useStore = defineStore("app", {
                 // Keep the arrays of changes in sync with undo/redo sequences
                 // The state reference is sightly modified for using the critical positions that will be required for redo                
                 this.currentFrame = this.lastCriticalActionPositioning.lastCriticalCaretPosition;
-                console.log("Changing focus to " + JSON.stringify(this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos));
                 if(this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos){
                     this.isEditing = true;
                     this.anchorSlotCursorInfos = this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos;
@@ -1530,9 +1541,11 @@ export const useStore = defineStore("app", {
                 const stateDifferences = getObjectPropertiesDifferences(stateCopy, stateBeforeChanges);
                 if(isUndo){
                     diffToNextState.push(stateDifferences);
+                    this.diffToNextStateCounter++;
                 }
                 else{
-                    diffToPreviousState.push(stateDifferences);        
+                    diffToPreviousState.push(stateDifferences);    
+                    this.diffToPreviousStateCounter++;    
                 }
             }
         },  
@@ -1724,6 +1737,7 @@ export const useStore = defineStore("app", {
             let stateBeforeChanges = {};
             if(!frameSlotInfos.isFirstChange){
                 diffToPreviousState.pop();
+                this.diffToPreviousStateCounter--;
                 (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.initCode;  
             }
 
@@ -1790,7 +1804,7 @@ export const useStore = defineStore("app", {
 
         undoRedo(isUndo: boolean) {
             //check if the undo/redo list is empty BEFORE doing any action
-            const isEmptyList = (isUndo) ? diffToPreviousState.length == 0 : diffToNextState.length == 0;
+            const isEmptyList = (isUndo) ? this.diffToPreviousStateCounter == 0 : this.diffToNextStateCounter == 0;
             
             if(isEmptyList){
                 //no undo or redo can performed: inform the user on a temporary message
@@ -2043,8 +2057,9 @@ export const useStore = defineStore("app", {
                 key = "Backspace";
                 framesIdToDelete = this.selectedFrames.reverse();
                 //this flag to show the delete message is set on a per frame deletion basis,
-                //but here we could have 3+ single frames delete, so we need to also check to selection length.
-                showDeleteMessage = this.selectedFrames.length > 3;
+                //but here we could have 3+ single frames delete, so we need to also check to selection lengths
+                //unless we are wrapping the frames
+                showDeleteMessage = !this.isWrappingFrame && this.selectedFrames.length > 3;
             }
             else if (this.currentFrame.caretPosition == CaretPosition.below && this.frameObjects[this.currentFrame.id].jointFrameIds.length > 0 && key === "Backspace") {
                 // If they backspace after a joint frame structure that has joint frames (e.g. if +else),
@@ -2052,6 +2067,7 @@ export const useStore = defineStore("app", {
                 framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
             }
             
+            let deleteWithBackspaceInBody = false;
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
                 //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
@@ -2089,6 +2105,7 @@ export const useStore = defineStore("app", {
                             if(currentFrame.childrenIds.length === 0 || currentFrame.frameType.type !== AllFrameTypesIdentifier.funcdef){
                                 //just move the cursor one level up
                                 this.changeCaretWithKeyboard(key);
+                                deleteWithBackspaceInBody = true;
                             }
                             else{
                                 //just show the user a message and do nothing else
@@ -2115,7 +2132,7 @@ export const useStore = defineStore("app", {
                 //Delete the frame if a frame to delete has been found
                 if(frameToDelete.frameId > 0){
                     //before actually deleting the frame(s), we check if the user should be notified of a large deletion
-                    if(countRecursiveChildren(frameToDelete.frameId, 3) >= 3){
+                    if(!this.isWrappingFrame && !deleteWithBackspaceInBody && countRecursiveChildren(frameToDelete.frameId, 3) >= 3){
                         showDeleteMessage = true;
                     }
 

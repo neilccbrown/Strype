@@ -58,12 +58,25 @@ export default class Parser {
 
         output += 
             ((!passBlock)? this.parseStatement(block, indentation) : "") + 
-            ((block.frameType.allowChildren && children.length > 0)?
+            // We replace an empty block frame content by "pass". We also replace the frame's content if
+            // the children are ALL blank or simple comment frames, because Python will see it as a problem. 
+            // Any disabled frame (and multi lines comments which are actually transformed to multiple line comments) 
+            // won't make an issue when executed, so we parse them normally.
+            ((block.frameType.allowChildren && children.length > 0 && 
+                children.some((childFrame) =>  childFrame.isDisabled 
+                    || (childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment 
+                        || (childFrame.frameType.type == AllFrameTypesIdentifier.comment && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.includes("\n"))))))
+                ?
                 this.parseFrames(
                     children,
                     indentation + conditionalIndent
                 ) :
-                indentation + conditionalIndent +"pass" + "\n") // empty bodies are added as a "pass" statement in the code
+                // When we replace empty body frames by "pass", if that's because we have only blank or comments, we need to
+                // replace EACH of these frames by "pass", so we keep the match between the frames and Python code lines coherent...
+                ((children.length > 0) ?
+                    this.parsePseudoEmptyBlockContent(children, indentation, conditionalIndent)
+                    : indentation + conditionalIndent +"pass" + "\n")
+            ) 
             + 
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id, "all"), 
@@ -71,6 +84,14 @@ export default class Parser {
             );
         
         return output;
+    }
+
+    private parsePseudoEmptyBlockContent(children: FrameObject[], indentation: string, conditionalIndent: string): string {
+        // This method is called when parsing the content of a block frame that only contains simple comments or blank frames,
+        // effectively making the block content empty. However, we need to 1) allow "passing" the content for Python to 
+        // compile properly, and 2) make sure we keep the slots/lines mapping for proper errors handling.
+        this.parseFrames(children);
+        return (indentation + conditionalIndent +"pass" + "\n").repeat(children.length);
     }
     
     private parseStatement(statement: FrameObject, indentation = ""): string {
