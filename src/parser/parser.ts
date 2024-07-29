@@ -58,12 +58,15 @@ export default class Parser {
 
         output += 
             ((!passBlock)? this.parseStatement(block, indentation) : "") + 
-            // We replace an empty block frame content by "pass". Empty can be either because there are no child content,
-            // or the children are ALL blank or simple comment frames. Any disabled frame (and multi lines comments) 
-            // won't make an issue, so we parse them normally.
-            ((block.frameType.allowChildren && children.length > 0 && (children && children.some((childFrame) =>  childFrame.isDisabled)
-                || children.some((childFrame) =>  (childFrame.frameType.type != AllFrameTypesIdentifier.comment || (childFrame.frameType.type == AllFrameTypesIdentifier.comment && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.includes("\n") )) 
-                    && childFrame.frameType.type != AllFrameTypesIdentifier.blank))) ?
+            // We replace an empty block frame content by "pass". We also replace the frame's content if
+            // the children are ALL blank or simple comment frames, because Python will see it as a problem. 
+            // Any disabled frame (and multi lines comments which are actually transformed to multiple line comments) 
+            // won't make an issue when executed, so we parse them normally.
+            ((block.frameType.allowChildren && children.length > 0 && 
+                children.some((childFrame) =>  childFrame.isDisabled 
+                    || (childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment 
+                        || (childFrame.frameType.type == AllFrameTypesIdentifier.comment && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.includes("\n"))))))
+                ?
                 this.parseFrames(
                     children,
                     indentation + conditionalIndent
