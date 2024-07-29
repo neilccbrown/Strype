@@ -1507,7 +1507,6 @@ export const useStore = defineStore("app", {
                 // Keep the arrays of changes in sync with undo/redo sequences
                 // The state reference is sightly modified for using the critical positions that will be required for redo                
                 this.currentFrame = this.lastCriticalActionPositioning.lastCriticalCaretPosition;
-                console.log("Changing focus to " + JSON.stringify(this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos));
                 if(this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos){
                     this.isEditing = true;
                     this.anchorSlotCursorInfos = this.lastCriticalActionPositioning.lastCriticalSlotCursorInfos;
