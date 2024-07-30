@@ -51,7 +51,7 @@ export default Vue.extend({
                 inFolderDocsView.setParent(this.appStore.strypeProjectLocation.toString());
                 inFolderDocsView.setIncludeFolders(true);
                 // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
-                (inFolderDocsView as any).setLabel((this.$i18n.t("appMessage.folderX", {folder: this.appStore.strypeProjectLocationAlias}) as string));
+                (inFolderDocsView as any).setLabel(this.appStore.strypeProjectLocationAlias);
                 docsViews.push(inFolderDocsView);
             }
 
@@ -73,6 +73,7 @@ export default Vue.extend({
             }    
             sharedDocsView.setOwnedByMe(false);
             sharedDocsView.setIncludeFolders(true);
+            sharedDocsView.setMode(google.picker.DocsViewMode.LIST);
             
             // View 4 or 3: My Drive view (added to the list of view later with position depending on the action)
             // This view is required to allow users to nagivate in their Drive: with View 1, we cannot nagivate outside the given parent folder,
@@ -81,6 +82,8 @@ export default Vue.extend({
             rootDocsView.setSelectFolderEnabled(this.isSaveAction);
             rootDocsView.setIncludeFolders(true);
             rootDocsView.setParent("root");
+            rootDocsView.setMode(google.picker.DocsViewMode.LIST);
+
             if(this.isSaveAction){
                 rootDocsView.setMimeTypes("application/vnd.google-apps.folder");
             }    
