@@ -51,7 +51,7 @@ export default Vue.extend({
                 inFolderDocsView.setParent(this.appStore.strypeProjectLocation.toString());
                 inFolderDocsView.setIncludeFolders(true);
                 // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
-                (inFolderDocsView as any).setLabel((this.$i18n.t("appMessage.folderX", {folder: this.appStore.strypeProjectLocationAlias}) as string));
+                (inFolderDocsView as any).setLabel(this.appStore.strypeProjectLocationAlias);
                 docsViews.push(inFolderDocsView);
             }
 
