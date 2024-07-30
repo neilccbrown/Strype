@@ -339,7 +339,7 @@ export default Vue.extend({
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const body : string[] = [];
             // Prepare the request body parameters. Note that we only set the parent ID for explicit save
-            const bodyReqParams: {name: string, mimeType: string, contentHints:any, parents?: [string]} = 
+            const bodyReqParams: {name: string, mimeType: string, contentHints: {thumbnail: {image: string, mimeType: string}}, parents?: [string]} = 
                 {
                     name: fullFileName,
                     mimeType: "application/strype",
