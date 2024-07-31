@@ -1046,3 +1046,19 @@ describe("Parameter prompts", () => {
         });
     }
 });
+
+describe("Control flow", () => {
+    it("Shows autocomplete when in a try", () => {
+        // There was a bug where if you autocompleted inside a try, it would be missing
+        // any of the following frames (even if they were present in the code)
+
+        focusEditorAC();
+        // Go down then add a try then a print then a method call on myString.: 
+        cy.get("body").type("{downarrow}{downarrow}tpmyString{downarrow} myString.{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "capitalize()");
+            checkExactlyOneItem(acIDSel, null, "lower()");
+        });
+    });
+});
