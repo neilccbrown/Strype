@@ -35,7 +35,7 @@ export default class Parser {
     private line = 0;
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
-    private excludeLoopsAndComments = false;
+    private excludeLoopsAndCommentsAndCloseTry = false;
     private ignoreCheckErrors = false;
 
     constructor(ignoreCheckErrors?: boolean){
@@ -52,7 +52,7 @@ export default class Parser {
             return "";
         }
 
-        const passBlock = this.excludeLoopsAndComments && getLoopFramesTypeIdentifiers().includes(block.frameType.type);
+        const passBlock = this.excludeLoopsAndCommentsAndCloseTry && getLoopFramesTypeIdentifiers().includes(block.frameType.type);
         // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
         const conditionalIndent = (passBlock) ? "" : INDENT;
 
@@ -110,8 +110,8 @@ export default class Parser {
             // Before returning, we update the line counter used for the frame mapping in the parser:
             // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines-1 + 2 for the multi quotes
             // (for UI purpose our multiline comments content always terminates with an extra line return so we need to discard it)
-            this.line += ((this.excludeLoopsAndComments) ? 1 : ((commentContent.includes("\n")) ? 1 + commentContent.split("\n").length : 1));
-            return (this.excludeLoopsAndComments)
+            this.line += ((this.excludeLoopsAndCommentsAndCloseTry) ? 1 : ((commentContent.includes("\n")) ? 1 + commentContent.split("\n").length : 1));
+            return (this.excludeLoopsAndCommentsAndCloseTry)
                 ? "pass" // This will just be an empty code placeholder, so it shouldn't be a problem for the code
                 : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
         }
@@ -184,15 +184,20 @@ export default class Parser {
                     this.parseBlock(frame, indentation) 
                 : 
                 // single line frame
-                this.parseStatement(frame,indentation);
+                this.parseStatement(frame, indentation);
 
             output += disabledFrameBlockFlag + lineCode;
+            
+            if (this.exitFlag && frame.frameType.type == AllFrameTypesIdentifier.try) {
+                // We need to add an extra except to finish the try frame off and make it valid:
+                output += indentation + "except:\n" + indentation + "    pass\n"; 
+            }
         }
 
         return output;
     }
 
-    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndComments?: boolean): string {
+    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -201,8 +206,8 @@ export default class Parser {
             this.stopAtFrameId = stopAtFrameId;
         }
 
-        if(excludeLoopsAndComments){
-            this.excludeLoopsAndComments = excludeLoopsAndComments;
+        if(excludeLoopsAndCommentsAndCloseTry){
+            this.excludeLoopsAndCommentsAndCloseTry = excludeLoopsAndCommentsAndCloseTry;
         }
 
         // We look if Turtle has been imported to notify the editor UI
