@@ -111,10 +111,6 @@ export function copyFramesFromParsedPython(code: string) : string | null {
     findCurrentStrypeLocation();
     // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
-    // if we are currently inside the imports or function definitions sections in Strype, we can also trim the start of the code
-    if(currentStrypeLocation == STRYPE_LOCATION.IMPORTS_SECTION || currentStrypeLocation == STRYPE_LOCATION.FUNCDEF_SECTION){
-        code = code.trimStart();
-    }
 
     const codeLines = code.split(/\r?\n/);
     // Then find the common amount of indentation on non-blank lines and remove it:
