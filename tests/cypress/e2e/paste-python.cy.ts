@@ -169,7 +169,7 @@ from a.b.c import *
         }
     });
     
-    // Check that if you paste something that already has indent on every line, we manage to preserver
+    // Check that if you paste something that already has indent on every line, we manage to preserve
     // the relation among the lines correctly:
     it("Handles multiple lines that are all indented correctly", () => {
         testRoundTripPasteAndDownload(`
@@ -187,6 +187,30 @@ else:
     x = -1
 x = x*x
 `);
+    });
+    it("Handles multiple functions that are all indented the same amount", () => {
+        testRoundTripPasteAndDownload(`
+                        def foo():
+                            return "foo"
+                        def bar():
+                            return "bar"
+`, "{uparrow}", `
+def foo ():
+    return "foo"
+def bar ():
+    return "bar"
+`.trimStart());
+    });
+    it("Handles function that is indented the same amount as preceding comment", () => {
+        testRoundTripPasteAndDownload(`
+                        # Returns foo
+                        def foo():
+                            return "foo"
+`, "{uparrow}", `
+# Returns foo
+def foo ():
+    return "foo"
+`.trimStart());
     });
     
     it("Allows pasting else/elif at only the right places", () => {
