@@ -276,10 +276,10 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
             else {
                 for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                    const item = allItems.find((ac) => ac.acResult === (f as BaseSlot).code.trim());
-                    if (item) {
-                        soFar[module].push(item);
-                    }
+                    // We find either:
+                    // - Results which match the thing imported, e.g. Turtle when the user has written "from turtle import Turtle"
+                    // - Results where the part before the first dot matches, e.g. date.fromtimestamp when the user has written "from datetime import date"
+                    soFar[module].push(...allItems.filter((ac) => ac.acResult === (f as BaseSlot).code.trim() || (ac.acResult.includes(".") && ac.acResult.startsWith((f as BaseSlot).code.trim() + "."))));
                 }
             }
         }
@@ -361,33 +361,39 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
                 return "\u200b";
             }
         }
-        const importedFunc = Object.values(getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token);
-        if (importedFunc !== undefined) {
-            if (importedFunc.params) {
-                // If item is a type and a function, it's a constructor, so the first parameter is self, which we ignore:
-                const callParams = importedFunc.type.includes("function") && importedFunc.type.includes("type") && importedFunc.params.length >= 1 ? importedFunc.params.slice(1) : importedFunc.params;
-                return getParamPrompt(callParams.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
-            }
-            else {
-                return "\u200b";
-            }
-        }
-
-        // Didn't find it anywhere, so we just don't know:
-        return "\u200b";
     }
     else {
-        // If the context matches an imported module, we can look it up there.        
+        // If the context is non-blank and matches an imported module, we can look it up there.        
         const fromModule = getAvailableItemsForImportFromModule(context).find((ac) => ac.acResult === token);
         if (fromModule?.params !== undefined) {
             return getParamPrompt(fromModule.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
         }
-
-        // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt
-        // doesn't have an inspect module to reflect params
-
-        // So unfortunately, we just can't help with param names.
-        return "\u200b";
     }
+    
+    // We check this even without a context because we need to check items imported like "from turtle import Turtle" where the user may call "Turtle()" without a context:
+    // If there is a context, we see if the full item (context.token) is in the AC:
+    const importedFunc = Object.values(getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token || f.acResult === context + "." + token);
+    if (importedFunc !== undefined) {
+        if (importedFunc.params) {
+            return getParamPrompt(importedFunc.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+        }
+        else {
+            return "\u200b";
+        }
+    }
+    
+    // If the context includes a dot, like datetime.date, we try moving the bit after
+    // the last dot into the token, since otherwise we're going to fail anyway:
+    if (context.includes(".")) {
+        const lastDotIndex = context.lastIndexOf(".");
+        token = context.substring(lastDotIndex + 1) + "." + token;
+        context = context.substring(0, lastDotIndex);
+        return calculateParamPrompt(context, token, paramIndex, lastParam);
+    }
+    
+    // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt
+    // doesn't have an inspect module to reflect params
+    // So unfortunately, we just can't help with param names.
+    return "\u200b";
 
 }
