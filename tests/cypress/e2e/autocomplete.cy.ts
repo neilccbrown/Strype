@@ -972,7 +972,7 @@ describe("Underscore handling", () => {
     });
 });
 
-describe.only("Parameter prompts", () => { 
+describe("Parameter prompts", () => { 
     // Each item is a triple: the module, the function name within the module, the list of param names
     const rawFuncs : [string | null, string, string[]][] = [
         [null, "abs", ["x"]],
