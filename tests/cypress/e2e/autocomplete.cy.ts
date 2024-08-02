@@ -972,35 +972,39 @@ describe("Underscore handling", () => {
     });
 });
 
-describe("Parameter prompts", () => { 
-    // Each item is a pair: the function name, the list of param names
-    const rawFuncs : [string, string[]][] = [
-        ["abs", ["x"]],
-        ["delattr", ["obj", "name"]],
-        ["dir", []],
-        ["globals", []],
-        ["setattr", ["obj, name, value"]],
-        ["collections.namedtuple", ["typename", "field_names"]],
+describe.only("Parameter prompts", () => { 
+    // Each item is a triple: the module, the function name within the module, the list of param names
+    const rawFuncs : [string | null, string, string[]][] = [
+        [null, "abs", ["x"]],
+        [null, "delattr", ["obj", "name"]],
+        [null, "dir", []],
+        [null, "globals", []],
+        [null, "setattr", ["obj, name, value"]],
+        ["collections", "namedtuple", ["typename", "field_names"]],
+        // These are object oriented items, so we are checking the self has been removed:
+        ["random", "randint", ["a, b"]],
+        
     ];
     if (Cypress.env("mode") !== "microbit") {
-        rawFuncs.push(["urllib.request.urlopen", ["url"]]);
+        rawFuncs.push(["urllib.request", "urlopen", ["url"]]);
+        rawFuncs.push(["turtle", "Turtle", []]);
+        rawFuncs.push(["datetime", "date.fromtimestamp", ["timestamp"]]);
     }
-    const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string}[] = [];
+    const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string, acSection: string, acName: string}[] = [];
     for (const rawFunc of rawFuncs) {
-        if (rawFunc[0].includes(".")) {
-            const beforeLastDot = rawFunc[0].substring(0, rawFunc[0].lastIndexOf("."));
-            const afterLastDot = rawFunc[0].substring(rawFunc[0].lastIndexOf(".") + 1);
+        if (rawFunc[0]) {
             // We need some kind of import; test three ways:
             // The "import module" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}i" + beforeLastDot + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0], params: rawFunc[1], displayName: rawFunc[0] + " with import frame"});
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}i" + rawFunc[0] + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0] + "." + rawFunc[1], params: rawFunc[2], acSection: rawFunc[0], acName: rawFunc[1], displayName: rawFunc[1] + " with import frame"});
             // The "from module import *" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + beforeLastDot + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: afterLastDot, params: rawFunc[1], displayName: rawFunc[0] + " with from-import-* frame"});
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0] + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[1], params: rawFunc[2], acSection: rawFunc[0], acName: rawFunc[1], displayName: rawFunc[1] + " with from-import-* frame"});
             // The "from module import funcName" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + beforeLastDot + "{rightarrow}" + afterLastDot + "{rightarrow}{downarrow}{downarrow}", funcName: afterLastDot, params: rawFunc[1], displayName: rawFunc[0] + " with from-import-funcName frame"});
+            // Note that if funcName has a dot, we need to only use the part before the dot:
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0] + "{rightarrow}" + (rawFunc[1].includes(".") ? rawFunc[1].substring(0, rawFunc[1].indexOf(".")) : rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[1], params: rawFunc[2], acName: rawFunc[1], acSection: rawFunc[0], displayName: rawFunc[1] + " with from-import-funcName frame"});
         }
         else {
             // No import necessary
-            funcs.push({funcName: rawFunc[0], params: rawFunc[1], displayName: rawFunc[0]});
+            funcs.push({funcName: rawFunc[1], params: rawFunc[2], acSection: BUILTIN, acName: rawFunc[1], displayName: rawFunc[1]});
         }
     }
     
@@ -1041,6 +1045,12 @@ describe("Parameter prompts", () => {
             // pings back to the start of the slot; I don't see this in a real browser
             // We compensate by moving the cursor back to the end with right arrow:
             cy.get("body").type("{rightarrow}".repeat(func.funcName.includes(".") ? func.funcName.length - func.funcName.lastIndexOf(".") - 1 : func.funcName.length));
+            if (!func.funcName.includes(".")) {
+                withAC((acIDSel) => {
+                    cy.get(acIDSel).should("be.visible");
+                    checkExactlyOneItem(acIDSel, func.acSection, func.acName + "(" + func.params.join(", ") + ")");
+                });
+            }
             cy.get("body").type("{enter}");
             withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
         });
