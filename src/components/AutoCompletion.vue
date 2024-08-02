@@ -153,7 +153,7 @@ export default Vue.extend({
 
     methods: {
         textForAC(item : AcResultType) : string {
-            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.params?.filter((p) => p.defaultValue === undefined)?.map((p) => p.name)?.join(", ") || "") + ")" : "");
+            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => p.name)?.join(", ") || "") + ")" : "");
         },
 
         sortCategories(categories : string[]) : string[] {
