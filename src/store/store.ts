@@ -276,7 +276,7 @@ export const useStore = defineStore("app", {
             }
 
             const currentFrame  = state.frameObjects[frameId];
-            const parent = state.frameObjects[getParentOrJointParent( currentFrame.id)];
+            const parent = state.frameObjects[getParentOrJointParent(currentFrame.id)];
 
             // list with all potential joint children to be added
             let allowedJointChildren: string[] = [];
