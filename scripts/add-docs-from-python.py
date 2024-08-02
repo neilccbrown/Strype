@@ -8,6 +8,7 @@ import json
 import pydoc
 import re
 import sys
+from operator import attrgetter
 
 def parse_arguments(text, func_name):
     # Split the text into lines
@@ -82,7 +83,7 @@ for mod in targetAPI:
         # Each item has an "acResult" with the name
         if not item['documentation']:
             try:
-                doc = inspect.getdoc(getattr(imp_mod, item['acResult']))
+                doc = inspect.getdoc(attrgetter(item['acResult'])(imp_mod))
                 # Some functions now have their type signature first, which we will omit by removing up
                 # to the first \n\n that follows such signature(s):
                 if re.compile("^[A-Za-z0-9]+\\(").match(doc):
@@ -95,13 +96,25 @@ for mod in targetAPI:
                 pass
         if 'function' in item['type'] and not 'params' in item:
             try:
-                 argspec = inspect.getfullargspec(getattr(imp_mod, item['acResult']))
+                 argspec = inspect.getfullargspec(attrgetter(item['acResult'])(imp_mod))
                  # The args item in the tuple is a list of names of positional arguments:
                  numArgs = len(argspec.args)
                  if numArgs > 0:
+                    # As per https://stackoverflow.com/questions/47599749/check-if-function-belongs-to-a-class
+                    # check if the method belongs to a class:
+                    try:
+                        hasTypeSelfParam = '.' in attrgetter(item['acResult'] + '.__qualname__')(imp_mod)
+                    except:
+                        # Might not have a qualname:
+                        hasTypeSelfParam = False
+                    # Constructors are separate, but can be identified by showing up as function and a type:
+                    if 'function' in item['type'] and 'type' in item['type']:
+                        hasTypeSelfParam = True
                     item['params'] = []
                     for i, arg in enumerate(argspec.args):
                         details = {"name": arg}
+                        if i == 0 and hasTypeSelfParam:
+                            details['hide'] = True
                         # The defaults item in the tuple is None or a list of default values but it goes backwards
                         # So if you have 5 args, and 2 in the default, they apply to the fifth and fourth arg
                         if argspec.defaults and ((numArgs - i) <= len(argspec.defaults)):

@@ -10,7 +10,8 @@ export interface AcResultType {
     // Empty list means unknown.  
     type: ("function" | "module" | "variable" | "type")[];
     // Only there if a function, and even then it may be missing if we can't look up the info:
-    params?: {name: string, defaultValue?: string}[];
+    // hide means we should hide this parameter (e.g. self, type) from all completion
+    params?: {name: string, defaultValue?: string, hide?: boolean}[];
     // The version.  Only used on microbit to distinguish v2 and v3:
     version: number;
 }
