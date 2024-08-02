@@ -276,7 +276,7 @@ export const useStore = defineStore("app", {
             }
 
             const currentFrame  = state.frameObjects[frameId];
-            const parent = state.frameObjects[currentFrame.parentId];
+            const parent = state.frameObjects[getParentOrJointParent( currentFrame.id)];
 
             // list with all potential joint children to be added
             let allowedJointChildren: string[] = [];
@@ -286,20 +286,27 @@ export const useStore = defineStore("app", {
             let nextJointChildID = -100;
 
             // The RULE for the JOINTS is:
-            // We allow joint addition only at the end of the body 
-            // however, *programmatically* we might have something to check upon the BELOW position of a joint frame (for example when moving frames)
-            // in that case, we do as if we were *inside* the joint frame (not that we are dealing with TRUE joint, not the parent of structure)
-
+            // We allow joint addition only at the end of the body of a frame root or a depending joint. 
+            // However, *programmatically* we might have something to check upon the BELOW position of a joint/joint root frame 
+            // (for example when moving frames)
+            // in that case, we do as if we were *inside* the joint frame (note that we are dealing with TRUE joint, not the parent of structure)
+            const isMovingJointFrameToBelow = state.isDraggingFrame && caretPosition == CaretPosition.below && isFramePartOfJointStructure(currentFrame.id);
             // Two possible cases:
-            // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame; OR if we are in a moving condition as explained above (M)
-            // (b) and (a) or (M)
-            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0) || (caretPosition == CaretPosition.below && isFramePartOfJointStructure(currentFrame.id)) ){
+            // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame
+            // (b) and (a) 
+            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0)){
                 focusedFrame = currentFrame;
             }
-            // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame
+            // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame, OR if we are in a moving condition as explained above (M)
             // (a) and (b)
-            else if ( caretPosition === CaretPosition.below && [...parent.childrenIds].pop() === currentFrame.id) {
-                focusedFrame = parent;
+            else if ((caretPosition === CaretPosition.below && [...parent.childrenIds].pop() === currentFrame.id) || isMovingJointFrameToBelow) {
+                if(isMovingJointFrameToBelow){
+                    focusedFrame = currentFrame;
+                    caretPosition = CaretPosition.body;
+                }
+                else{
+                    focusedFrame = parent;
+                }
             }
 
             //if we are in the joint context
@@ -326,8 +333,8 @@ export const useStore = defineStore("app", {
 
                     // -100 means there is no next Joint Child => focused is the last joint or end of joint structure (i.e. below root)
                     if(nextJointChildID === -100){
-                        // Below the root, no joint frame can be added.
-                        if((frameId == focusedFrame.id && caretPosition == CaretPosition.below && focusedFrame.frameType.allowJointChildren)){
+                        // Below the root, no joint frame can be added (unless in the programmatic case of drag and drop, see above)
+                        if(!state.isDraggingFrame && frameId == focusedFrame.id && caretPosition == CaretPosition.below && focusedFrame.frameType.allowJointChildren){
                             allowedJointChildren.splice(0, allowedJointChildren.length);
                         }
                         else{
@@ -1686,16 +1693,19 @@ export const useStore = defineStore("app", {
                 //   - the target is the element *before* the newIndex position of the destination joint frames 
                 //     (so same check as above is newIndex is 0)
                 const jointFrameTargetIndex = (eventType==="moved" && oldIndex < newIndex) ? newIndex + 1 : newIndex;
-                const isJointTargettingBelowRoot = (isJointFrame && jointFrameIds.length > 0 && jointFrameTargetIndex > 0);
-                const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
-                    ? !this.isPositionAllowsFrame((jointFrameTargetIndex > 0) 
+                const isJointTargettingBelowRoot = (isJointFrame && jointFrameIds.length > 0 && jointFrameTargetIndex == 0);
+                const jointFrameMoveAllowed = (isJointFrame && jointFrameIds.length > 0)
+                    ? this.isPositionAllowsFrame((jointFrameTargetIndex > 0) 
                         ? this.frameObjects[payload.eventParentId].jointFrameIds[jointFrameTargetIndex - 1] 
                         : this.frameObjects[payload.eventParentId].childrenIds.at(-1) ?? payload.eventParentId,
-                    (isJointTargettingBelowRoot) ? ((this.frameObjects[payload.eventParentId].childrenIds.length > 0) ? CaretPosition.below : CaretPosition.body) : CaretPosition.below,
+                    (isJointTargettingBelowRoot)  
+                        ? ((this.frameObjects[payload.eventParentId].childrenIds.length > 0) ? CaretPosition.below : CaretPosition.body) 
+                        : CaretPosition.below,
                     payload.event[eventType].element.id)
-                    : false;
-
-                if((!isJointFrame && !this.isPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) || jointFrameCase) {       
+                    : true;
+   
+                if((!isJointFrame && !this.isPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) ||
+                     (isJointFrame && !jointFrameMoveAllowed)) {       
                     //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
                     if(eventType === "added"){
                         this.ignoredDragAction = true;
@@ -2658,8 +2668,6 @@ export const useStore = defineStore("app", {
             }
         
             this.unselectAllFrames();
-            
-            //console.log("After: " + JSON.stringify(this.frameObjects, null, 2));
         },
 
         pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
@@ -2742,8 +2750,6 @@ export const useStore = defineStore("app", {
                     // Invalid position to paste a joint frame
                     return;
                 }
-
-                //console.log("Joint: " + areCopiedJointFrames + " and " + isClickedJointFrame + " clicked parent: " + clickedParentId + " paste to: " + pasteToParentId + " payload: " + JSON.stringify(payload));
             }
             else {
                 pasteToParentId = (payload.caretPosition === CaretPosition.body) ?
