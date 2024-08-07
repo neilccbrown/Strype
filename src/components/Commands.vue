@@ -336,7 +336,9 @@ export default Vue.extend({
                 const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
 
                 if(event.key == "Escape"){
-                    if(this.appStore.areAnyFramesSelected){
+                    // Escape remove the current selection ONLY if we are not performing a drag and drop
+                    // (to avoid some instable styling state -- vue-draggable doesn't handle escape well)
+                    if(this.appStore.areAnyFramesSelected && !this.appStore.isDraggingFrame){
                         this.appStore.unselectAllFrames();
                         this.appStore.makeSelectedFramesVisible();
                     }
