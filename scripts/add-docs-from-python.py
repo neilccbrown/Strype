@@ -126,9 +126,14 @@ for mod in targetAPI:
                         
             except:
                 try:
-                    args = parse_arguments(pydoc.render_doc(mod + "." + item['acResult']), item['acResult'])
-                    if args:
-                        item['params'] = args 
+                    # print is a weird case because the docs say it has a mandatory argument,
+                    # but actually you can call it without any args
+                    if item['acResult'] == "print" and (mod == "builtins" or not mod):
+                        item['params'] = []
+                    else:
+                        args = parse_arguments(pydoc.render_doc(mod + "." + item['acResult']), item['acResult'])
+                        if args:
+                            item['params'] = args 
                 except:
                     pass
                 pass 
