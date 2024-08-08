@@ -226,7 +226,7 @@ export default Vue.extend({
         updateTurtleListeningEvents(): void {
             // We should check if we are still in need to maintain the running state as "Running" (just for listening the events)
             // but if the state is already stopped (which can have been naturally from Skulpt then we don't need to do anything)
-            if(useStore().pythonExecRunningState == PythonExecRunningState.Running && this.stopTurtleUIEventListeners){
+            if((useStore().pythonExecRunningState == PythonExecRunningState.Running || useStore().pythonExecRunningState == PythonExecRunningState.RunningAwaitingStop) && this.stopTurtleUIEventListeners){
                 this.stopTurtleUIEventListeners(true);
                 this.stopTurtleUIEventListeners = undefined;
                 useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
@@ -261,12 +261,15 @@ export default Vue.extend({
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
                 // Trigger the actual Python code execution launch
-                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
+                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
                     this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
                     this.isTurtleListeningMouseEvents = !!isTurtleListeningMouseEvents; 
                     this.isTurtleListeningTimerEvents = !!isTurtleListeningTimerEvents;
                     this.stopTurtleUIEventListeners = stopTurtleListeners;
+                    if (finishedWithError) {
+                        this.updateTurtleListeningEvents();
+                    }
                     if(!this.isTurtleListeningEvents) {
                         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     }

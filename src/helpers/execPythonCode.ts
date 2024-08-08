@@ -144,7 +144,7 @@ function sInput(prompt: string) {
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
 export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean,
-                               executionFinished: (isListeningKeyEvents: boolean, isListeningMouseEvents: boolean, isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => any): void{
+                               executionFinished: (finishedWithError: boolean, isListeningKeyEvents: boolean, isListeningMouseEvents: boolean, isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => any): void{
     consoleTextArea = aConsoleTextArea;
     codeExecStateRunningCheckFn = keepRunning;
     Sk.pre = consoleTextArea.id;
@@ -163,7 +163,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
     }
 
     // Wrapper function for handling when Skulpt execution is finished
-    function handleExecutionFinished(): void {
+    function handleExecutionFinished(finishedWithError: boolean): void {
         // Before clearning TurtleGraphics (see below) we need to keep a reference on a few event listener related things.
         // Note that some user code may provoke the execution loop of Skulpt to finish while still having the UI listening
         // for events, that's why we need to keep track of whenever some events are still being listened by the UI to consider
@@ -178,7 +178,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         Sk.TurtleGraphics = {};
 
         // Other actions requested by the caller of the execPythonCode function
-        executionFinished(isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
+        executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
     }
     
     Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
@@ -195,7 +195,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         }});
     // Show error in Python console if error happens
     myPromise.then(() => {
-        handleExecutionFinished();
+        handleExecutionFinished(false);
         return;
     },
     (err: any) => {
@@ -234,7 +234,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
                 consoleTextArea.value += ("< " + skulptErrStr + " >");
             }
         }
-        handleExecutionFinished();
+        handleExecutionFinished(true);
         // We will have added text either way, now scroll to bottom:
         Vue.nextTick(() => {
             consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
