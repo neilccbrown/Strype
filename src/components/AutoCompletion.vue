@@ -405,8 +405,10 @@ export default Vue.extend({
 
             // now scroll to the selected view
             const items = this.$el.querySelectorAll(".popUpItems");
-            // the `false` in the method tells it to leave the item at the bottom while scrolling (not scroll and show the selected at the top).
-            items[this.selected].scrollIntoView(false);
+            // we want to get the selected item to the end of the scrolling area (so inline set to "end", the other properties are used
+            // to avoid the whole page to scroll down (bug #279), see https://stackoverflow.com/questions/11039885/scrollintoview-causing-the-whole-page-to-move).
+            items[this.selected].scrollIntoView({block:"nearest", inline:"end"});
+            
             // and we also set the flag to prevent selection by hovering (cf. handleACItemHover())
             this.allowHoverSelection = false;
         },
