@@ -322,6 +322,11 @@ export default Vue.extend({
             // we start by reseting the results
             this.resultsToShow = {};
             this.selected = 0;
+        
+            // We scroll to the top of the list, because having the a/c always in the DOM
+            // may cause the scroll bar to be left at a given position which we don't want 
+            // to keep between two "showings" of the a/c
+            this.$el.querySelector("ul")?.scrollTo(0,0);
 
             // At this stage and since after filtering we have ended up with the final list, we are going to
             // index the results, in order to be able to browse through it with the keys and show the selected.
