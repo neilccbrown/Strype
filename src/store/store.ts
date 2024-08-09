@@ -1293,6 +1293,7 @@ export const useStore = defineStore("app", {
             this.simpleModalDlgMsg = "";
             this.currentModalDlgId = "";
             this.isAppMenuOpened = false;
+            this.bypassEditableSlotBlurErrorCheck = false;
 
             // Should show editing mode
             this.isEditing = false;
