@@ -858,9 +858,15 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
         checkPrecompiledErrorsForFrame(parseInt(frameId));
     } 
     //  2) check for TP errors for the whole code
-    const parser = new Parser(true);
-    parser.getErrorsFormatted(parser.parse());
-
+    // We don't want to crash the application if something isn't handled correctly in TP.
+    // So in case of an error, we catch it to allow the rest of the code to execute...
+    try{
+        const parser = new Parser(true);
+        parser.getErrorsFormatted(parser.parse());
+    }
+    catch(error){
+        console.log(error);
+    }
     // We make sure the number of errors shown in the interface is in line with the current state of the code
     // As the UI should update first, we do it in the next tick
     nextTick().then(() => {
