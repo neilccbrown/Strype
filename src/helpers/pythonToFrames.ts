@@ -30,16 +30,13 @@ interface CopyState {
 declare const Sk: any;
 
 // The different "locations" in Strype 
-enum STRYPE_LOCATION {
+export enum STRYPE_LOCATION {
     UNKNOWN,
     MAIN_CODE_SECTION,
     IN_FUNCDEF,
     FUNCDEF_SECTION,
     IMPORTS_SECTION
 }
-
-// The current location in Strype is updated everytime a paste of code is requested
-let currentStrypeLocation = STRYPE_LOCATION.UNKNOWN;
 
 // Simplifies a tree (by collapsing all single-child nodes into the child) in order to make
 // it easier to read while debugging error messages
@@ -106,9 +103,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
 // ready to be pasted immediately afterwards.
 // If successful, returns null.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
-export function copyFramesFromParsedPython(code: string) : string | null {
-    // Retrieve the current Strype location
-    findCurrentStrypeLocation();
+export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION) : string | null {
     // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
 
@@ -211,7 +206,7 @@ export function copyFramesFromParsedPython(code: string) : string | null {
         // Use the next available ID to avoid clashing with any existing IDs:
         copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
-        if(!canPastePythonAtStrypeLocation()){
+        if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
             useStore().copiedSelectionFrameIds = [];
             return i18n.t("messageBannerMessage.incompatiblePythonStrypeSection") as string;
@@ -623,7 +618,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
 }
 
 // Function to check the current position in Strype 
-function findCurrentStrypeLocation(): void{
+export function findCurrentStrypeLocation(): STRYPE_LOCATION {
     // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
     // If are below a frame, we look for its parent right away, otheriwse we can use that fraome
     let navigFrameId = (useStore().currentFrame.caretPosition == CaretPosition.below) ? useStore().frameObjects[useStore().currentFrame.id].parentId : useStore().currentFrame.id;
@@ -631,27 +626,23 @@ function findCurrentStrypeLocation(): void{
         const frameType = useStore().frameObjects[navigFrameId].frameType;
         switch(frameType.type){
         case ContainerTypesIdentifiers.framesMainContainer:
-            currentStrypeLocation = STRYPE_LOCATION.MAIN_CODE_SECTION;
-            break;
+            return STRYPE_LOCATION.MAIN_CODE_SECTION;
         case AllFrameTypesIdentifier.funcdef:
-            currentStrypeLocation = STRYPE_LOCATION.IN_FUNCDEF;
-            break;
+            return STRYPE_LOCATION.IN_FUNCDEF;
         case ContainerTypesIdentifiers.funcDefsContainer:
-            currentStrypeLocation = STRYPE_LOCATION.FUNCDEF_SECTION;
-            break;
+            return STRYPE_LOCATION.FUNCDEF_SECTION;
         case ContainerTypesIdentifiers.importsContainer:
-            currentStrypeLocation = STRYPE_LOCATION.IMPORTS_SECTION;
-            break;
+            return STRYPE_LOCATION.IMPORTS_SECTION;
         default:
             navigFrameId = useStore().frameObjects[navigFrameId].parentId;
-            currentStrypeLocation = STRYPE_LOCATION.UNKNOWN;
             break;
         }
-    }while(currentStrypeLocation == STRYPE_LOCATION.UNKNOWN);
+    }while(navigFrameId != 0);
+    return STRYPE_LOCATION.UNKNOWN;
 }
 
 // This function makes a simple sanity check on the copied Python code (as frames then): we make sure that it "fits" the current Strype location
-function canPastePythonAtStrypeLocation(): boolean {
+function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION): boolean {
     // In more details, we check the same-leve (top level) frames in the copy:
     // - in the "import" section, only imports can be copied,
     // - in the "function definition" section, only function definitions can be copied

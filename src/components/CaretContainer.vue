@@ -42,7 +42,7 @@ import Caret from"@/components/Caret.vue";
 import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState} from "@/types/types";
 import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
-import { copyFramesFromParsedPython } from "@/helpers/pythonToFrames";
+import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
 
 //////////////////////
@@ -182,7 +182,7 @@ export default Vue.extend({
                     // Note we don't permanently trim the code because we need to preserve leading indent.
                     // But we trim for the purposes of checking if there's any content at all:
                     if (pythonCode?.trim()) {
-                        const error = copyFramesFromParsedPython(pythonCode);
+                        const error = copyFramesFromParsedPython(pythonCode, findCurrentStrypeLocation());
                         if (error) {
                             useStore().currentMessage = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
                             const msgObj = useStore().currentMessage.message as FormattedMessage;
