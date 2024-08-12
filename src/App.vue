@@ -714,10 +714,10 @@ export default Vue.extend({
             const menuHeightSpace = (isTargetFrames) ? 320 : 90, menuOffsetY = 5, menuOffsetX = 40;
             const firstSelectedTargetElement = (isTargetFrames) 
                 ? document.getElementById(getFrameUIID(this.appStore.selectedFrames[0]))
-                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible)"); // We want to retrieve the caret container of the currently visible caret
+                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible))"); // We want to retrieve the caret container of the currently visible caret
             const lastSelectedTargetElement = (isTargetFrames) 
                 ? document.getElementById(getFrameUIID(this.appStore.selectedFrames.at(-1) as number)) 
-                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible)");
+                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible))");
             // For the editor, we need to get whole editor container, not the space in the middle that is adapted to the viewport
             const editorViewingElement = document.getElementById(getEditorMiddleUIID());
             const editorElement = editorViewingElement?.children[0];
