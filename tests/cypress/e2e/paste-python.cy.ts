@@ -324,6 +324,28 @@ describe("Python paste errors", () => {
         // We have a different message for when we paste an else with more content after (which we can't handle)
         assertPasteError("else:\n    pass\nprint(\"Hi\")", /else/);
     });
+    it("Forbids nested functions in functions", () => {
+        cy.get("body").type("{uparrow}");
+        assertPasteError(`
+def outer():
+    def inner():
+        pass
+    pass
+`, /Invalid Python code pasted.*section/);
+    });
+    it("Forbids nested imports or functions in main code", () => {
+        assertPasteError(`
+if True:
+    def inner():
+        pass
+    pass
+`,/Invalid Python code pasted.*section/);
+        assertPasteError(`
+if True:
+    import random
+    random.random()
+`,/Invalid Python code pasted.*section/);
+    });
 });
 
 describe("Python complex function", () => {
