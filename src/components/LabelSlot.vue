@@ -1143,12 +1143,12 @@ export default Vue.extend({
                         } 
                         if(pastedInvalidCode){
                             // Show an error message to the user, and do nothing else.
-                            this.appStore.currentMessage = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
-                            const msgObj = this.appStore.currentMessage.message as FormattedMessage;
+                            const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
+                            const msgObj = msg.message as FormattedMessage;
                             msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, this.$i18n.t("errorMessage.unexpectedCharsPython") as string);
 
                             //don't leave the message for ever
-                            setTimeout(() => this.appStore.currentMessage = MessageDefinitions.NoMessage, 5000);
+                            this.appStore.showMessage(msg, 5000);
                             return;
                         }
                     }
