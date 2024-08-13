@@ -686,3 +686,49 @@ function removeTopLevelBlankFrames(): void {
         useStore().copiedSelectionFrameIds.splice(useStore().copiedSelectionFrameIds.indexOf(frameId), 1);
     });
 }
+
+// Takes a list of lines of Python code and splits them into three sections: imports, function definitions, and main code.
+// Each line of the original will end up in exactly one of the three parts of the return.
+// With Python's indentation rules, this operation is actually easier at line level than it is post-parse:
+export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[]} {
+    // We associate comments with the line immediately following them, so we keep a list of the most recent comments:
+    let latestComments: string[] = [];
+    const imports: string[] = [];
+    const defs: string[] = [];
+    const main: string[] = [];
+    let addingToDef = false;
+    allLines.forEach((line) => {
+        
+        if (line.match(/^(import|from)\s+/)) {
+            // Import:
+            imports.push(...latestComments);
+            latestComments = [];
+            imports.push(line);
+            addingToDef = false;
+        }
+        else if (line.match(/^def\s+/)) {
+            defs.push(...latestComments);
+            latestComments = [];
+            defs.push(line);
+            addingToDef = true;
+        }
+        else if (line.match(/^\s*#/)) {
+            latestComments.push(line);
+        }
+        else if (addingToDef && !line.match(/^\S/)) {
+            // Keep adding to defs until we see a non-comment line with zero indent:
+            defs.push(...latestComments);
+            latestComments = [];
+            defs.push(line);
+        }
+        else {
+            addingToDef = false;
+            main.push(...latestComments);
+            latestComments = [];
+            main.push(line);
+        }
+    });
+    // Add any trailing comments:
+    main.push(...latestComments);
+    return {imports: imports, defs: defs, main: main};
+}

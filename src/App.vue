@@ -101,7 +101,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FrameObject, MessageTypes, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
@@ -115,6 +115,7 @@ import { cloneDeep } from "lodash";
 import CaretContainer from "./components/CaretContainer.vue";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "./autocompletion/ac-skulpt";
+import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
 
 //////////////////////
 //     Component    //
@@ -790,6 +791,47 @@ export default Vue.extend({
         onStrypeCommandsSplitPaneResize(){
             // When the Stryle commands are resized, we need to also update the Turtle canvas
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+        },
+        
+        setStateFromPythonFile(completeSource: string) : void {
+            const allLines = completeSource.split(/\r?\n/);
+            // Split can make an extra blank line at the end which we don't want:
+            if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+                allLines.pop();
+            }
+            const s = splitLinesToSections(allLines);
+            // Bit awkward but we first copy each to check for errors because
+            // if there are any errors we don't want to paste any:
+            const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION)
+                        ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION)
+                        ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+            if (err != null) {
+                const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
+                const msgObj = msg.message as FormattedMessage;
+                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+                
+                useStore().showMessage(msg, 10000);
+            }
+            else {
+                copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
+                if (useStore().copiedSelectionFrameIds.length > 0) {
+                    this.getCaretContainerComponent(this.getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste();
+                }
+                copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
+                if (useStore().copiedSelectionFrameIds.length > 0) {
+                    this.getCaretContainerComponent(this.getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste();
+                }
+                if (s.main.length > 0) {
+                    copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                    if (useStore().copiedSelectionFrameIds.length > 0) {
+                        this.getCaretContainerComponent(this.getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste();
+                    }
+                }
+            }
+            
+            // Must take ourselves off the clipboard after:
+            useStore().copiedFrames = {};
+            useStore().copiedSelectionFrameIds = [];
         },
     },
 });
