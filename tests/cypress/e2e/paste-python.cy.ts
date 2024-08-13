@@ -4,11 +4,11 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-
-// Must clear all local storage between tests to reset the state:
 import path from "path";
 import i18n from "@/i18n";
+import * as os from "os";
 
+// Must clear all local storage between tests to reset the state:
 beforeEach(() => {
     cy.clearLocalStorage();
     cy.visit("/",  {onBeforeLoad: (win) => {
@@ -87,6 +87,28 @@ function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, 
     cy.get("body").type("{end}");
 }
 
+function testRoundTripImportAndDownload(filepath: string, expected?: string) {
+    // The filename is a path, fixture just needs the filename:
+    cy.readFile(filepath).then((py) => {
+        // Delete existing:
+        focusEditorPasteAndClear();
+
+        cy.get("#showHideMenu").click();
+        cy.get("#loadProjectLink").click();
+        cy.get("button").contains("This device").click();
+        cy.get("button").contains("OK").click();
+        // Must force because the <input> is hidden:
+        cy.get(".editor-file-input").selectFile(filepath, {force : true});
+        cy.wait(2000);
+        
+        checkDownloadedCodeEquals(expected ?? py);
+        // Refocus the editor and go to the bottom:
+        cy.get("#frame_id_-3").focus();
+        cy.get("body").type("{end}");
+    });
+}
+
+
 describe("Python round-trip", () => {
     // Some of these are semantically invalid but as long as they're syntactically valid,
     // they should work:
@@ -119,6 +141,60 @@ describe("Python round-trip", () => {
     it("Allows pasting fixture file with main code", () => {
         cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py));
     });
+    it("Allows importing fixture file with functions", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/python-functions.py");
+    });
+    it("Allows importing fixture file with bubble sort function", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/python-bubble.py");
+    });
+    it("Allows importing fixture file with main code", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/python-code.py");
+    });
+    it("Allows importing mixed code", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/python-mixed-1.py");
+    });
+    it("Allows importing triple in right order", () => {
+        cy.fixture("python-only-imports.py", "utf8").then(imports => {
+            cy.fixture("python-only-funcdefs.py", "utf8").then(defs => {
+                cy.fixture("python-only-main.py", "utf8").then(main => {
+                    const tempFilePath = path.join(os.tmpdir(), `combined_${Date.now()}.py`);
+                    cy.writeFile(tempFilePath, imports + defs + main);
+                    testRoundTripImportAndDownload(tempFilePath);
+                });
+            });
+        });
+    });
+
+    it("Allows importing triple in wrong order", () => {
+        cy.fixture("python-only-imports.py", "utf8").then(imports => {
+            cy.fixture("python-only-funcdefs.py", "utf8").then(defs => {
+                cy.fixture("python-only-main.py", "utf8").then(main => {
+                    const tempFilePath = path.join(os.tmpdir(), `combined_${Date.now()}.py`);
+                    cy.writeFile(tempFilePath, main + defs + imports);
+                    testRoundTripImportAndDownload(tempFilePath, imports + defs + main);
+                });
+            });
+        });
+    });
+    
+    it("Shows an error for invalid code", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid.py", "");
+        assertVisibleError(/invalid.*import/i);
+    });
+
+    it("Shows an error for invalid code when mixed", () => {
+        cy.fixture("python-only-imports.py", "utf8").then(imports => {
+            cy.fixture("python-only-funcdefs.py", "utf8").then(defs => {
+                cy.fixture("python-only-main.py", "utf8").then(main => {
+                    const tempFilePath = path.join(os.tmpdir(), `combined_${Date.now()}.py`);
+                    cy.writeFile(tempFilePath, imports + defs + main + "\nglobal y\n");
+                    testRoundTripImportAndDownload(tempFilePath, "");
+                    assertVisibleError(/invalid.*import/i);
+                });
+            });
+        });
+    });
+    
     it("Handles global and assignment commas", () => {
         testRoundTripPasteAndDownload(`
 def myFunc (param1 , param2):
@@ -298,16 +374,20 @@ def foo ():
     });
 });
 
-// If error is null, there shouldn't be an error banner
-function assertPasteError(codeToPaste: string, error: RegExp | null) {
-    focusEditorPasteAndClear();
-    (cy.get("body") as any).paste(codeToPaste);
+function assertVisibleError(error: RegExp | null) {
     if (error != null) {
         cy.get(".message-banner-container span:first-child").invoke("text").should("match", error);
         cy.get(".message-banner-cross").click();
     }
     // Whether it never existed, or we closed it, it should now not exist:
     cy.get(".message-banner-container").should("not.exist");
+}
+
+// If error is null, there shouldn't be an error banner
+function assertPasteError(codeToPaste: string, error: RegExp | null) {
+    focusEditorPasteAndClear();
+    (cy.get("body") as any).paste(codeToPaste);
+    assertVisibleError(error);
 }
 
 describe("Python paste errors", () => {
