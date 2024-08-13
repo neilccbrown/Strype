@@ -180,7 +180,7 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
         parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
     }
     catch (e) {
-        return (e as any).$offset?.v?.[2]?.$mangled + " line: " + (e as any).traceback?.[0].lineno;
+        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + (e as any).traceback?.[0].lineno;
     }
     const parsedBySkulpt = parsed["cst"];
     
@@ -228,11 +228,11 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
         return null;
     }
     catch (e) {
-        console.error(e, "On:\n" + debugToString(parsedBySkulpt, "  "));
+        console.log(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
         // Don't leave partial content:
         useStore().copiedFrames = {};
         useStore().copiedSelectionFrameIds = [];
-        return (e as any).$offset?.v?.[2]?.$mangled + " line: " + (e as any).traceback?.[0].lineno;
+        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + (e as any).traceback?.[0].lineno;
     }
 }
 
@@ -382,7 +382,7 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             }
         }
         else {
-            throw new Error("Unknown operator: " + child.type + " \"" + op + "\"");
+            throw new Sk.builtin.SyntaxError("Unknown operator: " + child.type + " \"" + op + "\"", null, p.lineno);
         }
     }
     return latest;

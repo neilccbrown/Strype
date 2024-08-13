@@ -153,6 +153,9 @@ describe("Python round-trip", () => {
     it("Allows importing mixed code", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-mixed-1.py");
     });
+    it("Allows importing mixed code 2", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/python-hints-extract.py");
+    });
     it("Allows importing triple in right order", () => {
         cy.fixture("python-only-imports.py", "utf8").then(imports => {
             cy.fixture("python-only-funcdefs.py", "utf8").then(defs => {
@@ -180,6 +183,11 @@ describe("Python round-trip", () => {
     it("Shows an error for invalid code", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid.py", "");
         assertVisibleError(/invalid.*import/i);
+    });
+
+    it("Shows an error for invalid code with wrong code", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", "");
+        assertVisibleError(/invalid.*import.*if/i);
     });
 
     it("Shows an error for invalid code when mixed", () => {
