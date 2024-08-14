@@ -764,6 +764,7 @@ export const MessageTypes = {
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
     gdriveCantCreateStrypeFolder:"gdriveCantCreateStrypeFolder",
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
+    invalidPythonParseImport: "invalidPythonParseImport",
     invalidPythonParsePaste: "invalidPythonParsePaste",
 };
 
@@ -884,6 +885,17 @@ const GDriveCantCreateStrypeFolder: MessageDefinition = {
     message: "messageBannerMessage.gdriveCantCreateStrypeFolder",
 };
 
+const InvalidPythonParseImport: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.invalidPythonParseImport,
+    message: {
+        path: "messageBannerMessage.invalidPythonParseImport",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
+        },
+    },
+};
+
 const InvalidPythonParsePaste: MessageDefinition = {
     ...NoMessage,
     type: MessageTypes.invalidPythonParsePaste,
@@ -912,6 +924,7 @@ export const MessageDefinitions = {
     FunctionFrameCantDelete,
     GDriveConnectToSaveFailed,
     GDriveCantCreateStrypeFolder,
+    InvalidPythonParseImport,
     InvalidPythonParsePaste,
 };
 

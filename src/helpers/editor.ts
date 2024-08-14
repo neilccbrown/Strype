@@ -430,7 +430,7 @@ export function handleContextMenuKBInteraction(keyDownStr: string): void {
     }
 }
 
-export const fileImportSupportedFormats: string[] = [strypeFileExtension];
+export const fileImportSupportedFormats: string[] = [strypeFileExtension, "py"];
 
 // Check if the code contains errors: precompiled errors & TigerPyton errors are all indicated in the editor
 // by an error class on a frame header ("frameHearder_<frameId> + "error") or an editable slot ("labelSlot-input" + "errorSlot").

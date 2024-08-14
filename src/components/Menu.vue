@@ -136,6 +136,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
+import App from "@/App.vue";
 
 //////////////////////
 //     Component    //
@@ -328,7 +329,16 @@ export default Vue.extend({
             return [
                 {
                     description: this.$i18n.t("strypeFileDesc") as string,
-                    accept: { "application/strype": fileImportSupportedFormats.flatMap((extension) => "."+extension) },
+                    accept: { "application/strype": ["."+strypeFileExtension] },
+                },
+            ];
+        },
+
+        pythonImportMIMEDescArray(): MIMEDesc[]{
+            return [
+                {
+                    description: this.$i18n.t("pythonFileDesc") as string,
+                    accept: { "text/x-python": [".py"] },
                 },
             ];
         },
@@ -523,7 +533,7 @@ export default Vue.extend({
             else{               
                 // And let the user choose a file
                 if(canBrowserOpenFilePicker){
-                    openFile(this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, (fileHandles: FileSystemFileHandle[]) => {
+                    openFile([...this.strypeProjMIMEDescArray, ...this.pythonImportMIMEDescArray], this.appStore.strypeProjectLocation, (fileHandles: FileSystemFileHandle[]) => {
                         // We select 1 file so we can get the first element of the returned array
                         // We need to get the file content (hope for the best) and update the store
                         fileHandles[0].getFile().then((file: File) => {
@@ -532,16 +542,23 @@ export default Vue.extend({
                             this.$emit("app-showprogress", emitPayload);
                             const reader = new FileReader();
                             reader.addEventListener("load", () => {
-                                this.appStore.setStateFromJSONStr( 
-                                    {
-                                        stateJSONStr: reader.result as string,
-                                        callBack: (succceded) => {
-                                            if(succceded){
-                                                this.onFileLoaded(fileHandles[0].name, fileHandles[0]);
-                                            }
-                                        },
-                                    }
-                                );
+                                // name is not always available so we also check if content starts with a {,
+                                // which it will do for spy files:
+                                if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string);
+                                }
+                                else {
+                                    this.appStore.setStateFromJSONStr(
+                                        {
+                                            stateJSONStr: reader.result as string,
+                                            callBack: (succceded) => {
+                                                if (succceded) {
+                                                    this.onFileLoaded(fileHandles[0].name, fileHandles[0]);
+                                                }
+                                            },
+                                        }
+                                    );
+                                }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);  
                             });
@@ -568,14 +585,21 @@ export default Vue.extend({
                     readFileContent(files[0])
                         .then(
                             (content) => {
-                                this.appStore.setStateFromJSONStr( 
-                                    {
-                                        stateJSONStr: content,
-                                        callBack: () => {
-                                            this.onFileLoaded(fileName/*s[0].n*/);
-                                        },
-                                    }
-                                );
+                                // name is not always available so we also check if content starts with a {,
+                                // which it will do for spy files:
+                                if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content);
+                                }
+                                else {
+                                    this.appStore.setStateFromJSONStr(
+                                        {
+                                            stateJSONStr: content,
+                                            callBack: () => {
+                                                this.onFileLoaded(fileName/*s[0].n*/);
+                                            },
+                                        }
+                                    );
+                                }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
                                 

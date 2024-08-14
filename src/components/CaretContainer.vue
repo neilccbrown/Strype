@@ -42,7 +42,7 @@ import Caret from"@/components/Caret.vue";
 import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState} from "@/types/types";
 import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
-import { copyFramesFromParsedPython } from "@/helpers/pythonToFrames";
+import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
 
 //////////////////////
@@ -182,14 +182,14 @@ export default Vue.extend({
                     // Note we don't permanently trim the code because we need to preserve leading indent.
                     // But we trim for the purposes of checking if there's any content at all:
                     if (pythonCode?.trim()) {
-                        const error = copyFramesFromParsedPython(pythonCode);
+                        const error = copyFramesFromParsedPython(pythonCode, findCurrentStrypeLocation());
                         if (error) {
-                            useStore().currentMessage = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
-                            const msgObj = useStore().currentMessage.message as FormattedMessage;
+                            const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
+                            const msgObj = msg.message as FormattedMessage;
                             msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
 
                             //don't leave the message for ever
-                            setTimeout(() => useStore().currentMessage = MessageDefinitions.NoMessage, 5000);
+                            useStore().showMessage(msg, 5000);
                         }
                         else {
                             this.doPaste();
