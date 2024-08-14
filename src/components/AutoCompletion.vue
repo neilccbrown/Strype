@@ -322,6 +322,11 @@ export default Vue.extend({
             // we start by reseting the results
             this.resultsToShow = {};
             this.selected = 0;
+        
+            // We scroll to the top of the list, because having the a/c always in the DOM
+            // may cause the scroll bar to be left at a given position which we don't want 
+            // to keep between two "showings" of the a/c
+            this.$el.querySelector("ul")?.scrollTo(0,0);
 
             // At this stage and since after filtering we have ended up with the final list, we are going to
             // index the results, in order to be able to browse through it with the keys and show the selected.
@@ -405,8 +410,10 @@ export default Vue.extend({
 
             // now scroll to the selected view
             const items = this.$el.querySelectorAll(".popUpItems");
-            // the `false` in the method tells it to leave the item at the bottom while scrolling (not scroll and show the selected at the top).
-            items[this.selected].scrollIntoView(false);
+            // we want to get the selected item to the end of the scrolling area (so inline set to "end", the other properties are used
+            // to avoid the whole page to scroll down (bug #279), see https://stackoverflow.com/questions/11039885/scrollintoview-causing-the-whole-page-to-move).
+            items[this.selected].scrollIntoView({block:"nearest", inline:"end"});
+            
             // and we also set the flag to prevent selection by hovering (cf. handleACItemHover())
             this.allowHoverSelection = false;
         },
