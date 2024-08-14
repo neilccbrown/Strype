@@ -802,9 +802,9 @@ export default Vue.extend({
             const s = splitLinesToSections(allLines);
             // Bit awkward but we first copy each to check for errors because
             // if there are any errors we don't want to paste any:
-            const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION)
-                        ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION)
-                        ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+            const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
+                        ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
+                        ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
             if (err != null) {
                 const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
                 const msgObj = msg.message as FormattedMessage;

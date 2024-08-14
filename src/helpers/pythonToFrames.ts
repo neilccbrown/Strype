@@ -103,7 +103,9 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
 // ready to be pasted immediately afterwards.
 // If successful, returns null.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
-export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION) : string | null {
+export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null {
+    const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
+    
     // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
 
@@ -180,7 +182,7 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
         parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
     }
     catch (e) {
-        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + (e as any).traceback?.[0].lineno;
+        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno);
     }
     const parsedBySkulpt = parsed["cst"];
     
@@ -232,7 +234,7 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
         // Don't leave partial content:
         useStore().copiedFrames = {};
         useStore().copiedSelectionFrameIds = [];
-        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + (e as any).traceback?.[0].lineno;
+        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno);
     }
 }
 
@@ -687,48 +689,68 @@ function removeTopLevelBlankFrames(): void {
     });
 }
 
+interface NumberedLine {
+    lineno: number;
+    text: string;
+}
+
+function makeMapping(section: NumberedLine[]) : Record<number, number> {
+    return section.reduce((acc, item, index) => {
+        acc[index + 1] = item.lineno;
+        return acc;
+    }, {} as Record<number, number>);
+}
+
 // Takes a list of lines of Python code and splits them into three sections: imports, function definitions, and main code.
 // Each line of the original will end up in exactly one of the three parts of the return.
-// With Python's indentation rules, this operation is actually easier at line level than it is post-parse:
-export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[]} {
+// With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
+// The mappings map line numbers in the returned sections to line numbers in the original
+export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>} {
     // We associate comments with the line immediately following them, so we keep a list of the most recent comments:
-    let latestComments: string[] = [];
-    const imports: string[] = [];
-    const defs: string[] = [];
-    const main: string[] = [];
+    let latestComments: NumberedLine[] = [];
+    const imports: NumberedLine[] = [];
+    const defs: NumberedLine[] = [];
+    const main: NumberedLine[] = [];
     let addingToDef = false;
-    allLines.forEach((line) => {
-        
+    allLines.forEach((line : string, zeroBasedLine : number) => {
+        const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
         if (line.match(/^(import|from)\s+/)) {
             // Import:
             imports.push(...latestComments);
             latestComments = [];
-            imports.push(line);
+            imports.push(lineWithNum);
             addingToDef = false;
         }
         else if (line.match(/^def\s+/)) {
             defs.push(...latestComments);
             latestComments = [];
-            defs.push(line);
+            defs.push(lineWithNum);
             addingToDef = true;
         }
         else if (line.match(/^\s*#/)) {
-            latestComments.push(line);
+            latestComments.push(lineWithNum);
         }
         else if (addingToDef && !line.match(/^\S/)) {
             // Keep adding to defs until we see a non-comment line with zero indent:
             defs.push(...latestComments);
             latestComments = [];
-            defs.push(line);
+            defs.push(lineWithNum);
         }
         else {
             addingToDef = false;
             main.push(...latestComments);
             latestComments = [];
-            main.push(line);
+            main.push(lineWithNum);
         }
     });
     // Add any trailing comments:
     main.push(...latestComments);
-    return {imports: imports, defs: defs, main: main};
+    return {
+        imports: imports.map((l) => l.text),
+        defs: defs.map((l) => l.text),
+        main: main.map((l) => l.text),
+        importsMapping : makeMapping(imports),
+        defsMapping : makeMapping(defs),
+        mainMapping : makeMapping(main),
+    };
 }
