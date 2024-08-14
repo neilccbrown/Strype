@@ -50,6 +50,7 @@ export default Vue.extend({
                 const inFolderDocsView = new google.picker.DocsView();
                 inFolderDocsView.setParent(this.appStore.strypeProjectLocation.toString());
                 inFolderDocsView.setIncludeFolders(true);
+                inFolderDocsView.setMode(google.picker.DocsViewMode.LIST);
                 // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
                 (inFolderDocsView as any).setLabel(this.appStore.strypeProjectLocationAlias);
                 docsViews.push(inFolderDocsView);
@@ -62,6 +63,7 @@ export default Vue.extend({
                 (allStrypeDocsView as any).setQuery("title:*.spy");
                 (allStrypeDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveAllStrypeFiles") as string));
                 allStrypeDocsView.setIncludeFolders(true);
+                allStrypeDocsView.setMode(google.picker.DocsViewMode.LIST);
                 docsViews.push(allStrypeDocsView);
             }
 
