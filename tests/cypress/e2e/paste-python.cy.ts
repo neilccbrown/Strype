@@ -182,22 +182,37 @@ describe("Python round-trip", () => {
     
     it("Shows an error for invalid code", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid.py", "");
-        assertVisibleError(/invalid.*import/i);
+        assertVisibleError(/invalid.*import.*line: 1/si);
     });
 
     it("Shows an error for invalid code with wrong code", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", "");
-        assertVisibleError(/invalid.*import.*if/i);
+        assertVisibleError(/invalid.*import.*if.*line: 20/si);
     });
 
-    it("Shows an error for invalid code when mixed", () => {
-        cy.fixture("python-only-imports.py", "utf8").then(imports => {
-            cy.fixture("python-only-funcdefs.py", "utf8").then(defs => {
-                cy.fixture("python-only-main.py", "utf8").then(main => {
+    it("Shows an error for invalid code when mixed with invalid placement", () => {
+        cy.fixture("python-only-imports.py", "utf8").then((imports) => {
+            cy.fixture("python-only-funcdefs.py", "utf8").then((defs) => {
+                cy.fixture("python-only-main.py", "utf8").then((main) => {
                     const tempFilePath = path.join(os.tmpdir(), `combined_${Date.now()}.py`);
                     cy.writeFile(tempFilePath, imports + defs + main + "\nglobal y\n");
                     testRoundTripImportAndDownload(tempFilePath, "");
-                    assertVisibleError(/invalid.*import/i);
+                    const line = 1 + (imports + defs + main).split(/\r?\n/).length;
+                    assertVisibleError(new RegExp(`invalid.*import`, "si"));
+                });
+            });
+        });
+    });
+
+    it("Shows an error for invalid code when mixed with unparseable", () => {
+        cy.fixture("python-only-imports.py", "utf8").then((imports) => {
+            cy.fixture("python-only-funcdefs.py", "utf8").then((defs) => {
+                cy.fixture("python-only-main.py", "utf8").then((main) => {
+                    const tempFilePath = path.join(os.tmpdir(), `combined_${Date.now()}.py`);
+                    cy.writeFile(tempFilePath, imports + defs + main + "\nthis nonsense should not be parseable\n");
+                    testRoundTripImportAndDownload(tempFilePath, "");
+                    const line = 1 + (imports + defs + main).split(/\r?\n/).length;
+                    assertVisibleError(new RegExp(`invalid.*import.*nonsense.*line: ${line}`, "si"));
                 });
             });
         });
