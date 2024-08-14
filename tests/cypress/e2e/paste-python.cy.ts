@@ -157,9 +157,9 @@ describe("Python round-trip", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-hints-extract.py");
     });
     it("Allows importing triple in right order", () => {
-        cy.fixture("python-only-imports.py", "utf8").then(imports => {
-            cy.fixture("python-only-funcdefs.py", "utf8").then(defs => {
-                cy.fixture("python-only-main.py", "utf8").then(main => {
+        cy.fixture("python-only-imports.py", "utf8").then((imports) => {
+            cy.fixture("python-only-funcdefs.py", "utf8").then((defs) => {
+                cy.fixture("python-only-main.py", "utf8").then((main) => {
                     const tempFilePath = path.join(os.tmpdir(), `combined_${Date.now()}.py`);
                     cy.writeFile(tempFilePath, imports + defs + main);
                     testRoundTripImportAndDownload(tempFilePath);
@@ -169,9 +169,9 @@ describe("Python round-trip", () => {
     });
 
     it("Allows importing triple in wrong order", () => {
-        cy.fixture("python-only-imports.py", "utf8").then(imports => {
-            cy.fixture("python-only-funcdefs.py", "utf8").then(defs => {
-                cy.fixture("python-only-main.py", "utf8").then(main => {
+        cy.fixture("python-only-imports.py", "utf8").then((imports) => {
+            cy.fixture("python-only-funcdefs.py", "utf8").then((defs) => {
+                cy.fixture("python-only-main.py", "utf8").then((main) => {
                     const tempFilePath = path.join(os.tmpdir(), `combined_${Date.now()}.py`);
                     cy.writeFile(tempFilePath, main + defs + imports);
                     testRoundTripImportAndDownload(tempFilePath, imports + defs + main);
@@ -197,8 +197,7 @@ describe("Python round-trip", () => {
                     const tempFilePath = path.join(os.tmpdir(), `combined_${Date.now()}.py`);
                     cy.writeFile(tempFilePath, imports + defs + main + "\nglobal y\n");
                     testRoundTripImportAndDownload(tempFilePath, "");
-                    const line = 1 + (imports + defs + main).split(/\r?\n/).length;
-                    assertVisibleError(new RegExp(`invalid.*import`, "si"));
+                    assertVisibleError(/invalid.*import/i);
                 });
             });
         });
