@@ -7,7 +7,11 @@
                 <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
-            <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'"><span :class="{'python-running': isPythonExecuting}">{{this.runCodeButtonIconText}}</span><span>{{this.runCodeButtonLabel}}</span></button>
+            <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
+                <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
+                <span v-else class="python-running">{{this.runCodeButtonIconText}}</span>
+                <span>{{this.runCodeButtonLabel}}</span>
+            </button>
         </div>
         <div id="tabContentContainerDiv">
             <textarea 
@@ -153,8 +157,6 @@ export default Vue.extend({
 
         runCodeButtonIconText(): string {
             switch (useStore().pythonExecRunningState) {
-            case PythonExecRunningState.NotRunning:
-                return "▶";
             case PythonExecRunningState.Running:
                 return "◼";
             case PythonExecRunningState.RunningAwaitingStop:
@@ -507,6 +509,11 @@ export default Vue.extend({
     .pea-display-tab:hover {
         color: black;
         background-color: lightgray !important;
+    }
+
+    .pea-play-img {
+        width: 16px;
+        vertical-align: sub;
     }
 
     #tabContentContainerDiv {

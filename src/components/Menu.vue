@@ -95,7 +95,7 @@
                     :disabled="isUndoDisabled"
                     @click="performUndoRedo(true)"
                     class="menu-icon-entry"
-                    :title="this.$i18n.t('contextMenu.undo')"
+                    :title="$i18n.t('contextMenu.undo')"
                 />
             </div>
             <div class="menu-icon-div">   
@@ -105,7 +105,7 @@
                     :disabled="isRedoDisabled"
                     @click="performUndoRedo(false)"
                     class="menu-icon-entry"
-                    :title="this.$i18n.t('contextMenu.redo')"
+                    :title="$i18n.t('contextMenu.redo')"
                 />
             </div>
         </div> 
@@ -380,7 +380,7 @@ export default Vue.extend({
 
         getSyncTargetStatus(target: StrypeSyncTarget): boolean {
             // If there is no saved value in the store, the default value is Google Drive.
-            // When the UI temporary value is set, it prevails (that's only temporary to allow the switch.
+            // When the UI temporary value is set, it prevails (that's only temporary to allow the switch).
             if(this.tempSyncTarget != StrypeSyncTarget.none){
                 return (this.tempSyncTarget == target);
             }
@@ -406,6 +406,12 @@ export default Vue.extend({
 
         onSaveTargetChanged(){
             this.showGDSaveLocation = (this.getTargetSelectVal(true) == this.syncGDValue);
+        },
+
+        saveTargetChoice(target: StrypeSyncTarget){
+            this.appStore.syncTarget = target;
+            this.localSyncTarget = target;
+            this.tempSyncTarget = target;
         },
 
         saveCurrentProject(){
@@ -449,17 +455,11 @@ export default Vue.extend({
             }
             if(event.trigger == "cancel" || event.trigger == "esc"){
                 // Reset the temporary sync file flag
-                this.tempSyncTarget = StrypeSyncTarget.none;
+                this.tempSyncTarget = this.appStore.syncTarget;
             }
             else if(event.trigger == "ok" || event.trigger == "event"){
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){
-                    // Retrieve the target selected, if nothing has been selected explicitly
-                    if(this.tempSyncTarget != StrypeSyncTarget.none) {
-                        this.localSyncTarget =  this.tempSyncTarget;
-                    } 
-                    this.tempSyncTarget = StrypeSyncTarget.none;
-                    
                     // We force saving the current project anyway just in case
                     this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.loadProject);
                     // The remaining parts of the loading process will be only done once saving is complete (cf loadProject())                    
@@ -475,7 +475,8 @@ export default Vue.extend({
                     }
                     
                     const selectValue = this.getTargetSelectVal(true);
-                    this.tempSyncTarget = StrypeSyncTarget.none;
+                    // Reset the temporary sync file flag
+                    this.tempSyncTarget = this.appStore.syncTarget;
                     if(selectValue != StrypeSyncTarget.gd){
                         if(!canBrowserSaveFilePicker && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
@@ -488,7 +489,7 @@ export default Vue.extend({
                             saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, this.appStore.generateStateJSONStrWithCheckpoint(), (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;
                                 this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
-                                this.appStore.syncTarget = StrypeSyncTarget.fs;
+                                this.saveTargetChoice(StrypeSyncTarget.fs);
                             });
                         }
                         else{
@@ -496,7 +497,7 @@ export default Vue.extend({
                             // We cannot retrieve the file name ultimately set by the user or the browser when it's being saved with a click,
                             // however we should still at least update the project name with what the user set in our own save as dialog
                             this.appStore.projectName = saveFileName.trim();
-                            this.appStore.syncTarget = StrypeSyncTarget.fs;
+                            this.saveTargetChoice(StrypeSyncTarget.fs);
                         }
                     }
                     else {          
@@ -526,7 +527,9 @@ export default Vue.extend({
             // Called once sanity save has been performed
             // If the user chose to sync on Google Drive, we should open the Drive loader. Otherwise, we open default file system.
             // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
-            const selectValue = this.localSyncTarget;
+            const selectValue = this.getTargetSelectVal(false);
+            // Reset the temporary sync file flag
+            this.tempSyncTarget = this.appStore.syncTarget;
             if(selectValue == StrypeSyncTarget.gd){
                 (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).loadFile();
             }
@@ -629,9 +632,9 @@ export default Vue.extend({
 
         onFileLoaded(fileName: string, fileLocation?: FileSystemFileHandle):void {
             // Update the sync target details and remove drive infos
-            this.appStore.syncTarget = StrypeSyncTarget.fs;
             this.appStore.currentGoogleDriveSaveFileId = undefined;
-            
+            this.saveTargetChoice(StrypeSyncTarget.gd);
+
             // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
             const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
             this.appStore.projectName = noExtFileName;
