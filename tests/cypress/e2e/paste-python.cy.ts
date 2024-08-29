@@ -7,6 +7,7 @@ failOnConsoleError();
 import path from "path";
 import i18n from "@/i18n";
 import * as os from "os";
+import {focusEditor} from "../support/expression-test-support";
 
 // Must clear all local storage between tests to reset the state:
 beforeEach(() => {
@@ -71,9 +72,14 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
 }
 
 // if expected is missing, use the original code
-function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, expected?: string) {
-    // Delete existing:
-    focusEditorPasteAndClear();
+function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, expected?: string, retainExisting?: boolean) {
+    if (retainExisting) {
+        focusEditor();
+    }
+    else {
+        // Delete existing:
+        focusEditorPasteAndClear();
+    }
     if (extraPositioning) {
         cy.get("body").type(extraPositioning);
     }
@@ -309,6 +315,103 @@ def bar ():
 def foo ():
     return "foo"
 `.trimStart());
+    });
+    
+    it("Allows pasting inside elif/else", () => {
+        // We had a bug where you couldn't paste anything inside elif/else:
+        const bareIfElifElseCode = `
+if True:
+    x = 0
+elif False:
+    y = 1
+else:
+    z = 2
+        `.trimEnd() + "\n";
+        testRoundTripPasteAndDownload(bareIfElifElseCode);
+        // Now we should be after the whole thing:
+        testRoundTripPasteAndDownload("alpha = 6", "{uparrow}", `
+if True:
+    x = 0
+elif False:
+    y = 1
+else:
+    z = 2
+    alpha = 6
+             `.trimEnd() + "\n", true);
+        testRoundTripPasteAndDownload("beta = 7", "{uparrow}{uparrow}{uparrow}{uparrow}", `
+if True:
+    x = 0
+elif False:
+    y = 1
+    beta = 7
+else:
+    z = 2
+    alpha = 6
+        `.trimEnd() + "\n", true);
+    });
+
+    it("Allows pasting inside elif/else, nested", () => {
+        // We had a bug where you couldn't paste anything inside elif/else:
+        const bareIfElifElseCode = `
+if True:
+    x = 0
+elif False:
+    y = 1
+else:
+    while True:
+        if True:
+            pass
+        else:
+            z = 2
+        `.trimEnd() + "\n";
+        testRoundTripPasteAndDownload(bareIfElifElseCode);
+        // Now we should be after the whole thing:
+        testRoundTripPasteAndDownload("alpha = 6", "{uparrow}{uparrow}{uparrow}", `
+if True:
+    x = 0
+elif False:
+    y = 1
+else:
+    while True:
+        if True:
+            pass
+        else:
+            z = 2
+            alpha = 6
+             `.trimEnd() + "\n", true);
+    });
+
+    it("Allows pasting inside except/finally", () => {
+        // We had a bug where you couldn't paste anything inside except/finally:
+        const bareTryExceptFinallyCode = `
+try:
+    x = 0
+except e:
+    y = 1
+finally:
+    z = 2
+        `.trimEnd() + "\n";
+        testRoundTripPasteAndDownload(bareTryExceptFinallyCode);
+        // Now we should be after the whole thing:
+        testRoundTripPasteAndDownload("alpha = 6", "{uparrow}", `
+try:
+    x = 0
+except e:
+    y = 1
+finally:
+    z = 2
+    alpha = 6
+             `.trimEnd() + "\n", true);
+        testRoundTripPasteAndDownload("beta = 7", "{uparrow}{uparrow}{uparrow}{uparrow}", `
+try:
+    x = 0
+except e:
+    y = 1
+    beta = 7
+finally:
+    z = 2
+    alpha = 6
+        `.trimEnd() + "\n", true);
     });
     
     it("Allows pasting else/elif at only the right places", () => {
