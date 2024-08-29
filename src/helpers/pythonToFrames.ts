@@ -623,7 +623,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
 export function findCurrentStrypeLocation(): STRYPE_LOCATION {
     // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
     // If are below a frame, we look for its parent right away, otheriwse we can use that fraome
-    let navigFrameId = (useStore().currentFrame.caretPosition == CaretPosition.below) ? useStore().frameObjects[useStore().currentFrame.id].parentId : useStore().currentFrame.id;
+    let navigFrameId = useStore().currentFrame.id;
     do{
         const frameType = useStore().frameObjects[navigFrameId].frameType;
         switch(frameType.type){
@@ -636,7 +636,12 @@ export function findCurrentStrypeLocation(): STRYPE_LOCATION {
         case ContainerTypesIdentifiers.importsContainer:
             return STRYPE_LOCATION.IMPORTS_SECTION;
         default:
-            navigFrameId = useStore().frameObjects[navigFrameId].parentId;
+            if (useStore().frameObjects[navigFrameId].jointParentId > 0) {
+                navigFrameId = useStore().frameObjects[navigFrameId].jointParentId;
+            }
+            else {
+                navigFrameId = useStore().frameObjects[navigFrameId].parentId;
+            }
             break;
         }
     }while(navigFrameId != 0);
