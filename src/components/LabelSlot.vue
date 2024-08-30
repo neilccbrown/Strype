@@ -403,7 +403,7 @@ export default Vue.extend({
                 // text does not actually set the caret into this span:
                 this.$nextTick(() => {
                     const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
-                    setDocumentSelection(slotCursorInfo, slotCursorInfo);
+                    setDocumentSelection(useStore().anchorSlotCursorInfos ?? slotCursorInfo, slotCursorInfo);
                 });
             }
 
