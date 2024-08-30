@@ -1,4 +1,4 @@
-function assertState(expectedState : string) : void {
+export function assertState(expectedState : string) : void {
     withSelection((info) => {
         cy.get("#FrameContainer_-3 .frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").then((parts) => {
             let s = "";
