@@ -27,9 +27,17 @@ export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) 
         let glued = "";
         for (let i = 0; i < struct.fields.length - (excludeLast ? 1 : 0); i++) {
             glued += getContentForACPrefix(struct.fields[i]);
-            if (i < struct.operators.length - (excludeLast ? 1 : 0)) {
-                // Add spaces to avoid adjacent items running together:
-                glued += struct.operators[i].code;
+            if (i < struct.operators.length) {
+                // Only add dot if we are not the final operator before the excluded last:
+                if (struct.operators[i].code === "." || struct.operators[i].code === "") {
+                    if (!excludeLast || i != struct.operators.length - 1) {
+                        glued += struct.operators[i].code;
+                    }
+                }
+                else {
+                    // Non dot operators (comma, plus, etc) break up the expression, so ignore everything before:
+                    glued = "";
+                }
             }
         }
         if (struct.openingBracketValue) {
