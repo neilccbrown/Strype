@@ -3,7 +3,7 @@
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1" @mousedown.self.stop.prevent>
         <GoogleDrive :ref="googleDriveComponentId" />
         <div>
-            <a href="https://strype.org/"><img class="top-left-strype-logo" :src="require('@/assets/images/Strype-logo-128-2x.png')"></a>
+            <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" :src="require('@/assets/images/Strype-logo-128-2x.png')"></a>
         </div>
         <Slide 
             :isOpen="showMenu"
