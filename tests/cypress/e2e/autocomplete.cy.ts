@@ -1054,6 +1054,24 @@ describe("Parameter prompts", () => {
             cy.get("body").type("{enter}");
             withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
         });
+
+        it("Shows prompts in nested function (part 1) " + func.displayName, () => {
+            focusEditorAC();
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" abs(" + func.funcName + "(");
+            withFrameId((frameId) => assertState(frameId, "abs(" + func.funcName + "($))", "abs(" + func.funcName + "(" + func.params.join(", ") + "))"));
+        });
+
+        it("Shows prompts in nested function (part 2) " + func.displayName, () => {
+            focusEditorAC();
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" max(0," + func.funcName + "(");
+            withFrameId((frameId) => assertState(frameId, "max(0," + func.funcName + "($))", "max(0," + func.funcName + "(" + func.params.join(", ") + "))"));
+        });
     }
 });
 

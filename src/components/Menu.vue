@@ -2,6 +2,9 @@
     <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1" @mousedown.self.stop.prevent>
         <GoogleDrive :ref="googleDriveComponentId" />
+        <div>
+            <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" :src="require('@/assets/images/Strype-logo-128-2x.png')"></a>
+        </div>
         <Slide 
             :isOpen="showMenu"
             :burgerIcon="false"
@@ -793,6 +796,10 @@ export default Vue.extend({
     height: 24px;
     margin-bottom: 10px;
 }
+.top-left-strype-logo {
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+}
 
 .editor-file-input {
     display: none;
@@ -853,7 +860,7 @@ export default Vue.extend({
     margin-top: 20px;
 }
 
-.menu-icon-entry {
+.menu-icon-entry, .top-left-strype-logo {
     width: 22px;
     height: 22px;
     display: block;
