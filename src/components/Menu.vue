@@ -415,6 +415,11 @@ export default Vue.extend({
             this.appStore.syncTarget = target;
             this.localSyncTarget = target;
             this.tempSyncTarget = target;
+            // In case there is a Google Drive file ID or other Drive related info are handling when we are saving as a file on the FS, we make sure we remove that
+            if(target == StrypeSyncTarget.fs){
+                this.appStore.currentGoogleDriveSaveFileId = undefined;
+                this.appStore.strypeProjectLocationAlias = "";            
+            }
         },
 
         saveCurrentProject(){
@@ -634,9 +639,7 @@ export default Vue.extend({
         },
 
         onFileLoaded(fileName: string, fileLocation?: FileSystemFileHandle):void {
-            // Update the sync target details and remove drive infos
-            this.appStore.currentGoogleDriveSaveFileId = undefined;
-            this.saveTargetChoice(StrypeSyncTarget.gd);
+            this.saveTargetChoice(StrypeSyncTarget.fs);
 
             // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
             const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
