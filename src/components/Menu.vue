@@ -497,6 +497,7 @@ export default Vue.extend({
                             // Show an error message and do nothing special
                             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
                             this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                            this.currentModalButtonGroupIDInAction = "";
                             return;
                         }
                         // Save the JSON file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
@@ -522,6 +523,7 @@ export default Vue.extend({
                         }
                         // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
                         if(forcedProjectName){
+                            this.currentModalButtonGroupIDInAction = "";
                             return;
                         }
                         const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
