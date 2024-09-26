@@ -235,7 +235,7 @@ export default Vue.extend({
                 // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
                 // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
                 this.checkDriveStrypeFolder(false, (strypeFolderId) => {
-                    if(this.appStore.strypeProjectLocation){
+                    if(this.appStore.strypeProjectLocation && (this.appStore.strypeProjectLocation instanceof String)){
                         gapi.client.request({
                             path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
                             method: "GET",
