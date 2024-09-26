@@ -26,6 +26,7 @@ import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
+import MenuVue from "./Menu.vue";
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -235,7 +236,7 @@ export default Vue.extend({
                 // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
                 // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
                 this.checkDriveStrypeFolder(false, (strypeFolderId) => {
-                    if(this.appStore.strypeProjectLocation){
+                    if(this.appStore.strypeProjectLocation && (this.appStore.strypeProjectLocation instanceof String)){
                         gapi.client.request({
                             path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
                             method: "GET",
@@ -434,12 +435,13 @@ export default Vue.extend({
                 // Load the file content in the editor
                 this.appStore.setStateFromJSONStr(
                     {
-                        stateJSONStr: JSON.stringify(resp),
+                        // The response from Google Drive would be encoded in UTF-8, so we need to decode it.
+                        // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
+                        stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp))),
                         callBack: (setStateSuccess: boolean) => {
                             // Only update things if we could set the new state
                             if(setStateSuccess){
                                 this.saveFileId = id;
-                                this.appStore.syncTarget = StrypeSyncTarget.gd;
                                 // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
                                 const fileNameNoExt = fileName.substring(0, fileName.lastIndexOf("."));
                                 this.appStore.projectName = fileNameNoExt;
@@ -447,6 +449,9 @@ export default Vue.extend({
                                 // Restore the fields we backed up before loading
                                 this.appStore.strypeProjectLocation = strypeLocation;
                                 this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
+                                // And finally register the correc target flags via the Menu 
+                                // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
+                                (this.$parent as InstanceType<typeof MenuVue>).saveTargetChoice(StrypeSyncTarget.gd);
                             }
                         },
                     }                    
