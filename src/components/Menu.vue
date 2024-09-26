@@ -171,6 +171,11 @@ export default Vue.extend({
             currentErrorNavIndex: -1,
             // Flag indicating if navigating to an error has been triggered by the user: used to inhibit reactive changes
             navigateToErrorRequested: false,
+            // Using the reference ID for knowing on what popup's button group we are on isnt reliable: there may be a delay between
+            // the moment the dialog is closed and when we need to use the ID, so we should instead save an ID flag that is set to
+            // the right button group value when the dialog is opened, and cleared when the dialog is explicitly closed by the user
+            // or when the actions that follow the validation of the dialog (if any) are done.
+            currentModalButtonGroupIDInAction: "",
         };
     },
 
@@ -394,12 +399,10 @@ export default Vue.extend({
             return target == this.appStore.syncTarget;
         },
 
-        getTargetSelectVal(isActionSave: boolean): StrypeSyncTarget {
+        getTargetSelectVal(): StrypeSyncTarget {
             // Get the target selected as the selected button from the button group; 
-            // of the "save" action popup if isActionSave is true, of the "load" action popup otherwise
             // In the case we do not use the dialog popup ("Save" action when synced), then we keep current synced destination
-            const refId = (isActionSave) ? this.saveProjectTargetButtonGpId : this.loadProjectTargetButtonGpId;
-            if(!this.$refs[refId]){
+            if(this.currentModalButtonGroupIDInAction && this.currentModalButtonGroupIDInAction.length == 0){
                 return this.appStore.syncTarget;
             }
             // The new UI (changing combobox to buttons) means we can't directly check the HTML component to get the selection (unless using CSS).
@@ -408,7 +411,7 @@ export default Vue.extend({
         },
 
         onSaveTargetChanged(){
-            this.showGDSaveLocation = (this.getTargetSelectVal(true) == this.syncGDValue);
+            this.showGDSaveLocation = (this.getTargetSelectVal() == this.syncGDValue);
         },
 
         saveTargetChoice(target: StrypeSyncTarget){
@@ -464,16 +467,20 @@ export default Vue.extend({
             if(event.trigger == "cancel" || event.trigger == "esc"){
                 // Reset the temporary sync file flag
                 this.tempSyncTarget = this.appStore.syncTarget;
+                this.currentModalButtonGroupIDInAction = "";
+
             }
             else if(event.trigger == "ok" || event.trigger == "event"){
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){
+                    this.currentModalButtonGroupIDInAction = this.loadProjectTargetButtonGpId;
                     // We force saving the current project anyway just in case
                     this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.loadProject);
                     // The remaining parts of the loading process will be only done once saving is complete (cf loadProject())                    
                 }
                 // Case of "save file"
                 else if(dlgId == this.saveProjectModalDlgId){
+                    this.currentModalButtonGroupIDInAction = this.saveProjectTargetButtonGpId;
                     // User has been given a chance to give the file a specifc name,
                     // we check that the name doesn't contain illegal characters (we are a bit restricive here) for file saving
                     // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
@@ -482,7 +489,7 @@ export default Vue.extend({
                         saveFileName = this.$i18n.t("defaultProjName") as string;
                     }
                     
-                    const selectValue = this.getTargetSelectVal(true);
+                    const selectValue = this.getTargetSelectVal();
                     // Reset the temporary sync file flag
                     this.tempSyncTarget = this.appStore.syncTarget;
                     if(selectValue != StrypeSyncTarget.gd){
@@ -521,6 +528,7 @@ export default Vue.extend({
                         (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFileName = saveFileName;
                         (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFile(saveReason);
                     }
+                    this.currentModalButtonGroupIDInAction = "";
                 }
             }
         },
@@ -535,7 +543,7 @@ export default Vue.extend({
             // Called once sanity save has been performed
             // If the user chose to sync on Google Drive, we should open the Drive loader. Otherwise, we open default file system.
             // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
-            const selectValue = this.getTargetSelectVal(false);
+            const selectValue = this.getTargetSelectVal();
             // Reset the temporary sync file flag
             this.tempSyncTarget = this.appStore.syncTarget;
             if(selectValue == StrypeSyncTarget.gd){
@@ -580,7 +588,8 @@ export default Vue.extend({
                 else{
                     (this.$refs.importFileInput as HTMLInputElement).click();
                 }
-            }
+            }        
+            this.currentModalButtonGroupIDInAction = "";
         },
         
         selectedFile() {
