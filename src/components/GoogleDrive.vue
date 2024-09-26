@@ -435,7 +435,9 @@ export default Vue.extend({
                 // Load the file content in the editor
                 this.appStore.setStateFromJSONStr(
                     {
-                        stateJSONStr: JSON.stringify(resp),
+                        // The response from Google Drive would be encoded in UTF-8, so we need to decode it.
+                        // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
+                        stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp))),
                         callBack: (setStateSuccess: boolean) => {
                             // Only update things if we could set the new state
                             if(setStateSuccess){
