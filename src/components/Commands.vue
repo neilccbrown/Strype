@@ -244,10 +244,12 @@ export default Vue.extend({
                 }
 
                 const eventKeyLowCase = event.key.toLowerCase();
+                const isPythonExecuting = ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
+                const isEditing = this.appStore.isEditing;
                 
                 //if we requested to log keystroke, display the keystroke event in an unobtrusive location
                 //when editing, we don't show the keystroke for basic keys (like [a-zA-Z0-1]), only those whose key value is longer than 1
-                if(this.appStore.showKeystroke && (!this.appStore.isEditing || event.key.match(/^.{2,}$/))){
+                if(this.appStore.showKeystroke && (!isEditing || event.key.match(/^.{2,}$/))){
                     (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "["+event.key+"]";
                     //leave the message for a short moment only
                     setTimeout(()=> (document.getElementById("keystrokeSpan") as HTMLSpanElement).textContent = "", 1000);         
@@ -260,7 +262,9 @@ export default Vue.extend({
 
                 if((event.ctrlKey || event.metaKey) && (eventKeyLowCase === "z" || eventKeyLowCase === "y")) {
                     //undo-redo
-                    this.appStore.undoRedo((eventKeyLowCase === "z"));
+                    if(!isPythonExecuting) {
+                        this.appStore.undoRedo((eventKeyLowCase === "z"));
+                    }
                     event.preventDefault();
                     return;
                 }
@@ -278,9 +282,6 @@ export default Vue.extend({
                     event.stopImmediatePropagation();
                     return;
                 }
-
-                const isEditing = this.appStore.isEditing;
-                const isPythonExecuting = ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
 
                 // If a context menu is currently displayed, we handle the menu keyboard interaction here
                 // (note that preventing the event here also prevents the keyboard scrolling of the page)
