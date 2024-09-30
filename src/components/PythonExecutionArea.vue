@@ -434,6 +434,19 @@ export default Vue.extend({
                 }
             });
         },
+
+        clear(): void {
+            // This method clears the UI elements and flags related to Python code execution.
+            (document.getElementById("pythonConsole") as HTMLTextAreaElement).value = "";
+            const pythonTurtleDiv = document.getElementById("pythonTurtleDiv");
+            if(pythonTurtleDiv != undefined) {
+                document.querySelectorAll("#pythonTurtleDiv canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
+            }
+            this.isTurtleListeningKeyEvents = false; 
+            this.isTurtleListeningMouseEvents = false;
+            this.isTurtleListeningTimerEvents = false;
+            this.stopTurtleUIEventListeners = undefined;
+        },
     },
 
 });

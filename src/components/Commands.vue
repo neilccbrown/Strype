@@ -53,7 +53,7 @@
         </div>
         /* IFTRUE_isPurePython
         <div class="flex-padding"/>
-        <python-execution-area class="python-exec-area-container" ref="pythonExecAreaComponent"/>
+        <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId"/>
         FITRUE_isPurePython */
         /* IFTRUE_isMicrobit      
         <div class="python-exec-area-container">  
@@ -79,7 +79,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, handleContextMenuKBInteraction, hiddenShorthandFrames } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -144,10 +144,15 @@ export default Vue.extend({
             return this.appStore.syncTarget == StrypeSyncTarget.gd;
         },
 
-        autoSaveGDriveTooltip(): string{
+        autoSaveGDriveTooltip(): string {
             return this.$i18n.t("appMessage.autoSaveGDriveTooltip", {freq: autoSaveFreqMins}) as string;
         },
-        
+
+        /* IFTRUE_isPurePython */
+        peaComponentRefId(): string {
+            return getStrypePEAComponentRefId();
+        },
+        /* FITRUE_isPurePython */
         /* IFTRUE_isMicrobit */
         tabIndex: {
             get(): number{
@@ -270,11 +275,11 @@ export default Vue.extend({
                 }
                 
                 // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
-                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs.pythonExecAreaComponent) {
-                    ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
-                    ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
+                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs.strypePEA) {
+                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
+                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
                     // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
-                    ((this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
+                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
                     
                     // Don't then process the keypress for other purposes:
                     event.preventDefault();
@@ -294,7 +299,7 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we jus leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isEditing && !(isPythonExecuting && (this.$refs.pythonExecAreaComponent as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                if (!isEditing && !(isPythonExecuting && (this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
