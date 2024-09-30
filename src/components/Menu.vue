@@ -128,7 +128,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
 import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUIID, getFrameUIID, getLabelSlotUIID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
@@ -300,11 +300,11 @@ export default Vue.extend({
         },
 
         isUndoDisabled(): boolean {
-            return this.appStore.isUndoRedoEmpty("undo");
+            return this.appStore.isUndoRedoEmpty("undo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
         },
 
         isRedoDisabled(): boolean {
-            return this.appStore.isUndoRedoEmpty("redo");
+            return this.appStore.isUndoRedoEmpty("redo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
         },
 
         undoImagePath(): string {

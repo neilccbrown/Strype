@@ -339,6 +339,14 @@ export function getMenuLeftPaneUIID(): string {
     return "menu-bar";
 }
 
+export function getStrypeCommandComponentRefId(): string {
+    return "strypeCommands";
+}
+
+export function getStrypePEAComponentRefId(): string {
+    return "strypePEA";
+}
+
 export function getSaveAsProjectModalDlg():string {
     return "save-strype-project-modal-dlg";
 }

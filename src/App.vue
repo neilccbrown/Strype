@@ -73,7 +73,7 @@
                     </div>
                 </Pane>
                 <Pane key="2" size="34">
-                    <Commands :id="commandsContainerId" class="noselect" />
+                    <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
                 </Pane>
             </SplitPanes>
         </div>
@@ -102,7 +102,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected } from "./helpers/editor";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -175,6 +175,10 @@ export default Vue.extend({
 
         editorUIID(): string {
             return getEditorMiddleUIID();
+        },
+
+        strypeCommandsRefId(): string {
+            return getStrypeCommandComponentRefId();
         },
 
         commandsContainerId(): string {
