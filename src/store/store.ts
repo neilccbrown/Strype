@@ -225,19 +225,9 @@ export const useStore = defineStore("app", {
         },
         
         canAddFrameBelowDisabled: (state) => (frameId: number) => {
-            //in this method, we check if frames can be added below the specified (disabled) frame.
-            if(state.frameObjects[frameId].jointParentId > 0 ){
-                //for joint frames we check that it is the last (commands are treated in addFrameCommands)
-                const jointFrameIds = state.frameObjects[state.frameObjects[frameId].jointParentId].jointFrameIds;
-                return (jointFrameIds.indexOf(frameId) == jointFrameIds.length - 1);
-            }
-            else{
-                //for other frames, we just check the parent's property, except for joint root frames if they have children: they can't have more children
-                if(state.frameObjects[frameId].jointFrameIds.length > 0){
-                    return false;
-                }
-                return !state.frameObjects[state.frameObjects[frameId].parentId].isDisabled;
-            }
+            // In this method, we check if frames can be added below the specified (disabled) frame.
+            // Note: if we are in a joint structure, being below the (last) joint frame (i.e. "else" is seen as being below the root (i.e. "if") as there is no "below" a joint frame)
+            return !state.frameObjects[state.frameObjects[frameId].parentId].isDisabled;
         },
         
         getMainCodeFrameContainerId: (state) => {
