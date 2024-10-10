@@ -3,6 +3,24 @@
 
 declare const Sk: any;
 
+export const OUR_PUBLIC_LIBRARY_FILES : string[] = [];
+export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.indexOf(".")));
+
+// The function used for "input" from Skulpt, to be registered against the Skulpt object
+// (this is the default behaviour that can be overwritten if needed)
+export function skulptReadPythonLib(x : string) : string {
+    if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
+        if (OUR_PUBLIC_LIBRARY_FILES.find((f) => ("./" + f) === x)) {
+            return Sk.misceval.promiseToSuspension(
+                fetch("./public_libraries/" + x)
+                    .then((r) => r.text())
+            );
+        }
+        throw "File not found: '" + x + "'";
+    }
+    return Sk.builtinFiles["files"][x];
+}
+
 // The ID of a DIV that is used for "backend" operations with Skulpt, like a/c or retrieving
 // documentation. Strype includes such DIV in the UI (NOT the Turtle output visible for users),
 // but any mechanism using Skulpt for "backend" jobs that do not use Strype will need to create a
@@ -105,7 +123,7 @@ export function configureSkulptForAutoComplete() : void {
     const dummyInput = (prompt: string) => new Promise(function(resolve,reject){
         resolve("");
     });
-    Sk.configure({output:(t:string) => {}, inputfun: dummyInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
+    Sk.configure({read:skulptReadPythonLib, output:(t:string) => {}, inputfun: dummyInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
     // We also need to set some Turtle environment for Skulpt -- note that the output DIV is NOT the one visible by users,
     // because this environment is only used for our backend processes of the code for autocompletion.
     Sk.TurtleGraphics = {};

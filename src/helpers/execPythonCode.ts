@@ -2,6 +2,7 @@
 
 import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
+import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaExpandButtonPos } from "./editor";
@@ -23,15 +24,6 @@ function outf(text: string) {
     Vue.nextTick(() => {
         consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
     });
-}
-
-// The function used for "input" from Skulpt, to be registered against the Skulpt object
-// (this is the default behaviour that can be overwritten if needed)
-function builtinRead(x: any) {
-    if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
-        throw "File not found: '" + x + "'";
-    }
-    return Sk.builtinFiles["files"][x];
 }
 
 // The function used for "transpiling" the input function of Python to some JS handled by Skulpt.
@@ -181,7 +173,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
     }
     
-    Sk.configure({output:outf, read:builtinRead, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
+    Sk.configure({output:outf, read:skulptReadPythonLib, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
     
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);
