@@ -19,14 +19,14 @@ import { pythonBuiltins } from "../src/autocompletion/pythonBuiltins";
 import {
     configureSkulptForAutoComplete,
     getPythonCodeForNamesInContext, getPythonCodeForClassMethods,
-    getPythonCodeForTypeAndDocumentation,
+    getPythonCodeForTypeAndDocumentation, OUR_PUBLIC_LIBRARY_MODULES,
 } from "../src/autocompletion/ac-skulpt";
 import {AcResultsWithCategory, AcResultType} from "../src/types/ac-types";
 
 declare const Sk: any;
 declare const window: any;
 
-const modules : string[] = Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k].type === "module");
+const modules : string[] = Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k].type === "module").concat(OUR_PUBLIC_LIBRARY_MODULES);
 
 // The challenge with Skulpt is that everything is in a Promise, but we have to be careful that we pull out
 // the global acs variable before running the next Skulpt.  We can't await the Promise because the "browser-run"

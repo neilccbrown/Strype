@@ -8,6 +8,7 @@ import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {getMatchingBracket} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
+import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
@@ -257,6 +258,11 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
                     imports.push({acResult: module, documentation: moduleDoc, type: ["module"], version: 0});
                     soFar[importedModulesCategory] = imports;
                 }
+                else if (OUR_PUBLIC_LIBRARY_MODULES.includes(realModule)) {
+                    const imports = soFar[importedModulesCategory] ?? [];
+                    imports.push({acResult: module, documentation: "", type: ["module"], version: 0});
+                    soFar[importedModulesCategory] = imports;
+                }
             }
         }
         else{
@@ -299,7 +305,10 @@ export function getAvailableModulesForImport() : AcResultsWithCategory {
     return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: m in microbitPythonAPI ? (microbitPythonAPI[m as keyof typeof microbitPythonAPI].find((ac) => ac.acResult === "__doc__")?.documentation || "") : "", type: ["module"], version: 0}))};
     /* FITRUE_isMicrobit */
     /* IFTRUE_isPurePython */
-    return {[""] : Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k]?.type === "module").map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: [pythonBuiltins[k].type], version: 0}))};
+    return {[""] : Object.keys(pythonBuiltins)
+        .filter((k) => pythonBuiltins[k]?.type === "module")
+        .map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: [pythonBuiltins[k].type], version: 0}))
+        .concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})))};
     /* FITRUE_isPurePython */
 }
 export function getAvailableItemsForImportFromModule(module: string) : AcResultType[] {
