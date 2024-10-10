@@ -3,7 +3,7 @@
 
 declare const Sk: any;
 
-export const OUR_PUBLIC_LIBRARY_FILES = [];
+export const OUR_PUBLIC_LIBRARY_FILES : string[] = [];
 export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.indexOf(".")));
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
