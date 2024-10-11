@@ -1,5 +1,5 @@
 <template>
-    <div id="app" class="container-fluid">
+    <div id="app" class="container-fluid print-full-height">
         <div v-if="showAppProgress" class="app-progress-pane">
             <div class="app-progress-container">
                 <div class="progress">
@@ -27,8 +27,8 @@
             <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
                 <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
-                    <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
-                        <div class="top">
+                    <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                        <div class="top no-print">
                             <MessageBanner 
                                 v-if="showMessage"
                             />
@@ -38,12 +38,12 @@
                                 :id="menuUIID" 
                                 @app-showprogress="applyShowAppProgress"
                                 @app-reset-project="resetStrypeProject"
-                                class="noselect"
+                                class="noselect no-print"
                             />
                             <div class="col">
                                 <div 
                                     :id="editorUIID" 
-                                    :class="{'editor-code-div noselect':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
+                                    :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
                                     @click.self="onEditorClick"
                                 >
                                     <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
@@ -72,7 +72,7 @@
                         </div>
                     </div>
                 </Pane>
-                <Pane key="2" size="34">
+                <Pane key="2" size="34" class="no-print">
                     <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
                 </Pane>
             </SplitPanes>
@@ -842,6 +842,31 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+// The @media print classes apply only for the "print" media, that is on the print preview of the browser
+@media print {
+    .print-full-height  {
+        height: auto !important;
+        max-height: none !important;
+        overflow: auto !important;
+    }
+
+    .no-print{
+        display: none
+    }
+}
+
+// The @media screen classes apply only for the "screen" media, that is what is displayed in the broswser.
+// We only need to put classes here that would conflict with the rendering for printing.
+@media screen {
+    .cropped-editor-code-div {
+        max-height: 50vh;
+    }
+
+    .full-height-editor-code-div {
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+}
 
 html,body {
     margin: 0px;
@@ -884,15 +909,6 @@ html,body {
 
 .editor-code-div {
     overflow-y: auto;
-}
-
-.cropped-editor-code-div {
-    max-height: 50vh;
-}
-
-.full-height-editor-code-div {
-    height: 100vh !important;
-    max-height: 100vh !important;
 }
 
 .top {
