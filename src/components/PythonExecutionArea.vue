@@ -5,6 +5,7 @@
             <b-tabs v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
                 <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
+                <b-tab :title="$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
             <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
@@ -32,6 +33,9 @@
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
                 </div>
             </div>
+            <div v-show="peaDisplayTabIndex==2" id="pythonGraphicsContainerDiv">
+                <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" width="400" height="400"></canvas>
+            </div>
             <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
                 <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
             </div>
@@ -50,6 +54,15 @@ import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEdit
 import i18n from "@/i18n";
 import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
+interface PersistentImage {
+    img: HTMLImageElement,
+    x: number,
+    y: number,
+    rotation: number, // degrees
+    scale: number, // 1.0 means same size as original image
+    dirty: boolean,
+}
+
 export default Vue.extend({
     name: "PythonExecutionArea",
 
@@ -64,6 +77,14 @@ export default Vue.extend({
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
+            domCanvas : undefined as any as HTMLCanvasElement,
+            domContext : null as CanvasRenderingContext2D | null,
+            targetContext : null as OffscreenCanvasRenderingContext2D | null,
+            targetCanvas : undefined as any as OffscreenCanvas,
+            persistentImages : new Map<number, PersistentImage>(),
+            persistentImagesDirty : false, // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
+            nextPersistentImageId : 0,
+            lastRedrawTime : Date.now(),
         };
     },
 
@@ -146,6 +167,12 @@ export default Vue.extend({
                 this.updateTurtleListeningEvents();
             });
         }
+        
+        // Setup Canvas:
+        this.domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
+        this.domContext = this.domCanvas?.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
+        this.targetCanvas = new OffscreenCanvas(this.domCanvas.width, this.domCanvas.height);
+        this.targetContext = this.targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
     },
 
     computed:{
@@ -262,6 +289,21 @@ export default Vue.extend({
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
+                // Clear the graphics area:
+                this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
+                this.persistentImages.clear();
+                this.persistentImagesDirty = false;
+                // Start the redraw loop:
+                // eslint-disable-next-line @typescript-eslint/no-this-alias
+                const t = this;
+                function redraw() {
+                    t.redrawCanvasIfNeeded();
+                    if (useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop) {
+                        requestAnimationFrame(redraw);
+                    }
+                }
+                requestAnimationFrame(redraw);
+                
                 // Trigger the actual Python code execution launch
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
@@ -446,6 +488,72 @@ export default Vue.extend({
             this.isTurtleListeningMouseEvents = false;
             this.isTurtleListeningTimerEvents = false;
             this.stopTurtleUIEventListeners = undefined;
+        },
+        
+        addPersistentImage(filename : string): number {
+            this.persistentImagesDirty = true;
+            const img = new Image;
+            img.src = "./graphics_images/" + filename;
+            this.persistentImages.set(this.nextPersistentImageId, {img: img, x: 0, y: 0, rotation: 0, scale: 1, dirty: false});
+            return this.nextPersistentImageId++;
+        },
+        removePersistentImage(id: number): void {
+            this.persistentImagesDirty = true;
+            this.persistentImages.delete(id);
+        },
+        
+        setPersistentImageLocation(id: number, x: number, y: number): void {
+            let obj = this.persistentImages.get(id);
+            if (obj != undefined && (obj.x != x || obj.y != y)) {
+                obj.x = x;
+                obj.y = y;
+                obj.dirty = true;
+            }
+        },
+        setPersistentImageRotation(id: number, rotation: number): void {
+            let obj = this.persistentImages.get(id);
+            if (obj != undefined && obj.rotation != rotation) {
+                obj.rotation = rotation;
+                obj.dirty = true;
+            }
+        },
+        setPersistentImageScale(id: number, scale: number): void {
+            let obj = this.persistentImages.get(id);
+            if (obj != undefined && obj.scale != scale) {
+                obj.scale = scale;
+                obj.dirty = true;
+            }
+        },
+        
+        redrawCanvasIfNeeded() : void {
+            // Draws canvas if anything has changed:
+            if (this.persistentImagesDirty || Array.from(this.persistentImages.values()).some((p) => p.dirty)) {
+                console.log("Needs redraw");
+                this.redrawCanvas();
+            }
+        },
+        redrawCanvas() : void {
+            this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
+            for (let obj of this.persistentImages.values()) {
+                if (obj.rotation != 0) {
+                    this.targetContext?.save();
+                    this.targetContext?.translate(obj.x, obj.y);
+                    this.targetContext?.rotate(obj.rotation * Math.PI / 180);
+                    this.targetContext?.scale(obj.scale, obj.scale);
+                    this.targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
+                    this.targetContext?.restore();
+                } 
+                else {
+                    // Simpler case; no rotation means we can use single call:
+                    let dwidth = obj.scale * obj.img.width;
+                    let dheight = obj.scale * obj.img.height;
+                    this.targetContext?.drawImage(obj.img, obj.x - dwidth*0.5, obj.y-dheight*0.5, dwidth, dheight);
+                }
+                obj.dirty = false;
+            }
+            this.persistentImagesDirty = false;
+            // Actually copy it to the DOM canvas:
+            this.domContext?.drawImage(this.targetCanvas, 0, 0);
         },
     },
 
