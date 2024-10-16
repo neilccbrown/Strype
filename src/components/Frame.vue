@@ -79,11 +79,11 @@
             <div>
                 <CaretContainer
                     v-if="!isJointFrame"
-                    :frameId="this.frameId"
+                    :frameId="frameId"
                     :ref="getCaretContainerRef"
-                    :caretVisibility="this.caretVisibility"
+                    :caretVisibility="caretVisibility"
                     :caretAssignedPosition="caretPosition.below"
-                    :isFrameDisabled="this.isDisabled"
+                    :isFrameDisabled="isDisabled"
                 />
             </div>
         </div>
@@ -104,12 +104,13 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, MessageDefinitions } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
+import html2canvas from "html2canvas";
 
 //////////////////////
 //     Component    //
@@ -439,6 +440,7 @@ export default Vue.extend({
             this.frameContextMenuItems = [
                 {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut},
                 {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy},
+                {name: this.$i18n.t("contextMenu.copyAsImg") as string, method: this.copyAsImg},
                 {name: this.$i18n.t("contextMenu.duplicate") as string, method: this.duplicate},
                 {name: "", method: () => {}, type: "divider"},
                 {name: this.$i18n.t("contextMenu.pasteAbove") as string, method: this.pasteAbove},
@@ -886,6 +888,63 @@ export default Vue.extend({
             }
             else{
                 this.appStore.copyFrame(this.frameId);
+            }
+        },
+
+        async copyAsImg(): Promise<void> {
+            // We use HTML2Canvas to produce "screenshots" of elements, and our own rendering container canvas to
+            // allow a background surrouding by 5px the screenshots, and get a final image.
+            // There are two situations: the copy is request on a particular frame OR a selection of frames.
+            // For a frame, it's simple as we can use the html2canvas API to generate an image for a particular element,
+            // for the selection, we just use the API to generate one image and "stack" them up in our container canvas.                
+            const containingRenderingCanvas = document.createElement("canvas");
+            const containingRenderingCanvasCtxt = containingRenderingCanvas.getContext("2d", {willReadFrequently: true});
+            if(containingRenderingCanvasCtxt) {
+                // First we retrieve all images from html2canvas and keep them as Image objects.
+                // We need to do this step asynchronously because all images should be loaded for being drawn on a canvas later.
+                const targetFrameIdArray = (this.isPartOfSelection) ? this.appStore.selectedFrames : [this.frameId];
+                await Promise.all(targetFrameIdArray.map((targetFrameId, index) => 
+                    // Wait a bit before retrieving the first image as the UI may still show the context menu.
+                    new Promise((resolve)=> {
+                        setTimeout(() => {                
+                            const targetFrameElement = document.getElementById(getFrameUIID(targetFrameId));
+                            if(targetFrameElement) {    
+                                html2canvas(targetFrameElement, {backgroundColor: "#bbc7b7", removeContainer: false})
+                                    .then((html2canvasEl) => {
+                                        const targetFrameImg = new Image();
+                                        targetFrameImg.src = html2canvasEl.toDataURL("image.png");
+                                        return new Promise(() => targetFrameImg.addEventListener("load", () =>  resolve(targetFrameImg)));
+                                    });
+                            }
+                        }, (index==0) ? 500 : 0);
+                    })))
+                    .then((targetFrameImgArray) => {
+                        // Now that we have our images loaded, we can work on the placing them in our own containing canvas.
+                        // 1) let's put a background first (with a padding of 10 px)
+                        const totalTargetFramesHeight = targetFrameImgArray
+                            .map((targetFrameImg) => (targetFrameImg as HTMLImageElement).height)
+                            .reduce((acc, currentValue) => {
+                                return acc + currentValue;
+                            }, 0);
+                        containingRenderingCanvas.width = (targetFrameImgArray[0] as HTMLImageElement).width + 10;
+                        containingRenderingCanvas.height =  totalTargetFramesHeight + 10;
+                        containingRenderingCanvasCtxt.fillStyle="#bbc7b7";
+                        containingRenderingCanvasCtxt.fillRect(0, 0, containingRenderingCanvas.width, containingRenderingCanvas.height);
+
+                        // 2) let's position the images in the containing canvas (starting off at 5px away)
+                        targetFrameImgArray.reduce((acc, currImg) => {
+                            const targetFrameImg = (currImg as HTMLImageElement);
+                            const prevTargetsH = acc as number;
+                            containingRenderingCanvasCtxt.drawImage(targetFrameImg, 5, 5 + prevTargetsH);
+                            return prevTargetsH + targetFrameImg.height;
+                        }, 0);
+                    }).
+                    finally(() => {
+                        // We save the resulting image in the clipboard
+                        containingRenderingCanvas.toBlob((blob) => navigator.clipboard.write([new ClipboardItem({"image/png": blob as Blob})]));
+                        // Show message of confirmation
+                        this.appStore.showMessage(MessageDefinitions.CopiedFramesAsImg, 2000);
+                    });
             }
         },
 

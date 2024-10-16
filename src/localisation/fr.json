@@ -62,7 +62,8 @@
         "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
         "wrongPythonStructCopied":"impossible de coller else/elif/except/finally suivi d'autre contenu en une fois",
         "incompatiblePythonStrypeSection":"le code Python copié ne peut pas être collé dans la section actuelle de Strype",
-        "unexpectedCharsPython": "caractère(s) inattendu(s)"
+        "unexpectedCharsPython": "caractère(s) inattendu(s)",
+        "copiedFramesAsImg": "Image placée dans le presse-papier"
     },
     "buttonLabel":{
         "undo":"Annuler",
@@ -134,6 +135,7 @@
       "ctrl":"Ctrl",
       "cut":"Couper",
       "copy":"Copier",
+      "copyAsImg":"Copier comme image",
       "duplicate":"Dupliquer",
       "paste":"Coller",
       "pasteAbove":"Coller au dessus",

@@ -766,6 +766,7 @@ export const MessageTypes = {
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
     invalidPythonParseImport: "invalidPythonParseImport",
     invalidPythonParsePaste: "invalidPythonParsePaste",
+    copiedFramesAsImg: "CopiedFramesAsImg",
 };
 
 //empty message
@@ -907,6 +908,12 @@ const InvalidPythonParsePaste: MessageDefinition = {
     },
 };
 
+const CopiedFramesAsImg: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.copiedFramesAsImg,
+    message: "messageBannerMessage.copiedFramesAsImg",
+};
+
 
 export const MessageDefinitions = {
     NoMessage,
@@ -926,6 +933,7 @@ export const MessageDefinitions = {
     GDriveCantCreateStrypeFolder,
     InvalidPythonParseImport,
     InvalidPythonParsePaste,
+    CopiedFramesAsImg,
 };
 
 //WebUSB listener
