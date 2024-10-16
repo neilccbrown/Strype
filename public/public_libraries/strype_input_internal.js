@@ -5,5 +5,9 @@ var $builtinmodule = function(name)  {
         return Sk.ffi.remapToPy(peaComponent.__vue__.consumeLastClick());
     });
 
+    mod.getPressedKeys = new Sk.builtin.func(function() {
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPressedKeys());
+    });
+
     return mod;
 };

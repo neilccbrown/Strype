@@ -63,6 +63,8 @@ interface PersistentImage {
     dirty: boolean,
 }
 
+const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
+
 export default Vue.extend({
     name: "PythonExecutionArea",
 
@@ -86,7 +88,8 @@ export default Vue.extend({
             nextPersistentImageId : 0,
             lastRedrawTime : Date.now(),
             audioContext : null as AudioContext | null,
-            mostRecentClick : null as {x : number, y : number} | null, 
+            mostRecentClick : null as {x : number, y : number} | null,
+            pressedKeys : new Map<string, boolean>(), 
         };
     },
 
@@ -298,6 +301,11 @@ export default Vue.extend({
                 this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
                 this.persistentImages.clear();
                 this.persistentImagesDirty = false;
+                // Clear input:
+                this.mostRecentClick = null;
+                this.pressedKeys.clear();
+                window.addEventListener("keydown", this.graphicsCanvasKeyDown);
+                window.addEventListener("keyup", this.graphicsCanvasKeyUp);
                 // Start the redraw loop:
                 // eslint-disable-next-line @typescript-eslint/no-this-alias
                 const t = this;
@@ -322,6 +330,8 @@ export default Vue.extend({
                     if(!this.isTurtleListeningEvents) {
                         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     }
+                    window.removeEventListener("keydown", this.graphicsCanvasKeyDown);
+                    window.removeEventListener("keyup", this.graphicsCanvasKeyUp);
                     setPythonExecAreaExpandButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.
@@ -604,8 +614,17 @@ export default Vue.extend({
             this.mostRecentClick = null;
             return r;
         },
+        graphicsCanvasKeyDown(event: KeyboardEvent) {
+            this.pressedKeys.set(keyMapping.get(event.key) ?? event.key, true);
+        },
+        graphicsCanvasKeyUp(event: KeyboardEvent) {
+            this.pressedKeys.set(keyMapping.get(event.key) ?? event.key, false);
+        },
+        getPressedKeys() {
+            return this.pressedKeys;
+        },
     },
-
+    
 });
 </script>
 
