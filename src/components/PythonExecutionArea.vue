@@ -34,7 +34,7 @@
                 </div>
             </div>
             <div v-show="peaDisplayTabIndex==2" id="pythonGraphicsContainerDiv">
-                <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" width="400" height="400"></canvas>
+                <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" width="400" height="400" @click.stop="graphicsCanvasClick"></canvas>
             </div>
             <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
                 <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
@@ -86,6 +86,7 @@ export default Vue.extend({
             nextPersistentImageId : 0,
             lastRedrawTime : Date.now(),
             audioContext : null as AudioContext | null,
+            mostRecentClick : null as {x : number, y : number} | null, 
         };
     },
 
@@ -576,6 +577,14 @@ export default Vue.extend({
                         source.start();
                     }
                 });
+        },
+        graphicsCanvasClick(event: MouseEvent) {
+            this.mostRecentClick = {x: event.x,  y: event.y};
+        },
+        consumeLastClick() : {x:number, y:number} | null {
+            const r = this.mostRecentClick;
+            this.mostRecentClick = null;
+            return r;
         },
     },
 
