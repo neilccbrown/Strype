@@ -561,7 +561,6 @@ export default Vue.extend({
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
             if (this.persistentImagesDirty || Array.from(this.persistentImages.values()).some((p) => p.dirty)) {
-                console.log("Needs redraw");
                 this.redrawCanvas();
             }
         },
