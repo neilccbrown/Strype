@@ -529,6 +529,24 @@ export default Vue.extend({
                 obj.dirty = true;
             }
         },
+
+        getPersistentImageLocation(id: number) : {x: number, y : number} | undefined {
+            let obj = this.persistentImages.get(id);
+            if (obj != undefined) {
+                return {x : obj.x, y : obj.y};
+            }
+            else {
+                return undefined;
+            }
+        },
+        getPersistentImageRotation(id: number) : number | undefined {
+            let obj = this.persistentImages.get(id);
+            return obj?.rotation;
+        },
+        getPersistentImageScale(id: number) : number | undefined {
+            let obj = this.persistentImages.get(id);
+            return obj?.scale;
+        },
         
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:

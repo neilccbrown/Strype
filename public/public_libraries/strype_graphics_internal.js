@@ -15,6 +15,15 @@ var $builtinmodule = function(name)  {
     mod.setImageScale = new Sk.builtin.func(function(img, s) {
         peaComponent.__vue__.setPersistentImageScale(img, s);
     });
+    mod.getImageLocation = new Sk.builtin.func(function(img) {
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageLocation(img));
+    });
+    mod.getImageRotation = new Sk.builtin.func(function(img) {
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageRotation(img));
+    });
+    mod.getImageScale = new Sk.builtin.func(function(img) {
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageScale(img));
+    });
     mod.removeImage = new Sk.builtin.func(function(img) {
         peaComponent.__vue__.removePersistentImage(img);
     });
