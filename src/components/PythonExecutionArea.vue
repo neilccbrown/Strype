@@ -85,6 +85,7 @@ export default Vue.extend({
             persistentImagesDirty : false, // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
             nextPersistentImageId : 0,
             lastRedrawTime : Date.now(),
+            audioContext : null as AudioContext | null,
         };
     },
 
@@ -225,6 +226,9 @@ export default Vue.extend({
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
+                // Important to call this when responding to a click, because browser won't allow
+                // sound to start unless we create it in response to a user action:
+                this.audioContext = new AudioContext();
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
@@ -554,6 +558,24 @@ export default Vue.extend({
             this.persistentImagesDirty = false;
             // Actually copy it to the DOM canvas:
             this.domContext?.drawImage(this.targetCanvas, 0, 0);
+        },
+
+        playOneOffSound(audioFileName : string) : void {
+            fetch("./sounds/" + audioFileName)
+                .then((d) => d.arrayBuffer())
+                .then((b) => this.audioContext?.decodeAudioData(b))
+                .then((b) => {
+                    if (!b) {
+                        // If we can't load the file, we should tell the user:
+                        (this.$refs.pythonConsole as HTMLTextAreaElement).value += "Error loading sound \"" + audioFileName + "\""; 
+                    }
+                    else if (this.audioContext && b) {
+                        const source = this.audioContext.createBufferSource();
+                        source.buffer = b;
+                        source.connect(this.audioContext.destination);
+                        source.start();
+                    }
+                });
         },
     },
 
