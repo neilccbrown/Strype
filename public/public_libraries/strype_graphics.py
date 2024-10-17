@@ -1,5 +1,5 @@
 import strype_graphics_internal as _strype_graphics_internal
-from math import sin, cos, radians
+import math as _math
 
 class Actor:
     def __init__(self, image_filename, x, y):
@@ -16,8 +16,8 @@ class Actor:
         _strype_graphics_internal.removeImage(self.__id)
     def move(self, amount):
         cur = _strype_graphics_internal.getImageLocation(self.__id)
-        rot = radians(_strype_graphics_internal.getImageRotation(self.__id))
-        self.set_location(cur['x'] + amount * cos(rot), cur['y'] + amount * sin(rot))
+        rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
+        self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] + amount * _math.sin(rot))
     def turn(self, degrees):
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
         
