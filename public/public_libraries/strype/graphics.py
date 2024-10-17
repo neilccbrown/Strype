@@ -1,5 +1,7 @@
 import strype_graphics_internal as _strype_graphics_internal
+import strype_input_internal as _strype_input_internal
 import math as _math
+import collections as _collections
 
 class Actor:
     def __init__(self, image_filename, x, y):
@@ -20,4 +22,9 @@ class Actor:
         self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] + amount * _math.sin(rot))
     def turn(self, degrees):
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
-        
+
+def consume_last_click():
+    return _strype_input_internal.consumeLastClick()
+
+def pressed_keys():
+    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())

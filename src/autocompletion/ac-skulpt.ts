@@ -7,7 +7,7 @@ export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
     "strype/__init__.py",
     "strype/strype_graphics_internal.js", "strype/graphics.py",
     "strype/strype_sound_internal.js", "strype/sound.py",
-    "strype_input_internal.js", "strype_input.py",
+    "strype/strype_input_internal.js",
 ];
 export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.indexOf("."))).filter((f) => !f.includes("internal"));
 
@@ -15,6 +15,7 @@ export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.
 // (this is the default behaviour that can be overwritten if needed)
 export function skulptReadPythonLib(x : string) : string {
     if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
+        console.log("Searching for: " + x);
         if (OUR_PUBLIC_LIBRARY_FILES.find((f) => ("./" + f) === x)) {
             return Sk.misceval.promiseToSuspension(
                 fetch("./public_libraries/" + x)
