@@ -4,8 +4,7 @@
         <div id="peaControlsDiv">           
             <b-tabs v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
-                <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
-                <b-tab :title="$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
+                <b-tab :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
             <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
@@ -29,12 +28,12 @@
             >    
             </textarea>
             <div v-show="peaDisplayTabIndex==1" id="pythonTurtleContainerDiv" @wheel.stop>
-                <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
-                    <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
+                <div id="pythonGraphicsContainer"><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
+                    <div id="pythonTurtleDiv" ref="pythonTurtleDiv" @click.stop="graphicsCanvasClick"></div>
+                    <div>
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" width="400" height="400" @click.stop="graphicsCanvasClick"></canvas>
+                    </div>
                 </div>
-            </div>
-            <div v-show="peaDisplayTabIndex==2" id="pythonGraphicsContainerDiv">
-                <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" width="400" height="400" @click.stop="graphicsCanvasClick"></canvas>
             </div>
             <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
                 <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
@@ -78,6 +77,7 @@ export default Vue.extend({
             isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
+            isRunningStrypeGraphics : false,
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
             domCanvas : undefined as any as HTMLCanvasElement,
             domContext : null as CanvasRenderingContext2D | null,
@@ -332,6 +332,7 @@ export default Vue.extend({
                     }
                     window.removeEventListener("keydown", this.graphicsCanvasKeyDown);
                     window.removeEventListener("keyup", this.graphicsCanvasKeyUp);
+                    this.isRunningStrypeGraphics = false;
                     setPythonExecAreaExpandButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.
@@ -506,6 +507,7 @@ export default Vue.extend({
         },
         
         addPersistentImage(filename : string): number {
+            this.isRunningStrypeGraphics = true;
             this.persistentImagesDirty = true;
             const img = new Image;
             img.src = "./graphics_images/" + filename;
@@ -769,5 +771,16 @@ export default Vue.extend({
         position: absolute;
         top: 10px;
         left: 10px;
-    }    
+    }   
+    
+    #pythonGraphicsContainer {
+        position: relative;
+    }
+    #pythonGraphicsContainer > * {
+        top: 0;
+        left: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+    }
 </style>
