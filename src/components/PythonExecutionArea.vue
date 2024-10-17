@@ -53,15 +53,6 @@ import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEdit
 import i18n from "@/i18n";
 import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
-interface PersistentImage {
-    img: HTMLImageElement,
-    x: number,
-    y: number,
-    rotation: number, // degrees
-    scale: number, // 1.0 means same size as original image
-    dirty: boolean,
-}
-
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
 export default Vue.extend({
@@ -83,9 +74,7 @@ export default Vue.extend({
             domContext : null as CanvasRenderingContext2D | null,
             targetContext : null as OffscreenCanvasRenderingContext2D | null,
             targetCanvas : undefined as any as OffscreenCanvas,
-            persistentImages : new Map<number, PersistentImage>(),
-            persistentImagesDirty : false, // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
-            nextPersistentImageId : 0,
+            persistentImageManager : new PersistentImageManager(),
             lastRedrawTime : Date.now(),
             audioContext : null as AudioContext | null,
             mostRecentClick : null as {x : number, y : number} | null,
@@ -299,8 +288,7 @@ export default Vue.extend({
                 parser.getErrorsFormatted(userCode);
                 // Clear the graphics area:
                 this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
-                this.persistentImages.clear();
-                this.persistentImagesDirty = false;
+                this.persistentImageManager.clear();
                 // Clear input:
                 this.mostRecentClick = null;
                 this.pressedKeys.clear();
@@ -508,67 +496,39 @@ export default Vue.extend({
         
         addPersistentImage(filename : string): number {
             this.isRunningStrypeGraphics = true;
-            this.persistentImagesDirty = true;
-            const img = new Image;
-            img.src = "./graphics_images/" + filename;
-            this.persistentImages.set(this.nextPersistentImageId, {img: img, x: 0, y: 0, rotation: 0, scale: 1, dirty: false});
-            return this.nextPersistentImageId++;
+            return this.persistentImageManager.addPersistentImage(filename);
         },
         removePersistentImage(id: number): void {
-            this.persistentImagesDirty = true;
-            this.persistentImages.delete(id);
-        },
-        
+            this.persistentImageManager.removePersistentImage(id);
+        },        
         setPersistentImageLocation(id: number, x: number, y: number): void {
-            let obj = this.persistentImages.get(id);
-            if (obj != undefined && (obj.x != x || obj.y != y)) {
-                obj.x = x;
-                obj.y = y;
-                obj.dirty = true;
-            }
+            this.persistentImageManager.setPersistentImageLocation(id, x, y);
         },
         setPersistentImageRotation(id: number, rotation: number): void {
-            let obj = this.persistentImages.get(id);
-            if (obj != undefined && obj.rotation != rotation) {
-                obj.rotation = rotation;
-                obj.dirty = true;
-            }
+            this.persistentImageManager.setPersistentImageRotation(id, rotation);
         },
         setPersistentImageScale(id: number, scale: number): void {
-            let obj = this.persistentImages.get(id);
-            if (obj != undefined && obj.scale != scale) {
-                obj.scale = scale;
-                obj.dirty = true;
-            }
+            this.persistentImageManager.setPersistentImageScale(id, scale);
         },
-
         getPersistentImageLocation(id: number) : {x: number, y : number} | undefined {
-            let obj = this.persistentImages.get(id);
-            if (obj != undefined) {
-                return {x : obj.x, y : obj.y};
-            }
-            else {
-                return undefined;
-            }
+            return this.persistentImageManager.getPersistentImageLocation(id);
         },
         getPersistentImageRotation(id: number) : number | undefined {
-            let obj = this.persistentImages.get(id);
-            return obj?.rotation;
+            return this.persistentImageManager.getPersistentImageRotation(id);
         },
         getPersistentImageScale(id: number) : number | undefined {
-            let obj = this.persistentImages.get(id);
-            return obj?.scale;
+            return this.persistentImageManager.getPersistentImageScale(id);
         },
         
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
-            if (this.persistentImagesDirty || Array.from(this.persistentImages.values()).some((p) => p.dirty)) {
+            if (this.persistentImageManager.isDirty()) {
                 this.redrawCanvas();
             }
         },
         redrawCanvas() : void {
             this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
-            for (let obj of this.persistentImages.values()) {
+            for (let obj of this.persistentImageManager.getPersistentImages()) {
                 if (obj.rotation != 0) {
                     this.targetContext?.save();
                     this.targetContext?.translate(obj.x, obj.y);
@@ -585,7 +545,7 @@ export default Vue.extend({
                 }
                 obj.dirty = false;
             }
-            this.persistentImagesDirty = false;
+            this.persistentImageManager.resetDirty();
             // Actually copy it to the DOM canvas:
             this.domContext?.drawImage(this.targetCanvas, 0, 0);
         },
