@@ -16,6 +16,18 @@ class Actor:
         _strype_graphics_internal.setImageScale(self.__id, scale)
     def remove(self):
         _strype_graphics_internal.removeImage(self.__id)
+    def get_x(self):
+         # Gets X with rounding (towards zero):
+        return int(_strype_graphics_internal.getImageLocation(self.__id)['x'])
+    def get_x(self):
+        # Gets Y with rounding (towards zero):
+        return int(_strype_graphics_internal.getImageLocation(self.__id)['y'])
+    def get_exact_x(self):
+        # Gets X with no rounding:
+        return _strype_graphics_internal.getImageLocation(self.__id)['x']
+    def get_exact_y(self):
+        # Gets Y with no rounding:
+        return _strype_graphics_internal.getImageLocation(self.__id)['y']
     def move(self, amount):
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
