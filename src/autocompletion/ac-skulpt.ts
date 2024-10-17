@@ -4,8 +4,9 @@
 declare const Sk: any;
 
 export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
-    "strype_graphics_internal.js", "strype_graphics.py",
-    "strype_sound_internal.js", "strype_sound.py",
+    "strype/__init__.py",
+    "strype/strype_graphics_internal.js", "strype/graphics.py",
+    "strype/strype_sound_internal.js", "strype/sound.py",
     "strype_input_internal.js", "strype_input.py",
 ];
 export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.indexOf("."))).filter((f) => !f.includes("internal"));
