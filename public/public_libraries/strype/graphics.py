@@ -38,5 +38,5 @@ class Actor:
 def consume_last_click():
     return _strype_input_internal.consumeLastClick()
 
-def pressed_keys():
-    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())
+def key_pressed(keyname):
+    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
