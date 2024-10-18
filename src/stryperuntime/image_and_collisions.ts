@@ -8,12 +8,12 @@ interface PersistentImage {
     dirty: boolean,
 }
 
-class PersistentImageManager {
+export class PersistentImageManager {
     private persistentImages = new Map<number, PersistentImage>();
     private persistentImagesDirty = false; // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
     private nextPersistentImageId = 0;
     
-    public clear() {
+    public clear() : void {
         this.persistentImages.clear();
         this.persistentImagesDirty = false;
     }
@@ -32,7 +32,7 @@ class PersistentImageManager {
     }
 
     public setPersistentImageLocation(id: number, x: number, y: number): void {
-        let obj = this.persistentImages.get(id);
+        const obj = this.persistentImages.get(id);
         if (obj != undefined && (obj.x != x || obj.y != y)) {
             obj.x = x;
             obj.y = y;
@@ -41,7 +41,7 @@ class PersistentImageManager {
     }
     
     public setPersistentImageRotation(id: number, rotation: number): void {
-        let obj = this.persistentImages.get(id);
+        const obj = this.persistentImages.get(id);
         if (obj != undefined && obj.rotation != rotation) {
             obj.rotation = rotation;
             obj.dirty = true;
@@ -49,7 +49,7 @@ class PersistentImageManager {
     }
     
     public setPersistentImageScale(id: number, scale: number): void {
-        let obj = this.persistentImages.get(id);
+        const obj = this.persistentImages.get(id);
         if (obj != undefined && obj.scale != scale) {
             obj.scale = scale;
             obj.dirty = true;
@@ -57,7 +57,7 @@ class PersistentImageManager {
     }
 
     public getPersistentImageLocation(id: number) : {x: number, y : number} | undefined {
-        let obj = this.persistentImages.get(id);
+        const obj = this.persistentImages.get(id);
         if (obj != undefined) {
             return {x : obj.x, y : obj.y};
         }
@@ -67,12 +67,12 @@ class PersistentImageManager {
     }
     
     public getPersistentImageRotation(id: number) : number | undefined {
-        let obj = this.persistentImages.get(id);
+        const obj = this.persistentImages.get(id);
         return obj?.rotation;
     }
     
     public getPersistentImageScale(id: number) : number | undefined {
-        let obj = this.persistentImages.get(id);
+        const obj = this.persistentImages.get(id);
         return obj?.scale;
     }
     
@@ -81,7 +81,7 @@ class PersistentImageManager {
     }
 
     // Note: doesn't reset the individual images' dirty state
-    public resetDirty() {
+    public resetDirty() : void {
         this.persistentImagesDirty = true;
     }
     
