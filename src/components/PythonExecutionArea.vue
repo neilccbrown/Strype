@@ -54,14 +54,15 @@ import i18n from "@/i18n";
 import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 import { PersistentImageManager } from "@/stryperuntime/image_and_collisions";
 
+const persistentImageManager = new PersistentImageManager();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
 export default Vue.extend({
     name: "PythonExecutionArea",
 
     data: function() {
-        const graphicsCanvasWidth = 1200;
-        const graphicsCanvasHeight = 900;
+        const graphicsCanvasWidth = 800;
+        const graphicsCanvasHeight = 600;
         return {
             isExpandedPEA: false,
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
@@ -78,7 +79,6 @@ export default Vue.extend({
             domContext : null as CanvasRenderingContext2D | null,
             targetContext : null as OffscreenCanvasRenderingContext2D | null,
             targetCanvas : new OffscreenCanvas(graphicsCanvasWidth, graphicsCanvasHeight),
-            persistentImageManager : new PersistentImageManager(),
             lastRedrawTime : Date.now(),
             audioContext : null as AudioContext | null,
             mostRecentClick : null as {x : number, y : number} | null,
@@ -292,7 +292,7 @@ export default Vue.extend({
                 parser.getErrorsFormatted(userCode);
                 // Clear the graphics area:
                 this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
-                this.persistentImageManager.clear();
+                persistentImageManager.clear();
                 // Clear input:
                 this.mostRecentClick = null;
                 this.pressedKeys.clear();
@@ -500,41 +500,20 @@ export default Vue.extend({
             this.pressedKeys.clear();
         },
         
-        addPersistentImage(filename : string): number {
+        getPersistentImageManager() : PersistentImageManager {
             this.isRunningStrypeGraphics = true;
-            return this.persistentImageManager.addPersistentImage(filename);
-        },
-        removePersistentImage(id: number): void {
-            this.persistentImageManager.removePersistentImage(id);
-        },        
-        setPersistentImageLocation(id: number, x: number, y: number): void {
-            this.persistentImageManager.setPersistentImageLocation(id, x, y);
-        },
-        setPersistentImageRotation(id: number, rotation: number): void {
-            this.persistentImageManager.setPersistentImageRotation(id, rotation);
-        },
-        setPersistentImageScale(id: number, scale: number): void {
-            this.persistentImageManager.setPersistentImageScale(id, scale);
-        },
-        getPersistentImageLocation(id: number) : {x: number, y : number} | undefined {
-            return this.persistentImageManager.getPersistentImageLocation(id);
-        },
-        getPersistentImageRotation(id: number) : number | undefined {
-            return this.persistentImageManager.getPersistentImageRotation(id);
-        },
-        getPersistentImageScale(id: number) : number | undefined {
-            return this.persistentImageManager.getPersistentImageScale(id);
+            return persistentImageManager;
         },
         
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
-            if (this.persistentImageManager.isDirty()) {
+            if (persistentImageManager.isDirty()) {
                 this.redrawCanvas();
             }
         },
         redrawCanvas() : void {
             this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
-            for (let obj of this.persistentImageManager.getPersistentImages()) {
+            for (let obj of persistentImageManager.getPersistentImages()) {
                 if (obj.rotation != 0) {
                     this.targetContext?.save();
                     this.targetContext?.translate(obj.x, obj.y);
@@ -551,7 +530,7 @@ export default Vue.extend({
                 }
                 obj.dirty = false;
             }
-            this.persistentImageManager.resetDirty();
+            persistentImageManager.resetDirty();
             // Actually copy it to the DOM canvas:
             this.domContext?.drawImage(this.targetCanvas, 0, 0);
         },

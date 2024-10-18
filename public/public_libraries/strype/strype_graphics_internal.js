@@ -6,30 +6,30 @@
 var $builtinmodule = function(name)  {
     var mod = {};
     mod.addImage = new Sk.builtin.func(function(imgFileName, x, y) {
-        var img = peaComponent.__vue__.addPersistentImage(imgFileName);
-        peaComponent.__vue__.setPersistentImageLocation(img, x, y);
+        var img = peaComponent.__vue__.getPersistentImageManager().addPersistentImage(imgFileName);
+        peaComponent.__vue__.getPersistentImageManager().setPersistentImageLocation(img, x, y);
         return img;
     });
     mod.setImageLocation = new Sk.builtin.func(function(img, x, y) {
-        peaComponent.__vue__.setPersistentImageLocation(img, x, y);
+        peaComponent.__vue__.getPersistentImageManager().setPersistentImageLocation(img, x, y);
     });
     mod.setImageRotation = new Sk.builtin.func(function(img, r) {
-        peaComponent.__vue__.setPersistentImageRotation(img, r);
+        peaComponent.__vue__.getPersistentImageManager().setPersistentImageRotation(img, r);
     });
     mod.setImageScale = new Sk.builtin.func(function(img, s) {
-        peaComponent.__vue__.setPersistentImageScale(img, s);
+        peaComponent.__vue__.getPersistentImageManager().setPersistentImageScale(img, s);
     });
     mod.getImageLocation = new Sk.builtin.func(function(img) {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageLocation(img));
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageLocation(img));
     });
     mod.getImageRotation = new Sk.builtin.func(function(img) {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageRotation(img));
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageRotation(img));
     });
     mod.getImageScale = new Sk.builtin.func(function(img) {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageScale(img));
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageScale(img));
     });
     mod.removeImage = new Sk.builtin.func(function(img) {
-        peaComponent.__vue__.removePersistentImage(img);
+        peaComponent.__vue__.getPersistentImageManager().removePersistentImage(img);
     });
 
     return mod;
