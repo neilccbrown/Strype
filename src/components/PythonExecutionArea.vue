@@ -4,7 +4,7 @@
         <div id="peaControlsDiv">           
             <b-tabs v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
-                <b-tab :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
+                <b-tab :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
             <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
@@ -28,8 +28,11 @@
             >    
             </textarea>
             <div v-show="peaDisplayTabIndex==1" id="pythonTurtleContainerDiv" @wheel.stop>
-                <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
-                    <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
+                <div id="pythonGraphicsContainer"><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
+                    <div id="pythonTurtleDiv" ref="pythonTurtleDiv" @click.stop="graphicsCanvasClick"></div>
+                    <div>
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" :width="graphicsCanvasWidth" :height="graphicsCanvasHeight" @click.stop="graphicsCanvasClick"></canvas>
+                    </div>
                 </div>
             </div>
             <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
@@ -49,11 +52,17 @@ import { mapStores } from "pinia";
 import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, resetAddFrameCommandContainerHeight, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
+import { PersistentImageManager } from "@/stryperuntime/image_and_collisions";
+
+const persistentImageManager = new PersistentImageManager();
+const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
 export default Vue.extend({
     name: "PythonExecutionArea",
 
     data: function() {
+        const graphicsCanvasWidth = 800;
+        const graphicsCanvasHeight = 600;
         return {
             isExpandedPEA: false,
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
@@ -63,10 +72,20 @@ export default Vue.extend({
             isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
+            isRunningStrypeGraphics : false,
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
+            graphicsCanvasWidth: graphicsCanvasWidth,
+            graphicsCanvasHeight: graphicsCanvasHeight,
+            domContext : null as CanvasRenderingContext2D | null,
+            targetContext : null as OffscreenCanvasRenderingContext2D | null,
+            targetCanvas : new OffscreenCanvas(graphicsCanvasWidth, graphicsCanvasHeight),
+            lastRedrawTime : Date.now(),
+            audioContext : null as AudioContext | null,
+            mostRecentClick : null as {x : number, y : number} | null,
+            pressedKeys : new Map<string, boolean>(),
         };
     },
-
+    
     mounted(){
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
@@ -146,6 +165,12 @@ export default Vue.extend({
                 this.updateTurtleListeningEvents();
             });
         }
+        
+        // Setup Canvas:
+        const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
+        this.domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
+        this.targetCanvas = new OffscreenCanvas(domCanvas.width, domCanvas.height);
+        this.targetContext = this.targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
     },
 
     computed:{
@@ -198,6 +223,9 @@ export default Vue.extend({
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
+                // Important to call this when responding to a click, because browser won't allow
+                // sound to start unless we create it in response to a user action:
+                this.audioContext = new AudioContext();
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
@@ -262,6 +290,25 @@ export default Vue.extend({
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
+                // Clear the graphics area:
+                this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
+                persistentImageManager.clear();
+                // Clear input:
+                this.mostRecentClick = null;
+                this.pressedKeys.clear();
+                window.addEventListener("keydown", this.graphicsCanvasKeyDown);
+                window.addEventListener("keyup", this.graphicsCanvasKeyUp);
+                // Start the redraw loop:
+                // eslint-disable-next-line @typescript-eslint/no-this-alias
+                const t = this;
+                function redraw() {
+                    t.redrawCanvasIfNeeded();
+                    if (useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop) {
+                        requestAnimationFrame(redraw);
+                    }
+                }
+                requestAnimationFrame(redraw);
+                
                 // Trigger the actual Python code execution launch
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
@@ -275,6 +322,9 @@ export default Vue.extend({
                     if(!this.isTurtleListeningEvents) {
                         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     }
+                    window.removeEventListener("keydown", this.graphicsCanvasKeyDown);
+                    window.removeEventListener("keyup", this.graphicsCanvasKeyUp);
+                    this.isRunningStrypeGraphics = false;
                     setPythonExecAreaExpandButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.
@@ -446,9 +496,81 @@ export default Vue.extend({
             this.isTurtleListeningMouseEvents = false;
             this.isTurtleListeningTimerEvents = false;
             this.stopTurtleUIEventListeners = undefined;
+            this.isRunningStrypeGraphics = false;
+            this.pressedKeys.clear();
+        },
+        
+        getPersistentImageManager() : PersistentImageManager {
+            this.isRunningStrypeGraphics = true;
+            return persistentImageManager;
+        },
+        
+        redrawCanvasIfNeeded() : void {
+            // Draws canvas if anything has changed:
+            if (persistentImageManager.isDirty()) {
+                this.redrawCanvas();
+            }
+        },
+        redrawCanvas() : void {
+            this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
+            for (let obj of persistentImageManager.getPersistentImages()) {
+                if (obj.rotation != 0) {
+                    this.targetContext?.save();
+                    this.targetContext?.translate(obj.x, obj.y);
+                    this.targetContext?.rotate(obj.rotation * Math.PI / 180);
+                    this.targetContext?.scale(obj.scale, obj.scale);
+                    this.targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
+                    this.targetContext?.restore();
+                } 
+                else {
+                    // Simpler case; no rotation means we can use single call:
+                    let dwidth = obj.scale * obj.img.width;
+                    let dheight = obj.scale * obj.img.height;
+                    this.targetContext?.drawImage(obj.img, obj.x - dwidth*0.5, obj.y-dheight*0.5, dwidth, dheight);
+                }
+                obj.dirty = false;
+            }
+            persistentImageManager.resetDirty();
+            // Actually copy it to the DOM canvas:
+            this.domContext?.drawImage(this.targetCanvas, 0, 0);
+        },
+
+        playOneOffSound(audioFileName : string) : void {
+            fetch("./sounds/" + audioFileName)
+                .then((d) => d.arrayBuffer())
+                .then((b) => this.audioContext?.decodeAudioData(b))
+                .then((b) => {
+                    if (!b) {
+                        // If we can't load the file, we should tell the user:
+                        (this.$refs.pythonConsole as HTMLTextAreaElement).value += "Error loading sound \"" + audioFileName + "\""; 
+                    }
+                    else if (this.audioContext && b) {
+                        const source = this.audioContext.createBufferSource();
+                        source.buffer = b;
+                        source.connect(this.audioContext.destination);
+                        source.start();
+                    }
+                });
+        },
+        graphicsCanvasClick(event: MouseEvent) {
+            this.mostRecentClick = {x: event.x,  y: event.y};
+        },
+        consumeLastClick() : {x:number, y:number} | null {
+            const r = this.mostRecentClick;
+            this.mostRecentClick = null;
+            return r;
+        },
+        graphicsCanvasKeyDown(event: KeyboardEvent) {
+            this.pressedKeys.set(keyMapping.get(event.key) ?? event.key, true);
+        },
+        graphicsCanvasKeyUp(event: KeyboardEvent) {
+            this.pressedKeys.set(keyMapping.get(event.key) ?? event.key, false);
+        },
+        getPressedKeys() {
+            return this.pressedKeys;
         },
     },
-
+    
 });
 </script>
 
@@ -594,5 +716,16 @@ export default Vue.extend({
         position: absolute;
         top: 10px;
         left: 10px;
-    }    
+    }   
+    
+    #pythonGraphicsContainer {
+        position: relative;
+    }
+    #pythonGraphicsContainer > * {
+        top: 0;
+        left: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+    }
 </style>

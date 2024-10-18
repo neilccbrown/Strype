@@ -1547,7 +1547,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x100fbeb20>"
+                    "defaultValue": "<unittest.loader.TestLoader object at 0x100f3eaf0>"
                 },
                 {
                     "name": "failfast",
@@ -1673,7 +1673,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x100aa71c0>"
+                    "defaultValue": "<object object at 0x100ade1c0>"
                 },
                 {
                     "name": "timeout",
@@ -2280,7 +2280,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1022e1af0>"
+                    "defaultValue": "<function deepcopy at 0x101a70af0>"
                 }
             ]
         },
@@ -2322,7 +2322,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1022e1af0>"
+                    "defaultValue": "<function deepcopy at 0x101a70af0>"
                 }
             ]
         },
@@ -2350,7 +2350,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1022e1af0>"
+                    "defaultValue": "<function deepcopy at 0x101a70af0>"
                 }
             ]
         },
@@ -2392,7 +2392,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x1022e1af0>"
+                    "defaultValue": "<function deepcopy at 0x101a70af0>"
                 },
                 {
                     "name": "listiter",
@@ -14059,6 +14059,193 @@
         {
             "acResult": "ycor",
             "documentation": "Return the turtle's y coordinate\n---\nNo arguments.\n\nExample:\n>>> reset()\n>>> left(60)\n>>> forward(100)\n>>> print ycor()\n86.6025403784",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        }
+    ],
+    "strype_graphics": [
+        {
+            "acResult": "Actor",
+            "documentation": "",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__loader__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__spec__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "_math",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_strype_graphics_internal",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        }
+    ],
+    "strype_sound": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__loader__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__spec__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "_strype_sound_internal",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "play_sound",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        }
+    ],
+    "strype_input": [
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__loader__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__spec__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "_collections",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_strype_input_internal",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "consume_last_click",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pressed_keys",
+            "documentation": "",
             "type": [
                 "function"
             ],

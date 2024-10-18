@@ -522,7 +522,7 @@
         "expand":"Expand",
         "collapse":"Collapse",
         "console": "Console",
-        "TurtleGraphics":"Turtle Graphics",
+        "Graphics":"Graphics",
         "importTurtle":"Import the module 'turtle' in your code to use Turtle Graphics."
     }
 }

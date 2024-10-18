@@ -3,8 +3,13 @@
 
 declare const Sk: any;
 
-export const OUR_PUBLIC_LIBRARY_FILES : string[] = [];
-export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.indexOf(".")));
+export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
+    "strype/__init__.py",
+    "strype/strype_graphics_internal.js", "strype/graphics.py",
+    "strype/strype_sound_internal.js", "strype/sound.py",
+    "strype/strype_graphics_input_internal.js",
+];
+export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.indexOf("."))).filter((f) => !f.includes("internal"));
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
 // (this is the default behaviour that can be overwritten if needed)
