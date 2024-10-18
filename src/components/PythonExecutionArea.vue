@@ -31,7 +31,7 @@
                 <div id="pythonGraphicsContainer"><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv" @click.stop="graphicsCanvasClick"></div>
                     <div>
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" width="400" height="400" @click.stop="graphicsCanvasClick"></canvas>
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" :width="CANVAS_WIDTH" :height="CANVAS_HEIGHT" @click.stop="graphicsCanvasClick"></canvas>
                     </div>
                 </div>
             </div>
@@ -52,6 +52,7 @@ import { mapStores } from "pinia";
 import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, resetAddFrameCommandContainerHeight, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
+import { PersistentImageManager } from "@/stryperuntime/image_and_collisions";
 
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
@@ -59,6 +60,8 @@ export default Vue.extend({
     name: "PythonExecutionArea",
 
     data: function() {
+        const graphicsCanvasWidth = 1200;
+        const graphicsCanvasHeight = 900;
         return {
             isExpandedPEA: false,
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
@@ -70,18 +73,19 @@ export default Vue.extend({
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             isRunningStrypeGraphics : false,
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
-            domCanvas : undefined as any as HTMLCanvasElement,
+            graphicsCanvasWidth: graphicsCanvasWidth,
+            graphicsCanvasHeight: graphicsCanvasHeight,
             domContext : null as CanvasRenderingContext2D | null,
             targetContext : null as OffscreenCanvasRenderingContext2D | null,
-            targetCanvas : undefined as any as OffscreenCanvas,
+            targetCanvas : new OffscreenCanvas(graphicsCanvasWidth, graphicsCanvasHeight),
             persistentImageManager : new PersistentImageManager(),
             lastRedrawTime : Date.now(),
             audioContext : null as AudioContext | null,
             mostRecentClick : null as {x : number, y : number} | null,
-            pressedKeys : new Map<string, boolean>(), 
+            pressedKeys : new Map<string, boolean>(),
         };
     },
-
+    
     mounted(){
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
@@ -163,9 +167,9 @@ export default Vue.extend({
         }
         
         // Setup Canvas:
-        this.domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
-        this.domContext = this.domCanvas?.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
-        this.targetCanvas = new OffscreenCanvas(this.domCanvas.width, this.domCanvas.height);
+        const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
+        this.domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
+        this.targetCanvas = new OffscreenCanvas(domCanvas.width, domCanvas.height);
         this.targetContext = this.targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
     },
 
@@ -492,6 +496,8 @@ export default Vue.extend({
             this.isTurtleListeningMouseEvents = false;
             this.isTurtleListeningTimerEvents = false;
             this.stopTurtleUIEventListeners = undefined;
+            this.isRunningStrypeGraphics = false;
+            this.pressedKeys.clear();
         },
         
         addPersistentImage(filename : string): number {
