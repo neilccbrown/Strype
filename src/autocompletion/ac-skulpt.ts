@@ -15,7 +15,6 @@ export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.
 // (this is the default behaviour that can be overwritten if needed)
 export function skulptReadPythonLib(x : string) : string {
     if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
-        console.log("Searching for: " + x);
         if (OUR_PUBLIC_LIBRARY_FILES.find((f) => ("./" + f) === x)) {
             return Sk.misceval.promiseToSuspension(
                 fetch("./public_libraries/" + x)
