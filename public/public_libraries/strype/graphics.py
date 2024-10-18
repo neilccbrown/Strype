@@ -1,5 +1,5 @@
 import strype_graphics_internal as _strype_graphics_internal
-import strype_input_internal as _strype_input_internal
+import strype_graphics_input_internal as _strype_input_internal
 import math as _math
 import collections as _collections
 

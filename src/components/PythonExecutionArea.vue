@@ -31,7 +31,7 @@
                 <div id="pythonGraphicsContainer"><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv" @click.stop="graphicsCanvasClick"></div>
                     <div>
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" :width="CANVAS_WIDTH" :height="CANVAS_HEIGHT" @click.stop="graphicsCanvasClick"></canvas>
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" :width="graphicsCanvasWidth" :height="graphicsCanvasHeight" @click.stop="graphicsCanvasClick"></canvas>
                     </div>
                 </div>
             </div>
