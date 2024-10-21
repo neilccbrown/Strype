@@ -5,8 +5,41 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 var $builtinmodule = function(name)  {
     var mod = {};
+    // There is no standard way in HTML to synchronously load images,
+    // but we need to be able to do this in order to use the image's attributes
+    // (particularly its width and height) after loading.  So we use Skulpt's
+    // suspension mechanism to pause Skulpt execution until the promise which loads
+    // the image has executed.  This effectively makes it seem like the user
+    // code has loaded the image synchronously.
+    // This code is adapted from Skulpt's src/lib/image.js
+    mod.loadAndWaitForImage = new Sk.builtin.func(function(filename) {
+        let susp = new Sk.misceval.Suspension();
+        susp.resume = function () {
+            if (susp.data["error"]) {
+                throw new Sk.builtin.IOError(susp.data["error"].message);
+            }
+            return susp.ret;
+        };
+        susp.data = {
+            type: "Sk.promise",
+            promise: new Promise(function (resolve, reject) {
+                var newImg = new Image();
+                newImg.crossOrigin = "";
+                newImg.onerror = function () {
+                    reject(Error("Failed to load image: " + newImg.src));
+                };
+                newImg.onload = function () {
+                    susp.ret = newImg;
+                    resolve();
+                };
+                // Actually trigger the load:
+                newImg.src = "./graphics_images/" + filename;
+            }),
+        };
+        return susp;
+    });
     mod.addImage = new Sk.builtin.func(function(imgFileName, x, y) {
-        var img = peaComponent.__vue__.getPersistentImageManager().addPersistentImage(imgFileName);
+        var img = peaComponent.__vue__.getPersistentImageManager().addPersistentImage(mod.loadAndWaitForImage(imgFileName));
         peaComponent.__vue__.getPersistentImageManager().setPersistentImageLocation(img, x, y);
         return img;
     });

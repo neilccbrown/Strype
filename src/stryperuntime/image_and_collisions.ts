@@ -18,11 +18,9 @@ export class PersistentImageManager {
         this.persistentImagesDirty = false;
     }
 
-    public addPersistentImage(filename : string): number {
+    public addPersistentImage(image : Image): number {
         this.persistentImagesDirty = true;
-        const img = new Image;
-        img.src = "./graphics_images/" + filename;
-        this.persistentImages.set(this.nextPersistentImageId, {img: img, x: 0, y: 0, rotation: 0, scale: 1, dirty: false});
+        this.persistentImages.set(this.nextPersistentImageId, {img: image, x: 0, y: 0, rotation: 0, scale: 1, dirty: false});
         return this.nextPersistentImageId++;
     }
     
