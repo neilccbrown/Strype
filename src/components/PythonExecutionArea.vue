@@ -55,14 +55,18 @@ import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from
 import { PersistentImage, PersistentImageManager } from "@/stryperuntime/image_and_collisions";
 
 const persistentImageManager = new PersistentImageManager();
+let domContext : CanvasRenderingContext2D | null = null;
+let targetContext : OffscreenCanvasRenderingContext2D | null = null;
+let targetCanvas : OffscreenCanvas | null = null;
+let audioContext : AudioContext | null = null;
+let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
+const pressedKeys = new Map<string, boolean>();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
 export default Vue.extend({
     name: "PythonExecutionArea",
 
     data: function() {
-        const graphicsCanvasWidth = 800;
-        const graphicsCanvasHeight = 600;
         return {
             isExpandedPEA: false,
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
@@ -74,15 +78,8 @@ export default Vue.extend({
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             isRunningStrypeGraphics : false,
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
-            graphicsCanvasWidth: graphicsCanvasWidth,
-            graphicsCanvasHeight: graphicsCanvasHeight,
-            domContext : null as CanvasRenderingContext2D | null,
-            targetContext : null as OffscreenCanvasRenderingContext2D | null,
-            targetCanvas : new OffscreenCanvas(graphicsCanvasWidth, graphicsCanvasHeight),
-            lastRedrawTime : Date.now(),
-            audioContext : null as AudioContext | null,
-            mostRecentClickedItems : [] as PersistentImage[], // All the items under the mouse cursor at last click
-            pressedKeys : new Map<string, boolean>(),
+            graphicsCanvasWidth : 800,
+            graphicsCanvasHeight : 600,
         };
     },
     
@@ -168,9 +165,9 @@ export default Vue.extend({
         
         // Setup Canvas:
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
-        this.domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
-        this.targetCanvas = new OffscreenCanvas(domCanvas.width, domCanvas.height);
-        this.targetContext = this.targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
+        domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
+        targetCanvas = new OffscreenCanvas(domCanvas.width, domCanvas.height);
+        targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
     },
 
     computed:{
@@ -225,7 +222,7 @@ export default Vue.extend({
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in response to a user action:
-                this.audioContext = new AudioContext();
+                audioContext = new AudioContext();
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
@@ -291,11 +288,13 @@ export default Vue.extend({
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
                 // Clear the graphics area:
-                this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
+                if (targetCanvas != null) {
+                    targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+                }
                 persistentImageManager.clear();
                 // Clear input:
-                this.mostRecentClickedItems = [];
-                this.pressedKeys.clear();
+                mostRecentClickedItems = [];
+                pressedKeys.clear();
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
                 // Start the redraw loop:
@@ -502,7 +501,7 @@ export default Vue.extend({
             this.isTurtleListeningTimerEvents = false;
             this.stopTurtleUIEventListeners = undefined;
             this.isRunningStrypeGraphics = false;
-            this.pressedKeys.clear();
+            pressedKeys.clear();
         },
         
         getPersistentImageManager() : PersistentImageManager {
@@ -517,62 +516,66 @@ export default Vue.extend({
             }
         },
         redrawCanvas() : void {
-            this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
+            if (targetCanvas != null) {
+                targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+            }
             for (let obj of persistentImageManager.getPersistentImages()) {
                 if (obj.rotation != 0) {
-                    this.targetContext?.save();
-                    this.targetContext?.translate(obj.x, obj.y);
-                    this.targetContext?.rotate(obj.rotation * Math.PI / 180);
-                    this.targetContext?.scale(obj.scale, obj.scale);
-                    this.targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
-                    this.targetContext?.restore();
+                    targetContext?.save();
+                    targetContext?.translate(obj.x, obj.y);
+                    targetContext?.rotate(obj.rotation * Math.PI / 180);
+                    targetContext?.scale(obj.scale, obj.scale);
+                    targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
+                    targetContext?.restore();
                 } 
                 else {
                     // Simpler case; no rotation means we can use single call:
                     let dwidth = obj.scale * obj.img.width;
                     let dheight = obj.scale * obj.img.height;
-                    this.targetContext?.drawImage(obj.img, obj.x - dwidth*0.5, obj.y-dheight*0.5, dwidth, dheight);
+                    targetContext?.drawImage(obj.img, obj.x - dwidth*0.5, obj.y-dheight*0.5, dwidth, dheight);
                 }
                 obj.dirty = false;
             }
             persistentImageManager.resetDirty();
             // Actually copy it to the DOM canvas:
-            this.domContext?.drawImage(this.targetCanvas, 0, 0);
+            if (targetCanvas != null) {
+                domContext?.drawImage(targetCanvas, 0, 0);
+            }
         },
 
         playOneOffSound(audioFileName : string) : void {
             fetch("./sounds/" + audioFileName)
                 .then((d) => d.arrayBuffer())
-                .then((b) => this.audioContext?.decodeAudioData(b))
+                .then((b) => audioContext?.decodeAudioData(b))
                 .then((b) => {
                     if (!b) {
                         // If we can't load the file, we should tell the user:
                         (this.$refs.pythonConsole as HTMLTextAreaElement).value += "Error loading sound \"" + audioFileName + "\""; 
                     }
-                    else if (this.audioContext && b) {
-                        const source = this.audioContext.createBufferSource();
+                    else if (audioContext && b) {
+                        const source = audioContext.createBufferSource();
                         source.buffer = b;
-                        source.connect(this.audioContext.destination);
+                        source.connect(audioContext.destination);
                         source.start();
                     }
                 });
         },
         graphicsCanvasClick(event: MouseEvent) {
-            this.mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(event.offsetX, event.offsetY);
+            mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(event.offsetX, event.offsetY);
         },
         consumeLastClickedItems() : PersistentImage[] {
-            const r = this.mostRecentClickedItems;
-            this.mostRecentClickedItems = [];
+            const r = mostRecentClickedItems;
+            mostRecentClickedItems = [];
             return r;
         },
         graphicsCanvasKeyDown(event: KeyboardEvent) {
-            this.pressedKeys.set(keyMapping.get(event.key) ?? event.key, true);
+            pressedKeys.set(keyMapping.get(event.key) ?? event.key, true);
         },
         graphicsCanvasKeyUp(event: KeyboardEvent) {
-            this.pressedKeys.set(keyMapping.get(event.key) ?? event.key, false);
+            pressedKeys.set(keyMapping.get(event.key) ?? event.key, false);
         },
         getPressedKeys() {
-            return this.pressedKeys;
+            return pressedKeys;
         },
     },
     
