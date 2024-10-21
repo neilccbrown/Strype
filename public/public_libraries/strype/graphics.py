@@ -34,6 +34,8 @@ class Actor:
         self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] + amount * _math.sin(rot))
     def turn(self, degrees):
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
+    def is_touching(self, actor):
+        return _strype_input_internal.checkCollision(self.__id, actor.__id)
 
 def get_and_forget_clicked_actor():
     return _strype_input_internal.getAndResetClickedItem()

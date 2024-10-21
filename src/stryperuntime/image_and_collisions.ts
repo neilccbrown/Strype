@@ -123,4 +123,15 @@ export class PersistentImageManager {
         this.collisionSystem.remove(collisionPoint);
         return all;
     }
+    
+    public checkCollision(idA: number, idB: number) : boolean {
+        const boxA = this.persistentImages.get(idA)?.collisionBox;
+        const boxB = this.persistentImages.get(idB)?.collisionBox;
+        if (boxA && boxB) {
+            return this.collisionSystem.checkCollision(boxA, boxB);
+        }
+        else {
+            return false;
+        }
+    }
 }

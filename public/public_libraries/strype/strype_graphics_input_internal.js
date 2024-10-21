@@ -20,6 +20,10 @@ var $builtinmodule = function(name)  {
     mod.getPressedKeys = new Sk.builtin.func(function() {
         return Sk.ffi.remapToPy(peaComponent.__vue__.getPressedKeys());
     });
+    
+    mod.checkCollision = new Sk.builtin.func(function(idA, idB) {
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().checkCollision(idA, idB));
+    });
 
     return mod;
 };
