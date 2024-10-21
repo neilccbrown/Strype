@@ -5,7 +5,7 @@ import collections as _collections
 
 class Actor:
     def __init__(self, image_filename, x, y):
-        self.__id = _strype_graphics_internal.addImage(image_filename)
+        self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_filename), self)
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         _strype_graphics_internal.setImageRotation(self.__id, 0)
     def set_location(self, x, y):
@@ -35,8 +35,8 @@ class Actor:
     def turn(self, degrees):
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
 
-def consume_last_click():
-    return _strype_input_internal.consumeLastClick()
+def get_and_forget_clicked_actor():
+    return _strype_input_internal.getAndResetClickedItem()
 
 def key_pressed(keyname):
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]

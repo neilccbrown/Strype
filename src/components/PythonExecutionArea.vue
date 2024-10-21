@@ -52,7 +52,7 @@ import { mapStores } from "pinia";
 import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, resetAddFrameCommandContainerHeight, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
-import { PersistentImageManager } from "@/stryperuntime/image_and_collisions";
+import { PersistentImage, PersistentImageManager } from "@/stryperuntime/image_and_collisions";
 
 const persistentImageManager = new PersistentImageManager();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
@@ -81,7 +81,7 @@ export default Vue.extend({
             targetCanvas : new OffscreenCanvas(graphicsCanvasWidth, graphicsCanvasHeight),
             lastRedrawTime : Date.now(),
             audioContext : null as AudioContext | null,
-            mostRecentClick : null as {x : number, y : number} | null,
+            mostRecentClickedItems : [] as PersistentImage[], // All the items under the mouse cursor at last click
             pressedKeys : new Map<string, boolean>(),
         };
     },
@@ -294,7 +294,7 @@ export default Vue.extend({
                 this.targetContext?.clearRect(0, 0, this.targetCanvas.width, this.targetCanvas.height);
                 persistentImageManager.clear();
                 // Clear input:
-                this.mostRecentClick = null;
+                this.mostRecentClickedItems = [];
                 this.pressedKeys.clear();
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
@@ -558,11 +558,11 @@ export default Vue.extend({
                 });
         },
         graphicsCanvasClick(event: MouseEvent) {
-            this.mostRecentClick = {x: event.x,  y: event.y};
+            this.mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(event.offsetX, event.offsetY);
         },
-        consumeLastClick() : {x:number, y:number} | null {
-            const r = this.mostRecentClick;
-            this.mostRecentClick = null;
+        consumeLastClickedItems() : PersistentImage[] {
+            const r = this.mostRecentClickedItems;
+            this.mostRecentClickedItems = [];
             return r;
         },
         graphicsCanvasKeyDown(event: KeyboardEvent) {

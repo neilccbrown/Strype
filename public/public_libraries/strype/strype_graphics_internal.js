@@ -38,10 +38,8 @@ var $builtinmodule = function(name)  {
         };
         return susp;
     });
-    mod.addImage = new Sk.builtin.func(function(imgFileName, x, y) {
-        var img = peaComponent.__vue__.getPersistentImageManager().addPersistentImage(mod.loadAndWaitForImage(imgFileName));
-        peaComponent.__vue__.getPersistentImageManager().setPersistentImageLocation(img, x, y);
-        return img;
+    mod.addImage = new Sk.builtin.func(function(image, assoc) {
+        return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
     });
     mod.setImageLocation = new Sk.builtin.func(function(img, x, y) {
         peaComponent.__vue__.getPersistentImageManager().setPersistentImageLocation(img, x, y);

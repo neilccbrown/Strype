@@ -5,8 +5,16 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 var $builtinmodule = function(name)  {
     var mod = {};
-    mod.consumeLastClick = new Sk.builtin.func(function() {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.consumeLastClick());
+    mod.getAndResetClickedItem = new Sk.builtin.func(function() {
+        const all = peaComponent.__vue__.consumeLastClickedItems();
+        if (all.length !== 0) {
+            let assoc = all[all.length - 1].associatedObject;
+            if (assoc) {
+                // This already is a Python object so mustn't remap:
+                return assoc;
+            }
+        }
+        return Sk.ffi.remapToPy(null);
     });
 
     mod.getPressedKeys = new Sk.builtin.func(function() {
