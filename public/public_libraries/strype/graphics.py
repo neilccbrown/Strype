@@ -19,7 +19,7 @@ class Actor:
     def get_x(self):
          # Gets X with rounding (towards zero):
         return int(_strype_graphics_internal.getImageLocation(self.__id)['x'])
-    def get_x(self):
+    def get_y(self):
         # Gets Y with rounding (towards zero):
         return int(_strype_graphics_internal.getImageLocation(self.__id)['y'])
     def get_exact_x(self):
