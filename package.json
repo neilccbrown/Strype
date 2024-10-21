@@ -38,6 +38,7 @@
         "cheerio": "^1.0.0-rc.5",
         "core-js": "^3.28.0",
         "dapjs": "^2.2.0",
+        "detect-collisions": "^9.17.0",
         "file-saver": "^2.0.2",
         "jquery": "^3.6.3",
         "lodash": "^4.17.20",
