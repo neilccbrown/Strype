@@ -38,7 +38,7 @@
             <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
                 <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
             </div>
-            <span id="noTurtleSpan" v-if="peaDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('PEA.importTurtle')}}</span> 
+            <!-- <span id="noTurtleSpan" v-if="peaDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('PEA.importTurtle')}}</span> --> 
         </div>
     </div>
 </template>
@@ -318,6 +318,11 @@ export default Vue.extend({
                     this.stopTurtleUIEventListeners = stopTurtleListeners;
                     if (finishedWithError) {
                         this.updateTurtleListeningEvents();
+                        // Don't draw last state if we finished with an error because we may be in an inconsistent state:
+                        persistentImageManager.resetDirty();
+                        for (let persistentImage of persistentImageManager.getPersistentImages()) {
+                            persistentImage.dirty = false;
+                        }
                     }
                     if(!this.isTurtleListeningEvents) {
                         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
