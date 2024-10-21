@@ -104,13 +104,14 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, MessageDefinitions } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
+import { saveAs } from "file-saver";
 
 //////////////////////
 //     Component    //
@@ -440,7 +441,7 @@ export default Vue.extend({
             this.frameContextMenuItems = [
                 {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut},
                 {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy},
-                {name: this.$i18n.t("contextMenu.copyAsImg") as string, method: this.copyAsImg},
+                {name: this.$i18n.t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
                 {name: this.$i18n.t("contextMenu.duplicate") as string, method: this.duplicate},
                 {name: "", method: () => {}, type: "divider"},
                 {name: this.$i18n.t("contextMenu.pasteAbove") as string, method: this.pasteAbove},
@@ -891,60 +892,67 @@ export default Vue.extend({
             }
         },
 
-        async copyAsImg(): Promise<void> {
+        downloadAsImg(): void {
             // We use HTML2Canvas to produce "screenshots" of elements, and our own rendering container canvas to
-            // allow a background surrouding by 5px the screenshots, and get a final image.
+            // allow a background surrouding by 2px the screenshots, and get a final image.
             // There are two situations: the copy is request on a particular frame OR a selection of frames.
-            // For a frame, it's simple as we can use the html2canvas API to generate an image for a particular element,
-            // for the selection, we just use the API to generate one image and "stack" them up in our container canvas.                
+            // So to make things easier, we follow this approach, when a frame is in a selection, we don't use HTML2Canvas
+            // to copy each frame of the selection, but we copy the containing frame instead and crop to the selection.  
+            // In all cases, we use the same background colour as the container of those frames.   
+            // Note: initially doing a "copy as image" to the clipboard, we changed this functionality to downloading the image
+            // because of the delay incurred by waiting for the promise fulfillment with html2canvas.                                   "          
             const containingRenderingCanvas = document.createElement("canvas");
             const containingRenderingCanvasCtxt = containingRenderingCanvas.getContext("2d", {willReadFrequently: true});
             if(containingRenderingCanvasCtxt) {
-                // First we retrieve all images from html2canvas and keep them as Image objects.
-                // We need to do this step asynchronously because all images should be loaded for being drawn on a canvas later.
-                const targetFrameIdArray = (this.isPartOfSelection) ? this.appStore.selectedFrames : [this.frameId];
-                await Promise.all(targetFrameIdArray.map((targetFrameId, index) => 
-                    // Wait a bit before retrieving the first image as the UI may still show the context menu.
-                    new Promise((resolve)=> {
-                        setTimeout(() => {                
-                            const targetFrameElement = document.getElementById(getFrameUIID(targetFrameId));
-                            if(targetFrameElement) {    
-                                html2canvas(targetFrameElement, {backgroundColor: "#bbc7b7", removeContainer: false})
-                                    .then((html2canvasEl) => {
-                                        const targetFrameImg = new Image();
-                                        targetFrameImg.src = html2canvasEl.toDataURL("image.png");
-                                        return new Promise(() => targetFrameImg.addEventListener("load", () =>  resolve(targetFrameImg)));
+                // Wait a bit before retrieving the first image as the UI may still show the context menu.
+                const targetContainerFrameId = this.appStore.frameObjects[(this.isPartOfSelection) ? this.appStore.selectedFrames[0] : this.frameId].parentId;
+                const targetFrameId = (this.isPartOfSelection) ? targetContainerFrameId : this.frameId;
+                setTimeout(() => {
+                    const targetFrameElement = document.getElementById(getFrameUIID(targetFrameId));
+                    if(targetFrameElement) {    
+                        // The background is the parent's body's background. That means if the parent is the import container or
+                        // the function defs container, the background will be the same as these containers, and every other parent
+                        // type will have the normal "body" content yellow background.
+                        const backgroundColor = (targetContainerFrameId == this.appStore.getImportsFrameContainerId || targetContainerFrameId == this.appStore.getFuncDefsFrameContainerId)
+                            ? "#CAD4C8"
+                            : "#F6F2E9";
+                        let h2cOptions = {backgroundColor: backgroundColor, removeContainer: false} as {[key: string]: any};
+                        if(this.isPartOfSelection){
+                            // We look for the position of the first and last selected items to crop the image of the container to the selection
+                            const selectionParentFrameX = (document.getElementById(getFrameUIID(targetFrameId))?.getBoundingClientRect().x)??0;
+                            const selectionParentFrameY = (document.getElementById(getFrameUIID(targetFrameId))?.getBoundingClientRect().y)??0;
+                            const firstSelectedFrameX = (document.getElementById(getFrameUIID(this.appStore.selectedFrames[0]))?.getBoundingClientRect().x)??0;
+                            const firstSelectedFrameY = (document.getElementById(getFrameUIID(this.appStore.selectedFrames[0]))?.getBoundingClientRect().y)??0;
+                            const lastSelectedFrameRight = (document.getElementById(getFrameUIID(this.appStore.selectedFrames.at(-1) as number))?.getBoundingClientRect().right)??0;
+                            const lastSelectedFrameBottom = (document.getElementById(getFrameUIID(this.appStore.selectedFrames.at(-1) as number))?.getBoundingClientRect().bottom)??0;
+                            h2cOptions = {...h2cOptions, x: (firstSelectedFrameX - selectionParentFrameX),
+                                y: (firstSelectedFrameY - selectionParentFrameY), 
+                                width: (lastSelectedFrameRight - firstSelectedFrameX),
+                                height: (lastSelectedFrameBottom - firstSelectedFrameY) };
+                        }
+                        html2canvas(targetFrameElement, h2cOptions)
+                            .then((html2canvasEl) => {
+                                const targetFrameImg = new Image();
+                                targetFrameImg.onload = () => {
+                                    // Now that we have our images loaded, we can work on the placing them in our own containing canvas.
+                                    // 1) let's put a background first (with a padding of 4 px)
+                                    containingRenderingCanvas.width = targetFrameImg.width + 4;
+                                    containingRenderingCanvas.height = targetFrameImg.height + 4;
+                                    containingRenderingCanvasCtxt.fillStyle = backgroundColor;
+                                    containingRenderingCanvasCtxt.fillRect(0, 0, containingRenderingCanvas.width, containingRenderingCanvas.height);
+                                    // 2) let's add the frame(s) image (starting off at 5px away)
+                                    containingRenderingCanvasCtxt.drawImage(targetFrameImg, 2, 2);
+                                    // 3) Download the resulting image
+                                    containingRenderingCanvas.toBlob((blob) => {
+                                        if(blob){
+                                            saveAs(blob, "strype_code.png");
+                                        }
                                     });
-                            }
-                        }, (index==0) ? 500 : 0);
-                    })))
-                    .then((targetFrameImgArray) => {
-                        // Now that we have our images loaded, we can work on the placing them in our own containing canvas.
-                        // 1) let's put a background first (with a padding of 10 px)
-                        const totalTargetFramesHeight = targetFrameImgArray
-                            .map((targetFrameImg) => (targetFrameImg as HTMLImageElement).height)
-                            .reduce((acc, currentValue) => {
-                                return acc + currentValue;
-                            }, 0);
-                        containingRenderingCanvas.width = (targetFrameImgArray[0] as HTMLImageElement).width + 10;
-                        containingRenderingCanvas.height =  totalTargetFramesHeight + 10;
-                        containingRenderingCanvasCtxt.fillStyle="#bbc7b7";
-                        containingRenderingCanvasCtxt.fillRect(0, 0, containingRenderingCanvas.width, containingRenderingCanvas.height);
-
-                        // 2) let's position the images in the containing canvas (starting off at 5px away)
-                        targetFrameImgArray.reduce((acc, currImg) => {
-                            const targetFrameImg = (currImg as HTMLImageElement);
-                            const prevTargetsH = acc as number;
-                            containingRenderingCanvasCtxt.drawImage(targetFrameImg, 5, 5 + prevTargetsH);
-                            return prevTargetsH + targetFrameImg.height;
-                        }, 0);
-                    }).
-                    finally(() => {
-                        // We save the resulting image in the clipboard
-                        containingRenderingCanvas.toBlob((blob) => navigator.clipboard.write([new ClipboardItem({"image/png": blob as Blob})]));
-                        // Show message of confirmation
-                        this.appStore.showMessage(MessageDefinitions.CopiedFramesAsImg, 2000);
-                    });
+                                };
+                                targetFrameImg.src = html2canvasEl.toDataURL("image/png");
+                            });
+                    }
+                }, 10);
             }
         },
 

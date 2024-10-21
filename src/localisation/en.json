@@ -63,9 +63,7 @@
         "invalidPythonParseImport": "Invalid Python code imported: {errorMsg}",
         "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}",
         "wrongPythonStructCopied":"cannot paste else/elif/except/finally and further content in one paste",
-        "incompatiblePythonStrypeSection":"the Python code cannot be placed in the target Strype section",
-        "copiedFramesAsImg": "Image has been saved in clipboard"
-
+        "incompatiblePythonStrypeSection":"the Python code cannot be placed in the target Strype section"
     },
     "buttonLabel":{
         "undo":"Undo",
@@ -138,7 +136,7 @@
         "ctrl":"Ctrl",
         "cut":"Cut",
         "copy":"Copy",
-        "copyAsImg":"Copy as image",
+        "downloadAsImg":"Download as image",
         "duplicate":"Duplicate",
         "paste":"Paste",
         "pasteAbove": "Paste above",
