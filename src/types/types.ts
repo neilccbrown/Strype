@@ -1,6 +1,8 @@
 import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
+import scssVars  from "@/assets/style/_export.module.scss";
+
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
 // https://stackoverflow.com/questions/52258061/export-not-found-on-module
@@ -517,28 +519,28 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.funccall,
         labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false}],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const BlankDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.blank,
         labels: [],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const ReturnDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.return,
         labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const GlobalDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.global,
         labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string}],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const VarAssignDefinition: FramesDefinitions = {
@@ -548,7 +550,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
             { label: " &#x21D0; ", defaultText: i18n.t("frame.defaultText.value") as string},
         ],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const BreakDefinition: FramesDefinitions = {
@@ -557,7 +559,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "break", showSlots: false, defaultText: "" },
         ],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const ContinueDefinition: FramesDefinitions = {
@@ -566,7 +568,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "continue", showSlots: false, defaultText: "" },
         ],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const RaiseDefinition: FramesDefinitions = {
@@ -575,7 +577,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
         ],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const ImportDefinition: FramesDefinitions = {
@@ -587,7 +589,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
-        colour: "#CBD4C8",
+        colour: scssVars.nonMainCodeContainerBackground,
         draggableGroup: DraggableGroupTypes.imports,
         isImportFrame: true,
     };
@@ -602,7 +604,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
-        colour: "#CBD4C8",
+        colour: scssVars.nonMainCodeContainerBackground,
         draggableGroup: DraggableGroupTypes.imports,
         isImportFrame: true,
     };
@@ -611,7 +613,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
         labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     /*2) update the Defintions variable holding all the definitions */

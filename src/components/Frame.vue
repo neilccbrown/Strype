@@ -112,6 +112,8 @@ import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
+import scssVars  from "@/assets/style/_export.module.scss";
+import { getDateTimeFormatted } from "@/helpers/common";
 
 //////////////////////
 //     Component    //
@@ -914,8 +916,8 @@ export default Vue.extend({
                         // the function defs container, the background will be the same as these containers, and every other parent
                         // type will have the normal "body" content yellow background.
                         const backgroundColor = (targetContainerFrameId == this.appStore.getImportsFrameContainerId || targetContainerFrameId == this.appStore.getFuncDefsFrameContainerId)
-                            ? "#CAD4C8"
-                            : "#F6F2E9";
+                            ? scssVars.nonMainCodeContainerBackground
+                            : scssVars.mainCodeContainerBackground;
                         let h2cOptions = {backgroundColor: backgroundColor, removeContainer: false} as {[key: string]: any};
                         if(this.isPartOfSelection){
                             // We look for the position of the first and last selected items to crop the image of the container to the selection
@@ -945,7 +947,7 @@ export default Vue.extend({
                                     // 3) Download the resulting image
                                     containingRenderingCanvas.toBlob((blob) => {
                                         if(blob){
-                                            saveAs(blob, "strype_code.png");
+                                            saveAs(blob, `strype_code_${getDateTimeFormatted(new Date(Date.now()))}.png`);
                                         }
                                     });
                                 };
