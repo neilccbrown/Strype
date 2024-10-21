@@ -195,11 +195,49 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         // what line of code maps with what frame in case of an execution error.
         // We need to extract the line from the error message sent by Skulpt.
         const skulptErrStr: string = err.toString();
-        let frameId = -1;
-        const errLineMatchArray = skulptErrStr.match(/( on line )(\d+)/);
-        if(errLineMatchArray !== null){
-            const errorLine = parseInt(errLineMatchArray[2]);
-            // Skuplt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
+        let moreInfo = "";
+        let errorLine = -1;
+        if (err.traceback) {
+            let lastmodule = "";
+            for (const [index, entry] of err.traceback.entries()) {
+                const filename = entry.filename as string;
+                if (filename == "<stdin>.py") {
+                    errorLine = entry.lineno;
+                    break;
+                }
+                else if (filename.endsWith(".py")) {
+                    // Turn the filename into a module name:
+                    const modulename = filename.replace(".py", "").replace("./", "").replace("/", ".");
+                    if (index == 0) {
+                        moreInfo += "\n  Error raised in module " + modulename;
+                    }
+                    else if (modulename != lastmodule) {
+                        // Only tell them the module if it's different to adjacent item in the traceback:
+                        moreInfo += "\n  From a call from module " + modulename;
+                    }
+                    lastmodule = modulename;
+                }
+            }
+            if (errorLine == -1) {
+                // This should never happen; their code should always be at the root,
+                // but we should probably point this out:
+                moreInfo = "\nWe did not find a call from your code; this may be a bug with Strype itself.  Report this to team@strype.org with details of your code." + moreInfo;
+            }
+            else {
+                moreInfo += "\n  From the highlighted call in your code";
+            }
+        }
+        else {
+            const errLineMatchArray = skulptErrStr.match(/( on line )(\d+)/);
+            if (errLineMatchArray !== null) {
+                errorLine = parseInt(errLineMatchArray[2]);
+            }
+        }
+            
+        
+        let frameId = -1;        
+        if (errorLine > 0) { 
+            // Skulpt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
             const locatableError = lineFrameMapping[errorLine - 1] !== undefined;
             
             // We assume that if we cannot find a frame assiocated with an error, it must be a Python line that shows as extra 
@@ -213,7 +251,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
             // our current error related code implementation and clarity for the user.
             // Exception: if we have a "running action" message, we don't show anything (no message and no error).
             if(!skulptErrStr.startsWith(STRYPE_INPUT_INTERRUPT_ERR_MSG)){
-                consoleTextArea.value += ("< " + noLineSkulptErrStr + " >");
+                consoleTextArea.value += ("< " + noLineSkulptErrStr + " >" + moreInfo);
                 // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
                 Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
                 useStore().wasLastRuntimeErrorFrameId = frameId;      
@@ -223,7 +261,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
             // In case we couldn't get the line and the frame correctly, we just display a simple message,
             // EXCEPT if we have a "running action" message, which doesn't need to be displayed as the UI already gives cues.
             if(skulptErrStr.localeCompare(STRYPE_RUN_ACTION_MSG) != 0){
-                consoleTextArea.value += ("< " + skulptErrStr + " >");
+                consoleTextArea.value += ("< " + skulptErrStr + " >" + moreInfo);
             }
         }
         handleExecutionFinished(true);
