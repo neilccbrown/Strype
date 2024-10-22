@@ -251,8 +251,7 @@ var $builtinmodule = function(name)  {
         for (let i = 0; i < details.lines.length; i++) {
             // Since we are passing the baseline, we add 1 * fontSize always to get from the top-left:
             let actualY = y + details.fontSize * (1 + i * lineHeightMultiplier);
-            ctx.fillText(details.lines[i], x, actualY);
-            console.log("Drawing \"" + details.lines[i] + "\" at " + x + ", " + actualY); 
+            ctx.fillText(details.lines[i], x, actualY); 
         }
         return Sk.ffi.remapToPy({width: details.width, height: details.height});
     });
