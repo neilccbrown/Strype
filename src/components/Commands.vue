@@ -302,7 +302,6 @@ export default Vue.extend({
                             {
                                 let functionDefFrameId = 0, currentFrameId = this.appStore.currentFrame.id, foundFunctionDefFrame = false;
                                 do{
-                                    console.log("lopping");
                                     functionDefFrameId = this.appStore.frameObjects[currentFrameId].parentId;
                                     foundFunctionDefFrame = (this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.funcdef);
                                     currentFrameId = functionDefFrameId;
