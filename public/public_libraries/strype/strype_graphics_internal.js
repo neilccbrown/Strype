@@ -62,6 +62,51 @@ var $builtinmodule = function(name)  {
     mod.removeImage = new Sk.builtin.func(function(img) {
         peaComponent.__vue__.getPersistentImageManager().removePersistentImage(img);
     });
-
+    mod.makeImageEditable = new Sk.builtin.func(function(img) {
+        return peaComponent.__vue__.getPersistentImageManager().editImage(img);
+    });
+    
+    
+    mod.makeCanvasOfSize = new Sk.builtin.func(function(width, height) {
+        const c = new OffscreenCanvas(width, height);
+        c.fillStyle = "black";
+        c.getContext("2d").fillRect(0, 0, width, height);
+        // Note: we do not remapToPy because it makes no sense, we are just passing the reference around:
+        return c;
+    });
+    mod.htmlImageToCanvas = new Sk.builtin.func(function(imageElement) {
+        const c = new OffscreenCanvas(imageElement.width, imageElement.height);
+        c.getContext("2d").drawImage(imageElement, 0, 0);
+        return c;
+    });
+    mod.getCanvasDimensions = new Sk.builtin.func(function(img) {
+        return new Sk.builtin.tuple([img.width, img.height]);
+    });
+    mod.canvas_fillRect = new Sk.builtin.func(function(img, x, y, width, height, color) {
+        const cxt = img.getContext("2d");
+        cxt.fillStyle = color;
+        return cxt.fillRect(x, y, width, height);
+    });
+    mod.canvas_getPixel = new Sk.builtin.func(function(img, x, y) {
+        const cxt = img.getContext("2d");
+        const p = cxt.getImageData(x, y, 1, 1);
+        return new Sk.builtin.tuple([
+            new Sk.builtin.float_(p.data[0] / 255),
+            new Sk.builtin.float_(p.data[1] / 255),
+            new Sk.builtin.float_(p.data[2] / 255),
+            new Sk.builtin.float_(p.data[3] / 255)]
+        );
+    });
+    mod.canvas_setPixel = new Sk.builtin.func(function(img, x, y, colorTuple) {
+        const cxt = img.getContext("2d");
+        const p = Sk.ffi.remapToJs(colorTuple);
+        cxt.putImageData(new ImageData(new Uint8ClampedArray([p[0] * 255, p[1] * 255, p[2] * 255, p[3] * 255]), 1, 1), x, y);
+    });
+    mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
+        const cxt = dest.getContext("2d");
+        cxt.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
+    });
+    
+    
     return mod;
 };

@@ -2,7 +2,7 @@ import {System, Box, Point} from "detect-collisions";
 
 export interface PersistentImage {
     id: number,
-    img: HTMLImageElement,
+    img: HTMLImageElement | OffscreenCanvas,
     x: number,
     y: number,
     rotation: number, // degrees
@@ -27,10 +27,10 @@ export class PersistentImageManager {
     }
 
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-    public addPersistentImage(image : HTMLImageElement, associatedObject?: any): number {
+    public addPersistentImage(imageOrCanvas : HTMLImageElement | OffscreenCanvas, associatedObject?: any): number {
         this.persistentImagesDirty = true;
-        const box = this.collisionSystem.createBox({x:0, y:0}, image.width, image.height, {isCentered: true});
-        const newImage = {id: this.nextPersistentImageId, img: image, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false, associatedObject: associatedObject};
+        const box = this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true});
+        const newImage = {id: this.nextPersistentImageId, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false, associatedObject: associatedObject};
         this.persistentImages.set(this.nextPersistentImageId, newImage);
         this.boxToImageMap.set(box, newImage);
         return this.nextPersistentImageId++;
@@ -134,4 +134,23 @@ export class PersistentImageManager {
             return false;
         }
     }
+    
+    // If this PersistentImage is not already editable, makes an OffScreenCanvas for editing, draws on the existing
+    // image, and returns this new OffScreenCanvas.  Returns null if it can't find the PersistentImage with the given id
+    public editImage(id : number) : OffscreenCanvas | null {
+        const pimg = this.persistentImages.get(id);
+        if (pimg != null) {
+            if (pimg.img instanceof HTMLImageElement) {
+                const c = new OffscreenCanvas(pimg.img.width, pimg.img.height);
+                (c.getContext("2d") as OffscreenCanvasRenderingContext2D).drawImage(pimg.img, 0, 0);
+                pimg.img = c;
+                return c;
+            }
+            else if (pimg.img instanceof OffscreenCanvas) {
+                return pimg.img;
+            }
+        }
+        return null;
+    }
 }
+
