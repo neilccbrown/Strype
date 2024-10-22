@@ -35,10 +35,29 @@ class Actor:
     def turn(self, degrees):
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
     def is_touching(self, actor):
+        """
+        Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
+        rectangles of their images are overlapping (even if the actor is transparent at that point). 
+        :param actor: The actor to check for overlap
+        :return: True if this actor overlaps that actor, False if it does not 
+        """
         return _strype_input_internal.checkCollision(self.__id, actor.__id)
 
 def get_and_forget_clicked_actor():
+    """
+    Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice
+    in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function
+    to several other things, assign it to a variable first.
+    :return: The most recently clicked Actor, or None if nothing was clicked since you last called this function.
+    """
     return _strype_input_internal.getAndResetClickedItem()
 
 def key_pressed(keyname):
+    """
+    Checks if the given key is currently pressed.  Note that because the user may be pressing and releasing keys all the time,
+    consecutive calls to this function with the same key name may not give the same result.
+    
+    :param keyname: The name of the key.  This can be a single letter like "a" or a key name like "up", "down". 
+    :return: Either True or False depending on whether the key is currently pressed.
+    """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
