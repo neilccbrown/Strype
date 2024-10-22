@@ -76,6 +76,17 @@ export class PersistentImageManager {
             obj.collisionBox.updateBody();
         }
     }
+    
+    // Gets the image size, ignoring rotation and scale
+    public getPersistentImageSize(id: number) : {width: number, height: number} | undefined {
+        const obj = this.persistentImages.get(id);
+        if (obj != undefined) {
+            return {width : obj.img.width, height : obj.img.height};
+        }
+        else {
+            return undefined;
+        }
+    }
 
     public getPersistentImageLocation(id: number) : {x: number, y : number} | undefined {
         const obj = this.persistentImages.get(id);

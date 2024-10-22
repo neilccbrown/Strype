@@ -4,6 +4,10 @@ import math as _math
 import collections as _collections
 
 class Actor:
+    # Private attributes:
+    # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
+    # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
+    
     def __init__(self, image_or_filename, x, y):
         """
         Construct an Actor with a given image and position.
@@ -18,14 +22,18 @@ class Actor:
             self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_or_filename))
         else:
             raise TypeError("Actor constructor parameter must be string or EditableImage")
+        self.__say = None
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         _strype_graphics_internal.setImageRotation(self.__id, 0)
     def set_location(self, x, y):
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
+        self._update_say_position()
     def set_rotation(self, deg):
         _strype_graphics_internal.setImageRotation(self.__id, deg)
+        # Note: no need to update say position if we are just rotating
     def set_scale(self, scale):
         _strype_graphics_internal.setImageScale(self.__id, scale)
+        self._update_say_position()
     def remove(self):
         _strype_graphics_internal.removeImage(self.__id)
     def get_x(self):
@@ -64,6 +72,40 @@ class Actor:
         img = EditableImage(-1, -1)
         img._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return img
+    def say(self, text, font_size = 16, max_width = 300, max_height = 200):
+        # Remove any existing speech bubble:
+        if self.__say is not None:
+            _strype_graphics_internal.removeImage(self.__say)
+            self.__say = None
+        # Then add a new one if text is not blank:
+        if text:
+            padding = 10
+            # We first make an image just with the text on, which also tells us the size:
+            textOnlyImg = EditableImage(max_width, max_height)
+            textOnlyImg.set_fill("white")
+            textOnlyImg.fill()
+            textOnlyImg.set_fill("black")
+            textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, max_width, max_height)
+            # Now we prepare an image of the right size plus padding:
+            sayImg = EditableImage(textDimensions.width + 2 * padding, textDimensions.height + 2 * padding)
+            # We draw a rounded rect for the background, then draw the text on:
+            sayImg.set_fill("white")
+            sayImg.set_stroke("#555555FF")
+            sayImg.rounded_rect(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
+            sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
+            self.__say = _strype_graphics_internal.addImage(sayImg._EditableImage__image)
+            self._update_say_position()
+            
+    def _update_say_position(self):
+        # Update the speech bubble position to be relative to our new position and scale:
+        if self.__say is not None:
+            say_dim = _strype_graphics_internal.getImageSize(self.__say)
+            our_dim = _strype_graphics_internal.getImageSize(self.__id)
+            scale = _strype_graphics_internal.getImageScale(self.__id)
+            width = our_dim['width'] * scale
+            height = our_dim['height'] * scale
+            _strype_graphics_internal.setImageLocation(self.__say, self.get_x() + width/2 + say_dim['width']/2, self.get_y() - height/2 - say_dim['height']/2)
+    
 
 class Color:
     """
@@ -85,6 +127,11 @@ class Color:
         b = round(self.blue * 255)
         a = round(self.alpha * 255)
         return "#{:02x}{:02x}{:02x}{:02x}".format(r, g, b, a) 
+
+class Dimension:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
 
 class EditableImage:
     """
@@ -151,11 +198,28 @@ class EditableImage:
     def draw_image(self, image, x, y):
         dim = _strype_graphics_internal.getCanvasDimensions(image._EditableImage__image)
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1])
+    def draw_part_of_image(self, image, x, y, sx, sy, width, height):
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, sx, sy, width, height)
     def get_width(self):
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[0]
     def get_height(self):
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[1]
-
+    
+    def draw_text(self, text, x, y, font_size, max_width, max_height):
+        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height)
+        return Dimension(dim['width'], dim['height'])
+    def rounded_rect(self, x, y, width, height, corner_size):
+        """
+        Draws a rectangle with rounded corners.  The edge of the rectangle is drawn in the current outline color
+        (see `set_outline`) and filled in the current fill color (see `set_fill`).  The corners are rounded using
+        quarter-circles with radius of `corner_size`.
+        :param x: The top-left of the rounded rectangle
+        :param y: The bottom-right of the rounded rectangle
+        :param width: The width of the rounded rectangle
+        :param height: The height of the rounded rectangle
+        :param corner_size: The radius of the corners of the rounded rectangle
+        """
+        _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, corner_size)
 
 def load_image(filename):
     """

@@ -2,6 +2,36 @@
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
 
+// From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
+class LRU {
+    constructor(max = 10) {
+        this.max = max;
+        this.cache = new Map();
+    }
+
+    get(key) {
+        let item = this.cache.get(key);
+        if (item !== undefined) {
+            // refresh key
+            this.cache.delete(key);
+            this.cache.set(key, item);
+        }
+        return item;
+    }
+
+    set(key, val) {
+        // refresh key
+        if (this.cache.has(key)) this.cache.delete(key);
+        // evict oldest
+        else if (this.cache.size === this.max) this.cache.delete(this.first());
+        this.cache.set(key, val);
+    }
+
+    first() {
+        return this.cache.keys().next().value;
+    }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 var $builtinmodule = function(name)  {
     var mod = {};
@@ -116,8 +146,108 @@ var $builtinmodule = function(name)  {
     mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
         const ctx = dest.getContext("2d");
         ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
+    }); 
+    mod.canvas_roundedRect = new Sk.builtin.func(function(img, x, y, width, height, cornerSize) {
+        const ctx = img.getContext("2d");
+        ctx.roundRect(x, y, width, height, Sk.ffi.remapToJs(cornerSize));
+        ctx.fill();
+        ctx.stroke();
     });
+
+    // Since this is quite expensive, we cache it in case users repeatedly redraw the same text:
+    // The map can only really use string keys, so we assemble the key into a string of the format:
+    // $fontSize:$maxWidth:$maxHeight:$text
+    const textMeasureCache = new LRU(1000);
     
+    const lineHeightMultiplier = 1.2;
+    
+    // Returns an item of the following type (but we're in Javascript so can't actually type it):
+    // interface {
+    //    lines: string[],
+    //    fontSize: number,
+    //    width: number,
+    //    height: number,
+    // }
+    const calculateTextToFit = function(ctx, text, fontSize, maxWidth, maxHeight) {
+        let lines = [];
+        const paragraphs = text.split("\n");  // Split the text by '\n' to respect forced line breaks.
+        let textHeight = 0;
+        let longestWidth = 0;
+
+        // Minimum font size of 8 pixels:
+        for (;fontSize >= 8; fontSize -= 1) {
+            ctx.font = `${fontSize}px sans-serif`;
+            
+            paragraphs.forEach((paragraph) => {
+                let currentLine = "";
+                // The brackets make it retain the whitespace parts in the array as a "word".  This way,
+                // if the user asks for us to write "But....       I don't know." then we'll actually render
+                // the long space.
+                const words = paragraph.split(/(\s+)/);
+
+                if (maxWidth > 0) {
+                    for (let i = 0; i < words.length; i++) {
+                        const currentLinePlusNextWord = currentLine + words[i];
+                        const metrics = ctx.measureText(currentLinePlusNextWord);
+                        const testWidth = metrics.width;
+
+                        // If it's too long, start a new line:
+                        if (testWidth > maxWidth && currentLine.length > 0) {
+                            lines.push(currentLine);
+                            // If it's a single space at the start of a line, discard it:
+                            currentLine = words[i] === " " ? "" : words[i];
+                        }
+                        else {
+                            // currentLinePlusNextWord includes the previous part, so just overwrite currentLine with it:
+                            currentLine = currentLinePlusNextWord;
+                        }
+                        longestWidth = Math.max(longestWidth, testWidth);
+                    }
+                    lines.push(currentLine.trim()); // Push the last line of the paragraph
+                }
+                else {
+                    lines.push(paragraph); // No wrapping if maxWidth is <= 0
+                    longestWidth = Math.max(longestWidth, ctx.measureText(currentLinePlusNextWord).width);
+                }
+            });
+
+            let lineHeight = fontSize * lineHeightMultiplier;
+            textHeight = lines.length * lineHeight;
+            
+            if (maxHeight <= 0 || textHeight <= maxHeight) {
+                break;
+            }
+            // Otherwise we go round again, reducing the font size...
+        }
+        return {lines: lines, fontSize: fontSize, width: longestWidth, height: textHeight};
+    };
+    
+    // Draws the given text on canvas dest at top-left of x, y with given fontSize in pixels.
+    // If the text would be larger than maxWidth (and maxWidth is > 0) then it will be wrapped at white space in the text.
+    // If the text would then be larger than maxHeight (and maxHeight is > 0), its font size will be reduced until it
+    // fits inside maxWidth and maxHeight.  Note that it is invalid to supply maxHeight > 0 with maxWidth = 0.
+    // Returns a Python dict with fields "width" and "height" with the actual width and height
+    mod.canvas_drawText = new Sk.builtin.func(function(dest, text, x, y, fontSize, maxWidth = 0, maxHeight = 0) {
+        // Must remap the string to Javascript:
+        text = Sk.ffi.remapToJs(text);
+        const ctx = dest.getContext("2d");
+        const key = `${fontSize}:${maxWidth}:${maxHeight}:${text}`;
+        let details = textMeasureCache.get(key);
+        if (!details) {
+            details = calculateTextToFit(ctx, text, fontSize, maxWidth, maxHeight);
+            textMeasureCache.set(key, details);
+        }
+        ctx.font = `${details.fontSize}px sans-serif`;
+
+        // Render each line of text on the canvas at (x, y)
+        for (let i = 0; i < details.lines.length; i++) {
+            // Since we are passing the baseline, we add 1 * fontSize always to get from the top-left:
+            let actualY = y + details.fontSize * (1 + i * lineHeightMultiplier);
+            ctx.fillText(details.lines[i], x, actualY);
+            console.log("Drawing \"" + details.lines[i] + "\" at " + x + ", " + actualY); 
+        }
+        return Sk.ffi.remapToPy({width: details.width, height: details.height});
+    });
     
     return mod;
 };
