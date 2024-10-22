@@ -136,6 +136,7 @@
         "ctrl":"Ctrl",
         "cut":"Cut",
         "copy":"Copy",
+        "downloadAsImg":"Download as image",
         "duplicate":"Duplicate",
         "paste":"Paste",
         "pasteAbove": "Paste above",

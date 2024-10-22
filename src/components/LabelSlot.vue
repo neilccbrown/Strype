@@ -437,7 +437,7 @@ export default Vue.extend({
                 const textBeforeThisSlot = (hasSameLevelPreviousSlots) 
                     ? getFrameLabelSlotLiteralCodeAndFocus(labelDiv, this.UIID, {startSlotUIID: startSlotUIID , stopSlotUIID: this.UIID}).uiLiteralCode
                     : "";
-                const textBeforeCaret = textBeforeThisSlot + this.getSlotContent().substring(0,selectionStart??0)??"";
+                const textBeforeCaret = textBeforeThisSlot + this.getSlotContent().substring(0,selectionStart??0);
 
                 //workout the correct context if we are in a code editable slot
                 const isImportFrame = (frame.frameType.type === AllFrameTypesIdentifier.import || frame.frameType.type === AllFrameTypesIdentifier.fromimport);
