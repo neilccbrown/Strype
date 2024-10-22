@@ -41,6 +41,9 @@ var $builtinmodule = function(name)  {
     mod.addImage = new Sk.builtin.func(function(image, assoc) {
         return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
     });
+    mod.getImageSize = new Sk.builtin.func(function (img) {
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageSize(img));
+    });
     mod.setImageLocation = new Sk.builtin.func(function(img, x, y) {
         peaComponent.__vue__.getPersistentImageManager().setPersistentImageLocation(img, x, y);
     });
@@ -69,8 +72,6 @@ var $builtinmodule = function(name)  {
     
     mod.makeCanvasOfSize = new Sk.builtin.func(function(width, height) {
         const c = new OffscreenCanvas(width, height);
-        c.fillStyle = "black";
-        c.getContext("2d").fillRect(0, 0, width, height);
         // Note: we do not remapToPy because it makes no sense, we are just passing the reference around:
         return c;
     });
@@ -82,10 +83,21 @@ var $builtinmodule = function(name)  {
     mod.getCanvasDimensions = new Sk.builtin.func(function(img) {
         return new Sk.builtin.tuple([img.width, img.height]);
     });
-    mod.canvas_fillRect = new Sk.builtin.func(function(img, x, y, width, height, color) {
+    mod.canvas_fillRect = new Sk.builtin.func(function(img, x, y, width, height) {
         const ctx = img.getContext("2d");
-        ctx.fillStyle = color;
         return ctx.fillRect(x, y, width, height);
+    });
+    mod.canvas_clearRect = new Sk.builtin.func(function(img, x, y, width, height) {
+        const ctx = img.getContext("2d");
+        return ctx.clearRect(x, y, width, height);
+    });
+    mod.canvas_setFill = new Sk.builtin.func(function(img, color) {
+        const ctx = img.getContext("2d");
+        ctx.fillStyle = Sk.ffi.remapToJs(color);
+    });
+    mod.canvas_setStroke = new Sk.builtin.func(function(img, color) {
+        const ctx = img.getContext("2d");
+        ctx.strokeStyle = Sk.ffi.remapToJs(color);
     });
     mod.canvas_getPixel = new Sk.builtin.func(function(img, x, y) {
         const ctx = img.getContext("2d");

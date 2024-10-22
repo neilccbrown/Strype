@@ -92,31 +92,47 @@ class EditableImage:
     """
     def __init__(self, width, height):
         """
-        Creates an editable image with the given dimensions, filled black. 
+        Creates an editable image with the given dimensions, with transparent content. 
         :param width: The width of the image in pixels
         :param height: The height of the image in pixels
         """
+        
+        # Note: for internal purposes we sometimes don't want to make an image, so we pass -1,-1 for that case:
         if width > 0 and height > 0:
             self.__image = _strype_graphics_internal.makeCanvasOfSize(width, height)
-        self.__fillColor = "black"
-        self.fill()
+            self.clear_rect(0, 0, width, height)
+            _strype_graphics_internal.canvas_setFill(self.__image, "white")
+            _strype_graphics_internal.canvas_setStroke(self.__image, "black")
+        else:
+            self.__image = None
     def fill(self):
         """
         Fills the image with the current fill color (see `set_fill`)
         """
         dim = _strype_graphics_internal.getCanvasDimensions(self.__image)
-        _strype_graphics_internal.canvas_fillRect(self.__image, 0, 0, dim[0], dim[1], self.__fillColor)
-    def set_fill(self, fill):
+        _strype_graphics_internal.canvas_fillRect(self.__image, 0, 0, dim[0], dim[1])
+    def set_fill(self, color):
         """
         Sets the current fill color for future fill operations (but does not do any filling).
         :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object
         """
-        if isinstance(fill, Color):
-            self.__fillColor = fill.to_html()
-        elif isinstance(fill, str):
-            self.__fillColor = fill
+        if isinstance(color, Color):
+            _strype_graphics_internal.canvas_setFill(self.__image, color.to_html())
+        elif isinstance(color, str):
+            _strype_graphics_internal.canvas_setFill(self.__image, color)
         else:
             raise TypeError("Fill must be either a string or a Color")
+    def set_stroke(self, color):
+        """
+        Sets the current stroke/outline color for future shape-drawing operations (but does not draw anything).
+        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object
+        """
+        if isinstance(color, Color):
+            _strype_graphics_internal.canvas_setStroke(self.__image, color.to_html())
+        elif isinstance(color, str):
+            _strype_graphics_internal.canvas_setStroke(self.__image, color)
+        else:
+            raise TypeError("Stroke must be either a string or a Color")
     def get_pixel(self, x, y):
         """
         Gets a Color object with the color of the pixel at the given position.  If you want to change the color,
@@ -130,6 +146,8 @@ class EditableImage:
         return Color(rgba[0], rgba[1], rgba[2], rgba[3])
     def set_pixel(self, x, y, color):
         _strype_graphics_internal.canvas_setPixel(self.__image, x, y, (color.red, color.green, color.blue, color.alpha))
+    def clear_rect(self, x, y, width, height):
+        _strype_graphics_internal.canvas_clearRect(self.__image, x, y, width, height)
     def draw_image(self, image, x, y):
         dim = _strype_graphics_internal.getCanvasDimensions(image._EditableImage__image)
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1])
