@@ -301,12 +301,17 @@ export default Vue.extend({
                             // We select all the frames of the function's body.
                             {
                                 let functionDefFrameId = 0, currentFrameId = this.appStore.currentFrame.id, foundFunctionDefFrame = false;
-                                do{
+                                if(this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef){
+                                    // If we are in the body of the function definition (just inside the body position, not somewhere else)
+                                    //then we don't need to look up for the body position as we're already there...
+                                    foundFunctionDefFrame = true;
+                                    functionDefFrameId = currentFrameId;
+                                }
+                                while(!foundFunctionDefFrame){
                                     functionDefFrameId = this.appStore.frameObjects[currentFrameId].parentId;
                                     foundFunctionDefFrame = (this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.funcdef);
                                     currentFrameId = functionDefFrameId;
                                 }
-                                while(!foundFunctionDefFrame);
                                 this.appStore.setCurrentFrame({id: functionDefFrameId, caretPosition: CaretPosition.body});
                                 // And select all the children frame of the container (if any...)
                                 this.appStore.frameObjects[functionDefFrameId].childrenIds.forEach(() => {
