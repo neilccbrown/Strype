@@ -83,28 +83,27 @@ var $builtinmodule = function(name)  {
         return new Sk.builtin.tuple([img.width, img.height]);
     });
     mod.canvas_fillRect = new Sk.builtin.func(function(img, x, y, width, height, color) {
-        const cxt = img.getContext("2d");
-        cxt.fillStyle = color;
-        return cxt.fillRect(x, y, width, height);
+        const ctx = img.getContext("2d");
+        ctx.fillStyle = color;
+        return ctx.fillRect(x, y, width, height);
     });
     mod.canvas_getPixel = new Sk.builtin.func(function(img, x, y) {
-        const cxt = img.getContext("2d");
-        const p = cxt.getImageData(x, y, 1, 1);
+        const ctx = img.getContext("2d");
+        const p = ctx.getImageData(x, y, 1, 1);
         return new Sk.builtin.tuple([
             new Sk.builtin.float_(p.data[0] / 255),
             new Sk.builtin.float_(p.data[1] / 255),
             new Sk.builtin.float_(p.data[2] / 255),
-            new Sk.builtin.float_(p.data[3] / 255)]
-        );
+            new Sk.builtin.float_(p.data[3] / 255)]);
     });
     mod.canvas_setPixel = new Sk.builtin.func(function(img, x, y, colorTuple) {
-        const cxt = img.getContext("2d");
+        const ctx = img.getContext("2d");
         const p = Sk.ffi.remapToJs(colorTuple);
-        cxt.putImageData(new ImageData(new Uint8ClampedArray([p[0] * 255, p[1] * 255, p[2] * 255, p[3] * 255]), 1, 1), x, y);
+        ctx.putImageData(new ImageData(new Uint8ClampedArray([p[0] * 255, p[1] * 255, p[2] * 255, p[3] * 255]), 1, 1), x, y);
     });
     mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
-        const cxt = dest.getContext("2d");
-        cxt.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
+        const ctx = dest.getContext("2d");
+        ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
     });
     
     
