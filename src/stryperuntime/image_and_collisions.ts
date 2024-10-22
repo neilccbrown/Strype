@@ -35,6 +35,10 @@ export class PersistentImageManager {
         this.boxToImageMap.set(box, newImage);
         return this.nextPersistentImageId++;
     }
+
+    public hasPersistentImage(id: number) : boolean {
+        return this.persistentImages.has(id);
+    }
     
     public removePersistentImage(id: number): void {
         this.persistentImagesDirty = true;
@@ -45,6 +49,11 @@ export class PersistentImageManager {
         }
         this.persistentImages.delete(id);
     }
+
+    public removePersistentImageAfter(id: number, secs: number): void {
+        setTimeout(() => this.removePersistentImage(id), secs * 1000);
+    }
+    
 
     public setPersistentImageLocation(id: number, x: number, y: number): void {
         const obj = this.persistentImages.get(id);

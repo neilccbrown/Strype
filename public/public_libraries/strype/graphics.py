@@ -7,6 +7,8 @@ class Actor:
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
     # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
+    # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
+    # whenever we use it, we should check it's still actually present.
     
     def __init__(self, image_or_filename, x, y):
         """
@@ -73,8 +75,24 @@ class Actor:
         img._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return img
     def say(self, text, font_size = 16, max_width = 300, max_height = 200):
+        """
+        Add a speech bubble next to the actor with the given text.  The only required parameter is the
+        text, all the others can be omitted.  The text will be wrapped if it reaches max_width (unless you
+        set max_width to 0).  If it then overflows max_height, the font size will be reduced until the text fits
+        in both max_width and max_height.  Wrapping will only occur at spaces, so if you have long text like
+        "Aaaaaarrrggghhhh" and want it to wrap you may need to add a space in there. 
+        
+        To remove the speech bubble later, call `say("")` (that is, with a blank string).  You can also consider
+        using `say_for` if you want the speech to display for a fixed time.
+        
+        :param text: The text to be displayed in the speech bubble.  You can use \n to separate lines.
+        :param font_size: The font size to try to display at
+        :param max_width: The maximum width to fit the speech into (excluding padding which is added to make the speech bubble)
+        :param max_height: The maximum height to fit the speech into (excluding padding which is added to make the speech bubble)
+        """
+        
         # Remove any existing speech bubble:
-        if self.__say is not None:
+        if self.__say is not None and _strype_graphics_internal.imageExists(self.__say):
             _strype_graphics_internal.removeImage(self.__say)
             self.__say = None
         # Then add a new one if text is not blank:
@@ -98,14 +116,31 @@ class Actor:
             
     def _update_say_position(self):
         # Update the speech bubble position to be relative to our new position and scale:
-        if self.__say is not None:
+        if self.__say is not None and _strype_graphics_internal.imageExists(self.__say):
             say_dim = _strype_graphics_internal.getImageSize(self.__say)
             our_dim = _strype_graphics_internal.getImageSize(self.__id)
             scale = _strype_graphics_internal.getImageScale(self.__id)
             width = our_dim['width'] * scale
             height = our_dim['height'] * scale
             _strype_graphics_internal.setImageLocation(self.__say, self.get_x() + width/2 + say_dim['width']/2, self.get_y() - height/2 - say_dim['height']/2)
-    
+        else:
+            self.__say = None
+
+    def say_for(self, text, seconds, font_size = 16, max_width = 300, max_height = 200):
+        """
+        Like the `say` function, but automatically removes the speech bubble after the given number of seconds.  For all
+        other parameters, see the `say` function for an explanation.
+        
+        Any other calls to `say()` or `say_for()` will override the current timed removal.
+                
+        :param text: The text to display in the speech bubble
+        :param seconds: The number of seconds to display it for.
+        :param font_size: See `say`
+        :param max_width: See `say`
+        :param max_height: See `say`
+        """
+        self.say(text, font_size, max_width, max_height)
+        _strype_graphics_internal.removeImageAfter(self.__say, seconds)
 
 class Color:
     """

@@ -71,6 +71,9 @@ var $builtinmodule = function(name)  {
     mod.addImage = new Sk.builtin.func(function(image, assoc) {
         return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
     });
+    mod.imageExists = new Sk.builtin.func(function(image) {
+        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().hasPersistentImage(image));
+    });
     mod.getImageSize = new Sk.builtin.func(function (img) {
         return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageSize(img));
     });
@@ -95,6 +98,11 @@ var $builtinmodule = function(name)  {
     mod.removeImage = new Sk.builtin.func(function(img) {
         peaComponent.__vue__.getPersistentImageManager().removePersistentImage(img);
     });
+    // Removes an image after a timeout.  Can be cancelled with cancelRemoveImageAfter (passing same img)
+    mod.removeImageAfter = new Sk.builtin.func(function(img, secs) {
+        peaComponent.__vue__.getPersistentImageManager().removePersistentImageAfter(img, secs);
+    });
+        
     mod.makeImageEditable = new Sk.builtin.func(function(img) {
         return peaComponent.__vue__.getPersistentImageManager().editImage(img);
     });
