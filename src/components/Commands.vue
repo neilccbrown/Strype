@@ -280,67 +280,69 @@ export default Vue.extend({
                     // and position the caret at the bottom of the selection.
                     // For function definitions, however, we use a slightly different approach: we have "intermediate" selection steps:
                     // function's body > whole function > all functions (that last case is equivalent to as mentioned for "imports" and "main code")
-                    if(eventKeyLowCase === "a" && !isEditing){
-                        const frameContainerId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
-                        // If a selection already exists, we clear it, after checking where we are at in the case of function defs (cf. below)
-                        const currentFrameSelection = getCurrentFrameSelectionScope();
-                        this.appStore.unselectAllFrames();
-                        switch(currentFrameSelection){
-                        case SelectAllFramesFuncDefScope.frame:
-                        case SelectAllFramesFuncDefScope.functionsContainerBody:
-                            // In imports or main code. Or in function definitions with some functions selected, or inside the function defs container.
-                            // Position the frame cursor inside the body of the frame container
-                            this.appStore.setCurrentFrame({id: frameContainerId, caretPosition: CaretPosition.body});
-                            // And select all the children frame of the container (if any...)
-                            this.appStore.frameObjects[frameContainerId].childrenIds.forEach(() => {
-                                this.appStore.selectMultipleFrames("ArrowDown");
-                            });     
-                            break;
-                        case SelectAllFramesFuncDefScope.none:
-                            // In a function definition with no frame selected or some frames inside a function body (not all).
-                            // We select all the frames of the function's body.
-                            {
-                                let functionDefFrameId = 0, currentFrameId = this.appStore.currentFrame.id, foundFunctionDefFrame = false;
-                                if(this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef){
-                                    // If we are in the body of the function definition (just inside the body position, not somewhere else)
-                                    //then we don't need to look up for the body position as we're already there...
-                                    foundFunctionDefFrame = true;
-                                    functionDefFrameId = currentFrameId;
-                                }
-                                while(!foundFunctionDefFrame){
-                                    functionDefFrameId = this.appStore.frameObjects[currentFrameId].parentId;
-                                    foundFunctionDefFrame = (this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.funcdef);
-                                    currentFrameId = functionDefFrameId;
-                                }
-                                this.appStore.setCurrentFrame({id: functionDefFrameId, caretPosition: CaretPosition.body});
+                    if(eventKeyLowCase === "a" && !isEditing){ 
+                        if(getActiveContextMenu() == null && !this.appStore.isAppMenuOpened){
+                            const frameContainerId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
+                            // If a selection already exists, we clear it, after checking where we are at in the case of function defs (cf. below)
+                            const currentFrameSelection = getCurrentFrameSelectionScope();
+                            this.appStore.unselectAllFrames();
+                            switch(currentFrameSelection){
+                            case SelectAllFramesFuncDefScope.frame:
+                            case SelectAllFramesFuncDefScope.functionsContainerBody:
+                                // In imports or main code. Or in function definitions with some functions selected, or inside the function defs container.
+                                // Position the frame cursor inside the body of the frame container
+                                this.appStore.setCurrentFrame({id: frameContainerId, caretPosition: CaretPosition.body});
                                 // And select all the children frame of the container (if any...)
-                                this.appStore.frameObjects[functionDefFrameId].childrenIds.forEach(() => {
+                                this.appStore.frameObjects[frameContainerId].childrenIds.forEach(() => {
                                     this.appStore.selectMultipleFrames("ArrowDown");
-                                });    
-                            }
-                            break;
-                        case SelectAllFramesFuncDefScope.belowFunc:
-                            // Below a whole function definition, we select that function.
-                            this.appStore.selectMultipleFrames("ArrowUp");     
-                            // And reposition the caret below for consistency with other select-all conditions
-                            this.appStore.setCurrentFrame({id: this.appStore.selectedFrames.at(-1) as number, caretPosition: CaretPosition.below});   
-                            break;
-                        case SelectAllFramesFuncDefScope.wholeFunctionBody:
-                            // In function definitions with function body frames selected.
-                            // We select the whole function.
-                            {
-                                const functionFrameId = (this.appStore.currentFrame.caretPosition == CaretPosition.body) 
-                                    ? this.appStore.currentFrame.id 
-                                    : this.appStore.frameObjects[this.appStore.currentFrame.id].parentId; 
-                                this.appStore.setCurrentFrame({id: functionFrameId, caretPosition: CaretPosition.below});
-                                // And select the function going upwards
-                                this.appStore.selectMultipleFrames("ArrowUp");
+                                });     
+                                break;
+                            case SelectAllFramesFuncDefScope.none:
+                                // In a function definition with no frame selected or some frames inside a function body (not all).
+                                // We select all the frames of the function's body.
+                                {
+                                    let functionDefFrameId = 0, currentFrameId = this.appStore.currentFrame.id, foundFunctionDefFrame = false;
+                                    if(this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef){
+                                        // If we are in the body of the function definition (just inside the body position, not somewhere else)
+                                        //then we don't need to look up for the body position as we're already there...
+                                        foundFunctionDefFrame = true;
+                                        functionDefFrameId = currentFrameId;
+                                    }
+                                    while(!foundFunctionDefFrame){
+                                        functionDefFrameId = this.appStore.frameObjects[currentFrameId].parentId;
+                                        foundFunctionDefFrame = (this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.funcdef);
+                                        currentFrameId = functionDefFrameId;
+                                    }
+                                    this.appStore.setCurrentFrame({id: functionDefFrameId, caretPosition: CaretPosition.body});
+                                    // And select all the children frame of the container (if any...)
+                                    this.appStore.frameObjects[functionDefFrameId].childrenIds.forEach(() => {
+                                        this.appStore.selectMultipleFrames("ArrowDown");
+                                    });    
+                                }
+                                break;
+                            case SelectAllFramesFuncDefScope.belowFunc:
+                                // Below a whole function definition, we select that function.
+                                this.appStore.selectMultipleFrames("ArrowUp");     
                                 // And reposition the caret below for consistency with other select-all conditions
-                                this.appStore.setCurrentFrame({id: functionFrameId, caretPosition: CaretPosition.below});    
+                                this.appStore.setCurrentFrame({id: this.appStore.selectedFrames.at(-1) as number, caretPosition: CaretPosition.below});   
+                                break;
+                            case SelectAllFramesFuncDefScope.wholeFunctionBody:
+                                // In function definitions with function body frames selected.
+                                // We select the whole function.
+                                {
+                                    const functionFrameId = (this.appStore.currentFrame.caretPosition == CaretPosition.body) 
+                                        ? this.appStore.currentFrame.id 
+                                        : this.appStore.frameObjects[this.appStore.currentFrame.id].parentId; 
+                                    this.appStore.setCurrentFrame({id: functionFrameId, caretPosition: CaretPosition.below});
+                                    // And select the function going upwards
+                                    this.appStore.selectMultipleFrames("ArrowUp");
+                                    // And reposition the caret below for consistency with other select-all conditions
+                                    this.appStore.setCurrentFrame({id: functionFrameId, caretPosition: CaretPosition.below});    
+                                }
+                                break;
+                            default:                                            
+                                break;
                             }
-                            break;
-                        default:                                            
-                            break;
                         }
                         event.preventDefault();
                         return;
