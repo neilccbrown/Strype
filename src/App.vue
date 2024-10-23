@@ -1,7 +1,7 @@
 <template>
     <div id="app" class="container-fluid print-full-height">
-        <div v-if="showAppProgress" class="app-progress-pane">
-            <div class="app-progress-container">
+        <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}">
+            <div v-if="showAppProgress" class="app-progress-container">
                 <div class="progress">
                     <div 
                         class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
@@ -140,6 +140,7 @@ export default Vue.extend({
             newFrameType: "",
             currentParentId: 0,
             showAppProgress: false,
+            setAppNotOnTop: false,
             progressbarMessage: "",
             autoSaveTimerId: -1,
             resetStrypeProjectFlag:false,
@@ -324,7 +325,11 @@ export default Vue.extend({
             const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos) : ("caret_"+this.appStore.currentFrame.caretPosition+"_of_frame_"+this.appStore.currentFrame.id);
             document.getElementById(htmlElementToShowId)?.scrollIntoView();
         }, 1000);
-       
+
+        // Add an event listener to put the app not on top (for an element to be modal) or reset it to normal
+        document.addEventListener(CustomEventTypes.requestAppNotOnTop, (event) => {
+            this.setAppNotOnTop = (event as CustomEvent).detail;
+        });       
     },
 
     destroyed() {
@@ -874,13 +879,17 @@ html,body {
     background-color: #bbc6b6 !important;
 }
 
-.app-progress-pane {
+.app-overlay-pane  {
     width: 100%;
     height: 100vh;
-    background-color: rgba($color: gray, $alpha: 0.7);
     position: absolute;
     left: 0px;
     z-index: 5000;
+
+}
+
+.app-progress-pane {
+    background-color: rgba($color: gray, $alpha: 0.7);
 }
 
 .app-progress-container {
@@ -946,7 +955,7 @@ $divider-grey: darken($background-grey, 15%);
     margin:0;
     padding: 0;
     min-width:10rem;
-    z-index:1500;
+    z-index:6000;
     position:fixed;
     list-style:none;
     max-height:calc(100% - 50px);

@@ -28,7 +28,7 @@
             >
                 <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
                     Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
-                <vue-context :id="getFrameContextMenuUIID" ref="menu" v-show="allowContextMenu" @close="appStore.isContextMenuKeyboardShortcutUsed=false">
+                <vue-context :id="getFrameContextMenuUIID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
                     <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`">
                         <hr v-if="menuItem.type === 'divider'" />
                         <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
@@ -412,6 +412,15 @@ export default Vue.extend({
             // When the frame content has been changed, we clear the potential runtime error
             // needs a Vue.set() to keep reactivity
             Vue.set(this.appStore.frameObjects[this.frameId],"runTimeError", "");
+        },
+
+        handleContextMenuOpened() {
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: true}));
+        },
+
+        handleContextMenuClosed(){
+            this.appStore.isContextMenuKeyboardShortcutUsed=false;
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
         },
 
         handleContextMenuHover(event: MouseEvent) {

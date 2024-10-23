@@ -8,7 +8,7 @@
     >
         <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
              Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
-        <vue-context ref="menu" @close="appStore.isContextMenuKeyboardShortcutUsed=false">
+        <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
             <li><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.paste")}}</a></li>
             <li><hr v-if="showPasteMenuItem" /></li>
             <li class="v-context__sub">
@@ -21,7 +21,7 @@
             </li>
         </vue-context>
         <Caret
-            :class="{navigationPosition: true, caret:!this.appStore.isDraggingFrame}"
+            :class="{navigationPosition: true, caret:!appStore.isDraggingFrame}"
             :id="caretUIID"
             :isInvisible="isInvisible"
             :isTransparentForDnD="isTransparentForDnD"
@@ -200,6 +200,15 @@ export default Vue.extend({
                     useStore().copiedSelectionFrameIds = [];
                 }
             }
+        },
+
+        handleContextMenuOpened() {
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: true}));
+        },
+
+        handleContextMenuClosed(){
+            this.appStore.isContextMenuKeyboardShortcutUsed=false;
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
         },
 
         closeContextMenu() {

@@ -13,6 +13,7 @@ export const autoSaveFreqMins = 2; // The number of minutes between each autosav
 export enum CustomEventTypes {
     contextMenuHovered = "contextMenuHovered",
     requestCaretContextMenuClose="requestCaretContextMenuClose",
+    requestAppNotOnTop="requestAppNotOnTop",
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
     editableSlotGotCaret= "slotGotCaret",
