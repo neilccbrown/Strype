@@ -162,7 +162,7 @@ export enum SelectAllFramesFuncDefScope {
     none, // inside a function body, no frame is selected at all OR some frames are selected but not all
     belowFunc, // below a function definition
     functionsContainerBody, // inside the body of the function definitions container
-    functionBody, // all frames for a function def body are selected
+    wholeFunctionBody, // all frames for a function def body are selected
     frame // some function frames are selected
 }
 

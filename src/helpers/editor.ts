@@ -1484,7 +1484,7 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
 
         if(useStore().frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef && currentFrameCaretPos == CaretPosition.body
             && useStore().frameObjects[currentFrameId].childrenIds.length == 0){
-            return SelectAllFramesFuncDefScope.functionBody;
+            return SelectAllFramesFuncDefScope.wholeFunctionBody;
         }
 
         return SelectAllFramesFuncDefScope.none;
@@ -1506,7 +1506,7 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     const functionChildren = selectionParentFrame.childrenIds;
     if(currentFrameSelection[0] == functionChildren[0] && currentFrameSelection.length == functionChildren.length){
         // All frames of a function's body are already selected
-        return SelectAllFramesFuncDefScope.functionBody;
+        return SelectAllFramesFuncDefScope.wholeFunctionBody;
     }
     return SelectAllFramesFuncDefScope.none;
 }

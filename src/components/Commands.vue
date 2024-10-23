@@ -325,7 +325,7 @@ export default Vue.extend({
                             // And reposition the caret below for consistency with other select-all conditions
                             this.appStore.setCurrentFrame({id: this.appStore.selectedFrames.at(-1) as number, caretPosition: CaretPosition.below});   
                             break;
-                        case SelectAllFramesFuncDefScope.functionBody:
+                        case SelectAllFramesFuncDefScope.wholeFunctionBody:
                             // In function definitions with function body frames selected.
                             // We select the whole function.
                             {
