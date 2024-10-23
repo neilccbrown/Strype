@@ -579,6 +579,21 @@ export default Vue.extend({
                 this.$root.$emit(CustomEventTypes.requestCaretContextMenuClose);
             }
 
+            // When a frame context menu is opened by click, we also move the frame cursor below.
+            if(this.frameType.isJointFrame) {
+                // For a joint frame, if there is a sibling after that frame we go in its body, if that's the last then we go below the root frame
+                const jointRootFrame = this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].jointParentId];
+                const indexOfJointFrame = jointRootFrame.jointFrameIds.indexOf(this.frameId);
+                const isJointFrameLast = (indexOfJointFrame == (jointRootFrame.jointFrameIds.length - 1));
+                const newFramePos = (isJointFrameLast)
+                    ? {id: jointRootFrame.id, caretPosition: CaretPosition.below}
+                    : {id: jointRootFrame.jointFrameIds[indexOfJointFrame + 1], caretPosition: CaretPosition.body};
+                this.appStore.setCurrentFrame(newFramePos);
+            }
+            else{
+                this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below});
+            }
+
             // We add a hover event on the delete menu entries to show cue in the UI on what the entry will act upon
             // need to be done in the next tick to make sure the menu has been generated.
             // The other entries are all ignored, as we will show a selection when the menu opens (if there is no selection already for that frame)
