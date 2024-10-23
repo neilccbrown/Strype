@@ -58,7 +58,7 @@ const persistentImageManager = new PersistentImageManager();
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
-let audioContext : AudioContext | null = null;
+let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
 let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
 const pressedKeys = new Map<string, boolean>();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
@@ -509,6 +509,13 @@ export default Vue.extend({
             return persistentImageManager;
         },
         
+        getAudioContext() : AudioContext {
+            if (audioContext == null) {
+                throw new Error("Problem initialising audio");
+            }
+            return audioContext;
+        },
+        
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
             if (persistentImageManager.isDirty()) {
@@ -553,12 +560,17 @@ export default Vue.extend({
                         (this.$refs.pythonConsole as HTMLTextAreaElement).value += "Error loading sound \"" + audioFileName + "\""; 
                     }
                     else if (audioContext && b) {
-                        const source = audioContext.createBufferSource();
-                        source.buffer = b;
-                        source.connect(audioContext.destination);
-                        source.start();
+                        this.playAudioBuffer(b);
                     }
                 });
+        },
+        playAudioBuffer(audioBuffer : AudioBuffer) : void {
+            if (audioContext) {
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.start();
+            }
         },
         graphicsCanvasClick(event: MouseEvent) {
             mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(event.offsetX, event.offsetY);
