@@ -61,6 +61,39 @@ var $builtinmodule = function(name)  {
     mod.getNumSamples = new Sk.builtin.func(function(buffer) {
         return Sk.ffi.remapToPy(buffer.length);
     });
+    mod.copyToMono = new Sk.builtin.func(function(audioBuffer) {
+        // From https://gist.github.com/chrisguttandin/e49764f9c29376780f2eb1f7d22b54e4
+        const downmixContext = new OfflineAudioContext(
+            1,
+            audioBuffer.length,
+            audioBuffer.sampleRate
+        );
+        const bufferSource = new AudioBufferSourceNode(downmixContext, {
+            buffer: audioBuffer,
+        });
+        bufferSource.start(0);
+        bufferSource.connect(downmixContext.destination);
+
+        let susp = new Sk.misceval.Suspension();
+        susp.resume = function () {
+            if (susp.data["error"]) {
+                throw new Sk.builtin.IOError(susp.data["error"].message);
+            }
+            return susp.ret;
+        };
+        susp.data = {
+            type: "Sk.promise",
+            promise: downmixContext.startRendering().then((b) => {
+                if (!b) {
+                    susp.data["error"] = Error("Cannot convert to mono for unknown reason");
+                }
+                else  {
+                    susp.ret = b;
+                }
+            }),
+        };
+        return susp;
+    });
 
     return mod;
 };
