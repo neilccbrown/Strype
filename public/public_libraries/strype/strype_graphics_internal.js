@@ -249,7 +249,8 @@ var $builtinmodule = function(name)  {
 
         // Render each line of text on the canvas at (x, y)
         for (let i = 0; i < details.lines.length; i++) {
-            // Since we are passing the baseline, we add 1 * fontSize always to get from the top-left:
+            // Since we are passing the baseline, we always add an extra 1 * fontSize to get from the top-left
+            // down to the baseline, then add i * lineHeightMultiplier from there:
             let actualY = y + details.fontSize * (1 + i * lineHeightMultiplier);
             ctx.fillText(details.lines[i], x, actualY); 
         }
