@@ -10,7 +10,7 @@ export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
     "strype/mediacomp.py",
     "strype/strype_graphics_input_internal.js",
 ];
-export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.indexOf("."))).filter((f) => !f.includes("internal"));
+export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.lastIndexOf(".")).replace("/", ".")).filter((f) => !f.includes("internal") && !f.includes("__init__"));
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
 // (this is the default behaviour that can be overwritten if needed)
