@@ -209,7 +209,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
                     // Turn the filename into a module name:
                     const modulename = filename.replace(".py", "").replace("./", "").replace("/", ".");
                     if (index == 0) {
-                        moreInfo += "\n  Error raised in module " + modulename;
+                        moreInfo += "\n  Error raised in module " + modulename + " (line " + entry.lineno + ")";
                     }
                     else if (modulename != lastmodule) {
                         // Only tell them the module if it's different to adjacent item in the traceback:
