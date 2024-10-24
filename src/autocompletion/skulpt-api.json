@@ -1547,7 +1547,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x100f3eaf0>"
+                    "defaultValue": "<unittest.loader.TestLoader object at 0x102442af0>"
                 },
                 {
                     "name": "failfast",
@@ -1673,7 +1673,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x100ade1c0>"
+                    "defaultValue": "<object object at 0x1017df1c0>"
                 },
                 {
                     "name": "timeout",
@@ -2280,7 +2280,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x101a70af0>"
+                    "defaultValue": "<function deepcopy at 0x102b9ab80>"
                 }
             ]
         },
@@ -2322,7 +2322,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x101a70af0>"
+                    "defaultValue": "<function deepcopy at 0x102b9ab80>"
                 }
             ]
         },
@@ -2350,7 +2350,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x101a70af0>"
+                    "defaultValue": "<function deepcopy at 0x102b9ab80>"
                 }
             ]
         },
@@ -2392,7 +2392,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x101a70af0>"
+                    "defaultValue": "<function deepcopy at 0x102b9ab80>"
                 },
                 {
                     "name": "listiter",
@@ -14065,9 +14065,139 @@
             "version": 0
         }
     ],
-    "strype_graphics": [
+    "strype.graphics": [
         {
             "acResult": "Actor",
+            "documentation": "",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "Color",
+            "documentation": "\n    A Color class with members red, green, blue, alpha, in the range 0--1.\n    ",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "Dimension",
+            "documentation": "",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "EditableImage",
+            "documentation": "\n    An editable image of fixed width and height.\n    ",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__loader__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__spec__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "_collections",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_math",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_strype_graphics_internal",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_strype_input_internal",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_and_forget_clicked_actor",
+            "documentation": "\n    Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice\n    in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function\n    to several other things, assign it to a variable first.\n    :return: The most recently clicked Actor, or None if nothing was clicked since you last called this function.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "key_pressed",
+            "documentation": "\n    Checks if the given key is currently pressed.  Note that because the user may be pressing and releasing keys all the time,\n    consecutive calls to this function with the same key name may not give the same result.\n    \n    :param keyname: The name of the key.  This can be a single letter like \"a\" or a key name like \"up\", \"down\". \n    :return: Either True or False depending on whether the key is currently pressed.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "load_image",
+            "documentation": "\n    Loads the given image file as an EditableImage object.\n    :param filename: The built-in Strype filename, or URL, of the image to load.\n    :return: An EditableImage object with the same image and dimensions as the given file\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        }
+    ],
+    "strype.sound": [
+        {
+            "acResult": "Sound",
             "documentation": "",
             "type": [
                 "function",
@@ -14101,61 +14231,7 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "__spec__",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "_math",
-            "documentation": "",
-            "type": [
-                "module"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "_strype_graphics_internal",
-            "documentation": "",
-            "type": [
-                "module"
-            ],
-            "version": 0
-        }
-    ],
-    "strype_sound": [
-        {
-            "acResult": "__doc__",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "__file__",
             "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "__loader__",
-            "documentation": "",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "__name__",
-            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
-            "type": [],
-            "version": 0
-        },
-        {
-            "acResult": "__package__",
-            "documentation": "",
             "type": [],
             "version": 0
         },
@@ -14175,14 +14251,23 @@
         },
         {
             "acResult": "play_sound",
-            "documentation": "",
+            "documentation": "\n    Starts playing the given sound, returning immediately without waiting for it to finish.\n    :param filename: The filename of the sound \n    ",
             "type": [
                 "function"
             ],
             "version": 0
         }
     ],
-    "strype_input": [
+    "strype.mediacomp": [
+        {
+            "acResult": "Sample",
+            "documentation": "",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0
+        },
         {
             "acResult": "__doc__",
             "documentation": "",
@@ -14209,7 +14294,7 @@
         },
         {
             "acResult": "__package__",
-            "documentation": "",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
             "type": [],
             "version": 0
         },
@@ -14220,23 +14305,7 @@
             "version": 0
         },
         {
-            "acResult": "_collections",
-            "documentation": "",
-            "type": [
-                "module"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "_strype_input_internal",
-            "documentation": "",
-            "type": [
-                "module"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "consume_last_click",
+            "acResult": "_from_short",
             "documentation": "",
             "type": [
                 "function"
@@ -14244,8 +14313,160 @@
             "version": 0
         },
         {
-            "acResult": "pressed_keys",
+            "acResult": "_sound",
             "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_to_short",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "blockingPlay",
+            "documentation": "\n    :param sound: the sound that you want to play.\n    Plays the sound provided as input, and makes sure that no other sound plays at the exact same time. (Try two play's right after each other.)\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "duplicateSound",
+            "documentation": "\n    :param sound: the sound you want to duplicate\n    :returns: a new Sound object with the same Sample values as the original\n    Takes a sound as input and returns a new Sound object with the same Sample values as the original.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getDuration",
+            "documentation": "\n    :param sound: the sound you want to find the length of (in seconds)\n    :returns: the number of seconds the sound lasts\n    Takes a sound as input and returns the number of seconds that sound lasts.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getLength",
+            "documentation": "\n    :param sound: the sound you want to find the length of (how many samples it has)\n    :returns: the number of samples in sound\n    Takes a sound as input and returns the number of samples in that sound.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getNumSamples",
+            "documentation": "\n    :param sound: the sound you want to find the length of (how many samples it has)\n    :returns: the number of samples in sound\n    Takes a sound as input and returns the number of samples in that sound. (Same as getLength)\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getSampleObjectAt",
+            "documentation": "\n    :param sound: the sound you want to get the sample from\n    :param index: the index value of the sample you want to get\n    :returns: the sample object at that index\n    Takes a sound and an index (an integer value), and returns the Sample object at that index.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getSampleValue",
+            "documentation": "\n    :param sample: a sample of a sound\n    :returns: the integer value of that sample\n    Takes a Sample object and returns its value (between -32768 and 32767). (Formerly getSample)\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getSampleValueAt",
+            "documentation": "\n    :param sound: the sound you want to get the sample from\n    :param index: the index of the sample you want to get the value of\n    Takes a sound and an index (an integer value), and returns the value of the sample (between -32768 and 32767) for that object.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getSamples",
+            "documentation": "\n    :param sound: the sound you want to get the samples from\n    :returns: a list of all the samples in the sound\n    Takes a sound as input and returns the Samples in that sound.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getSamplingRate",
+            "documentation": "\n    :param sound: the sound you want to get the sampling rate from\n    :returns: the integer value representing the number of samples per second\n    Takes a sound as input and returns the number representing the number of samples in each second for the sound.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getSound",
+            "documentation": "\n    :param sample: a sample belonging to a sound\n    :returns: the sound the sample belongs to\n    Takes a Sample object and returns the Sound that it belongs to.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "makeEmptySound",
+            "documentation": "\n    :param numSamples: the number of samples in sound\n    :param samplingRate: the integer value representing the number of samples per second of sound (optional)\n    :returns: An Empty Sound.\n    Takes one or two integers as input. Returns an empty Sound object with the given number of samples and (optionally) the given sampling rate. Default rate is 22050 bits/second. The resulting sound must not be longer than 600 seconds. Prints an error statement if numSamples or samplingRate are less than 0, or if (numSamples/samplingRate) > 600.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "makeEmptySoundBySeconds",
+            "documentation": "\n    :param duration: the time in seconds for the duration of the sound\n    :param samplingRate: the integer value representing the number of samples per second of sound (optional)\n    :returns: An Empty Sound.\n    Takes a floating point number and optionally an integer as input. Returns an empty Sound object of the given duration and (optionally) the given sampling rate. Default rate is 22050 bits/second. If the given arguments do not multiply to an integer, the number of samples is rounded up. Prints an error statement if duration or samplingRate are less than 0, or if duration > 600.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "makeSound",
+            "documentation": "\n    :param path: a string path of a wav file\n    :returns: the sound created from the file at the given path\n    Takes a filename as input, reads the file, and creates a sound from it. Returns the sound.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "play",
+            "documentation": "\n    :param sound: the sound you want to be played.\n    Plays a sound provided as input. No return value.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "setSampleValue",
+            "documentation": "\n    :param sample: the sound sample you want to change the value of\n    :param value: the value you want to set the sample to\n    Takes a Sample object and a value (should be between -32768 and 32767), and sets the sample to that value.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "setSampleValueAt",
+            "documentation": "\n    :param sound: the sound you want to change a sample in\n    :param index: the index of the sample you want to set\n    :param value: the value you want to set the sample to\n    Takes a sound, an index, and a value (should be between -32768 and 32767), and sets the value of the sample at the given index in the given sound to the given value.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "stopPlaying",
+            "documentation": "\n    :param sound: the sound that you want to stop playing\n    Stops a sound that is currently playing.\n    ",
             "type": [
                 "function"
             ],

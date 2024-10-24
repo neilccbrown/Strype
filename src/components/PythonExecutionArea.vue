@@ -58,10 +58,11 @@ const persistentImageManager = new PersistentImageManager();
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
-let audioContext : AudioContext | null = null;
+let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
 let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
 const pressedKeys = new Map<string, boolean>();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
+const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
 
 export default Vue.extend({
     name: "PythonExecutionArea",
@@ -509,6 +510,13 @@ export default Vue.extend({
             return persistentImageManager;
         },
         
+        getAudioContext() : AudioContext {
+            if (audioContext == null) {
+                throw new Error("Problem initialising audio");
+            }
+            return audioContext;
+        },
+        
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
             if (persistentImageManager.isDirty()) {
@@ -553,12 +561,34 @@ export default Vue.extend({
                         (this.$refs.pythonConsole as HTMLTextAreaElement).value += "Error loading sound \"" + audioFileName + "\""; 
                     }
                     else if (audioContext && b) {
-                        const source = audioContext.createBufferSource();
-                        source.buffer = b;
-                        source.connect(audioContext.destination);
-                        source.start();
+                        this.playAudioBuffer(b);
                     }
                 });
+        },
+        playAudioBuffer(audioBuffer : AudioBuffer) : Promise<void> | null {
+            if (audioContext) {
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                return new Promise(function (resolve, reject) {
+                    source.onended = (ev) => {
+                        bufferToSource.delete(audioBuffer);
+                        resolve();
+                    };
+                    bufferToSource.set(audioBuffer, source);
+                    source.start();
+                });
+            }
+            else {
+                return null;
+            }
+        },
+        stopAudioBuffer(audioBuffer: AudioBuffer) : void {
+            const source = bufferToSource.get(audioBuffer);
+            if (source) {
+                source.stop();
+            }
+            // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
         },
         graphicsCanvasClick(event: MouseEvent) {
             mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(event.offsetX, event.offsetY);
