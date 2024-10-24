@@ -11,8 +11,24 @@ var $builtinmodule = function(name)  {
     mod.playAudioBuffer = new Sk.builtin.func(function(audioBuffer) {
         peaComponent.__vue__.playAudioBuffer(audioBuffer);
     });
+    mod.playAudioBufferAndWait = new Sk.builtin.func(function(audioBuffer) {
+        let susp = new Sk.misceval.Suspension();
+        susp.resume = function () {
+            if (susp.data["error"]) {
+                throw new Sk.builtin.IOError(susp.data["error"].message);
+            }
+        };
+        susp.data = {
+            type: "Sk.promise",
+            promise: peaComponent.__vue__.playAudioBuffer(audioBuffer),
+        };
+        return susp;
+    });
+    mod.stopAudioBuffer = new Sk.builtin.func(function(audioBuffer) {
+        peaComponent.__vue__.stopAudioBuffer(audioBuffer);
+    });
     mod.createAudioBuffer = new Sk.builtin.func(function(seconds, samplesPerSecond) {
-        return new AudioBuffer({length: seconds * samplesPerSecond, sampleRate: samplesPerSecond});
+        return new AudioBuffer({length: Math.round(seconds * samplesPerSecond), sampleRate: samplesPerSecond});
     });
     mod.loadAndWaitForAudioBuffer = new Sk.builtin.func(function(path) {
         const audioContext = peaComponent.__vue__.getAudioContext();
@@ -55,11 +71,20 @@ var $builtinmodule = function(name)  {
         else {
             // Simple case of mono sound: 
             const floats = new Float32Array(Sk.ffi.remapToJs(floatArray));
+            if (offset < 0 || offset >= buffer.length) {
+                throw new Error("Invalid offset when setting samples: " + offset + " (sound length is " + buffer.length + ")");
+            }
+            if (offset + floats.length > buffer.length) {
+                throw new Error("Setting samples would go beyond end of sound, offset: " + offset + " + number of samples: " + floats.length + " > sound length: " + buffer.length);
+            }
             buffer.copyToChannel(floats, 0, offset);
         }
     });
     mod.getNumSamples = new Sk.builtin.func(function(buffer) {
         return Sk.ffi.remapToPy(buffer.length);
+    });
+    mod.getSampleRate = new Sk.builtin.func(function(buffer) {
+        return Sk.ffi.remapToPy(buffer.sampleRate);
     });
     mod.copyToMono = new Sk.builtin.func(function(audioBuffer) {
         // From https://gist.github.com/chrisguttandin/e49764f9c29376780f2eb1f7d22b54e4

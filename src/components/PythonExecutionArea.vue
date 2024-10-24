@@ -62,6 +62,7 @@ let audioContext : AudioContext | null = null; // Important we don't initialise 
 let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
 const pressedKeys = new Map<string, boolean>();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
+const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
 
 export default Vue.extend({
     name: "PythonExecutionArea",
@@ -564,13 +565,30 @@ export default Vue.extend({
                     }
                 });
         },
-        playAudioBuffer(audioBuffer : AudioBuffer) : void {
+        playAudioBuffer(audioBuffer : AudioBuffer) : Promise<void> | null {
             if (audioContext) {
                 const source = audioContext.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(audioContext.destination);
-                source.start();
+                return new Promise(function (resolve, reject) {
+                    source.onended = (ev) => {
+                        bufferToSource.delete(audioBuffer);
+                        resolve();
+                    };
+                    bufferToSource.set(audioBuffer, source);
+                    source.start();
+                });
             }
+            else {
+                return null;
+            }
+        },
+        stopAudioBuffer(audioBuffer: AudioBuffer) : void {
+            const source = bufferToSource.get(audioBuffer);
+            if (source) {
+                source.stop();
+            }
+            // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
         },
         graphicsCanvasClick(event: MouseEvent) {
             mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(event.offsetX, event.offsetY);
