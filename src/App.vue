@@ -137,8 +137,6 @@ export default Vue.extend({
 
     data: function() {
         return {
-            newFrameType: "",
-            currentParentId: 0,
             showAppProgress: false,
             progressbarMessage: "",
             autoSaveTimerId: -1,
