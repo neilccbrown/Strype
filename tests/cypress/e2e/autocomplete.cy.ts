@@ -30,7 +30,7 @@ beforeEach(() => {
 
 function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
-    cy.wait(200);
+    cy.wait(600);
     cy.get("#editor").then((eds) => {
         const ed = eds.get()[0];
         // Find the auto-complete corresponding to the currently focused slot:
@@ -181,6 +181,7 @@ describe("Built-ins", () => {
             checkNoItems(acIDSel, "__name__");
             // Once we type "a", should show things beginning with A but not the others:
             cy.get("body").type("a");
+            cy.wait(600);
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             checkNoItems(acIDSel, "ZeroDivisionError");
@@ -188,6 +189,7 @@ describe("Built-ins", () => {
             checkAutocompleteSorted(acIDSel);
             // Once we type "b", should show things beginning with AB but not the others:
             cy.get("body").type("b");
+            cy.wait(600);
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkNoItems(acIDSel, "AssertionError");
             checkNoItems(acIDSel, "ZeroDivisionError");
@@ -248,6 +250,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkNoItems(acIDSel, "__name__");
                 // Once we type "a", should show things beginning with A but not the others:
                 cy.get("body").type("a");
+                cy.wait(600);
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
                 checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
                 checkNoItems(acIDSel, "ZeroDivisionError");
@@ -255,6 +258,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkAutocompleteSorted(acIDSel);
                 // Once we type "b", should show things beginning with AB but not the others:
                 cy.get("body").type("b");
+                cy.wait(600);
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
                 checkNoItems(acIDSel, "AssertionError");
                 checkNoItems(acIDSel, "ZeroDivisionError");
@@ -281,6 +285,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkExactlyOneItem(acIDSel, null, "upper()");
                 checkNoItems(acIDSel, "divmod");
                 cy.get("body").type("u");
+                cy.wait(600);
                 checkNoItems(acIDSel, "lower");
                 checkExactlyOneItem(acIDSel, null, "upper()");
                 checkNoItems(acIDSel, "divmod");
@@ -330,7 +335,7 @@ describe("Modules", () => {
                 checkNoItems(acIDSel, "signal");
                 // Once we type "m", should show things beginning with M but not the others:
                 cy.get("body").type("m");
-                cy.wait(500);
+                cy.wait(600);
                 checkExactlyOneItem(acIDSel, null, "machine");
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
@@ -338,6 +343,7 @@ describe("Modules", () => {
                 checkAutocompleteSorted(acIDSel);
                 // Once we type "i", should show things beginning with MI but not the others:
                 cy.get("body").type("i");
+                cy.wait(600);
                 checkNoItems(acIDSel, "machine");
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
@@ -388,7 +394,7 @@ describe("Modules", () => {
                 checkNoItems(acIDSel, "signal");
                 // Once we type "m", should show things beginning with M but not the others:
                 cy.get("body").type("m");
-                cy.wait(500);
+                cy.wait(600);
                 checkExactlyOneItem(acIDSel, null, "machine");
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
@@ -396,6 +402,7 @@ describe("Modules", () => {
                 checkAutocompleteSorted(acIDSel);
                 // Once we type "i", should show things beginning with MI but not the others:
                 cy.get("body").type("i");
+                cy.wait(600);
                 checkNoItems(acIDSel, "machine");
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
@@ -451,7 +458,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, nonAvailable);
             // Once we type first character, should be the same:
             cy.get("body").type(target.at(0) || "");
-            cy.wait(500);
+            cy.wait(600);
             checkExactlyOneItem(acIDSel, null, target);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
@@ -473,7 +480,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, nonAvailable);
             // Once we type first character, should be the same:
             cy.get("body").type(target.at(0) || "");
-            cy.wait(500);
+            cy.wait(600);
             checkExactlyOneItem(acIDSel, null, target);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
@@ -491,7 +498,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, nonAvailable);
             // Once we type first character, should be the same:
             cy.get("body").type(target);
-            cy.wait(500);
+            cy.wait(600);
             checkExactlyOneItem(acIDSel, "time", target + targetParams);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
@@ -527,6 +534,7 @@ describe("Modules", () => {
             checkNoItems(acIDSel, "AssertionError");
             // Type first letter of the target:
             cy.get("body").type(target.at(0) || "");
+            cy.wait(600);
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
@@ -562,6 +570,7 @@ describe("Modules", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             cy.get("body").type(target.at(0) || "");
+            cy.wait(600);
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, sleepCall);
             checkNoItems(acIDSel, "abs", true);
@@ -662,6 +671,7 @@ describe("User-defined items", () => {
             checkExactlyOneItem(acIDSel, "myVar", "upper()");
             checkNoItems(acIDSel, "divmod");
             cy.get("body").type("u");
+            cy.wait(600);
             checkNoItems(acIDSel, "lower");
             checkExactlyOneItem(acIDSel, "myVar", "upper()");
             checkNoItems(acIDSel, "divmod");
@@ -881,6 +891,7 @@ describe("Underscore handling", () => {
             checkNoItems(acIDSel, "__name__");
             // Once we type "_", should show things beginning with _ but not the others:
             cy.get("body").type("_");
+            cy.wait(600);
             checkNoItems(acIDSel, "abs(x)");
             checkNoItems(acIDSel, "AssertionError");
             checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
@@ -908,6 +919,7 @@ describe("Underscore handling", () => {
             checkNoItems(acIDSel, "__name__");
             // Once we type "_", should show things beginning with _ but not the others:
             cy.get("body").type("_");
+            cy.wait(600);
             checkNoItems(acIDSel, "abs(x)");
             checkNoItems(acIDSel, "AssertionError");
             checkNoItems(acIDSel, "gmtime");
@@ -941,6 +953,7 @@ describe("Underscore handling", () => {
             checkExactlyOneItem(acIDSel, "myVar", "__dir__()");
             checkExactlyOneItem(acIDSel, "myVar", "__class__()");
             cy.get("body").type("_dir");
+            cy.wait(600);
             checkAutocompleteSorted(acIDSel);
             // Check docs are showing for built-in function:
             cy.get(acIDSel).contains("Default dir() implementation.");
@@ -965,6 +978,7 @@ describe("Underscore handling", () => {
             checkNoItems(acIDSel, "__myVar()");
             // Once we type "_", should show things beginning with _ but not the others:
             cy.get("body").type("_");
+            cy.wait(600);
             checkNoItems(acIDSel, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
             checkExactlyOneItem(acIDSel, MYFUNCS, "__myFunction(myParam)");
