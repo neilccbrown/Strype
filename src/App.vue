@@ -117,6 +117,9 @@ import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "./autocompletion/ac-skulpt";
 import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
 
+let autoSaveTimerId = -1;
+let autoSaveState : AutoSaveFunction[] = [];
+
 //////////////////////
 //     Component    //
 //////////////////////
@@ -139,10 +142,8 @@ export default Vue.extend({
         return {
             showAppProgress: false,
             progressbarMessage: "",
-            autoSaveTimerId: -1,
-            resetStrypeProjectFlag:false,
+            resetStrypeProjectFlag: false,
             isExpandedPythonExecArea: false,
-            autoSaveState: [] as AutoSaveFunction[],
         };
     },
 
@@ -224,7 +225,7 @@ export default Vue.extend({
     },
 
     created() {
-        this.autoSaveState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
+        autoSaveState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -245,7 +246,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                this.autoSaveState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
+                autoSaveState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -367,30 +368,30 @@ export default Vue.extend({
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
-            window.clearInterval(this.autoSaveTimerId);
-            const asfEntry = this.autoSaveState.find((asfEntry) => (asfEntry.name == asf.name));
+            window.clearInterval(autoSaveTimerId);
+            const asfEntry = autoSaveState.find((asfEntry) => (asfEntry.name == asf.name));
             if(asfEntry){
                 // There is already some function set for that type of autosave, we just update the function
                 asfEntry.function = asf.function;
             }
             else{
-                // Nothing yet set for this type of autosave, we add the entry this.autoSaveState
-                this.autoSaveState.push(asf);
+                // Nothing yet set for this type of autosave, we add the entry autoSaveState
+                autoSaveState.push(asf);
             }
             this.setAutoSaveState();
         });
 
         this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (asfName: string) => {           
-            const toDeleteIndex = this.autoSaveState.findIndex((asf) => asf.name == asfName);
+            const toDeleteIndex = autoSaveState.findIndex((asf) => asf.name == asfName);
             if(toDeleteIndex > -1){
-                window.clearInterval(this.autoSaveTimerId);
-                this.autoSaveState.splice(toDeleteIndex, 1);
+                window.clearInterval(autoSaveTimerId);
+                autoSaveState.splice(toDeleteIndex, 1);
                 this.setAutoSaveState();
             }            
         });
 
         // Listen to event for requesting the autosave now
-        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => this.autoSaveState.forEach((asf) => asf.function(saveReason)));
+        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => autoSaveState.forEach((asf) => asf.function(saveReason)));
 
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
@@ -399,8 +400,8 @@ export default Vue.extend({
 
     methods: {
         setAutoSaveState() {
-            this.autoSaveTimerId = window.setInterval(() => {
-                this.autoSaveState.forEach((asf) => asf.function(SaveRequestReason.autosave));
+            autoSaveTimerId = window.setInterval(() => {
+                autoSaveState.forEach((asf) => asf.function(SaveRequestReason.autosave));
             }, autoSaveFreqMins * 60000);
         },
         
@@ -409,7 +410,7 @@ export default Vue.extend({
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
                 // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                if(reason==SaveRequestReason.loadProject && this.autoSaveState.length == 1){
+                if(reason==SaveRequestReason.loadProject && autoSaveState.length == 1){
                     this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }
             }
@@ -433,7 +434,7 @@ export default Vue.extend({
         resetStrypeProject(){
             // To reset the project we:
             // 1) stop the autosave timer
-            window.clearInterval(this.autoSaveTimerId);
+            window.clearInterval(autoSaveTimerId);
             // 2) toggle the flag to disable saving on unload
             this.resetStrypeProjectFlag = true;
             // 3) delete the WebStorage key that refers to the current autosaved project
