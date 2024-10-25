@@ -40,6 +40,7 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
     {actionName: FrameContextMenuActionName.copy, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "c"},
     {actionName: FrameContextMenuActionName.cut, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "x"},
     {actionName: FrameContextMenuActionName.paste, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "v"},
+    {actionName: FrameContextMenuActionName.delete, mainKey: "delete"},
 ];
 
 export function getFrameContainerUIID(frameId: number): string {
