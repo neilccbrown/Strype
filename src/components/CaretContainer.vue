@@ -9,7 +9,7 @@
         <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
              Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
         <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-            <li><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.paste")}}</a></li>
+            <li :action-name="pasteMenuActionName"><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.paste")}}</a></li>
             <li><hr v-if="showPasteMenuItem" /></li>
             <li class="v-context__sub">
                 <a @click.stop @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.insert")}}</a>
@@ -39,7 +39,7 @@ import Vue, { PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState} from "@/types/types";
+import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName} from "@/types/types";
 import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
@@ -113,6 +113,10 @@ export default Vue.extend({
             return this.appStore.isCopiedAvailable;
         },
 
+        pasteMenuActionName(): FrameContextMenuActionName {
+            return FrameContextMenuActionName.paste;
+        },
+
         isCaretBlurred(): boolean {
             //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
             return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !this.appStore.canAddFrameBelowDisabled(this.frameId) : true);
@@ -122,7 +126,7 @@ export default Vue.extend({
     data: function () {
         return {
             showPasteMenuItem: false,
-            insertFrameMenuItems: [] as {name: string, method: VoidFunction}[],
+            insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
         };
     },
 

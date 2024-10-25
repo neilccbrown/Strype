@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import Vue from "vue";
 import { getAboveFrameCaretPosition, getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { strypeFileExtension } from "./common";
@@ -35,6 +35,12 @@ export enum CustomEventTypes {
     skulptTimerEventListenerOff = "skTimerEventsOff",
     /* FITRUE_isPurePython */
 }
+
+export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
+    {actionName: FrameContextMenuActionName.copy, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "c"},
+    {actionName: FrameContextMenuActionName.cut, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "x"},
+    {actionName: FrameContextMenuActionName.paste, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "v"},
+];
 
 export function getFrameContainerUIID(frameId: number): string {
     return "FrameContainer_" + frameId;

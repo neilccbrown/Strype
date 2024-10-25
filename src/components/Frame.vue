@@ -29,7 +29,7 @@
                 <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
                     Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
                 <vue-context :id="getFrameContextMenuUIID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-                    <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`">
+                    <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName">
                         <hr v-if="menuItem.type === 'divider'" />
                         <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
                     </li>
@@ -104,7 +104,7 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
@@ -155,7 +155,7 @@ export default Vue.extend({
     data: function () {
         return {
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
-            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider"}[],
+            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName}[],
             // Flag to indicate a frame is selected via the context menu (differs from a user selection)
             contextMenuEnforcedSelect: false,
             // And an associated observer used to check when the menu made hidden to change the flag above
@@ -450,8 +450,8 @@ export default Vue.extend({
             }
 
             this.frameContextMenuItems = [
-                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut},
-                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy},
+                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut},
+                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy},
                 {name: this.$i18n.t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
                 {name: this.$i18n.t("contextMenu.duplicate") as string, method: this.duplicate},
                 {name: "", method: () => {}, type: "divider"},
@@ -460,7 +460,7 @@ export default Vue.extend({
                 {name: "", method: () => {}, type: "divider"},
                 {name: this.$i18n.t("contextMenu.disable") as string, method: this.disable},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete},
+                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete},
                 {name: this.$i18n.t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
 
             // Not all frames should be duplicated (e.g. Else)

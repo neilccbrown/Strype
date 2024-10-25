@@ -101,8 +101,8 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId } from "./helpers/editor";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -273,16 +273,93 @@ export default Vue.extend({
         );
 
         window.addEventListener("keydown", (event: KeyboardEvent) => {
-            if(this.appStore.selectedFrames.length > 0 && (event.key == " " || event.key.toLowerCase() == "enter") && !isContextMenuItemSelected()){
+            const activeContextMenu = getActiveContextMenu();
+            if(activeContextMenu != null){
+                // All key hits in the context menu should result in the menu closing.
+                // If a keyboard shortcut of the menu has been used, we process it.
+                // (Enter is already handled when a menu item is selected, so we don't worry about it.)
+                const activeModifierKeys = {[ModifierKeyCode.ctrl]: event.ctrlKey, [ModifierKeyCode.meta]: event.metaKey, [ModifierKeyCode.shift]: event.shiftKey, [ModifierKeyCode.alt]: event.altKey};
+                const menuItemForKBShortcut = Array.from(activeContextMenu.children).find((menuItemEl) => {
+                    const menuItemActionName = menuItemEl.getAttribute("action-name");
+                    if(menuItemActionName){
+                        const menuItemShortcut = frameContextMenuShortcuts.find((frameCtxtMenuShorcut) => frameCtxtMenuShorcut.actionName.toString() == menuItemActionName);
+                        if(menuItemShortcut) {
+                            // Look up keys, if no modifier is defined at all, then the match for modifier is true.
+                            let modifiersKeyMatch = (menuItemShortcut?.firstModifierKey == undefined);
+                            let modifierKeyIndex = 0;
+
+                            // Check first key modifier
+                            const otherModifierKeys = [] as ModifierKeyCode[];
+                            for(;modifierKeyIndex < ((menuItemShortcut?.firstModifierKey?.length) ?? 0); modifierKeyIndex++){
+                                const firstModifierKBValue = (menuItemShortcut.firstModifierKey as ModifierKeyCode[])[modifierKeyIndex];
+                                modifiersKeyMatch = activeModifierKeys[firstModifierKBValue];
+                                Object.values(ModifierKeyCode).forEach((modif) => {
+                                    if(modif != firstModifierKBValue){
+                                        otherModifierKeys.push(modif);
+                                    }
+                                });
+                                if(modifiersKeyMatch) {
+                                    break;
+                                }
+                                else{
+                                    otherModifierKeys.splice(0);
+                                }
+                            }
+
+                            // Check the second key modifier: if there was a first key modifier, we need to that if a second modifier is defined, 
+                            // the key combination matches both modifiers - and that if there is no second modifier then no extra combination is hit.
+                            const secondModifierKBValue = menuItemShortcut.secondModifierKey?.[modifierKeyIndex];
+                            if(secondModifierKBValue){
+                                modifiersKeyMatch = activeModifierKeys[secondModifierKBValue]
+                                    && !otherModifierKeys.some((modif) => modif != secondModifierKBValue && activeModifierKeys[modif]);
+                            }
+                            else{
+                                //That is no second modifier, we cannot have any other modifier than the first; or no modifier at all;
+                                modifiersKeyMatch = (otherModifierKeys.length > 0) ? !otherModifierKeys.some((modif) => activeModifierKeys[modif]) : modifiersKeyMatch;
+                            }             
+
+                            // Now we know if modifiers are correct, we can return if the shortcut matches the keys hit
+                            return modifiersKeyMatch && menuItemShortcut.mainKey == event.key.toLowerCase();
+                        }
+                        
+                        // This menu entry has no shortcut, so definitely can't be matched
+                        return false;
+                    }                    
+                    else {
+                        return false;
+                    }
+                });
+
+                if(menuItemForKBShortcut){
+                    // We found one menu entry matching the hit keyboard shortcut, we simulate a click (which will close the menu) on the underlying <a>
+                    ((menuItemForKBShortcut as HTMLLIElement).children[0] as HTMLAnchorElement)?.click();
+                }
+                else if(event.key != "Enter" || (event.key == "Enter" && !isContextMenuItemSelected())){
+                    // Note: that's not an ideal way of using the Keyboard Event, but the source code for VueContext uses keycodes...
+                    activeContextMenu.dispatchEvent(new KeyboardEvent("keydown", {keyCode: 27}));
+                }
+                else{
+                    // An element from the menu is activated via "Enter", we don't interfere.
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return;
+            }
+            
+            // We need to register if the keyboard shortcut has been used to get the context menu
+            // so we set the flag here. It will be reset when the context menu actions are consumed.
+            // Case for allowing macOS to have a context menu shortcut:
+            if(this.appStore.selectedFrames.length > 0 &&  (event.key == " " || event.key.toLowerCase() == "enter") && !isContextMenuItemSelected()){
                 // Wait a bit to process keys before showing the context menu
                 setTimeout(() => {
                     this.appStore.isContextMenuKeyboardShortcutUsed = true;
                     this.handleContextMenu(new MouseEvent(""));
                 }, 200);
             }
-            
-            // We need to register if the keyboard shortcut has been used to get the context menu
-            // so we set the flag here. It will be reset when the context menu actions are consumed.
+            // Case for Windows context menu key   
             if(event.key.toLowerCase() == "contextmenu"){
                 this.appStore.isContextMenuKeyboardShortcutUsed  = true;
             }

@@ -166,6 +166,39 @@ export enum SelectAllFramesFuncDefScope {
     frame // some function frames are selected
 }
 
+export enum FrameContextMenuActionName {
+    cut,
+    copy,
+    downloadAsImage,
+    duplicate,
+    paste,
+    pasteAbove,
+    pasteBelow,
+    delete,
+    deleteOuter,
+    enable,
+    disable,
+}
+
+export enum ModifierKeyCode {
+     ctrl = "ctrl",
+     meta = "meta",
+     shift = "shift",
+     alt = "alt",
+}
+export interface FrameContextMenuShortcut {
+    // This interface represent a keyboard shortcut key for our frame context menus.
+    // The modifiers are set as string array in case a similar key have different names 
+    // across different OS, like "ctrl" for Windows and "meta" for macOS.
+    // When there are several entries for one modifier, the other modifier (if needed)
+    // should have the same number of entries, even if we duplicate some keys.
+    // BY CONVENTION ALL KEY NAMES ARE TO BE IN LOWER CASE HERE.
+    actionName: FrameContextMenuActionName,
+    firstModifierKey?: ModifierKeyCode[],
+    secondModifierKey?: ModifierKeyCode[],
+    mainKey: string,
+}
+
 export interface CurrentFrame {
     id: number;
     caretPosition: CaretPosition;
