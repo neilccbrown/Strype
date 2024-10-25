@@ -10,7 +10,7 @@ import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, get
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
-import {cloneDeep} from "lodash";
+import {cloneDeep, isEqual} from "lodash";
 import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
 import { nextTick } from "@vue/composition-api";
@@ -1183,8 +1183,15 @@ export const useStore = defineStore("app", {
         },
 
         setSlotTextCursors(anchorCursorInfos: SlotCursorInfos | undefined, focusCursorInfos: SlotCursorInfos | undefined){
-            Vue.set(this, "anchorSlotCursorInfos", anchorCursorInfos);
-            Vue.set(this, "focusSlotCursorInfos", focusCursorInfos);
+            // If we set a new object in these properties then it causes a lot of updates throughout
+            // the whole tree.  So we check if the two objects are (deep) equal before
+            // we update, to avoid unnecessary updates and rendersL
+            if (!isEqual(this.anchorSlotCursorInfos, anchorCursorInfos)) {
+                Vue.set(this, "anchorSlotCursorInfos", anchorCursorInfos);
+            }
+            if (!isEqual(this.focusSlotCursorInfos, focusCursorInfos)) {
+                Vue.set(this, "focusSlotCursorInfos", focusCursorInfos);
+            }
             if(!anchorCursorInfos || !focusCursorInfos){
                 // Force the selection on the page to be reset too
                 document.getSelection()?.removeAllRanges();
