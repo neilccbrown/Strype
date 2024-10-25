@@ -888,6 +888,8 @@ export default Vue.extend({
                         return;
                     }
                     this.insertSimpleTypedKey(event.key, stateBeforeChanges);
+                    // No need to do further processing as that method already checks for slots refactoring:
+                    return;
                 }
                 else{
                     // Brackets, quotes or operators have been typed. For operators:
