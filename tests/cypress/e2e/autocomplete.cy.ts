@@ -50,7 +50,7 @@ function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedC
 
 function withFrameId(inner : (frameId: number) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
-    cy.wait(200);
+    cy.wait(600);
     cy.get("#editor").then((eds) => {
         const ed = eds.get()[0];
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -199,7 +199,10 @@ describe("Built-ins", () => {
             cy.get(acIDSel).contains("Return the absolute value of the argument.");
             
             // Now complete and check content:
-            cy.get("body").type("s{enter}");
+            cy.get("body").type("s");
+            cy.wait(600);
+
+            cy.get("body").type("{enter}");
             assertState(frameId, "abs($)", "abs(x)");
         });
     });
@@ -517,6 +520,7 @@ describe("Modules", () => {
         // Trigger autocomplete, type "tim" then press enter to complete and right arrow to leave frame:
         cy.get("body").type("{ctrl} ");
         cy.get("body").type("tim");
+        cy.wait(600);
         cy.get("body").type("{enter}{rightarrow}");
         // Back down to main body, add a function frame and type "time." then trigger auto-complete:
         cy.get("body").type("{downarrow}{downarrow}");
@@ -551,6 +555,7 @@ describe("Modules", () => {
         // Trigger autocomplete (in first section), type "tim" and hit enter to auto-complete, then right arrow to go across to the second part of the frame:
         cy.get("body").type("{ctrl} ");
         cy.get("body").type("tim");
+        cy.wait(600);
         cy.get("body").type("{enter}{rightarrow}");
         // Put * in the second bit, then back down to main section, make a function frame and hit auto-complete:
         cy.get("body").type("*{rightarrow}");
@@ -590,7 +595,9 @@ describe("User-defined items", () => {
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel + " .popupContainer").should("be.visible");
             checkExactlyOneItem(acIDSel, MYFUNCS, "foo()");
-            cy.get("body").type("foo{enter}");
+            cy.get("body").type("foo");
+            cy.wait(600);
+            cy.get("body").type("{enter}");
             assertState(frameId, "foo($)");
         });
     });
@@ -1057,6 +1064,7 @@ describe("Parameter prompts", () => {
             }
             cy.get("body").type(" " + func.funcName);
             cy.get("body").type("{ctrl} ");
+            cy.wait(600);
             // There is a bug which only seems to happen in cypress where the selection
             // pings back to the start of the slot; I don't see this in a real browser
             // We compensate by moving the cursor back to the end with right arrow:
