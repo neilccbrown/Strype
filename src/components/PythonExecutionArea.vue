@@ -600,7 +600,11 @@ export default Vue.extend({
             targetContext?.restore();
             
             // Actually copy the resulting off-screen image to the DOM canvas:
-            domContext?.drawImage(c, 0, 0);
+            // When the graphics tab has never been selected, the off-screen image can be empty
+            // which gives an error:
+            if (c.width > 0 && c.height > 0) {
+                domContext?.drawImage(c, 0, 0);
+            }
         },
 
         playOneOffSound(audioFileName : string) : void {
