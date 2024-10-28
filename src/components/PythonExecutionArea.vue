@@ -30,10 +30,8 @@
             <div v-show="peaDisplayTabIndex==1" id="pythonTurtleContainerDiv" @wheel.stop>
                 <div id="pythonGraphicsContainer"><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv" @click.stop="graphicsCanvasClick"></div>
-                    <div>
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" :width="graphicsCanvasWidth" :height="graphicsCanvasHeight" @click.stop="graphicsCanvasClick"></canvas>
-                    </div>
                 </div>
+                <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas>
             </div>
             <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
                 <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
@@ -167,8 +165,23 @@ export default Vue.extend({
         // Setup Canvas:
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
         domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
-        targetCanvas = new OffscreenCanvas(domCanvas.width, domCanvas.height);
-        targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
+        // Need to resize off-screen canvas to match, if the on-screen canvas changes size: 
+        let adjustCanvasSize = function() {
+            // This confused me at first: the <canvas> has a width and height property.  These are initially set
+            // to 300 and 150 if you don't specify them.  They stay at these defaults even if the HTML <canvas> element
+            // changes its on-screen size, but it will then scale up the displayed image from 300 x 150 to whatever its
+            // in-page size is.  Which looks horrible if the sizes are different.  So we need to explicitly set the <canvas>
+            // width and height to be the on-page width and height to avoid this:
+            const realWidth = domCanvas.getBoundingClientRect().width;
+            const realHeight = domCanvas.getBoundingClientRect().height;
+            domCanvas.width = realWidth;
+            domCanvas.height = realHeight;
+            targetCanvas = new OffscreenCanvas(domCanvas.getBoundingClientRect().width, domCanvas.getBoundingClientRect().height);
+            targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
+        };
+        // Listen to size changes, and call now:
+        new ResizeObserver(adjustCanvasSize).observe(domCanvas);
+        adjustCanvasSize();
     },
 
     computed:{
@@ -760,6 +773,13 @@ export default Vue.extend({
         position: relative;
     }
     #pythonGraphicsContainer > * {
+        top: 0;
+        left: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+    }
+    #pythonGraphicsCanvas {
         top: 0;
         left: 0;
         position: absolute;
