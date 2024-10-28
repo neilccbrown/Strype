@@ -171,25 +171,29 @@ class Actor:
         self.say(text, font_size, max_width, max_height)
         _strype_graphics_internal.removeImageAfter(self.__say, seconds)
 
+
+def _round_and_clamp_0_255(number):
+    return min(max(int(round(number)), 0), 255)
+
 class Color:
     """
-    A Color class with members red, green, blue, alpha, in the range 0--1.
+    A Color class with members red, green, blue, alpha, in the range 0--255.
     """
     def __init__(self, r, g, b, a):
-        self.red = r
-        self.green = g
-        self.blue = b
-        self.alpha = a
+        self.red = int(r)
+        self.green = int(g)
+        self.blue = int(b)
+        self.alpha = int(a)
         
     def to_html(self):
         """
         Get the HTML version of this Color, in the format #RRGGBBAA where each pair is 2 hexadecimal digits.
         :return: The HTML version of this Color.
         """
-        r = round(self.red * 255)
-        g = round(self.green * 255)
-        b = round(self.blue * 255)
-        a = round(self.alpha * 255)
+        r = _round_and_clamp_0_255(self.red)
+        g = _round_and_clamp_0_255(self.green)
+        b = _round_and_clamp_0_255(self.blue)
+        a = _round_and_clamp_0_255(self.alpha)
         return "#{:02x}{:02x}{:02x}{:02x}".format(r, g, b, a) 
 
 class Dimension:

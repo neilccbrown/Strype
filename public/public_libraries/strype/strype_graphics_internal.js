@@ -141,10 +141,10 @@ var $builtinmodule = function(name)  {
         const ctx = img.getContext("2d");
         const p = ctx.getImageData(x, y, 1, 1);
         return new Sk.builtin.tuple([
-            new Sk.builtin.float_(p.data[0] / 255),
-            new Sk.builtin.float_(p.data[1] / 255),
-            new Sk.builtin.float_(p.data[2] / 255),
-            new Sk.builtin.float_(p.data[3] / 255)]);
+            new Sk.builtin.float_(p.data[0]),
+            new Sk.builtin.float_(p.data[1]),
+            new Sk.builtin.float_(p.data[2]),
+            new Sk.builtin.float_(p.data[3])]);
     });
     mod.canvas_setPixel = new Sk.builtin.func(function(img, x, y, colorTuple) {
         const ctx = img.getContext("2d");
