@@ -161,3 +161,13 @@ export function isMacOSPlatform(): boolean {
 export const strypeFileExtension = "spy";
 // For file names allow only A–Z a–z 0–9 _ - () spaces and unicode characters
 export const fileNameRegex = /^[\d\p{L} \-_()]+$/u;
+
+export function getDateTimeFormatted(dt: Date): string {
+    // Returned "YYYY-MM-DD_HH-mm-ss" format string representation of a date
+    const rawMonthOneIndexedVal = dt.getMonth() + 1;
+    const rawDayVal = dt.getDate();
+    const rawHoursVal = dt.getHours();
+    const rawMinsVal = dt.getMinutes();
+    const rawSecsVal = dt.getSeconds();
+    return `${dt.getFullYear()}-${((rawMonthOneIndexedVal) < 10) ? "0" + rawMonthOneIndexedVal : rawMonthOneIndexedVal }-${(rawDayVal < 10) ? "0" + rawDayVal : rawDayVal}_${(rawHoursVal < 10) ? "0" + rawHoursVal : rawHoursVal}-${(rawMinsVal < 10) ? "0" + rawMinsVal : rawMinsVal}-${(rawSecsVal < 10) ? "0" + rawSecsVal : rawSecsVal}`;
+}

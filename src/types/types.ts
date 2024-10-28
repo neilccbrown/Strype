@@ -1,6 +1,8 @@
 import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
+import scssVars  from "@/assets/style/_export.module.scss";
+
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
 // https://stackoverflow.com/questions/52258061/export-not-found-on-module
@@ -154,6 +156,47 @@ export enum CaretPosition {
     below = "caretBelow",
     dragAndDrop = "dnd", // this is a special case for handling the UI with drag and drop, see Frame.vue (hideCaretAtClick())
     none = "none",
+}
+
+export enum SelectAllFramesFuncDefScope {
+    none, // inside a function body, no frame is selected at all OR some frames are selected but not all
+    belowFunc, // below a function definition
+    functionsContainerBody, // inside the body of the function definitions container
+    wholeFunctionBody, // all frames for a function def body are selected
+    frame // some function frames are selected
+}
+
+export enum FrameContextMenuActionName {
+    cut,
+    copy,
+    downloadAsImage,
+    duplicate,
+    paste,
+    pasteAbove,
+    pasteBelow,
+    delete,
+    deleteOuter,
+    enable,
+    disable,
+}
+
+export enum ModifierKeyCode {
+     ctrl = "ctrl",
+     meta = "meta",
+     shift = "shift",
+     alt = "alt",
+}
+export interface FrameContextMenuShortcut {
+    // This interface represent a keyboard shortcut key for our frame context menus.
+    // The modifiers are set as string array in case a similar key have different names 
+    // across different OS, like "ctrl" for Windows and "meta" for macOS.
+    // When there are several entries for one modifier, the other modifier (if needed)
+    // should have the same number of entries, even if we duplicate some keys.
+    // BY CONVENTION ALL KEY NAMES ARE TO BE IN LOWER CASE HERE.
+    actionName: FrameContextMenuActionName,
+    firstModifierKey?: ModifierKeyCode[],
+    secondModifierKey?: ModifierKeyCode[],
+    mainKey: string,
 }
 
 export interface CurrentFrame {
@@ -517,28 +560,28 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.funccall,
         labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false}],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const BlankDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.blank,
         labels: [],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const ReturnDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.return,
         labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const GlobalDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.global,
         labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string}],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const VarAssignDefinition: FramesDefinitions = {
@@ -548,7 +591,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
             { label: " &#x21D0; ", defaultText: i18n.t("frame.defaultText.value") as string},
         ],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const BreakDefinition: FramesDefinitions = {
@@ -557,7 +600,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "break", showSlots: false, defaultText: "" },
         ],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const ContinueDefinition: FramesDefinitions = {
@@ -566,7 +609,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "continue", showSlots: false, defaultText: "" },
         ],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const RaiseDefinition: FramesDefinitions = {
@@ -575,7 +618,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
         ],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     const ImportDefinition: FramesDefinitions = {
@@ -587,7 +630,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
-        colour: "#CBD4C8",
+        colour: scssVars.nonMainCodeContainerBackground,
         draggableGroup: DraggableGroupTypes.imports,
         isImportFrame: true,
     };
@@ -602,7 +645,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
-        colour: "#CBD4C8",
+        colour: scssVars.nonMainCodeContainerBackground,
         draggableGroup: DraggableGroupTypes.imports,
         isImportFrame: true,
     };
@@ -611,7 +654,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
         labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
-        colour: "#F6F2E9",
+        colour: scssVars.mainCodeContainerBackground,
     };
 
     /*2) update the Defintions variable holding all the definitions */

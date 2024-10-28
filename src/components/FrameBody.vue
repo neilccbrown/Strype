@@ -227,7 +227,7 @@ export default Vue.extend({
 }
 
 .frame-body-container {
-    background-color: #F6F2E9;
+    background-color: $strype-main-code-container-background;
     margin-bottom: 4px;
     margin-top: 4px;
     margin-right: 4px;
