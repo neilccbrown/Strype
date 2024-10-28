@@ -1,6 +1,6 @@
 <template>
     <div id="app" class="container-fluid print-full-height">
-        <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}">
+        <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
             <div v-if="showAppProgress" class="app-progress-container">
                 <div class="progress">
                     <div 
@@ -608,6 +608,15 @@ export default Vue.extend({
                     this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: docSelection.anchorOffset},
                         {slotInfos: focusSlotInfo, cursorPos: docSelection.focusOffset});
                 }
+            }
+        },
+
+        handleOverlayRightClick(){
+            // When a right click occur on the overlay and the frame context menu is opened, we remove the menu and modality
+            const currrentFrameContextMenu = getActiveContextMenu();
+            if(currrentFrameContextMenu){
+                // Generate an "escape" hit to remove the menu, see (window "keydown" listener)
+                currrentFrameContextMenu.dispatchEvent(new KeyboardEvent("keydown", {keyCode: 27}));            
             }
         },
 
