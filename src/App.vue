@@ -985,7 +985,8 @@ html,body {
  }
 
 #app {
-    font-family: 'Source Sans Pro', sans-serif;
+    font-family: 'Source Sans 3', sans-serif;
+    font-optical-sizing: auto;
     font-size: 15px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
