@@ -161,6 +161,8 @@ var $builtinmodule = function(name)  {
         ctx.fill();
         ctx.stroke();
     });
+    
+    const sayFont="\"Klee One\", sans-serif";
 
     // Since this is quite expensive, we cache it in case users repeatedly redraw the same text:
     // The map can only really use string keys, so we assemble the key into a string of the format:
@@ -184,7 +186,7 @@ var $builtinmodule = function(name)  {
 
         // Minimum font size of 8 pixels:
         for (;fontSize >= 8; fontSize -= 1) {
-            ctx.font = `${fontSize}px sans-serif`;
+            ctx.font = `${fontSize}px ${sayFont}`;
             
             paragraphs.forEach((paragraph) => {
                 let currentLine = "";
@@ -245,7 +247,7 @@ var $builtinmodule = function(name)  {
             details = calculateTextToFit(ctx, text, fontSize, maxWidth, maxHeight);
             textMeasureCache.set(key, details);
         }
-        ctx.font = `${details.fontSize}px sans-serif`;
+        ctx.font = `${details.fontSize}px ${sayFont}`;
 
         // Render each line of text on the canvas at (x, y)
         for (let i = 0; i < details.lines.length; i++) {

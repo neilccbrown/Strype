@@ -3,6 +3,15 @@ import strype_graphics_input_internal as _strype_input_internal
 import math as _math
 import collections as _collections
 
+def in_bounds(x, y):
+    """
+    Checks if the given X, Y position is in the visible bounds of (-400,-300) inclusive to (400, 300) exclusive 
+    :param x: 
+    :param y: 
+    :return: A boolean indicating whether it is in the visible bounds
+    """
+    return -400 <= x < 400 and -300 <= y < 300
+
 class Actor:
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
@@ -53,7 +62,7 @@ class Actor:
     def move(self, amount):
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
-        self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] + amount * _math.sin(rot))
+        self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
     def turn(self, degrees):
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
     def is_touching(self, actor):
@@ -74,7 +83,7 @@ class Actor:
         img = EditableImage(-1, -1)
         img._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return img
-    def say(self, text, font_size = 16, max_width = 300, max_height = 200):
+    def say(self, text, font_size = 20, max_width = 300, max_height = 200):
         """
         Add a speech bubble next to the actor with the given text.  The only required parameter is the
         text, all the others can be omitted.  The text will be wrapped if it reaches max_width (unless you
@@ -122,7 +131,27 @@ class Actor:
             scale = _strype_graphics_internal.getImageScale(self.__id)
             width = our_dim['width'] * scale
             height = our_dim['height'] * scale
-            _strype_graphics_internal.setImageLocation(self.__say, self.get_x() + width/2 + say_dim['width']/2, self.get_y() - height/2 - say_dim['height']/2)
+            # Based on where speech bubbles generally appear, we try the following in order:
+            placements = [
+                    [1, 1],  # Above right
+                    [-1, 1], # Above left
+                    [0, 1],  # Above centered
+                    [1, 0],  # Right
+                    [-1, 0], # Left
+                    [1, -1], # Below right
+                    [-1, -1],# Below left
+                    [-1, 0], # Below
+                    [0, 0],  # Centered
+                ]
+            for p in placements:
+                # Note, we halve the width/height of the actor because we're going from centre of actor,
+                # but we do not halve the width/height of the say here because we want to see if the whole bubble fits:
+                fits = in_bounds(self.get_x() + p[0]*(width/2 + say_dim['width']), self.get_y() + p[1]*(height/2 + say_dim['height']))
+                # If it fits or its our last fallback:
+                if fits or p == [0,0] :
+                    # Here we do halve both widths/heights because we are placing the centre:
+                    _strype_graphics_internal.setImageLocation(self.__say, self.get_x() + p[0]*(width/2 + say_dim['width']/2), self.get_y() + p[1]*(height/2 + say_dim['height']/2))
+                    break
         else:
             self.__say = None
 

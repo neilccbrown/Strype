@@ -30,10 +30,8 @@
             <div v-show="peaDisplayTabIndex==1" id="pythonTurtleContainerDiv" @wheel.stop>
                 <div id="pythonGraphicsContainer"><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv" @click.stop="graphicsCanvasClick"></div>
-                    <div>
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" :width="graphicsCanvasWidth" :height="graphicsCanvasHeight" @click.stop="graphicsCanvasClick"></canvas>
-                    </div>
                 </div>
+                <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas>
             </div>
             <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
                 <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
@@ -64,6 +62,14 @@ const pressedKeys = new Map<string, boolean>();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
 
+// We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
+// given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
+// This means that if you draw an image say 400x300 pixels it will always take up a quarter of the canvas
+// (well, a half of the canvas in each dimension) no matter what size the user's window is or whether they've
+// expanded the canvas
+const graphicsCanvasLogicalWidth = 800;
+const graphicsCanvasLogicalHeight = 600;
+
 export default Vue.extend({
     name: "PythonExecutionArea",
 
@@ -79,8 +85,7 @@ export default Vue.extend({
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             isRunningStrypeGraphics : false,
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
-            graphicsCanvasWidth : 800,
-            graphicsCanvasHeight : 600,
+            
         };
     },
     
@@ -167,8 +172,23 @@ export default Vue.extend({
         // Setup Canvas:
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
         domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
-        targetCanvas = new OffscreenCanvas(domCanvas.width, domCanvas.height);
-        targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
+        // Need to resize off-screen canvas to match, if the on-screen canvas changes size: 
+        let adjustCanvasSize = function() {
+            // This confused me at first: the <canvas> has a width and height property.  These are initially set
+            // to 300 and 150 if you don't specify them.  They stay at these defaults even if the HTML <canvas> element
+            // changes its on-screen size, but it will then scale up the displayed image from 300 x 150 to whatever its
+            // in-page size is.  Which looks horrible if the sizes are different.  So we need to explicitly set the <canvas>
+            // width and height to be the on-page width and height to avoid this:
+            const realWidth = domCanvas.getBoundingClientRect().width;
+            const realHeight = domCanvas.getBoundingClientRect().height;
+            domCanvas.width = realWidth;
+            domCanvas.height = realHeight;
+            targetCanvas = new OffscreenCanvas(domCanvas.getBoundingClientRect().width, domCanvas.getBoundingClientRect().height);
+            targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
+        };
+        // Listen to size changes, and call now:
+        new ResizeObserver(adjustCanvasSize).observe(domCanvas);
+        adjustCanvasSize();
     },
 
     computed:{
@@ -524,13 +544,44 @@ export default Vue.extend({
             }
         },
         redrawCanvas() : void {
-            if (targetCanvas != null) {
-                targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+            const c = targetCanvas;
+            if (c == null) {
+                // We can't redraw if there's no canvas
+                return;
             }
+            // We clear the full canvas size including the bit which might not be drawn on
+            // because of the canvas aspect ratio meaning the whole image is not used:
+            targetContext?.clearRect(0, 0, c.width, c.height);
+            
+            // The HTML canvas has 0,0 in the top left and 800, 600 in the bottom right (i.e. positive Y downward)
+            // Our actors have positions where 0,0 is in the middle, and positive Y upward
+            // We can't do this by using translate etc on targetContent because to flip the Y axis we'd need to
+            // use scale() which would flip the Y axis and thus mirror all the images vertically.  So we need to
+            // translate ourselves.  All the examples here assume a width of 800 but we don't hardcode it.
+            const mapX = function(x : number) : number {
+                // Maps e.g. -50 to 350, 0 to 400, 50 to 450,
+                return x + graphicsCanvasLogicalWidth / 2;
+            };
+            const mapY = function(y : number) : number {
+                // Maps e.g. -50 to 450, 0 to 400, 50 to 350,
+                return graphicsCanvasLogicalHeight / 2 - y;
+            };
+            // Also: we must scale the canvas from the logical 800x600 to its actual on-screen size.  This
+            // we can do with a scale transformation.  We find which dimension must shrink most (smallest scale value)
+            // then use that for both scale dimensions so we preserve the aspect ratio:
+            const scaleToFitX = c.width / graphicsCanvasLogicalWidth;
+            const scaleToFitY = c.height / graphicsCanvasLogicalHeight;
+            const scaleToFit = Math.min(scaleToFitX, scaleToFitY);
+            targetContext?.save();
+            targetContext?.scale(scaleToFit, scaleToFit);
+            console.log("Scaling: " + scaleToFit + " based on " + scaleToFitX + " and " + scaleToFitY + " based on " + c.width + " and " + c.height);
+            
             for (let obj of persistentImageManager.getPersistentImages()) {
                 if (obj.rotation != 0) {
+                    // These translations are in terms of the 0,0 top left system, but we call mapX/mapY
+                    // on the coords we pass in, so it works out:
                     targetContext?.save();
-                    targetContext?.translate(obj.x, obj.y);
+                    targetContext?.translate(mapX(obj.x), mapY(obj.y));
                     targetContext?.rotate(obj.rotation * Math.PI / 180);
                     targetContext?.scale(obj.scale, obj.scale);
                     targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
@@ -540,14 +591,19 @@ export default Vue.extend({
                     // Simpler case; no rotation means we can use single call:
                     let dwidth = obj.scale * obj.img.width;
                     let dheight = obj.scale * obj.img.height;
-                    targetContext?.drawImage(obj.img, obj.x - dwidth*0.5, obj.y-dheight*0.5, dwidth, dheight);
+                    targetContext?.drawImage(obj.img, mapX(obj.x) - dwidth*0.5, mapY(obj.y)-dheight*0.5, dwidth, dheight);
                 }
                 obj.dirty = false;
             }
             persistentImageManager.resetDirty();
-            // Actually copy it to the DOM canvas:
-            if (targetCanvas != null) {
-                domContext?.drawImage(targetCanvas, 0, 0);
+            // Restore the scale:
+            targetContext?.restore();
+            
+            // Actually copy the resulting off-screen image to the DOM canvas:
+            // When the graphics tab has never been selected, the off-screen image can be empty
+            // which gives an error:
+            if (c.width > 0 && c.height > 0) {
+                domContext?.drawImage(c, 0, 0);
             }
         },
 
@@ -760,6 +816,13 @@ export default Vue.extend({
         position: relative;
     }
     #pythonGraphicsContainer > * {
+        top: 0;
+        left: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+    }
+    #pythonGraphicsCanvas {
         top: 0;
         left: 0;
         position: absolute;
