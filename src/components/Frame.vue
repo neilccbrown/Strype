@@ -28,8 +28,8 @@
             >
                 <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
                     Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
-                <vue-context :id="getFrameContextMenuUIID" ref="menu" v-show="allowContextMenu" @close="appStore.isContextMenuKeyboardShortcutUsed=false">
-                    <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`">
+                <vue-context :id="getFrameContextMenuUIID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
+                    <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName">
                         <hr v-if="menuItem.type === 'divider'" />
                         <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
                     </li>
@@ -104,7 +104,7 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
@@ -155,7 +155,7 @@ export default Vue.extend({
     data: function () {
         return {
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
-            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider"}[],
+            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName}[],
             // Flag to indicate a frame is selected via the context menu (differs from a user selection)
             contextMenuEnforcedSelect: false,
             // And an associated observer used to check when the menu made hidden to change the flag above
@@ -414,6 +414,15 @@ export default Vue.extend({
             Vue.set(this.appStore.frameObjects[this.frameId],"runTimeError", "");
         },
 
+        handleContextMenuOpened() {
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: true}));
+        },
+
+        handleContextMenuClosed(){
+            this.appStore.isContextMenuKeyboardShortcutUsed=false;
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
+        },
+
         handleContextMenuHover(event: MouseEvent) {
             this.$root.$emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
         },
@@ -441,8 +450,8 @@ export default Vue.extend({
             }
 
             this.frameContextMenuItems = [
-                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut},
-                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy},
+                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut},
+                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy},
                 {name: this.$i18n.t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
                 {name: this.$i18n.t("contextMenu.duplicate") as string, method: this.duplicate},
                 {name: "", method: () => {}, type: "divider"},
@@ -451,7 +460,7 @@ export default Vue.extend({
                 {name: "", method: () => {}, type: "divider"},
                 {name: this.$i18n.t("contextMenu.disable") as string, method: this.disable},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete},
+                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete},
                 {name: this.$i18n.t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
 
             // Not all frames should be duplicated (e.g. Else)
@@ -570,6 +579,23 @@ export default Vue.extend({
                 this.$root.$emit(CustomEventTypes.requestCaretContextMenuClose);
             }
 
+            // When a frame context menu is opened by click, we also move the frame cursor below, if the current frame cursor isn't 
+            // already part of the clicked selection
+            if(this.appStore.selectedFrames.length == 0 || !this.isPartOfSelection) {
+                if(this.frameType.isJointFrame) {
+                    // For a joint frame, if there is a sibling after that frame we go in its body, if that's the last then we go below the root frame
+                    const jointRootFrame = this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].jointParentId];
+                    const indexOfJointFrame = jointRootFrame.jointFrameIds.indexOf(this.frameId);
+                    const isJointFrameLast = (indexOfJointFrame == (jointRootFrame.jointFrameIds.length - 1));
+                    const newFramePos = (isJointFrameLast)
+                        ? {id: jointRootFrame.id, caretPosition: CaretPosition.below}
+                        : {id: jointRootFrame.jointFrameIds[indexOfJointFrame + 1], caretPosition: CaretPosition.body};
+                    this.appStore.setCurrentFrame(newFramePos);
+                }
+                else{
+                    this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below});
+                }
+            }
             // We add a hover event on the delete menu entries to show cue in the UI on what the entry will act upon
             // need to be done in the next tick to make sure the menu has been generated.
             // The other entries are all ignored, as we will show a selection when the menu opens (if there is no selection already for that frame)
