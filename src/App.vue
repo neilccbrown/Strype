@@ -1,7 +1,7 @@
 <template>
-    <div id="app" class="container-fluid">
-        <div v-if="showAppProgress" class="app-progress-pane">
-            <div class="app-progress-container">
+    <div id="app" class="container-fluid print-full-height">
+        <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
+            <div v-if="showAppProgress" class="app-progress-container">
                 <div class="progress">
                     <div 
                         class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
@@ -27,8 +27,8 @@
             <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
                 <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
-                    <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos">
-                        <div class="top">
+                    <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                        <div class="top no-print">
                             <MessageBanner 
                                 v-if="showMessage"
                             />
@@ -38,12 +38,12 @@
                                 :id="menuUIID" 
                                 @app-showprogress="applyShowAppProgress"
                                 @app-reset-project="resetStrypeProject"
-                                class="noselect"
+                                class="noselect no-print"
                             />
                             <div class="col">
                                 <div 
                                     :id="editorUIID" 
-                                    :class="{'editor-code-div noselect':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
+                                    :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
                                     @click.self="onEditorClick"
                                 >
                                     <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
@@ -72,7 +72,7 @@
                         </div>
                     </div>
                 </Pane>
-                <Pane key="2" size="34">
+                <Pane key="2" size="34" class="no-print">
                     <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
                 </Pane>
             </SplitPanes>
@@ -101,8 +101,8 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId } from "./helpers/editor";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -116,6 +116,9 @@ import CaretContainer from "./components/CaretContainer.vue";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "./autocompletion/ac-skulpt";
 import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
+
+let autoSaveTimerId = -1;
+let autoSaveState : AutoSaveFunction[] = [];
 
 //////////////////////
 //     Component    //
@@ -137,14 +140,11 @@ export default Vue.extend({
 
     data: function() {
         return {
-            newFrameType: "",
-            currentParentId: 0,
             showAppProgress: false,
+            setAppNotOnTop: false,
             progressbarMessage: "",
-            autoSaveTimerId: -1,
-            resetStrypeProjectFlag:false,
+            resetStrypeProjectFlag: false,
             isExpandedPythonExecArea: false,
-            autoSaveState: [] as AutoSaveFunction[],
         };
     },
 
@@ -226,7 +226,7 @@ export default Vue.extend({
     },
 
     created() {
-        this.autoSaveState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
+        autoSaveState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -247,7 +247,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                this.autoSaveState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
+                autoSaveState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -272,16 +272,93 @@ export default Vue.extend({
         );
 
         window.addEventListener("keydown", (event: KeyboardEvent) => {
-            if(this.appStore.selectedFrames.length > 0 && (event.key == " " || event.key.toLowerCase() == "enter") && !isContextMenuItemSelected()){
+            const activeContextMenu = getActiveContextMenu();
+            if(activeContextMenu != null){
+                // All key hits in the context menu should result in the menu closing.
+                // If a keyboard shortcut of the menu has been used, we process it.
+                // (Enter is already handled when a menu item is selected, so we don't worry about it.)
+                const activeModifierKeys = {[ModifierKeyCode.ctrl]: event.ctrlKey, [ModifierKeyCode.meta]: event.metaKey, [ModifierKeyCode.shift]: event.shiftKey, [ModifierKeyCode.alt]: event.altKey};
+                const menuItemForKBShortcut = Array.from(activeContextMenu.children).find((menuItemEl) => {
+                    const menuItemActionName = menuItemEl.getAttribute("action-name");
+                    if(menuItemActionName){
+                        const menuItemShortcut = frameContextMenuShortcuts.find((frameCtxtMenuShorcut) => frameCtxtMenuShorcut.actionName.toString() == menuItemActionName);
+                        if(menuItemShortcut) {
+                            // Look up keys, if no modifier is defined at all, then the match for modifier is true.
+                            let modifiersKeyMatch = (menuItemShortcut?.firstModifierKey == undefined);
+                            let modifierKeyIndex = 0;
+
+                            // Check first key modifier
+                            const otherModifierKeys = [] as ModifierKeyCode[];
+                            for(;modifierKeyIndex < ((menuItemShortcut?.firstModifierKey?.length) ?? 0); modifierKeyIndex++){
+                                const firstModifierKBValue = (menuItemShortcut.firstModifierKey as ModifierKeyCode[])[modifierKeyIndex];
+                                modifiersKeyMatch = activeModifierKeys[firstModifierKBValue];
+                                Object.values(ModifierKeyCode).forEach((modif) => {
+                                    if(modif != firstModifierKBValue){
+                                        otherModifierKeys.push(modif);
+                                    }
+                                });
+                                if(modifiersKeyMatch) {
+                                    break;
+                                }
+                                else{
+                                    otherModifierKeys.splice(0);
+                                }
+                            }
+
+                            // Check the second key modifier: if there was a first key modifier, we need to that if a second modifier is defined, 
+                            // the key combination matches both modifiers - and that if there is no second modifier then no extra combination is hit.
+                            const secondModifierKBValue = menuItemShortcut.secondModifierKey?.[modifierKeyIndex];
+                            if(secondModifierKBValue){
+                                modifiersKeyMatch = activeModifierKeys[secondModifierKBValue]
+                                    && !otherModifierKeys.some((modif) => modif != secondModifierKBValue && activeModifierKeys[modif]);
+                            }
+                            else{
+                                //That is no second modifier, we cannot have any other modifier than the first; or no modifier at all;
+                                modifiersKeyMatch = (otherModifierKeys.length > 0) ? !otherModifierKeys.some((modif) => activeModifierKeys[modif]) : modifiersKeyMatch;
+                            }             
+
+                            // Now we know if modifiers are correct, we can return if the shortcut matches the keys hit
+                            return modifiersKeyMatch && menuItemShortcut.mainKey == event.key.toLowerCase();
+                        }
+                        
+                        // This menu entry has no shortcut, so definitely can't be matched
+                        return false;
+                    }                    
+                    else {
+                        return false;
+                    }
+                });
+
+                if(menuItemForKBShortcut){
+                    // We found one menu entry matching the hit keyboard shortcut, we simulate a click (which will close the menu) on the underlying <a>
+                    ((menuItemForKBShortcut as HTMLLIElement).children[0] as HTMLAnchorElement)?.click();
+                }
+                else if(event.key != "Enter" || (event.key == "Enter" && !isContextMenuItemSelected())){
+                    // Note: that's not an ideal way of using the Keyboard Event, but the source code for VueContext uses keycodes...
+                    activeContextMenu.dispatchEvent(new KeyboardEvent("keydown", {keyCode: 27}));
+                }
+                else{
+                    // An element from the menu is activated via "Enter", we don't interfere.
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return;
+            }
+            
+            // We need to register if the keyboard shortcut has been used to get the context menu
+            // so we set the flag here. It will be reset when the context menu actions are consumed.
+            // Case for allowing macOS to have a context menu shortcut:
+            if(this.appStore.selectedFrames.length > 0 &&  (event.key == " " || event.key.toLowerCase() == "enter") && !isContextMenuItemSelected()){
                 // Wait a bit to process keys before showing the context menu
                 setTimeout(() => {
                     this.appStore.isContextMenuKeyboardShortcutUsed = true;
                     this.handleContextMenu(new MouseEvent(""));
                 }, 200);
             }
-            
-            // We need to register if the keyboard shortcut has been used to get the context menu
-            // so we set the flag here. It will be reset when the context menu actions are consumed.
+            // Case for Windows context menu key   
             if(event.key.toLowerCase() == "contextmenu"){
                 this.appStore.isContextMenuKeyboardShortcutUsed  = true;
             }
@@ -324,7 +401,11 @@ export default Vue.extend({
             const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos) : ("caret_"+this.appStore.currentFrame.caretPosition+"_of_frame_"+this.appStore.currentFrame.id);
             document.getElementById(htmlElementToShowId)?.scrollIntoView();
         }, 1000);
-       
+
+        // Add an event listener to put the app not on top (for an element to be modal) or reset it to normal
+        document.addEventListener(CustomEventTypes.requestAppNotOnTop, (event) => {
+            this.setAppNotOnTop = (event as CustomEvent).detail;
+        });       
     },
 
     destroyed() {
@@ -369,30 +450,30 @@ export default Vue.extend({
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
-            window.clearInterval(this.autoSaveTimerId);
-            const asfEntry = this.autoSaveState.find((asfEntry) => (asfEntry.name == asf.name));
+            window.clearInterval(autoSaveTimerId);
+            const asfEntry = autoSaveState.find((asfEntry) => (asfEntry.name == asf.name));
             if(asfEntry){
                 // There is already some function set for that type of autosave, we just update the function
                 asfEntry.function = asf.function;
             }
             else{
-                // Nothing yet set for this type of autosave, we add the entry this.autoSaveState
-                this.autoSaveState.push(asf);
+                // Nothing yet set for this type of autosave, we add the entry autoSaveState
+                autoSaveState.push(asf);
             }
             this.setAutoSaveState();
         });
 
         this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (asfName: string) => {           
-            const toDeleteIndex = this.autoSaveState.findIndex((asf) => asf.name == asfName);
+            const toDeleteIndex = autoSaveState.findIndex((asf) => asf.name == asfName);
             if(toDeleteIndex > -1){
-                window.clearInterval(this.autoSaveTimerId);
-                this.autoSaveState.splice(toDeleteIndex, 1);
+                window.clearInterval(autoSaveTimerId);
+                autoSaveState.splice(toDeleteIndex, 1);
                 this.setAutoSaveState();
             }            
         });
 
         // Listen to event for requesting the autosave now
-        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => this.autoSaveState.forEach((asf) => asf.function(saveReason)));
+        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => autoSaveState.forEach((asf) => asf.function(saveReason)));
 
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
@@ -401,8 +482,8 @@ export default Vue.extend({
 
     methods: {
         setAutoSaveState() {
-            this.autoSaveTimerId = window.setInterval(() => {
-                this.autoSaveState.forEach((asf) => asf.function(SaveRequestReason.autosave));
+            autoSaveTimerId = window.setInterval(() => {
+                autoSaveState.forEach((asf) => asf.function(SaveRequestReason.autosave));
             }, autoSaveFreqMins * 60000);
         },
         
@@ -411,7 +492,7 @@ export default Vue.extend({
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
                 // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                if(reason==SaveRequestReason.loadProject && this.autoSaveState.length == 1){
+                if(reason==SaveRequestReason.loadProject && autoSaveState.length == 1){
                     this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }
             }
@@ -435,7 +516,7 @@ export default Vue.extend({
         resetStrypeProject(){
             // To reset the project we:
             // 1) stop the autosave timer
-            window.clearInterval(this.autoSaveTimerId);
+            window.clearInterval(autoSaveTimerId);
             // 2) toggle the flag to disable saving on unload
             this.resetStrypeProjectFlag = true;
             // 3) delete the WebStorage key that refers to the current autosaved project
@@ -526,6 +607,15 @@ export default Vue.extend({
                     this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: docSelection.anchorOffset},
                         {slotInfos: focusSlotInfo, cursorPos: docSelection.focusOffset});
                 }
+            }
+        },
+
+        handleOverlayRightClick(){
+            // When a right click occur on the overlay and the frame context menu is opened, we remove the menu and modality
+            const currrentFrameContextMenu = getActiveContextMenu();
+            if(currrentFrameContextMenu){
+                // Generate an "escape" hit to remove the menu, see (window "keydown" listener)
+                currrentFrameContextMenu.dispatchEvent(new KeyboardEvent("keydown", {keyCode: 27}));            
             }
         },
 
@@ -842,6 +932,31 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+// The @media print classes apply only for the "print" media, that is on the print preview of the browser
+@media print {
+    .print-full-height  {
+        height: auto !important;
+        max-height: none !important;
+        overflow: auto !important;
+    }
+
+    .no-print{
+        display: none
+    }
+}
+
+// The @media screen classes apply only for the "screen" media, that is what is displayed in the broswser.
+// We only need to put classes here that would conflict with the rendering for printing.
+@media screen {
+    .cropped-editor-code-div {
+        max-height: 50vh;
+    }
+
+    .full-height-editor-code-div {
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+}
 
 html,body {
     margin: 0px;
@@ -849,13 +964,17 @@ html,body {
     background-color: #bbc6b6 !important;
 }
 
-.app-progress-pane {
+.app-overlay-pane  {
     width: 100%;
     height: 100vh;
-    background-color: rgba($color: gray, $alpha: 0.7);
     position: absolute;
     left: 0px;
     z-index: 5000;
+
+}
+
+.app-progress-pane {
+    background-color: rgba($color: gray, $alpha: 0.7);
 }
 
 .app-progress-container {
@@ -884,15 +1003,6 @@ html,body {
 
 .editor-code-div {
     overflow-y: auto;
-}
-
-.cropped-editor-code-div {
-    max-height: 50vh;
-}
-
-.full-height-editor-code-div {
-    height: 100vh !important;
-    max-height: 100vh !important;
 }
 
 .top {
@@ -930,7 +1040,7 @@ $divider-grey: darken($background-grey, 15%);
     margin:0;
     padding: 0;
     min-width:10rem;
-    z-index:1500;
+    z-index:6000;
     position:fixed;
     list-style:none;
     max-height:calc(100% - 50px);
