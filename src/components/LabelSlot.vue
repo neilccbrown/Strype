@@ -68,7 +68,7 @@ import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
-import { cloneDeep } from "lodash";
+import { cloneDeep, debounce } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import App from "@/App.vue";
@@ -120,6 +120,12 @@ export default Vue.extend({
 
     beforeDestroy() {
         this.appStore.removePreCompileErrors(this.UIID);
+    },
+    
+    created() {
+        // Stop updateAC firing until 500ms after last time it is requested.
+        // More efficient than running on every keystroke:
+        this.updateAC = debounce(this.updateAC, 500, {trailing: true});
     },
 
     data: function() {
@@ -422,6 +428,9 @@ export default Vue.extend({
         },
         
         updateAC() : void {
+            // Note: code in created() debounces this function to stop it running too often
+            // You cannot assume it has run just after you called it.
+            
             const frame: FrameObject = this.appStore.frameObjects[this.frameId];
             const selectionStart = getFocusedEditableSlotTextSelectionStartEnd(this.UIID).selectionStart;
 
@@ -879,6 +888,8 @@ export default Vue.extend({
                         return;
                     }
                     this.insertSimpleTypedKey(event.key, stateBeforeChanges);
+                    // No need to do further processing as that method already checks for slots refactoring:
+                    return;
                 }
                 else{
                     // Brackets, quotes or operators have been typed. For operators:
