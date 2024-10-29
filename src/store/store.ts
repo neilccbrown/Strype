@@ -1592,7 +1592,14 @@ export const useStore = defineStore("app", {
         },
 
         unselectAllFrames() {
-            this.selectedFrames.splice(0,this.selectedFrames.length);
+            // Note: .splice changes the content and calls all listeners, even if
+            // it has no practical effect (i.e. even if the array was already empty).  So it's
+            // very important we don't call it unless we actually need to (i.e. unless there is
+            // something in the array), because a change will cause everything reactive which depends
+            // on this to update:
+            if (this.selectedFrames.length > 0) {
+                this.selectedFrames.splice(0,this.selectedFrames.length);
+            }
         },
 
         flushCopiedFrames(){
