@@ -119,7 +119,7 @@ var $builtinmodule = function(name)  {
         return c;
     });
     mod.getCanvasDimensions = new Sk.builtin.func(function(img) {
-        return new Sk.builtin.tuple([img.width, img.height]);
+        return new Sk.builtin.tuple([Sk.ffi.remapToPy(img.width), Sk.ffi.remapToPy(img.height)]);
     });
     mod.canvas_fillRect = new Sk.builtin.func(function(img, x, y, width, height) {
         const ctx = img.getContext("2d");
@@ -141,15 +141,15 @@ var $builtinmodule = function(name)  {
         const ctx = img.getContext("2d");
         const p = ctx.getImageData(x, y, 1, 1);
         return new Sk.builtin.tuple([
-            new Sk.builtin.float_(p.data[0]),
-            new Sk.builtin.float_(p.data[1]),
-            new Sk.builtin.float_(p.data[2]),
-            new Sk.builtin.float_(p.data[3])]);
+            new Sk.builtin.int_(p.data[0]),
+            new Sk.builtin.int_(p.data[1]),
+            new Sk.builtin.int_(p.data[2]),
+            new Sk.builtin.int_(p.data[3])]);
     });
     mod.canvas_setPixel = new Sk.builtin.func(function(img, x, y, colorTuple) {
         const ctx = img.getContext("2d");
         const p = Sk.ffi.remapToJs(colorTuple);
-        ctx.putImageData(new ImageData(new Uint8ClampedArray([p[0] * 255, p[1] * 255, p[2] * 255, p[3] * 255]), 1, 1), x, y);
+        ctx.putImageData(new ImageData(new Uint8ClampedArray([p[0], p[1], p[2], p[3]]), 1, 1), x, y);
     });
     mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
         const ctx = dest.getContext("2d");
@@ -157,7 +157,18 @@ var $builtinmodule = function(name)  {
     }); 
     mod.canvas_roundedRect = new Sk.builtin.func(function(img, x, y, width, height, cornerSize) {
         const ctx = img.getContext("2d");
+        ctx.beginPath();
         ctx.roundRect(x, y, width, height, Sk.ffi.remapToJs(cornerSize));
+        ctx.fill();
+        ctx.stroke();
+    });
+    const toRadians = function(deg) {
+        return deg * Math.PI / 180;
+    };
+    mod.canvas_arc = new Sk.builtin.func(function(img, x, y, width, height, angleStart, angleDelta) {
+        const ctx = img.getContext("2d");
+        ctx.beginPath();
+        ctx.ellipse(x, y, width, height, 0, toRadians(angleStart), toRadians(angleStart + angleDelta), false);
         ctx.fill();
         ctx.stroke();
     });

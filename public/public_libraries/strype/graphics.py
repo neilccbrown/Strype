@@ -180,10 +180,10 @@ class Color:
     A Color class with members red, green, blue, alpha, in the range 0--255.
     """
     def __init__(self, r, g, b, a):
-        self.red = int(r)
-        self.green = int(g)
-        self.blue = int(b)
-        self.alpha = int(a)
+        self.red = min(255, max(0, int(r)))
+        self.green = min(255, max(0, int(g)))
+        self.blue = min(255, max(0, int(b)))
+        self.alpha = min(255, max(0, int(a)))
         
     def to_html(self):
         """
@@ -288,6 +288,25 @@ class EditableImage:
         :param corner_size: The radius of the corners of the rounded rectangle
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, corner_size)
+    def arc(self, centreX, centreY, width, height, angle_start, angle_amount):
+        """
+        Draws an arc (a part of an ellipse, an ellipse being a circle with a width than can be different than height).
+        Imagine an ellipse with a given centre position and width and height.  The `angle_start` parameter
+        is the angle from the centre to the start of the arc, in degrees (0 points to the right, positive values go clockwise),
+        and the `angle_amount` is the amount of degrees to travel (positive goes clockwise, negative goes anti-clockwise) to
+        the end point.
+        
+        The arc will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
+        
+        :param centreX: 
+        :param centreY: 
+        :param width: 
+        :param height: 
+        :param angle_start: 
+        :param angle_amount: 
+        :return: 
+        """
+        _strype_graphics_internal.canvas_arc(self.__image, centreX, centreY, width, height, angle_start, angle_amount)
 
 def load_image(filename):
     """
