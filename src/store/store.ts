@@ -2519,7 +2519,7 @@ export const useStore = defineStore("app", {
 
         // This method can be used to copy a frame to a position.
         // This can be a paste event or a duplicate event.
-        copyFrameToPosition(payload: {frameId?: number; newParentId: number; newIndex: number}) {
+        copyFrameToPosition(payload: {frameId?: number; newParentId: number; newIndex: number}, skipDisableCheck?: boolean) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             
             const isPasteOperation: boolean = (payload.frameId === undefined);
@@ -2569,7 +2569,7 @@ export const useStore = defineStore("app", {
             this.updateNextAvailableId();
 
             //if we do a paste, update the pasted frames' "isDisabled" property solely based on the parent's property
-            if(isPasteOperation){
+            if(isPasteOperation && !skipDisableCheck){
                 this.doChangeDisableFrame(
                     {frameId: topFrame.id, isDisabling: this.frameObjects[payload.newParentId].isDisabled, ignoreEnableFromRoot: true}
                 );
@@ -2583,7 +2583,7 @@ export const useStore = defineStore("app", {
 
         // This method can be used to copy the selected frames to a position.
         // This can be a paste event or a duplicate event.
-        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}, ignoreStateBackup?: boolean) {
+        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}, ignoreStateBackup?: boolean, skipDisableCheck?: boolean) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             // -100 is chosen so that TS won't complain for non-initialised variable
             let newIndex = payload.newIndex??-100;
@@ -2652,7 +2652,7 @@ export const useStore = defineStore("app", {
             this.updateNextAvailableId();
 
             //if we do a paste, update the pasted frames' "isDisabled" property solely based on the parent's property
-            if(!areWeDuplicating){
+            if(!areWeDuplicating && !skipDisableCheck){
                 topLevelCopiedFrames.forEach( (id) =>
                     this.doChangeDisableFrame(
                         {
@@ -2671,7 +2671,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition}) {
+        pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition}, skipDisableCheck?: boolean) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const isCopiedJointFrame = this.copiedFrames[this.copiedFrameId].frameType.isJointFrame;
 
@@ -2713,11 +2713,12 @@ export const useStore = defineStore("app", {
                 {
                     newParentId: pasteToParentId,
                     newIndex: index,
-                }
+                },
+                skipDisableCheck
             );
         },
 
-        pasteSelection(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}) {
+        pasteSelection(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}, skipDisableCheck?: boolean) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const areCopiedJointFrames = this.copiedFrames[this.copiedSelectionFrameIds[0]].frameType.isJointFrame;
             
@@ -2766,7 +2767,8 @@ export const useStore = defineStore("app", {
                     newParentId: pasteToParentId,
                     newIndex: index,
                 },
-                payload.ignoreStateBackup
+                payload.ignoreStateBackup,
+                skipDisableCheck
             );
         },
 
