@@ -268,13 +268,14 @@ export default Vue.extend({
             }
         },
         
-        doPaste() : void {
+        doPaste(skipDisableCheck?: boolean) : void {
             if(this.appStore.isSelectionCopied){
                 this.appStore.pasteSelection(
                     {
                         clickedFrameId: this.frameId,
                         caretPosition: this.caretAssignedPosition,
-                    }
+                    },
+                    skipDisableCheck
                 );
             }
             else {
@@ -282,7 +283,8 @@ export default Vue.extend({
                     {
                         clickedFrameId: this.frameId,
                         caretPosition: this.caretAssignedPosition,
-                    }
+                    },
+                    skipDisableCheck
                 );
             }
         },
