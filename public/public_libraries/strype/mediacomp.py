@@ -2,7 +2,6 @@ import collections as _collections
 import graphics as _graphics
 import math as _math
 import sound as _sound
-from public.public_libraries.strype.graphics import EditableImage
 
 
 ###############################################################################
@@ -221,10 +220,50 @@ def stopPlaying(sound):
 ###############################################################################
 
 # Helper classes:
-# Color is a class with RGBA 0--255 members red, green, blue, alpha
-Pixel = _collections.namedtuple("Pixel", ("picture", "x", "y", "color"))
+# Color is a class with RGB 0--255 members red, green, blue:
+Color = _collections.namedtuple("Color", ("red", "green", "blue"))
+
+# Pixel remembers its picture and position.  For efficiency reasons, we don't create its color until asked:
+class Pixel:
+    __slots__ = ["picture", "x", "y", "__index", "__color"]
+    def __init__(self, picture, x, y, index):
+        self.picture = picture
+        self.x = x
+        self.y = y
+        self.__index = index
+        self.__color = None
+    def get_color(self):
+        if not self.__color:
+            if not hasattr(self.picture, "mediacomp_pixels"):
+                _cachePixels(self.picture)
+            array = self.picture.mediacomp_pixels
+            self.__color = Color(array[self.__index], array[self.__index + 1], array[self.__index + 2])
+        return self.__color
+    def set_color(self, color):
+        if not hasattr(self.picture, "mediacomp_pixels"):
+            _cachePixels(self.picture)
+        self.picture.mediacomp_pixels[self.__index] = color.red
+        self.picture.mediacomp_pixels[self.__index+1] = color.green
+        self.picture.mediacomp_pixels[self.__index+2] = color.blue
+        self.picture.mediacomp_written_to = True
+        self.__color = color
+
 
 MainImage = None
+
+# To speed up individual pixel reads and writes, mediacomp caches the pixels as an
+# rgba array (so four values per pixel, from 0,0 across the first row then across second)
+# during consecutive reads and writes.  Whenever a different draw operation is performed (e.g.
+# drawing a circle), the cache is invalidated which requires writing back the current cache
+# to the image and removing it:
+def _invalidateCache(picture):
+    if hasattr(picture, "mediacomp_pixels") and hasattr(picture, "mediacomp_written_to") and picture.mediacomp_written_to:
+        # We don't know where we wrote so we have to set all:
+        picture.bulk_set_pixels(picture.mediacomp_pixels)
+    if hasattr(picture, "mediacomp_pixels"):
+        delattr(picture, "mediacomp_pixels")
+    if hasattr(picture, "mediacomp_written_to"):
+        delattr(picture, "mediacomp_written_to")
 
 def addArc(picture, startX, startY, width, height, start, angle, color="black"):
     """
@@ -239,6 +278,7 @@ def addArc(picture, startX, startY, width, height, start, angle, color="black"):
     :param angle: The angle of the arc relative to start in degrees.
     :param color: The color to draw the arc in (default: black).
     """
+    _invalidateCache(picture)
     picture.set_fill(None)
     picture.set_stroke(color)
     picture.arc(startX, startY, width, height, start, angle)
@@ -256,6 +296,7 @@ def addArcFilled(picture, startX, startY, width, height, start, angle, color="bl
     :param angle: The angle of the arc relative to start in degrees.
     :param color: The color to draw the arc in (default: black).
     """
+    _invalidateCache(picture)
     picture.set_fill(color)
     picture.set_stroke(color)
     picture.arc(startX, startY, width, height, start, angle)
@@ -270,6 +311,7 @@ def addLine(picture, startX, startY, endX, endY, color="black"):
     :param endY: The y-coordinate where the line ends.
     :param color: The color to draw the line in (default: black).
     """
+    _invalidateCache(picture)
     pass
 
 def addOval(picture, startX, startY, width, height, color="black"):
@@ -282,6 +324,7 @@ def addOval(picture, startX, startY, width, height, color="black"):
     :param height: The height of the oval.
     :param color: The color to draw the oval in (default: black).
     """
+    _invalidateCache(picture)
     picture.set_fill(None)
     picture.set_stroke(color)
     picture.arc(startX, startY, width, height, 0, 360)
@@ -296,6 +339,7 @@ def addOvalFilled(picture, startX, startY, width, height, color="black"):
     :param height: The height of the oval.
     :param color: The color to draw the oval in (default: black).
     """
+    _invalidateCache(picture)
     picture.set_fill(color)
     picture.set_stroke(color)
     picture.arc(startX, startY, width, height, 0, 360)
@@ -310,6 +354,7 @@ def addRect(picture, startX, startY, width, height, color="black"):
     :param height: The height of the rectangle.
     :param color: The color to draw the rectangle in (default: black).
     """
+    _invalidateCache(picture)
     pass
 
 def addRectFilled(picture, startX, startY, width, height, color="black"):
@@ -322,6 +367,7 @@ def addRectFilled(picture, startX, startY, width, height, color="black"):
     :param height: The height of the rectangle.
     :param color: The color to draw the rectangle in (default: black).
     """
+    _invalidateCache(picture)
     pass
 
 def addText(picture, xpos, ypos, text, color="black"):
@@ -333,6 +379,7 @@ def addText(picture, xpos, ypos, text, color="black"):
     :param text: The text to display.
     :param color: The color of the text (default: black).
     """
+    _invalidateCache(picture)
     pass
 
 def addTextWithStyle(picture, xpos, ypos, text, style, color="black"):
@@ -345,6 +392,7 @@ def addTextWithStyle(picture, xpos, ypos, text, style, color="black"):
     :param style: The font style (see makeStyle).
     :param color: The color of the text (default: black).
     """
+    _invalidateCache(picture)
     pass
 
 def copyInto(smallPicture, bigPicture, startX, startY):
@@ -355,6 +403,8 @@ def copyInto(smallPicture, bigPicture, startX, startY):
     :param startX: The x-coordinate in bigPicture to place smallPicture.
     :param startY: The y-coordinate in bigPicture to place smallPicture.
     """
+    _invalidateCache(smallPicture)
+    _invalidateCache(bigPicture)
     pass
 
 def distance(color1, color2):
@@ -364,8 +414,6 @@ def distance(color1, color2):
     :param color2: The second color.
     :return: The distance between the two colors.
     """
-    if not isinstance(color1, _graphics.Color) or not isinstance(color2, _graphics.Color):
-        raise TypeError
     r = pow((color1.red - color2.red), 2)
     g = pow((color1.green - color2.green), 2)
     b = pow((color1.blue - color2.blue), 2)
@@ -377,7 +425,8 @@ def duplicatePicture(picture):
     :param picture: The picture to duplicate.
     :return: A new picture object identical to the original.
     """
-    dupe = EditableImage(getWidth(picture), getHeight(picture))
+    _invalidateCache(picture)
+    dupe = _graphics.EditableImage(getWidth(picture), getHeight(picture))
     dupe.draw_image(picture, 0, 0)
     return dupe
 
@@ -387,7 +436,7 @@ def getColor(pixel):
     :param pixel: The pixel to get the color from.
     :return: The color of the pixel.
     """
-    return pixel.color
+    return pixel.get_color()
 
 def getRed(pixel):
     """
@@ -395,7 +444,7 @@ def getRed(pixel):
     :param pixel: The pixel to extract red from.
     :return: The red component (0-255).
     """
-    return pixel.color.red
+    return pixel.get_color().red
 
 def getGreen(pixel):
     """
@@ -403,7 +452,7 @@ def getGreen(pixel):
     :param pixel: The pixel to extract green from.
     :return: The green component (0-255).
     """
-    return pixel.color.green
+    return pixel.get_color().green
 
 def getBlue(pixel):
     """
@@ -411,7 +460,7 @@ def getBlue(pixel):
     :param pixel: The pixel to extract blue from.
     :return: The blue component (0-255).
     """
-    return pixel.color.blue
+    return pixel.get_color().blue
 
 def getHeight(picture):
     """
@@ -421,13 +470,20 @@ def getHeight(picture):
     """
     return picture.get_height()
 
+def _cachePixels(picture):
+    picture.mediacomp_pixels = picture.bulk_get_pixels()
+    picture.mediacomp_written_to = False
+
 def getPixels(picture):
     """
     Takes a picture as input and returns the sequence of Pixel objects in the picture.
     :param picture: The picture you want to get the pixels from.
     :return: A list of all the pixels in the picture.
     """
-    return [getPixelAt(picture, x, y) for y in range(picture.get_height()) for x in range(picture.get_width())]
+    if not hasattr(picture, "mediacomp_pixels"):
+        _cachePixels(picture)
+    width = picture.get_width()
+    return list([Pixel(picture, x, y, (y*width+x)*4) for y in range(picture.get_height()) for x in range(width)])
 
 def getPixel(picture, x, y):
     """
@@ -438,7 +494,11 @@ def getPixel(picture, x, y):
     :param ypos: The y-coordinate of the pixel.
     :return: The pixel object.
     """
-    return Pixel(picture, x, y, picture.get_pixel(x, y))
+    if not hasattr(picture, "mediacomp_pixels"):
+        _cachePixels(picture)
+
+    width = picture.get_width()
+    return Pixel(picture, x, y, (y*width+x)*4)
 
 def getPixelAt(picture, xpos, ypos):
     """ Same as getPixelAt. """
@@ -473,7 +533,7 @@ def _scaleColor(color, scaleFactor):
     r = color.red * scaleFactor
     g = color.green * scaleFactor
     b = color.blue * scaleFactor
-    return _graphics.Color(r, g, b)
+    return Color(r, g, b)
 
 def makeBrighter(color):
     """
@@ -483,7 +543,7 @@ def makeBrighter(color):
     """
     if color.red == 0 and color.green == 0 and color.blue == 0:
         # Special case -- black gets lighted to very dark gray
-        lighterColor = _graphics.Color(3,3,3)
+        lighterColor = Color(3,3,3)
     else:
         # Scale color values by 10/7
         lighterColor = _scaleColor(color, 10.0/7.0)
@@ -495,7 +555,7 @@ def makeBrighter(color):
                     c[i] += 3
                 elif c[i] > 0 and c[i] == 2:
                     c[i] += 2
-            lighterColor = _graphics.Color(c[0], c[1], c[2])
+            lighterColor = Color(c[0], c[1], c[2])
         return lighterColor
 
 
@@ -515,7 +575,7 @@ def makeColor(red, green=0, blue=0):
     :param blue: The blue component (optional, 0-255).
     :return: The created color.
     """
-    return _graphics.Color(red, green, blue, 255)
+    return Color(red, green, blue)
 
 def makeEmptyPicture(width, height, color="white"):
     """
@@ -578,7 +638,8 @@ def setColor(pixel, color):
     :param color: The color to apply to the pixel.
     :type color: Color
     """
-    pixel.picture.set_pixel(pixel.x, pixel.y, color)
+    pixel.set_color(color)
+    
 
 
 def repaint(picture):
@@ -612,7 +673,8 @@ def setRed(pixel, redValue):
     :param redValue: The new red value (0 - 255).
     :type redValue: int
     """
-    setColor(pixel, _graphics.Color(redValue, pixel.color.green, pixel.color.blue, pixel.color.alpha))
+    c = pixel.get_color()
+    setColor(pixel, Color(redValue, c.green, c.blue))
 
 def setGreen(pixel, greenValue):
     """
@@ -623,7 +685,8 @@ def setGreen(pixel, greenValue):
     :param greenValue: The new green value (0 - 255).
     :type greenValue: int
     """
-    setColor(pixel, _graphics.Color(pixel.color.red, greenValue, pixel.color.blue, pixel.color.alpha))
+    c = pixel.get_color()
+    setColor(pixel, Color(c.red, greenValue, c.blue))
 
 
 def setBlue(pixel, blueValue):
@@ -635,7 +698,8 @@ def setBlue(pixel, blueValue):
     :param blueValue: The new blue value (0 - 255).
     :type blueValue: int
     """
-    setColor(pixel, _graphics.Color(pixel.color.red, pixel.color.green, blueValue, pixel.color.alpha))
+    c = pixel.get_color()
+    setColor(pixel, Color(c.red, c.green, blueValue))
 
 
 def setColorWrapAround(flag):
@@ -672,6 +736,8 @@ def show(picture):
         MainImage = _graphics.Actor(_graphics.EditableImage(800, 600), 0, 0).edit_image()
     MainImage.set_fill("white")
     MainImage.fill()
+    # This will write any changes to the picture:
+    _invalidateCache(picture)
     MainImage.draw_image(picture, 0, 0)
 
 
@@ -687,16 +753,16 @@ def writePictureTo(picture, path):
     pass
 
 # Color constants:
-black = _graphics.Color(0, 0, 0, 255)
-white = _graphics.Color(255, 255, 255, 255)
-blue = _graphics.Color(0, 0, 255, 255)
-red = _graphics.Color(255, 0, 0, 255)
-green = _graphics.Color(0, 255, 0, 255)
-gray = _graphics.Color(128, 128, 128, 255)
-darkGray = _graphics.Color(64, 64, 64, 255)
-lightGray = _graphics.Color(192, 192, 192, 255)
-yellow = _graphics.Color(255, 255, 0, 255)
-orange = _graphics.Color(255, 200, 0, 255)
-pink = _graphics.Color(255, 175, 175, 255)
-magenta = _graphics.Color(255, 0, 255, 255)
-cyan = _graphics.Color(0, 255, 255, 255)
+black = Color(0, 0, 0)
+white = Color(255, 255, 255)
+blue = Color(0, 0, 255)
+red = Color(255, 0, 0)
+green = Color(0, 255, 0)
+gray = Color(128, 128, 128)
+darkGray = Color(64, 64, 64)
+lightGray = Color(192, 192, 192)
+yellow = Color(255, 255, 0)
+orange = Color(255, 200, 0)
+pink = Color(255, 175, 175)
+magenta = Color(255, 0, 255)
+cyan = Color(0, 255, 255)

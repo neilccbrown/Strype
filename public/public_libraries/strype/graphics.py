@@ -261,6 +261,10 @@ class EditableImage:
         return Color(rgba[0], rgba[1], rgba[2], rgba[3])
     def set_pixel(self, x, y, color):
         _strype_graphics_internal.canvas_setPixel(self.__image, x, y, (color.red, color.green, color.blue, color.alpha))
+    def bulk_get_pixels(self):
+        return _strype_graphics_internal.canvas_getAllPixels(self.__image)
+    def bulk_set_pixels(self, rgba_array):
+        _strype_graphics_internal.canvas_setAllPixelsRGBA(self.__image, rgba_array)
     def clear_rect(self, x, y, width, height):
         _strype_graphics_internal.canvas_clearRect(self.__image, x, y, width, height)
     def draw_image(self, image, x, y):

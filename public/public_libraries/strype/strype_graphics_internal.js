@@ -151,6 +151,14 @@ var $builtinmodule = function(name)  {
         const p = Sk.ffi.remapToJs(colorTuple);
         ctx.putImageData(new ImageData(new Uint8ClampedArray([p[0], p[1], p[2], p[3]]), 1, 1), x, y);
     });
+    mod.canvas_getAllPixels = new Sk.builtin.func(function(img) {
+        const ctx = img.getContext("2d");
+        return Sk.ffi.remapToPy(ctx.getImageData(0, 0, img.width, img.height).data);
+    });
+    mod.canvas_setAllPixelsRGBA = new Sk.builtin.func(function(img, pixels) {
+        const ctx = img.getContext("2d");
+        ctx.putImageData(new ImageData(new Uint8ClampedArray(Sk.ffi.remapToJs(pixels)), img.width, img.height), 0, 0);
+    });
     mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
         const ctx = dest.getContext("2d");
         ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
