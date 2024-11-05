@@ -118,7 +118,7 @@ class Actor:
             # We draw a rounded rect for the background, then draw the text on:
             sayImg.set_fill("white")
             sayImg.set_stroke("#555555FF")
-            sayImg.rounded_rect(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
+            sayImg.rounded_rectangle(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
             sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
             self.__say = _strype_graphics_internal.addImage(sayImg._EditableImage__image)
             self._update_say_position()
@@ -280,7 +280,7 @@ class EditableImage:
     def draw_text(self, text, x, y, font_size, max_width, max_height):
         dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height)
         return Dimension(dim['width'], dim['height'])
-    def rounded_rect(self, x, y, width, height, corner_size):
+    def rounded_rectangle(self, x, y, width, height, corner_size):
         """
         Draws a rectangle with rounded corners.  The edge of the rectangle is drawn in the current outline color
         (see `set_outline`) and filled in the current fill color (see `set_fill`).  The corners are rounded using
@@ -292,7 +292,26 @@ class EditableImage:
         :param corner_size: The radius of the corners of the rounded rectangle
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, corner_size)
-    def arc(self, centreX, centreY, width, height, angle_start, angle_amount):
+    def rectangle(self, x, y, width, height):
+        """
+        Draws a rectangle.  The edge of the rectangle is drawn in the current stroke color
+        (see `set_stroke`) and filled in the current fill color (see `set_fill`).  
+        :param x: The top-left of the rounded rectangle
+        :param y: The bottom-right of the rounded rectangle
+        :param width: The width of the rounded rectangle
+        :param height: The height of the rounded rectangle
+        """
+        _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, 0)
+    def line(self, start_x, start_y, end_x, end_y):
+        """
+        Draws a line.  The line is drawn in the current stroke color.
+        :param start_x: The starting X position 
+        :param start_y: The starting Y position
+        :param end_x: The end X position
+        :param end_y: The end Y position
+        """
+        _strype_graphics_internal.canvas_line(self.__image, start_x, start_y, end_x, end_y)
+    def arc(self, centre_x, centre_y, width, height, angle_start, angle_amount):
         """
         Draws an arc (a part of an ellipse, an ellipse being a circle with a width than can be different than height).
         Imagine an ellipse with a given centre position and width and height.  The `angle_start` parameter
@@ -302,15 +321,15 @@ class EditableImage:
         
         The arc will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
         
-        :param centreX: 
-        :param centreY: 
+        :param centre_x: 
+        :param centre_y: 
         :param width: 
         :param height: 
         :param angle_start: 
         :param angle_amount: 
         :return: 
         """
-        _strype_graphics_internal.canvas_arc(self.__image, centreX, centreY, width, height, angle_start, angle_amount)
+        _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
 
 def load_image(filename):
     """

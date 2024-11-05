@@ -312,7 +312,8 @@ def addLine(picture, startX, startY, endX, endY, color="black"):
     :param color: The color to draw the line in (default: black).
     """
     _invalidateCache(picture)
-    pass
+    picture.set_stroke(color)
+    picture.line(startX, startY, endX, endY)
 
 def addOval(picture, startX, startY, width, height, color="black"):
     """
@@ -355,7 +356,9 @@ def addRect(picture, startX, startY, width, height, color="black"):
     :param color: The color to draw the rectangle in (default: black).
     """
     _invalidateCache(picture)
-    pass
+    picture.set_fill(None)
+    picture.set_stroke(color)
+    picture.rectangle(startX, startY, width, height)
 
 def addRectFilled(picture, startX, startY, width, height, color="black"):
     """
@@ -368,7 +371,9 @@ def addRectFilled(picture, startX, startY, width, height, color="black"):
     :param color: The color to draw the rectangle in (default: black).
     """
     _invalidateCache(picture)
-    pass
+    picture.set_fill(color)
+    picture.set_stroke(color)
+    picture.rectangle(startX, startY, width, height)
 
 def addText(picture, xpos, ypos, text, color="black"):
     """

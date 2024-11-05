@@ -166,7 +166,13 @@ var $builtinmodule = function(name)  {
     mod.canvas_roundedRect = new Sk.builtin.func(function(img, x, y, width, height, cornerSize) {
         const ctx = img.getContext("2d");
         ctx.beginPath();
-        ctx.roundRect(x, y, width, height, Sk.ffi.remapToJs(cornerSize));
+        let radii = Sk.ffi.remapToJs(cornerSize);
+        if (radii == 0) {
+            ctx.rect(x, y, width, height);
+        }
+        else {
+            ctx.roundRect(x, y, width, height, radii);
+        }
         ctx.fill();
         ctx.stroke();
     });
