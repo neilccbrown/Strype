@@ -385,7 +385,8 @@ def addText(picture, xpos, ypos, text, color="black"):
     :param color: The color of the text (default: black).
     """
     _invalidateCache(picture)
-    pass
+    picture.set_fill(color)
+    picture.draw_text(text, xpos, ypos, 50)
 
 def addTextWithStyle(picture, xpos, ypos, text, style, color="black"):
     """
@@ -398,7 +399,8 @@ def addTextWithStyle(picture, xpos, ypos, text, style, color="black"):
     :param color: The color of the text (default: black).
     """
     _invalidateCache(picture)
-    pass
+    picture.set_fill(color)
+    picture.draw_text(text, xpos, ypos, style.__size, 0, 0, style.__fontFamily)
 
 def copyInto(smallPicture, bigPicture, startX, startY):
     """
@@ -603,16 +605,20 @@ def makePicture(path):
     """
     return _graphics.load_image("mediacomp/" + path)
 
+class Font:
+    def __init__(self, fontFamily, size):
+        self.__fontFamily = fontFamily
+        self.__size = size
 
 def makeStyle(fontName, emphasis, size):
     """
     Takes a font name, emphasis, and size in points as input. Returns a Font object with thegiven parameters.
     :param fontName: The name of the font (e.g., "sansSerif").
-    :param emphasis: The emphasis (e.g., "italic").
+    :param emphasis: The emphasis (e.g., "italic").  This parameter is currently unsupported.
     :param size: The font size.
     :return the style made from the inputs
     """
-    pass
+    return Font(_graphics.FontFamily(fontName), size)
 
 
 def setColor(pixel, color):
