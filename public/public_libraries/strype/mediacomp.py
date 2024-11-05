@@ -256,8 +256,8 @@ MainImage = None
 # during consecutive reads and writes.  Whenever a different draw operation is performed (e.g.
 # drawing a circle), the cache is invalidated which requires writing back the current cache
 # to the image and removing it:
-def _invalidateCache(picture):
-    if hasattr(picture, "mediacomp_pixels") and hasattr(picture, "mediacomp_written_to") and picture.mediacomp_written_to:
+def _invalidateCache(picture, writeback = True):
+    if writeback and hasattr(picture, "mediacomp_pixels") and hasattr(picture, "mediacomp_written_to") and picture.mediacomp_written_to:
         # We don't know where we wrote so we have to set all:
         picture.bulk_set_pixels(picture.mediacomp_pixels)
     if hasattr(picture, "mediacomp_pixels"):
@@ -405,7 +405,7 @@ def copyInto(smallPicture, bigPicture, startX, startY):
     """
     _invalidateCache(smallPicture)
     _invalidateCache(bigPicture)
-    pass
+    bigPicture.draw_image(smallPicture, startX, startY)
 
 def distance(color1, color2):
     """
@@ -630,7 +630,7 @@ def repaint(picture):
     :param picture: The picture to repaint.
     :type picture: Picture
     """
-    pass
+    show(picture)
 
 
 def setAllPixelsToAColor(picture, color):
@@ -642,7 +642,10 @@ def setAllPixelsToAColor(picture, color):
     :param color: The color to apply to each pixel.
     :type color: Color
     """
-    pass
+    # No need to write back cache to the image when we're replacing every pixel anyway:
+    _invalidateCache(picture, False)
+    picture.set_fill(color)
+    picture.fill()
 
 
 def setRed(pixel, redValue):
