@@ -609,25 +609,6 @@ def makeStyle(fontName, emphasis, size):
     """
     pass
 
-def pickAColor():
-    """
-    Opens a color chooser dialog box for the user to pick a color.
-
-    :return: The color chosen by the user.
-    :rtype: Color
-    """
-    pass
-
-
-def pickAFile():
-    """
-    Opens a file chooser dialog box for the user to pick a file.
-
-    :return: The complete path to the selected file as a string.
-    :rtype: str
-    """
-    pass
-
 
 def setColor(pixel, color):
     """
@@ -701,29 +682,6 @@ def setBlue(pixel, blueValue):
     c = pixel.get_color()
     setColor(pixel, Color(c.red, c.green, blueValue))
 
-
-def setColorWrapAround(flag):
-    """
-    Sets the color wrap-around behavior.
-
-    :param flag: Enables wrap-around for color values if True; restricts values to 0-255 if False.
-    :type flag: bool
-    :return: The new ColorWrapAround setting.
-    :rtype: bool
-    """
-    pass
-
-
-def getColorWrapAround():
-    """
-    Gets the current color wrap-around setting.
-
-    :return: True if color wrap-around is enabled, False otherwise.
-    :rtype: bool
-    """
-    pass
-
-
 def show(picture):
     """
     Displays the specified picture.
@@ -739,18 +697,6 @@ def show(picture):
     # This will write any changes to the picture:
     _invalidateCache(picture)
     MainImage.draw_image(picture, 0, 0)
-
-
-def writePictureTo(picture, path):
-    """
-    Writes the picture to a file in JPEG, PNG, or BMP format.
-
-    :param picture: The picture to save.
-    :type picture: Picture
-    :param path: The file path to save the picture to (include .jpg, .png, or .bmp extension).
-    :type path: str
-    """
-    pass
 
 # Color constants:
 black = Color(0, 0, 0)
