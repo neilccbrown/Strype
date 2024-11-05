@@ -187,6 +187,36 @@ var $builtinmodule = function(name)  {
         ctx.stroke();
     });
     
+    mod.canvas_loadFont = new Sk.builtin.func(function(provider, fontName) {
+        provider = Sk.ffi.remapToJs(provider);
+        if (provider.toLowerCase() != "google") {
+            throw new Error("Provider " + provider + " not supported.  Currently only 'google' is supported.");
+        }
+        const susp = new Sk.misceval.Suspension();
+        susp.resume = function () {
+            return susp.ret;
+        };
+        susp.data = {
+            type: "Sk.promise",
+            promise: new Promise(function (resolve, reject) {
+                WebFont.load({
+                    google: {
+                        families: [Sk.ffi.remapToJs(fontName)],
+                    },
+                    active: function() {
+                        susp.ret = Sk.ffi.remapToPy(true);
+                        resolve();
+                    },
+                    inactive: function() {
+                        susp.ret = Sk.ffi.remapToPy(false);
+                        reject(Error("Font failed to load."));
+                    },
+                });
+            }),
+        };
+        return susp;
+    });
+    
     const sayFont="\"Klee One\", sans-serif";
 
     // Since this is quite expensive, we cache it in case users repeatedly redraw the same text:
@@ -203,7 +233,7 @@ var $builtinmodule = function(name)  {
     //    width: number,
     //    height: number,
     // }
-    const calculateTextToFit = function(ctx, text, fontSize, maxWidth, maxHeight) {
+    const calculateTextToFit = function(ctx, text, fontSize, maxWidth, maxHeight, font) {
         let lines = [];
         const paragraphs = text.split("\n");  // Split the text by '\n' to respect forced line breaks.
         let textHeight = 0;
@@ -211,7 +241,7 @@ var $builtinmodule = function(name)  {
 
         // Minimum font size of 8 pixels:
         for (;fontSize >= 8; fontSize -= 1) {
-            ctx.font = `${fontSize}px ${sayFont}`;
+            ctx.font = `${fontSize}px ${font}`;
             
             paragraphs.forEach((paragraph) => {
                 let currentLine = "";
@@ -242,7 +272,7 @@ var $builtinmodule = function(name)  {
                 }
                 else {
                     lines.push(paragraph); // No wrapping if maxWidth is <= 0
-                    longestWidth = Math.max(longestWidth, ctx.measureText(currentLinePlusNextWord).width);
+                    longestWidth = Math.max(longestWidth, ctx.measureText(paragraph).width);
                 }
             });
 
@@ -262,18 +292,27 @@ var $builtinmodule = function(name)  {
     // If the text would then be larger than maxHeight (and maxHeight is > 0), its font size will be reduced until it
     // fits inside maxWidth and maxHeight.  Note that it is invalid to supply maxHeight > 0 with maxWidth = 0.
     // Returns a Python dict with fields "width" and "height" with the actual width and height
-    mod.canvas_drawText = new Sk.builtin.func(function(dest, text, x, y, fontSize, maxWidth = 0, maxHeight = 0) {
+    mod.canvas_drawText = new Sk.builtin.func(function(dest, text, x, y, fontSize, maxWidth = 0, maxHeight = 0, fontName = null) {
         // Must remap the string to Javascript:
         text = Sk.ffi.remapToJs(text);
+        if (fontName != null) {
+            fontName = Sk.ffi.remapToJs(fontName) + ", sans-serif";
+        }
+        else {
+            fontName = sayFont;
+        }
+        fontSize = Sk.ffi.remapToJs(fontSize);
+        maxWidth = Sk.ffi.remapToJs(maxWidth);
+        maxHeight = Sk.ffi.remapToJs(maxHeight);
         const ctx = dest.getContext("2d");
-        const key = `${fontSize}:${maxWidth}:${maxHeight}:${text}`;
+        const key = `${fontSize}:${maxWidth}:${maxHeight}:${text}:${fontName}`;
         let details = textMeasureCache.get(key);
         if (!details) {
-            details = calculateTextToFit(ctx, text, fontSize, maxWidth, maxHeight);
+            details = calculateTextToFit(ctx, text, fontSize, maxWidth, maxHeight, fontName);
             textMeasureCache.set(key, details);
         }
-        ctx.font = `${details.fontSize}px ${sayFont}`;
-
+        ctx.font = `${details.fontSize}px ${fontName}`;
+        
         // Render each line of text on the canvas at (x, y)
         for (let i = 0; i < details.lines.length; i++) {
             // Since we are passing the baseline, we always add an extra 1 * fontSize to get from the top-left

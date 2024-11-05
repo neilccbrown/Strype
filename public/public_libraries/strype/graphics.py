@@ -277,8 +277,28 @@ class EditableImage:
     def get_height(self):
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[1]
     
-    def draw_text(self, text, x, y, font_size, max_width, max_height):
-        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height)
+    def draw_text(self, text, x, y, font_size, max_width = 0, max_height = 0, font_family = None):
+        """
+        Draws text on the editable image.  You can specify an optional maximum width and maximum height.  If you specify a max_width
+        greater than zero then the text will be wrapped at whitespace to try to fit it into the given width.  If the text still doesn't
+        fit, or it doesn't fit in to max_height (where max_height is greater than 0), the font size will be progressively shrunk 
+        (down to a minimum size of 8 pixels) to try to make it fit.  But it is possible with awkward text (e.g. one long word
+        like "Aaaaaarrrghhhh!!") that it still may not fit in the given size.
+        
+        Note that text is colored using the fill (see `set_fill()`) not the stroke.  Text drawing is done by filling the shape of the letters,
+        not outlining like a stencil. 
+        
+        :param text: The text to draw
+        :param x: The x position of the top-left
+        :param y: The y position of the top-left
+        :param font_size: The size of the text to draw, in pixels
+        :param max_width: The maximum width of the text (or 0 if you do not want a maximum width)
+        :param max_height: The maximum height of the text (or 0 if you do not want a maximum height)
+        :param font_family: If None, then the default font family is used.  To change this, pass your own FontFamily instance
+        """
+        if font_family is not None and not isinstance(font_family, FontFamily):
+            raise TypeError("Font family must be an instance of FontFamily")
+        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family._FontFamily__font if font_family is not None else None)
         return Dimension(dim['width'], dim['height'])
     def rounded_rectangle(self, x, y, width, height, corner_size):
         """
@@ -330,6 +350,12 @@ class EditableImage:
         :return: 
         """
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
+
+class FontFamily:
+    def __init__(self, font_provider, font_name):
+        if not _strype_graphics_internal.canvas_loadFont(font_provider, font_name):
+            raise Exception("Could not load font " + font_name)
+        self.__font = font_name
 
 def load_image(filename):
     """
