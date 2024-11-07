@@ -858,7 +858,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 
 // We need to also look for the mouseup event during Drag and Drop as we only let the browser handling "dragstart",
 // there is no "dragend" being raised by the browser consequently.
-const bodyMouseUpEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
+const bodyMouseUpEventHandlerForFrameDnD = (): void => {
     if(useStore().isDraggingFrame){
         const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
         // Notify the drag even is finished
@@ -868,6 +868,9 @@ const bodyMouseUpEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
         if(areDropFramesAllowed){
             useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
         }
+
+        // Reset the caret drop ID
+        currentCaretDropPosId = "";
     }
 };
 
