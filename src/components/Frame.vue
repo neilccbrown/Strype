@@ -8,7 +8,7 @@
         <div 
             :style="frameStyle" 
             :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
-            :id="uiid"
+            :id="UID"
             @click="toggleCaret($event)"
             @contextmenu="handleClick($event)"
             tabindex="-1"
@@ -17,7 +17,7 @@
         >
             <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
                 Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
-            <vue-context :id="getFrameContextMenuUIID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
+            <vue-context :id="getFrameContextMenuUID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
                 <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName">
                     <hr v-if="menuItem.type === 'divider'" />
                     <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
@@ -89,7 +89,7 @@ import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUIID, getHTML2CanvasFramesSelectionCropOptions } from "@/helpers/editor";
+import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
@@ -154,7 +154,7 @@ export default Vue.extend({
         ...mapStores(useStore),
 
         frameHeaderId(): string {
-            return getFrameHeaderUIID(this.frameId);
+            return getFrameHeaderUID(this.frameId);
         },
 
         allowsJointChildren(): boolean {
@@ -220,12 +220,12 @@ export default Vue.extend({
             return CaretPosition;
         },
 
-        uiid(): string {
-            return getFrameUIID(this.frameId);
+        UID(): string {
+            return getFrameUID(this.frameId);
         },
 
         allowContextMenu(): boolean {
-            return this.appStore.contextMenuShownId === this.uiid; 
+            return this.appStore.contextMenuShownId === this.UID; 
         },
 
         isPythonExecuting(): boolean {
@@ -259,8 +259,8 @@ export default Vue.extend({
             return (this.appStore.currentFrame.id == this.frameId && this.appStore.isEditing);
         },
 
-        getFrameBodyUIID(): string {
-            return getFrameBodyUIID(this.frameId);
+        getFrameBodyUID(): string {
+            return getFrameBodyUID(this.frameId);
         },
     
         getFrameBodyRef(): string {
@@ -275,8 +275,8 @@ export default Vue.extend({
             return getCaretContainerRef();
         },
 
-        getFrameContextMenuUIID(): string {
-            return getFrameContextMenuUIID(this.uiid);
+        getFrameContextMenuUID(): string {
+            return getFrameContextMenuUID(this.UID);
         },
     },
 
@@ -309,7 +309,7 @@ export default Vue.extend({
         // Observe when the context menu when the context menu is closed
         // in order to reset the enforced selection flag
         // (we cannot solely use the menu-closed event of the component because it doesn't trigger between menu openings)
-        const contextMenuContainer = document.getElementById(getFrameContextMenuUIID(this.uiid));
+        const contextMenuContainer = document.getElementById(getFrameContextMenuUID(this.UID));
         if(contextMenuContainer){
             this.contextMenuObserver = new MutationObserver((mutations) => {
                 mutations.forEach((mutationRecord) => {
@@ -325,7 +325,7 @@ export default Vue.extend({
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
 
         // Register the caret container component at the upmost level for drag and drop
-        this.$root.$refs[getCaretUIID(this.caretPosition.below, this.frameId)] = this.$refs[getCaretContainerRef()];
+        this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)] = this.$refs[getCaretContainerRef()];
     },
 
     destroyed() {
@@ -339,7 +339,7 @@ export default Vue.extend({
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
         
         // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUIID(this.caretPosition.below, this.frameId)];
+        delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
     },
 
     methods: {
@@ -416,7 +416,7 @@ export default Vue.extend({
             // Remove all the potential deletable frames
             this.appStore.potentialDeleteFrameIds.splice(0);
             
-            this.appStore.contextMenuShownId = this.uiid;
+            this.appStore.contextMenuShownId = this.UID;
 
             // only show the frame menu if we are not editing and not executing the user Python code
             if(this.appStore.isEditing || this.isPythonExecuting){
@@ -543,7 +543,7 @@ export default Vue.extend({
             ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
             //the menu could have "forcely" been disabled by us to prevent duplicated menu showing in the editable slots
             //so we make sure we restore the visibility of that menu
-            const contextMenu = document.getElementById(getFrameContextMenuUIID(this.uiid));  
+            const contextMenu = document.getElementById(getFrameContextMenuUID(this.UID));  
             contextMenu?.removeAttribute("hidden");
 
             // If we have a caret context menu open somewhere we close it here 
@@ -669,7 +669,7 @@ export default Vue.extend({
             while(!isIdAFrameId(frameDivParent.id)){
                 frameDivParent = frameDivParent.parentElement as HTMLDivElement;
             }            
-            if(frameDivParent.id !== this.uiid){
+            if(frameDivParent.id !== this.UID){
                 return;
             }
 
@@ -678,7 +678,7 @@ export default Vue.extend({
 
         changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement, selectClick?: boolean): void{
             const frameRect = frameClickedDiv.getBoundingClientRect();
-            const headerRect = document.querySelector("#"+this.uiid+ " .frame-header")?.getBoundingClientRect();
+            const headerRect = document.querySelector("#"+this.UID+ " .frame-header")?.getBoundingClientRect();
             if(headerRect){            
                 let newCaretPosition: NavigationPosition = {frameId: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
                 // The following logic applies to select a caret position based on the frame and the location of the click:
@@ -775,13 +775,13 @@ export default Vue.extend({
             //    when the click vertical position is above the middle of the first child (when there are children) or above the middle of the empty body space (if no children)
             // If there are frames in the body, we have B) all the mid frame positions of the children
             const midFramePosArray: {caretPos: CurrentFrame, midYThreshold: number}[] = [];
-            const frameBodyRect = document.getElementById(getFrameBodyUIID(this.frameId))?.getBoundingClientRect() as DOMRect;
+            const frameBodyRect = document.getElementById(getFrameBodyUID(this.frameId))?.getBoundingClientRect() as DOMRect;
                         
             const bodyFrameIds = this.appStore.frameObjects[this.frameId].childrenIds;
             if(bodyFrameIds.length > 0){
                 // A) + B)
                 bodyFrameIds.forEach((childFrameId) => {
-                    const childFrameDivRect = document.getElementById(getFrameUIID(childFrameId))?.getBoundingClientRect() as DOMRect;
+                    const childFrameDivRect = document.getElementById(getFrameUID(childFrameId))?.getBoundingClientRect() as DOMRect;
                     const prevPos = getAboveFrameCaretPosition(childFrameId);
                     midFramePosArray.push({caretPos: {id: prevPos.frameId, caretPosition: prevPos.caretPosition as CaretPosition},
                         midYThreshold: childFrameDivRect.top + childFrameDivRect.height/2 });
@@ -789,7 +789,7 @@ export default Vue.extend({
 
                 // Add the last part (after the last frame) of B)
                 const lastChildFrameId = bodyFrameIds[bodyFrameIds.length - 1];
-                const lastChildFrameDivRect = document.getElementById(getFrameUIID(lastChildFrameId))?.getBoundingClientRect() as DOMRect;
+                const lastChildFrameDivRect = document.getElementById(getFrameUID(lastChildFrameId))?.getBoundingClientRect() as DOMRect;
                 midFramePosArray.push({caretPos: {id: lastChildFrameId, caretPosition: CaretPosition.below},
                     midYThreshold: lastChildFrameDivRect.bottom + (frameBodyRect.bottom - lastChildFrameDivRect.bottom)/2});
             } 
@@ -894,7 +894,7 @@ export default Vue.extend({
                 const targetContainerFrameId = this.appStore.frameObjects[(this.isPartOfSelection) ? this.appStore.selectedFrames[0] : this.frameId].parentId;
                 const targetFrameId = (this.isPartOfSelection) ? targetContainerFrameId : this.frameId;
                 setTimeout(() => {
-                    const targetFrameElement = document.getElementById(getFrameUIID(targetFrameId));
+                    const targetFrameElement = document.getElementById(getFrameUID(targetFrameId));
                     if(targetFrameElement) {    
                         // The background is the parent's body's background. That means if the parent is the import container or
                         // the function defs container, the background will be the same as these containers, and every other parent

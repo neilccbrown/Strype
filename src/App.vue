@@ -35,21 +35,21 @@
                         </div>
                         <div class="row no-gutters" >
                             <Menu 
-                                :id="menuUIID" 
+                                :id="menuUID" 
                                 @app-showprogress="applyShowAppProgress"
                                 @app-reset-project="resetStrypeProject"
                                 class="noselect no-print"
                             />
                             <div class="col">
                                 <div 
-                                    :id="editorUIID" 
+                                    :id="editorUID" 
                                     :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
                                 >
                                     <FrameContainer
                                         v-for="container in containerFrames"
                                         :key="container.frameType.type + '-id:' + container.id"
-                                        :id="getFrameContainerUIID(container.id)"
-                                        :ref="getFrameContainerUIID(container.id)"
+                                        :id="getFrameContainerUID(container.id)"
+                                        :ref="getFrameContainerUID(container.id)"
                                         :frameId="container.id"
                                         :containerLabel="container.frameType.labels[0].label"
                                         :caretVisibility="container.caretVisibility"
@@ -91,7 +91,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -144,7 +144,7 @@ export default Vue.extend({
 
         slotFocusId() : string {
             const slotCoreInfos = useStore().focusSlotCursorInfos?.slotInfos;
-            return slotCoreInfos ? getLabelSlotUIID(slotCoreInfos) : "";
+            return slotCoreInfos ? getLabelSlotUID(slotCoreInfos) : "";
         },
         
         slotCursorPos() : number {
@@ -155,12 +155,12 @@ export default Vue.extend({
             return this.appStore.isMessageBannerOn;
         },
 
-        menuUIID(): string {
-            return getMenuLeftPaneUIID();
+        menuUID(): string {
+            return getMenuLeftPaneUID();
         },
 
-        editorUIID(): string {
-            return getEditorMiddleUIID();
+        editorUID(): string {
+            return getEditorMiddleUID();
         },
 
         strypeCommandsRefId(): string {
@@ -209,7 +209,7 @@ export default Vue.extend({
             const focusCursorInfos = useStore().focusSlotCursorInfos;
             if(useStore().isEditing && focusCursorInfos){
                 useStore().ignoreFocusRequest = false;
-                document.getElementById(getFrameLabelSlotsStructureUIID(focusCursorInfos.slotInfos.frameId, focusCursorInfos.slotInfos.labelSlotsIndex))?.dispatchEvent(
+                document.getElementById(getFrameLabelSlotsStructureUID(focusCursorInfos.slotInfos.frameId, focusCursorInfos.slotInfos.labelSlotsIndex))?.dispatchEvent(
                     new KeyboardEvent("keydown", {
                         key: "ArrowDown",
                     })
@@ -373,7 +373,7 @@ export default Vue.extend({
 
         // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
         setTimeout(() => {
-            const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos) : ("caret_"+this.appStore.currentFrame.caretPosition+"_of_frame_"+this.appStore.currentFrame.id);
+            const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos) : ("caret_"+this.appStore.currentFrame.caretPosition+"_of_frame_"+this.appStore.currentFrame.id);
             document.getElementById(htmlElementToShowId)?.scrollIntoView();
         }, 1000);
 
@@ -502,8 +502,8 @@ export default Vue.extend({
             window.location.reload();
         },
 
-        getFrameContainerUIID(frameId: number){
-            return getFrameContainerUIID(frameId);
+        getFrameContainerUID(frameId: number){
+            return getFrameContainerUID(frameId);
         },
 
         messageTop(): boolean {
@@ -540,8 +540,8 @@ export default Vue.extend({
                     }
                 }
                 if(anchorSpanElement && focusSpanElement && isElementLabelSlotInput(anchorSpanElement) && isElementLabelSlotInput(focusSpanElement)){
-                    const anchorSlotInfo = parseLabelSlotUIID(anchorSpanElement.id);
-                    const focusSlotInfo = parseLabelSlotUIID(focusSpanElement.id);
+                    const anchorSlotInfo = parseLabelSlotUID(anchorSpanElement.id);
+                    const focusSlotInfo = parseLabelSlotUID(focusSpanElement.id);
                     this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: docSelection.anchorOffset},
                         {slotInfos: focusSlotInfo, cursorPos: docSelection.focusOffset});
                 }
@@ -604,7 +604,7 @@ export default Vue.extend({
                 else{
                     const currentCustomMenuId: string = this.appStore.contextMenuShownId;
                     if(currentCustomMenuId.length > 0){
-                        const customMenu = document.getElementById(getFrameContextMenuUIID(currentCustomMenuId));
+                        const customMenu = document.getElementById(getFrameContextMenuUID(currentCustomMenuId));
                         customMenu?.setAttribute("hidden", "true");
                     }
                 }
@@ -690,7 +690,7 @@ export default Vue.extend({
             let result = undefined;
             if(innerLookDetails){                
                 for(const childFrameId of innerLookDetails.listOfFrameIdToCheck){
-                    const childFrameComponent = ((innerLookDetails.frameParentComponent.$refs[getFrameUIID(childFrameId)] as (Vue|Element)[])[0] as InstanceType<typeof Frame>);
+                    const childFrameComponent = ((innerLookDetails.frameParentComponent.$refs[getFrameUID(childFrameId)] as (Vue|Element)[])[0] as InstanceType<typeof Frame>);
                     if(childFrameId == frameId){
                         // Found the frame directly inside this list of frames
                         result =  childFrameComponent;
@@ -719,7 +719,7 @@ export default Vue.extend({
                 // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
                 // And if we are already in the container (body), then we just return this component 
                 const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId); 
-                const containerElementRefs = this.$refs[getFrameContainerUIID(frameContainerId)] as (Vue|Element)[];
+                const containerElementRefs = this.$refs[getFrameContainerUID(frameContainerId)] as (Vue|Element)[];
                 if(containerElementRefs) {
                     result = (frameId < 0) 
                         ? containerElementRefs[0] as InstanceType<typeof FrameContainer>
@@ -746,13 +746,13 @@ export default Vue.extend({
             // of the target is in view, and place the menu with a X offset based on the bottom positions
             const menuHeightSpace = (isTargetFrames) ? 320 : 90, menuOffsetY = 5, menuOffsetX = 40;
             const firstSelectedTargetElement = (isTargetFrames) 
-                ? document.getElementById(getFrameUIID(this.appStore.selectedFrames[0]))
+                ? document.getElementById(getFrameUID(this.appStore.selectedFrames[0]))
                 : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible))"); // We want to retrieve the caret container of the currently visible caret
             const lastSelectedTargetElement = (isTargetFrames) 
-                ? document.getElementById(getFrameUIID(this.appStore.selectedFrames.at(-1) as number)) 
+                ? document.getElementById(getFrameUID(this.appStore.selectedFrames.at(-1) as number)) 
                 : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible))");
             // For the editor, we need to get whole editor container, not the space in the middle that is adapted to the viewport
-            const editorViewingElement = document.getElementById(getEditorMiddleUIID());
+            const editorViewingElement = document.getElementById(getEditorMiddleUID());
             const editorElement = editorViewingElement?.children[0];
             const positionToReturn: Position = {};
             if(firstSelectedTargetElement && lastSelectedTargetElement && editorElement && editorViewingElement){

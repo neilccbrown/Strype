@@ -45,11 +45,11 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
     {actionName: FrameContextMenuActionName.delete, mainKey: "delete"},
 ];
 
-export function getFrameContainerUIID(frameId: number): string {
+export function getFrameContainerUID(frameId: number): string {
     return "FrameContainer_" + frameId;
 }
 
-export function getFrameBodyUIID(frameId: number): string {
+export function getFrameBodyUID(frameId: number): string {
     return "frameBodyId_" + frameId;
 }
 
@@ -61,22 +61,22 @@ export function getJointFramesRef(): string {
     return "jointFrames";
 }
 
-export function getFrameUIID(frameId: number): string{
+export function getFrameUID(frameId: number): string{
     return "frame_id_" + frameId;
 }
 
-export function getFrameHeaderUIID(frameId: number): string{
-    // Change parseFrameHeaderUIID and isElementUIIDFrameHeaderDiv if this changes
+export function getFrameHeaderUID(frameId: number): string{
+    // Change parseFrameHeaderUID and isElementUIDFrameHeaderDiv if this changes
     return "frameHeader_" + frameId;
 }
 
-export function parseFrameHeaderUIID(frameHeaderUIID: string): number{
-    // Cf. getFrameHeaderUIID for the ID template
-    return parseInt(frameHeaderUIID.substring(frameHeaderUIID.indexOf("_") + 1));
+export function parseFrameHeaderUID(frameHeaderUID: string): number{
+    // Cf. getFrameHeaderUID for the ID template
+    return parseInt(frameHeaderUID.substring(frameHeaderUID.indexOf("_") + 1));
 }
 
-export function isElementUIIDFrameHeader(frameHeaderUIID: string): boolean {
-    return frameHeaderUIID.match(/^frameHeader_(-?\d+)$/) != null;
+export function isElementUIDFrameHeader(frameHeaderUID: string): boolean {
+    return frameHeaderUID.match(/^frameHeader_(-?\d+)$/) != null;
 }
 
 export function getAppSimpleMsgDlgId(): string {
@@ -91,9 +91,9 @@ export function isIdAFrameId(id: string): boolean {
     return id.match(/^frame_id_\d+$/) !== null;
 }
 
-const labelSlotUIIDRegex = /^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
-export function getLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
-    // If a change is done in this method, also update isElementLabelSlotInput() and parseLabelSlotUIID()
+const labelSlotUIDRegex = /^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
+export function getLabelSlotUID(slotCoreInfos: SlotCoreInfos): string {
+    // If a change is done in this method, also update isElementLabelSlotInput() and parseLabelSlotUID()
     // For explanation about the slotID format, see generateFlatSlotBases() in storeMethods.ts
     // note: slotype is an enum value, which is rendered as an octal 4 digits value (eg "0010")
     const intermediateFormattedType = "000" + slotCoreInfos.slotType.toString(8);
@@ -102,15 +102,15 @@ export function getLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
 }
 
 
-export function parseLabelSlotUIID(uiid: string): SlotCoreInfos {
-    // Cf. getLabelSlotUIID() for the format
+export function parseLabelSlotUID(UID: string): SlotCoreInfos {
+    // Cf. getLabelSlotUID() for the format
     const res: SlotCoreInfos = {frameId: -100, labelSlotsIndex: -1, slotId: "", slotType: SlotType.code };
-    const uiidMatch = uiid.match(labelSlotUIIDRegex);
-    if(uiidMatch){
-        res.frameId = parseInt(uiidMatch[1]);
-        res.labelSlotsIndex = parseInt(uiidMatch[2]);
-        res.slotId = uiidMatch[4];
-        res.slotType = parseInt(uiidMatch[3], 8);
+    const UIDMatch = UID.match(labelSlotUIDRegex);
+    if(UIDMatch){
+        res.frameId = parseInt(UIDMatch[1]);
+        res.labelSlotsIndex = parseInt(UIDMatch[2]);
+        res.slotId = UIDMatch[4];
+        res.slotType = parseInt(UIDMatch[3], 8);
     }
     return res;
 }
@@ -119,15 +119,15 @@ export function isElementLabelSlotInput(element: EventTarget | null): boolean{
     if(!(element instanceof HTMLSpanElement)){
         return false;
     }
-    // Cf. getLabelSlotUIID() for the format
-    return (element as HTMLSpanElement).id.match(labelSlotUIIDRegex) != null;
+    // Cf. getLabelSlotUID() for the format
+    return (element as HTMLSpanElement).id.match(labelSlotUIDRegex) != null;
 }
 
 export function isElementEditableLabelSlotInput(element: EventTarget | null): boolean{
     if(!(element instanceof HTMLSpanElement)){
         return false;
     }
-    // Cf. getLabelSlotUIID() for the format
+    // Cf. getLabelSlotUID() for the format
     const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_\\d+_label_\\d+_slot_000(\\d)_\\d+(,\\d+)*$");
     return regexMatch != null && parseInt(regexMatch[1]) < 8;
 }
@@ -136,11 +136,11 @@ export function isLabelSlotEditable(type: SlotType): boolean {
     return !isSlotBracketType(type) && !isSlotQuoteType(type) && type != SlotType.operator;
 }
 
-export function getACLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
-    return getLabelSlotUIID(slotCoreInfos) + "_AutoCompletion";
+export function getACLabelSlotUID(slotCoreInfos: SlotCoreInfos): string {
+    return getLabelSlotUID(slotCoreInfos) + "_AutoCompletion";
 }
 
-export function getAddFrameCmdElementUIID(commandType: string): string {
+export function getAddFrameCmdElementUID(commandType: string): string {
     return "addFrameCmd_" + commandType;
 }
 
@@ -158,7 +158,7 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     return caretPos;
 }
 
-export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: string): {selectionStart: number, selectionEnd: number} {
+export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string): {selectionStart: number, selectionEnd: number} {
     // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boudary values for the given slot
     const focusCursorInfos = useStore().focusSlotCursorInfos;
     const anchorCursorInfos = useStore().anchorSlotCursorInfos;
@@ -177,7 +177,7 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: strin
             }
             else{
                 // the anchor is somewhere after the focus cursor: the selection end is at the end of the slot
-                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUIID) as HTMLSpanElement).textContent?.length??0};
+                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.length??0};
             }
         }
     }
@@ -187,8 +187,8 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: strin
 }
 
 export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCursorInfos: SlotCursorInfos): void{
-    const anchorElement = document.getElementById(getLabelSlotUIID(anchorCursorInfos.slotInfos));
-    const focusElement = document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos));
+    const anchorElement = document.getElementById(getLabelSlotUID(anchorCursorInfos.slotInfos));
+    const focusElement = document.getElementById(getLabelSlotUID(focusCursorInfos.slotInfos));
     if(anchorElement && focusElement){
         // Before doing the selection, we make sure that we can use the given slot cursor infos:
         // when a slot is empty, the span element doesn't have a firstChild attribute. In this case,
@@ -214,28 +214,28 @@ export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCu
     }    
 }
 
-export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: number): string{
+export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: number): string{
     return "labelSlotsStruct" + frameId + "_"  + labelIndex;
 }
 
 // Helper method to retrieve the literal python code from a frame label structure UI
 // frameLabelStruct: the HTML element representing the current frame label structure
-// currentSlotUIID: the HTML id for the current editable slot we are in
-// delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UIID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
+// currentSlotUID: the HTML id for the current editable slot we are in
+// delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UID and stop is exclusive
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
     frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
-        if(delimiters && (delimiters.startSlotUIID == spanElement.id || delimiters.stopSlotUIID == spanElement.id)){
+        if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
         if(!ignoreSpan) {
             // The code is extracted from the span; if requested, we only transform the string quotes to have a clear context to refer to in the parser, regardless the content of the strings
             // (so for example, if in the string slot a used typed "test\" (without double quotes!), the parsing would not be disturbed by the non terminating escaping "\" at the end)
-            const labelSlotCoreInfos = parseLabelSlotUIID(spanElement.id);
+            const labelSlotCoreInfos = parseLabelSlotUID(spanElement.id);
             if(isSlotQuoteType(labelSlotCoreInfos.slotType)){
                 hasStringSlots = true;
                 switch(spanElement.textContent){
@@ -257,7 +257,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 uiLiteralCode += (spanElement.textContent);
             }
         
-            if(spanElement.id === currentSlotUIID){
+            if(spanElement.id === currentSlotUID){
                 focusSpanPos += (useStore().focusSlotCursorInfos?.cursorPos??0);     
                 foundFocusSpan = true;
             }
@@ -268,7 +268,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
                 const spanElementContentLength = (spanElement.textContent?.length??0);
-                const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUIID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
+                const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
                 if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
                     // Reinsert the spaces in the literal code
@@ -317,15 +317,15 @@ export function checkCanReachAnotherCommentLine(isCommentFrame: boolean, isArrow
     return false;
 }
 
-export function getFrameContextMenuUIID(frameUIID: string): string {
-    return frameUIID + "_frameContextMenu";
+export function getFrameContextMenuUID(frameUID: string): string {
+    return frameUID + "_frameContextMenu";
 }
 
-export function getCodeEditorUIID(): string {
-    return getFrameContainerUIID(useStore().getMainCodeFrameContainerId);
+export function getCodeEditorUID(): string {
+    return getFrameContainerUID(useStore().getMainCodeFrameContainerId);
 }
 
-export function getCaretUIID(caretAssignedPosition: string, frameId: number): string {
+export function getCaretUID(caretAssignedPosition: string, frameId: number): string {
     return "caret_"+caretAssignedPosition+"_"+frameId;
 }
 
@@ -333,15 +333,15 @@ export function getCaretContainerRef(): string {
     return "caretContainer";
 }
 
-export function getCommandsContainerUIID(): string {
+export function getCommandsContainerUID(): string {
     return "editorCommands";
 }
 
-export function getEditorMenuUIID(): string {
+export function getEditorMenuUID(): string {
     return "showHideMenu";
 } 
 
-export function getMenuLeftPaneUIID(): string {
+export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
@@ -357,7 +357,7 @@ export function getSaveAsProjectModalDlg():string {
     return "save-strype-project-modal-dlg";
 }
 
-export function getEditorMiddleUIID(): string {
+export function getEditorMiddleUID(): string {
     return "editorCodeDiv";
 }
 
@@ -415,7 +415,7 @@ export function adjustContextMenuPosition(event: MouseEvent, contextMenu: HTMLEl
             contextMenu.style.top = newMenuTopPosition+"px";
         }
     }
-    else if(event.pageY + contextMenu.getBoundingClientRect().height > (document.getElementById(getEditorMiddleUIID())?.getBoundingClientRect().height??0)){
+    else if(event.pageY + contextMenu.getBoundingClientRect().height > (document.getElementById(getEditorMiddleUID())?.getBoundingClientRect().height??0)){
         const newMenuTopPosition = event.pageY - contextMenu.getBoundingClientRect().height;
         contextMenu.style.top = newMenuTopPosition+"px";
     }
@@ -492,7 +492,7 @@ export function hasEditorCodeErrors(): boolean {
 }
 
 export function hasPrecompiledCodeError(): boolean {
-    return hasEditorCodeErrors() && !errorHTMLElements?.some((element) => isElementUIIDFrameHeader(element.id));                                                                    
+    return hasEditorCodeErrors() && !errorHTMLElements?.some((element) => isElementUIDFrameHeader(element.id));                                                                    
 }
 
 // This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot an frame header)
@@ -510,11 +510,11 @@ export function getNearestErrorIndex(): number {
     // Get the slot currently being edited: we check first if that's one of the error so it would be a "real" index of the error array
     // if it's not, then we'll find in between which 2 errors we're in and use a "semi" index
     const currentFocusedElementId = (isEditing && useStore().focusSlotCursorInfos != undefined) 
-        ? getLabelSlotUIID(useStore().focusSlotCursorInfos?.slotInfos as SlotCoreInfos) 
-        : getCaretUIID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
+        ? getLabelSlotUID(useStore().focusSlotCursorInfos?.slotInfos as SlotCoreInfos) 
+        : getCaretUID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
     // Case 1: we are in a slot that is erroneous, or in a slot of an erroneous frame
-    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUIID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number)))){
-        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUIID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number));
+    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number)))){
+        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number));
     }
     else{
         // Case 2: not in an error, we find out our relative position to the list of errors
@@ -523,12 +523,12 @@ export function getNearestErrorIndex(): number {
         const allPosIndexes:number[] = [];
         [...errorsElmtIds, currentFocusedElementId].forEach((elementId) => {
             const isElementEditableSlot = isElementEditableLabelSlotInput(document.getElementById(elementId));
-            const isElementFrameHeader = isElementUIIDFrameHeader(elementId);
+            const isElementFrameHeader = isElementUIDFrameHeader(elementId);
             // Look the position of a slot (an error or the currently focused slot, or the first slot of an erroneous frame)
             if(isElementEditableSlot || isElementFrameHeader){
                 const slotInfos: SlotCoreInfos = (isElementEditableSlot) 
-                    ? parseLabelSlotUIID(elementId)
-                    : {frameId: parseFrameHeaderUIID(elementId), slotId: "0", labelSlotsIndex: 0, slotType: SlotType.code};
+                    ? parseLabelSlotUID(elementId)
+                    : {frameId: parseFrameHeaderUID(elementId), slotId: "0", labelSlotsIndex: 0, slotType: SlotType.code};
                 allPosIndexes.push(allCaretPositions.findIndex((navPos) => navPos.isSlotNavigationPosition && navPos.frameId == slotInfos.frameId 
                 && navPos.labelSlotsIndex == slotInfos.labelSlotsIndex && navPos.slotId == slotInfos.slotId 
                 && navPos.slotType == slotInfos.slotType));
@@ -770,12 +770,12 @@ export function getFunctionCallDefaultText(frameId: number): string {
 
 export function getHTML2CanvasFramesSelectionCropOptions(targetFrameId: number): {x: number, y: number, width: number, height: number} {
     // We look for the position of the first and last selected items to crop the image of the container to the selection
-    const selectionParentFrameX = (document.getElementById(getFrameUIID(targetFrameId))?.getBoundingClientRect().x)??0;
-    const selectionParentFrameY = (document.getElementById(getFrameUIID(targetFrameId))?.getBoundingClientRect().y)??0;
-    const firstSelectedFrameX = (document.getElementById(getFrameUIID(useStore().selectedFrames[0]))?.getBoundingClientRect().x)??0;
-    const firstSelectedFrameY = (document.getElementById(getFrameUIID(useStore().selectedFrames[0]))?.getBoundingClientRect().y)??0;
-    const lastSelectedFrameRight = (document.getElementById(getFrameUIID(useStore().selectedFrames.at(-1) as number))?.getBoundingClientRect().right)??0;
-    const lastSelectedFrameBottom = (document.getElementById(getFrameUIID(useStore().selectedFrames.at(-1) as number))?.getBoundingClientRect().bottom)??0;
+    const selectionParentFrameX = (document.getElementById(getFrameUID(targetFrameId))?.getBoundingClientRect().x)??0;
+    const selectionParentFrameY = (document.getElementById(getFrameUID(targetFrameId))?.getBoundingClientRect().y)??0;
+    const firstSelectedFrameX = (document.getElementById(getFrameUID(useStore().selectedFrames[0]))?.getBoundingClientRect().x)??0;
+    const firstSelectedFrameY = (document.getElementById(getFrameUID(useStore().selectedFrames[0]))?.getBoundingClientRect().y)??0;
+    const lastSelectedFrameRight = (document.getElementById(getFrameUID(useStore().selectedFrames.at(-1) as number))?.getBoundingClientRect().right)??0;
+    const lastSelectedFrameBottom = (document.getElementById(getFrameUID(useStore().selectedFrames.at(-1) as number))?.getBoundingClientRect().bottom)??0;
     return {x: (firstSelectedFrameX - selectionParentFrameX),
         y: (firstSelectedFrameY - selectionParentFrameY), 
         width: (lastSelectedFrameRight - firstSelectedFrameX),
@@ -819,7 +819,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
         // (which can be allowed or not) on the vertical axis only.
         let closestCaretPositionIndex = -1, minVerticalDist = Number.MAX_VALUE;
         currentCaretPositionsForDnD.every((navigationPos, index) => {
-            const caretEl = document.getElementById(getCaretUIID(navigationPos.caretPosition as string, navigationPos.frameId));
+            const caretEl = document.getElementById(getCaretUID(navigationPos.caretPosition as string, navigationPos.frameId));
             const caretBox = caretEl?.getBoundingClientRect() as DOMRect;
             const caretYTopPos = (caretBox.height > 0) ? caretBox.y : caretBox.y - Number.parseInt(scssVars.caretHeightValue) / 2;
             const caretYBottompPos = (caretBox.height > 0) ? caretBox.y + caretBox.height : caretBox.y + Number.parseInt(scssVars.caretHeightValue) / 2;
@@ -839,18 +839,18 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
             return true;
         });
         if(closestCaretPositionIndex > -1){
-            const closestCaretEl = document.getElementById(getCaretUIID(currentCaretPositionsForDnD[closestCaretPositionIndex].caretPosition as string, currentCaretPositionsForDnD[closestCaretPositionIndex].frameId));
+            const closestCaretEl = document.getElementById(getCaretUID(currentCaretPositionsForDnD[closestCaretPositionIndex].caretPosition as string, currentCaretPositionsForDnD[closestCaretPositionIndex].frameId));
             // First remove the drop indicator of the current drop position (if any)
             if(currentCaretDropPosId.length > 0){
-                (vm.$refs[getCaretUIID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
+                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
                 // Not really required but just better to reset things properly
-                (vm.$refs[getCaretUIID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
             }
             currentCaretDropPosId = closestCaretEl?.id??"";
             currentCaretDropPosFrameId = newCaretDropPosFrameId;
             currentCaretDropPosCaretPos = newCaretDropPosCaretPos;
-            (vm.$refs[getCaretUIID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = true;
-            (vm.$refs[getCaretUIID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = 
+            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = true;
+            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = 
                 isFrameDropAllowed(newCaretDropPosFrameId, newCaretDropPosCaretPos);
         }
     }
@@ -860,7 +860,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 // there is no "dragend" being raised by the browser consequently.
 const bodyMouseUpEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
     if(useStore().isDraggingFrame){
-        const areDropFramesAllowed = (vm.$refs[getCaretUIID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
+        const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
         // Notify the drag even is finished
         notifyDragEnded();
 
@@ -885,7 +885,7 @@ export function notifyDragStarted(frameId?: number):void {
     // If we move a single frame, we keep a reference of it, and set undefinfed if not (see variable definition)
     currentDraggedSingleFrameId = frameId;
     if(frameId){
-        const frameElRect = document.getElementById(getFrameUIID(frameId))?.getBoundingClientRect();
+        const frameElRect = document.getElementById(getFrameUID(frameId))?.getBoundingClientRect();
         if(frameElRect){
             renderingCanvas.width = frameElRect.width * companionImgScalingRatio;
             renderingCanvas.height = frameElRect.height * companionImgScalingRatio;
@@ -925,7 +925,7 @@ export function notifyDragStarted(frameId?: number):void {
     // Add companion "image" (canvas) to the cursor - we use HTML2Canvas. 
     // The element to generate an image of is either the frame passed as argument
     // or the shadow element containing the current selection.
-    const draggingEl = document.getElementById(getFrameUIID(frameId??(useStore().frameObjects[useStore().selectedFrames[0]].parentId)));
+    const draggingEl = document.getElementById(getFrameUID(frameId??(useStore().frameObjects[useStore().selectedFrames[0]].parentId)));
     if(draggingEl){
         html2canvas(draggingEl, html2canvasOptions);
     }
@@ -941,9 +941,9 @@ export function notifyDragEnded():void {
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
     document.getElementsByTagName("body")[0]?.classList.remove("dragging-frame");
     if(currentCaretDropPosId.length > 0){
-        (vm.$refs[getCaretUIID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
         // Not really required but just better to reset things properly
-        (vm.$refs[getCaretUIID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
     }
 }
 
@@ -1074,8 +1074,8 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
 
         // Not same frame, return the frame POSITION difference, we can't use ID as they are not indexes
         // We make it "easy" by checking the top position in the browser: frames can't be on a same level...
-        const anchorElement = document.getElementById(getLabelSlotUIID(anchorCursorInfos.slotInfos)) as HTMLSpanElement;
-        const focusElement = document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos)) as HTMLSpanElement;
+        const anchorElement = document.getElementById(getLabelSlotUID(anchorCursorInfos.slotInfos)) as HTMLSpanElement;
+        const focusElement = document.getElementById(getLabelSlotUID(focusCursorInfos.slotInfos)) as HTMLSpanElement;
         return (anchorElement.clientTop - focusElement.clientTop);
     }
     

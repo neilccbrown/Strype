@@ -6,7 +6,7 @@
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
-        <div :id="frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
+        <div :id="frameUID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
             <CaretContainer
                 :frameId="frameId"
                 :ref="getCaretContainerRef"
@@ -40,7 +40,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { getCaretContainerRef, getCaretUIID, getFrameUIID} from "@/helpers/editor";
+import { getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -66,19 +66,19 @@ export default Vue.extend({
 
     mounted() {
         // Register the caret container component at the upmost level for drag and drop
-        this.$root.$refs[getCaretUIID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
+        this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
     },
 
     destroyed() {
         // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUIID(this.caretPosition.below, this.frameId)];
+        delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
     },
 
     computed: {
         ...mapStores(useStore),
 
-        frameUIID(): string{
-            return getFrameUIID(this.frameId);
+        frameUID(): string{
+            return getFrameUID(this.frameId);
         },
 
         getCaretContainerRef(): string {
@@ -156,7 +156,7 @@ export default Vue.extend({
 
     methods: {
         setFrameRef(frameId: number) {
-            return getFrameUIID(frameId);
+            return getFrameUID(frameId);
         },
         
         toggleCollapse(): void {

@@ -6,7 +6,7 @@ import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, countR
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUIID, actOnTurtleImport, getStrypeCommandComponentRefId, getStrypePEAComponentRefId } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, actOnTurtleImport, getStrypeCommandComponentRefId, getStrypePEAComponentRefId } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -591,8 +591,8 @@ export const useStore = defineStore("app", {
                 // - imports
                 // - function definition
                 //(*) for string slots and comments, we allow adding code anywhere. If a slot non space content fully highlighted we also alllow adding the code.
-                const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(getLabelSlotUIID(focusSlotCursorInfos.slotInfos));
-                const currentSlotCode = (document.getElementById(getLabelSlotUIID(focusSlotCursorInfos.slotInfos)))?.textContent??"";
+                const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(getLabelSlotUID(focusSlotCursorInfos.slotInfos));
+                const currentSlotCode = (document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos)))?.textContent??"";
                 const nonHighlightedCode = currentSlotCode.substring(0, selectionStart) + currentSlotCode.substring(selectionEnd);
                 const isSlotWholeCodeContentSelected = (selectionStart != selectionEnd && nonHighlightedCode.trim().length == 0);
                 const isLHSVarAssign = (currentFrame.frameType.type == AllFrameTypesIdentifier.varassign && focusSlotCursorInfos.slotInfos.labelSlotsIndex == 0); 
@@ -1240,7 +1240,7 @@ export const useStore = defineStore("app", {
                 if(focusedSlot){
                     focusedSlot.focused = false;
                 }
-                document.getElementById(getLabelSlotUIID(this.focusSlotCursorInfos.slotInfos))
+                document.getElementById(getLabelSlotUID(this.focusSlotCursorInfos.slotInfos))
                     ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
             }
             this.ignoreKeyEvent = false;
@@ -1436,13 +1436,13 @@ export const useStore = defineStore("app", {
 
                     // Ensure the caret (frame or text caret) is visible in the page viewport after the change.
                     // For some reason, scrollIntoView() "miss" out the caret by a slight distance (maybe because it's a div?) so we don't see it. To adjust that issue, we scroll up a bit more.
-                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUIID(this.focusSlotCursorInfos.slotInfos) : ("caret_"+this.currentFrame.caretPosition+"_of_frame_"+this.currentFrame.id);
+                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUID(this.focusSlotCursorInfos.slotInfos) : ("caret_"+this.currentFrame.caretPosition+"_of_frame_"+this.currentFrame.id);
                     const caretContainerEltRect = document.getElementById(htmlElementToShowId)?.getBoundingClientRect();
                     document.getElementById(htmlElementToShowId)?.scrollIntoView();
                     if(htmlElementToShowId.match(/caret_.*_of_frame_/) != null && caretContainerEltRect){
                         const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
-                        const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
-                        $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + scrollStep);
+                        const currentScroll = $("#"+getEditorMiddleUID()).scrollTop();
+                        $("#"+getEditorMiddleUID()).scrollTop((currentScroll??0) + scrollStep);
                     }     
                 });
 
@@ -1890,13 +1890,13 @@ export const useStore = defineStore("app", {
                         const targetDiv =
                             (this.currentFrame && this.currentFrame.caretPosition !== CaretPosition.none) ?
                                 // If frame cursor is focused (e.g. after adding blank frame, or try), scroll to that:
-                                document.getElementById(getCaretUIID(this.currentFrame.caretPosition, this.currentFrame.id))
+                                document.getElementById(getCaretUID(this.currentFrame.caretPosition, this.currentFrame.id))
                                 // Otherwise scroll to the frame header (e.g. for method call, if, while):
-                                : document.getElementById(getFrameHeaderUIID(newFrame.id));
+                                : document.getElementById(getFrameHeaderUID(newFrame.id));
                         
                         const targetBoundingRect = targetDiv?.getBoundingClientRect();
                         if (targetDiv && targetBoundingRect && (targetBoundingRect.top + targetBoundingRect.height > document.documentElement.clientHeight)) {
-                            document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
+                            document.getElementById(getFrameHeaderUID(newFrame.id))?.scrollIntoView();
                         }
                         this.lastAddedFrameIds = newFrame.id;
                     }
@@ -2101,7 +2101,7 @@ export const useStore = defineStore("app", {
                 currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
                         && e.labelSlotsIndex === foundSlotCoreInfos.labelSlotsIndex && e.slotId === foundSlotCoreInfos.slotId);     
                 // Now we can effectively ask the slot to "lose focus" because we could retrieve it (and we need to get it blurred so further actions are not happening in the span)
-                document.getElementById(getLabelSlotUIID(foundSlotCoreInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));         
+                document.getElementById(getLabelSlotUID(foundSlotCoreInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));         
             }
             else {
                 currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.frameId === this.currentFrame.id); 
@@ -2178,9 +2178,9 @@ export const useStore = defineStore("app", {
                 // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
                 // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
                 Vue.nextTick(() => {
-                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.length)??0;
                     const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
-                    if(isCommentFrame && (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
+                    if(isCommentFrame && (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
                         textCursorPos--;
                     }
                   
@@ -2189,7 +2189,7 @@ export const useStore = defineStore("app", {
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
                     setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
                     if(focusCursorInfos){
-                        document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                        document.getElementById(getLabelSlotUID(focusCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                     }
                 });
                 

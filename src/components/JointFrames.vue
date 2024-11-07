@@ -24,7 +24,7 @@ import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import { FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { getFrameUIID } from "@/helpers/editor";
+import { getFrameUID } from "@/helpers/editor";
 
 
 //////////////////////
@@ -70,7 +70,7 @@ export default Vue.extend({
 
     methods: {
         setFrameRef(frameId: number) {
-            return getFrameUIID(frameId);
+            return getFrameUID(frameId);
         },
     },
 });

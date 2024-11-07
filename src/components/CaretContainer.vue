@@ -3,8 +3,8 @@
         :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer}"
         @click.exact.prevent.stop="toggleCaret()"
         @contextmenu.prevent.stop="handleClick($event)"
-        :key="uiid"
-        :id="uiid"
+        :key="UID"
+        :id="UID"
     >
         <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
              Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
@@ -22,7 +22,7 @@
         </vue-context>
         <Caret
             class="navigationPosition caret"
-            :id="caretUIID"
+            :id="caretUID"
             :isInvisible="isInvisible"
             v-blur="isCaretBlurred"
             :areFramesDraggedOver="areFramesDraggedOver"
@@ -41,7 +41,7 @@ import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName} from "@/types/types";
-import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
+import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
@@ -94,12 +94,12 @@ export default Vue.extend({
             return CaretPosition;
         },
 
-        uiid(): string {
+        UID(): string {
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
         },
 
-        caretUIID(): string {
-            return getCaretUIID(this.caretAssignedPosition, this.frameId);
+        caretUID(): string {
+            return getCaretUID(this.caretAssignedPosition, this.frameId);
         },
 
         isPythonExecuting(): boolean {
@@ -173,7 +173,7 @@ export default Vue.extend({
                     //we need to update the context menu as if it had been shown
                     const isPasteAllowedAtFrame = this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
                     if(isPasteAllowedAtFrame){
-                        this.appStore.contextMenuShownId = this.uiid;
+                        this.appStore.contextMenuShownId = this.UID;
                         this.doPaste();
                     }
                     else{
@@ -230,7 +230,7 @@ export default Vue.extend({
                 return;
             }
 
-            this.appStore.contextMenuShownId = this.uiid;
+            this.appStore.contextMenuShownId = this.UID;
 
             this.showPasteMenuItem = this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
             this.prepareInsertFrameSubMenu();
@@ -240,7 +240,7 @@ export default Vue.extend({
             ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
 
             this.$nextTick(() => {
-                const contextMenu = document.getElementById(this.uiid);  
+                const contextMenu = document.getElementById(this.UID);  
                 if(contextMenu){
                     // We make sure the menu can be shown completely. 
                     adjustContextMenuPosition(event, contextMenu, positionForMenu);
@@ -261,8 +261,8 @@ export default Vue.extend({
         paste(): void {
             // We check upon the context menu informations because a click could be generated on a hovered caret and we can't distinguish 
             // by any other mean which caret is the one the user clicked on.
-            const currentShownContextMenuUUID: string = this.appStore.contextMenuShownId;
-            if(currentShownContextMenuUUID === this.uiid){
+            const currentShownContextMenuUID: string = this.appStore.contextMenuShownId;
+            if(currentShownContextMenuUID === this.UID){
                 this.doPaste();
             }
         },
@@ -298,7 +298,7 @@ export default Vue.extend({
                     // This method is called by the submenu and it triggers a click on the AddFrameCommand component,
                     // but we delay it enough so the chain of key events (if applicable) related to the menu terminates,
                     // because otherwise that chain and the key event chain from adding a frame interfer.
-                    setTimeout(() => document.getElementById(getAddFrameCmdElementUIID(addFrameCmdDef[0].type.type))?.click(), 250);
+                    setTimeout(() => document.getElementById(getAddFrameCmdElementUID(addFrameCmdDef[0].type.type))?.click(), 250);
                 }});
             });
         },

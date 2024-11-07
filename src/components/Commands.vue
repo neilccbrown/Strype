@@ -13,13 +13,13 @@
                 <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
                     <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
                 FITRUE_isMicrobit */
-                        <div :id="commandsContainerUUID" class="command-tab-content" >
+                        <div :id="commandsContainerUID" class="command-tab-content" >
                             <div id="addFramePanel">
                                 <div class="frameCommands">
                                     <p>
                                         <AddFrameCommand
                                             v-for="addFrameCommand in addFrameCommands"
-                                            :id="addFrameCommandUIID(addFrameCommand[0].type.type)"
+                                            :id="addFrameCommandUID(addFrameCommand[0].type.type)"
                                             :key="addFrameCommand[0].type.type"
                                             :type="addFrameCommand[0].type.type"
                                             :shortcut="addFrameCommand[0].shortcuts[0]"
@@ -79,7 +79,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -163,8 +163,8 @@ export default Vue.extend({
             },
         },
         /* FITRUE_isMicrobit */
-        commandsContainerUUID(): string {
-            return getCommandsContainerUIID();
+        commandsContainerUID(): string {
+            return getCommandsContainerUID();
         },
 
         isEditing(): boolean {
@@ -549,7 +549,7 @@ export default Vue.extend({
 
     mounted() {
         //scroll events on the left pane (menu) and right pane (commands) are forwarded to the editor
-        document.getElementById(getMenuLeftPaneUIID())?.addEventListener(
+        document.getElementById(getMenuLeftPaneUID())?.addEventListener(
             "wheel",
             this.handleAppScroll,
             false
@@ -563,15 +563,15 @@ export default Vue.extend({
     },
 
     methods: {
-        addFrameCommandUIID(commandType: string): string {
-            return getAddFrameCmdElementUIID(commandType);
+        addFrameCommandUID(commandType: string): string {
+            return getAddFrameCmdElementUID(commandType);
         },
         
         handleAppScroll(event: WheelEvent) {
             // Don't do anything if a context menu is displayed
             if(!getActiveContextMenu()){
-                const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
-                $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
+                const currentScroll = $("#"+getEditorMiddleUID()).scrollTop();
+                $("#"+getEditorMiddleUID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
             }          
         },
 

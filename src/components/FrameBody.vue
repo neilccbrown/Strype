@@ -1,7 +1,7 @@
 <template>
     <div
         :class="{'frame-body-container frame-container-minheight':true, 'body-deletable': bodyDeletable}"
-        :id="uiid"
+        :id="UID"
     >
         <div>
             <CaretContainer
@@ -39,7 +39,7 @@ import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { getCaretContainerRef, getCaretUIID, getFrameBodyUIID, getFrameUIID } from "@/helpers/editor";
+import { getCaretContainerRef, getCaretUID, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -60,12 +60,12 @@ export default Vue.extend({
 
     mounted() {
         // Register the caret container component at the upmost level for drag and drop
-        this.$root.$refs[getCaretUIID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
+        this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
     },
 
     destroyed() {
         // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUIID(this.caretPosition.below, this.frameId)];
+        delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
     },
 
     computed: {
@@ -94,8 +94,8 @@ export default Vue.extend({
             return this.appStore.isEditing;
         },
 
-        uiid(): string {
-            return getFrameBodyUIID(this.frameId);
+        UID(): string {
+            return getFrameBodyUID(this.frameId);
         },
 
         getCaretContainerRef(): string {
@@ -120,7 +120,7 @@ export default Vue.extend({
 
     methods: {
         setFrameRef(frameId: number) {
-            return getFrameUIID(frameId);
+            return getFrameUID(frameId);
         },
     },
 });
