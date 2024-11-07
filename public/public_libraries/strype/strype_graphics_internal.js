@@ -162,7 +162,14 @@ var $builtinmodule = function(name)  {
     mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
         const ctx = dest.getContext("2d");
         ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
-    }); 
+    });
+    mod.canvas_line = new Sk.builtin.func(function(dest, x, y, ex, ey) {
+        const ctx = dest.getContext("2d");
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+    });
     mod.canvas_roundedRect = new Sk.builtin.func(function(img, x, y, width, height, cornerSize) {
         const ctx = img.getContext("2d");
         ctx.beginPath();
