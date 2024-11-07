@@ -79,7 +79,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames } from "@/helpers/editor";
+import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUIID, getCommandsContainerUIID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUIID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUIID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -497,6 +497,10 @@ export default Vue.extend({
                             return;
                         }
                     }
+                }
+                else if(this.appStore.isDraggingFrame){
+                    // Hitting escape during a DnD cancels it.
+                    notifyDragEnded();
                 }
 
                 //prevent default browser behaviours when an add frame command key is typed (letters and spaces) (e.g. Firefox "search while typing")

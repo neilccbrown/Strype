@@ -21,11 +21,12 @@
             </li>
         </vue-context>
         <Caret
-            :class="{navigationPosition: true, caret:!appStore.isDraggingFrame}"
+            class="navigationPosition caret"
             :id="caretUIID"
             :isInvisible="isInvisible"
-            :isTransparentForDnD="isTransparentForDnD"
             v-blur="isCaretBlurred"
+            :areFramesDraggedOver="areFramesDraggedOver"
+            :areDropFramesAllowed="areDropFramesAllowed"
         />
     </div>
 </template>
@@ -75,12 +76,8 @@ export default Vue.extend({
         isInvisible(): boolean {
             // The caret is only visible when editing is off, 
             // and either one frame is currently selected 
-            // OR a frame is hovered during drag & drop of frames
-            return !(!this.isEditing && (this.caretVisibility === this.caretAssignedPosition || this.caretVisibility == CaretPosition.dragAndDrop) || this.appStore.isDraggingFrame); 
-        },
-
-        isTransparentForDnD(): boolean {
-            return (this.caretVisibility == CaretPosition.dragAndDrop);
+            // OR when a frame or a frame selection is dragged over.
+            return !(!this.isEditing && this.caretVisibility === this.caretAssignedPosition || this.areFramesDraggedOver); 
         },
 
         isStaticCaretContainer(): boolean {
@@ -127,6 +124,8 @@ export default Vue.extend({
         return {
             showPasteMenuItem: false,
             insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
+            areFramesDraggedOver: false,
+            areDropFramesAllowed: true,
         };
     },
 
@@ -146,14 +145,14 @@ export default Vue.extend({
         this.putCaretContainerInView();
         
         // Close the context menu if there is edition or loss of blue caret (for when a frame context menu is present, see Frame.vue)
-        if(this.isEditing || this.caretAssignedPosition == CaretPosition.none || this.caretAssignedPosition == CaretPosition.dragAndDrop){
+        if(this.isEditing || this.caretAssignedPosition == CaretPosition.none){
             ((this.$refs.menu as unknown) as VueContextConstructor).close();
         }        
     },
     
     methods: {
         putCaretContainerInView(){
-            if(this.caretVisibility !== CaretPosition.none  && this.caretVisibility != CaretPosition.dragAndDrop && this.caretVisibility === this.caretAssignedPosition) {
+            if(this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
                 const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
                 const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
                 //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
@@ -314,7 +313,7 @@ export default Vue.extend({
 }
 
 .static-caret-container{
-    height: $caret-height;
+    height: $caret-height-value + px;
 }
 
 .caret-container:hover{

@@ -123,7 +123,6 @@ export interface FrameObject {
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
     labelSlotsDict: { [index: number]: LabelSlotsContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
-    multiDragPosition: string;
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
 }
 
@@ -147,14 +146,12 @@ export enum DraggableGroupTypes {
     functionSignatures = "functionSignatures",
     ifCompound = "ifCompound",
     tryCompound = "tryCompound",
-    shadowEditorContainer = "editor", // This draggable is used for cursor management - a root of all other draggables (cf. handleDraggingCursor())
     none = "none",
 }
 
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
-    dragAndDrop = "dnd", // this is a special case for handling the UI with drag and drop, see Frame.vue (hideCaretAtClick())
     none = "none",
 }
 
@@ -734,7 +731,6 @@ export const EmptyFrameObject: FrameObject = {
     jointFrameIds: [], //this contains the IDs of the joint frames
     caretVisibility: CaretPosition.none,
     labelSlotsDict: { },
-    multiDragPosition: "",
 };
 
 /**
@@ -801,7 +797,6 @@ export const MessageTypes = {
     uploadEditorFileError: "uploadEditorFileError",
     uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
     uploadEditorFileSucces: "uploadEditorFileSuccess",
-    forbiddenFrameMove: "forbiddenFrameMove",
     forbiddenFramePaste: "forbiddenFramePaste",
     functionFrameCantDelete: "functionFrameCantDelete",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
@@ -897,12 +892,6 @@ const UploadEditorFileSuccess: MessageDefinition = {
     message: "messageBannerMessage.uploadEditorFileSuccess",
 };
 
-const ForbiddenFrameMove: MessageDefinition = {
-    ...NoMessage,
-    type: MessageTypes.forbiddenFrameMove,
-    message: "messageBannerMessage.forbiddenFrameMove",
-};
-
 const ForbiddenFramePaste: MessageDefinition = {
     ...NoMessage,
     type: MessageTypes.forbiddenFramePaste,
@@ -962,7 +951,6 @@ export const MessageDefinitions = {
     UploadEditorFileError,
     UploadEditorFileNotSupported,
     UploadEditorFileSuccess,
-    ForbiddenFrameMove,
     ForbiddenFramePaste,
     FunctionFrameCantDelete,
     GDriveConnectToSaveFailed,

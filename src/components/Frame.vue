@@ -1,96 +1,79 @@
 <template>
-    <div :class="{dragging: isDragTop}">
-        <!-- this "fake" caret is only used to show something valid while doing drag and drop -->
-        <Caret
-            :class="{'caret-drop': isDragTop}"
-            v-blur="false"
-        />
+    <div 
+        v-show="isVisible"
+        :class="frameSelectedCssClass"
+    >
+        <!-- keep both mousedown & click events: we need mousedown to manage the caret rendering during drag & drop -->
+        <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
         <div 
-            v-if="multiDragPosition === 'middle' || multiDragPosition === 'last'"
-            class="draggedWithOtherFramesAbove"
+            :style="frameStyle" 
+            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
+            :id="uiid"
+            @click="toggleCaret($event)"
+            @contextmenu="handleClick($event)"
+            tabindex="-1"
+            draggable="true"
+            @dragstart.self="handleFrameDragStart"
         >
-        </div>
-        <div 
-            v-show="isVisible"
-            :class="frameSelectedCssClass"
-        >
-            <!-- keep both mousedown & click events: we need mousedown to manage the caret rendering during drag & drop -->
-            <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
-            <div 
-                :style="frameStyle" 
-                :class="{frameDiv: true, frameDivHover: !isDragging, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
-                :id="uiid"
-                @mousedown.left="hideCaretAtClick"
-                @click="toggleCaret($event)"
-                @mouseup.left.self="toggleCaret($event)"
-                @contextmenu="handleClick($event)"
-                tabindex="-1"
-            >
-                <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
-                    Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
-                <vue-context :id="getFrameContextMenuUIID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-                    <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName">
-                        <hr v-if="menuItem.type === 'divider'" />
-                        <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
-                    </li>
-                </vue-context>
+            <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
+                Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
+            <vue-context :id="getFrameContextMenuUIID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
+                <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName">
+                    <hr v-if="menuItem.type === 'divider'" />
+                    <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
+                </li>
+            </vue-context>
 
-                <FrameHeader
-                    v-if="frameType.labels !== null"
-                    :id="frameHeaderId"
-                    :isDisabled="isDisabled"
-                    v-blur="isDisabled"
-                    :frameId="frameId"
-                    :frameType="frameType.type"
-                    :labels="frameType.labels"
-                    :class="{'frame-header': true, error: hasRuntimeError}"
-                    :style="frameMarginStyle['header']"
-                    :frameAllowChildren="allowChildren"
-                    :erroneous="hasRuntimeError"
-                    :wasLastRuntimeError="wasLastRuntimeError"
-                />
-                <b-popover
-                    v-if="hasRuntimeError || wasLastRuntimeError"
-                    ref="errorPopover"
-                    :target="frameHeaderId"
-                    :title="$t((hasRuntimeError) ? 'PEA.runtimeErrorConsole' : 'errorMessage.pastFrameErrTitle')"
-                    triggers="hover"
-                    :content="(hasRuntimeError) ? runTimeErrorMessage : runtimeErrorAtLastRunMsg"
-                    :custom-class="(hasRuntimeError) ? 'error-popover modified-title-popover': 'error-popover'"
-                    placement="left"
-                >
-                </b-popover>
-                <FrameBody
-                    v-if="allowChildren"
-                    :ref="getFrameBodyRef"
-                    :frameId="frameId"
-                    :isDisabled="isDisabled"
-                    :caretVisibility="caretVisibility"
-                    :style="frameMarginStyle['body']"
-                />
-                <JointFrames 
-                    v-if="allowsJointChildren"
-                    :ref="getJointFramesRef"
-                    :jointParentId="frameId"
-                    :isDisabled="isDisabled"
-                    :isParentSelected="isPartOfSelection"
-                />
-            </div>
-            <div>
-                <CaretContainer
-                    v-if="!isJointFrame"
-                    :frameId="frameId"
-                    :ref="getCaretContainerRef"
-                    :caretVisibility="caretVisibility"
-                    :caretAssignedPosition="caretPosition.below"
-                    :isFrameDisabled="isDisabled"
-                />
-            </div>
+            <FrameHeader
+                v-if="frameType.labels !== null"
+                :id="frameHeaderId"
+                :isDisabled="isDisabled"
+                v-blur="isDisabled"
+                :frameId="frameId"
+                :frameType="frameType.type"
+                :labels="frameType.labels"
+                :class="{'frame-header': true, error: hasRuntimeError}"
+                :style="frameMarginStyle['header']"
+                :frameAllowChildren="allowChildren"
+                :erroneous="hasRuntimeError"
+                :wasLastRuntimeError="wasLastRuntimeError"
+            />
+            <b-popover
+                v-if="hasRuntimeError || wasLastRuntimeError"
+                ref="errorPopover"
+                :target="frameHeaderId"
+                :title="$t((hasRuntimeError) ? 'PEA.runtimeErrorConsole' : 'errorMessage.pastFrameErrTitle')"
+                triggers="hover"
+                :content="(hasRuntimeError) ? runTimeErrorMessage : runtimeErrorAtLastRunMsg"
+                :custom-class="(hasRuntimeError) ? 'error-popover modified-title-popover': 'error-popover'"
+                placement="left"
+            >
+            </b-popover>
+            <FrameBody
+                v-if="allowChildren"
+                :ref="getFrameBodyRef"
+                :frameId="frameId"
+                :isDisabled="isDisabled"
+                :caretVisibility="caretVisibility"
+                :style="frameMarginStyle['body']"
+            />
+            <JointFrames 
+                v-if="allowsJointChildren"
+                :ref="getJointFramesRef"
+                :jointParentId="frameId"
+                :isDisabled="isDisabled"
+                :isParentSelected="isPartOfSelection"
+            />
         </div>
-        <div 
-            v-if="multiDragPosition === 'middle' || multiDragPosition === 'first'"
-            class="draggedWithOtherFramesBelow"
-        >
+        <div>
+            <CaretContainer
+                v-if="!isJointFrame"
+                :frameId="frameId"
+                :ref="getCaretContainerRef"
+                :caretVisibility="caretVisibility"
+                :caretAssignedPosition="caretPosition.below"
+                :isFrameDisabled="isDisabled"
+            />
         </div>
     </div>
 </template>
@@ -102,12 +85,11 @@
 import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
-import Caret from "@/components/Caret.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { CustomEventTypes, getDraggedSingleFrameId, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu } from "@/helpers/editor";
+import { CustomEventTypes, getFrameBodyUIID, getFrameContextMenuUIID, getFrameHeaderUIID, getFrameUIID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUIID, getHTML2CanvasFramesSelectionCropOptions } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
@@ -125,7 +107,6 @@ export default Vue.extend({
         FrameHeader,
         VueContext,
         CaretContainer,
-        Caret,
     },
 
     beforeCreate() {
@@ -267,19 +248,6 @@ export default Vue.extend({
         isVisible(): boolean {
             return this.appStore.isFrameVisible(this.frameId);
         },
-
-        multiDragPosition(): string {
-            return this.appStore.getMultiDragPosition(this.frameId);
-        },
-
-        isDragTop(): boolean {
-            // We show a "fake" positional caret when dragging frames. 
-            // Either for the very first frame of a selection, or the one being dragged if there is only one.
-            return this.appStore.isDraggingFrame && 
-                (((this.appStore.selectedFrames.length > 0) 
-                    ? this.appStore.selectedFrames[0] 
-                    : getDraggedSingleFrameId()) === this.frameId);
-        },
         
         isDragging(): boolean{
             // Contrary to isDragTop, this property is set whenever dragging is happening, not just for the 
@@ -355,6 +323,9 @@ export default Vue.extend({
 
         // The frame header can listen for events from the editable slots focus to manage header level error messages
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
+
+        // Register the caret container component at the upmost level for drag and drop
+        this.$root.$refs[getCaretUIID(this.caretPosition.below, this.frameId)] = this.$refs[getCaretContainerRef()];
     },
 
     destroyed() {
@@ -366,6 +337,9 @@ export default Vue.extend({
         // Same as above, not sure it is required to remove the event since anyway the event loop won't be raised
         // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
+        
+        // Remove the registration of the caret container component at the upmost level for drag and drop
+        delete this.$root.$refs[getCaretUIID(this.caretPosition.below, this.frameId)];
     },
 
     methods: {
@@ -662,36 +636,20 @@ export default Vue.extend({
                 this.appStore.potentialDeleteIsOuter = isOuterDelete;
             }
         },
-
-        hideCaretAtClick(event: MouseEvent): void {
-            // First check if we are not clicking on the context menu: if so, we don't hide the caret.
-            // (don't use the ids to check things because the event bubbles through the frames)
-            if(event.composedPath().find((target) => (target as HTMLElement).tagName?.toLowerCase()=="ul" && (target as HTMLElement).classList.contains("v-context"))){
-                return;
-            }
-
-            // If we are currently running the code, we cannot do drag and drop, therefore there is no need to hide the caret.
-            if(this.isPythonExecuting){
-                return;
-            }
-
-            // Force the caret to become "transparent" at click. That is required for being able to show a drag and drop "image" that 
-            // doesn't contain the blue caret if we drag the frame which currently holds the caret. The caret visibility will be restored
-            // either when the drop of a drag and drop happens or when click is notified (cf. toggleCaret()) if the drag and drop had not be performed.
-            // Note: we do it directly in JS as reactive change via store is too late for the rendering, and we do not use the same styling than when
-            // the caret is invisible (for example when clicking on a slot) to avoid issues with the loop of mouse events when the DOM changes.
-            for(const navigationCaret of document.getElementsByClassName("caret")){
-                if(!navigationCaret.classList.contains("invisible")){
-                    navigationCaret.classList.add("transparent");
-                }
-            }
-
-            // But to keep things clean in the store, we still need to do the necessary amendments
-            Vue.set(
-                this.appStore.frameObjects[this.appStore.currentFrame.id],
-                "caretVisibility",
-                CaretPosition.dragAndDrop
-            );
+        
+        handleFrameDragStart(event: DragEvent) {
+            // In order to control how the cursor looks, we handle the event ourselves...
+            // drawback --> we also need to control what to show for the code snippet
+            // being dragged with the cursor, and all consequent mouse events.
+            // We don't perform a drag and drop if some code is exectued
+            event.preventDefault();
+            if(!this.isPythonExecuting) { 
+                // The value to give to frameId in notifyDragStarted() depends on the situation:
+                // when it's a selection of frames, we don't provide it, when it's a frame itself,
+                // the value is the id of that dragged frame unless it's a joint frame: we use the
+                // while frame structure and therefore us the id of the structure's root.
+                notifyDragStarted((this.isPartOfSelection)? undefined : ((this.isJointFrame) ? this.appStore.frameObjects[this.frameId].jointParentId : this.frameId));
+            }  
         },
 
         toggleCaret(event: MouseEvent): void {
@@ -946,17 +904,8 @@ export default Vue.extend({
                             : scssVars.mainCodeContainerBackground;
                         let h2cOptions = {backgroundColor: backgroundColor, removeContainer: false} as {[key: string]: any};
                         if(this.isPartOfSelection){
-                            // We look for the position of the first and last selected items to crop the image of the container to the selection
-                            const selectionParentFrameX = (document.getElementById(getFrameUIID(targetFrameId))?.getBoundingClientRect().x)??0;
-                            const selectionParentFrameY = (document.getElementById(getFrameUIID(targetFrameId))?.getBoundingClientRect().y)??0;
-                            const firstSelectedFrameX = (document.getElementById(getFrameUIID(this.appStore.selectedFrames[0]))?.getBoundingClientRect().x)??0;
-                            const firstSelectedFrameY = (document.getElementById(getFrameUIID(this.appStore.selectedFrames[0]))?.getBoundingClientRect().y)??0;
-                            const lastSelectedFrameRight = (document.getElementById(getFrameUIID(this.appStore.selectedFrames.at(-1) as number))?.getBoundingClientRect().right)??0;
-                            const lastSelectedFrameBottom = (document.getElementById(getFrameUIID(this.appStore.selectedFrames.at(-1) as number))?.getBoundingClientRect().bottom)??0;
-                            h2cOptions = {...h2cOptions, x: (firstSelectedFrameX - selectionParentFrameX),
-                                y: (firstSelectedFrameY - selectionParentFrameY), 
-                                width: (lastSelectedFrameRight - firstSelectedFrameX),
-                                height: (lastSelectedFrameBottom - firstSelectedFrameY) };
+                            // Get the crop options for getting only the selection of frames
+                            h2cOptions = {...h2cOptions, ...getHTML2CanvasFramesSelectionCropOptions(targetFrameId)};
                         }
                         html2canvas(targetFrameElement, h2cOptions)
                             .then((html2canvasEl) => {
@@ -1117,23 +1066,6 @@ export default Vue.extend({
     color: #d66;
 }
 
-// This should be ".frameDiv:hover" but drag and drop is messing things up
-// so we use another class to only be used when drag and drop doesn't occur
-.frameDivHover:hover{
-    cursor: pointer;
-}
-
-.dragging-frame-allowed {
-    // This cursor will be shown when dragging occurs and we are within a draggable component 
-    // regardless dropping is allowed or not (because we won't want a constant flicker of cursor)
-    cursor: grabbing !important;
-}
-
-.dragging-frame-not-allowed {
-     // This cursor will be shown when dragging occurs and we are oustide the editor's containers
-    cursor: url(~@/assets/images/forbidden-cursor.png), auto !important;
-}
-
 .blockFrameDiv {
     border-color: #8e8e8e;
 }
@@ -1158,24 +1090,5 @@ export default Vue.extend({
 .selectedTopBottom{
     border-top: 3px solid #000000 !important;
     border-bottom: 3px solid #000000 !important;
-}
-
-.draggedWithOtherFramesAbove {
-    border-top: 3px solid #000000 !important;
-    border-left: 3px solid #000000 !important;
-    border-right: 3px solid #000000 !important;
-    border-bottom: 3px solid #000000 !important;
-    border-radius: 5px 5px 0px 0px;
-    padding-bottom: 5px;
-
-}
-
-.draggedWithOtherFramesBelow{
-    border-top: 3px solid #000000 !important;
-    border-bottom: 3px solid #000000 !important;
-    border-radius: 0px 0px 5px 5px;
-    border-left: 3px solid #000000 !important;
-    border-right: 3px solid #000000 !important;
-    padding-top: 5px;
 }
 </style>

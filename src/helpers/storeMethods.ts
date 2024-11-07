@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUIID, getMatchingBracket, parseLabelSlotUIID } from "./editor";
 import { nextTick } from "@vue/composition-api";
@@ -520,23 +520,6 @@ export const getDisabledBlockRootFrameId = function(frameId: number): number {
     else{
         return frameId;
     }
-};
-
-export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
-    // Change the disable property to destination parent state if the source's parent and destination's parent are different
-    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0)
-        ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
-        : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
-
-    const isDestParentDisabled = listOfFrames[destContainerFrameId].isDisabled;
-    
-    if(isSrcParentDisabled === isDestParentDisabled){
-        // Nothing to change
-        return {changeDisableProp: false, newBoolPropVal: false};
-    }
-
-    // The source need to be changed to the destination's parent 
-    return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
 };
 
 export const getLastSibling= function (frameId: number): number {

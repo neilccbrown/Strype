@@ -13,7 +13,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-1": {
         id: -1,
@@ -28,7 +27,6 @@ const longStateExample: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-2": {
         id: -2,
@@ -43,7 +41,6 @@ const longStateExample: EditorFrameObjects = {
         labelSlotsDict: { },
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-3": {
         id: -3,
@@ -58,7 +55,6 @@ const longStateExample: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.body,
-        multiDragPosition: "",
     },
 
     1: {
@@ -76,7 +72,6 @@ const longStateExample: EditorFrameObjects = {
             1: {slotStructures: {operators: [], fields: [{code: "*"}]}},
             2: {slotStructures: {operators: [], fields: [{code: ""}]}, shown: false}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     2: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.import),
@@ -90,7 +85,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [], fields: [{code: "music"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     3: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.comment),
@@ -104,7 +98,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [], fields: [{code: "At start:"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     4: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -118,7 +111,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "."}, {code: ""}, {code: ""}], fields: [{code: "music"}, {openingBracketValue: "(", fields: [{code:"music"}, {code: "NYAN"}], operators: [{code: "."}]}, {code :""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     5: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -132,7 +124,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "."}, {code: ""}, {code: ""}], fields: [{code: "display"}, {code: "scroll"}, {openingBracketValue: "(", fields: [{code: ""}, {code: "I love Stride micro:bit !", quote:"\""}, {code: ""}], operators: [{code: ""}, {code: ""}]}, {code : ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     6: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.comment),
@@ -146,7 +137,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [], fields: [{code: "Maintain this behaviour while on:"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     7: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
@@ -162,7 +152,6 @@ const longStateExample: EditorFrameObjects = {
             0: {slotStructures: {operators: [], fields: [{code: "currImg"}]}},
             1: {slotStructures: {operators: [{code: "."}], fields: [{code: "Image"}, {code: "HEART"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     8: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.while),
@@ -176,7 +165,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [], fields: [{code: "True"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     9: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -191,7 +179,6 @@ const longStateExample: EditorFrameObjects = {
         labelSlotsDict: { 
             0: {slotStructures: {operators: [{code: "."}, {code: ""}, {code : ""}], fields: [{code: "display"}, {code: "show"}, {openingBracketValue:"(", fields: [{code: "currImg"}], operators:[]}, {code : ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     10: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
@@ -207,7 +194,6 @@ const longStateExample: EditorFrameObjects = {
             0: {slotStructures: {operators: [], fields: [{code: "gesture"}]}},
             1: {slotStructures: {operators:[{code: "."},  {code: ""}, {code : ""}], fields:[{code: "accelerometer"}, {code: "current_gesture"}, {openingBracketValue: "(", fields: [{code: ""}], operators: []}, {code : ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     11: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.if),
@@ -221,7 +207,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: { 0: {slotStructures: {operators: [{code: "=="}, {code: ""}, {code: ""}], fields: [{code: "gesture"}, {code: ""}, {code: "shake", quote: "\""}, {code: ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     14: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -235,7 +220,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "."}, {code: ""}, {code : ""}], fields: [{code: "display"}, {code: "show"}, {openingBracketValue:"(", fields: [{code: "Image"}, {code: "SAD"}], operators:[{code: "."}]}, {code : ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     15: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -249,7 +233,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: ""}, {code : ""}], fields: [{code: "sleep"}, {openingBracketValue: "(", fields:[{code: "2000"}], operators: []}, {code : ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     12: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.if),
@@ -263,7 +246,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "."}, {code: ""}, {code : ""}], fields: [{code: "button_a"}, {code: "is_pressed"}, {openingBracketValue:"(", fields: [{code: ""}], operators:[]}, {code : ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     16: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
@@ -279,7 +261,6 @@ const longStateExample: EditorFrameObjects = {
             0: {slotStructures: {operators: [], fields: [{code: "currImg"}]}},
             1: {slotStructures: {operators: [{code: "."}], fields: [{code: "Image"}, {code: "CHESSBOARD"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     13: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.if),
@@ -293,7 +274,6 @@ const longStateExample: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "."}, {code: ""}, {code : ""}], fields: [{code: "button_b"}, {code: "is_pressed"}, {openingBracketValue:"(", fields: [{code: ""}], operators:[]}, {code : ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     17: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
@@ -309,7 +289,6 @@ const longStateExample: EditorFrameObjects = {
             0: {slotStructures: {operators: [], fields: [{code: "currImg"}]}},
             1: {slotStructures: {operators: [{code: "."}], fields: [{code: "Image"}, {code: "COW"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 };
 

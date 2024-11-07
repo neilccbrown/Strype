@@ -44,29 +44,17 @@
                                 <div 
                                     :id="editorUIID" 
                                     :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
-                                    @click.self="onEditorClick"
                                 >
-                                    <!-- cf. draggableGroup property for details, delay is used to avoid showing a drag -->
-                                    <Draggable
-                                        :list="[1,2]"
-                                        :move="onMoveFrameContainer"
-                                        :group="draggableGroup"
-                                        key="draggable-shadow-editor"
-                                        forceFallback="true"
-                                        delay="5000"
-                                        :disabled="isPythonExecuting"
-                                    >
-                                        <FrameContainer
-                                            v-for="container in containerFrames"
-                                            :key="container.frameType.type + '-id:' + container.id"
-                                            :id="getFrameContainerUIID(container.id)"
-                                            :ref="getFrameContainerUIID(container.id)"
-                                            :frameId="container.id"
-                                            :containerLabel="container.frameType.labels[0].label"
-                                            :caretVisibility="container.caretVisibility"
-                                            :frameType="container.frameType"
-                                        />
-                                    </Draggable>
+                                    <FrameContainer
+                                        v-for="container in containerFrames"
+                                        :key="container.frameType.type + '-id:' + container.id"
+                                        :id="getFrameContainerUIID(container.id)"
+                                        :ref="getFrameContainerUIID(container.id)"
+                                        :frameId="container.id"
+                                        :containerLabel="container.frameType.labels[0].label"
+                                        :caretVisibility="container.caretVisibility"
+                                        :frameType="container.frameType"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -82,6 +70,7 @@
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
+        <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
     </div>
 </template>
 
@@ -101,15 +90,13 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, DraggableGroupTypes, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, handleDraggingCursor, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts } from "./helpers/editor";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { getFrameContainerUIID, getMenuLeftPaneUIID, getEditorMiddleUIID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUIID, parseLabelSlotUIID, getLabelSlotUIID, getFrameLabelSlotsStructureUIID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUIID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 /* FITRUE_isMicrobit */
 import { mapStores } from "pinia";
-import Draggable from "vuedraggable";
-import scssVars  from "@/assets/style/_export.module.scss";
 import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import CaretContainer from "./components/CaretContainer.vue";
@@ -131,7 +118,6 @@ export default Vue.extend({
         FrameContainer,
         Commands,
         Menu,
-        Draggable,
         ModalDlg,
         SimpleMsgModalDlg,
         Splitpanes,
@@ -193,21 +179,6 @@ export default Vue.extend({
             return storageString;
         },
 
-        draggableGroup(): Record<string, any> {
-            // This is a showed draggable to allow management of the cursor (cf. handleDraggingCursor() for details)
-            // Note: the component use a dummy list to not interfer with anything of the UI beyond just the ghost
-            // image of the dragged frame container (it will never be dropped anywhere).
-            return {
-                name: DraggableGroupTypes.shadowEditorContainer,
-                pull: false,
-                put: function() {
-                    // Handle the drag cursor
-                    handleDraggingCursor(true, false);
-                    return false;
-                },
-            };
-        },
-
         simpleMsgModalDlgId(): string{
             return getAppSimpleMsgDlgId();
         },
@@ -222,6 +193,10 @@ export default Vue.extend({
 
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
+        getCompanionDndCanvasId(): string {
+            return getCompanionDndCanvasId();
         },
     },
 
@@ -533,43 +508,6 @@ export default Vue.extend({
 
         messageTop(): boolean {
             return this.appStore.currentMessage.type !== MessageTypes.imageDisplay;
-        },
-
-        onMoveFrameContainer() {
-            // We need that to avoid the frame containers to be even temporary swapping
-            return false;
-        },
-
-        onEditorClick(event: MouseEvent) {
-            // In most cases, we don't need to do anything about a click in the editor.
-            // However, there is a small particular case that we should consider: 
-            // if we click on the very bottom of the last frame of a frame container,
-            // because the caret will hide on mousedown event for drag and drop management,
-            // it might be seen as the browser as a click in the editor instead. Therefore, 
-            // we check if we clicked near the end of a container that contains frames and 
-            // if we did, we select the last frame of this container instead.
-            if(document.getElementsByClassName("caret").length > 0){
-                // Retrieve the size of the caret (https://dev.to/pecus/how-to-share-sass-variables-with-javascript-code-in-vuejs-55p3)
-                const caretHeight = parseInt((scssVars.caretHeight as string).replace("px",""));
-                const containersFrameIds = [this.appStore.getImportsFrameContainerId, this.appStore.getFuncDefsFrameContainerId, this.appStore.getMainCodeFrameContainerId];
-                containersFrameIds.forEach((containerFrameId) => {
-                    // If the container has no children we skip
-                    if(this.appStore.frameObjects[containerFrameId].childrenIds.length > 0){
-                        // Get the last child frame ID
-                        const lastFrameId = [...this.appStore.frameObjects[containerFrameId].childrenIds].pop();
-                        if(lastFrameId){
-                            // Will be there... but keeping TS happy
-                            // We retrieve the rect of the HTML element for that frame and check if the click is within 
-                            // the band below that frame of the height of a caret
-                            const frameDivRect = document.getElementById(getFrameUIID(lastFrameId))?.getBoundingClientRect();
-                            if(frameDivRect && event.x >= frameDivRect.left && event.x <= frameDivRect.right
-                                && event.y >= frameDivRect.bottom && event.y <= (frameDivRect.bottom + caretHeight)){
-                                this.appStore.toggleCaret({id: lastFrameId, caretPosition: CaretPosition.below});
-                            }
-                        }
-                    }
-                });
-            }
         },
 
         handleDocumentSelectionChange(){
@@ -964,6 +902,10 @@ html,body {
     background-color: #bbc6b6 !important;
 }
 
+body.dragging-frame {
+    cursor: grabbing !important;
+}
+
 .app-overlay-pane  {
     width: 100%;
     height: 100vh;
@@ -1132,6 +1074,11 @@ $divider-grey: darken($background-grey, 15%);
     z-index: 10;
 }
 
+.companion-canvas-dnd {
+    position: fixed;
+    z-index: 20;
+}
+
 /* 
  * The following classes are to be used for styling the spliters component.
  * We just don't include the default CSS of the component and change whichever
@@ -1218,24 +1165,6 @@ $divider-grey: darken($background-grey, 15%);
 	-ms-flex-negative: 0;
 	flex-shrink: 0
 }
-
-/*
-.splitpanes.strype-split-theme .splitpanes__splitter:before,
-.splitpanes.strype-split-theme .splitpanes__splitter:after {
-	content: "";
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	background-color: #00000026;
-	-webkit-transition: background-color .3s;
-	-o-transition: background-color .3s;
-	transition: background-color .3s
-}
-
-.splitpanes.strype-split-theme .splitpanes__splitter:hover:before,
-.splitpanes.strype-split-theme .splitpanes__splitter:hover:after {
-	background-color: #00000040;
-}*/
 
 .splitpanes.strype-split-theme .splitpanes__splitter:first-child {
 	cursor: auto

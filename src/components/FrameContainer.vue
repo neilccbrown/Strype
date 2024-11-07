@@ -6,32 +6,14 @@
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
-        <div :id="this.frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
+        <div :id="frameUIID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
             <CaretContainer
-                :frameId="this.frameId"
+                :frameId="frameId"
                 :ref="getCaretContainerRef"
-                :caretVisibility="this.caretVisibility"
+                :caretVisibility="caretVisibility"
                 :caretAssignedPosition="caretPosition.body"
             />
-
-            <Draggable
-                v-model="frames" 
-                :group="draggableGroup"
-                @change.self="handleDragAndDrop($event)"
-                @unchoose="showSelectedFrames()"
-                forceFallback="true"
-                :animation="300"
-                swapThreshold = "0.2"
-                :disabled="isEditing || isPythonExecuting"
-                :key="'Draggable-Container-'+this.frameId"
-                :id="'Draggable-Container-'+this.frameId"
-                @start ="handleMultiDrag"
-                @end="multiDragEnd"
-                :hasCommentsToMove="this.hasCommentsToMove"
-                filter="input"
-                :preventOnFilter="false"
-                class="frame-container-minheight"
-            >
+            <div class="frame-container-minheight">
                 <Frame 
                     v-for="frame in frames" 
                     :ref="setFrameRef(frame.id)"
@@ -43,7 +25,7 @@
                     :allowChildren="frame.frameType.allowChildren"
                     :caretVisibility="frame.caretVisibility"
                 />
-            </Draggable>
+            </div>
         </div>
     </div>
 </template>
@@ -56,10 +38,9 @@ import Vue from "vue";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import Draggable from "vuedraggable";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { getCaretContainerRef, getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { getCaretContainerRef, getCaretUIID, getFrameUIID} from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -69,15 +50,9 @@ export default Vue.extend({
 
     components: {
         Frame,
-        Draggable,
         CaretContainer,
     },
 
-    data: function() {
-        return {
-            hasCommentsToMove: false,
-        };
-    },
 
     props: {
         frameId: Number,
@@ -87,6 +62,16 @@ export default Vue.extend({
             type: Object,
             default: () => DefaultFramesDefinition,
         }, //Type of the Frame  
+    },
+
+    mounted() {
+        // Register the caret container component at the upmost level for drag and drop
+        this.$root.$refs[getCaretUIID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
+    },
+
+    destroyed() {
+        // Remove the registration of the caret container component at the upmost level for drag and drop
+        delete this.$root.$refs[getCaretUIID(this.caretPosition.below, this.frameId)];
     },
 
     computed: {
@@ -108,19 +93,6 @@ export default Vue.extend({
             set() {
                 return;
             },    
-        },
-
-        draggableGroup(): Record<string, any> {
-            return {
-                name: this.appStore.getDraggableGroupById(this.frameId),
-                put: function(to: any, from: any){
-                    //Handle drag cursor
-                    handleDraggingCursor(true, true);
-                   
-                    //Frames can be added if they are of the same group and/or only comments are being move
-                    return from.options.hasCommentsToMove || to.options.group.name === from.options.group.name;
-                },
-            };         
         },
         
         // Needed in order to use the `CaretPosition` type in the v-show
@@ -190,69 +162,6 @@ export default Vue.extend({
         toggleCollapse(): void {
             this.isCollapsed = !this.isCollapsed;
         },
-        
-        handleDragAndDrop(event: any): void {
-            const eventType = Object.keys(event)[0];
-            const chosenFrame = event[eventType].element;
-            // If the frame is part of a selection
-            if(this.appStore.isFrameSelected(chosenFrame.id)) {
-                //If the move can happen
-                this.appStore.moveSelectedFramesToPosition(
-                    {
-                        event: event,
-                        parentId: this.frameId,
-                    }
-                );
-            }
-            else{
-                this.appStore.updateFramesOrder(
-                    {
-                        event: event,
-                        eventParentId: this.frameId,
-                    }
-                );
-            }
-        },
-        
-        handleMultiDrag(event: any): void {
-            const chosenFrame = this.frames[event.oldIndex];
-
-            // If the frame is part of a selection
-            if(this.appStore.isFrameSelected(chosenFrame.id)) {
-                //update the property indicating if dragging the frames in another container is allowed: 
-                //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
-                this.hasCommentsToMove = this.appStore.selectedFrames
-                    .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== AllFrameTypesIdentifier.comment) === undefined;
-                
-                // Notify the start of a drag and drop
-                notifyDragStarted();
-                
-                // Make it appear as the whole selection is being dragged
-                this.appStore.prepareForMultiDrag(chosenFrame.id);
-            }
-            else{
-                //update the property indicating if dragging the frame in another container is allowed: 
-                //we check that the moving frame is a comment
-                this.hasCommentsToMove = (chosenFrame.frameType.type === AllFrameTypesIdentifier.comment);
-
-                // Notify the start of a drag and drop for a particular frame
-                notifyDragStarted(chosenFrame.id);
-            }
-        },   
-
-        multiDragEnd(event: any): void {
-            this.appStore.removeMultiDragStyling();
-
-            // Notify the end of a drag and drop
-            notifyDragEnded(event.clone);
-        },   
-
-        // Some times, when draging and droping in the original position of where the
-        // selected frames were taken, the `change` event is not fired; hence you need to
-        // catch the `unchoose` event
-        showSelectedFrames(): void {
-            this.appStore.makeSelectedFramesVisible();
-        },
 
         onFrameContainerClick(event: any): void {
             // If there are no frames in this container, a click should toggle the caret of this container
@@ -263,6 +172,7 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
             }
         },
+        
         onOuterContainerClick(event : any): void {
             var containerFramesBounds = (this.$refs.containerFrames as HTMLElement).getBoundingClientRect();
             
