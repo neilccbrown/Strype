@@ -574,7 +574,6 @@ export default Vue.extend({
             const scaleToFit = Math.min(scaleToFitX, scaleToFitY);
             targetContext?.save();
             targetContext?.scale(scaleToFit, scaleToFit);
-            console.log("Scaling: " + scaleToFit + " based on " + scaleToFitX + " and " + scaleToFitY + " based on " + c.width + " and " + c.height);
             
             for (let obj of persistentImageManager.getPersistentImages()) {
                 if (obj.rotation != 0) {

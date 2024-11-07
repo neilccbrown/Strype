@@ -118,7 +118,7 @@ class Actor:
             # We draw a rounded rect for the background, then draw the text on:
             sayImg.set_fill("white")
             sayImg.set_stroke("#555555FF")
-            sayImg.rounded_rect(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
+            sayImg.rounded_rectangle(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
             sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
             self.__say = _strype_graphics_internal.addImage(sayImg._EditableImage__image)
             self._update_say_position()
@@ -171,25 +171,29 @@ class Actor:
         self.say(text, font_size, max_width, max_height)
         _strype_graphics_internal.removeImageAfter(self.__say, seconds)
 
+
+def _round_and_clamp_0_255(number):
+    return min(max(int(round(number)), 0), 255)
+
 class Color:
     """
-    A Color class with members red, green, blue, alpha, in the range 0--1.
+    A Color class with members red, green, blue, alpha, in the range 0--255.
     """
     def __init__(self, r, g, b, a):
-        self.red = r
-        self.green = g
-        self.blue = b
-        self.alpha = a
+        self.red = _round_and_clamp_0_255(r)
+        self.green = _round_and_clamp_0_255(g)
+        self.blue = _round_and_clamp_0_255(b)
+        self.alpha = _round_and_clamp_0_255(a)
         
     def to_html(self):
         """
         Get the HTML version of this Color, in the format #RRGGBBAA where each pair is 2 hexadecimal digits.
         :return: The HTML version of this Color.
         """
-        r = round(self.red * 255)
-        g = round(self.green * 255)
-        b = round(self.blue * 255)
-        a = round(self.alpha * 255)
+        r = _round_and_clamp_0_255(self.red)
+        g = _round_and_clamp_0_255(self.green)
+        b = _round_and_clamp_0_255(self.blue)
+        a = _round_and_clamp_0_255(self.alpha)
         return "#{:02x}{:02x}{:02x}{:02x}".format(r, g, b, a) 
 
 class Dimension:
@@ -257,6 +261,10 @@ class EditableImage:
         return Color(rgba[0], rgba[1], rgba[2], rgba[3])
     def set_pixel(self, x, y, color):
         _strype_graphics_internal.canvas_setPixel(self.__image, x, y, (color.red, color.green, color.blue, color.alpha))
+    def bulk_get_pixels(self):
+        return _strype_graphics_internal.canvas_getAllPixels(self.__image)
+    def bulk_set_pixels(self, rgba_array):
+        _strype_graphics_internal.canvas_setAllPixelsRGBA(self.__image, rgba_array)
     def clear_rect(self, x, y, width, height):
         _strype_graphics_internal.canvas_clearRect(self.__image, x, y, width, height)
     def draw_image(self, image, x, y):
@@ -269,10 +277,30 @@ class EditableImage:
     def get_height(self):
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[1]
     
-    def draw_text(self, text, x, y, font_size, max_width, max_height):
-        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height)
+    def draw_text(self, text, x, y, font_size, max_width = 0, max_height = 0, font_family = None):
+        """
+        Draws text on the editable image.  You can specify an optional maximum width and maximum height.  If you specify a max_width
+        greater than zero then the text will be wrapped at whitespace to try to fit it into the given width.  If the text still doesn't
+        fit, or it doesn't fit in to max_height (where max_height is greater than 0), the font size will be progressively shrunk 
+        (down to a minimum size of 8 pixels) to try to make it fit.  But it is possible with awkward text (e.g. one long word
+        like "Aaaaaarrrghhhh!!") that it still may not fit in the given size.
+        
+        Note that text is colored using the fill (see `set_fill()`) not the stroke.  Text drawing is done by filling the shape of the letters,
+        not outlining like a stencil. 
+        
+        :param text: The text to draw
+        :param x: The x position of the top-left
+        :param y: The y position of the top-left
+        :param font_size: The size of the text to draw, in pixels
+        :param max_width: The maximum width of the text (or 0 if you do not want a maximum width)
+        :param max_height: The maximum height of the text (or 0 if you do not want a maximum height)
+        :param font_family: If None, then the default font family is used.  To change this, pass your own FontFamily instance
+        """
+        if font_family is not None and not isinstance(font_family, FontFamily):
+            raise TypeError("Font family must be an instance of FontFamily")
+        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family._FontFamily__font if font_family is not None else None)
         return Dimension(dim['width'], dim['height'])
-    def rounded_rect(self, x, y, width, height, corner_size):
+    def rounded_rectangle(self, x, y, width, height, corner_size):
         """
         Draws a rectangle with rounded corners.  The edge of the rectangle is drawn in the current outline color
         (see `set_outline`) and filled in the current fill color (see `set_fill`).  The corners are rounded using
@@ -284,6 +312,50 @@ class EditableImage:
         :param corner_size: The radius of the corners of the rounded rectangle
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, corner_size)
+    def rectangle(self, x, y, width, height):
+        """
+        Draws a rectangle.  The edge of the rectangle is drawn in the current stroke color
+        (see `set_stroke`) and filled in the current fill color (see `set_fill`).  
+        :param x: The top-left of the rounded rectangle
+        :param y: The bottom-right of the rounded rectangle
+        :param width: The width of the rounded rectangle
+        :param height: The height of the rounded rectangle
+        """
+        _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, 0)
+    def line(self, start_x, start_y, end_x, end_y):
+        """
+        Draws a line.  The line is drawn in the current stroke color.
+        :param start_x: The starting X position 
+        :param start_y: The starting Y position
+        :param end_x: The end X position
+        :param end_y: The end Y position
+        """
+        _strype_graphics_internal.canvas_line(self.__image, start_x, start_y, end_x, end_y)
+    def arc(self, centre_x, centre_y, width, height, angle_start, angle_amount):
+        """
+        Draws an arc (a part of an ellipse, an ellipse being a circle with a width than can be different than height).
+        Imagine an ellipse with a given centre position and width and height.  The `angle_start` parameter
+        is the angle from the centre to the start of the arc, in degrees (0 points to the right, positive values go clockwise),
+        and the `angle_amount` is the amount of degrees to travel (positive goes clockwise, negative goes anti-clockwise) to
+        the end point.
+        
+        The arc will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
+        
+        :param centre_x: 
+        :param centre_y: 
+        :param width: 
+        :param height: 
+        :param angle_start: 
+        :param angle_amount: 
+        :return: 
+        """
+        _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
+
+class FontFamily:
+    def __init__(self, font_provider, font_name):
+        if not _strype_graphics_internal.canvas_loadFont(font_provider, font_name):
+            raise Exception("Could not load font " + font_name)
+        self.__font = font_name
 
 def load_image(filename):
     """
