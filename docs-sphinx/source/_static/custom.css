@@ -1,0 +1,10 @@
+div.sphinxsidebar {
+    width: 24em !important;
+}
+div.bodywrapper {
+    margin: 0 0 0 calc(24em + 30px) !important;
+}
+
+dl.method > dt.sig {
+    background: lightblue;
+}
