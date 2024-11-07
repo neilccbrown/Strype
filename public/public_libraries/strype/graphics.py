@@ -5,7 +5,8 @@ import collections as _collections
 
 def in_bounds(x, y):
     """
-    Checks if the given X, Y position is in the visible bounds of (-400,-300) inclusive to (400, 300) exclusive 
+    Checks if the given X, Y position is in the visible bounds of (-400,-300) inclusive to (400, 300) exclusive.
+    
     :param x: 
     :param y: 
     :return: A boolean indicating whether it is in the visible bounds
@@ -69,6 +70,7 @@ class Actor:
         """
         Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
         rectangles of their images are overlapping (even if the actor is transparent at that point). 
+        
         :param actor: The actor to check for overlap
         :return: True if this actor overlaps that actor, False if it does not 
         """
@@ -77,6 +79,7 @@ class Actor:
         """
         Return an EditableImage which can be used to edit this actor's image.  All modifications
         to the returned image will be shown for this actor automatically.
+        
         :return: An EditableImage with the current Actor image already drawn in it 
         """
         # The -1, -1 sizing indicates we will set the image ourselves afterwards:
@@ -94,7 +97,7 @@ class Actor:
         To remove the speech bubble later, call `say("")` (that is, with a blank string).  You can also consider
         using `say_for` if you want the speech to display for a fixed time.
         
-        :param text: The text to be displayed in the speech bubble.  You can use \n to separate lines.
+        :param text: The text to be displayed in the speech bubble.  You can use \\n to separate lines.
         :param font_size: The font size to try to display at
         :param max_width: The maximum width to fit the speech into (excluding padding which is added to make the speech bubble)
         :param max_height: The maximum height to fit the speech into (excluding padding which is added to make the speech bubble)
@@ -188,6 +191,7 @@ class Color:
     def to_html(self):
         """
         Get the HTML version of this Color, in the format #RRGGBBAA where each pair is 2 hexadecimal digits.
+        
         :return: The HTML version of this Color.
         """
         r = _round_and_clamp_0_255(self.red)
@@ -208,6 +212,7 @@ class EditableImage:
     def __init__(self, width, height):
         """
         Creates an editable image with the given dimensions, with transparent content. 
+        
         :param width: The width of the image in pixels
         :param height: The height of the image in pixels
         """
@@ -229,6 +234,7 @@ class EditableImage:
     def set_fill(self, color):
         """
         Sets the current fill color for future fill operations (but does not do any filling).
+        
         :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object, or None if you want to turn off filling
         """
         if isinstance(color, Color):
@@ -240,6 +246,7 @@ class EditableImage:
     def set_stroke(self, color):
         """
         Sets the current stroke/outline color for future shape-drawing operations (but does not draw anything).
+        
         :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object, or None if you want to turn off the stroke
         """
         if isinstance(color, Color):
@@ -305,6 +312,7 @@ class EditableImage:
         Draws a rectangle with rounded corners.  The edge of the rectangle is drawn in the current outline color
         (see `set_outline`) and filled in the current fill color (see `set_fill`).  The corners are rounded using
         quarter-circles with radius of `corner_size`.
+        
         :param x: The top-left of the rounded rectangle
         :param y: The bottom-right of the rounded rectangle
         :param width: The width of the rounded rectangle
@@ -315,7 +323,8 @@ class EditableImage:
     def rectangle(self, x, y, width, height):
         """
         Draws a rectangle.  The edge of the rectangle is drawn in the current stroke color
-        (see `set_stroke`) and filled in the current fill color (see `set_fill`).  
+        (see `set_stroke`) and filled in the current fill color (see `set_fill`).
+          
         :param x: The top-left of the rounded rectangle
         :param y: The bottom-right of the rounded rectangle
         :param width: The width of the rounded rectangle
@@ -325,6 +334,7 @@ class EditableImage:
     def line(self, start_x, start_y, end_x, end_y):
         """
         Draws a line.  The line is drawn in the current stroke color.
+        
         :param start_x: The starting X position 
         :param start_y: The starting Y position
         :param end_x: The end X position
@@ -360,6 +370,7 @@ class FontFamily:
 def load_image(filename):
     """
     Loads the given image file as an EditableImage object.
+    
     :param filename: The built-in Strype filename, or URL, of the image to load.
     :return: An EditableImage object with the same image and dimensions as the given file
     """
@@ -372,6 +383,7 @@ def get_and_forget_clicked_actor():
     Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice
     in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function
     to several other things, assign it to a variable first.
+    
     :return: The most recently clicked Actor, or None if nothing was clicked since you last called this function.
     """
     return _strype_input_internal.getAndResetClickedItem()
