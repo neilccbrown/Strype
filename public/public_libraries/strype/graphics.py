@@ -229,25 +229,25 @@ class EditableImage:
     def set_fill(self, color):
         """
         Sets the current fill color for future fill operations (but does not do any filling).
-        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object
+        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object, or None if you want to turn off filling
         """
         if isinstance(color, Color):
             _strype_graphics_internal.canvas_setFill(self.__image, color.to_html())
-        elif isinstance(color, str):
+        elif isinstance(color, str) or color is None:
             _strype_graphics_internal.canvas_setFill(self.__image, color)
         else:
-            raise TypeError("Fill must be either a string or a Color")
+            raise TypeError("Fill must be either a string or a Color but was " + str(type(color)))
     def set_stroke(self, color):
         """
         Sets the current stroke/outline color for future shape-drawing operations (but does not draw anything).
-        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object
+        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object, or None if you want to turn off the stroke
         """
         if isinstance(color, Color):
             _strype_graphics_internal.canvas_setStroke(self.__image, color.to_html())
-        elif isinstance(color, str):
+        elif isinstance(color, str) or color is None:
             _strype_graphics_internal.canvas_setStroke(self.__image, color)
         else:
-            raise TypeError("Stroke must be either a string or a Color")
+            raise TypeError("Stroke must be either a string or a Color but was " + str(type(color)))
     def get_pixel(self, x, y):
         """
         Gets a Color object with the color of the pixel at the given position.  If you want to change the color,
