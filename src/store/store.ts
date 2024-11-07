@@ -1582,24 +1582,32 @@ export const useStore = defineStore("app", {
                 : this.frameObjects[this.frameObjects[destinationCaretFrameId].parentId];
 
             draggedFramesReversed.forEach((draggedFrameId) => {
+                // VERY IMPORTANT: the frames components being removed from their original parents will be destroyed.
+                // However, even if we write the sequence in order (remove -> add), Vue destroys the component AFTER
+                // it has been added (I don't know why...) so we defer adding the frame to its new parent to make sure
+                // the component gets created again.
                 // Remove the frame from its parent
                 sourcContainerFrame.childrenIds.splice(sourcContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
-                // Append it to the destination list
-                const destFrameListInsertIndex = (destinationCaretPos == CaretPosition.body) ? 0 : destContainerFrame.childrenIds.indexOf(destinationCaretFrameId) + 1;
-                destContainerFrame.childrenIds.splice(destFrameListInsertIndex, 0, draggedFrameId);
-                // Update the dragged frame's parent
-                this.frameObjects[draggedFrameId].parentId = destContainerFrame.id;
+                nextTick(() => {
+                    // Append it to the destination list
+                    const destFrameListInsertIndex = (destinationCaretPos == CaretPosition.body) ? 0 : destContainerFrame.childrenIds.indexOf(destinationCaretFrameId) + 1;
+                    destContainerFrame.childrenIds.splice(destFrameListInsertIndex, 0, draggedFrameId);
+                    // Update the dragged frame's parent
+                    this.frameObjects[draggedFrameId].parentId = destContainerFrame.id;
+                });
                 // If the container is disabled, the dragged frame and its children must be disabled too
                 if(destContainerFrame.isDisabled){
                     this.doChangeDisableFrame({frameId: draggedFrameId, isDisabling: true});
                 }
             });
 
-            //save the state changes for undo/redo
-            this.saveStateChanges(this.stateBeforeChanges);
+            //save the state changes for undo/redo after all changes changing the order has been done
+            nextTick(() => {
+                this.saveStateChanges(this.stateBeforeChanges);
 
-            //clear the stateBeforeChanges flag off
-            this.updateStateBeforeChanges(true);
+                //clear the stateBeforeChanges flag off
+                this.updateStateBeforeChanges(true);
+            });
         },
 
         async setFrameEditableSlotContent(frameSlotInfos: SlotInfos) {

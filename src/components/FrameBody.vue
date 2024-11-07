@@ -65,7 +65,7 @@ export default Vue.extend({
 
     destroyed() {
         // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
+        delete this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
     computed: {
