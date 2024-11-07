@@ -225,6 +225,9 @@ Color = _collections.namedtuple("Color", ("red", "green", "blue"))
 
 # Pixel remembers its picture and position.  For efficiency reasons, we don't create its color until asked:
 class Pixel:
+    # The index value is an index into the array of RGBA pixels.  So the pixel at (0, 0) will have
+    # index 0.  The pixel at (1, 0) will have index 4, because it is after the first set of four (RGBA) values.
+    # The next pixel will be index 8, etc.
     __slots__ = ["picture", "x", "y", "__index", "__color"]
     def __init__(self, picture, x, y, index):
         self.picture = picture
@@ -285,7 +288,7 @@ def addArc(picture, startX, startY, width, height, start, angle, color="black"):
 
 def addArcFilled(picture, startX, startY, width, height, start, angle, color="black"):
     """
-    Adds a filled arc starting at (x,y) at an initial angle of "start" with thegiven width and height. The angle of the arc itself is "angle", which is relative to "start."
+    Adds a filled arc starting at (x,y) at an initial angle of "start" with the given width and height. The angle of the arc itself is "angle", which is relative to "start."
     
     :param picture: The picture to draw the arc on.
     :param startX: The x-coordinate of the arc's center.
@@ -508,7 +511,7 @@ def getPixel(picture, x, y):
     return Pixel(picture, x, y, (y*width+x)*4)
 
 def getPixelAt(picture, xpos, ypos):
-    """ Same as getPixelAt. """
+    """ Same as getPixel. """
     return getPixel(picture, xpos, ypos)
 
 def getWidth(picture):
@@ -612,7 +615,7 @@ class Font:
 
 def makeStyle(fontName, emphasis, size):
     """
-    Takes a font name, emphasis, and size in points as input. Returns a Font object with thegiven parameters.
+    Takes a font name, emphasis, and size in points as input. Returns a Font object with the given parameters.
     :param fontName: The name of the font (e.g., "sansSerif").
     :param emphasis: The emphasis (e.g., "italic").  This parameter is currently unsupported.
     :param size: The font size.

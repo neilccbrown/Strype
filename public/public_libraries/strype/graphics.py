@@ -180,10 +180,10 @@ class Color:
     A Color class with members red, green, blue, alpha, in the range 0--255.
     """
     def __init__(self, r, g, b, a):
-        self.red = min(255, max(0, int(r)))
-        self.green = min(255, max(0, int(g)))
-        self.blue = min(255, max(0, int(b)))
-        self.alpha = min(255, max(0, int(a)))
+        self.red = _round_and_clamp_0_255(r)
+        self.green = _round_and_clamp_0_255(g)
+        self.blue = _round_and_clamp_0_255(b)
+        self.alpha = _round_and_clamp_0_255(a)
         
     def to_html(self):
         """
