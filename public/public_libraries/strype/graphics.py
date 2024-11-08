@@ -20,6 +20,7 @@ class Actor:
     """
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
+    # __editable_image: the editable image of this actor, if the user has ever called edit_image() on us.
     # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
     # whenever we use it, we should check it's still actually present.
@@ -143,14 +144,18 @@ class Actor:
     def edit_image(self):
         """
         Return an EditableImage which can be used to edit this actor's image.  All modifications
-        to the returned image will be shown for this actor automatically.
+        to the returned image will be shown for this actor automatically.  If you call this function multiple times
+        you will get the same EditableImage returned.
         
         :return: An EditableImage with the current Actor image already drawn in it 
         """
-        # The -1, -1 sizing indicates we will set the image ourselves afterwards:
-        img = EditableImage(-1, -1)
-        img._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
-        return img
+        # Note: we don't want to have an editable image by default because it is slower to render
+        # the editable canvas than to render the unedited image (I think!?)
+        if self.__editable_image is None:
+            # The -1, -1 sizing indicates we will set the image ourselves afterwards:
+            self.__editable_image = EditableImage(-1, -1)
+            self.__editable_image._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
+        return self.__editable_image
     def say(self, text, font_size = 20, max_width = 300, max_height = 200, font_family = None):
         """
         Add a speech bubble next to the actor with the given text.  The only required parameter is the
