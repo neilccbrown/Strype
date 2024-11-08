@@ -302,8 +302,9 @@ var $builtinmodule = function(name)  {
     mod.canvas_drawText = new Sk.builtin.func(function(dest, text, x, y, fontSize, maxWidth = 0, maxHeight = 0, fontName = null) {
         // Must remap the string to Javascript:
         text = Sk.ffi.remapToJs(text);
+        fontName = Sk.ffi.remapToJs(fontName);
         if (fontName != null) {
-            fontName = Sk.ffi.remapToJs(fontName) + ", sans-serif";
+            fontName = fontName + ", sans-serif";
         }
         else {
             fontName = sayFont;

@@ -185,7 +185,7 @@ class Actor:
             textOnlyImg.set_fill("white")
             textOnlyImg.fill()
             textOnlyImg.set_fill("black")
-            textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, max_width, max_height, font_family or "Klee One")
+            textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, max_width, max_height, font_family)
             # Now we prepare an image of the right size plus padding:
             sayImg = EditableImage(textDimensions.width + 2 * padding, textDimensions.height + 2 * padding)
             # We draw a rounded rect for the background, then draw the text on:
