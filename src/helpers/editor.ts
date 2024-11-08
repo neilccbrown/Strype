@@ -8,6 +8,7 @@ import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { vm } from "@/main";
+import Vue from "vue";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -838,7 +839,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
             }
             return true;
         });
-        if(closestCaretPositionIndex > -1){
+        if(closestCaretPositionIndex > -1 && (currentCaretDropPosFrameId != newCaretDropPosFrameId || currentCaretDropPosCaretPos != newCaretDropPosCaretPos)){
             const closestCaretEl = document.getElementById(getCaretUID(currentCaretPositionsForDnD[closestCaretPositionIndex].caretPosition as string, currentCaretPositionsForDnD[closestCaretPositionIndex].frameId));
             // First remove the drop indicator of the current drop position (if any)
             if(currentCaretDropPosId.length > 0){
@@ -893,6 +894,9 @@ export function notifyDragStarted(frameId?: number):void {
             renderingCanvas.width = frameElRect.width * companionImgScalingRatio;
             renderingCanvas.height = frameElRect.height * companionImgScalingRatio;
         } 
+        // Set the "being dragged flag" for this frame -- as the object property is option, we need to use 
+        // Vue.set() to ensure reactivity works on frame objects where isBeingDragged is not definged
+        Vue.set(useStore().frameObjects[frameId],"isBeingDragged",true);
     }
     else{
         // We move a selection, we need to generate a companion image of that selection.
@@ -901,9 +905,14 @@ export function notifyDragStarted(frameId?: number):void {
         html2canvasOptions = {...html2canvasOptions, ...getHTML2CanvasFramesSelectionCropOptions(useStore().frameObjects[useStore().selectedFrames[0]].parentId)};
         renderingCanvas.width = (html2canvasOptions.width as number) / 2;
         renderingCanvas.height = (html2canvasOptions.height as number) / 2;
+        useStore().selectedFrames.forEach((selectedFrameId) => {
+            Vue.set(useStore().frameObjects[selectedFrameId],"isBeingDragged", true);
+        });
     }
+    
     // Set the app-scoped flag that we are dragging a frame/selection of frames.
     useStore().isDraggingFrame = true;
+
     // Get the list of current available caret positions: all caret positions, 
     // except the positions within a selection or within inside the children of a frame that is dragged
     const caretAboveDraggedFrame = getAboveFrameCaretPosition((frameId) ? frameId : useStore().selectedFrames[0]);
@@ -937,6 +946,13 @@ export function notifyDragStarted(frameId?: number):void {
 export function notifyDragEnded():void {
     // Update the dragging flag
     useStore().isDraggingFrame = false;
+    // Update the "being dragged" frame flag -- as the information about which frames have been dragged 
+    // is potentially already lost at this stage (see mouseup event above), we look for all frames having
+    // the flag set to true and toggle it.
+    Object.values(useStore().frameObjects)
+        .filter((frame) => frame.isBeingDragged)
+        .forEach((frame) => frame.isBeingDragged = false);
+
     // Remove the styling on body / companion "image" (that we needed to inferer with since we don't use the native Drag and Drop API)
     const canvas = (document.getElementById(companionCanvasId) as HTMLCanvasElement);
     (canvas.getContext("2d") as any).reset();

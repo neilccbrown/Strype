@@ -6,6 +6,7 @@
             :key="frame.frameType.type + '-id:' + frame.id"
             :frameId="frame.id"
             :isDisabled="frame.isDisabled || isDisabled"
+            :isBeingDragged="isBeingDragged"
             :frameType="frame.frameType"
             :isJointFrame="true"
             :isParentSelected="isParentSelected"
@@ -41,6 +42,7 @@ export default Vue.extend({
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
         jointParentId: Number, // Unique Indentifier for each Frame
         isDisabled: Boolean,
+        isBeingDragged: Boolean,
         isParentSelected: Boolean,
     },
 

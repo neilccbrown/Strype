@@ -18,6 +18,7 @@
                     :key="frame.frameType.type  + '-id:' + frame.id"
                     :frameId="frame.id"
                     :isDisabled="frame.isDisabled"
+                    :isBeingDragged="isBeingDragged"
                     :frameType="frame.frameType"
                     :isJointFrame="false"
                     :caretVisibility="frame.caretVisibility"
@@ -55,6 +56,7 @@ export default Vue.extend({
     props: {
         frameId: Number,
         isDisabled: Boolean,
+        isBeingDragged: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not
     },
 

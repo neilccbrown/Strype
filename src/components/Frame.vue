@@ -28,7 +28,7 @@
                 v-if="frameType.labels !== null"
                 :id="frameHeaderId"
                 :isDisabled="isDisabled"
-                v-blur="isDisabled"
+                v-blur="isDisabled || isBeingDraggedComputed"
                 :frameId="frameId"
                 :frameType="frameType.type"
                 :labels="frameType.labels"
@@ -54,6 +54,7 @@
                 :ref="getFrameBodyRef"
                 :frameId="frameId"
                 :isDisabled="isDisabled"
+                :isBeingDragged="isBeingDraggedComputed"
                 :caretVisibility="caretVisibility"
                 :style="frameMarginStyle['body']"
             />
@@ -62,6 +63,7 @@
                 :ref="getJointFramesRef"
                 :jointParentId="frameId"
                 :isDisabled="isDisabled"
+                :isBeingDragged="isBeingDraggedComputed"
                 :isParentSelected="isPartOfSelection"
             />
         </div>
@@ -123,6 +125,7 @@ export default Vue.extend({
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
         frameId: Number, // Unique Indentifier for each Frame
         isDisabled: Boolean,
+        isBeingDragged: Boolean,
         frameType: {
             type: Object,
             default: () => DefaultFramesDefinition,
@@ -197,6 +200,12 @@ export default Vue.extend({
             frameClass += (this.selectedPosition === "last")? "selectedBottom " : ""; 
             frameClass += (this.selectedPosition === "first-and-last" || this.contextMenuEnforcedSelect)? "selectedTopBottom " : "";  
             return frameClass;
+        },
+
+        isBeingDraggedComputed(): boolean {
+            // A Frame component should know it's being dragged either because it is itself being dragged
+            // or its ancestor is, so this computer prop depends on the state prop and on the component prop.
+            return this.isBeingDragged || !!this.appStore.frameObjects[this.frameId].isBeingDragged;
         },
 
         runTimeErrorMessage(): string {
