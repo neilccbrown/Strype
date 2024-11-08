@@ -7,20 +7,24 @@ def in_bounds(x, y):
     """
     Checks if the given X, Y position is in the visible bounds of (-400,-300) inclusive to (400, 300) exclusive.
     
-    :param x: 
-    :param y: 
-    :return: A boolean indicating whether it is in the visible bounds
+    :param x: The x position to check
+    :param y: The y position to check
+    :return: A boolean indicating whether it is in the visible bounds: True if it is in bounds, False if it is not.
     """
     return -400 <= x < 400 and -300 <= y < 300
 
 class Actor:
+    """
+    An Actor is an item in the world with a specific image, position, rotation and scale.  Everything you want to show up
+    in your graphics must be an Actor.  
+    """
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
     # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
     # whenever we use it, we should check it's still actually present.
     
-    def __init__(self, image_or_filename, x, y):
+    def __init__(self, image_or_filename, x = 0, y = 0):
         """
         Construct an Actor with a given image and position.
         
@@ -38,33 +42,94 @@ class Actor:
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         _strype_graphics_internal.setImageRotation(self.__id, 0)
     def set_location(self, x, y):
+        """
+        Sets the position of the actor to be the given x, y position.
+        
+        :param x: The new X position of the actor
+        :param y: The new Y position of the actor
+        """
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         self._update_say_position()
     def set_rotation(self, deg):
+        """
+        Sets the rotation of the actor to be the given rotation in degrees.  This changes the rotation of
+        the actor's image and also affects which direction the actor will travel if you call `turn()`.
+        
+        :param deg: The rotation in degrees (0 points right, 90 points up, 180 points left, 270 points down).
+        """
         _strype_graphics_internal.setImageRotation(self.__id, deg)
         # Note: no need to update say position if we are just rotating
     def set_scale(self, scale):
+        """
+        Sets the actor's scale (size multiplier).  The default is 1, larger values make it bigger (for example, 2 is double size),
+        and smaller values make it smaller (for example, 0.5 is half size).  It must be a positive number greater than zero.
+        
+        :param scale: The new scale to set, replacing the old scale.
+        """
+        if scale <= 0:
+            raise ValueError("Scale must be greater than zero")
         _strype_graphics_internal.setImageScale(self.__id, scale)
         self._update_say_position()
     def remove(self):
+        """
+        Removes the actor from the world.  There is no way to re-add the actor to the world.
+        """
         _strype_graphics_internal.removeImage(self.__id)
     def get_x(self):
+        """
+        Gets the X position of the actor as an integer (whole number).  If the actors current position
+        is not a whole number, it is rounded down (towards zero).  If you want the exact position as a potentially
+        fractional number, call `get_exact_x()` instead.
+        
+        :return: The current X position, rounded down to an integer (whole number). 
+        """
+        
          # Gets X with rounding (towards zero):
         return int(_strype_graphics_internal.getImageLocation(self.__id)['x'])
     def get_y(self):
+        """
+        Gets the Y position of the actor as an integer (whole number).  If the actors current position
+        is not a whole number, it is rounded down (towards zero).  If you want the exact position as a potentially
+        fractional number, call `get_exact_y()` instead.
+        
+        :return: The current Y position, rounded down to an integer (whole number). 
+        """
         # Gets Y with rounding (towards zero):
         return int(_strype_graphics_internal.getImageLocation(self.__id)['y'])
     def get_exact_x(self):
+        """
+        Gets the exact X position of the actor, which may be a fractional number.  If you do not need this accuracy,
+        you may prefer to call `get_x()` instead.
+         
+        :return: The exact X position
+        """
         # Gets X with no rounding:
         return _strype_graphics_internal.getImageLocation(self.__id)['x']
     def get_exact_y(self):
+        """
+        Gets the exact Y position of the actor, which may be a fractional number.  If you do not need this accuracy,
+        you may prefer to call `get_y()` instead.
+         
+        :return: The exact Y position
+        """
         # Gets Y with no rounding:
         return _strype_graphics_internal.getImageLocation(self.__id)['y']
     def move(self, amount):
+        """
+        Move forwards the given amount in the current direction that the actor is heading.  If you want to change
+        this direction, you can call `set_rotation()` or `turn()`.
+        
+        :param amount: The amount of pixels to move forwards.  Negative amounts move backwards.
+        """
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
         self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
     def turn(self, degrees):
+        """
+        Changes the actor's current rotation by the given amount of degrees.
+        
+        :param degrees: The change in rotation, in degrees.  Positive amounts turn anti-clockwise, negative amounts turn clockwise.
+        """
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
     def is_touching(self, actor):
         """
@@ -86,7 +151,7 @@ class Actor:
         img = EditableImage(-1, -1)
         img._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return img
-    def say(self, text, font_size = 20, max_width = 300, max_height = 200):
+    def say(self, text, font_size = 20, max_width = 300, max_height = 200, font_family = None):
         """
         Add a speech bubble next to the actor with the given text.  The only required parameter is the
         text, all the others can be omitted.  The text will be wrapped if it reaches max_width (unless you
@@ -115,7 +180,7 @@ class Actor:
             textOnlyImg.set_fill("white")
             textOnlyImg.fill()
             textOnlyImg.set_fill("black")
-            textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, max_width, max_height)
+            textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, max_width, max_height, font_family or "Klee One")
             # Now we prepare an image of the right size plus padding:
             sayImg = EditableImage(textDimensions.width + 2 * padding, textDimensions.height + 2 * padding)
             # We draw a rounded rect for the background, then draw the text on:
