@@ -8,3 +8,13 @@ div.bodywrapper {
 dl.method > dt.sig {
     background: lightblue;
 }
+dl.class > dt.sig {
+    background: lightcoral;
+}
+dl.function > dt.sig {
+    background: darkseagreen;
+}
+
+h2 {
+    font-size: 3em;
+}

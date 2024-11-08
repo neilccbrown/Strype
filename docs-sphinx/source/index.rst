@@ -6,9 +6,9 @@
 Strype documentation
 ====================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+Strype has two in-built modules you can use:
+ * strype.graphics for graphics output
+ * strype.sound for sound output
 
 strype.graphics module
 ----------------------
