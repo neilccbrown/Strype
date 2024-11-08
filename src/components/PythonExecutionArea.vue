@@ -646,7 +646,12 @@ export default Vue.extend({
             // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
         },
         graphicsCanvasClick(event: MouseEvent) {
-            mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(event.offsetX, event.offsetY);
+            const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
+            const adjustedX = ((event.offsetX / domCanvas.getBoundingClientRect().width) - 0.5) * graphicsCanvasLogicalWidth;
+            // We have to invert the Y axis because positive is up there, hence * -1 on the end:
+            const adjustedY = ((event.offsetY / domCanvas.getBoundingClientRect().height) - 0.5) * graphicsCanvasLogicalHeight * -1;
+            console.trace("Adjusted X Y: " + adjustedX + ", " + adjustedY);
+            mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
         },
         consumeLastClickedItems() : PersistentImage[] {
             const r = mostRecentClickedItems;

@@ -7,8 +7,9 @@ var $builtinmodule = function(name)  {
     var mod = {};
     mod.getAndResetClickedItem = new Sk.builtin.func(function() {
         const all = peaComponent.__vue__.consumeLastClickedItems();
-        if (all.length !== 0) {
-            let assoc = all[all.length - 1].associatedObject;
+        for (let i = all.length - 1; i >= 0; i--) {
+            let assoc = all[i].associatedObject;
+            // We don't have an associatedObject for some PersistentImage, e.g. the say speech bubbles.
             if (assoc) {
                 // This already is a Python object so mustn't remap:
                 return assoc;

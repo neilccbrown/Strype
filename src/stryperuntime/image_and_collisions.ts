@@ -71,7 +71,9 @@ export class PersistentImageManager {
         if (obj != undefined && obj.rotation != rotation) {
             obj.rotation = rotation;
             obj.dirty = true;
-            obj.collisionBox.setAngle(rotation * Math.PI / 180);
+            // Note that rotation in the world goes the opposite way to collision because of the inverted
+            // axis so we must negate it:
+            obj.collisionBox.setAngle(-rotation * Math.PI / 180);
             obj.collisionBox.updateBody();
         }
     }

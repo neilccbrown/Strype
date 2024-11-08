@@ -34,9 +34,9 @@ class Actor:
         :param y: The Y position at which to add the actor
         """
         if isinstance(image_or_filename, EditableImage):
-            self.__id = _strype_graphics_internal.addImage(image_or_filename._EditableImage__image)
+            self.__id = _strype_graphics_internal.addImage(image_or_filename._EditableImage__image, self)
         elif isinstance(image_or_filename, str):
-            self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_or_filename))
+            self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_or_filename), self)
         else:
             raise TypeError("Actor constructor parameter must be string or EditableImage")
         self.__say = None
@@ -193,7 +193,7 @@ class Actor:
             sayImg.set_stroke("#555555FF")
             sayImg.rounded_rectangle(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
             sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
-            self.__say = _strype_graphics_internal.addImage(sayImg._EditableImage__image)
+            self.__say = _strype_graphics_internal.addImage(sayImg._EditableImage__image, None)
             self._update_say_position()
             
     def _update_say_position(self):
