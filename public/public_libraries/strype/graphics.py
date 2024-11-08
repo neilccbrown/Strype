@@ -252,17 +252,27 @@ class Color:
     """
     A Color class with members red, green, blue, alpha, in the range 0--255.
     """
-    def __init__(self, r, g, b, a):
-        self.red = _round_and_clamp_0_255(r)
-        self.green = _round_and_clamp_0_255(g)
-        self.blue = _round_and_clamp_0_255(b)
-        self.alpha = _round_and_clamp_0_255(a)
+    def __init__(self, red, green, blue, alpha = 255):
+        """
+        Constructs a color value with the given red, green, blue and alpha values.  If they are below 0 they will be treated
+        as if they were 0, and if they are above 255 they will be treated as if they were 255.  Fractional numbers will
+        be converted to a whole number.
+        
+        :param red: The red value, from 0 (none) to 255 (most).
+        :param green: The green value, from 0 (none) to 255 (most).
+        :param blue: The blue value, from 0 (none) to 255 (most). 
+        :param alpha: The alpha value.  Alpha represents transparency.  0 means fully transparent which is rarely what you want.  255 means non-transparent.  Values inbetween indicate the amount of transparency.
+        """
+        self.red = _round_and_clamp_0_255(red)
+        self.green = _round_and_clamp_0_255(green)
+        self.blue = _round_and_clamp_0_255(blue)
+        self.alpha = _round_and_clamp_0_255(alpha)
         
     def to_html(self):
         """
         Get the HTML version of this Color, in the format #RRGGBBAA where each pair is 2 hexadecimal digits.
         
-        :return: The HTML version of this Color.
+        :return: The HTML version of this Color as string.
         """
         r = _round_and_clamp_0_255(self.red)
         g = _round_and_clamp_0_255(self.green)
@@ -271,7 +281,16 @@ class Color:
         return "#{:02x}{:02x}{:02x}{:02x}".format(r, g, b, a) 
 
 class Dimension:
+    """
+    A dimension value indicating a width and a height, for example the size of an image.
+    """
     def __init__(self, width, height):
+        """
+        Constructs a dimension value with the given width and height.
+        
+        :param width: The width.
+        :param height: The height.
+        """
         self.width = width
         self.height = height
 
@@ -295,17 +314,19 @@ class EditableImage:
             _strype_graphics_internal.canvas_setStroke(self.__image, "black")
         else:
             self.__image = None
+            
     def fill(self):
         """
         Fills the image with the current fill color (see `set_fill`)
         """
         dim = _strype_graphics_internal.getCanvasDimensions(self.__image)
         _strype_graphics_internal.canvas_fillRect(self.__image, 0, 0, dim[0], dim[1])
+        
     def set_fill(self, color):
         """
         Sets the current fill color for future fill operations (but does not do any filling).
         
-        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object, or None if you want to turn off filling
+        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None if you want to turn off filling
         """
         if isinstance(color, Color):
             _strype_graphics_internal.canvas_setFill(self.__image, color.to_html())
@@ -313,11 +334,12 @@ class EditableImage:
             _strype_graphics_internal.canvas_setFill(self.__image, color)
         else:
             raise TypeError("Fill must be either a string or a Color but was " + str(type(color)))
+        
     def set_stroke(self, color):
         """
         Sets the current stroke/outline color for future shape-drawing operations (but does not draw anything).
         
-        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0") or a :class:`Color` object, or None if you want to turn off the stroke
+        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None if you want to turn off the stroke
         """
         if isinstance(color, Color):
             _strype_graphics_internal.canvas_setStroke(self.__image, color.to_html())
@@ -325,6 +347,7 @@ class EditableImage:
             _strype_graphics_internal.canvas_setStroke(self.__image, color)
         else:
             raise TypeError("Stroke must be either a string or a Color but was " + str(type(color)))
+        
     def get_pixel(self, x, y):
         """
         Gets a Color object with the color of the pixel at the given position.  If you want to change the color,
@@ -336,22 +359,88 @@ class EditableImage:
         """
         rgba = _strype_graphics_internal.canvas_getPixel(self.__image, int(x), int(y))
         return Color(rgba[0], rgba[1], rgba[2], rgba[3])
+    
     def set_pixel(self, x, y, color):
+        """
+        Sets the pixel at the given x, y position to be the given color.
+         
+        :param x: The x position of the pixel (must be an integer) 
+        :param y: The y position of the pixel (must be an integer)
+        :param color: The color to set.  This must be a :class:`Color` object.
+        """
         _strype_graphics_internal.canvas_setPixel(self.__image, x, y, (color.red, color.green, color.blue, color.alpha))
+        
     def bulk_get_pixels(self):
+        """
+        Gets the values of the pixels of the image in one large array.  Index 0 in the array is the red value,
+        of the pixel at the top-left (0,0) in the image.  Indexes 1, 2 and 3 are the green, blue and alpha of that pixel.
+        Index 4 is the red value of the pixel at (1, 0) in the image.  So the values are sets of four (RGBA in that order)
+        for each pixel, and at the end of the first row it starts at the left of the second row.
+        
+        :return: An array of 0-255 values organised as described above.
+        """
         return _strype_graphics_internal.canvas_getAllPixels(self.__image)
+    
     def bulk_set_pixels(self, rgba_array):
+        """
+        Sets the values of the pixels from RGBA values in one giant array.  The pixels should be arranged as described
+        in `bulk_get_pixels()`.  The array should thus be of length width * height * 4.
+        
+        :param rgba_array: An array of 0-255 RGBA values organised as described above.
+        """
         _strype_graphics_internal.canvas_setAllPixelsRGBA(self.__image, rgba_array)
+        
     def clear_rect(self, x, y, width, height):
+        """
+        Clears the given rectangle (i.e. sets all the pixels to be fully transparent).
+        
+        :param x: The left X coordinate of the rectangle (inclusive).
+        :param y: The top Y coordinate of the rectangle (inclusive).
+        :param width: The width of the rectangle
+        :param height: The height of the rectangle.
+        """
         _strype_graphics_internal.canvas_clearRect(self.__image, x, y, width, height)
+        
     def draw_image(self, image, x, y):
+        """
+        Draws the entire given image into this image, at the given top-left x, y position.  If you only want to draw
+        part of the image, use `draw_part_of_image()`.
+        
+        :param image: The image to draw from, into this image.  Must be an EditableImage.
+        :param x: The left X coordinate to draw the image at.
+        :param y: The top Y coordinate to draw the image at.
+        """
         dim = _strype_graphics_internal.getCanvasDimensions(image._EditableImage__image)
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1])
+        
     def draw_part_of_image(self, image, x, y, sx, sy, width, height):
+        """
+        Draws part of the given image into this image.
+        
+        :param image: The image to draw from, into this image.  Must be an EditableImage.
+        :param x: The left X coordinate to draw the image at.
+        :param y: The top Y coordinate to draw the image at.
+        :param sx: The left X coordinate within the source image to draw from.
+        :param sy: The top Y coordinate within the source image to draw from.
+        :param width: The width of the area to draw from.
+        :param height: The height of the area to draw from.
+        """
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, sx, sy, width, height)
+        
     def get_width(self):
+        """
+        Gets the width of this image.
+        
+        :return: The width of this image, in pixels. 
+        """
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[0]
+    
     def get_height(self):
+        """
+        Gets the height of this image.
+        
+        :return: The height of this image, in pixels. 
+        """
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[1]
     
     def draw_text(self, text, x, y, font_size, max_width = 0, max_height = 0, font_family = None):
@@ -371,7 +460,7 @@ class EditableImage:
         :param font_size: The size of the text to draw, in pixels
         :param max_width: The maximum width of the text (or 0 if you do not want a maximum width)
         :param max_height: The maximum height of the text (or 0 if you do not want a maximum height)
-        :param font_family: If None, then the default font family is used.  To change this, pass your own FontFamily instance
+        :param font_family: If None, then the default font family is used.  To change this, pass your own FontFamily instance.
         """
         if font_family is not None and not isinstance(font_family, FontFamily):
             raise TypeError("Font family must be an instance of FontFamily")
@@ -383,11 +472,11 @@ class EditableImage:
         (see `set_outline`) and filled in the current fill color (see `set_fill`).  The corners are rounded using
         quarter-circles with radius of `corner_size`.
         
-        :param x: The top-left of the rounded rectangle
-        :param y: The bottom-right of the rounded rectangle
-        :param width: The width of the rounded rectangle
-        :param height: The height of the rounded rectangle
-        :param corner_size: The radius of the corners of the rounded rectangle
+        :param x: The top-left of the rounded rectangle.
+        :param y: The bottom-right of the rounded rectangle.
+        :param width: The width of the rounded rectangle.
+        :param height: The height of the rounded rectangle.
+        :param corner_size: The radius of the corners of the rounded rectangle.
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, corner_size)
     def rectangle(self, x, y, width, height):
@@ -395,20 +484,20 @@ class EditableImage:
         Draws a rectangle.  The edge of the rectangle is drawn in the current stroke color
         (see `set_stroke`) and filled in the current fill color (see `set_fill`).
           
-        :param x: The top-left of the rounded rectangle
-        :param y: The bottom-right of the rounded rectangle
-        :param width: The width of the rounded rectangle
-        :param height: The height of the rounded rectangle
+        :param x: The top-left of the rounded rectangle.
+        :param y: The bottom-right of the rounded rectangle.
+        :param width: The width of the rounded rectangle.
+        :param height: The height of the rounded rectangle.
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, 0)
     def line(self, start_x, start_y, end_x, end_y):
         """
         Draws a line.  The line is drawn in the current stroke color.
         
-        :param start_x: The starting X position 
-        :param start_y: The starting Y position
-        :param end_x: The end X position
-        :param end_y: The end Y position
+        :param start_x: The starting X position.
+        :param start_y: The starting Y position.
+        :param end_x: The end X position.
+        :param end_y: The end Y position.
         """
         _strype_graphics_internal.canvas_line(self.__image, start_x, start_y, end_x, end_y)
     def arc(self, centre_x, centre_y, width, height, angle_start, angle_amount):
@@ -421,18 +510,33 @@ class EditableImage:
         
         The arc will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
         
-        :param centre_x: 
-        :param centre_y: 
-        :param width: 
-        :param height: 
-        :param angle_start: 
-        :param angle_amount: 
-        :return: 
+        :param centre_x: The centre X position of the arc.
+        :param centre_y: The centre Y position of the arc.
+        :param width: The width of the ellipse that describes the arc.
+        :param height: The height of the ellipse that describes the arc.
+        :param angle_start: The starting angle of the arc, in degrees (0 points to the right).
+        :param angle_amount: The amount of degrees to travel (positive goes clockwise).
         """
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
 
 class FontFamily:
+    """
+    A font family is a particular font type, e.g. Arial or Courier.
+    """
     def __init__(self, font_provider, font_name):
+        """
+        Loads the given font name from the given font provider.  At the moment, the only font provider which is supported is
+        "google", meaning `Google Fonts <https://fonts.google.com>`.  So if you find a particular font you like on Google Fonts, say Roboto, you can load it
+        by calling:
+        
+        .. code-block:: python
+            FontFamily("google", "Roboto") 
+            
+        If the font cannot be loaded, you will get an error.  This usually indicates either an issue with your Internet connection, or that you have entered the font name wrongly.
+          
+        :param font_provider: The provider of the fonts.  Currently only "google" is supported.
+        :param font_name: The name of the font to load, as shown on that provider.
+        """
         if not _strype_graphics_internal.canvas_loadFont(font_provider, font_name):
             raise Exception("Could not load font " + font_name)
         self.__font = font_name
