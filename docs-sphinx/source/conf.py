@@ -11,8 +11,8 @@ sys.path.insert(0, os.path.abspath('./_dummy'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Strype'
-copyright = '2024, The Strype Team'
-author = 'The Strype Team'
+copyright = '2024, K-PET Group, King\'s College London'
+author = 'K-PET Group, King\'s College London'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
