@@ -3,6 +3,7 @@ import strype_sound_internal as _strype_sound_internal
 def play_sound(filename):
     """
     Starts playing the given sound, returning immediately without waiting for it to finish.
+    
     :param filename: The filename of the sound 
     """
     _strype_sound_internal.playOneOffSound(filename)
@@ -36,6 +37,7 @@ class Sound:
     def get_num_samples(self):
         """
         Gets the length of the sound, in samples.
+        
         :return: The length of the sound, in number of samples.
         """
         return _strype_sound_internal.getNumSamples(self.__buffer)

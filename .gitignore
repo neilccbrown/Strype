@@ -29,3 +29,7 @@ src/debug.log
 tests/cypress/downloads/*
 tests/cypress/screenshots/*
 tests/cypress/videos/*
+
+# Files generated while running tasks
+/temp-scripts
+/docs-sphinx/build

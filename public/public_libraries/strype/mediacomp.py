@@ -223,6 +223,11 @@ def stopPlaying(sound):
 # Color is a class with RGB 0--255 members red, green, blue:
 Color = _collections.namedtuple("Color", ("red", "green", "blue"))
 
+def _convertColor(c):
+    if isinstance(c, Color):
+        return _graphics.Color(c.red, c.green, c.blue, 1)
+    return c
+
 # Pixel remembers its picture and position.  For efficiency reasons, we don't create its color until asked:
 class Pixel:
     # The index value is an index into the array of RGBA pixels.  So the pixel at (0, 0) will have
@@ -283,7 +288,7 @@ def addArc(picture, startX, startY, width, height, start, angle, color="black"):
     """
     _invalidateCache(picture)
     picture.set_fill(None)
-    picture.set_stroke(color)
+    picture.set_stroke(_convertColor(color))
     picture.arc(startX, startY, width, height, start, angle)
 
 def addArcFilled(picture, startX, startY, width, height, start, angle, color="black"):
@@ -300,8 +305,8 @@ def addArcFilled(picture, startX, startY, width, height, start, angle, color="bl
     :param color: The color to draw the arc in (default: black).
     """
     _invalidateCache(picture)
-    picture.set_fill(color)
-    picture.set_stroke(color)
+    picture.set_fill(_convertColor(color))
+    picture.set_stroke(_convertColor(color))
     picture.arc(startX, startY, width, height, start, angle)
 
 def addLine(picture, startX, startY, endX, endY, color="black"):
@@ -315,7 +320,7 @@ def addLine(picture, startX, startY, endX, endY, color="black"):
     :param color: The color to draw the line in (default: black).
     """
     _invalidateCache(picture)
-    picture.set_stroke(color)
+    picture.set_stroke(_convertColor(color))
     picture.line(startX, startY, endX, endY)
 
 def addOval(picture, startX, startY, width, height, color="black"):
@@ -330,7 +335,7 @@ def addOval(picture, startX, startY, width, height, color="black"):
     """
     _invalidateCache(picture)
     picture.set_fill(None)
-    picture.set_stroke(color)
+    picture.set_stroke(_convertColor(color))
     picture.arc(startX, startY, width, height, 0, 360)
 
 def addOvalFilled(picture, startX, startY, width, height, color="black"):
@@ -344,8 +349,8 @@ def addOvalFilled(picture, startX, startY, width, height, color="black"):
     :param color: The color to draw the oval in (default: black).
     """
     _invalidateCache(picture)
-    picture.set_fill(color)
-    picture.set_stroke(color)
+    picture.set_fill(_convertColor(color))
+    picture.set_stroke(_convertColor(color))
     picture.arc(startX, startY, width, height, 0, 360)
 
 def addRect(picture, startX, startY, width, height, color="black"):
@@ -360,7 +365,7 @@ def addRect(picture, startX, startY, width, height, color="black"):
     """
     _invalidateCache(picture)
     picture.set_fill(None)
-    picture.set_stroke(color)
+    picture.set_stroke(_convertColor(color))
     picture.rectangle(startX, startY, width, height)
 
 def addRectFilled(picture, startX, startY, width, height, color="black"):
@@ -374,8 +379,8 @@ def addRectFilled(picture, startX, startY, width, height, color="black"):
     :param color: The color to draw the rectangle in (default: black).
     """
     _invalidateCache(picture)
-    picture.set_fill(color)
-    picture.set_stroke(color)
+    picture.set_fill(_convertColor(color))
+    picture.set_stroke(_convertColor(color))
     picture.rectangle(startX, startY, width, height)
 
 def addText(picture, xpos, ypos, text, color="black"):
@@ -388,7 +393,7 @@ def addText(picture, xpos, ypos, text, color="black"):
     :param color: The color of the text (default: black).
     """
     _invalidateCache(picture)
-    picture.set_fill(color)
+    picture.set_fill(_convertColor(color))
     picture.draw_text(text, xpos, ypos, 50)
 
 def addTextWithStyle(picture, xpos, ypos, text, style, color="black"):
@@ -402,7 +407,7 @@ def addTextWithStyle(picture, xpos, ypos, text, style, color="black"):
     :param color: The color of the text (default: black).
     """
     _invalidateCache(picture)
-    picture.set_fill(color)
+    picture.set_fill(_convertColor(color))
     picture.draw_text(text, xpos, ypos, style.__size, 0, 0, style.__fontFamily)
 
 def copyInto(smallPicture, bigPicture, startX, startY):
@@ -596,7 +601,7 @@ def makeEmptyPicture(width, height, color="white"):
     :return: The empty picture.
     """
     img = _graphics.EditableImage(width, height)
-    img.set_fill(color)
+    img.set_fill(_convertColor(color))
     img.fill()
     return img
 
@@ -633,7 +638,7 @@ def setColor(pixel, color):
     :param color: The color to apply to the pixel.
     :type color: Color
     """
-    pixel.set_color(color)
+    pixel.set_color(_convertColor(color))
     
 
 
@@ -658,7 +663,7 @@ def setAllPixelsToAColor(picture, color):
     """
     # No need to write back cache to the image when we're replacing every pixel anyway:
     _invalidateCache(picture, False)
-    picture.set_fill(color)
+    picture.set_fill(_convertColor(color))
     picture.fill()
 
 

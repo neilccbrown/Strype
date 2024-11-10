@@ -162,7 +162,14 @@ var $builtinmodule = function(name)  {
     mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
         const ctx = dest.getContext("2d");
         ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
-    }); 
+    });
+    mod.canvas_line = new Sk.builtin.func(function(dest, x, y, ex, ey) {
+        const ctx = dest.getContext("2d");
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+    });
     mod.canvas_roundedRect = new Sk.builtin.func(function(img, x, y, width, height, cornerSize) {
         const ctx = img.getContext("2d");
         ctx.beginPath();
@@ -295,8 +302,9 @@ var $builtinmodule = function(name)  {
     mod.canvas_drawText = new Sk.builtin.func(function(dest, text, x, y, fontSize, maxWidth = 0, maxHeight = 0, fontName = null) {
         // Must remap the string to Javascript:
         text = Sk.ffi.remapToJs(text);
+        fontName = Sk.ffi.remapToJs(fontName);
         if (fontName != null) {
-            fontName = Sk.ffi.remapToJs(fontName) + ", sans-serif";
+            fontName = fontName + ", sans-serif";
         }
         else {
             fontName = sayFont;
