@@ -90,6 +90,23 @@ export class PersistentImageManager {
         }
     }
     
+    public setPersistentImageCollidable(id: number, collidable: boolean): void {
+        const obj = this.persistentImages.get(id);
+        if (obj) {
+            if (collidable && !obj.collisionBox) {
+                // Need to add a collision box:
+                const box = this.collisionSystem.createBox({x:obj.x, y:obj.y}, obj.img.width, obj.img.height, {isCentered: true});
+                this.boxToImageMap.set(box, obj);
+            }
+            else if (!collidable && obj.collisionBox) {
+                // Need to remove a collision box:
+                this.collisionSystem.remove(obj.collisionBox);
+                this.boxToImageMap.delete(obj.collisionBox);
+                obj.collisionBox = null;
+            }
+        }
+    }
+    
     // Gets the image size, ignoring rotation and scale
     public getPersistentImageSize(id: number) : {width: number, height: number} | undefined {
         const obj = this.persistentImages.get(id);
@@ -157,6 +174,21 @@ export class PersistentImageManager {
         else {
             return false;
         }
+    }
+    
+    // Gets the associatedObject of all items which overlap the given persistent image id.
+    public getAllOverlapping(id: number) : any[] {
+        const r : any[] = [];
+        const box = this.persistentImages.get(id)?.collisionBox;
+        if (box) {
+            this.collisionSystem.checkOne(box, (response) => {
+                const pimg = this.boxToImageMap.get(box);
+                if (pimg) {
+                    r.push(pimg.associatedObject);
+                }
+            });
+        }
+        return r;
     }
     
     // If this PersistentImage is not already editable, makes an OffScreenCanvas for editing, draws on the existing

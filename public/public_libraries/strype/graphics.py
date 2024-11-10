@@ -180,12 +180,39 @@ class Actor:
     def is_touching(self, actor):
         """
         Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
-        rectangles of their images are overlapping (even if the actor is transparent at that point). 
+        rectangles of their images are overlapping (even if the actor is transparent at that point).
+        
+        Note that if either this actor or the given actor has had collisions turned off with
+        `set_can_touch(false)` then this function will return False even if they touch.
         
         :param actor: The actor to check for overlap
         :return: True if this actor overlaps that actor, False if it does not 
         """
         return _strype_input_internal.checkCollision(self.__id, actor.__id)
+    
+    def set_can_touch(self, can_touch):
+        """
+        Changes whether the actor is part of the collision detection system.
+        
+        If you turn it off then this actor will never show up in the collision checking.
+        You may want to do this if you have an actor which makes no sense to collide (such
+        as a score board, or game over text), and/or to speed up the simulation for actors
+        where you don't need collision detection (e.g. visual effects).
+        
+        :param can_touch: Whether this actor can participate in collisions.
+        """
+        _strype_input_internal.setCollidable(self.__id, can_touch)
+    
+    def get_all_touching(self):
+        """
+        Gets all the actors that this actor is touching.  If this actor has had `set_can_touch(false)`
+        called, the returned list will always be empty.  The list will never feature any actors
+        which have had `set_can_touch(false)` called on them.
+        
+        :return: A list of all touching actors.
+        """
+        return _strype_input_internal.getAllTouchingAssociated(self.__id)
+    
     def edit_image(self):
         """
         Return an EditableImage which can be used to edit this actor's image.  All modifications
