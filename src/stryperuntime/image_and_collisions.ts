@@ -7,7 +7,7 @@ export interface PersistentImage {
     y: number,
     rotation: number, // degrees
     scale: number, // 1.0 means same size as original image
-    collisionBox: Box, // The item in the collision detection system
+    collisionBox: Box | null, // The item in the collision detection system.  Null if the object is not collidable
     dirty: boolean,
     associatedObject: any, // The object to remember for this PersistentImage (so far, this is the Actor from the strype.graphics Python module)
 }
@@ -29,10 +29,12 @@ export class PersistentImageManager {
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     public addPersistentImage(imageOrCanvas : HTMLImageElement | OffscreenCanvas, associatedObject?: any): number {
         this.persistentImagesDirty = true;
-        const box = this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true});
+        const box = associatedObject ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
         const newImage = {id: this.nextPersistentImageId, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false, associatedObject: associatedObject};
         this.persistentImages.set(this.nextPersistentImageId, newImage);
-        this.boxToImageMap.set(box, newImage);
+        if (box != null) {
+            this.boxToImageMap.set(box, newImage);
+        }
         return this.nextPersistentImageId++;
     }
 
@@ -61,8 +63,8 @@ export class PersistentImageManager {
             obj.x = x;
             obj.y = y;
             obj.dirty = true;
-            obj.collisionBox.setPosition(x, y);
-            obj.collisionBox.updateBody();
+            obj.collisionBox?.setPosition(x, y);
+            obj.collisionBox?.updateBody();
         }
     }
     
@@ -73,8 +75,8 @@ export class PersistentImageManager {
             obj.dirty = true;
             // Note that rotation in the world goes the opposite way to collision because of the inverted
             // axis so we must negate it:
-            obj.collisionBox.setAngle(-rotation * Math.PI / 180);
-            obj.collisionBox.updateBody();
+            obj.collisionBox?.setAngle(-rotation * Math.PI / 180);
+            obj.collisionBox?.updateBody();
         }
     }
     
@@ -83,8 +85,8 @@ export class PersistentImageManager {
         if (obj != undefined && obj.scale != scale) {
             obj.scale = scale;
             obj.dirty = true;
-            obj.collisionBox.setScale(scale);
-            obj.collisionBox.updateBody();
+            obj.collisionBox?.setScale(scale);
+            obj.collisionBox?.updateBody();
         }
     }
     
