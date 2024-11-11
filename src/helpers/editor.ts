@@ -809,11 +809,23 @@ const companionImgScalingRatio = 0.5;
 
 const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
     if(useStore().isDraggingFrame){
+        const caretHeight = Number.parseInt(scssVars.caretHeightValue);
         // Update the companion "image" (canvas) near the mouse pointer
         const companionCanvas = document.getElementById(companionCanvasId);
         if(companionCanvas){
             companionCanvas.style.left = mouseEvent.clientX + "px";
             companionCanvas.style.top = mouseEvent.clientY + "px";
+        }
+
+        // If we are outside the bounds of viewport*, we scroll the editor to make sure users can access hidden parts.
+        // (*) actually a vertical distance to the edges + frame caret height
+        if(mouseEvent.clientY < caretHeight){
+            // Scroll up
+            document.getElementById(getEditorMiddleUID())?.scrollBy(0,-20);
+        }
+        else if(mouseEvent.clientY >  (document.getElementsByTagName("body")[0].clientHeight - caretHeight)){
+            // Scroll down
+            document.getElementById(getEditorMiddleUID())?.scrollBy(0,20);
         }
 
         // Check which caret position is the nearest to indicate drop position
