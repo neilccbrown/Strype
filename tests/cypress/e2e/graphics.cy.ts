@@ -97,5 +97,57 @@ describe("Basic operation", () => {
     it("Basic cat rotated -60", () => {
         runCodeAndCheckImage("", "cat = Actor('cat-test.jpg')\ncat.set_rotation(-60)\nsleep(1)\n", "graphics-just-cat-rotated-minus-60");
     });
-    // TODO add a grid of squares and colour them if they collide
+});
+
+describe("Collision detection", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    it("Collisions with cat rotated +60", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones and colour them red
+        runCodeAndCheckImage("", `
+            cat = Actor('cat-test.jpg')
+            cat.set_rotation(60)
+            white_square = EditableImage(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    squares.append(Actor(white_square.make_copy(), x*spacing, y*spacing))
+            for sq in cat.get_all_touching():
+                sq.edit_image().set_fill("red")
+                sq.edit_image().fill()
+            `, "graphics-colliding-squares-cat-60");
+    });
+    it("Collisions with cat rotated -75 after turning collisions off and on", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // We turn off collisions on everything, turn it back on but only on every other square
+        // Then we find all the colliding ones and colour them red
+        runCodeAndCheckImage("", `
+            cat = Actor('cat-test.jpg')
+            cat.set_rotation(-75)
+            cat.set_can_touch(False)
+            white_square = EditableImage(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    squares.append(Actor(white_square.make_copy(), x*spacing, y*spacing))
+            for sq in squares:
+                sq.set_can_touch(False)
+            # Now turn collisions back on on cat, and every other square:
+            cat.set_can_touch(True)
+            for sq in squares[::2]:
+                sq.set_can_touch(True)
+            for sq in cat.get_all_touching():
+                sq.edit_image().set_fill("red")
+                sq.edit_image().fill()
+            `, "graphics-colliding-every-other-square-cat-minus-75");
+    });
 });

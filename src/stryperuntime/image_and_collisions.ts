@@ -73,9 +73,7 @@ export class PersistentImageManager {
         if (obj != undefined && obj.rotation != rotation) {
             obj.rotation = rotation;
             obj.dirty = true;
-            // Note that rotation in the world goes the opposite way to collision because of the inverted
-            // axis so we must negate it:
-            obj.collisionBox?.setAngle(-rotation * Math.PI / 180);
+            obj.collisionBox?.setAngle(rotation * Math.PI / 180);
             obj.collisionBox?.updateBody();
         }
     }
@@ -96,6 +94,10 @@ export class PersistentImageManager {
             if (collidable && !obj.collisionBox) {
                 // Need to add a collision box:
                 const box = this.collisionSystem.createBox({x:obj.x, y:obj.y}, obj.img.width, obj.img.height, {isCentered: true});
+                box.setAngle(obj.rotation * Math.PI / 180);
+                box.setScale(obj.scale);
+                box.updateBody();
+                obj.collisionBox = box;
                 this.boxToImageMap.set(box, obj);
             }
             else if (!collidable && obj.collisionBox) {
@@ -182,7 +184,7 @@ export class PersistentImageManager {
         const box = this.persistentImages.get(id)?.collisionBox;
         if (box) {
             this.collisionSystem.checkOne(box, (response) => {
-                const pimg = this.boxToImageMap.get(box);
+                const pimg = this.boxToImageMap.get(response.b as Box);
                 if (pimg) {
                     r.push(pimg.associatedObject);
                 }

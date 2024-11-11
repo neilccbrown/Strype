@@ -30,6 +30,11 @@ class Actor:
         """
         Construct an Actor with a given image and position and an optional name.
         
+        Note: if you pass an EditableImage, this Actor will use a reference to it for its display.  This means
+        if you make any changes to that EditableImage, it will update the Actor's image.  If you pass
+        the same EditableImage to multiple Actors, they will all update when you edit it.  If you do not want this
+        behaviour then call `make_copy()` on the EditableImage as you pass it in.
+        
         :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an EditableImage 
         :param x: The X position at which to add the actor
         :param y: The Y position at which to add the actor
@@ -37,8 +42,10 @@ class Actor:
         """
         if isinstance(image_or_filename, EditableImage):
             self.__id = _strype_graphics_internal.addImage(image_or_filename._EditableImage__image, self)
+            self.__editable_image = image_or_filename
         elif isinstance(image_or_filename, str):
             self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_or_filename), self)
+            self.__editable_image = None
         else:
             raise TypeError("Actor constructor parameter must be string or EditableImage")
         self.__say = None
@@ -591,6 +598,17 @@ class EditableImage:
         :param angle_amount: The amount of degrees to travel (positive goes clockwise).
         """
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
+
+    def make_copy(self):
+        """
+        Makes a copy of this EditableImage with the same width and height,
+        and the same image content.
+        
+        :return: The new copy of the EditableImage 
+        """
+        copy = EditableImage(self.get_width(), self.get_height())
+        copy.draw_image(self, 0, 0)
+        return copy
 
 class FontFamily:
     """
