@@ -39,6 +39,14 @@ export default defineConfig({
                     return null;
                 },
             });
+
+            on("before:browser:launch", (browser = {}, launchOptions) => {
+                if (browser.name === "chrome") {
+                    // Stop taking double size screenshots on Mac retina/HiDPI:
+                    launchOptions.args.push("--force-device-scale-factor=1");
+                }
+                return launchOptions;
+            });
             
             config.baseUrl = config.env.mode == "microbit" ? "http://localhost:8081/microbit/" : "http://localhost:8081/editor/";
             return getCompareSnapshotsPlugin(on, config);
