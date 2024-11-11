@@ -12,14 +12,6 @@ beforeEach(() => {
     }});
 });
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("assertValueCopiedToClipboard", (value) => {
-    cy.window().its("navigator.clipboard")
-        .invoke("readText").should("equal", value);
-});
-
-
 import {assertState, focusEditor} from "../support/expression-test-support";
 
 export function testSelection(code : string, selectKeys: string, expectedAfterDeletion : string) : void {
