@@ -56,7 +56,7 @@ export default Vue.extend({
 }
 
 .caret-drop-forbidden {
-    background-color: #b8bac0 !important;
+    background-color: #979799 !important;
 }
 
 .caret-cross-forbidden-dnd {

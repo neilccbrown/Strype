@@ -1,7 +1,7 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -914,8 +914,8 @@ export function notifyDragStarted(frameId?: number):void {
     useStore().isDraggingFrame = true;
 
     // Get the list of current available caret positions: all caret positions, 
-    // except the positions within a selection or within inside the children of a frame that is dragged
-    const caretAboveDraggedFrame = getAboveFrameCaretPosition((frameId) ? frameId : useStore().selectedFrames[0]);
+    // except the positions within a selection or within inside the children of a frame that is dragged.
+    // (The position below the dragged frame (or last selected frame) won't a suggested drop position, which is not needed anyway.)
     const noCaretDropFrameIds: number[] = [];
     if(frameId){
         noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(frameId), frameId);
@@ -926,8 +926,7 @@ export function notifyDragStarted(frameId?: number):void {
     }
     currentCaretPositionsForDnD = getAvailableNavigationPositions()
         .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
-            && !noCaretDropFrameIds.includes(navigationPosition.frameId)
-            && !(navigationPosition.frameId == caretAboveDraggedFrame.frameId && navigationPosition.caretPosition == caretAboveDraggedFrame.caretPosition));
+            && !noCaretDropFrameIds.includes(navigationPosition.frameId));
     // Change the mouse cursor for the whole app
     document.getElementsByTagName("body")[0]?.classList.add("dragging-frame");
     // And assign a mouse event event listen to allow companion "image" to follow cursor and detect when the drop is performed
