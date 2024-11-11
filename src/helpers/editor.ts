@@ -805,7 +805,7 @@ let currentCaretPositionsForDnD: NavigationPosition[] = [];
 let currentCaretDropPosId = "", currentCaretDropPosFrameId: number, currentCaretDropPosCaretPos: CaretPosition, 
     newCaretDropPosFrameId: number, newCaretDropPosCaretPos: CaretPosition;
 
-const companionImgScalingRatio = 0.5;
+const companionImgScalingRatio = 0.75;
 
 const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
     if(useStore().isDraggingFrame){
@@ -909,14 +909,24 @@ export function notifyDragStarted(frameId?: number):void {
         // Set the "being dragged flag" for this frame -- as the object property is option, we need to use 
         // Vue.set() to ensure reactivity works on frame objects where isBeingDragged is not definged
         Vue.set(useStore().frameObjects[frameId],"isBeingDragged",true);
+        // If the we are dragging a single frame and that frame is a comment, there is a small issue with
+        // the companion image: the background will be transparent (as the frame's) so to make it visually
+        // easier to see, we retrieve the dragged frame parent's body background to set it in the companion image.
+        if(useStore().frameObjects[frameId].frameType.type == AllFrameTypesIdentifier.comment){
+            const parentId = useStore().frameObjects[frameId].parentId;
+            const commentBackgroundColor = (parentId == useStore().getImportsFrameContainerId || parentId == useStore().getFuncDefsFrameContainerId)
+                ? scssVars.nonMainCodeContainerBackground
+                : scssVars.mainCodeContainerBackground;
+            html2canvasOptions.backgroundColor = commentBackgroundColor;
+        }
     }
     else{
         // We move a selection, we need to generate a companion image of that selection.
         // However, there is no container in the DOM that contains the selection stricto sensu,
         // so we generate the image of the selection's containing frame cropped to the selection.
         html2canvasOptions = {...html2canvasOptions, ...getHTML2CanvasFramesSelectionCropOptions(useStore().frameObjects[useStore().selectedFrames[0]].parentId)};
-        renderingCanvas.width = (html2canvasOptions.width as number) / 2;
-        renderingCanvas.height = (html2canvasOptions.height as number) / 2;
+        renderingCanvas.width = (html2canvasOptions.width as number) * companionImgScalingRatio;
+        renderingCanvas.height = (html2canvasOptions.height as number) * companionImgScalingRatio;
         useStore().selectedFrames.forEach((selectedFrameId) => {
             Vue.set(useStore().frameObjects[selectedFrameId],"isBeingDragged", true);
         });

@@ -1077,6 +1077,8 @@ $divider-grey: darken($background-grey, 15%);
 .companion-canvas-dnd {
     position: fixed;
     z-index: 20;
+    border-radius: 8px;
+    border: 1px solid #8e8e8e;
 }
 
 /* 
