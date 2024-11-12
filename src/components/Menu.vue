@@ -71,6 +71,7 @@
             </div>
             <div class="app-menu-footer">
                 <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.lastRelease') + '&nbsp;' + getLocaleBuildDate}}</a>
+                <span class="hidden">{{ getBuildHash }}</span>
             </div>
         </Slide>
         <div>
@@ -339,6 +340,12 @@ export default Vue.extend({
 
         getLocaleBuildDate(): string {
             return getLocaleBuildDate();
+        },
+
+        getBuildHash(): string {
+            // The hash should exist as it is set when serving or compiling the server..
+            // but to keep TS happy
+            return process.env.VUE_APP_BUILD_GIT_HASH ?? "Strype-hash-unknown";
         },
 
         strypeProjMIMEDescArray(): MIMEDesc[]{
