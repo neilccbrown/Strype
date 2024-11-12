@@ -1,7 +1,5 @@
 import { defineConfig } from "cypress";
 import {rimraf} from "rimraf";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const getCompareSnapshotsPlugin = require("cypress-image-diff-js/plugin");
 
 export default defineConfig({
     downloadsFolder: "tests/cypress/downloads",
@@ -49,7 +47,7 @@ export default defineConfig({
             });
             
             config.baseUrl = config.env.mode == "microbit" ? "http://localhost:8081/microbit/" : "http://localhost:8081/editor/";
-            return getCompareSnapshotsPlugin(on, config);
+            return config;
         },
     },
 });

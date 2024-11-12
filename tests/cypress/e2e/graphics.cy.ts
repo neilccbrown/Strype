@@ -1,8 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const compareSnapshotCommand = require("cypress-image-diff-js/command");
-compareSnapshotCommand();
+const PNG = require("pngjs").PNG;
+import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
@@ -54,6 +54,52 @@ enum ImageComparison {
     WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS
 }
 
+// This code uses an image capture of the graphics canvas to check that the Python code
+// produces the same output as before, to check for us breaking something. 
+//
+// There are some cypress plugins which do roughly the same thing.  The problem is that they
+// use generic browser screenshotting to capture the content.  It turns out that, at least on Mac,
+// browser screenshotting can transform color spaces.  This means that the screenshot taken on Mac
+// can be noticeably different than on Linux, which is a problem if (like me) you write a test on Mac
+// then try to run again on Linux and compare the output to the Mac output.  For example, rendering
+// #ff0000 squares on Mac once screenshotted can become e.g. #ff2300, which is a high enough difference
+// to fail the test.
+//
+// So we write our own which reads the pixel data direct from the graphics canvas, avoiding any
+// transformation.  Unfortunately this means we also have to write our own code to save the images etc
+// but it's not very long:
+function checkGraphicsCanvasContent(expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) {
+    cy.get("#pythonGraphicsCanvas").then((canvas) => {
+        return (canvas[0] as HTMLCanvasElement).toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
+    }).then((actualImageBase64) => {
+        const actual = PNG.sync.read(Buffer.from(actualImageBase64, "base64"));
+        if (comparison == ImageComparison.COMPARE_TO_EXISTING) {
+            cy.readFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, "base64").then((expectedData) => {
+                // load both pictures
+                const expected = PNG.sync.read(Buffer.from(expectedData, "base64"));
+                cy.writeFile(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, PNG.sync.write(actual));
+
+                const {width, height} = expected;
+                const diff = new PNG({width, height});
+
+                // calling pixelmatch return how many pixels are different
+                const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.05});
+
+                cy.writeFile(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
+
+                // calculating a percent diff
+                const diffPercent = (numDiffPixels / (width * height) * 100);
+
+                expect(diffPercent).to.be.below(10);
+            });
+        }
+        else {
+            // Just save to expected:
+            cy.writeFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, PNG.sync.write(actual));
+        }
+    });
+}
+
 function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) : void {
     focusEditorPasteAndClear();
     cy.get("body").type("{uparrow}{uparrow}");
@@ -72,11 +118,8 @@ function runCodeAndCheckImage(functions: string, main: string, expectedImageFile
     cy.wait(5000);
     // Assert it has finished, by looking at the run button:
     cy.get("#runButton").contains("Run");
-    // Check the screenshot matches expected:
-    // (Note: if you want to set a new expected, delete the file in tests/cypress/e2e/expected-screenshots/baseline,
-    // temporarily change FAIL_ON_MISSING_BASELINE to false in cypress-image-diff-config.js, and then
-    // the new expected will be regenerated and saved on the next run.  Then change the config setting back.)
-    (cy.get("#pythonGraphicsCanvas") as any).compareSnapshot({name: expectedImageFileName, testThreshold: 0.01});
+    // Check the image matches expected:
+    checkGraphicsCanvasContent(expectedImageFileName, comparison);
     
 }
 
