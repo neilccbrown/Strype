@@ -46,7 +46,7 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUIID, getLabelSlotUIID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, resetAddFrameCommandContainerHeight, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUID, getLabelSlotUID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIDFrameHeader, parseFrameHeaderUID, parseLabelSlotUID, resetAddFrameCommandContainerHeight, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
 
@@ -340,7 +340,7 @@ export default Vue.extend({
             }
             if(event.key.toLowerCase() == "enter" && event.type == "keyup"){
                 // With Safari, we don't get the focus back to the editor, so we need to explicitly give it to the right element.
-                document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus(); 
+                document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus(); 
             }
 
             // As typing may result in the scrollbar appearing, we can check the position of the expand/collapse button here
@@ -417,15 +417,15 @@ export default Vue.extend({
                     // There might be some other UI events that would restore the frame cursors (i.e. after getting input in the textarea console),
                     // so we give a bit of time before setting the focus.
                     const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
-                        ? parseLabelSlotUIID(errorElement.id)
-                        : {frameId: parseFrameHeaderUIID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
+                        ? parseLabelSlotUID(errorElement.id)
+                        : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
                     setTimeout(() => {
                         const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
                         this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
                         setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
                         // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
-                        if(isElementUIIDFrameHeader(errorElement.id)){
-                            document.getElementById(getLabelSlotUIID(errorSlotInfos))?.click();
+                        if(isElementUIDFrameHeader(errorElement.id)){
+                            document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
                         }
                         else{
                             errorElement.click();

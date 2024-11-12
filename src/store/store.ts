@@ -2,11 +2,11 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkDisabledStatusOfMovingFrame, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUIID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, setIsDraggedChangingOrder, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUIID, getFrameHeaderUIID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUIID, actOnTurtleImport, getStrypeCommandComponentRefId, getStrypePEAComponentRefId } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, actOnTurtleImport, getStrypeCommandComponentRefId, getStrypePEAComponentRefId } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -143,9 +143,6 @@ export const useStore = defineStore("app", {
 
             currentGoogleDriveSaveFileId: undefined as undefined|string,
 
-            // Flag to indicate when a drag and drop (in the 2 step process) shouldn't complete. To reset at false after usage !
-            ignoredDragAction: false, 
-
             selectedFrames: [] as number[],
 
             appLang: "en",
@@ -240,15 +237,6 @@ export const useStore = defineStore("app", {
 
         getFuncDefsFrameContainerId:(state) => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === FuncDefContainerDefinition.type)[0].id;
-        },
-        
-        getDraggableGroupById: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].frameType.draggableGroup;
-        },
-        
-        getDraggableJointGroupById: (state) => (frameId: number) => {
-            const frame = state.frameObjects[frameId];
-            return frame.frameType.innerJointDraggableGroup;
         },
         
         isEditableFocused: () => (frameSlotInfos: SlotCoreInfos) => {
@@ -579,10 +567,6 @@ export const useStore = defineStore("app", {
             return state.frameObjects[frameId].isVisible;
         },
 
-        getMultiDragPosition: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].multiDragPosition;
-        },
-
         retrieveUserDefinedElements:(state) => {
             // Retrieve the user defined functions and variables.
             // We make sure we don't look up the variable/function in the current frame
@@ -607,8 +591,8 @@ export const useStore = defineStore("app", {
                 // - imports
                 // - function definition
                 //(*) for string slots and comments, we allow adding code anywhere. If a slot non space content fully highlighted we also alllow adding the code.
-                const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(getLabelSlotUIID(focusSlotCursorInfos.slotInfos));
-                const currentSlotCode = (document.getElementById(getLabelSlotUIID(focusSlotCursorInfos.slotInfos)))?.textContent??"";
+                const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(getLabelSlotUID(focusSlotCursorInfos.slotInfos));
+                const currentSlotCode = (document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos)))?.textContent??"";
                 const nonHighlightedCode = currentSlotCode.substring(0, selectionStart) + currentSlotCode.substring(selectionEnd);
                 const isSlotWholeCodeContentSelected = (selectionStart != selectionEnd && nonHighlightedCode.trim().length == 0);
                 const isLHSVarAssign = (currentFrame.frameType.type == AllFrameTypesIdentifier.varassign && focusSlotCursorInfos.slotInfos.labelSlotsIndex == 0); 
@@ -744,50 +728,6 @@ export const useStore = defineStore("app", {
                         payload.frameToDeleteId
                     );
                 }
-            }
-        },
-
-        doUpdateFramesOrder(payload: {event: any; eventParentId: number}) {
-            const eventType = Object.keys(payload.event)[0];
-            //If we are moving a joint frame the list to be updated is it's parents jointFrameIds list.
-            const listToUpdate = (payload.event[eventType].element.jointParentId > 0 ) ?
-                this.frameObjects[payload.eventParentId].jointFrameIds : 
-                this.frameObjects[payload.eventParentId].childrenIds;
-
-            if (eventType === "added") {
-                // Add the id to the parent's childrenId list
-                listToUpdate.splice(
-                    payload.event[eventType].newIndex,
-                    0,
-                    payload.event[eventType].element.id
-                );
-
-                // Set the new parentId/jointParentId to the added frame
-                Vue.set(
-                    this.frameObjects[payload.event[eventType].element.id],
-                    (payload.event[eventType].element.jointParentId === 0) ? "parentId" : "jointParentId" ,
-                    payload.eventParentId
-                );
-            }
-            else if (eventType === "moved") {
-                // Delete the frameId from the old position
-                listToUpdate.splice(
-                    payload.event[eventType].oldIndex,
-                    1
-                );
-                // Add it in the new position
-                listToUpdate.splice(
-                    payload.event[eventType].newIndex,
-                    0,
-                    payload.event[eventType].element.id
-                );
-            }
-            else if (eventType === "removed") {
-                // Remove the id from the parent's childrenId list
-                listToUpdate.splice(
-                    payload.event[eventType].oldIndex,
-                    1
-                ); 
             }
         },
 
@@ -1300,7 +1240,7 @@ export const useStore = defineStore("app", {
                 if(focusedSlot){
                     focusedSlot.focused = false;
                 }
-                document.getElementById(getLabelSlotUIID(this.focusSlotCursorInfos.slotInfos))
+                document.getElementById(getLabelSlotUID(this.focusSlotCursorInfos.slotInfos))
                     ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
             }
             this.ignoreKeyEvent = false;
@@ -1496,13 +1436,13 @@ export const useStore = defineStore("app", {
 
                     // Ensure the caret (frame or text caret) is visible in the page viewport after the change.
                     // For some reason, scrollIntoView() "miss" out the caret by a slight distance (maybe because it's a div?) so we don't see it. To adjust that issue, we scroll up a bit more.
-                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUIID(this.focusSlotCursorInfos.slotInfos) : ("caret_"+this.currentFrame.caretPosition+"_of_frame_"+this.currentFrame.id);
+                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUID(this.focusSlotCursorInfos.slotInfos) : ("caret_"+this.currentFrame.caretPosition+"_of_frame_"+this.currentFrame.id);
                     const caretContainerEltRect = document.getElementById(htmlElementToShowId)?.getBoundingClientRect();
                     document.getElementById(htmlElementToShowId)?.scrollIntoView();
                     if(htmlElementToShowId.match(/caret_.*_of_frame_/) != null && caretContainerEltRect){
                         const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
-                        const currentScroll = $("#"+getEditorMiddleUIID()).scrollTop();
-                        $("#"+getEditorMiddleUIID()).scrollTop((currentScroll??0) + scrollStep);
+                        const currentScroll = $("#"+getEditorMiddleUID()).scrollTop();
+                        $("#"+getEditorMiddleUID()).scrollTop((currentScroll??0) + scrollStep);
                     }     
                 });
 
@@ -1617,25 +1557,6 @@ export const useStore = defineStore("app", {
                 []
             );
         },
-
-        makeSelectedFramesVisible(){
-            this.selectedFrames.forEach((id) =>
-                Vue.set(
-                    this.frameObjects[id],
-                    "isVisible",
-                    true
-                ));
-        },
-
-        removeMultiDragStyling() {
-            this.selectedFrames.forEach((id) => {
-                Vue.set(
-                    this.frameObjects[id],
-                    "multiDragPosition",
-                    ""
-                );
-            });
-        },
         
         setCollapseStatusContainer(payload: {frameId: number; isCollapsed: boolean}) {
             Vue.set(
@@ -1647,102 +1568,46 @@ export const useStore = defineStore("app", {
 
 
         /******************** OLD ACTIONS ********** */
-        updateFramesOrder(payload: {event: any; eventParentId: number}) {
-            // Notify the helper that the drag and drop resulted in a change (i.e. not be "cancelled")
-            setIsDraggedChangingOrder(true);
-
-            if(this.ignoredDragAction){
-                //if the action should be ignore, just return and reset the flag
-                this.ignoredDragAction = false;
-                return;
-            }
-
+        updateDroppedFramesOrder(destinationCaretFrameId: number, destinationCaretPos: CaretPosition, draggedFrameId?: number) {
+            const draggedFramesReversed = (draggedFrameId) ? [draggedFrameId] : [...this.selectedFrames].reverse();
             this.unselectAllFrames();
+            // Backup the current state for undo/redo
+            this.updateStateBeforeChanges(false);
+            // We move the frames of the dragged frames reversed list from their parent to the list of frames relative to the destination:
+            // if the destination is a body, that's the list of children of the destination frame, if the destination is below a frame,
+            // that's the list of children of the parent container of frame that contains the frame just above the destination caret pos.
+            const sourcContainerFrame = this.frameObjects[this.frameObjects[(draggedFramesReversed[0])].parentId];
+            const destContainerFrame = (destinationCaretPos == CaretPosition.body) 
+                ? this.frameObjects[destinationCaretFrameId]
+                : this.frameObjects[this.frameObjects[destinationCaretFrameId].parentId];
 
-            const eventType = Object.keys(payload.event)[0];
-
-            //before the adding or at the moving step, we make a backup of the state to be used by undo/redo and inside the mutation method updateFramesOrder()
-            if(eventType !== "removed"){
-                this.updateStateBeforeChanges(false);
-            }
-            
-            const isJointFrame = this.isJointFrameById(payload.event[eventType].element.id);
-
-            const position: CaretPosition = (isJointFrame)?
-                CaretPosition.below:
-                CaretPosition.body;
-
-            // Even in the same draggable group, some JointFrames cannot be moved (i.e. an elif below an else)
-            // That should be checked both ways as for example if you move an `else` above an elif, it may be
-            // valid, as the if accepts else there, but the elif cannot go below the else.
-            // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
-            const newIndex = payload.event[eventType].newIndex;
-            const oldIndex = payload.event[eventType].oldIndex;
-            const jointFrameIds = this.frameObjects[payload.eventParentId].jointFrameIds;
-            if(eventType !== "removed") {
-                // EXAMPLE: Moving frame `A` above Frame `B`
-                // IF `A` cannot be moved on this position 
-                //                OR
-                // IF `A` is jointFrame and there IS a frame `B` where I am moving `A` at
-                //     on TRUE ==> Check if `B` CANNOT be placed below `A` / CANNOT be the trailing joint frame
-                //     on FALSE ==> We don't care about this situation
-                //
-                // The target position for joint frames needs to be found out according to this rule:
-                // - if we are moving a frame within the SAME group:
-                //   - if we move the frame upwards, the target is the element *before* the newIndex position of the joint frames 
-                //     so if newIndex is 0, then we look at the joint parent of the structure; VERY IMPORTANTLY, in that case we check the allowed frames
-                //     from the body content of the parent rather that below the parent, because below the parent is an ambiguous position (below the parent
-                //     when that parent have joints is actually after the WHOLE structure, so targetting inside the body clears off any doubt)
-                //   - if we move the frame downwards, the target is at the newIndex position of the joint frames 
-                // - if we are moving a frame within a DIFFERENT group:
-                //   - the target is the element *before* the newIndex position of the destination joint frames 
-                //     (so same check as above is newIndex is 0)
-                const jointFrameTargetIndex = (eventType==="moved" && oldIndex < newIndex) ? newIndex + 1 : newIndex;
-                const isJointTargettingBelowRoot = (isJointFrame && jointFrameIds.length > 0 && jointFrameTargetIndex == 0);
-                const jointFrameMoveAllowed = (isJointFrame && jointFrameIds.length > 0)
-                    ? this.isPositionAllowsFrame((jointFrameTargetIndex > 0) 
-                        ? this.frameObjects[payload.eventParentId].jointFrameIds[jointFrameTargetIndex - 1] 
-                        : this.frameObjects[payload.eventParentId].childrenIds.at(-1) ?? payload.eventParentId,
-                    (isJointTargettingBelowRoot)  
-                        ? ((this.frameObjects[payload.eventParentId].childrenIds.length > 0) ? CaretPosition.below : CaretPosition.body) 
-                        : CaretPosition.below,
-                    payload.event[eventType].element.id)
-                    : true;
-   
-                if((!isJointFrame && !this.isPositionAllowsFrame(payload.eventParentId, position, payload.event[eventType].element.id)) ||
-                     (isJointFrame && !jointFrameMoveAllowed)) {       
-                    //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
-                    if(eventType === "added"){
-                        this.ignoredDragAction = true;
-                    }
-
-                    //alert the user about a forbidden move
-                    this.showMessage(MessageDefinitions.ForbiddenFrameMove, 3000);
-                    
-                    return;
+            draggedFramesReversed.forEach((draggedFrameId) => {
+                // VERY IMPORTANT: the frames components being removed from their original parents will be destroyed.
+                // However, even if we write the sequence in order (remove -> add), Vue destroys the component AFTER
+                // it has been added (I don't know why...) so we defer adding the frame to its new parent to make sure
+                // the component gets created again.
+                // Remove the frame from its parent
+                sourcContainerFrame.childrenIds.splice(sourcContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
+                nextTick(() => {
+                    // Append it to the destination list
+                    const destFrameListInsertIndex = (destinationCaretPos == CaretPosition.body) ? 0 : destContainerFrame.childrenIds.indexOf(destinationCaretFrameId) + 1;
+                    destContainerFrame.childrenIds.splice(destFrameListInsertIndex, 0, draggedFrameId);
+                    // Update the dragged frame's parent
+                    this.frameObjects[draggedFrameId].parentId = destContainerFrame.id;
+                });
+                // If the container is disabled, the dragged frame and its children must be disabled too
+                if(destContainerFrame.isDisabled){
+                    this.doChangeDisableFrame({frameId: draggedFrameId, isDisabling: true});
                 }
-            }
+            });
 
-            this.doUpdateFramesOrder(payload);
-
-            //after the removing or at the moving step, we use the backup of the state for setting "isDisabled", prepare for undo/redo and clear the backup off
-            if(eventType !== "added"){
-                // Set the right value for "isDisabled"
-                const srcFrameId = payload.event[eventType].element.id as number;
-                const destContainerId = (this.frameObjects[srcFrameId].jointParentId > 0)
-                    ? this.frameObjects[srcFrameId].jointParentId
-                    : this.frameObjects[srcFrameId].parentId;
-                const changeDisableInfo = checkDisabledStatusOfMovingFrame(this.stateBeforeChanges.frameObjects, srcFrameId, destContainerId);
-                if(changeDisableInfo.changeDisableProp && changeDisableInfo.newBoolPropVal !== undefined){
-                    this.doChangeDisableFrame({frameId: srcFrameId, isDisabling: changeDisableInfo.newBoolPropVal, ignoreEnableFromRoot: true});
-                }    
-
-                //save the state changes for undo/redo
+            //save the state changes for undo/redo after all changes changing the order has been done
+            nextTick(() => {
                 this.saveStateChanges(this.stateBeforeChanges);
 
                 //clear the stateBeforeChanges flag off
                 this.updateStateBeforeChanges(true);
-            }
+            });
         },
 
         async setFrameEditableSlotContent(frameSlotInfos: SlotInfos) {
@@ -1906,7 +1771,7 @@ export const useStore = defineStore("app", {
                     frame.labels.filter((el)=> el.showSlots??true).reduce(
                         (acc, cur, idx) => {
                             const labelContent: LabelSlotsContent = {
-                                shown: (!cur?.hidableLabelSlots ?? true),
+                                shown: (!cur.hidableLabelSlots),
                                 slotStructures: (frame.type == AllFrameTypesIdentifier.funccall) 
                                     ? {fields: [{code: ""},{openingBracketValue:"(", fields: [{code: ""}], operators: []},{code: ""}], operators: [{code: ""}, {code: ""}]}
                                     : {fields: [{code: ""}], operators: []},
@@ -2033,13 +1898,13 @@ export const useStore = defineStore("app", {
                         const targetDiv =
                             (this.currentFrame && this.currentFrame.caretPosition !== CaretPosition.none) ?
                                 // If frame cursor is focused (e.g. after adding blank frame, or try), scroll to that:
-                                document.getElementById(getCaretUIID(this.currentFrame.caretPosition, this.currentFrame.id))
+                                document.getElementById(getCaretUID(this.currentFrame.caretPosition, this.currentFrame.id))
                                 // Otherwise scroll to the frame header (e.g. for method call, if, while):
-                                : document.getElementById(getFrameHeaderUIID(newFrame.id));
+                                : document.getElementById(getFrameHeaderUID(newFrame.id));
                         
                         const targetBoundingRect = targetDiv?.getBoundingClientRect();
                         if (targetDiv && targetBoundingRect && (targetBoundingRect.top + targetBoundingRect.height > document.documentElement.clientHeight)) {
-                            document.getElementById(getFrameHeaderUIID(newFrame.id))?.scrollIntoView();
+                            document.getElementById(getFrameHeaderUID(newFrame.id))?.scrollIntoView();
                         }
                         this.lastAddedFrameIds = newFrame.id;
                     }
@@ -2244,7 +2109,7 @@ export const useStore = defineStore("app", {
                 currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
                         && e.labelSlotsIndex === foundSlotCoreInfos.labelSlotsIndex && e.slotId === foundSlotCoreInfos.slotId);     
                 // Now we can effectively ask the slot to "lose focus" because we could retrieve it (and we need to get it blurred so further actions are not happening in the span)
-                document.getElementById(getLabelSlotUIID(foundSlotCoreInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));         
+                document.getElementById(getLabelSlotUID(foundSlotCoreInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));         
             }
             else {
                 currentFramePosition = availablePositions.findIndex((e) => !e.isSlotNavigationPosition && e.caretPosition === this.currentFrame.caretPosition && e.frameId === this.currentFrame.id); 
@@ -2321,9 +2186,9 @@ export const useStore = defineStore("app", {
                 // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
                 // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
                 Vue.nextTick(() => {
-                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.length)??0;
                     const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
-                    if(isCommentFrame && (document.getElementById(getLabelSlotUIID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
+                    if(isCommentFrame && (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
                         textCursorPos--;
                     }
                   
@@ -2332,7 +2197,7 @@ export const useStore = defineStore("app", {
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
                     setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
                     if(focusCursorInfos){
-                        document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                        document.getElementById(getLabelSlotUID(focusCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                     }
                 });
                 
@@ -2909,155 +2774,6 @@ export const useStore = defineStore("app", {
                 previousFramesSelection = [...this.selectedFrames];
                 this.selectMultipleFrames(direction);
             } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId));
-
-        },
-
-        prepareForMultiDrag(draggedFrameId: number) {
-            const position = this.getFrameSelectionPosition(draggedFrameId);
-           
-            const otherFrames = this.selectedFrames.filter((id) => id!==draggedFrameId);
-            this.updateStateBeforeChanges(false);
-
-            otherFrames.forEach( (frameId) => {
-                Vue.set(
-                    this.frameObjects[frameId],
-                    "isVisible",
-                    false
-                );
-            });
-
-            Vue.set(
-                this.frameObjects[draggedFrameId],
-                "multiDragPosition",
-                position
-            );        
-        },
-
-        // This method can be used to move the selected frames to a position through Drag & Drop
-        moveSelectedFramesToPosition(payload: {event: any; parentId: number}) { 
-            // First remove the visual aspect
-            this.removeMultiDragStyling();
-            
-            if(this.ignoredDragAction){
-                //if the action should be ignore, just return and reset the flag
-                this.ignoredDragAction = false;
-                return;
-            }
-
-            const eventType = Object.keys(payload.event)[0];
-            const isJointFrame = this.isJointFrameById(this.selectedFrames[0]);
-            const position: CaretPosition = (isJointFrame) ? CaretPosition.below : CaretPosition.body;
-
-            // Even in the same draggable group, some JointFrames cannot be moved (i.e. an elif below an else)
-            // That should be checked both ways as for example if you move an `else` above an elif, it may be
-            // valid, as the if accepts else there, but the elif cannot go below the else.
-            // getIfPositionAllowsFrame() is used as it checks if a frame can be landed on a position     
-            // succeedingFrame is the next frame (if it exists) above which we are adding
-            let indexOfFirstSelected = (isJointFrame)
-                ? this.frameObjects[payload.parentId].jointFrameIds.indexOf(this.selectedFrames[0])
-                : this.frameObjects[payload.parentId].childrenIds.indexOf(this.selectedFrames[0]);
-
-            const indexOfLastSelected = (isJointFrame)
-                ? this.frameObjects[payload.parentId].jointFrameIds.indexOf(this.selectedFrames[this.selectedFrames.length-1])
-                : this.frameObjects[payload.parentId].childrenIds.indexOf(this.selectedFrames[this.selectedFrames.length-1]);
-
-            // If we are moving it to the same parent, we need to check whether
-            // we are moving it to the same place (between first and last index of the selected ones); 
-            // If that's the case we don't do anything as it may cause a problem (e.g. if selected indexes are 0...3
-            // it may move it to 1 instead of 0.
-            const parentIdOfSelected = getParentOrJointParent(this.frameObjects[this.selectedFrames[0]].id);
-            let newIndex = payload.event[eventType].newIndex;
-
-            if(eventType === "moved" && payload.parentId === parentIdOfSelected) {
-                if(newIndex >= indexOfFirstSelected && newIndex <= indexOfLastSelected) {
-                    this.makeSelectedFramesVisible();
-                    return;
-                }
-            }
-
-            const succeedingFrame = this.frameObjects[payload.parentId].jointFrameIds[payload.event[eventType].newIndex + (eventType === "moved")];   
-            const jointFrameIds = this.frameObjects[payload.parentId].jointFrameIds;
-            if(eventType !== "removed") {
-                // EXAMPLE: Moving frame `A` above Frame `B`
-                // IF `A` cannot be moved on this position 
-                //                OR
-                // IF `A` is jointFrame and there IS a frame `B` where I am moving `A` at
-                //     on TRUE ==> Check if `B` CANNOT be placed below `A` / CANNOT be the trailing joint frame
-                //     on FALSE ==> We don't care about this situation
-                const jointFrameCase = (isJointFrame && jointFrameIds.length > 0)
-                    ? (succeedingFrame !== undefined)
-                        ? !this.isPositionAllowsSelectedFrames(payload.event[eventType].element.id, CaretPosition.below, false)
-                        : !this.isPositionAllowsSelectedFrames(jointFrameIds[jointFrameIds.length - 1], CaretPosition.below, false)
-                    : false;
-
-                if((!isJointFrame && !this.isPositionAllowsSelectedFrames(payload.parentId, position, false)) || jointFrameCase) {       
-                    //in the case of a 2 step move (when moving from one group to another) we set the flag to ignore the DnD changes
-                    if(eventType === "added"){
-                        this.ignoredDragAction = true;
-                    }
-
-                    //alert the user about a forbidden move
-                    this.showMessage(MessageDefinitions.ForbiddenFrameMove, 3000);         
-                    this.makeSelectedFramesVisible();
-                    return;
-                }
-            }
-
-            // The top level cloned frames need to be stored in order to then be added to their new parent's list
-            const sourceFrameIds: number[] = this.selectedFrames;
-
-            // In the case of moving in the same parent in some spaces below,
-            // because at the same time we are removing and adding the newIndex
-            // gets distorted (e.g. take from 0 and add move it to 5, if you remove first,
-            // then the index 5 becomes index 4), hence if we are moving down, we do not increase the index.
-            const indexIncrement = (eventType === "moved" && newIndex>indexOfLastSelected)? 0: 1;    
-            const firstSelctedIncrement = (eventType === "removed" || (eventType === "moved" && newIndex>indexOfLastSelected))? 0: 1;    
-
-            Object.values(sourceFrameIds).forEach( (id) => {
-                // For each frame in the list, we are calling the `updateFramesOrder`
-                // and for each frame we are creating a `fake` event, as the event really
-                // occurs for only the dragged frame.
-                this.doUpdateFramesOrder(
-                    {
-                        event: {
-                            [eventType]: { // the [] are needed for JS to understand that we're talking about the variable and not the string 'eventType'
-                                element: this.frameObjects[id],
-                                newIndex: newIndex,
-                                oldIndex: indexOfFirstSelected,
-                                eventType : eventType,
-                            },
-                        },
-                        eventParentId: payload.parentId,
-                    }
-                );
-                
-                newIndex += indexIncrement;
-                indexOfFirstSelected += firstSelctedIncrement;
-            });
-
-            // In the end, unselect all frames and make sure we place the frame cursor properly
-            if(eventType !== "added") {
-                if(!isJointFrame && !this.selectedFrames.includes(this.currentFrame.id)){
-                    // When the selection has been made "upwards", the caret above the selection can either be at the body of the parent
-                    // the selection was, or at below the frame just above the selection.
-                    // When we move the selection, the caret position needs to be updated regarding where we moved the selection (either below the frame under
-                    // which we dropped the selection, or the parent's body in which we dropped the selection).
-                    const selectionChildIndexInTarget = this.frameObjects[this.frameObjects[this.selectedFrames[0]].parentId].childrenIds
-                        .findIndex((frameId) => frameId == this.selectedFrames[0]);
-                    const targetCursorId = (selectionChildIndexInTarget > 0) 
-                        ? this.frameObjects[this.frameObjects[this.selectedFrames[0]].parentId].childrenIds[selectionChildIndexInTarget - 1]
-                        : this.frameObjects[this.selectedFrames[0]].parentId;
-                    const targetCursorPosition = (selectionChildIndexInTarget > 0) ? CaretPosition.below : CaretPosition.body;
-                    this.currentFrame = {id: targetCursorId, caretPosition: targetCursorPosition};
-                }
-                this.makeSelectedFramesVisible();
-                this.unselectAllFrames();
-                //save the state changes for undo/redo
-                this.saveStateChanges(this.stateBeforeChanges);
-
-                //clear the stateBeforeChanges flag off
-                this.updateStateBeforeChanges(true);
-            }
         },
     },
 });

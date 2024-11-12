@@ -13,7 +13,6 @@ const initialDemoState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-1": {
         id: -1,
@@ -28,7 +27,6 @@ const initialDemoState: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-2": {
         id: -2,
@@ -43,7 +41,6 @@ const initialDemoState: EditorFrameObjects = {
         labelSlotsDict: { },
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-3": {
         id: -3,
@@ -58,7 +55,6 @@ const initialDemoState: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.body,
-        multiDragPosition: "",
     },
 
     1: {
@@ -76,7 +72,6 @@ const initialDemoState: EditorFrameObjects = {
             1: {slotStructures: {operators: [], fields: [{code: "*"}]}},
             2: {slotStructures: {operators: [], fields: [{code: ""}]}, shown: false}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 
     2: {
@@ -93,7 +88,6 @@ const initialDemoState: EditorFrameObjects = {
             0: {slotStructures: {operators: [], fields: [{code: "myString"}]}},
             1: {slotStructures: {operators: [{code: ""},{code: ""}], fields: [{code: ""},{code: "Hello micro:bit!", quote: "\""},{code: ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 
     3: {
@@ -110,7 +104,6 @@ const initialDemoState: EditorFrameObjects = {
             0: {slotStructures: {operators: [], fields: [{code: "True"}]}},
         },
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 
     4: {
@@ -125,7 +118,6 @@ const initialDemoState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "."}, {code: ""}, {code: ""}], fields: [{code: "display"}, {code: "scroll"}, {openingBracketValue: "(", fields: [{code: "myString"}], operators: []}, {code: ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 };
 

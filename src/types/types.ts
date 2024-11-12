@@ -117,13 +117,13 @@ export interface FrameObject {
     isSelected: boolean;
     isVisible: boolean;
     isCollapsed?: boolean;
+    isBeingDragged?: boolean; //this flag is used mainly for UI purposes, so we can distinguish specific things that happens during dragging from intrisic properties of the frame
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
     labelSlotsDict: { [index: number]: LabelSlotsContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
-    multiDragPosition: string;
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
 }
 
@@ -147,14 +147,12 @@ export enum DraggableGroupTypes {
     functionSignatures = "functionSignatures",
     ifCompound = "ifCompound",
     tryCompound = "tryCompound",
-    shadowEditorContainer = "editor", // This draggable is used for cursor management - a root of all other draggables (cf. handleDraggingCursor())
     none = "none",
 }
 
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
-    dragAndDrop = "dnd", // this is a special case for handling the UI with drag and drop, see Frame.vue (hideCaretAtClick())
     none = "none",
 }
 
@@ -734,7 +732,6 @@ export const EmptyFrameObject: FrameObject = {
     jointFrameIds: [], //this contains the IDs of the joint frames
     caretVisibility: CaretPosition.none,
     labelSlotsDict: { },
-    multiDragPosition: "",
 };
 
 /**
@@ -801,7 +798,6 @@ export const MessageTypes = {
     uploadEditorFileError: "uploadEditorFileError",
     uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
     uploadEditorFileSucces: "uploadEditorFileSuccess",
-    forbiddenFrameMove: "forbiddenFrameMove",
     forbiddenFramePaste: "forbiddenFramePaste",
     functionFrameCantDelete: "functionFrameCantDelete",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
@@ -897,12 +893,6 @@ const UploadEditorFileSuccess: MessageDefinition = {
     message: "messageBannerMessage.uploadEditorFileSuccess",
 };
 
-const ForbiddenFrameMove: MessageDefinition = {
-    ...NoMessage,
-    type: MessageTypes.forbiddenFrameMove,
-    message: "messageBannerMessage.forbiddenFrameMove",
-};
-
 const ForbiddenFramePaste: MessageDefinition = {
     ...NoMessage,
     type: MessageTypes.forbiddenFramePaste,
@@ -962,7 +952,6 @@ export const MessageDefinitions = {
     UploadEditorFileError,
     UploadEditorFileNotSupported,
     UploadEditorFileSuccess,
-    ForbiddenFrameMove,
     ForbiddenFramePaste,
     FunctionFrameCantDelete,
     GDriveConnectToSaveFailed,

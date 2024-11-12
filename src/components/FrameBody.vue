@@ -1,46 +1,31 @@
 <template>
     <div
         :class="{'frame-body-container frame-container-minheight':true, 'body-deletable': bodyDeletable}"
-        :id="uiid"
+        :id="UID"
     >
         <div>
             <CaretContainer
             :ref="getCaretContainerRef"
-            :frameId="this.frameId"
-            :caretVisibility="this.caretVisibility"
+            :frameId="frameId"
+            :caretVisibility="caretVisibility"
             :caretAssignedPosition="caretPosition.body"
-            :isFrameDisabled="this.isDisabled"
-            />        
-            <Draggable
-                v-model="frames"
-                :group="draggableGroup"
-                @change.self="handleDragAndDrop($event)"
-                @unchoose="showSelectedFrames()"
-                forceFallback="true"
-                animation= "200"
-                swapThreshold = "0.2"
-                :disabled="isEditing || isPythonExecuting"
-                :key="'Draggable-Body-'+this.frameId"
-                @start="handleMultiDrag"
-                @end="multiDragEnd"
-                :hasCommentsToMove="this.hasCommentsToMove"
-                filter="input"
-                :preventOnFilter="false"
-                class="frame-container-minheight"
-            >
+            :isFrameDisabled="isDisabled"
+            />  
+            <div class="frame-container-minheight">      
                 <Frame
                     v-for="frame in frames"
                     :ref="setFrameRef(frame.id)"
                     :key="frame.frameType.type  + '-id:' + frame.id"
                     :frameId="frame.id"
                     :isDisabled="frame.isDisabled"
+                    :isBeingDragged="isBeingDragged"
                     :frameType="frame.frameType"
                     :isJointFrame="false"
                     :caretVisibility="frame.caretVisibility"
                     :allowChildren="frame.frameType.allowChildren"
                     class="frame content-children"
                 />
-            </Draggable>
+            </div>
         </div>
     </div>
 </template>
@@ -53,10 +38,9 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
-import Draggable from "vuedraggable";
-import { AllFrameTypesIdentifier, CaretPosition, DraggableGroupTypes, FrameObject, PythonExecRunningState } from "@/types/types";
+import { AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { getCaretContainerRef, getFrameBodyUIID, getFrameUIID, handleDraggingCursor, notifyDragEnded, notifyDragStarted } from "@/helpers/editor";
+import { getCaretContainerRef, getCaretUID, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -66,20 +50,24 @@ export default Vue.extend({
 
     components: {
         Frame,
-        Draggable,
         CaretContainer,
     },
     
     props: {
         frameId: Number,
         isDisabled: Boolean,
+        isBeingDragged: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not
     },
 
-    data: function() {
-        return{ 
-            hasCommentsToMove: false,
-        };
+    mounted() {
+        // Register the caret container component at the upmost level for drag and drop
+        this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
+    },
+
+    destroyed() {
+        // Remove the registration of the caret container component at the upmost level for drag and drop
+        delete this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
     computed: {
@@ -99,19 +87,6 @@ export default Vue.extend({
             return (this.frames).filter((frame) => frame.isDisabled || frame.frameType.type === AllFrameTypesIdentifier.comment).length > 0;
         },
 
-        draggableGroup(): Record<string, any> {
-            return {
-                name: DraggableGroupTypes.code,
-                put: function(to: any, from: any){
-                    //Handle the drag cursor
-                    handleDraggingCursor(true, true);
-
-                    //Frames can be added if they are of the same group and/or only comments are being moved
-                    return from.options.hasCommentsToMove || to.options.group.name === from.options.group.name;
-                },
-            };      
-        },
-
         // Needed in order to use the `CaretPosition` type in the v-show
         caretPosition(): typeof CaretPosition {
             return CaretPosition;
@@ -121,16 +96,12 @@ export default Vue.extend({
             return this.appStore.isEditing;
         },
 
-        uiid(): string {
-            return getFrameBodyUIID(this.frameId);
+        UID(): string {
+            return getFrameBodyUID(this.frameId);
         },
 
         getCaretContainerRef(): string {
             return getCaretContainerRef();
-        },
-
-        isDraggingFrame(): boolean{
-            return this.appStore.isDraggingFrame;
         },
 
         bodyDeletable(): boolean{
@@ -151,71 +122,7 @@ export default Vue.extend({
 
     methods: {
         setFrameRef(frameId: number) {
-            return getFrameUIID(frameId);
-        },
-        
-        handleDragAndDrop(event: any): void {
-            const eventType = Object.keys(event)[0];
-            const chosenFrame = event[eventType].element;
-
-            // If the frame is part of a selection
-            if(this.appStore.isFrameSelected(chosenFrame.id)) {
-                //If the move can happen
-                this.appStore.moveSelectedFramesToPosition(
-                    {
-                        event: event,
-                        parentId: this.frameId,
-                    }
-                );
-            }
-            else{
-                this.appStore.updateFramesOrder(
-                    {
-                        event: event,
-                        eventParentId: this.frameId,
-                    }
-                );
-            }
-        },
-        
-        handleMultiDrag(event: any): void {
-            const chosenFrame = this.frames[event.oldIndex];
-
-            // If the frame is part of a selection
-            if(this.appStore.isFrameSelected(chosenFrame.id)) {
-                //update the property indicating if dragging the frames in another container is allowed: 
-                //we check that all the selected frames are comments (otherwise moving frames isn't allowed outside a different container group)
-                this.hasCommentsToMove = this.appStore.selectedFrames
-                    .find((frameId) => this.appStore.frameObjects[frameId].frameType.type !== AllFrameTypesIdentifier.comment) === undefined;
-                
-                // Notify the start of a drag and drop
-                notifyDragStarted();
-
-                // Make it appear as the whole selection is being dragged
-                this.appStore.prepareForMultiDrag(chosenFrame.id);
-            }
-            else{
-                //update the property indicating if dragging the frame in another container is allowed: 
-                //we check that the moving frame is a comment
-                this.hasCommentsToMove = (chosenFrame.frameType.type === AllFrameTypesIdentifier.comment);
-                 
-                // Notify the start of a drag and drop for a particular frame
-                notifyDragStarted(chosenFrame.id);
-            }
-        },   
-
-        multiDragEnd(event: any): void {
-            this.appStore.removeMultiDragStyling();
-
-            // Notify the end of a drag and drop
-            notifyDragEnded(event.clone);
-        },   
-
-        // Some times, when draging and droping in the original position of where the
-        // selected frames were taken, the `change` event is not fired; hence you need to
-        // catch the `unchoose` event
-        showSelectedFrames(): void {
-            this.appStore.makeSelectedFramesVisible();
+            return getFrameUID(frameId);
         },
     },
 });

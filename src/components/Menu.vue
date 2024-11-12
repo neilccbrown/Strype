@@ -72,7 +72,7 @@
         </Slide>
         <div>
             <button 
-                :id="menuUIID" 
+                :id="menuUID" 
                 href="#" 
                 tabindex="0" 
                 class="show-menu-btn"
@@ -129,7 +129,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUIID, getFrameUIID, getLabelSlotUIID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIIDFrameHeader, parseFrameHeaderUIID, parseLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameUID, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, parseFrameHeaderUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -225,8 +225,8 @@ export default Vue.extend({
     computed: {
         ...mapStores(useStore),
         
-        menuUIID(): string {
-            return getEditorMenuUIID();
+        menuUID(): string {
+            return getEditorMenuUID();
         },
 
         googleDriveComponentId(): string {
@@ -688,7 +688,7 @@ export default Vue.extend({
             else {
                 // Bring the focus back to the editor if the menu was opened (because this can be called when "esc" is hit elsewhere (burger menu behaviour))
                 if(this.appStore.isAppMenuOpened){
-                    document.getElementById(getFrameUIID(this.appStore.currentFrame.id))?.focus();
+                    document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus();
                     this.appStore.ignoreKeyEvent = false;
                 }                
             }
@@ -771,7 +771,7 @@ export default Vue.extend({
                 this.$nextTick(() => {
                     // If we are currently in a slot, we need to make sure that that slot gets notified of the caret lost
                     if(this.appStore.focusSlotCursorInfos){
-                        document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                        document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                             ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
                     }
                     
@@ -784,14 +784,14 @@ export default Vue.extend({
                     // We focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
                     // we put the focus in the first slot that is editable.
                     const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
-                        ? parseLabelSlotUIID(errorElement.id)
-                        : {frameId: parseFrameHeaderUIID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
+                        ? parseLabelSlotUID(errorElement.id)
+                        : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
                     const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
                     this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
                     setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
                     // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
-                    if(isElementUIIDFrameHeader(errorElement.id)){
-                        document.getElementById(getLabelSlotUIID(errorSlotInfos))?.click();
+                    if(isElementUIDFrameHeader(errorElement.id)){
+                        document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
                     }
                     else{
                         errorElement.click();

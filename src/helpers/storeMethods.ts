@@ -2,9 +2,9 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
-import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUIID, getMatchingBracket, parseLabelSlotUIID } from "./editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
@@ -504,7 +504,7 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
     // If we have managed to load the state, then we might need to make sure the caret is in view
     if(success){
         setTimeout(() => {
-            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUIID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : ("caret_"+useStore().currentFrame.caretPosition+"_of_frame_"+useStore().currentFrame.id);
+            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : ("caret_"+useStore().currentFrame.caretPosition+"_of_frame_"+useStore().currentFrame.id);
             document.getElementById(htmlElementToShowId)?.scrollIntoView();
         }, 1000);
     }   
@@ -520,23 +520,6 @@ export const getDisabledBlockRootFrameId = function(frameId: number): number {
     else{
         return frameId;
     }
-};
-
-export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
-    // Change the disable property to destination parent state if the source's parent and destination's parent are different
-    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0)
-        ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
-        : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
-
-    const isDestParentDisabled = listOfFrames[destContainerFrameId].isDisabled;
-    
-    if(isSrcParentDisabled === isDestParentDisabled){
-        // Nothing to change
-        return {changeDisableProp: false, newBoolPropVal: false};
-    }
-
-    // The source need to be changed to the destination's parent 
-    return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
 };
 
 export const getLastSibling= function (frameId: number): number {
@@ -748,8 +731,8 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
         // we extract it from the id of the elements, they are of that form:
         // slots (*) --> "input_frame_<frameId>_label_<labelSlotsIndex>_slot_<slotType>_<slotId>" where <frameId>, <labelSlotsIndex> and <slotType> are numbers and <slotId> a string (we want <slotIndex> and <slotId>)
         // carets --> "caret_<type>_<frameId>" where <type> is one of caretBelow or caretBody, and <frameId> as mentioned above (we want <type>)
-        // (*) cf function getLabelSlotUIID in the helper editor.ts
-        const labelSlotCoreInfos = parseLabelSlotUIID(e.id);
+        // (*) cf function getLabelSlotUID in the helper editor.ts
+        const labelSlotCoreInfos = parseLabelSlotUID(e.id);
         const positionObjIdentifier = (isSlotNavigationPosition) 
             ? {labelSlotsIndex: labelSlotCoreInfos.labelSlotsIndex, slotId: labelSlotCoreInfos.slotId, slotType: labelSlotCoreInfos.slotType}
             : {caretPosition: e.id.includes(CaretPosition.below) ? CaretPosition.below : CaretPosition.body}; 
@@ -797,7 +780,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     if(slotInfos.code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
         if(currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
-            useStore().removePreCompileErrors(getLabelSlotUIID(slotInfos));                
+            useStore().removePreCompileErrors(getLabelSlotUID(slotInfos));                
         }
     }
     else if(!isOptionalSlot){
@@ -807,7 +790,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
                 error: i18n.t("errorMessage.emptyEditableSlot") as string,
             }
         );
-        useStore().addPreCompileErrors(getLabelSlotUIID(slotInfos));
+        useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
     }
 };
 
