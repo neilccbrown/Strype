@@ -2,6 +2,11 @@
 const MoveAssetsPlugin = require("move-assets-webpack-plugin");
 const RemoveFilePlugin = require("remove-files-webpack-plugin");
 
+// Application environment variable for the built date.
+// The idea is to have a date value at build time, so
+// we don't need to manually set a release date.
+process.env.VUE_APP_BUILD_DATE_TICKS = Date.now();
+
 const configureWebpackExtraProps = 
     {
         plugins: [(process.env.npm_config_microbit) ?
@@ -51,7 +56,7 @@ module.exports = {
             .options( {
                 // the following are from the library js-conditional-compile-loader https://github.com/hzsrc/js-conditional-compile-loader
                 isPurePython: process.env.npm_config_python,
-                isMicrobit: process.env.npm_config_microbit,              
+                isMicrobit: process.env.npm_config_microbit,
             });
         config.module
             .rule("conditionalCompilerTS")

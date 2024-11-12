@@ -159,7 +159,8 @@
       "resetProject":"Nouveau projet",
       "resetProjectTooltip":"Réinitialiser l'éditeur avec le projet par default de Strype",
       "prefs":"Préférences",
-      "lang":"Langue: "
+      "lang":"Langue: ",
+      "lastRelease":"Date de sortie :"
     },
     "autoCompletion": {
       "myFunctions":"Mes fonctions",

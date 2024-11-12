@@ -162,7 +162,8 @@
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
         "lang":"Language: ",
-        "homepage":"Strype Homepage"
+        "homepage":"Strype Homepage",
+        "lastRelease":"Released: "
     },
     "autoCompletion": {
         "myFunctions":"My functions",

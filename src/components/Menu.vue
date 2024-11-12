@@ -68,7 +68,10 @@
                         <option value="el">Ελληνικά</option>
                     </select>
                 </div> 
-            </div>   
+            </div>
+            <div class="app-menu-footer">
+                <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.lastRelease') + '&nbsp;' + getLocaleBuildDate}}</a>
+            </div>
         </Slide>
         <div>
             <button 
@@ -140,6 +143,7 @@ import { BvModalEvent } from "bootstrap-vue";
 import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
 import App from "@/App.vue";
+import { getLocaleBuildDate } from "@/main";
 
 //////////////////////
 //     Component    //
@@ -331,6 +335,10 @@ export default Vue.extend({
             set(lang: string) {
                 this.appStore.setAppLang(lang);
             }, 
+        },
+
+        getLocaleBuildDate(): string {
+            return getLocaleBuildDate();
         },
 
         strypeProjMIMEDescArray(): MIMEDesc[]{
@@ -935,6 +943,18 @@ export default Vue.extend({
 
 .toggle-button.btn-primary:focus {
     background-color: #007bff !important;   
+}
+
+.app-menu-footer {
+    bottom: 0px;
+    font-size: smaller;
+    color: #3467FE;
+    position: absolute;
+    bottom: 2px;
+}
+
+.app-menu-footer:hover {
+    color: #2648af;
 }
 
 #feedbackLink {
