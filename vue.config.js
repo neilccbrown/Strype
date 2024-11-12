@@ -6,7 +6,7 @@ const RemoveFilePlugin = require("remove-files-webpack-plugin");
 // The idea is to have a date value and hash at build time, so
 // we don't need to manually set a release date or copy the hash.
 process.env.VUE_APP_BUILD_DATE_TICKS = Date.now();
-process.env.VUE_APP_BUILD_GIT_HASH = require("child_process").execSync("git rev-parse --short=8 HEAD").toString();
+process.env.VUE_APP_BUILD_GIT_HASH = require("child_process").execSync("git rev-parse --short=8 HEAD").toString().trim();
 
 const configureWebpackExtraProps = 
     {
