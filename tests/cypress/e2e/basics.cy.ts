@@ -379,6 +379,7 @@ describe("Copying key combination", () => {
         cy.get("body").type("{downArrow}{downArrow}");
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
         cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c"});
+        cy.wait(500);
         cy.get("body").type("Hello");
         checkCodeEquals(defaultImports.concat(defaultMyCode).concat([/# ?Hello/]));
     });

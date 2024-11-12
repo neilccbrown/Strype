@@ -25,6 +25,16 @@ var $builtinmodule = function(name)  {
     mod.checkCollision = new Sk.builtin.func(function(idA, idB) {
         return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().checkCollision(idA, idB));
     });
+    
+    mod.getAllTouchingAssociated = new Sk.builtin.func(function(id) {
+        // The return value is awkward here because we want to give back a Python list
+        // but without converting the objects within, so we don't use remapToPy:
+        return new Sk.builtin.list(peaComponent.__vue__.getPersistentImageManager().getAllOverlapping(id));
+    });
+    
+    mod.setCollidable = new Sk.builtin.func(function(id, collidable) {
+        peaComponent.__vue__.getPersistentImageManager().setPersistentImageCollidable(Sk.ffi.remapToJs(id), Sk.ffi.remapToJs(collidable));
+    });
 
     return mod;
 };

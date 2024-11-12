@@ -7,7 +7,7 @@
                 <b-tab :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
-            <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
+            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
                 <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
                 <span v-else class="python-running">{{this.runCodeButtonIconText}}</span>
                 <span>{{this.runCodeButtonLabel}}</span>
@@ -581,7 +581,7 @@ export default Vue.extend({
                     // on the coords we pass in, so it works out:
                     targetContext?.save();
                     targetContext?.translate(mapX(obj.x), mapY(obj.y));
-                    targetContext?.rotate(obj.rotation * Math.PI / 180);
+                    targetContext?.rotate(-obj.rotation * Math.PI / 180);
                     targetContext?.scale(obj.scale, obj.scale);
                     targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
                     targetContext?.restore();

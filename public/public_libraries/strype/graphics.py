@@ -21,27 +21,38 @@ class Actor:
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
     # __editable_image: the editable image of this actor, if the user has ever called edit_image() on us.
+    # __name: the user-supplied name of the actor.  Useful to leave the type flexible, we just pass it in and out.
     # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
     # whenever we use it, we should check it's still actually present.
     
-    def __init__(self, image_or_filename, x = 0, y = 0):
+    def __init__(self, image_or_filename, x = 0, y = 0, name = None):
         """
-        Construct an Actor with a given image and position.
+        Construct an Actor with a given image and position and an optional name.
+        
+        Note: if you pass an EditableImage, this Actor will use a reference to it for its display.  This means
+        if you make any changes to that EditableImage, it will update the Actor's image.  If you pass
+        the same EditableImage to multiple Actors, they will all update when you edit it.  If you do not want this
+        behaviour then call `make_copy()` on the EditableImage as you pass it in.
         
         :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an EditableImage 
         :param x: The X position at which to add the actor
         :param y: The Y position at which to add the actor
+        :param name: The name to give the actor
         """
         if isinstance(image_or_filename, EditableImage):
             self.__id = _strype_graphics_internal.addImage(image_or_filename._EditableImage__image, self)
+            self.__editable_image = image_or_filename
         elif isinstance(image_or_filename, str):
             self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_or_filename), self)
+            self.__editable_image = None
         else:
             raise TypeError("Actor constructor parameter must be string or EditableImage")
         self.__say = None
+        self.__name = name
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         _strype_graphics_internal.setImageRotation(self.__id, 0)
+        
     def set_location(self, x, y):
         """
         Sets the position of the actor to be the given x, y position.
@@ -51,6 +62,7 @@ class Actor:
         """
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         self._update_say_position()
+        
     def set_rotation(self, deg):
         """
         Sets the rotation of the actor to be the given rotation in degrees.  This changes the rotation of
@@ -60,6 +72,7 @@ class Actor:
         """
         _strype_graphics_internal.setImageRotation(self.__id, deg)
         # Note: no need to update say position if we are just rotating
+        
     def set_scale(self, scale):
         """
         Sets the actor's scale (size multiplier).  The default is 1, larger values make it bigger (for example, 2 is double size),
@@ -71,11 +84,44 @@ class Actor:
             raise ValueError("Scale must be greater than zero")
         _strype_graphics_internal.setImageScale(self.__id, scale)
         self._update_say_position()
+        
+    def get_rotation(self):
+        """
+        Gets the current rotation of this Actor.
+        
+        :return: The rotation of this Actor, in degrees.
+        """
+        return _strype_graphics_internal.getImageRotation(self.__id)
+    
+    def get_scale(self):
+        """
+        Gets the current scale of this Actor.
+        
+        :return: The scale of this Actor, where 1.0 is the default scale. 
+        """
+        return _strype_graphics_internal.getImageScale(self.__id, scale)
+    def get_name(self):
+        """
+        Gets the name of this actor.
+        
+        :return: The name of this actor, as passed to the constructor or `set_name()` call.
+        """
+        return self.__name
+    def set_name(self, name):
+        """
+        Sets the name of this actor.  Actor names are typically strings, but they do not
+        have to be.
+        
+        :param name: The new name of the actor
+        """
+        self.__name = name
+    
     def remove(self):
         """
         Removes the actor from the world.  There is no way to re-add the actor to the world.
         """
         _strype_graphics_internal.removeImage(self.__id)
+        
     def get_x(self):
         """
         Gets the X position of the actor as an integer (whole number).  If the actors current position
@@ -87,6 +133,7 @@ class Actor:
         
          # Gets X with rounding (towards zero):
         return int(_strype_graphics_internal.getImageLocation(self.__id)['x'])
+    
     def get_y(self):
         """
         Gets the Y position of the actor as an integer (whole number).  If the actors current position
@@ -97,6 +144,7 @@ class Actor:
         """
         # Gets Y with rounding (towards zero):
         return int(_strype_graphics_internal.getImageLocation(self.__id)['y'])
+    
     def get_exact_x(self):
         """
         Gets the exact X position of the actor, which may be a fractional number.  If you do not need this accuracy,
@@ -106,6 +154,7 @@ class Actor:
         """
         # Gets X with no rounding:
         return _strype_graphics_internal.getImageLocation(self.__id)['x']
+    
     def get_exact_y(self):
         """
         Gets the exact Y position of the actor, which may be a fractional number.  If you do not need this accuracy,
@@ -115,6 +164,7 @@ class Actor:
         """
         # Gets Y with no rounding:
         return _strype_graphics_internal.getImageLocation(self.__id)['y']
+    
     def move(self, amount):
         """
         Move forwards the given amount in the current direction that the actor is heading.  If you want to change
@@ -125,6 +175,7 @@ class Actor:
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
         self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
+        
     def turn(self, degrees):
         """
         Changes the actor's current rotation by the given amount of degrees.
@@ -132,15 +183,43 @@ class Actor:
         :param degrees: The change in rotation, in degrees.  Positive amounts turn anti-clockwise, negative amounts turn clockwise.
         """
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
+        
     def is_touching(self, actor):
         """
         Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
-        rectangles of their images are overlapping (even if the actor is transparent at that point). 
+        rectangles of their images are overlapping (even if the actor is transparent at that point).
+        
+        Note that if either this actor or the given actor has had collisions turned off with
+        `set_can_touch(false)` then this function will return False even if they touch.
         
         :param actor: The actor to check for overlap
         :return: True if this actor overlaps that actor, False if it does not 
         """
         return _strype_input_internal.checkCollision(self.__id, actor.__id)
+    
+    def set_can_touch(self, can_touch):
+        """
+        Changes whether the actor is part of the collision detection system.
+        
+        If you turn it off then this actor will never show up in the collision checking.
+        You may want to do this if you have an actor which makes no sense to collide (such
+        as a score board, or game over text), and/or to speed up the simulation for actors
+        where you don't need collision detection (e.g. visual effects).
+        
+        :param can_touch: Whether this actor can participate in collisions.
+        """
+        _strype_input_internal.setCollidable(self.__id, can_touch)
+    
+    def get_all_touching(self):
+        """
+        Gets all the actors that this actor is touching.  If this actor has had `set_can_touch(false)`
+        called, the returned list will always be empty.  The list will never feature any actors
+        which have had `set_can_touch(false)` called on them.
+        
+        :return: A list of all touching actors.
+        """
+        return _strype_input_internal.getAllTouchingAssociated(self.__id)
+    
     def edit_image(self):
         """
         Return an EditableImage which can be used to edit this actor's image.  All modifications
@@ -156,6 +235,7 @@ class Actor:
             self.__editable_image = EditableImage(-1, -1)
             self.__editable_image._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return self.__editable_image
+    
     def say(self, text, font_size = 20, max_width = 300, max_height = 200, font_family = None):
         """
         Add a speech bubble next to the actor with the given text.  The only required parameter is the
@@ -518,6 +598,17 @@ class EditableImage:
         :param angle_amount: The amount of degrees to travel (positive goes clockwise).
         """
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
+
+    def make_copy(self):
+        """
+        Makes a copy of this EditableImage with the same width and height,
+        and the same image content.
+        
+        :return: The new copy of the EditableImage 
+        """
+        copy = EditableImage(self.get_width(), self.get_height())
+        copy.draw_image(self, 0, 0)
+        return copy
 
 class FontFamily:
     """
