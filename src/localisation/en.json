@@ -163,7 +163,7 @@
         "prefs":"Preferences",
         "lang":"Language: ",
         "homepage":"Strype Homepage",
-        "lastRelease":"Released: "
+        "version":"Version"
     },
     "autoCompletion": {
         "myFunctions":"My functions",

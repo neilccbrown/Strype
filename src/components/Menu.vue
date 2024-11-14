@@ -70,7 +70,7 @@
                 </div> 
             </div>
             <div class="app-menu-footer">
-                <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.lastRelease') + '&nbsp;' + getLocaleBuildDate}}</a>
+                <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.version') + '&nbsp;' + getAppVersion}}</a>
                 <span class="hidden">{{ getBuildHash }}</span>
             </div>
         </Slide>
@@ -144,7 +144,7 @@ import { BvModalEvent } from "bootstrap-vue";
 import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
 import App from "@/App.vue";
-import { getLocaleBuildDate } from "@/main";
+import appPackageJson from "@/../package.json";
 
 //////////////////////
 //     Component    //
@@ -338,8 +338,8 @@ export default Vue.extend({
             }, 
         },
 
-        getLocaleBuildDate(): string {
-            return getLocaleBuildDate();
+        getAppVersion(): string {
+            return appPackageJson.version;
         },
 
         getBuildHash(): string {

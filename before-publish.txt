@@ -1,0 +1,1 @@
+1 - Check the Strype version (in package.json) is correct : format is "yyy-MM-dd" of the release date, like "2024.11.14"
