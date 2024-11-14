@@ -1,1 +1,2 @@
-1 - Check the Strype version (in package.json) is correct : format is "yyy-MM-dd" of the release date, like "2024.11.14"
+1 - Check the Strype version (in package.json) is correct : format is "yyyy.mm.dd" of the release date, like "2024.11.14"
+2 - Make sure the app server path in vue.config.js is correct (/editor/ and /microbit/ for the normal cases)
