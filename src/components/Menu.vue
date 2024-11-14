@@ -63,9 +63,7 @@
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
                     <select name="lang" id="appLangSelect" v-model="appLang" @change="showMenu=false;" class="strype-menu-item" @click="setCurrentTabIndexFromEltId('appLangSelect')">
-                        <option value="en">English</option>
-                        <option value="fr">Français</option>
-                        <option value="el">Ελληνικά</option>
+                        <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
                     </select>
                 </div> 
             </div>
@@ -132,7 +130,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
 import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameUID, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, parseFrameHeaderUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
@@ -232,6 +230,18 @@ export default Vue.extend({
         
         menuUID(): string {
             return getEditorMenuUID();
+        },
+
+        locales(): Locale[] {
+            // The locale codes are already parts of the i18n messages at this stage, so they are easy to retrieve.
+            // We retrieve the corresponding locale's friendly name from i18n directly.
+            // In the unlikely event a locale file does not provide the locale friendly name, we just use the code
+            // as the name to avoid empty options in the select HTML tool.
+            const locales: Locale[] = [];
+            this.$i18n.availableLocales.forEach((i18nLocale) => {
+                locales.push({code: i18nLocale, name: this.$i18n.getLocaleMessage(i18nLocale)["localeName"] as string??i18nLocale});
+            });
+            return locales;
         },
 
         googleDriveComponentId(): string {
