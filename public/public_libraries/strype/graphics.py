@@ -2,6 +2,7 @@ import strype_graphics_internal as _strype_graphics_internal
 import strype_graphics_input_internal as _strype_input_internal
 import math as _math
 import collections as _collections
+import time as _time
 
 def in_bounds(x, y):
     """
@@ -375,6 +376,13 @@ class Dimension:
         self.height = height
 
 class EditableImage:
+    # Attributes:
+    # __image: A Javascript OffscreenCanvas, but from the Python end it is only
+    #          passed back to Javascript calls.
+
+    # Tracks the rate limiting for downloads:
+    __last_download = _time.time()
+        
     """
     An editable image of fixed width and height.
     """
@@ -609,6 +617,32 @@ class EditableImage:
         copy = EditableImage(self.get_width(), self.get_height())
         copy.draw_image(self, 0, 0)
         return copy
+    
+    def download(self, filename="strype-image"):
+        """
+        Triggers a download of this image as a PNG image file.  You can optionally
+        pass a file name (you do not need to include the file extension, Strype
+        will add that automatically).  To help you distinguish downloads
+        from repeated runs, Strype will automatically add a timestamp to the file.
+        
+        To avoid problems with accidentally calling this method too often, Strype
+        will limit the rate of downloads to at most one every 2 seconds.
+        
+        :param filename: The main part of the filename to use for the downloaded file.
+        """
+        # We add a kind of rate limiter for downloads.  This is not necessary from a technical perspective,
+        # but imagine the user accidentally puts their download inside a tight loop; they may trigger the
+        # download of 100 files before they realised what has happened.  I'm not sure if browsers will
+        # protect against this.  So we protect against this by limiting downloads to only happening every
+        # 2 seconds.  It's easier to do this on the Python side than on the Javascript side (where we'd have
+        # to mess with promises and Skulpt suspensions.  This is already wrapped up into the Python time
+        # module anyway:        
+        now = _time.time()
+        # If it's less than 2 seconds since last download, wait:
+        if now < EditableImage.__last_download + 2:
+            _time.sleep(EditableImage.__last_download + 2 - now)
+        _strype_graphics_internal.canvas_downloadPNG(self.__image, filename)
+        EditableImage.__last_download = _time.time()
 
 class FontFamily:
     """

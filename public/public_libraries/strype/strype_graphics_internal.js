@@ -331,5 +331,43 @@ var $builtinmodule = function(name)  {
         return Sk.ffi.remapToPy({width: details.width, height: details.height});
     });
     
+    // Skulpt can't access our common.ts code so we have to copy this here:
+    const getDateTimeFormatted = function(dt) {
+        // Returned "YYYY-MM-DD_HH-mm-ss" format string representation of a date
+        const rawMonthOneIndexedVal = dt.getMonth() + 1;
+        const rawDayVal = dt.getDate();
+        const rawHoursVal = dt.getHours();
+        const rawMinsVal = dt.getMinutes();
+        const rawSecsVal = dt.getSeconds();
+        return `${dt.getFullYear()}-${((rawMonthOneIndexedVal) < 10) ? "0" + rawMonthOneIndexedVal : rawMonthOneIndexedVal }-${(rawDayVal < 10) ? "0" + rawDayVal : rawDayVal}_${(rawHoursVal < 10) ? "0" + rawHoursVal : rawHoursVal}-${(rawMinsVal < 10) ? "0" + rawMinsVal : rawMinsVal}-${(rawSecsVal < 10) ? "0" + rawSecsVal : rawSecsVal}`;
+    }
+    
+    mod.canvas_downloadPNG = new Sk.builtin.func(function(src, filenameStem) {
+        filenameStem = Sk.ffi.remapToJs(filenameStem);
+        // convertToBlob gives a promise, so we use Skulpt's suspensions to block until it has completed:
+        let susp = new Sk.misceval.Suspension();
+        susp.resume = function () {
+            if (susp.data["error"]) {
+                throw new Sk.builtin.IOError(susp.data["error"].message);
+            }
+            return susp.ret;
+        };
+        susp.data = {
+            type: "Sk.promise",
+            promise: new Promise(function (resolve, reject) {
+                src.convertToBlob().then((blob) => {
+                    if(blob){
+                        saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
+                        resolve();
+                    }
+                    else {
+                        reject("Unknown error saving image");
+                    }
+                });
+            }),
+        };
+        return susp;
+    });
+    
     return mod;
 };
