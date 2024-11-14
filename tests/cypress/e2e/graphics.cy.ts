@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const PNG = require("pngjs").PNG;
+import {PNG} from "pngjs";
 import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
@@ -67,41 +67,93 @@ enum ImageComparison {
 //
 // So we write our own which reads the pixel data direct from the graphics canvas, avoiding any
 // transformation.  Unfortunately this means we also have to write our own code to save the images etc
+function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison: ImageComparison) {
+    if (comparison == ImageComparison.COMPARE_TO_EXISTING) {
+        cy.readFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, "base64").then((expectedData) => {
+            // load both pictures
+            const expected = PNG.sync.read(Buffer.from(expectedData, "base64"));
+            cy.writeFile(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, PNG.sync.write(actual));
+
+            const {width, height} = expected;
+            const diff = new PNG({width, height});
+
+            // calling pixelmatch return how many pixels are different
+            const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.05});
+
+            cy.writeFile(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
+
+            // calculating a percent diff
+            const diffPercent = (numDiffPixels / (width * height) * 100);
+
+            expect(diffPercent).to.be.below(10);
+        });
+    } else {
+        // Just save to expected:
+        cy.writeFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, PNG.sync.write(actual));
+    }
+}
+
 // but it's not very long:
 function checkGraphicsCanvasContent(expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) {
     cy.get("#pythonGraphicsCanvas").then((canvas) => {
         return (canvas[0] as HTMLCanvasElement).toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
     }).then((actualImageBase64) => {
         const actual = PNG.sync.read(Buffer.from(actualImageBase64, "base64"));
-        if (comparison == ImageComparison.COMPARE_TO_EXISTING) {
-            cy.readFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, "base64").then((expectedData) => {
-                // load both pictures
-                const expected = PNG.sync.read(Buffer.from(expectedData, "base64"));
-                cy.writeFile(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, PNG.sync.write(actual));
-
-                const {width, height} = expected;
-                const diff = new PNG({width, height});
-
-                // calling pixelmatch return how many pixels are different
-                const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.05});
-
-                cy.writeFile(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
-
-                // calculating a percent diff
-                const diffPercent = (numDiffPixels / (width * height) * 100);
-
-                expect(diffPercent).to.be.below(10);
-            });
-        }
-        else {
-            // Just save to expected:
-            cy.writeFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, PNG.sync.write(actual));
-        }
+        checkImageMatch(expectedImageFileName, actual, comparison);
     });
 }
 
-function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) : void {
+// This is basically replicating getDateTimeFormatted, in order to test it: 
+function formatDate(timestamp: number) {
+    const date = new Date(timestamp);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+    const day = String(date.getDate()).padStart(2, '0');
+
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+    return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+}
+
+function checkImageViaDownload(functions: string, main: string, downloadStem: string, imageFileStem: string, comparison = ImageComparison.COMPARE_TO_EXISTING) {
     focusEditorPasteAndClear();
+    // The timestamp should be between before and after:
+    const before = Date.now();
+    enterAndExecuteCode(functions, main);
+
+    const foundFiles : string[] = [];
+    (cy.task("downloads") as Cypress.Chainable<string[]>).then((allFiles: string[]) => {
+        // We need the after to be in here because all the prior calls just queue things up like promises,
+        // the code will not actually have executed.  But inside a .then(), the code will have
+        // executed:
+        const after = Date.now();
+        expect(allFiles.length).to.be.above(0);
+
+        // Search for the filename one second at a time:
+        for (let d = before; d <= after; d += 1000) {
+            const filename = `${downloadStem}_${formatDate(d)}.png`;
+            if (allFiles.includes(filename)) {
+                foundFiles.push(filename);
+            }
+        }
+        
+        // Assert that exactly one file was found
+        expect(foundFiles.length).to.equal(1);
+        return foundFiles[0];
+    }).then((downloadFilename) => {
+        // Read the downloaded file and compare as image with the expected file:
+        cy.readFile("tests/cypress/downloads/" + downloadFilename, "base64")
+            .then((actualImageBase64) => {
+                const actual = PNG.sync.read(Buffer.from(actualImageBase64, "base64"));
+                checkImageMatch(imageFileStem, actual, comparison);
+            });
+    });
+}
+
+function enterAndExecuteCode(functions: string, main: string) {
     cy.get("body").type("{uparrow}{uparrow}");
     (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\n");
     cy.wait(2000);
@@ -118,9 +170,13 @@ function runCodeAndCheckImage(functions: string, main: string, expectedImageFile
     cy.wait(5000);
     // Assert it has finished, by looking at the run button:
     cy.get("#runButton").contains("Run");
+}
+
+function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) : void {
+    focusEditorPasteAndClear();
+    enterAndExecuteCode(functions, main);
     // Check the image matches expected:
     checkGraphicsCanvasContent(expectedImageFileName, comparison);
-    
 }
 
 describe("Basic operation", () => {
@@ -192,5 +248,18 @@ describe("Collision detection", () => {
                 sq.edit_image().set_fill("red")
                 sq.edit_image().fill()
             `, "graphics-colliding-every-other-square-cat-minus-75");
+    });
+});
+
+describe("Image download", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    
+    it("Downloads plain cat", () => {
+        checkImageViaDownload("", `
+            cat = Actor('cat-test.jpg')
+            cat.edit_image().download()`, "strype-image", "download-plain-cat");
     });
 });

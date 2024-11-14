@@ -75,6 +75,7 @@
         "@types/lz-string": "^1.3.34",
         "@types/mocha": "^5.2.4",
         "@types/pixelmatch": "^5.2.6",
+        "@types/pngjs": "^6.0.5",
         "@types/testing-library__cypress": "^5.0.13",
         "@types/textarea-caret": "^3.0.0",
         "@types/w3c-web-usb": "^1.0.6",
