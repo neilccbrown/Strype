@@ -1,4 +1,4 @@
-<img src="public/favicon.png" width="64" style="float:left; margin-right: 10px;">
+<img src="public/favicon.png" width="64" align="left">
 
 # Strype
 
@@ -59,4 +59,16 @@ npm run lint:check
 Contributing
 ---
 
-We readily accept pull requests for translations or bug fixes.  If you plan to add a new feature or change existing behaviour we advise you to get in contact with us first, as we are likely to refuse any pull requests which are not part of our roadmap for Strype.  Our experience is that one of the important features for novice tools is their simplicity, which is achieved by being very conservative in which features we choose to add.
+We readily accept pull requests for translations or bug fixes.  If you plan to add an entirely new feature or noticeably change existing behaviour we advise you to get in contact with us first, as we are likely to refuse any pull requests which are not part of our plan for Strype.  Our experience is that one of the important features for novice tools is their simplicity, which is achieved by being very conservative in which features we choose to add.
+
+Roadmap
+---
+
+Strype is currently under very active development.  A rough roadmap of some major planned features (beyond the general bugfixing and polishing):
+
+ - Improved editor features (including copy-as-image): Q4 2024
+ - Add a graphics and sound API: Q1 2025
+ - Add support for third-party library import: Q2 2025
+ - Add support for data processing and/or charting: Q3 2025
+
+The dates and choices may change as we receive more user feedback.
