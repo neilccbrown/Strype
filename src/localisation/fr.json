@@ -1,4 +1,5 @@
 {
+    "localeName":"Français",
     "defaultProjName":"Mon projet",
     "strypeFileDesc":"Fichier de projet Strype",
     "frame":{
@@ -159,7 +160,9 @@
       "resetProject":"Nouveau projet",
       "resetProjectTooltip":"Réinitialiser l'éditeur avec le projet par default de Strype",
       "prefs":"Préférences",
-      "lang":"Langue: "
+      "lang":"Langue: ",
+      "homepage":"Page d'accueil de Strype",
+      "version":"Version"
     },
     "autoCompletion": {
       "myFunctions":"Mes fonctions",

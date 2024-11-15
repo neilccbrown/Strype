@@ -1,4 +1,5 @@
 {
+    "localeName":"English",
     "defaultProjName":"My project",
     "strypeFileDesc":"Strype project file",
     "pythonFileDesc":"Python code file",
@@ -162,7 +163,8 @@
         "resetProjectTooltip":"Reset the editor with Strype default project",
         "prefs":"Preferences",
         "lang":"Language: ",
-        "homepage":"Strype Homepage"
+        "homepage":"Strype Homepage",
+        "version":"Version"
     },
     "autoCompletion": {
         "myFunctions":"My functions",

@@ -63,12 +63,14 @@
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
                     <select name="lang" id="appLangSelect" v-model="appLang" @change="showMenu=false;" class="strype-menu-item" @click="setCurrentTabIndexFromEltId('appLangSelect')">
-                        <option value="en">English</option>
-                        <option value="fr">Français</option>
-                        <option value="el">Ελληνικά</option>
+                        <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
                     </select>
                 </div> 
-            </div>   
+            </div>
+            <div class="app-menu-footer">
+                <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.version') + '&nbsp;' + getAppVersion}}</a>
+                <span class="hidden">{{ getBuildHash }}</span>
+            </div>
         </Slide>
         <div>
             <button 
@@ -128,7 +130,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
 import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameUID, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, parseFrameHeaderUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
@@ -140,6 +142,7 @@ import { BvModalEvent } from "bootstrap-vue";
 import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
 import App from "@/App.vue";
+import appPackageJson from "@/../package.json";
 
 //////////////////////
 //     Component    //
@@ -227,6 +230,18 @@ export default Vue.extend({
         
         menuUID(): string {
             return getEditorMenuUID();
+        },
+
+        locales(): Locale[] {
+            // The locale codes are already parts of the i18n messages at this stage, so they are easy to retrieve.
+            // We retrieve the corresponding locale's friendly name from i18n directly.
+            // In the unlikely event a locale file does not provide the locale friendly name, we just use the code
+            // as the name to avoid empty options in the select HTML tool.
+            const locales: Locale[] = [];
+            this.$i18n.availableLocales.forEach((i18nLocale) => {
+                locales.push({code: i18nLocale, name: this.$i18n.getLocaleMessage(i18nLocale)["localeName"] as string??i18nLocale});
+            });
+            return locales;
         },
 
         googleDriveComponentId(): string {
@@ -331,6 +346,16 @@ export default Vue.extend({
             set(lang: string) {
                 this.appStore.setAppLang(lang);
             }, 
+        },
+
+        getAppVersion(): string {
+            return appPackageJson.version;
+        },
+
+        getBuildHash(): string {
+            // The hash should exist as it is set when serving or compiling the server..
+            // but to keep TS happy
+            return process.env.VUE_APP_BUILD_GIT_HASH ?? "Strype-hash-unknown";
         },
 
         strypeProjMIMEDescArray(): MIMEDesc[]{
@@ -935,6 +960,18 @@ export default Vue.extend({
 
 .toggle-button.btn-primary:focus {
     background-color: #007bff !important;   
+}
+
+.app-menu-footer {
+    bottom: 0px;
+    font-size: smaller;
+    color: #3467FE;
+    position: absolute;
+    bottom: 2px;
+}
+
+.app-menu-footer:hover {
+    color: #2648af;
 }
 
 #feedbackLink {

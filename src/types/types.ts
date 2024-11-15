@@ -1138,3 +1138,8 @@ export interface MIMEDesc {
 }
 
 export type ProjectLocation = (undefined | string | FileSystemFileHandle);
+
+export interface Locale {
+    code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
+    name: string, // the user-friendly locale's name (e.g.: "English")
+}
