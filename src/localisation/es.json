@@ -180,7 +180,7 @@
     },
 
     "autoCompletion": {
-        "myFunctions":"Mis funciones ",
+        "myFunctions":"Mis funciones",
         "myVariables":"Mis variables",
         "importedModules":"Módulos importados",
         "invalidState":"No hay finalización disponible",
