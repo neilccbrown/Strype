@@ -81,7 +81,7 @@ module.exports = {
         }
     },
 
-    publicPath: (process.env.npm_config_python)?"/editor/":"/microbit/",
+    publicPath: (process.env.npm_config_githubpages) ? "/Strype/" : ((process.env.npm_config_python)?"/editor/":"/microbit/"),
     pluginOptions: {
         i18n: {
             locale: "en",
