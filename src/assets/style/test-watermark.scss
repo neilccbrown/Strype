@@ -4,7 +4,7 @@ body::before {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(-45deg); /* Center and rotate diagonally */
-    font-size: 10vw; /* Adjust size relative to the viewport width */
+    font-size: 15vw; /* Adjust size relative to the viewport width */
     color: rgba(0, 0, 0, 0.1); /* Light grey and semi-transparent */
     white-space: nowrap; /* Prevent text wrapping */
     pointer-events: none; /* Allow interaction with page elements below */
