@@ -96,7 +96,9 @@ module.exports = {
             scss: {
                 additionalData: `
                     @import "@/assets/style/variables.scss";
-                `,
+                ` + (process.env.npm_config_githubpages ?  `
+                    @import "@/assets/style/test-watermark.scss";
+                ` : ""),
             },
         },
     },
