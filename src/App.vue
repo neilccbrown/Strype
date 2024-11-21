@@ -835,7 +835,7 @@ export default Vue.extend({
             // Bit awkward but we first copy each to check for errors because
             // if there are any errors we don't want to paste any:
             const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
-                        ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
+                        ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.DEFS_SECTION, s.defsMapping)
                         ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
             if (err != null) {
                 const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
@@ -849,7 +849,7 @@ export default Vue.extend({
                 if (useStore().copiedSelectionFrameIds.length > 0) {
                     this.getCaretContainerComponent(this.getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
                 }
-                copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
+                copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.DEFS_SECTION);
                 if (useStore().copiedSelectionFrameIds.length > 0) {
                     this.getCaretContainerComponent(this.getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
                 }

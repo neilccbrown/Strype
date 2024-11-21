@@ -34,7 +34,7 @@ export enum STRYPE_LOCATION {
     UNKNOWN,
     MAIN_CODE_SECTION,
     IN_FUNCDEF,
-    FUNCDEF_SECTION,
+    DEFS_SECTION,
     IMPORTS_SECTION
 }
 
@@ -630,8 +630,8 @@ export function findCurrentStrypeLocation(): STRYPE_LOCATION {
             return STRYPE_LOCATION.MAIN_CODE_SECTION;
         case AllFrameTypesIdentifier.funcdef:
             return STRYPE_LOCATION.IN_FUNCDEF;
-        case ContainerTypesIdentifiers.funcDefsContainer:
-            return STRYPE_LOCATION.FUNCDEF_SECTION;
+        case ContainerTypesIdentifiers.defsContainer:
+            return STRYPE_LOCATION.DEFS_SECTION;
         case ContainerTypesIdentifiers.importsContainer:
             return STRYPE_LOCATION.IMPORTS_SECTION;
         default:
@@ -666,7 +666,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
     case  STRYPE_LOCATION.IN_FUNCDEF:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
-    case  STRYPE_LOCATION.FUNCDEF_SECTION:
+    case  STRYPE_LOCATION.DEFS_SECTION:
         removeTopLevelBlankFrames();
         return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
             || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type)));

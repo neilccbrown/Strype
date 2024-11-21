@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -236,7 +236,7 @@ export const useStore = defineStore("app", {
         },
 
         getFuncDefsFrameContainerId:(state) => {
-            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === FuncDefContainerDefinition.type)[0].id;
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
         
         isEditableFocused: () => (frameSlotInfos: SlotCoreInfos) => {
@@ -385,7 +385,7 @@ export const useStore = defineStore("app", {
             //"return" and "global" statements can't be added when in the main container frame
             //We don't forbid them to be in the main container, but we don't provide a way to add them directly.
             //They can be added when in the function definition container though.
-            const canShowReturnStatement = isContainedInFrame(frameId,caretPosition, [FuncDefContainerDefinition.type]);
+            const canShowReturnStatement = isContainedInFrame(frameId,caretPosition, [DefsContainerDefinition.type]);
             if(!canShowReturnStatement){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden

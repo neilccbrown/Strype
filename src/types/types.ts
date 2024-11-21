@@ -299,7 +299,7 @@ export interface FramesDefinitions {
 export const ContainerTypesIdentifiers = {
     root: "root",
     importsContainer: "importsContainer",
-    funcDefsContainer: "funcDefsContainer",
+    defsContainer: "defsContainer",
     framesMainContainer: "mainContainer",
 };
 
@@ -312,7 +312,7 @@ const ImportFrameTypesIdentifiers = {
     fromimport: "from-import",
 };
 
-const FuncDefIdentifiers = {
+const DefIdentifiers = {
     funcdef: "funcdef",
 };
 
@@ -343,7 +343,7 @@ const StandardFrameTypesIdentifiers = {
 
 export const AllFrameTypesIdentifier = {
     ...ImportFrameTypesIdentifiers,
-    ...FuncDefIdentifiers,
+    ...DefIdentifiers,
     ...StandardFrameTypesIdentifiers,
 };
 
@@ -365,7 +365,7 @@ export const BlockDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     allowChildren: true,
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-        .concat(Object.values(FuncDefIdentifiers))
+        .concat(Object.values(DefIdentifiers))
         .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
     draggableGroup: DraggableGroupTypes.code,
 };
@@ -396,15 +396,15 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     draggableGroup: DraggableGroupTypes.imports,
 };
 
-export const FuncDefContainerDefinition: FramesDefinitions = {
+export const DefsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: ContainerTypesIdentifiers.funcDefsContainer,
+    type: ContainerTypesIdentifiers.defsContainer,
     labels: [
-        { label: (i18n.t("appMessage.funcDefsContainer") as string), showSlots: false, defaultText: ""},
+        { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: ""},
     ],
     isCollapsed: false,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
-        .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
+        .filter((frameTypeDef: string) => !Object.values(DefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
     draggableGroup: DraggableGroupTypes.functionSignatures,
 
@@ -426,7 +426,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
 export const FrameContainersDefinitions = {
     RootContainerFrameDefinition,
     ImportsContainerDefinition,
-    FuncDefContainerDefinition,
+    FuncDefContainerDefinition: DefsContainerDefinition,
     MainFramesContainerDefinition,
 };
 
@@ -448,7 +448,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "#E0DFE4",
         innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-            .concat(Object.values(FuncDefIdentifiers))
+            .concat(Object.values(DefIdentifiers))
             .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
     };
 
@@ -532,7 +532,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
 
     const FuncDefDefinition: FramesDefinitions = {
         ...BlockDefinition,
-        type: FuncDefIdentifiers.funcdef,
+        type: DefIdentifiers.funcdef,
         labels: [
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
             { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false},
@@ -690,8 +690,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             case ImportsContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.importsContainer") as string;
                 break;
-            case FuncDefContainerDefinition.type:
-                frameObject.frameType.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
+            case DefsContainerDefinition.type:
+                frameObject.frameType.labels[0].label = i18n.t("appMessage.defsContainer") as string;
                 break;
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;

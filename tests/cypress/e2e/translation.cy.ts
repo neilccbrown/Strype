@@ -28,7 +28,7 @@ beforeEach(() => {
 describe("Translation tests", () => {
     it("Translates correctly", () => {
         // Starts as English:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
+        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.defsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
         cy.get("select#appLangSelect").should("have.value", "en");
 
         // Swap to French and check it worked:
@@ -37,7 +37,7 @@ describe("Translation tests", () => {
         cy.get("select#appLangSelect").should("have.value", "fr");
 
         // Check that the sections are present and translated:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", "fr") as string, i18n.t("appMessage.funcDefsContainer", "fr") as string, i18n.t("appMessage.mainContainer", "fr") as string]));
+        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", "fr") as string, i18n.t("appMessage.defsContainer", "fr") as string, i18n.t("appMessage.mainContainer", "fr") as string]));
 
         // Close the menu:
         cy.get("body").type("{esc}");
@@ -58,7 +58,7 @@ describe("Translation tests", () => {
     });
     it("Resets translation properly", () => {
         // Should be back to English:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
+        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.defsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
         cy.get("select#appLangSelect").should("have.value", "en");
     });
 });

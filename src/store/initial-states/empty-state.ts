@@ -1,4 +1,4 @@
-import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
+import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, DefsContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
 const emptyState: EditorFrameObjects = {
     0: {
         id: 0,
@@ -29,7 +29,7 @@ const emptyState: EditorFrameObjects = {
     },
     "-2": {
         id: -2,
-        frameType : FuncDefContainerDefinition,
+        frameType : DefsContainerDefinition,
         isDisabled: false,
         isSelected: false,
         isVisible: true,
