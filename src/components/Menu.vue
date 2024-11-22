@@ -790,10 +790,11 @@ export default Vue.extend({
         },
 
         
-        goToError(event: MouseEvent, toNext: boolean){
+        goToError(event: MouseEvent | null, toNext: boolean){
             // Move to the next error (if toNext is true) or the previous error (if toNext is false) when the user clicks on the navigation icon.
             // If the icon is "disabled" we do nothing.
-            if(!(event.target as HTMLElement).classList.contains("error-nav-disabled")){
+            // Note that a null event is set by a programmatical call of this method.
+            if(event == null || !(event.target as HTMLElement).classList.contains("error-nav-disabled")){
                 this.$nextTick(() => {
                     // If we are currently in a slot, we need to make sure that that slot gets notified of the caret lost
                     if(this.appStore.focusSlotCursorInfos){

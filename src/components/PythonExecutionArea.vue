@@ -9,8 +9,8 @@
             <div class="flex-padding"/>
             <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
                 <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
-                <span v-else class="python-running">{{this.runCodeButtonIconText}}</span>
-                <span>{{this.runCodeButtonLabel}}</span>
+                <span v-else class="python-running">{{runCodeButtonIconText}}</span>
+                <span>{{runCodeButtonLabel}}</span>
             </button>
         </div>
         <div id="tabContentContainerDiv">
@@ -46,9 +46,10 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUID, getLabelSlotUID, hasPrecompiledCodeError, isElementEditableLabelSlotInput, isElementUIDFrameHeader, parseFrameHeaderUID, parseLabelSlotUID, resetAddFrameCommandContainerHeight, setDocumentSelection, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, hasPrecompiledCodeError,  resetAddFrameCommandContainerHeight, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
-import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
+import { PythonExecRunningState } from "@/types/types";
+import Menu from "@/components/Menu.vue";
 
 export default Vue.extend({
     name: "PythonExecutionArea",
@@ -411,26 +412,9 @@ export default Vue.extend({
                 // but for sanity check, we make sure it's still there
                 const errors = getEditorCodeErrorsHTMLElements();
                 if(errors && errors.length > 0){
-                    const errorElement = errors[0];
-                    // We focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
-                    // we put the focus in the first slot that is editable.
-                    // There might be some other UI events that would restore the frame cursors (i.e. after getting input in the textarea console),
-                    // so we give a bit of time before setting the focus.
-                    const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
-                        ? parseLabelSlotUID(errorElement.id)
-                        : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
-                    setTimeout(() => {
-                        const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
-                        this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
-                        setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
-                        // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
-                        if(isElementUIDFrameHeader(errorElement.id)){
-                            document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
-                        }
-                        else{
-                            errorElement.click();
-                        }
-                    }, 200);
+                    // The Strype Menu handles already navigation of errors, so we use it to navigate to the first error...
+                    (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).currentErrorNavIndex = -1; 
+                    (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).goToError(null, true);
                 }
             });
         },

@@ -36,6 +36,7 @@
                         <div class="row no-gutters" >
                             <Menu 
                                 :id="menuUID" 
+                                :ref="menuUID"
                                 @app-showprogress="applyShowAppProgress"
                                 @app-reset-project="resetStrypeProject"
                                 class="noselect no-print"
