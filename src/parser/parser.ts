@@ -248,7 +248,7 @@ export default class Parser {
         let errorString = "";
         if (errors.length > 0) {
             errorString = `${errors.map((e: any) => {
-                return `\n${e.Ltigerpython_parser_ErrorInfo__f_line}:${e.Ltigerpython_parser_ErrorInfo__f_offset} | ${e.Ltigerpython_parser_ErrorInfo__f_msg}`;
+                return `\n${e.line}:${e.offset} | ${e.msg}`;
             })}`;
 
             
