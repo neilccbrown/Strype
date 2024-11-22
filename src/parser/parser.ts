@@ -228,7 +228,10 @@ export default class Parser {
     }
 
     public getErrors(inputCode = ""): ErrorInfo[] {
-        TPyParser.setLanguage("en");
+        // If TigerPython offers errors in the same locale that Strype (and their locale code matches) we use that locale,
+        // otherwise, English is used. The check is done in Strype when the locale is changed so we don't always check the
+        // locale again and again when parsing the code...
+        TPyParser.setLanguage(useStore().tigerPythonLang??"en");
         TPyParser.warningAsErrors = false;
         let code: string = inputCode;
         if (!inputCode) {
@@ -276,7 +279,7 @@ export default class Parser {
                             }
                         }));
 
-                    // Only show error if we have found the slot
+                    // Only show error if we have found the slot (slot errors) or if the error is on the frame (example: "try")
                     if(labelSlotsIndex > -1 && slotId !== undefined && useStore().lastAddedFrameIds != this.framePositionMap[error.line].frameId){
                         useStore().setSlotErroneous({
                             frameId: this.framePositionMap[error.line].frameId,
@@ -289,6 +292,15 @@ export default class Parser {
                             initCode: "",
                             isFirstChange: true,
                         });
+                    }
+                    else {
+                        // There can be situations where the error is on the frame itself, 
+                        // for example a try that has an incomplete structure.
+                        // In order to make sure we don't display a frame error when we shouldn't,
+                        // we explicitly only show a frame error for some specific TigerPython errors.
+                        if(error.code == ""){
+                            console.log("a");
+                        }
                     }
                 }
             });

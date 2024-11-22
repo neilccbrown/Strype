@@ -14,6 +14,7 @@ import {cloneDeep, isEqual} from "lodash";
 import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
 import { nextTick } from "@vue/composition-api";
+import { TPyParser } from "tigerpython-parser";
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -146,6 +147,8 @@ export const useStore = defineStore("app", {
             selectedFrames: [] as number[],
 
             appLang: "en",
+
+            tigerPythonLang: "en", // The locale for TigerPython, see parser.ts as to why it's here
 
             isAppMenuOpened: false,
 
@@ -623,11 +626,15 @@ export const useStore = defineStore("app", {
     
     actions:{
         setAppLang(lang: string) {
-            //set the language in the store first
+            // Set the language in the store first
             this.appLang = lang;
 
-            //then change the UI via i18n
+            // Then change the UI via i18n
             i18n.locale = lang;
+
+            // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
+            const tpLangs = TPyParser.getLanguages();
+            this.tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
 
             // Change all frame definition types to update the localised bits
             generateAllFrameDefinitionTypes(true);
