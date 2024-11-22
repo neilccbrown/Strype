@@ -124,6 +124,7 @@ export interface FrameObject {
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
     labelSlotsDict: { [index: number]: LabelSlotsContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
+    atParsingError ?: string //this contains the error message for a parsing error (from TigerPython) that can't be associated to a slot (e.g. wrong try structure)
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
 }
 

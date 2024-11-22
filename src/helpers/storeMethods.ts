@@ -833,14 +833,19 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
 }
 
 export function checkCodeErrors(frameIdForPrecompiled?: number): void {
-    // Clear all errors first.
-    // We do this in two pass: 
+    // We check errors in in three passes (all code errors are cleared in 1) and 2)): 
     //   1) check for the UI pre-compiled errors for each frame unless if a specific frame is specified, then we check that frame only
     const frameArray = ((frameIdForPrecompiled) ? [frameIdForPrecompiled.toString()] : Object.keys(useStore().frameObjects));
     for(const frameId of frameArray){
         checkPrecompiledErrorsForFrame(parseInt(frameId));
     } 
-    //  2) check for TP errors for the whole code
+
+    //  2) clear all frame parsing (TP) errors explicitly
+    Object.keys(useStore().frameObjects).forEach((frameId) => {
+        useStore().setFrameErroneous(parseInt(frameId),"");
+    });
+
+    //  3) check for TP errors for the whole code
     // We don't want to crash the application if something isn't handled correctly in TP.
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{

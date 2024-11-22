@@ -258,49 +258,49 @@ export default class Parser {
             // For each error, show red wiggles below its input in the UI
             errors.forEach((error: ErrorInfo) => {
                 if(this.framePositionMap[error.line] !== undefined) {
+                    // We try to locate the error inside the frames' slots.
+                    // If a TigerPython error is raised AND that frame does not contain any slot, then we show the error on the frame.
                     // Look up in which slot the error should be shown (where the error offset is slotStart[i]<= offset AND slotStart[i] + slotLength[i] >= offset)
-                    let labelSlotsIndex = -1;
-                    let slotId: string | undefined = undefined;
-                    let slotType: SlotType = SlotType.code;
-                    Object.entries(this.framePositionMap[error.line].labelSlotStartLengths).forEach((labelSlotStartLengthsEntry, labelSlotStartLengthsEntryIndex) => 
-                        labelSlotStartLengthsEntry[1].slotStarts.forEach((slotStart, slotStartIndex) => {
+                    const labelSlotStartLengthsObj = Object.entries(this.framePositionMap[error.line].labelSlotStartLengths);
+                    if(labelSlotStartLengthsObj.length > 0) {
+                        let labelSlotsIndex = -1;
+                        let slotId: string | undefined = undefined;
+                        let slotType: SlotType = SlotType.code;                    
+                        labelSlotStartLengthsObj.forEach((labelSlotStartLengthsEntry, labelSlotStartLengthsEntryIndex) => 
+                            labelSlotStartLengthsEntry[1].slotStarts.forEach((slotStart, slotStartIndex) => {
                             // As we add a line extra space at every end of a line, it is possible that for the last slot of the frame, the error is found to be at the very end
                             // so for that very last slot, we add an extra unit of length to solve the problem that the error offset is found at the end of the line
-                            const endOfLineOffset = (labelSlotStartLengthsEntryIndex == Object.keys(this.framePositionMap[error.line].labelSlotStartLengths).length - 1 && slotStartIndex == labelSlotStartLengthsEntry[1].slotStarts.length - 1) 
-                                ? 1 : 0;
-                            if(slotStart <= error.offset && (slotStart + labelSlotStartLengthsEntry[1].slotLengths[slotStartIndex] + endOfLineOffset) >= error.offset){
+                                const endOfLineOffset = (labelSlotStartLengthsEntryIndex == Object.keys(this.framePositionMap[error.line].labelSlotStartLengths).length - 1 && slotStartIndex == labelSlotStartLengthsEntry[1].slotStarts.length - 1) 
+                                    ? 1 : 0;
+                                if(slotStart <= error.offset && (slotStart + labelSlotStartLengthsEntry[1].slotLengths[slotStartIndex] + endOfLineOffset) >= error.offset){
                                 // We do not allow an error to be shown on an operator. If that happens (for example the case of the "Unexcepted end of line or input" error if line ends with operator, and next is if frame)
                                 // then we show the error on the following slot (an operator is always followed by something).
-                                const isErrorOnOperator = (labelSlotStartLengthsEntry[1].slotTypes[slotStartIndex] == SlotType.operator);
-                                labelSlotsIndex = parseInt(labelSlotStartLengthsEntry[0]);
-                                const slotStartIndexToUse = (isErrorOnOperator) ? slotStartIndex + 1 : slotStartIndex;
-                                slotId = labelSlotStartLengthsEntry[1].slotIds[slotStartIndexToUse];
-                                slotType = labelSlotStartLengthsEntry[1].slotTypes[slotStartIndexToUse];
-                            }
-                        }));
+                                    const isErrorOnOperator = (labelSlotStartLengthsEntry[1].slotTypes[slotStartIndex] == SlotType.operator);
+                                    labelSlotsIndex = parseInt(labelSlotStartLengthsEntry[0]);
+                                    const slotStartIndexToUse = (isErrorOnOperator) ? slotStartIndex + 1 : slotStartIndex;
+                                    slotId = labelSlotStartLengthsEntry[1].slotIds[slotStartIndexToUse];
+                                    slotType = labelSlotStartLengthsEntry[1].slotTypes[slotStartIndexToUse];
+                                }
+                            }));
 
-                    // Only show error if we have found the slot (slot errors) or if the error is on the frame (example: "try")
-                    if(labelSlotsIndex > -1 && slotId !== undefined && useStore().lastAddedFrameIds != this.framePositionMap[error.line].frameId){
-                        useStore().setSlotErroneous({
-                            frameId: this.framePositionMap[error.line].frameId,
-                            labelSlotsIndex: labelSlotsIndex,
-                            slotId: slotId,
-                            slotType: slotType, 
-                            error: error.msg,
-                            // Other properties are not used
-                            code: "",
-                            initCode: "",
-                            isFirstChange: true,
-                        });
-                    }
-                    else {
-                        // There can be situations where the error is on the frame itself, 
-                        // for example a try that has an incomplete structure.
-                        // In order to make sure we don't display a frame error when we shouldn't,
-                        // we explicitly only show a frame error for some specific TigerPython errors.
-                        if(error.code == ""){
-                            console.log("a");
+                        // Only show error if we have found the slot (slot errors)
+                        if(labelSlotsIndex > -1 && slotId !== undefined && useStore().lastAddedFrameIds != this.framePositionMap[error.line].frameId){
+                            useStore().setSlotErroneous({
+                                frameId: this.framePositionMap[error.line].frameId,
+                                labelSlotsIndex: labelSlotsIndex,
+                                slotId: slotId,
+                                slotType: slotType, 
+                                error: error.msg,
+                                // Other properties are not used
+                                code: "",
+                                initCode: "",
+                                isFirstChange: true,
+                            });
                         }
+                    }
+                    else{
+                        // The case of an erreonous frame.
+                        useStore().setFrameErroneous(this.framePositionMap[error.line].frameId, error.msg);
                     }
                 }
             });

@@ -1093,6 +1093,10 @@ export const useStore = defineStore("app", {
             return {newSlotId: "", cursorPosOffset: 0};
         },
 
+        setFrameErroneous(frameId: number, errMsg: string) {
+            Vue.set(this.frameObjects[frameId], "atParsingError", errMsg);
+        },
+
         setSlotErroneous(frameSlotInfos: SlotInfos) {
             const slotObject = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot);
             const existingError =  slotObject.error??"";

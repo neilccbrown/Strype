@@ -7,7 +7,7 @@
         <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
         <div 
             :style="frameStyle" 
-            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
+            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, error: hasParsingError}"
             :id="UID"
             @click="toggleCaret($event)"
             @contextmenu="handleClick($event)"
@@ -39,12 +39,12 @@
                 :wasLastRuntimeError="wasLastRuntimeError"
             />
             <b-popover
-                v-if="hasRuntimeError || wasLastRuntimeError"
+                v-if="hasRuntimeError || wasLastRuntimeError || hasParsingError"
                 ref="errorPopover"
                 :target="frameHeaderId"
-                :title="$t((hasRuntimeError) ? 'PEA.runtimeErrorConsole' : 'errorMessage.pastFrameErrTitle')"
+                :title="errorPopupTitle"
                 triggers="hover"
-                :content="(hasRuntimeError) ? runTimeErrorMessage : runtimeErrorAtLastRunMsg"
+                :content="errorPopupContent"
                 :custom-class="(hasRuntimeError) ? 'error-popover modified-title-popover': 'error-popover'"
                 placement="left"
             >
@@ -208,6 +208,14 @@ export default Vue.extend({
             return this.isBeingDragged || !!this.appStore.frameObjects[this.frameId].isBeingDragged;
         },
 
+        parsingErrorMessage(): string {
+            return this.appStore.frameObjects[this.frameId].atParsingError ?? "";
+        },
+
+        hasParsingError(): boolean {
+            return this.parsingErrorMessage.length > 0;
+        },
+
         runTimeErrorMessage(): string {
             return this.appStore.frameObjects[this.frameId].runTimeError ?? "";
         },
@@ -218,6 +226,14 @@ export default Vue.extend({
 
         wasLastRuntimeError(): boolean {
             return this.appStore.wasLastRuntimeErrorFrameId == this.frameId;
+        },
+
+        errorPopupTitle(): string {
+            return this.$t((this.hasParsingError) ? "errorMessage.errorTitle" : ((this.hasRuntimeError) ? "PEA.runtimeErrorConsole" : "errorMessage.pastFrameErrTitle")) as string;
+        },
+
+        errorPopupContent(): string {
+            return (this.hasParsingError) ? this.parsingErrorMessage : ((this.hasRuntimeError) ? this.runTimeErrorMessage : this.runtimeErrorAtLastRunMsg);
         },
 
         deletableFrame(): boolean{
