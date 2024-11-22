@@ -1071,8 +1071,8 @@ export default Vue.extend({
 
         showFrameParseErrorPopupOnHeaderFocus(isFocusing: boolean): void{
             // We need to be able to show the frame error popup programmatically
-            // (if applies) when we navigate to the error.
-            if(this.hasParsingError){
+            // (if applies) when we navigate to the error - we make sure the frame still exists.
+            if(this.appStore.frameObjects[this.frameId] && this.hasParsingError){
                 (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit((isFocusing) ? "open" : "close");
             }
         },

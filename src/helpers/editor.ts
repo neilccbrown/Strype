@@ -564,10 +564,13 @@ export function getNearestErrorIndex(): number {
                     && navPos.slotType == slotInfos.slotType));
             }
             else if(isElementWholeFrame){
-                // Get the caret position above the frame
+                // Get the caret position above the frame - if that frame still exists !
+                // (when deleting it from the body, the frame may be gone but the errors still not updated)
                 const frameId = parseFrameUID(elementId);
                 const caretPosAbove = getAboveFrameCaretPosition(frameId);
-                allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == caretPosAbove.frameId && navPos.caretPosition == caretPosAbove.caretPosition));
+                if(caretPosAbove) {
+                    allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == caretPosAbove.frameId && navPos.caretPosition == caretPosAbove.caretPosition));
+                }
             }
             // Look for the position of the current focused blue caret (because if we have an element that is the caret it can only be the current blue caret, there is no errors on a blue caret...)
             else{
