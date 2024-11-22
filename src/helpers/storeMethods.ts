@@ -701,6 +701,22 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     return prevCaretPos;
 };
 
+// This method is the opposite of getAboveFrameCaretPosition: it looks for what frame is immediately below a given caret position.
+// Returns: the frameId of the frame below the given position or NULL if there is no frame (case of empty body or end of container)
+export const getFrameBelowCaretPosition = function (caretPosition: NavigationPosition): number | null {
+    if(caretPosition.caretPosition == CaretPosition.body){
+        // In a body, we look at the first child frame of the body (if any)
+        const firstChildId = useStore().frameObjects[caretPosition.frameId].childrenIds.at(0);
+        return firstChildId ?? null;
+    }
+    else{
+        // Below a frame, we need find the position of the frame above (i.e. frame of that caret) in the parent, and get the next
+        // sibling (if any). Note that joint frames (like "else") can't have a caret below.
+        const nextFrameId = getNextSibling(caretPosition.frameId);
+        return (nextFrameId > 0) ? nextFrameId : null;
+    }
+};
+
 // This method returns a boolean value indicating whether the caret (current position) is contained
 // within one of the frame types specified in "containerTypes"
 export const isContainedInFrame = function (currFrameId: number, caretPosition: CaretPosition, containerTypes: string[]): boolean {

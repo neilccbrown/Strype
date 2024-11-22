@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div tabindex="-1" @focus="onFocus(true)" @blur="onFocus(false)" style="outline: none;">
         <div class="frame-header-div">
             <div
                 class="next-to-eachother label-slots-struct-wrapper"
@@ -56,6 +56,7 @@ export default Vue.extend({
         frameAllowChildren: Boolean,
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
+        onFocus: Function, // Handler for focus/blur the header (see Frame.vue)
     },
 
     computed:{

@@ -37,6 +37,7 @@
                 :frameAllowChildren="allowChildren"
                 :erroneous="hasRuntimeError"
                 :wasLastRuntimeError="wasLastRuntimeError"
+                :onFocus="showFrameParseErrorPopupOnHeaderFocus"
             />
             <b-popover
                 v-if="hasRuntimeError || wasLastRuntimeError || hasParsingError"
@@ -45,7 +46,7 @@
                 :title="errorPopupTitle"
                 triggers="hover"
                 :content="errorPopupContent"
-                :custom-class="(hasRuntimeError) ? 'error-popover modified-title-popover': 'error-popover'"
+                :custom-class="(hasRuntimeError || hasParsingError) ? 'error-popover modified-title-popover': 'error-popover'"
                 placement="left"
             >
             </b-popover>
@@ -1066,6 +1067,14 @@ export default Vue.extend({
 
         deleteOuter(): void {
             this.appStore.deleteOuterFrames(this.frameId);
+        },
+
+        showFrameParseErrorPopupOnHeaderFocus(isFocusing: boolean): void{
+            // We need to be able to show the frame error popup programmatically
+            // (if applies) when we navigate to the error.
+            if(this.hasParsingError){
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit((isFocusing) ? "open" : "close");
+            }
         },
     },
 });
