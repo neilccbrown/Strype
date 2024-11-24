@@ -162,11 +162,12 @@ export default class Parser {
                 break;
             }
             //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
+            //(to avoid weird Python code, if that first disabled frame is a joint frame (like "else") then we align the comment with the other joint/root bodies)
             let disabledFrameBlockFlag = "";
             if(frame.isDisabled ? !this.isDisabledFramesTriggered : this.isDisabledFramesTriggered) {
                 this.isDisabledFramesTriggered = !this.isDisabledFramesTriggered;
                 if(frame.isDisabled) {
-                    this.disabledBlockIndent = indentation;
+                    this.disabledBlockIndent = (indentation + (frame.frameType.isJointFrame) ? INDENT : "");
                 }
                 disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG +"\n";
                 //and also increment the line number that we use for mapping frames and code lines (even if the disabled frames don't map exactly, 
