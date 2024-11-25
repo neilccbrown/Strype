@@ -2389,11 +2389,13 @@ export const useStore = defineStore("app", {
             // If the language has been updated, we need to also update the UI accordingly
             this.setAppLang(this.appLang);
 
+            /* IFTRUE_isPython */
             // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
             actOnTurtleImport();
 
             // Clear the Python Execution Area as it could have be run before.
             ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
+            /* FITRUE_isPython */
 
             if(payload.showMessage) {
                 this.showMessage(MessageDefinitions.UploadEditorFileSuccess, 5000);  
