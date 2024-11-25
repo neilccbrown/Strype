@@ -294,6 +294,10 @@ export interface FramesDefinitions {
     draggableGroup: DraggableGroupTypes;
     innerJointDraggableGroup: DraggableGroupTypes;
     isImportFrame: boolean;
+    // Optional default children or joint frames (we use frame rather than definitions as we may want to have child or joint frame with content!)
+    // BE SURE TO SET THE SLOT STRUCTURE AS EXPECTED BY THE FRAME DEFINITION (example: for a if, there should be 1 slot defined, even if empty)
+    defaultChildrenTypes?: FrameObject[];
+    defaultJointTypes?: FrameObject[];
 }
 
 // Identifiers of the containers
@@ -436,6 +440,108 @@ let Definitions = {};
 // Entry point for generating the frame definition types -- only doing so to allow dynamic localisation bits...
 export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boolean): void{
     /*1) prepare all the frame definition types */
+    // Statements
+    const FuncCallDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.funccall,
+        labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false}],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const BlankDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.blank,
+        labels: [],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const ReturnDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.return,
+        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const GlobalDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.global,
+        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string}],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const VarAssignDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.varassign,
+        labels: [
+            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
+            { label: " &#x21D0; ", defaultText: i18n.t("frame.defaultText.value") as string},
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const BreakDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.break,
+        labels: [
+            { label: "break", showSlots: false, defaultText: "" },
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const ContinueDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.continue,
+        labels: [
+            { label: "continue", showSlots: false, defaultText: "" },
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const RaiseDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.raise,
+        labels: [
+            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const ImportDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: ImportFrameTypesIdentifiers.import,
+        labels: [
+            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
+            // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
+            // and thus not giving us back any AC results on the shortcut
+            //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
+        ],    
+        colour: scssVars.nonMainCodeContainerBackground,
+        draggableGroup: DraggableGroupTypes.imports,
+        isImportFrame: true,
+    };
+
+    const FromImportDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: ImportFrameTypesIdentifiers.fromimport,
+        labels: [
+            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string},
+            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
+            // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
+            // and thus not giving us back any AC results on the shortcut
+            //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
+        ],    
+        colour: scssVars.nonMainCodeContainerBackground,
+        draggableGroup: DraggableGroupTypes.imports,
+        isImportFrame: true,
+    };
+
+    const CommentDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.comment,
+        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
     // Blocks
     const IfDefinition: FramesDefinitions = {
         ...BlockDefinition,
@@ -552,108 +658,6 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: " :", showSlots: false, defaultText: ""},
         ],
         colour: "#ede8f2",
-    };
-
-    // Statements
-    const FuncCallDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.funccall,
-        labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false}],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const BlankDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.blank,
-        labels: [],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const ReturnDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.return,
-        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const GlobalDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.global,
-        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string}],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const VarAssignDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.varassign,
-        labels: [
-            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
-            { label: " &#x21D0; ", defaultText: i18n.t("frame.defaultText.value") as string},
-        ],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const BreakDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.break,
-        labels: [
-            { label: "break", showSlots: false, defaultText: "" },
-        ],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const ContinueDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.continue,
-        labels: [
-            { label: "continue", showSlots: false, defaultText: "" },
-        ],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const RaiseDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.raise,
-        labels: [
-            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
-        ],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const ImportDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: ImportFrameTypesIdentifiers.import,
-        labels: [
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
-            // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
-            // and thus not giving us back any AC results on the shortcut
-            //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
-        ],    
-        colour: scssVars.nonMainCodeContainerBackground,
-        draggableGroup: DraggableGroupTypes.imports,
-        isImportFrame: true,
-    };
-
-    const FromImportDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: ImportFrameTypesIdentifiers.fromimport,
-        labels: [
-            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string},
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
-            // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
-            // and thus not giving us back any AC results on the shortcut
-            //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
-        ],    
-        colour: scssVars.nonMainCodeContainerBackground,
-        draggableGroup: DraggableGroupTypes.imports,
-        isImportFrame: true,
-    };
-
-    const CommentDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.comment,
-        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
-        colour: scssVars.mainCodeContainerBackground,
     };
 
     /*2) update the Defintions variable holding all the definitions */

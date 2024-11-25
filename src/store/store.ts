@@ -1796,6 +1796,31 @@ export const useStore = defineStore("app", {
                     ),
             };
 
+            // If the frame definition requests some default children and/or joint frames, we update their frame, parent and/or joint parent IDs here
+            // (and update the next available ID accoringly), and also add that default frame inside the state
+            newFrame.frameType.defaultChildrenTypes?.forEach((defaultChildFrame) => {
+                defaultChildFrame.id = (++nextAvailableId);
+                defaultChildFrame.parentId = newFrame.id;
+                defaultChildFrame.jointParentId = 0;
+                newFrame.childrenIds.push(defaultChildFrame.id);
+                Vue.set(
+                    this.frameObjects,
+                    defaultChildFrame.id,
+                    defaultChildFrame
+                );
+            });
+            newFrame.frameType.defaultJointTypes?.forEach((defaultJointFrame) => {
+                defaultJointFrame.id = (++nextAvailableId);
+                defaultJointFrame.jointParentId = newFrame.id;
+                defaultJointFrame.parentId = 0;
+                newFrame.jointFrameIds.push(defaultJointFrame.id);
+                Vue.set(
+                    this.frameObjects,
+                    defaultJointFrame.id,
+                    defaultJointFrame
+                );
+            });
+
             // In the special case a hidden shorthand frame addition, we add the code content in the first slot of the frame (by design)
             if(hiddenShorthandFrameDetails && isFieldBaseSlot(newFrame.labelSlotsDict[0].slotStructures.fields[0])){
                 (newFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code = hiddenShorthandFrameDetails.codeContent;
