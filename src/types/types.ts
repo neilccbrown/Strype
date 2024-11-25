@@ -603,16 +603,6 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "#E4D5D5",
     };
 
-    const TryDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.try,
-        labels: [{ label: "try :", showSlots: false, defaultText: ""}],
-        allowJointChildren: true,
-        jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
-        colour: "#C7D9DC",
-        innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
-    };
-
     const ExceptDefinition: FramesDefinitions = {
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.except,
@@ -635,6 +625,17 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "",
         isJointFrame: true,
         draggableGroup: DraggableGroupTypes.none,
+    };
+
+    const TryDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.try,
+        labels: [{ label: "try :", showSlots: false, defaultText: ""}],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
+        defaultJointTypes: [{...EmptyFrameObject, frameType: ExceptDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+        colour: "#C7D9DC",
+        innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
     };
 
     const FuncDefDefinition: FramesDefinitions = {
