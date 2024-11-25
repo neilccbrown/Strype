@@ -144,7 +144,7 @@ export interface FrameLabel {
 export enum DraggableGroupTypes {
     imports = "imports",
     code = "code",
-    functionSignatures = "functionSignatures",
+    definitions = "definitions",
     ifCompound = "ifCompound",
     tryCompound = "tryCompound",
     none = "none",
@@ -314,6 +314,7 @@ const ImportFrameTypesIdentifiers = {
 
 const DefIdentifiers = {
     funcdef: "funcdef",
+    classdef: "classdef",
 };
 
 export const JointFrameIdentifiers = {
@@ -406,7 +407,7 @@ export const DefsContainerDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(DefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
-    draggableGroup: DraggableGroupTypes.functionSignatures,
+    draggableGroup: DraggableGroupTypes.definitions,
 
 };
 
@@ -539,7 +540,21 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: ") :", showSlots: false, defaultText: ""},
         ],
         colour: "#ECECC8",
-        draggableGroup: DraggableGroupTypes.functionSignatures,
+        draggableGroup: DraggableGroupTypes.definitions,
+    };
+    
+    const ClassDefinition : FramesDefinitions = {
+        ...BlockDefinition,
+        type: DefIdentifiers.classdef,
+        labels: [
+            { label: "class ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        colour: "#baded3",
+        draggableGroup: DraggableGroupTypes.definitions,
+        forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+            .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment))
+            .concat([DefIdentifiers.classdef]),
     };
 
     const WithDefinition: FramesDefinitions = {
@@ -669,6 +684,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ExceptDefinition,
         FinallyDefinition,
         FuncDefDefinition,
+        ClassDefinition,
         WithDefinition,
         FuncCallDefinition,
         BlankDefinition,
