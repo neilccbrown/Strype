@@ -701,6 +701,22 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     return prevCaretPos;
 };
 
+// This method is the opposite of getAboveFrameCaretPosition: it looks for what frame is immediately below a given caret position.
+// Returns: the frameId of the frame below the given position or NULL if there is no frame (case of empty body or end of container)
+export const getFrameBelowCaretPosition = function (caretPosition: NavigationPosition): number | null {
+    if(caretPosition.caretPosition == CaretPosition.body){
+        // In a body, we look at the first child frame of the body (if any)
+        const firstChildId = useStore().frameObjects[caretPosition.frameId].childrenIds.at(0);
+        return firstChildId ?? null;
+    }
+    else{
+        // Below a frame, we need find the position of the frame above (i.e. frame of that caret) in the parent, and get the next
+        // sibling (if any). Note that joint frames (like "else") can't have a caret below.
+        const nextFrameId = getNextSibling(caretPosition.frameId);
+        return (nextFrameId > 0) ? nextFrameId : null;
+    }
+};
+
 // This method returns a boolean value indicating whether the caret (current position) is contained
 // within one of the frame types specified in "containerTypes"
 export const isContainedInFrame = function (currFrameId: number, caretPosition: CaretPosition, containerTypes: string[]): boolean {
@@ -833,14 +849,19 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
 }
 
 export function checkCodeErrors(frameIdForPrecompiled?: number): void {
-    // Clear all errors first.
-    // We do this in two pass: 
+    // We check errors in in three passes (all code errors are cleared in 1) and 2)): 
     //   1) check for the UI pre-compiled errors for each frame unless if a specific frame is specified, then we check that frame only
     const frameArray = ((frameIdForPrecompiled) ? [frameIdForPrecompiled.toString()] : Object.keys(useStore().frameObjects));
     for(const frameId of frameArray){
         checkPrecompiledErrorsForFrame(parseInt(frameId));
     } 
-    //  2) check for TP errors for the whole code
+
+    //  2) clear all frame parsing (TP) errors explicitly
+    Object.keys(useStore().frameObjects).forEach((frameId) => {
+        useStore().setFrameErroneous(parseInt(frameId),"");
+    });
+
+    //  3) check for TP errors for the whole code
     // We don't want to crash the application if something isn't handled correctly in TP.
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{

@@ -50,7 +50,7 @@
         "sortablejs": "^1.15.0",
         "splitpanes": "^2.4.1",
         "textarea-caret": "^3.1.0",
-        "tigerpython-parser": "github:neilccbrown/TigerPython-Parser#fix-empty-global",
+        "tigerpython-parser": "github:Tobias-Kohn/TigerPython-Parser",
         "ts-node": "^10.9.1",
         "ts-node-dev": "^2.0.0",
         "v-blur": "^1.0.4",
