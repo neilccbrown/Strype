@@ -2,7 +2,7 @@
 
 # Strype
 
-Strype is a frame-based editor for Python that runs entirely in the browser, designed for use in secondary schools.  You can learn more and use the free public release at <a href="https://strype.org/">strype.org</a>. 
+Strype is a frame-based editor for Python that runs entirely in the browser, designed for use in secondary schools.  You can learn more and use the free public release at <a href="https://strype.org/" target="_blank">strype.org</a>. 
 
 Strype is maintained by Michael Kölling and the K-PET group at King's College London, alongside their other tools, BlueJ and Greenfoot.
 
@@ -14,7 +14,7 @@ This repository contains the source code for Strype, licensed under the AGPLv3 (
 Building and running
 ---
 
-Strype is a <a href="https://v2.vuejs.org/">Vue 2</a> project (upgrading to Vue 3 is planned for 2025) that uses NPM as its core tool.  To build you will first need to install <a href="https://nodejs.org/en">Node.js</a> (or <a href="https://docs.npmjs.com/downloading-and-installing-node-js-and-npm">another method</a>) to get NPM.
+Strype is a <a href="https://v2.vuejs.org/" target="_blank">Vue 2</a> project (upgrading to Vue 3 is planned for 2025) that uses NPM as its core tool.  To build you will first need to install <a href="https://nodejs.org/en" target="_blank">Node.js</a> (or <a href="https://docs.npmjs.com/downloading-and-installing-node-js-and-npm" target="_blank">another method</a>) to get NPM.
 
 Then, to run a local test version you can run the following commands in the top level of the checked out repository:
 
@@ -34,7 +34,7 @@ Strype is currently an entirely client-side tool; there is no server component t
 Development
 ---
 
-To work on the project, you can use a variety of tools: our team members use <a href="https://code.visualstudio.com/">VS Code</a> or <a href="https://www.jetbrains.com/webstorm/">Webstorm</a>.  To run the full test suite (which takes around 50 minutes) you can run:
+To work on the project, you can use a variety of tools: our team members use <a href="https://code.visualstudio.com/" target="_blank">VS Code</a> or <a href="https://www.jetbrains.com/webstorm/" target="_blank">Webstorm</a>.  To run the full test suite (which takes around 50 minutes) you can run:
 
 ```
 npm test:cypress
