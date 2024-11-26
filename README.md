@@ -37,7 +37,7 @@ Development
 To work on the project, you can use a variety of tools: our team members use <a href="https://code.visualstudio.com/" target="_blank">VS Code</a> or <a href="https://www.jetbrains.com/webstorm/" target="_blank">Webstorm</a>.  To run the full test suite (which takes around 50 minutes) you can run:
 
 ```
-npm test:cypress
+npm run test:cypress
 ```
 
 To speed up the tests locally, we can target specific tests by editing package.json to run only the files of interest (**when doing so, remember not to commit the changes!**).
