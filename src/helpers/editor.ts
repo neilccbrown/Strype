@@ -1023,6 +1023,11 @@ export function notifyDragEnded():void {
         // Not really required but just better to reset things properly
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
     }
+    // Reset flags in the next tick to let UI update properly
+    Vue.nextTick(() => {
+        currentCaretDropPosId = "", currentCaretDropPosFrameId = 0, currentCaretDropPosCaretPos =  CaretPosition.none, 
+        newCaretDropPosFrameId = 0, newCaretDropPosCaretPos = CaretPosition.none;
+    });    
 }
 
 /**
