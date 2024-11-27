@@ -1587,7 +1587,7 @@ export const useStore = defineStore("app", {
             // We move the frames of the dragged frames reversed list from their parent to the list of frames relative to the destination:
             // if the destination is a body, that's the list of children of the destination frame, if the destination is below a frame,
             // that's the list of children of the parent container of frame that contains the frame just above the destination caret pos.
-            const sourcContainerFrame = this.frameObjects[this.frameObjects[(draggedFramesReversed[0])].parentId];
+            const sourceContainerFrame = this.frameObjects[this.frameObjects[(draggedFramesReversed[0])].parentId];
             const destContainerFrame = (destinationCaretPos == CaretPosition.body) 
                 ? this.frameObjects[destinationCaretFrameId]
                 : this.frameObjects[this.frameObjects[destinationCaretFrameId].parentId];
@@ -1598,7 +1598,7 @@ export const useStore = defineStore("app", {
                 // it has been added (I don't know why...) so we defer adding the frame to its new parent to make sure
                 // the component gets created again.
                 // Remove the frame from its parent
-                sourcContainerFrame.childrenIds.splice(sourcContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
+                sourceContainerFrame.childrenIds.splice(sourceContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
                 nextTick(() => {
                     // Append it to the destination list
                     const destFrameListInsertIndex = (destinationCaretPos == CaretPosition.body) ? 0 : destContainerFrame.childrenIds.indexOf(destinationCaretFrameId) + 1;
