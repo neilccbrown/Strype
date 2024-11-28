@@ -51,10 +51,7 @@ export default Vue.extend({
         
         jointFrames: {
             get(): FrameObject[]  {
-                return this.appStore.getJointFramesForFrameId(
-                    this.jointParentId,
-                    "all"
-                );
+                return this.appStore.getJointFramesForFrameId(this.jointParentId);
             },
             set() {
                 return;

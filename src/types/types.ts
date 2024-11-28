@@ -138,19 +138,6 @@ export interface FrameLabel {
     acceptAC?: boolean; //default true
 }
 
-
-// There are three groups of draggable frames.
-// You can drag from the main code to the body of a method and vice-versa, 
-// but you cannot drag from/to imports or drag method signatures
-export enum DraggableGroupTypes {
-    imports = "imports",
-    code = "code",
-    functionSignatures = "functionSignatures",
-    ifCompound = "ifCompound",
-    tryCompound = "tryCompound",
-    none = "none",
-}
-
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
@@ -291,8 +278,6 @@ export interface FramesDefinitions {
     jointFrameTypes: string[];
     colour: string;
     isCollapsed?: boolean;
-    draggableGroup: DraggableGroupTypes;
-    innerJointDraggableGroup: DraggableGroupTypes;
     isImportFrame: boolean;
     // Optional default children or joint frames (we use frame rather than definitions as we may want to have child or joint frame with content!)
     // BE SURE TO SET THE SLOT STRUCTURE AS EXPECTED BY THE FRAME DEFINITION (example: for a if, there should be 1 slot defined, even if empty)
@@ -361,8 +346,6 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     isJointFrame: false,
     jointFrameTypes: [],
     colour: "",
-    draggableGroup: DraggableGroupTypes.none,
-    innerJointDraggableGroup: DraggableGroupTypes.none,
     isImportFrame: false,
 };
 
@@ -372,20 +355,17 @@ export const BlockDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
         .concat(Object.values(FuncDefIdentifiers))
         .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
-    draggableGroup: DraggableGroupTypes.code,
 };
 
 export const StatementDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier),
-    draggableGroup: DraggableGroupTypes.code,
 };
 
 // Container frames
 export const RootContainerFrameDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.root,
-    draggableGroup: DraggableGroupTypes.none,
 };
 
 export const ImportsContainerDefinition: FramesDefinitions = {
@@ -398,7 +378,6 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
-    draggableGroup: DraggableGroupTypes.imports,
 };
 
 export const FuncDefContainerDefinition: FramesDefinitions = {
@@ -411,8 +390,6 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
-    draggableGroup: DraggableGroupTypes.functionSignatures,
-
 };
 
 export const MainFramesContainerDefinition: FramesDefinitions = {
@@ -515,8 +492,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
-        colour: scssVars.nonMainCodeContainerBackground,
-        draggableGroup: DraggableGroupTypes.imports,
+        colour: scssVars.nonMainCodeContainerBackground,        
         isImportFrame: true,
     };
 
@@ -530,8 +506,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
-        colour: scssVars.nonMainCodeContainerBackground,
-        draggableGroup: DraggableGroupTypes.imports,
+        colour: scssVars.nonMainCodeContainerBackground,        
         isImportFrame: true,
     };
 
@@ -553,7 +528,6 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         allowJointChildren: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
         colour: "#E0DFE4",
-        innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
             .concat(Object.values(FuncDefIdentifiers))
             .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
@@ -565,8 +539,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "elif ", defaultText: i18n.t("frame.defaultText.condition") as string},
             { label: " :", showSlots: false, defaultText: ""},
-        ],
-        draggableGroup: DraggableGroupTypes.ifCompound,
+        ],        
         isJointFrame: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
     };
@@ -574,8 +547,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const ElseDefinition: FramesDefinitions = {
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.else,
-        labels: [{ label: "else :", showSlots: false, defaultText: ""}],
-        draggableGroup: DraggableGroupTypes.ifCompound,
+        labels: [{ label: "else :", showSlots: false, defaultText: ""}],        
         isJointFrame: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
     };
@@ -612,8 +584,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ],
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
         colour: "",
-        isJointFrame: true,
-        draggableGroup: DraggableGroupTypes.tryCompound,
+        isJointFrame: true,        
     };
 
     const FinallyDefinition: FramesDefinitions = {
@@ -623,8 +594,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: "finally :", showSlots: false, defaultText: ""},
         ],
         colour: "",
-        isJointFrame: true,
-        draggableGroup: DraggableGroupTypes.none,
+        isJointFrame: true,        
     };
 
     const TryDefinition: FramesDefinitions = {
@@ -635,7 +605,6 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
         defaultJointTypes: [{...EmptyFrameObject, frameType: ExceptDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:""}], operators: []}}}}],
         colour: "#C7D9DC",
-        innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
     };
 
     const FuncDefDefinition: FramesDefinitions = {
@@ -647,7 +616,6 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: ") :", showSlots: false, defaultText: ""},
         ],
         colour: "#ECECC8",
-        draggableGroup: DraggableGroupTypes.functionSignatures,
     };
 
     const WithDefinition: FramesDefinitions = {

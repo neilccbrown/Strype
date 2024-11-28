@@ -466,7 +466,7 @@ export default Vue.extend({
             // Not all frames should be duplicated (e.g. Else)
             // The target id, for a duplication, should be the same as the copied frame 
             // except if that frame has joint frames: the target is the last joint frame.
-            const targetFrameJointFrames = this.appStore.getJointFramesForFrameId(this.frameId, "all");
+            const targetFrameJointFrames = this.appStore.getJointFramesForFrameId(this.frameId);
             const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
             // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
             const canDuplicate = (this.isPartOfSelection) ?

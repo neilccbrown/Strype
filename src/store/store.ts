@@ -186,23 +186,13 @@ export const useStore = defineStore("app", {
             return generateFlatSlotBases(state.frameObjects[frameId].labelSlotsDict[labelIndex].slotStructures);
         },
 
-        getJointFramesForFrameId: (state) => (frameId: number, group: string) => {
+        getJointFramesForFrameId: (state) => (frameId: number) => {
             const jointFrameIds = state.frameObjects[frameId].jointFrameIds;
             const jointFrames: FrameObject[] = [];
             jointFrameIds?.forEach((jointFrameId: number) => {
                 const jointFrame = state.frameObjects[jointFrameId];
                 if (jointFrame !== undefined) {
-                    //this frame should have the same draggableGroup with the parent Joint frame for it to be Draggable)
-                    if (group === "draggable" && jointFrame.frameType.draggableGroup === state.frameObjects[frameId].frameType.innerJointDraggableGroup) {
-                        jointFrames.push(jointFrame);
-                    }
-                    //this frame should not have the same draggableGroup with the parent Joint frame for it to be Static (undraggable)
-                    else if (group === "static" && jointFrame.frameType.draggableGroup !== state.frameObjects[frameId].frameType.innerJointDraggableGroup) {
-                        jointFrames.push(jointFrame);
-                    }
-                    else if (group === "all") {
-                        jointFrames.push(jointFrame);
-                    }
+                    jointFrames.push(jointFrame);
                 }
             });
             return jointFrames;
