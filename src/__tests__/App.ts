@@ -152,7 +152,7 @@ describe("App.vue Basic Test", () => {
 
         // check that the sections are present and correct:
         const headers = wrapper.findAll(".frame-container-label-span");
-        checkTextEquals(headers, ["Imports:", "Function definitions:", "My code:"]);
+        checkTextEquals(headers, ["Imports:", "Definitions:", "My code:"]);
         wrapper.destroy();
     });
     it("translates correctly", async () => {
