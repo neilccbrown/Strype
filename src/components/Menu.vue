@@ -130,8 +130,8 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameUID, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, parseFrameHeaderUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
+import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -143,6 +143,7 @@ import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
+import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
 
 //////////////////////
 //     Component    //
@@ -789,10 +790,11 @@ export default Vue.extend({
         },
 
         
-        goToError(event: MouseEvent, toNext: boolean){
+        goToError(event: MouseEvent | null, toNext: boolean){
             // Move to the next error (if toNext is true) or the previous error (if toNext is false) when the user clicks on the navigation icon.
             // If the icon is "disabled" we do nothing.
-            if(!(event.target as HTMLElement).classList.contains("error-nav-disabled")){
+            // Note that a null event is set by a programmatical call of this method.
+            if(event == null || !(event.target as HTMLElement).classList.contains("error-nav-disabled")){
                 this.$nextTick(() => {
                     // If we are currently in a slot, we need to make sure that that slot gets notified of the caret lost
                     if(this.appStore.focusSlotCursorInfos){
@@ -806,21 +808,37 @@ export default Vue.extend({
                     const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
                     this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
                     const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
-                    // We focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
+                    // The error can be in a slot or it can be for a whole frame. By convention, the location for a frame error is the caret above it.
+                    // For errors in a slot: we focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
                     // we put the focus in the first slot that is editable.
-                    const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
-                        ? parseLabelSlotUID(errorElement.id)
-                        : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
-                    const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
-                    this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
-                    setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
-                    // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
-                    if(isElementUIDFrameHeader(errorElement.id)){
-                        document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
+                    if(isIdAFrameId(errorElement.id)){
+                        // Error on a whole frame - the error message will be on the header so we need to focus it to trigger the popup.
+                        if(this.appStore.isEditing) {
+                            this.appStore.isEditing = false;
+                            this.appStore.setSlotTextCursors(undefined, undefined);
+                            document.getSelection()?.removeAllRanges(); 
+                        }
+                        const caretPosAboveFrame = getAboveFrameCaretPosition(parseFrameUID(errorElement.id));
+                        this.appStore.setCurrentFrame({id: caretPosAboveFrame.frameId, caretPosition: caretPosAboveFrame.caretPosition as CaretPosition});
+                        document.getElementById(getFrameHeaderUID(parseFrameUID(errorElement.id)))?.focus();
                     }
                     else{
-                        errorElement.click();
+                        // Error on a slot
+                        const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
+                            ? parseLabelSlotUID(errorElement.id)
+                            : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
+                        const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
+                        this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
+                        setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
+                        // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
+                        if(isElementUIDFrameHeader(errorElement.id)){
+                            document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
+                        }
+                        else{
+                            errorElement.click();
+                        }
                     }
+                   
                     this.navigateToErrorRequested = false;
                 });
             }     

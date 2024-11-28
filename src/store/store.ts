@@ -14,6 +14,7 @@ import {cloneDeep, isEqual} from "lodash";
 import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
 import { nextTick } from "@vue/composition-api";
+import { TPyParser } from "tigerpython-parser";
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -147,6 +148,8 @@ export const useStore = defineStore("app", {
 
             appLang: "en",
 
+            tigerPythonLang: "en", // The locale for TigerPython, see parser.ts as to why it's here
+
             isAppMenuOpened: false,
 
             isModalDlgShown: false,
@@ -183,23 +186,13 @@ export const useStore = defineStore("app", {
             return generateFlatSlotBases(state.frameObjects[frameId].labelSlotsDict[labelIndex].slotStructures);
         },
 
-        getJointFramesForFrameId: (state) => (frameId: number, group: string) => {
+        getJointFramesForFrameId: (state) => (frameId: number) => {
             const jointFrameIds = state.frameObjects[frameId].jointFrameIds;
             const jointFrames: FrameObject[] = [];
             jointFrameIds?.forEach((jointFrameId: number) => {
                 const jointFrame = state.frameObjects[jointFrameId];
                 if (jointFrame !== undefined) {
-                    //this frame should have the same draggableGroup with the parent Joint frame for it to be Draggable)
-                    if (group === "draggable" && jointFrame.frameType.draggableGroup === state.frameObjects[frameId].frameType.innerJointDraggableGroup) {
-                        jointFrames.push(jointFrame);
-                    }
-                    //this frame should not have the same draggableGroup with the parent Joint frame for it to be Static (undraggable)
-                    else if (group === "static" && jointFrame.frameType.draggableGroup !== state.frameObjects[frameId].frameType.innerJointDraggableGroup) {
-                        jointFrames.push(jointFrame);
-                    }
-                    else if (group === "all") {
-                        jointFrames.push(jointFrame);
-                    }
+                    jointFrames.push(jointFrame);
                 }
             });
             return jointFrames;
@@ -623,11 +616,15 @@ export const useStore = defineStore("app", {
     
     actions:{
         setAppLang(lang: string) {
-            //set the language in the store first
+            // Set the language in the store first
             this.appLang = lang;
 
-            //then change the UI via i18n
+            // Then change the UI via i18n
             i18n.locale = lang;
+
+            // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
+            const tpLangs = TPyParser.getLanguages();
+            this.tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
 
             // Change all frame definition types to update the localised bits
             generateAllFrameDefinitionTypes(true);
@@ -1084,6 +1081,10 @@ export const useStore = defineStore("app", {
 
             // We should never arrive here
             return {newSlotId: "", cursorPosOffset: 0};
+        },
+
+        setFrameErroneous(frameId: number, errMsg: string) {
+            Vue.set(this.frameObjects[frameId], "atParsingError", errMsg);
         },
 
         setSlotErroneous(frameSlotInfos: SlotInfos) {
@@ -1576,7 +1577,7 @@ export const useStore = defineStore("app", {
             // We move the frames of the dragged frames reversed list from their parent to the list of frames relative to the destination:
             // if the destination is a body, that's the list of children of the destination frame, if the destination is below a frame,
             // that's the list of children of the parent container of frame that contains the frame just above the destination caret pos.
-            const sourcContainerFrame = this.frameObjects[this.frameObjects[(draggedFramesReversed[0])].parentId];
+            const sourceContainerFrame = this.frameObjects[this.frameObjects[(draggedFramesReversed[0])].parentId];
             const destContainerFrame = (destinationCaretPos == CaretPosition.body) 
                 ? this.frameObjects[destinationCaretFrameId]
                 : this.frameObjects[this.frameObjects[destinationCaretFrameId].parentId];
@@ -1587,7 +1588,7 @@ export const useStore = defineStore("app", {
                 // it has been added (I don't know why...) so we defer adding the frame to its new parent to make sure
                 // the component gets created again.
                 // Remove the frame from its parent
-                sourcContainerFrame.childrenIds.splice(sourcContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
+                sourceContainerFrame.childrenIds.splice(sourceContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
                 nextTick(() => {
                     // Append it to the destination list
                     const destFrameListInsertIndex = (destinationCaretPos == CaretPosition.body) ? 0 : destContainerFrame.childrenIds.indexOf(destinationCaretFrameId) + 1;
@@ -1784,6 +1785,31 @@ export const useStore = defineStore("app", {
                         {}
                     ),
             };
+
+            // If the frame definition requests some default children and/or joint frames, we update their frame, parent and/or joint parent IDs here
+            // (and update the next available ID accoringly), and also add that default frame inside the state
+            newFrame.frameType.defaultChildrenTypes?.forEach((defaultChildFrame) => {
+                defaultChildFrame.id = (++nextAvailableId);
+                defaultChildFrame.parentId = newFrame.id;
+                defaultChildFrame.jointParentId = 0;
+                newFrame.childrenIds.push(defaultChildFrame.id);
+                Vue.set(
+                    this.frameObjects,
+                    defaultChildFrame.id,
+                    defaultChildFrame
+                );
+            });
+            newFrame.frameType.defaultJointTypes?.forEach((defaultJointFrame) => {
+                defaultJointFrame.id = (++nextAvailableId);
+                defaultJointFrame.jointParentId = newFrame.id;
+                defaultJointFrame.parentId = 0;
+                newFrame.jointFrameIds.push(defaultJointFrame.id);
+                Vue.set(
+                    this.frameObjects,
+                    defaultJointFrame.id,
+                    defaultJointFrame
+                );
+            });
 
             // In the special case a hidden shorthand frame addition, we add the code content in the first slot of the frame (by design)
             if(hiddenShorthandFrameDetails && isFieldBaseSlot(newFrame.labelSlotsDict[0].slotStructures.fields[0])){
@@ -2378,11 +2404,13 @@ export const useStore = defineStore("app", {
             // If the language has been updated, we need to also update the UI accordingly
             this.setAppLang(this.appLang);
 
+            /* IFTRUE_isPython */
             // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
             actOnTurtleImport();
 
             // Clear the Python Execution Area as it could have be run before.
             ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
+            /* FITRUE_isPython */
 
             if(payload.showMessage) {
                 this.showMessage(MessageDefinitions.UploadEditorFileSuccess, 5000);  

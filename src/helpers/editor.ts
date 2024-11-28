@@ -1,7 +1,7 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -88,8 +88,16 @@ export function getImportDiffVersionModalDlgId(): string {
     return "importDiffVersionModalDlg";
 }
 
+const frameUIDRegex = /^frame_id_(\d+)$/;
 export function isIdAFrameId(id: string): boolean {
-    return id.match(/^frame_id_\d+$/) !== null;
+    return id.match(frameUIDRegex) !== null;
+}
+
+// Parse a frameUID to retrieve the frame ID. 
+// As finding the match against the regex may fail, we need a fallout value: -100;
+export function parseFrameUID(frameUID: string): number {
+    const frameUIDMatch = frameUID.match(frameUIDRegex);
+    return (frameUIDMatch) ? parseInt(frameUIDMatch[1]) : -100;
 }
 
 const labelSlotUIDRegex = /^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
@@ -464,10 +472,21 @@ export function checkEditorCodeErrors(): void{
     const erroneousHTMLElements = [...document.getElementsByClassName("error"), ...document.getElementsByClassName("errorSlot")];
     if(erroneousHTMLElements.length > 0){
         for(const erroneousHTMLElement of erroneousHTMLElements) {
-            if(erroneousHTMLElement.classList.contains("labelSlot-input") || erroneousHTMLElement.classList.contains("frame-header")){
+            if(erroneousHTMLElement.classList.contains("labelSlot-input") || erroneousHTMLElement.classList.contains("frame-header") || erroneousHTMLElement.classList.contains("frameDiv")){
                 errorHTMLElements.push(erroneousHTMLElement as HTMLElement);
             }
         }
+
+        // The elements NEED to be in order so we can navigate through them.
+        // In other words, we sort out the elements based on their vertical position first, then horizontal position.
+        errorHTMLElements.sort((el1, el2) => {
+            if(el1.getBoundingClientRect().y != el2.getBoundingClientRect().y){
+                return el1.getBoundingClientRect().y - el2.getBoundingClientRect().y;
+            }
+            else{
+                return el1.getBoundingClientRect().x - el2.getBoundingClientRect().x;
+            }
+        });
     }
 }
 
@@ -496,7 +515,7 @@ export function hasPrecompiledCodeError(): boolean {
     return hasEditorCodeErrors() && !errorHTMLElements?.some((element) => isElementUIDFrameHeader(element.id));                                                                    
 }
 
-// This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot an frame header)
+// This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot in frame header or a frame)
 // We return the "full" index (of the error list) if the current position is ON an error, otherwise "semi" indexes that will allow navigating the errors properly:
 // for example if the current position is before the first error, the index is -0.5 so we can still go down and reach error indexed 0
 export function getNearestErrorIndex(): number {
@@ -508,14 +527,23 @@ export function getNearestErrorIndex(): number {
     const errorsElmtIds = (errorHTMLElements as HTMLElement[]).flatMap((elmt) => elmt.id);
     const isEditing = useStore().isEditing;
 
-    // Get the slot currently being edited: we check first if that's one of the error so it would be a "real" index of the error array
+    // Three situations can happen: we have an error in a slot (the most common case) or we have an error for the whole frame
+    // (this is rare but can happen, for example in the situation of a wrongly constructed "try" structure (TP error)).
+
+    // Get the slot currently being edited OR the current caret position : we check first if that's one of the error so it would be a "real" index of the error array
     // if it's not, then we'll find in between which 2 errors we're in and use a "semi" index
+    const currentFrame = useStore().currentFrame;
     const currentFocusedElementId = (isEditing && useStore().focusSlotCursorInfos != undefined) 
         ? getLabelSlotUID(useStore().focusSlotCursorInfos?.slotInfos as SlotCoreInfos) 
-        : getCaretUID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
+        : getCaretUID(currentFrame.caretPosition, currentFrame.id);
+    const belowCurrentCaretFrameId = (!isEditing) ? getFrameBelowCaretPosition({frameId: currentFrame.id, caretPosition: currentFrame.caretPosition, isSlotNavigationPosition: false}) : null;
     // Case 1: we are in a slot that is erroneous, or in a slot of an erroneous frame
     if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number)))){
         return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number));
+    }
+    // Case 2: we are not editing and the caret position is above an erroneous frame (by convention)
+    else if(!isEditing && belowCurrentCaretFrameId && errorsElmtIds.includes(getFrameUID(belowCurrentCaretFrameId))) {
+        return errorsElmtIds.indexOf(getFrameUID(belowCurrentCaretFrameId));
     }
     else{
         // Case 2: not in an error, we find out our relative position to the list of errors
@@ -525,22 +553,32 @@ export function getNearestErrorIndex(): number {
         [...errorsElmtIds, currentFocusedElementId].forEach((elementId) => {
             const isElementEditableSlot = isElementEditableLabelSlotInput(document.getElementById(elementId));
             const isElementFrameHeader = isElementUIDFrameHeader(elementId);
+            const isElementWholeFrame = isIdAFrameId(elementId);
             // Look the position of a slot (an error or the currently focused slot, or the first slot of an erroneous frame)
             if(isElementEditableSlot || isElementFrameHeader){
                 const slotInfos: SlotCoreInfos = (isElementEditableSlot) 
                     ? parseLabelSlotUID(elementId)
                     : {frameId: parseFrameHeaderUID(elementId), slotId: "0", labelSlotsIndex: 0, slotType: SlotType.code};
                 allPosIndexes.push(allCaretPositions.findIndex((navPos) => navPos.isSlotNavigationPosition && navPos.frameId == slotInfos.frameId 
-                && navPos.labelSlotsIndex == slotInfos.labelSlotsIndex && navPos.slotId == slotInfos.slotId 
-                && navPos.slotType == slotInfos.slotType));
+                    && navPos.labelSlotsIndex == slotInfos.labelSlotsIndex && navPos.slotId == slotInfos.slotId 
+                    && navPos.slotType == slotInfos.slotType));
+            }
+            else if(isElementWholeFrame){
+                // Get the caret position above the frame - if that frame still exists !
+                // (when deleting it from the body, the frame may be gone but the errors still not updated)
+                const frameId = parseFrameUID(elementId);
+                const caretPosAbove = getAboveFrameCaretPosition(frameId);
+                if(caretPosAbove) {
+                    allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == caretPosAbove.frameId && navPos.caretPosition == caretPosAbove.caretPosition));
+                }
             }
             // Look for the position of the current focused blue caret (because if we have an element that is the caret it can only be the current blue caret, there is no errors on a blue caret...)
             else{
-                allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == useStore().currentFrame.id && navPos.caretPosition == useStore().currentFrame.caretPosition));
+                allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == currentFrame.id && navPos.caretPosition == currentFrame.caretPosition));
             }
         });
         
-        // If we are not editing, we add the position of the caret at the end of the array (since we would have skipped pushing a value as currentFocusedElementId would be empty)
+        // Now we can find the relative position of the current position with regards to the errors' positions
         const currentFocusedPosIndex = allPosIndexes.pop() as number;
         if(currentFocusedPosIndex < allPosIndexes[0]){
             return -0.5;
@@ -880,7 +918,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 
 // We need to also look for the mouseup event during Drag and Drop as we only let the browser handling "dragstart",
 // there is no "dragend" being raised by the browser consequently.
-const bodyMouseUpEventHandlerForFrameDnD = (): void => {
+const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
     if(useStore().isDraggingFrame){
         const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
         // Notify the drag even is finished
@@ -888,7 +926,20 @@ const bodyMouseUpEventHandlerForFrameDnD = (): void => {
 
         // Drop the frame at the current drop caret location only if drop is allowed
         if(areDropFramesAllowed){
-            useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
+            // We either reorder the frames (most commont drag and drop case) OR add a copy if the drop is made with the ctrl or option keys held.
+            if(event.ctrlKey || event.altKey){
+                if(currentDraggedSingleFrameId){
+                    useStore().doCopyFrame(currentDraggedSingleFrameId);
+                    useStore().pasteFrame({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
+                }
+                else{
+                    useStore().doCopySelection();
+                    useStore().pasteSelection({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
+                }
+            }
+            else {
+                useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
+            }
         }
 
         // Reset the caret drop ID
@@ -994,6 +1045,11 @@ export function notifyDragEnded():void {
         // Not really required but just better to reset things properly
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
     }
+    // Reset flags in the next tick to let UI update properly
+    Vue.nextTick(() => {
+        currentCaretDropPosId = "", currentCaretDropPosFrameId = 0, currentCaretDropPosCaretPos =  CaretPosition.none, 
+        newCaretDropPosFrameId = 0, newCaretDropPosCaretPos = CaretPosition.none;
+    });    
 }
 
 /**

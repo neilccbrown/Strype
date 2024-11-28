@@ -7,7 +7,7 @@
         <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
         <div 
             :style="frameStyle" 
-            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame}"
+            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, error: hasParsingError}"
             :id="UID"
             @click="toggleCaret($event)"
             @contextmenu="handleClick($event)"
@@ -37,15 +37,16 @@
                 :frameAllowChildren="allowChildren"
                 :erroneous="hasRuntimeError"
                 :wasLastRuntimeError="wasLastRuntimeError"
+                :onFocus="showFrameParseErrorPopupOnHeaderFocus"
             />
             <b-popover
-                v-if="hasRuntimeError || wasLastRuntimeError"
+                v-if="hasRuntimeError || wasLastRuntimeError || hasParsingError"
                 ref="errorPopover"
                 :target="frameHeaderId"
-                :title="$t((hasRuntimeError) ? 'PEA.runtimeErrorConsole' : 'errorMessage.pastFrameErrTitle')"
+                :title="errorPopupTitle"
                 triggers="hover"
-                :content="(hasRuntimeError) ? runTimeErrorMessage : runtimeErrorAtLastRunMsg"
-                :custom-class="(hasRuntimeError) ? 'error-popover modified-title-popover': 'error-popover'"
+                :content="errorPopupContent"
+                :custom-class="(hasRuntimeError || hasParsingError) ? 'error-popover modified-title-popover': 'error-popover'"
                 placement="left"
             >
             </b-popover>
@@ -208,6 +209,14 @@ export default Vue.extend({
             return this.isBeingDragged || !!this.appStore.frameObjects[this.frameId].isBeingDragged;
         },
 
+        parsingErrorMessage(): string {
+            return this.appStore.frameObjects[this.frameId].atParsingError ?? "";
+        },
+
+        hasParsingError(): boolean {
+            return this.parsingErrorMessage.length > 0;
+        },
+
         runTimeErrorMessage(): string {
             return this.appStore.frameObjects[this.frameId].runTimeError ?? "";
         },
@@ -218,6 +227,14 @@ export default Vue.extend({
 
         wasLastRuntimeError(): boolean {
             return this.appStore.wasLastRuntimeErrorFrameId == this.frameId;
+        },
+
+        errorPopupTitle(): string {
+            return this.$t((this.hasParsingError) ? "errorMessage.errorTitle" : ((this.hasRuntimeError) ? "PEA.runtimeErrorConsole" : "errorMessage.pastFrameErrTitle")) as string;
+        },
+
+        errorPopupContent(): string {
+            return (this.hasParsingError) ? this.parsingErrorMessage : ((this.hasRuntimeError) ? this.runTimeErrorMessage : this.runtimeErrorAtLastRunMsg);
         },
 
         deletableFrame(): boolean{
@@ -449,7 +466,7 @@ export default Vue.extend({
             // Not all frames should be duplicated (e.g. Else)
             // The target id, for a duplication, should be the same as the copied frame 
             // except if that frame has joint frames: the target is the last joint frame.
-            const targetFrameJointFrames = this.appStore.getJointFramesForFrameId(this.frameId, "all");
+            const targetFrameJointFrames = this.appStore.getJointFramesForFrameId(this.frameId);
             const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
             // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
             const canDuplicate = (this.isPartOfSelection) ?
@@ -1050,6 +1067,14 @@ export default Vue.extend({
 
         deleteOuter(): void {
             this.appStore.deleteOuterFrames(this.frameId);
+        },
+
+        showFrameParseErrorPopupOnHeaderFocus(isFocusing: boolean): void{
+            // We need to be able to show the frame error popup programmatically
+            // (if applies) when we navigate to the error - we make sure the frame still exists.
+            if(this.appStore.frameObjects[this.frameId] && this.hasParsingError){
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit((isFocusing) ? "open" : "close");
+            }
         },
     },
 });

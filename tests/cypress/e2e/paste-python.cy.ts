@@ -483,7 +483,8 @@ finally:
                 cy.wait(500);
                 cy.get("body").type("{backspace}");
             }
-            checkDownloadedCodeEquals(tryCode);
+            // Can't test try by itself because it is now an error state (via TigerPython):
+            // checkDownloadedCodeEquals(tryCode);
         };
         
         testCode([exceptCode("")]);
@@ -493,9 +494,6 @@ finally:
         testCode([exceptCode("Exception", "e")]);
         testCode([exceptCode("Exception", "e"), elseCode, finallyCode]);
         testCode([exceptCode("CustomError"), exceptCode("Exception", "e"), elseCode, finallyCode]);
-        testCode([elseCode]);
-        // This is the potentially tricky case as it can be confused with an if/else at first look: 
-        testCode([elseCode, finallyCode]);
     });
 });
 
