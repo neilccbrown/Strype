@@ -909,7 +909,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 
 // We need to also look for the mouseup event during Drag and Drop as we only let the browser handling "dragstart",
 // there is no "dragend" being raised by the browser consequently.
-const bodyMouseUpEventHandlerForFrameDnD = (): void => {
+const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
     if(useStore().isDraggingFrame){
         const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
         // Notify the drag even is finished
@@ -917,7 +917,20 @@ const bodyMouseUpEventHandlerForFrameDnD = (): void => {
 
         // Drop the frame at the current drop caret location only if drop is allowed
         if(areDropFramesAllowed){
-            useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
+            // We either reorder the frames (most commont drag and drop case) OR add a copy if the drop is made with the ctrl or option keys held.
+            if(event.ctrlKey || event.altKey){
+                if(currentDraggedSingleFrameId){
+                    useStore().doCopyFrame(currentDraggedSingleFrameId);
+                    useStore().pasteFrame({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
+                }
+                else{
+                    useStore().doCopySelection();
+                    useStore().pasteSelection({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
+                }
+            }
+            else {
+                useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
+            }
         }
 
         // Reset the caret drop ID
@@ -1023,6 +1036,11 @@ export function notifyDragEnded():void {
         // Not really required but just better to reset things properly
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
     }
+    // Reset flags in the next tick to let UI update properly
+    Vue.nextTick(() => {
+        currentCaretDropPosId = "", currentCaretDropPosFrameId = 0, currentCaretDropPosCaretPos =  CaretPosition.none, 
+        newCaretDropPosFrameId = 0, newCaretDropPosCaretPos = CaretPosition.none;
+    });    
 }
 
 /**

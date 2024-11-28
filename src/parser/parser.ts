@@ -79,7 +79,7 @@ export default class Parser {
             ) 
             + 
             this.parseFrames(
-                useStore().getJointFramesForFrameId(block.id, "all"), 
+                useStore().getJointFramesForFrameId(block.id), 
                 indentation
             );
         
