@@ -462,7 +462,7 @@ export const useStore = defineStore("app", {
                     }  
                 }
                 else {
-                    if(this.isPositionAllowsFrame(frameId, caretPos)) {
+                    if(this.isPositionAllowsFrame(frameId, caretPos, true)) {
                         return true;
                     }
                 }
@@ -474,7 +474,7 @@ export const useStore = defineStore("app", {
         // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
         // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
         isPositionAllowsFrame() {
-            return (targetFrameId: number, targetCaretPosition: CaretPosition, frameToBeMovedId?: number) => {
+            return (targetFrameId: number, targetCaretPosition: CaretPosition, lookingForTargetPos: boolean, frameToBeMovedId?: number) => {
                 // Where do we get the frame from --> from copiedFrames if it is a copied frame
                 // Otherwise the input frame is to be checked (e.g. for moving an else statement or duplicating an else statement -- which doesn't go anywhere).
                 const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? this.copiedFrames : this.frameObjects;    
@@ -486,7 +486,7 @@ export const useStore = defineStore("app", {
                     return false;
                 }
 
-                const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition);
+                const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition, lookingForTargetPos);
                 // isFrameCopied needs to be checked in the case that the original frame which was copied has been deleted.
                 const copiedType: string = sourceFrameList[frameToBeMovedId].frameType.type;
             
@@ -2419,7 +2419,7 @@ export const useStore = defineStore("app", {
 
         // This method can be used to copy a frame to a position.
         // This can be a paste event or a duplicate event.
-        copyFrameToPosition(payload: {frameId?: number; newParentId: number; newIndex: number}, skipDisableCheck?: boolean) {
+        copyFrameToPosition(payload: {frameId?: number; newParentId: number; newIndex: number}, ignoreStateBackup?: boolean, skipDisableCheck?: boolean) {
             const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
             
             const isPasteOperation: boolean = (payload.frameId === undefined);
@@ -2476,7 +2476,9 @@ export const useStore = defineStore("app", {
             }
 
             //save state changes
-            this.saveStateChanges(stateBeforeChanges);
+            if(!ignoreStateBackup){
+                this.saveStateChanges(stateBeforeChanges);
+            }
         
             this.unselectAllFrames();
         },
@@ -2571,7 +2573,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition}, skipDisableCheck?: boolean) {
+        pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}, skipDisableCheck?: boolean) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const isCopiedJointFrame = this.copiedFrames[this.copiedFrameId].frameType.isJointFrame;
 
@@ -2614,6 +2616,7 @@ export const useStore = defineStore("app", {
                     newParentId: pasteToParentId,
                     newIndex: index,
                 },
+                payload.ignoreStateBackup,
                 skipDisableCheck
             );
         },
