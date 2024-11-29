@@ -109,7 +109,7 @@ const BUILTIN = "Python";
 // themselves are in the correct order.
 function checkAutocompleteSorted(acIDSel: string) : void {
     // The autocomplete only updates after 500ms:
-    cy.wait(600);
+    cy.wait(1000);
     // Other items (like the names of variables when you do var.) will come out as -1,
     // which works nicely because they should be first:
     const intendedOrder : string[] = [MYVARS, MYFUNCS, "microbit", "microbit.accelerometer", "time", BUILTIN];
