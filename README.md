@@ -2,7 +2,7 @@
 
 # Strype
 
-Strype is a frame-based editor for Python that runs entirely in the browser, designed for use in secondary schools.  You can learn more and use the free public release at <a href="https://strype.org/">strype.org</a>. 
+Strype is a frame-based editor for Python that runs entirely in the browser, designed for use in secondary schools.  You can learn more and use the free public release at <a href="https://strype.org/" target="_blank">strype.org</a>. 
 
 Strype is maintained by Michael Kölling and the K-PET group at King's College London, alongside their other tools, BlueJ and Greenfoot.
 
@@ -14,7 +14,7 @@ This repository contains the source code for Strype, licensed under the AGPLv3 (
 Building and running
 ---
 
-Strype is a <a href="https://v2.vuejs.org/">Vue 2</a> project (upgrading to Vue 3 is planned for 2025) that uses NPM as its core tool.  To build you will first need to install <a href="https://nodejs.org/en">Node.js</a> (or <a href="https://docs.npmjs.com/downloading-and-installing-node-js-and-npm">another method</a>) to get NPM.
+Strype is a <a href="https://v2.vuejs.org/" target="_blank">Vue 2</a> project (upgrading to Vue 3 is planned for 2025) that uses NPM as its core tool.  To build you will first need to install <a href="https://nodejs.org/en" target="_blank">Node.js</a> (or <a href="https://docs.npmjs.com/downloading-and-installing-node-js-and-npm" target="_blank">another method</a>) to get NPM.
 
 Then, to run a local test version you can run the following commands in the top level of the checked out repository:
 
@@ -34,10 +34,10 @@ Strype is currently an entirely client-side tool; there is no server component t
 Development
 ---
 
-To work on the project, you can use a variety of tools: our team members use <a href="https://code.visualstudio.com/">VS Code</a> or <a href="https://www.jetbrains.com/webstorm/">Webstorm</a>.  To run the full test suite (which takes around 50 minutes) you can run:
+To work on the project, you can use a variety of tools: our team members use <a href="https://code.visualstudio.com/" target="_blank">VS Code</a> or <a href="https://www.jetbrains.com/webstorm/" target="_blank">Webstorm</a>.  To run the full test suite (which takes around 50 minutes) you can run:
 
 ```
-npm test:cypress
+npm run test:cypress
 ```
 
 To speed up the tests locally, we can target specific tests by editing package.json to run only the files of interest (**when doing so, remember not to commit the changes!**).
@@ -60,6 +60,21 @@ Contributing
 ---
 
 We readily accept pull requests for translations or bug fixes.  If you plan to add an entirely new feature or noticeably change existing behaviour we advise you to get in contact with us first, as we are likely to refuse any pull requests which are not part of our plan for Strype.  Our experience is that one of the important features for novice tools is their simplicity, which is achieved by being very conservative in which features we choose to add.
+
+Current team:
+- Neil Brown (King's College London)
+- Michael Kölling (King's College London)
+- Pierre Weill-Tessier (King's College London)
+
+Other contributors:
+- Babis Kyfonidis
+- Zak Singh
+- Aleksandr Voronstov
+
+Translators:
+- Greek: Babis Kyfonidis
+- French: Pierre Weill-Tessier
+- Spanish: Emma Dodoo and Nolgie Oquendo-Colon
 
 Roadmap
 ---

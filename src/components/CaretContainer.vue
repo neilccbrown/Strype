@@ -40,11 +40,12 @@ import Vue, { PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName} from "@/types/types";
+import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame} from "@/types/types";
 import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
+import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
 
 //////////////////////
 //     Component    //
@@ -266,13 +267,32 @@ export default Vue.extend({
                 this.doPaste();
             }
         },
-        
+
         doPaste(skipDisableCheck?: boolean) : void {
+            let pasteDestination: CurrentFrame = {id: this.frameId, caretPosition: this.caretAssignedPosition};            
+            const stateBeforeChanges = cloneDeep(this.appStore.$state);
+
+            // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
+            // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)
+            if(this.appStore.selectedFrames.length > 0){
+                // The key doesn't actually matter here, the method handles it already by doing a backspace deletion.
+                // However, we need to know where was the caret with regards to the selection:
+                // if it was below the selection, it means the deletion will change the current caret
+                // and therefore we need to amend this as a new paste destination (i.e. top of selection).
+                if(pasteDestination.id == this.appStore.selectedFrames.at(-1) as number){
+                    const topOfSelectionPos = getAboveFrameCaretPosition(this.appStore.selectedFrames[0]);
+                    pasteDestination.id = topOfSelectionPos.frameId;
+                    pasteDestination.caretPosition = topOfSelectionPos.caretPosition as CaretPosition;
+                }
+                this.appStore.deleteFrames("backspace", true);
+            }   
+
             if(this.appStore.isSelectionCopied){
                 this.appStore.pasteSelection(
                     {
-                        clickedFrameId: this.frameId,
-                        caretPosition: this.caretAssignedPosition,
+                        clickedFrameId: pasteDestination.id,
+                        caretPosition: pasteDestination.caretPosition,
+                        ignoreStateBackup: true,
                     },
                     skipDisableCheck
                 );
@@ -280,12 +300,15 @@ export default Vue.extend({
             else {
                 this.appStore.pasteFrame(
                     {
-                        clickedFrameId: this.frameId,
-                        caretPosition: this.caretAssignedPosition,
+                        clickedFrameId: pasteDestination.id,
+                        caretPosition: pasteDestination.caretPosition,
+                        ignoreStateBackup: true,
                     },
                     skipDisableCheck
                 );
             }
+
+            this.appStore.saveStateChanges(stateBeforeChanges);
         },
     
         prepareInsertFrameSubMenu(): void {

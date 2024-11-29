@@ -69,12 +69,12 @@ export default Vue.extend({
 }
 
 .caret-cross-forbidden-dnd-arm1 {
-    transform: translateY(((-$strype-frame-caret-forbidden-dnd-cross-height-notransform-value+$caret-height-value)/2) + px) rotate(-45deg) ;
+    transform: translateY(calc((-#{$strype-frame-caret-forbidden-dnd-cross-height-notransform-value}px + #{$caret-height-value}px) / 2)) rotate(-45deg) ;
     left: 50%;
 }
 
 .caret-cross-forbidden-dnd-arm2 {
-    transform: translateY(((-$strype-frame-caret-forbidden-dnd-cross-height-notransform-value+$caret-height-value)/2) + px) rotate(45deg);
+    transform: translateY(calc((-#{$strype-frame-caret-forbidden-dnd-cross-height-notransform-value}px + #{$caret-height-value}px) / 2)) rotate(45deg);
     left: 50%;
 }
 
