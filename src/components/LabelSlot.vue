@@ -803,7 +803,7 @@ export default Vue.extend({
                     this.$nextTick(() => {    
                         this.appStore.leftRightKey({key: "ArrowRight"})
                             // In order to get undo/redo dealing with the change of slot structure properly
-                            .then(() => this.appStore.saveStateChanges(stateBeforeChanges as Record<string, any>));    
+                            .then(() => this.appStore.saveStateChanges(stateBeforeChanges));    
                     });               
                     event.preventDefault();
                     event.stopPropagation();

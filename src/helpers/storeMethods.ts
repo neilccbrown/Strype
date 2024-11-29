@@ -6,6 +6,7 @@ import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorF
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
+import { cloneDeep } from "lodash";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -388,8 +389,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     // enable Pass-By-Reference whenever it is increased.
     
     // first copy the current frame
-    // You can also use Lodash's "_.cloneDeep" in case JSON.parse(JSON.stringify()) has a problem on Mac
-    const frame: FrameObject = JSON.parse(JSON.stringify(listOfFrames[currentFrameId])) as FrameObject;
+    const frame: FrameObject = cloneDeep(listOfFrames[currentFrameId]) as FrameObject;
 
     frame.id = nextAvailableId.id;
     frame.caretVisibility = CaretPosition.none;

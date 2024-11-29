@@ -270,7 +270,7 @@ export default Vue.extend({
 
         doPaste(skipDisableCheck?: boolean) : void {
             let pasteDestination: CurrentFrame = {id: this.frameId, caretPosition: this.caretAssignedPosition};            
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.appStore.$state));
+            const stateBeforeChanges = cloneDeep(this.appStore.$state);
 
             // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
             // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)

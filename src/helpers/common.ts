@@ -1,4 +1,5 @@
 import {ObjectPropertyDiff} from "@/types/types";
+import { cloneDeep } from "lodash";
 import hash from "object-hash";
 
 //Function to get the difference between two states (properties) of an object.
@@ -81,7 +82,7 @@ export const getObjectPropertiesDifferences = (obj1: {[id: string]: any}, obj2: 
     const result = [] as ObjectPropertyDiff[];
     
     //To find the differences, we'll remove objects from obj2 ---> so we use a copy
-    const obj2copy = JSON.parse(JSON.stringify(obj2));
+    const obj2copy = cloneDeep(obj2);
 
     //we then parse through all properties to find a difference
     //if there is a difference, we add it in the result and remove the property from obj2copy (to keep only additions)

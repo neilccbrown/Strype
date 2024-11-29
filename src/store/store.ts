@@ -124,7 +124,7 @@ export const useStore = defineStore("app", {
             isWrappingFrame: false, // Flag to know when we are doing a frame wrapping action
 
             // Keeps a copy of the state when 2-steps operations are performed and we need to know the previous state (to clear after use!)
-            stateBeforeChanges : {} as  {[id: string]: any}, 
+            stateBeforeChanges : {} as any, 
 
             contextMenuShownId: "",
 
@@ -389,7 +389,7 @@ export const useStore = defineStore("app", {
                 );
             }
             const addCommandsDefs = getAddCommandsDefs();
-            const filteredCommands: {[id: string]: AddFrameCommandDef[]} = JSON.parse(JSON.stringify(addCommandsDefs));
+            const filteredCommands: {[id: string]: AddFrameCommandDef[]} = cloneDeep(addCommandsDefs);
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {};
 
             // for each shortcut we get a list of the corresponding commands
@@ -656,7 +656,7 @@ export const useStore = defineStore("app", {
             Vue.set(
                 this,
                 "stateBeforeChanges",
-                (release) ? {} : JSON.parse(JSON.stringify(this.$state))
+                (release) ? {} : cloneDeep(this.$state)
             );
         },
 
@@ -1262,7 +1262,7 @@ export const useStore = defineStore("app", {
             }); 
         },
 
-        saveStateChanges(previousState: Record<string, unknown>) {
+        saveStateChanges(previousState: (typeof this.$state)) {
             this.isEditorContentModified = true;
             // Saves the state changes in diffPreviousState.
             // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be 
@@ -1340,7 +1340,7 @@ export const useStore = defineStore("app", {
                 this.diffToNextStateCounter--;
             }
             
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
             if(changeList.length > 0){
                 // This flag stores the arrays that need to be "cleaned" (i.e., removing the null elements)
                 const arraysToClean = [] as {[id: string]: any}[];                
@@ -1615,7 +1615,6 @@ export const useStore = defineStore("app", {
             //This action is called EVERY time a unitary change is made on the editable slot.
             //We save changes at the entire slot level: therefore, we need to remove the last
             //previous state to replace it with the difference between the state even before and now;            
-            let stateBeforeChanges = {};
             if(!frameSlotInfos.isFirstChange){
                 diffToPreviousState.pop();
                 this.diffToPreviousStateCounter--;
@@ -1623,7 +1622,7 @@ export const useStore = defineStore("app", {
             }
 
             //save the previous state
-            stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
 
             (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.code;
 
@@ -1712,7 +1711,7 @@ export const useStore = defineStore("app", {
         },
 
         async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
             const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
 
@@ -1759,7 +1758,7 @@ export const useStore = defineStore("app", {
                 nextAvailableId++;
             }
             const newFrame: FrameObject = {
-                ...JSON.parse(JSON.stringify(EmptyFrameObject)),
+                ...cloneDeep(EmptyFrameObject),
                 frameType: frame,
                 caretVisibility: (frame.isJointFrame || frame.allowChildren) ? CaretPosition.body : CaretPosition.below,
                 id: nextAvailableId,
@@ -1938,7 +1937,7 @@ export const useStore = defineStore("app", {
         },
 
         deleteFrames(key: string, ignoreBackState?: boolean){
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
 
             // we remove the editable slots from the available positions
             let availablePositions = getAvailableNavigationPositions();
@@ -2088,7 +2087,7 @@ export const useStore = defineStore("app", {
             // Delete the outer frame(s), the frameId argument only makes sense for deletion without multi-selection
             // We delete outer frame(s) by getting inside each body, and performing a standard "backspace" delete
            
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
 
             // Prepare a list of ids for the frame to delete
             const framesToDelete: number[] = [];
@@ -2420,7 +2419,7 @@ export const useStore = defineStore("app", {
         // This method can be used to copy a frame to a position.
         // This can be a paste event or a duplicate event.
         copyFrameToPosition(payload: {frameId?: number; newParentId: number; newIndex: number}, ignoreStateBackup?: boolean, skipDisableCheck?: boolean) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
             
             const isPasteOperation: boolean = (payload.frameId === undefined);
             payload.frameId = payload.frameId ?? this.copiedFrameId;
@@ -2486,7 +2485,7 @@ export const useStore = defineStore("app", {
         // This method can be used to copy the selected frames to a position.
         // This can be a paste event or a duplicate event.
         copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}, ignoreStateBackup?: boolean, skipDisableCheck?: boolean) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
             // -100 is chosen so that TS won't complain for non-initialised variable
             let newIndex = payload.newIndex??-100;
             const areWeDuplicating = newIndex === -100;
@@ -2692,7 +2691,7 @@ export const useStore = defineStore("app", {
         },
 
         changeDisableFrame(payload: {frameId: number; isDisabling: boolean}) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
 
             this.doChangeDisableFrame(payload);
             
@@ -2703,7 +2702,7 @@ export const useStore = defineStore("app", {
         },
 
         changeDisableSelection(isDisabling: boolean) {
-            const stateBeforeChanges = JSON.parse(JSON.stringify(this.$state));
+            const stateBeforeChanges = cloneDeep(this.$state);
 
             this.selectedFrames.forEach( (id) =>
                 this.doChangeDisableFrame(
