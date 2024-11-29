@@ -1064,7 +1064,7 @@ describe("Parameter prompts", () => {
             }
             cy.get("body").type(" " + func.funcName);
             cy.get("body").type("{ctrl} ");
-            cy.wait(600);
+            cy.wait(1000);
             // There is a bug which only seems to happen in cypress where the selection
             // pings back to the start of the slot; I don't see this in a real browser
             // We compensate by moving the cursor back to the end with right arrow:
