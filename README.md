@@ -61,6 +61,21 @@ Contributing
 
 We readily accept pull requests for translations or bug fixes.  If you plan to add an entirely new feature or noticeably change existing behaviour we advise you to get in contact with us first, as we are likely to refuse any pull requests which are not part of our plan for Strype.  Our experience is that one of the important features for novice tools is their simplicity, which is achieved by being very conservative in which features we choose to add.
 
+Current team:
+- Neil Brown (King's College London)
+- Michael Kölling (King's College London)
+- Pierre Weill-Tessier (King's College London)
+
+Other contributors:
+- Babis Kyfonidis
+- Zak Singh
+- Aleksandr Voronstov
+
+Translators:
+- Greek: Babis Kyfonidis
+- French: Pierre Weill-Tessier (King's College London)
+- Spanish: Emma Dodoo and Nolgie Oquendo-Colon (University of Michigan)
+
 Roadmap
 ---
 
