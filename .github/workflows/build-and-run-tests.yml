@@ -16,3 +16,14 @@ jobs:
         run: npm run lint:check
       - name: NPM Test (Cypress)
         run: npm run test:cypress
+      - name: Upload test videos (if any)
+        uses: actions/upload-artifact@v4
+        # Store screenshots and videos only on failure:
+        if: ${{ failure() }}
+        with:
+            name: cypress-screenshots-and-video
+            path: | 
+              tests/cypress/screenshots
+              tests/cypress/videos
+            if-no-files-found: ignore
+
