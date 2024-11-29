@@ -73,8 +73,8 @@ Other contributors:
 
 Translators:
 - Greek: Babis Kyfonidis
-- French: Pierre Weill-Tessier (King's College London)
-- Spanish: Emma Dodoo and Nolgie Oquendo-Colon (University of Michigan)
+- French: Pierre Weill-Tessier
+- Spanish: Emma Dodoo and Nolgie Oquendo-Colon
 
 Roadmap
 ---

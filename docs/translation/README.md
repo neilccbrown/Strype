@@ -21,7 +21,7 @@ This guide focuses on translations *directly* handled by the Strype website. Tra
 
 To retrieve the translation files, you will need to locate them inside the Strype source code repository hosted in GitHub (<a href="https://github.com/k-pet-group/Strype" target="_blank">https://github.com/k-pet-group/Strype</a>).
 
-The translation files for all supported locales are inside the `/src/localisation/` folder, which contains **one subfolder per locale (as a 2-letter code)**. For example, the translations for English are in <code>/src/localisation/**en**/</code>, those of Spanish are in <code>/src/localisation/**es**/</code> and so on.
+The translation files for all supported locales are inside the `/src/localisation/` folder, which contains **one subfolder per locale (as a <a href="https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes" target="_blank">2-letter code</a>)**. For example, the translations for English are in <code>/src/localisation/**en**/</code>, those of Spanish are in <code>/src/localisation/**es**/</code> and so on.
 
 A locale subfolder contains several translation JSON files, their names start with the 2-letter code of the locale (for example, `en_main.json`). We split the translations in several files to ease the translation task and gather some specific translations separately (for example for Strype micro:bit).
 
@@ -52,6 +52,8 @@ Here is an example of a *key:value* pair for English, where the *key* (i.e.refer
 The language reference for all translations is the English locale. Therefore, the reference files are the files located in the `/en/` subfolder (see sections [1](#how-to-retrieve-or-create-the-translation-files) and [2](#how-to-understand-the-translations-files) for details about finding the files and understanding their formats).
 
 **Each** *key:value* pair of a translation locale file **need to match those of the equivalent English locale file**, and as explained above, **only** the text *values* need to be translated.
+
+The expected file encoding is **UTF-8** (which would be default encoding in most modern text editors).
 
 Here are a few rules to follow when doing the translations of the text *values*.
 
