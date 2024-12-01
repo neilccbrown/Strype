@@ -27,7 +27,7 @@ A locale subfolder contains several translation JSON files, their names start wi
 
 You can either download a raw file from GitHub (by clicking on the desired file and clicking on the “download” button) OR you can use a web development IDE to work on the whole Strype project directly (cloning the project from GitHub with GIT). This option requires more preparation work (see the project’s <a href="../../README.md" target="_blank">README</a> for more details) **but will allow you to test your translation locally**.
 
-If the locale you wish to provide translation for does *not* exist, you will need to create a new subfolder (named after the 2-letter code of the locale) and add your translation files following the same naming logic than mentioned above. The easiest way is to copy one of the `en_*.json`, rename it with the right locale code, and edit it with your translations.
+If the locale you wish to provide translation for does *not* exist, you will need to create a new subfolder (named after the 2-letter code of the locale) and add your translation files following the same naming logic as mentioned above. The easiest way is to copy one of the `en_*.json`, rename it with the right locale code, and edit it with your translations.
 
 >[!NOTE]
 >It is advised, if you want to retrieve a copy of the Strype source code, to first create a fork of the project into your own GitHub account, and use your forked project as a remote GIT repository.
@@ -45,25 +45,25 @@ Here is an example of a *key:value* pair for English, where the *key* (i.e.refer
 <img src="./img/translations_KVP_example.png">
 
 >[!CAUTION]
->Only the **text** values need to be translated.</span>
+>Only the **value** text need to be translated.</span>
 
 ## How to do the translations
 
 The language reference for all translations is the English locale. Therefore, the reference files are the files located in the `/en/` subfolder (see sections [1](#how-to-retrieve-or-create-the-translation-files) and [2](#how-to-understand-the-translations-files) for details about finding the files and understanding their formats).
 
-**Each** *key:value* pair of a translation locale file **need to match those of the equivalent English locale file**, and as explained above, **only** the text *values* need to be translated.
+**Each** *key:value* pair of a translation locale file **need to match those of the equivalent English locale file**, and as explained above, **only** the *value* texts need to be translated.
 
 The expected file encoding is **UTF-8** (which would be default encoding in most modern text editors).
 
 Here are a few rules to follow when doing the translations of the text *values*.
 
-- Leading and trailing spaces showing in the English text *values* **should be maintained** in the translated locale.
-- Some text *values* contain Unicode characters starting with `\u`, followed by 4 characters. The *key* for these pairs is in this format: `<Python keyword>_detail`. The Unicode characters represent a Python keyword.
+- Leading and trailing spaces showing in the English *value* texts **should be maintained** in the translated locale.
+- Some *value* texts contain Unicode characters starting with `\u`, followed by 4 characters. The *key* for these pairs is in this format: `<Python keyword>_detail`. The Unicode characters represent a Python keyword.
   - The Unicode characters **should not be altered** in the translation.
   - A translation of the Python keyword can be added into brackets for the given locale.<br>For example, the English reference contains this *key:value* pair:<br><img src="./img/translations_unicodechars_example.png"><br>which can be translated in another locale as such:<br><img src="./img/translations_unicodechars_example2.png"><br>The Unicode characters stay the same in both locales, and <img src="./img/redcode-(si).png" alt="(si)" align="center" width="48"> has been added in the translation to provide the literal translation of the Python keyword too.
-- Some text *values* contain HTML tags or codes (such as `<b>` or `&larr;`). They are interpreted as such by Strype to style the text in the browser, and therefore **should stay in the translation**. However the text content between the opening and closing tags can be translated if that makes sense.
-- Some text *values* contain curly brackets surrounding a word. This are used by Strype as placeholders to dynamically add pieces of text within the translation, and therefore the content between the curly brackets **should not be translated**.
-- Some text *values* contain an escaped character starting with `\` which **should stay in the translation**. 
+- Some *value* texts contain HTML tags or codes (such as `<b>` or `&larr;`). They are interpreted as such by Strype to style the text in the browser, and therefore **should stay in the translation**. However the text content between the opening and closing tags can be translated if that makes sense.
+- Some *value* texts contain curly brackets surrounding a word. These are used by Strype as placeholders to dynamically add pieces of text within the translation, and therefore the content between the curly brackets **should not be changed**.
+- Some *value* texts contain an escaped character starting with `\` which **should stay in the translation**. 
 For example, the English reference contains this *key:value* pair:<br><img src="./img/translations_escapechars_example.png"><br>That can be translated in another locale as such:<br><img src="./img/translations_escapechars_example2.png"><br>The escape character `\n` is left in the translation.
 - For the micro:bit documentation translation, the English reference is based on <a href="https://microbit-micropython.readthedocs.io" target="_blank">the micro:bit documentation</a> which may be available in other languages.
 
@@ -72,7 +72,7 @@ For example, the English reference contains this *key:value* pair:<br><img src="
 
 ## How to visualise the translations on a test project
 
-The only way to see how your translations are rendered in Strype is to download the project source code ad run it. See section [1](#how-to-retrieve-or-create-the-translation-files) for details on where to retrieve the Strype source code.   
+The only way to see how your translations are rendered in Strype is to download the project source code and run it. See section [1](#how-to-retrieve-or-create-the-translation-files) for details on where to retrieve the Strype source code.   
   
 If you have edited your translations *outside* the code source (for example if started working on a translation before downloading and installing the Strype project), you need to make sure that your changes are applied into your local copy of Strype before running the project (check the project’s <a href="../../README.md" target="_target">README</a> for the procedure).
 
