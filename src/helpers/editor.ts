@@ -28,7 +28,7 @@ export enum CustomEventTypes {
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     noneStrypeFilePicked = "nonStrypeFilePicked",
     acItemHovered="acItemHovered",
-    /* IFTRUE_isPurePython */
+    /* IFTRUE_isPython */
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
@@ -36,7 +36,7 @@ export enum CustomEventTypes {
     pythonExecAreaSizeChanged = "peaSizeChanged",
     skulptMouseEventListenerOff = "skMouseEventsOff",
     skulptTimerEventListenerOff = "skTimerEventsOff",
-    /* FITRUE_isPurePython */
+    /* FITRUE_isPython */
 }
 
 export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [

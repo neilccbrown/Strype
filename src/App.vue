@@ -340,12 +340,12 @@ export default Vue.extend({
             }
         });
 
-        /* IFTRUE_isPurePython */
+        /* IFTRUE_isPython */
         // Listen to the Python execution area size change events (as the editor needs to be resized too)
         document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
             this.isExpandedPythonExecArea = (event as CustomEvent).detail;
         });
-        /* FITRUE_isPurePython */
+        /* FITRUE_isPython */
 
         /* IFTRUE_isMicrobit */
         // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...

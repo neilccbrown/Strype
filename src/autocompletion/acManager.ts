@@ -239,12 +239,12 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
         }
         /* FITRUE_isMicrobit */
 
-        /* IFTRUE_isPurePython */
+        /* IFTRUE_isPython */
         const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
         if (allSkulptItems) {
             soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
         }
-        /* FITRUE_isPurePython */
+        /* FITRUE_isPython */
     }
     else {
         // The module name might be an alias: we need to get the right module to retrieve the data.
@@ -277,12 +277,12 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
             /* FITRUE_isMicrobit */
 
-            /* IFTRUE_isPurePython */
+            /* IFTRUE_isPython */
             const allSkulptItems : AcResultType[] = skulptPythonAPI[realModule as keyof typeof skulptPythonAPI] as AcResultType[];
             if (allSkulptItems) {
                 allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
             }
-            /* FITRUE_isPurePython */
+            /* FITRUE_isPython */
         
             // Find the relevant item from allItems (if it exists):
             if (isSimpleImport) {
@@ -304,12 +304,12 @@ export function getAvailableModulesForImport() : AcResultsWithCategory {
     /* IFTRUE_isMicrobit */
     return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: m in microbitPythonAPI ? (microbitPythonAPI[m as keyof typeof microbitPythonAPI].find((ac) => ac.acResult === "__doc__")?.documentation || "") : "", type: ["module"], version: 0}))};
     /* FITRUE_isMicrobit */
-    /* IFTRUE_isPurePython */
+    /* IFTRUE_isPython */
     return {[""] : Object.keys(pythonBuiltins)
         .filter((k) => pythonBuiltins[k]?.type === "module")
         .map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: [pythonBuiltins[k].type], version: 0}))
         .concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})))};
-    /* FITRUE_isPurePython */
+    /* FITRUE_isPython */
 }
 export function getAvailableItemsForImportFromModule(module: string) : AcResultType[] {
     const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
@@ -320,20 +320,20 @@ export function getAvailableItemsForImportFromModule(module: string) : AcResultT
     }
     /* FITRUE_isMicrobit */
 
-    /* IFTRUE_isPurePython */
+    /* IFTRUE_isPython */
     const allSkulptItems: AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
     if (allSkulptItems) {
         return [...allSkulptItems, star];
     }
-    /* FITRUE_isPurePython */
+    /* FITRUE_isPython */
     return [star];
 }
 
 export function getBuiltins() : AcResultType[] {
-    /* IFTRUE_isPurePython */
+    /* IFTRUE_isPython */
     // Must return a clone as caller may later modify the list:
     return [...skulptPythonAPI[""] as AcResultType[]];
-    /* FITRUE_isPurePython */
+    /* FITRUE_isPython */
     /* IFTRUE_isMicrobit */
     // Must return a clone as caller may later modify the list:
     return [...microbitPythonAPI[""] as AcResultType[]];
