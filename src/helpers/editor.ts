@@ -679,7 +679,7 @@ export function generateAllFrameCommandsDefs():void {
             description: i18n.t("frame.funccall_desc") as string,
             shortcuts: [" "],
             tooltip:i18n.t("frame.funccall_detail") as string,
-            symbol: "⌴",//"␣"
+            symbol: i18n.t("buttonLabel.spaceBar") as string,
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),

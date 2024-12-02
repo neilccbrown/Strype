@@ -79,7 +79,8 @@
     "showLess": "show less",
     "saveDiffLocation": "Save elsewhere",
     "overwriteProject": "Replace",
-    "saveProjectCopy": "Choose new name"
+    "saveProjectCopy": "Choose new name",
+    "spaceBar": "space"
   },
   "action": {
     "uploadingToMicrobit": "Uploading to micro:bit ...",
