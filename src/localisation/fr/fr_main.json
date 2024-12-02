@@ -183,7 +183,7 @@
     "expand": "Agrandir",
     "collapse": "Réduire",
     "console": "Console",
-    "TurtleGraphics": "Turtle Graphics",
+    "Graphics": "Graphics",
     "importTurtle": "Importe le module 'turtle' dans ton code pour utiliser Turtle Graphics"
   }
 }
