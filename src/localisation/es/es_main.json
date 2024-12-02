@@ -80,7 +80,8 @@
     "showLess": "Mostrar menos",
     "saveDiffLocation": "Guardar en otro lugar",
     "overwriteProject": "Reemplazar",
-    "saveProjectCopy": "Elige un nuewvo nombre"
+    "saveProjectCopy": "Elige un nuewvo nombre",
+    "spaceBar": "espacio"
   },
   "action": {
     "uploadingToMicrobit": "Cargando a micro:bit ...",
