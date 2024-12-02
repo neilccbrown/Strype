@@ -677,7 +677,7 @@ def load_image(filename):
     img._EditableImage__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
     return img
 
-def get_and_forget_clicked_actor():
+def get_clicked_actor():
     """
     Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice
     in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function
