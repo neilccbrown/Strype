@@ -9,7 +9,7 @@
                 <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
                 <div 
                     style="font-weight: 600;"
-                    :class="{'next-to-eachother frame-keyword': true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0),'frameColouredLabel': !isCommentFrame}"
+                    :class="{'next-to-eachother frame-keyword': true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0 && !item.appendSelf),'frameColouredLabel': !isCommentFrame}"
                     v-html="item.label"
                 >
                 </div>
@@ -19,7 +19,9 @@
                     :default-text="item.defaultText"
                     :frameId="frameId"
                     :labelIndex="index"
+                    :prependSelf="item.appendSelf"
                 />
+                <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
         </div>
         <i v-if="wasLastRuntimeError" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
