@@ -34,7 +34,7 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, DefIdentifiers, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
@@ -445,8 +445,14 @@ export default Vue.extend({
         
         updatePrependText() {
             if (this.prependSelf) {
-                const empty = this.subSlots.length == 0 || !this.subSlots.some((s) => s.code !== "");
-                this.prependText = (this.isFocused || !empty) ? "self," : "self";
+                const isInClass = useStore().frameObjects[useStore().frameObjects[this.frameId].parentId].frameType.type == DefIdentifiers.classdef;
+                if (!isInClass) {
+                    this.prependText = "";
+                }
+                else {
+                    const empty = this.subSlots.length == 0 || !this.subSlots.some((s) => s.code !== "");
+                    this.prependText = (this.isFocused || !empty) ? "self," : "self";
+                }
             }
             else {
                 this.prependText = "";
