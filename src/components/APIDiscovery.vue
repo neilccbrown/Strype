@@ -73,7 +73,7 @@
 import Vue from "vue";
 import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType, SlotCursorInfos, SlotType} from "@/types/types";
 import { useStore } from "@/store/store";
-import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, setDocumentSelection } from "@/helpers/editor";
+import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUID, getLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import LabelSlotsStructures from "@/components/LabelSlotsStructure.vue";
@@ -315,7 +315,7 @@ export default Vue.extend({
                     // editing mode, just add the code in the existing slot (parts 2 & 3)
                     const currentFocusedSlotCursorInfos = this.appStore.focusSlotCursorInfos;
                     if(currentFocusedSlotCursorInfos){
-                        const inputSpanSlotElementId = getLabelSlotUIID(currentFocusedSlotCursorInfos.slotInfos);
+                        const inputSpanSlotElementId = getLabelSlotUID(currentFocusedSlotCursorInfos.slotInfos);
                         const inputspanSlotContent = document.getElementById(inputSpanSlotElementId)?.textContent??"";
                         const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(inputSpanSlotElementId);
                         this.addExampleCodeInSlot({...currentFocusedSlotCursorInfos, cursorPos: selectionStart + codeToInsert.length}
@@ -346,7 +346,7 @@ export default Vue.extend({
                     this.appStore.setSlotTextCursors(slotcursorInfos, slotcursorInfos);
                     //Refactor the slots, we call the refactorisation on the LabelSlotsStructure
                     const stateBeforeChanges = cloneDeep(this.appStore.$state);
-                    (this.$root.$refs[getFrameLabelSlotsStructureUIID(slotInfos.frameId, slotInfos.labelSlotsIndex)] as InstanceType<typeof LabelSlotsStructures>).checkSlotRefactoring(getLabelSlotUIID(slotInfos), stateBeforeChanges);
+                    (this.$root.$refs[getFrameLabelSlotsStructureUID(slotInfos.frameId, slotInfos.labelSlotsIndex)] as InstanceType<typeof LabelSlotsStructures>).checkSlotRefactoring(getLabelSlotUID(slotInfos), stateBeforeChanges);
                 });
         },
 

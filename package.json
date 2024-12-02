@@ -31,7 +31,6 @@
         "@types/object-hash": "^1.3.3",
         "@types/sortablejs": "^1.10.6",
         "@types/splitpanes": "^2.2.6",
-        "@types/vuedraggable": "^2.23.2",
         "@vue/composition-api": "^1.4.9",
         "axios": "^0.21.4",
         "bootstrap": "^4.6.1",
@@ -53,7 +52,7 @@
         "sortablejs": "^1.15.0",
         "splitpanes": "^2.4.1",
         "textarea-caret": "^3.1.0",
-        "tigerpython-parser": "github:neilccbrown/TigerPython-Parser#fix-empty-global",
+        "tigerpython-parser": "github:Tobias-Kohn/TigerPython-Parser",
         "ts-node": "^10.9.1",
         "ts-node-dev": "^2.0.0",
         "v-blur": "^1.0.4",
@@ -64,8 +63,7 @@
         "vue-burger-menu": "^2.0.5",
         "vue-context": "^6.0.0",
         "vue-i18n": "^8.27.1",
-        "vue-input-autowidth": "^1.0.10",
-        "vuedraggable": "^2.24.3"
+        "vue-input-autowidth": "^1.0.10"
     },
     "devDependencies": {
         "@pinia/testing": "^0.0.14",
@@ -93,7 +91,7 @@
         "chai": "^4.1.2",
         "chai-sorted": "^0.2.0",
         "cross-env": "^7.0.3",
-        "cypress": "^13.5.1",
+        "cypress": "^13.15.2",
         "cypress-fail-on-console-error": "^5.0.3",
         "cypress-terminal-report": "^5.3.9",
         "eslint": "^7",

@@ -3,8 +3,8 @@
         :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer}"
         @click.exact.prevent.stop="toggleCaret()"
         @contextmenu.prevent.stop="handleClick($event)"
-        :key="uiid"
-        :id="uiid"
+        :key="UID"
+        :id="UID"
     >
         <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
              Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
@@ -21,11 +21,12 @@
             </li>
         </vue-context>
         <Caret
-            :class="{navigationPosition: true, caret:!appStore.isDraggingFrame}"
-            :id="caretUIID"
+            class="navigationPosition caret"
+            :id="caretUID"
             :isInvisible="isInvisible"
-            :isTransparentForDnD="isTransparentForDnD"
             v-blur="isCaretBlurred"
+            :areFramesDraggedOver="areFramesDraggedOver"
+            :areDropFramesAllowed="areDropFramesAllowed"
         />
     </div>
 </template>
@@ -39,11 +40,12 @@ import Vue, { PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName} from "@/types/types";
-import { getCaretUIID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUIID, CustomEventTypes } from "@/helpers/editor";
+import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame} from "@/types/types";
+import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
+import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
 
 //////////////////////
 //     Component    //
@@ -75,12 +77,8 @@ export default Vue.extend({
         isInvisible(): boolean {
             // The caret is only visible when editing is off, 
             // and either one frame is currently selected 
-            // OR a frame is hovered during drag & drop of frames
-            return !(!this.isEditing && (this.caretVisibility === this.caretAssignedPosition || this.caretVisibility == CaretPosition.dragAndDrop) || this.appStore.isDraggingFrame); 
-        },
-
-        isTransparentForDnD(): boolean {
-            return (this.caretVisibility == CaretPosition.dragAndDrop);
+            // OR when a frame or a frame selection is dragged over.
+            return !(!this.isEditing && this.caretVisibility === this.caretAssignedPosition || this.areFramesDraggedOver); 
         },
 
         isStaticCaretContainer(): boolean {
@@ -97,12 +95,12 @@ export default Vue.extend({
             return CaretPosition;
         },
 
-        uiid(): string {
+        UID(): string {
             return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
         },
 
-        caretUIID(): string {
-            return getCaretUIID(this.caretAssignedPosition, this.frameId);
+        caretUID(): string {
+            return getCaretUID(this.caretAssignedPosition, this.frameId);
         },
 
         isPythonExecuting(): boolean {
@@ -127,6 +125,8 @@ export default Vue.extend({
         return {
             showPasteMenuItem: false,
             insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
+            areFramesDraggedOver: false,
+            areDropFramesAllowed: true,
         };
     },
 
@@ -146,14 +146,14 @@ export default Vue.extend({
         this.putCaretContainerInView();
         
         // Close the context menu if there is edition or loss of blue caret (for when a frame context menu is present, see Frame.vue)
-        if(this.isEditing || this.caretAssignedPosition == CaretPosition.none || this.caretAssignedPosition == CaretPosition.dragAndDrop){
+        if(this.isEditing || this.caretAssignedPosition == CaretPosition.none){
             ((this.$refs.menu as unknown) as VueContextConstructor).close();
         }        
     },
     
     methods: {
         putCaretContainerInView(){
-            if(this.caretVisibility !== CaretPosition.none  && this.caretVisibility != CaretPosition.dragAndDrop && this.caretVisibility === this.caretAssignedPosition) {
+            if(this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
                 const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
                 const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
                 //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
@@ -174,7 +174,7 @@ export default Vue.extend({
                     //we need to update the context menu as if it had been shown
                     const isPasteAllowedAtFrame = this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
                     if(isPasteAllowedAtFrame){
-                        this.appStore.contextMenuShownId = this.uiid;
+                        this.appStore.contextMenuShownId = this.UID;
                         this.doPaste();
                     }
                     else{
@@ -231,7 +231,7 @@ export default Vue.extend({
                 return;
             }
 
-            this.appStore.contextMenuShownId = this.uiid;
+            this.appStore.contextMenuShownId = this.UID;
 
             this.showPasteMenuItem = this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
             this.prepareInsertFrameSubMenu();
@@ -241,7 +241,7 @@ export default Vue.extend({
             ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
 
             this.$nextTick(() => {
-                const contextMenu = document.getElementById(this.uiid);  
+                const contextMenu = document.getElementById(this.UID);  
                 if(contextMenu){
                     // We make sure the menu can be shown completely. 
                     adjustContextMenuPosition(event, contextMenu, positionForMenu);
@@ -262,18 +262,37 @@ export default Vue.extend({
         paste(): void {
             // We check upon the context menu informations because a click could be generated on a hovered caret and we can't distinguish 
             // by any other mean which caret is the one the user clicked on.
-            const currentShownContextMenuUUID: string = this.appStore.contextMenuShownId;
-            if(currentShownContextMenuUUID === this.uiid){
+            const currentShownContextMenuUID: string = this.appStore.contextMenuShownId;
+            if(currentShownContextMenuUID === this.UID){
                 this.doPaste();
             }
         },
-        
+
         doPaste(skipDisableCheck?: boolean) : void {
+            let pasteDestination: CurrentFrame = {id: this.frameId, caretPosition: this.caretAssignedPosition};            
+            const stateBeforeChanges = cloneDeep(this.appStore.$state);
+
+            // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
+            // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)
+            if(this.appStore.selectedFrames.length > 0){
+                // The key doesn't actually matter here, the method handles it already by doing a backspace deletion.
+                // However, we need to know where was the caret with regards to the selection:
+                // if it was below the selection, it means the deletion will change the current caret
+                // and therefore we need to amend this as a new paste destination (i.e. top of selection).
+                if(pasteDestination.id == this.appStore.selectedFrames.at(-1) as number){
+                    const topOfSelectionPos = getAboveFrameCaretPosition(this.appStore.selectedFrames[0]);
+                    pasteDestination.id = topOfSelectionPos.frameId;
+                    pasteDestination.caretPosition = topOfSelectionPos.caretPosition as CaretPosition;
+                }
+                this.appStore.deleteFrames("backspace", true);
+            }   
+
             if(this.appStore.isSelectionCopied){
                 this.appStore.pasteSelection(
                     {
-                        clickedFrameId: this.frameId,
-                        caretPosition: this.caretAssignedPosition,
+                        clickedFrameId: pasteDestination.id,
+                        caretPosition: pasteDestination.caretPosition,
+                        ignoreStateBackup: true,
                     },
                     skipDisableCheck
                 );
@@ -281,12 +300,15 @@ export default Vue.extend({
             else {
                 this.appStore.pasteFrame(
                     {
-                        clickedFrameId: this.frameId,
-                        caretPosition: this.caretAssignedPosition,
+                        clickedFrameId: pasteDestination.id,
+                        caretPosition: pasteDestination.caretPosition,
+                        ignoreStateBackup: true,
                     },
                     skipDisableCheck
                 );
             }
+
+            this.appStore.saveStateChanges(stateBeforeChanges);
         },
     
         prepareInsertFrameSubMenu(): void {
@@ -299,7 +321,7 @@ export default Vue.extend({
                     // This method is called by the submenu and it triggers a click on the AddFrameCommand component,
                     // but we delay it enough so the chain of key events (if applicable) related to the menu terminates,
                     // because otherwise that chain and the key event chain from adding a frame interfer.
-                    setTimeout(() => document.getElementById(getAddFrameCmdElementUIID(addFrameCmdDef[0].type.type))?.click(), 250);
+                    setTimeout(() => document.getElementById(getAddFrameCmdElementUID(addFrameCmdDef[0].type.type))?.click(), 250);
                 }});
             });
         },
@@ -314,7 +336,7 @@ export default Vue.extend({
 }
 
 .static-caret-container{
-    height: $caret-height;
+    height: $caret-height-value + px;
 }
 
 .caret-container:hover{

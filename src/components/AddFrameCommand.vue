@@ -1,6 +1,6 @@
 <template>
     <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting}" @click="onClick" :title=tooltip>
-        <button class="frame-cmd-btn" :disabled=isPythonExecuting>{{ symbol }}</button>
+        <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled=isPythonExecuting>{{ symbol }}</button>
         <span>{{ description }}</span>
     </div>
 </template>
@@ -32,6 +32,10 @@ export default Vue.extend({
 
     computed: {
         ...mapStores(useStore),
+
+        isLargerShorcutSymbol() {
+            return this.symbol.length > 1;
+        },
 
         isPythonExecuting(): boolean {
             return (useStore().pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
@@ -71,6 +75,12 @@ export default Vue.extend({
     background-color: #fefefe;
     border-radius: 4px;
     border: 1px solid #d0d0d0;
+}
+
+.frame-cmd-btn-large {
+    width: auto;
+    font-stretch: 50% !important;
+    font-family: 'Inconsolata', sans-serif !important;
 }
 
 .frame-cmd-btn:disabled {

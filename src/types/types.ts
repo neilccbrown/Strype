@@ -117,13 +117,14 @@ export interface FrameObject {
     isSelected: boolean;
     isVisible: boolean;
     isCollapsed?: boolean;
+    isBeingDragged?: boolean; //this flag is used mainly for UI purposes, so we can distinguish specific things that happens during dragging from intrisic properties of the frame
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
     labelSlotsDict: { [index: number]: LabelSlotsContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
-    multiDragPosition: string;
+    atParsingError ?: string //this contains the error message for a parsing error (from TigerPython) that can't be associated to a slot (e.g. wrong try structure)
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
 }
 
@@ -137,24 +138,9 @@ export interface FrameLabel {
     acceptAC?: boolean; //default true
 }
 
-
-// There are three groups of draggable frames.
-// You can drag from the main code to the body of a method and vice-versa, 
-// but you cannot drag from/to imports or drag method signatures
-export enum DraggableGroupTypes {
-    imports = "imports",
-    code = "code",
-    functionSignatures = "functionSignatures",
-    ifCompound = "ifCompound",
-    tryCompound = "tryCompound",
-    shadowEditorContainer = "editor", // This draggable is used for cursor management - a root of all other draggables (cf. handleDraggingCursor())
-    none = "none",
-}
-
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
-    dragAndDrop = "dnd", // this is a special case for handling the UI with drag and drop, see Frame.vue (hideCaretAtClick())
     none = "none",
 }
 
@@ -292,9 +278,11 @@ export interface FramesDefinitions {
     jointFrameTypes: string[];
     colour: string;
     isCollapsed?: boolean;
-    draggableGroup: DraggableGroupTypes;
-    innerJointDraggableGroup: DraggableGroupTypes;
     isImportFrame: boolean;
+    // Optional default children or joint frames (we use frame rather than definitions as we may want to have child or joint frame with content!)
+    // BE SURE TO SET THE SLOT STRUCTURE AS EXPECTED BY THE FRAME DEFINITION (example: for a if, there should be 1 slot defined, even if empty)
+    defaultChildrenTypes?: FrameObject[];
+    defaultJointTypes?: FrameObject[];
 }
 
 // Identifiers of the containers
@@ -358,8 +346,6 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     isJointFrame: false,
     jointFrameTypes: [],
     colour: "",
-    draggableGroup: DraggableGroupTypes.none,
-    innerJointDraggableGroup: DraggableGroupTypes.none,
     isImportFrame: false,
 };
 
@@ -369,20 +355,17 @@ export const BlockDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
         .concat(Object.values(FuncDefIdentifiers))
         .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
-    draggableGroup: DraggableGroupTypes.code,
 };
 
 export const StatementDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier),
-    draggableGroup: DraggableGroupTypes.code,
 };
 
 // Container frames
 export const RootContainerFrameDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.root,
-    draggableGroup: DraggableGroupTypes.none,
 };
 
 export const ImportsContainerDefinition: FramesDefinitions = {
@@ -395,7 +378,6 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
-    draggableGroup: DraggableGroupTypes.imports,
 };
 
 export const FuncDefContainerDefinition: FramesDefinitions = {
@@ -408,8 +390,6 @@ export const FuncDefContainerDefinition: FramesDefinitions = {
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
-    draggableGroup: DraggableGroupTypes.functionSignatures,
-
 };
 
 export const MainFramesContainerDefinition: FramesDefinitions = {
@@ -437,124 +417,6 @@ let Definitions = {};
 // Entry point for generating the frame definition types -- only doing so to allow dynamic localisation bits...
 export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boolean): void{
     /*1) prepare all the frame definition types */
-    // Blocks
-    const IfDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.if,
-        labels: [
-            { label: "if ", defaultText: i18n.t("frame.defaultText.condition") as string},
-            { label: " :", showSlots: false, defaultText: ""},
-        ],
-        allowJointChildren: true,
-        jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
-        colour: "#E0DFE4",
-        innerJointDraggableGroup: DraggableGroupTypes.ifCompound,
-        forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-            .concat(Object.values(FuncDefIdentifiers))
-            .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
-    };
-
-    const ElifDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.elif,
-        labels: [
-            { label: "elif ", defaultText: i18n.t("frame.defaultText.condition") as string},
-            { label: " :", showSlots: false, defaultText: ""},
-        ],
-        draggableGroup: DraggableGroupTypes.ifCompound,
-        isJointFrame: true,
-        jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
-    };
-
-    const ElseDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.else,
-        labels: [{ label: "else :", showSlots: false, defaultText: ""}],
-        draggableGroup: DraggableGroupTypes.ifCompound,
-        isJointFrame: true,
-        jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
-    };
-
-    const ForDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.for,
-        labels: [
-            { label: "for ", defaultText: i18n.t("frame.defaultText.identifier") as string, acceptAC: false},
-            { label: " in ", defaultText: i18n.t("frame.defaultText.list") as string},
-            { label: " :", showSlots: false, defaultText: ""},
-        ],
-        allowJointChildren: true,
-        jointFrameTypes:[StandardFrameTypesIdentifiers.else],
-        colour: "#E4D6CE",
-    };
-
-    const WhileDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.while,
-        labels: [
-            { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string},
-            { label: " :", showSlots: false, defaultText: ""},
-        ],
-        colour: "#E4D5D5",
-    };
-
-    const TryDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.try,
-        labels: [{ label: "try :", showSlots: false, defaultText: ""}],
-        allowJointChildren: true,
-        jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
-        colour: "#C7D9DC",
-        innerJointDraggableGroup: DraggableGroupTypes.tryCompound,
-    };
-
-    const ExceptDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.except,
-        labels: [
-            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true},
-            { label: " :", showSlots: false, defaultText: ""},
-        ],
-        jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
-        colour: "",
-        isJointFrame: true,
-        draggableGroup: DraggableGroupTypes.tryCompound,
-    };
-
-    const FinallyDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.finally,
-        labels: [
-            { label: "finally :", showSlots: false, defaultText: ""},
-        ],
-        colour: "",
-        isJointFrame: true,
-        draggableGroup: DraggableGroupTypes.none,
-    };
-
-    const FuncDefDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: FuncDefIdentifiers.funcdef,
-        labels: [
-            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false},
-            { label: ") :", showSlots: false, defaultText: ""},
-        ],
-        colour: "#ECECC8",
-        draggableGroup: DraggableGroupTypes.functionSignatures,
-    };
-
-    const WithDefinition: FramesDefinitions = {
-        ...BlockDefinition,
-        type: StandardFrameTypesIdentifiers.with,
-        labels: [
-            { label: "with ", defaultText: i18n.t("frame.defaultText.expression") as string},
-            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string},
-            { label: " :", showSlots: false, defaultText: ""},
-        ],
-        colour: "#ede8f2",
-    };
-
     // Statements
     const FuncCallDefinition: FramesDefinitions = {
         ...StatementDefinition,
@@ -630,8 +492,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
-        colour: scssVars.nonMainCodeContainerBackground,
-        draggableGroup: DraggableGroupTypes.imports,
+        colour: scssVars.nonMainCodeContainerBackground,        
         isImportFrame: true,
     };
 
@@ -645,8 +506,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
-        colour: scssVars.nonMainCodeContainerBackground,
-        draggableGroup: DraggableGroupTypes.imports,
+        colour: scssVars.nonMainCodeContainerBackground,        
         isImportFrame: true,
     };
 
@@ -655,6 +515,118 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         type: StandardFrameTypesIdentifiers.comment,
         labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
         colour: scssVars.mainCodeContainerBackground,
+    };
+
+    // Blocks
+    const IfDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.if,
+        labels: [
+            { label: "if ", defaultText: i18n.t("frame.defaultText.condition") as string},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
+        colour: "#E0DFE4",
+        forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+            .concat(Object.values(FuncDefIdentifiers))
+            .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
+    };
+
+    const ElifDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.elif,
+        labels: [
+            { label: "elif ", defaultText: i18n.t("frame.defaultText.condition") as string},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],        
+        isJointFrame: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
+    };
+
+    const ElseDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.else,
+        labels: [{ label: "else :", showSlots: false, defaultText: ""}],        
+        isJointFrame: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
+    };
+
+    const ForDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.for,
+        labels: [
+            { label: "for ", defaultText: i18n.t("frame.defaultText.identifier") as string, acceptAC: false},
+            { label: " in ", defaultText: i18n.t("frame.defaultText.list") as string},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        allowJointChildren: true,
+        jointFrameTypes:[StandardFrameTypesIdentifiers.else],
+        colour: "#E4D6CE",
+    };
+
+    const WhileDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.while,
+        labels: [
+            { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        colour: "#E4D5D5",
+    };
+
+    const ExceptDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.except,
+        labels: [
+            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
+        colour: "",
+        isJointFrame: true,        
+    };
+
+    const FinallyDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.finally,
+        labels: [
+            { label: "finally :", showSlots: false, defaultText: ""},
+        ],
+        colour: "",
+        isJointFrame: true,        
+    };
+
+    const TryDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.try,
+        labels: [{ label: "try :", showSlots: false, defaultText: ""}],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
+        defaultJointTypes: [{...EmptyFrameObject, frameType: ExceptDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+        colour: "#C7D9DC",
+    };
+
+    const FuncDefDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: FuncDefIdentifiers.funcdef,
+        labels: [
+            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false},
+            { label: ") :", showSlots: false, defaultText: ""},
+        ],
+        colour: "#ECECC8",
+    };
+
+    const WithDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.with,
+        labels: [
+            { label: "with ", defaultText: i18n.t("frame.defaultText.expression") as string},
+            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        colour: "#ede8f2",
     };
 
     /*2) update the Defintions variable holding all the definitions */
@@ -734,7 +706,6 @@ export const EmptyFrameObject: FrameObject = {
     jointFrameIds: [], //this contains the IDs of the joint frames
     caretVisibility: CaretPosition.none,
     labelSlotsDict: { },
-    multiDragPosition: "",
 };
 
 /**
@@ -801,7 +772,6 @@ export const MessageTypes = {
     uploadEditorFileError: "uploadEditorFileError",
     uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
     uploadEditorFileSucces: "uploadEditorFileSuccess",
-    forbiddenFrameMove: "forbiddenFrameMove",
     forbiddenFramePaste: "forbiddenFramePaste",
     functionFrameCantDelete: "functionFrameCantDelete",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
@@ -897,12 +867,6 @@ const UploadEditorFileSuccess: MessageDefinition = {
     message: "messageBannerMessage.uploadEditorFileSuccess",
 };
 
-const ForbiddenFrameMove: MessageDefinition = {
-    ...NoMessage,
-    type: MessageTypes.forbiddenFrameMove,
-    message: "messageBannerMessage.forbiddenFrameMove",
-};
-
 const ForbiddenFramePaste: MessageDefinition = {
     ...NoMessage,
     type: MessageTypes.forbiddenFramePaste,
@@ -962,7 +926,6 @@ export const MessageDefinitions = {
     UploadEditorFileError,
     UploadEditorFileNotSupported,
     UploadEditorFileSuccess,
-    ForbiddenFrameMove,
     ForbiddenFramePaste,
     FunctionFrameCantDelete,
     GDriveConnectToSaveFailed,
@@ -1149,3 +1112,8 @@ export interface MIMEDesc {
 }
 
 export type ProjectLocation = (undefined | string | FileSystemFileHandle);
+
+export interface Locale {
+    code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
+    name: string, // the user-friendly locale's name (e.g.: "English")
+}

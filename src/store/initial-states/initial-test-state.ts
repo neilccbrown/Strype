@@ -13,7 +13,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-1": {
         id: -1,
@@ -28,7 +27,6 @@ const initialTestState: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-2": {
         id: -2,
@@ -43,7 +41,6 @@ const initialTestState: EditorFrameObjects = {
         labelSlotsDict: { },
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-3": {
         id: -3,
@@ -58,7 +55,6 @@ const initialTestState: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.body,
-        multiDragPosition: "",
     },
 
     1: {
@@ -73,7 +69,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [3],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: ">"}], fields: [{code: "1"}, {code: "0"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 
     2: {
@@ -88,7 +83,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "="}], fields: [{code: "a"}, {code: "2"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     3: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.elif),
@@ -102,7 +96,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [], fields: [{code: "3"}]}}}, //?
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     4: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -116,7 +109,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "="}], fields: [{code: "a"}, {code: "4"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     5: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -130,7 +122,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: ""}, {code: ""}], fields: [{code: "print"}, {openingBracketValue: "(", fields: [{code: "5"}], operators: []}, {code : ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     6: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -144,7 +135,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "="}], fields: [{code: "x"}, {code: "6"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     7: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -158,7 +148,6 @@ const initialTestState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: "="}], fields: [{code: "a"}, {code: "7"}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 };
 

@@ -8,7 +8,7 @@
                 <ul v-show="areResultsToShow()" @wheel="handleScrollHoverConflict" @scroll="handleScrollHoverConflict" @mousemove="handleScrollHoverConflict">
                     <div 
                         v-for="module in sortCategories(Object.keys(resultsToShow))"
-                        :key="UIID+module"
+                        :key="UID+module"
                         :data-title="module"
                     >
                         <div 
@@ -22,10 +22,10 @@
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
                             class="popUpItems"
-                            :id="UIID+'_'+item.index"
+                            :id="UID+'_'+item.index"
                             :index="item.index"
                             :item="textForAC(item)"
-                            :key="UIID+'_'+item.index"
+                            :key="UID+'_'+item.index"
                             :selected="item.index==selected"
                             v-on="$listeners"
                             @[CustomEventTypes.acItemHovered]="handleACItemHover"
@@ -53,9 +53,9 @@
                 <ul class="limitWidthUl">
                     <PopUpItem
                         class="newlines"
-                        :id="UIID+'documentation'"
+                        :id="UID+'documentation'"
                         :item="currentDocumentation"
-                        :key="UIID+'documentation'"
+                        :key="UID+'documentation'"
                         :isSelectable="false"
                         ref="documentations"
                         :version="1"
@@ -80,7 +80,7 @@ import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
 import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext, getPythonCodeForTypeAndDocumentation } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
-import { CustomEventTypes, parseLabelSlotUIID } from "@/helpers/editor";
+import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 
 declare const Sk: any;
 
@@ -126,7 +126,7 @@ export default Vue.extend({
     computed: {
         ...mapStores(useStore),
 
-        UIID(): string {
+        UID(): string {
             return "popupAC" + this.slotId;
         },
 
@@ -199,7 +199,7 @@ export default Vue.extend({
             this.acResults = getAvailableModulesForImport();
             this.showFunctionBrackets = false;
             // Only show imports if the slot isn't following "as" (so we need to check the operator)
-            const {frameId, slotId} = parseLabelSlotUIID(this.slotId);
+            const {frameId, slotId} = parseLabelSlotUID(this.slotId);
             if(parseInt(slotId) == 0 || (this.appStore.frameObjects[frameId].labelSlotsDict[0].slotStructures.operators[parseInt(slotId) - 1] as BaseSlot).code != "as"){
                 this.showSuggestionsAC(token);
             }
@@ -375,7 +375,7 @@ export default Vue.extend({
                     // Select the item immediately manually, because otherwise we need to wait that another item is selected for hover to work
                     const selectedItem = document.querySelector(".acItem:hover");
                     if(selectedItem){
-                        const indexOfSelected = parseInt(selectedItem.id.replace(this.UIID + "_",""));
+                        const indexOfSelected = parseInt(selectedItem.id.replace(this.UID + "_",""));
                         this.handleACItemHover(indexOfSelected);
                     }
                 });
@@ -420,7 +420,7 @@ export default Vue.extend({
 
         getTypeOfSelected(id: string): ("function" | "module" | "variable" | "type")[] {
             // We start by getting the index
-            const indexOfSelected = parseInt(id.replace(this.UIID + "_",""));
+            const indexOfSelected = parseInt(id.replace(this.UID + "_",""));
             // Here we are making all the ACresult objects in a flatten array (with contact.apply()) in which we are then finding the selected and return its type
             return ((([] as IndexedAcResult[]).concat.apply([], Object.values(this.resultsToShow))).find((e)=>e.index==indexOfSelected) as IndexedAcResult)?.type ?? [];
         },

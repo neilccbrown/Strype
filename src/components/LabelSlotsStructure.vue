@@ -39,7 +39,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getFrameLabelSlotsStructureUIID, getLabelSlotUIID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUIID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText } from "@/helpers/editor";
+import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText } from "@/helpers/editor";
 import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
@@ -75,7 +75,7 @@ export default Vue.extend({
         ...mapStores(useStore),
 
         labelSlotsStructDivId(): string {
-            return getFrameLabelSlotsStructureUIID(this.frameId, this.labelIndex);
+            return getFrameLabelSlotsStructureUID(this.frameId, this.labelIndex);
         },
 
         subSlots(): FlatSlotBase[] {
@@ -150,7 +150,7 @@ export default Vue.extend({
                 
                     const focusSlotInfos = this.focusSlotCursorInfos.slotInfos;
                     const focusSlotCursorPos = this.focusSlotCursorInfos.cursorPos;
-                    const focusInputSpan = document.getElementById(getLabelSlotUIID(focusSlotInfos)) as HTMLSpanElement;
+                    const focusInputSpan = document.getElementById(getLabelSlotUID(focusSlotInfos)) as HTMLSpanElement;
                     // That's not just to keep TS happy: the focus span could here be null, when a change of slot type happens
                     if(focusInputSpan){
                         const focusInputSpanContent = focusInputSpan.textContent??"";
@@ -186,11 +186,11 @@ export default Vue.extend({
             return false;
         },
 
-        checkSlotRefactoring(slotUIID: string, stateBeforeChanges: any) {
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment && currentFocusSlotCursorInfos){
-                (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = document.getElementById(getLabelSlotUIID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"";
+                (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"";
                 this.$nextTick(() => setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos));
                 return;
             }
@@ -201,7 +201,7 @@ export default Vue.extend({
             if(labelDiv){ // keep TS happy
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
-                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUIID);
+                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots});
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
@@ -224,7 +224,7 @@ export default Vue.extend({
                                     foundPos = true;
                                     (spanElement as HTMLSpanElement).dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                                     const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
-                                    const cursorInfos = {slotInfos: parseLabelSlotUIID(spanElement.id), cursorPos: pos};
+                                    const cursorInfos = {slotInfos: parseLabelSlotUID(spanElement.id), cursorPos: pos};
 
                                     // We also check here if the changes trigger the conversion of a function call frame to a varassign frame (i.e. a funccall frame contains a variable assignment).
                                     // If the parsed code slot structure results in having a first operator (except empty, dot and comma) equals to "=" then we convert, being in a label slot structure of index 0.
@@ -313,7 +313,7 @@ export default Vue.extend({
             }
             
             if(this.appStore.focusSlotCursorInfos){
-                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                     ?.dispatchEvent(new KeyboardEvent(event.type, {
                         key: event.key,
                         altKey: event.altKey,
@@ -342,7 +342,7 @@ export default Vue.extend({
             if (event.clipboardData && this.appStore.focusSlotCursorInfos) {
                 // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
                 const content = event.clipboardData.getData("Text");
-                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                     ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: content}));
             }
         },        
@@ -351,7 +351,7 @@ export default Vue.extend({
             // Because the event handling, it is easier to deal with the left/right arrow at this component level.
             if(this.appStore.focusSlotCursorInfos){
                 const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;
-                const spanInput = document.getElementById(getLabelSlotUIID(slotInfos)) as HTMLSpanElement;
+                const spanInput = document.getElementById(getLabelSlotUID(slotInfos)) as HTMLSpanElement;
                 const spanInputContent = spanInput.textContent ?? "";
                 const isCommentFrame = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment);
 
@@ -415,7 +415,7 @@ export default Vue.extend({
             this.appStore.ignoreKeyEvent = false;
             if(this.appStore.focusSlotCursorInfos && this.appStore.focusSlotCursorInfos.slotInfos.frameId == this.frameId 
                 && this.appStore.focusSlotCursorInfos.slotInfos.labelSlotsIndex == this.labelIndex){
-                document.getElementById(getLabelSlotUIID(this.appStore.focusSlotCursorInfos.slotInfos))
+                document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                     ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
             }
 

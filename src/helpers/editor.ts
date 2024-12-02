@@ -1,11 +1,14 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import Vue from "vue";
-import { getAboveFrameCaretPosition, getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
+import html2canvas, { Options } from "html2canvas";
+import CaretContainer from "@/components/CaretContainer.vue";
+import { vm } from "@/main";
+import Vue from "vue";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -43,11 +46,11 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
     {actionName: FrameContextMenuActionName.delete, mainKey: "delete"},
 ];
 
-export function getFrameContainerUIID(frameId: number): string {
+export function getFrameContainerUID(frameId: number): string {
     return "FrameContainer_" + frameId;
 }
 
-export function getFrameBodyUIID(frameId: number): string {
+export function getFrameBodyUID(frameId: number): string {
     return "frameBodyId_" + frameId;
 }
 
@@ -59,22 +62,22 @@ export function getJointFramesRef(): string {
     return "jointFrames";
 }
 
-export function getFrameUIID(frameId: number): string{
+export function getFrameUID(frameId: number): string{
     return "frame_id_" + frameId;
 }
 
-export function getFrameHeaderUIID(frameId: number): string{
-    // Change parseFrameHeaderUIID and isElementUIIDFrameHeaderDiv if this changes
+export function getFrameHeaderUID(frameId: number): string{
+    // Change parseFrameHeaderUID and isElementUIDFrameHeaderDiv if this changes
     return "frameHeader_" + frameId;
 }
 
-export function parseFrameHeaderUIID(frameHeaderUIID: string): number{
-    // Cf. getFrameHeaderUIID for the ID template
-    return parseInt(frameHeaderUIID.substring(frameHeaderUIID.indexOf("_") + 1));
+export function parseFrameHeaderUID(frameHeaderUID: string): number{
+    // Cf. getFrameHeaderUID for the ID template
+    return parseInt(frameHeaderUID.substring(frameHeaderUID.indexOf("_") + 1));
 }
 
-export function isElementUIIDFrameHeader(frameHeaderUIID: string): boolean {
-    return frameHeaderUIID.match(/^frameHeader_(-?\d+)$/) != null;
+export function isElementUIDFrameHeader(frameHeaderUID: string): boolean {
+    return frameHeaderUID.match(/^frameHeader_(-?\d+)$/) != null;
 }
 
 export function getAppSimpleMsgDlgId(): string {
@@ -85,17 +88,21 @@ export function getImportDiffVersionModalDlgId(): string {
     return "importDiffVersionModalDlg";
 }
 
-function retrieveFrameIDfromUIID(uiid: string): number {
-    return parseInt(uiid.substring("frame_id_".length));
-}
-
+const frameUIDRegex = /^frame_id_(\d+)$/;
 export function isIdAFrameId(id: string): boolean {
-    return id.match(/^frame_id_\d+$/) !== null;
+    return id.match(frameUIDRegex) !== null;
 }
 
-const labelSlotUIIDRegex = /^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
-export function getLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
-    // If a change is done in this method, also update isElementLabelSlotInput() and parseLabelSlotUIID()
+// Parse a frameUID to retrieve the frame ID. 
+// As finding the match against the regex may fail, we need a fallout value: -100;
+export function parseFrameUID(frameUID: string): number {
+    const frameUIDMatch = frameUID.match(frameUIDRegex);
+    return (frameUIDMatch) ? parseInt(frameUIDMatch[1]) : -100;
+}
+
+const labelSlotUIDRegex = /^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
+export function getLabelSlotUID(slotCoreInfos: SlotCoreInfos): string {
+    // If a change is done in this method, also update isElementLabelSlotInput() and parseLabelSlotUID()
     // For explanation about the slotID format, see generateFlatSlotBases() in storeMethods.ts
     // note: slotype is an enum value, which is rendered as an octal 4 digits value (eg "0010")
     const intermediateFormattedType = "000" + slotCoreInfos.slotType.toString(8);
@@ -104,15 +111,15 @@ export function getLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
 }
 
 
-export function parseLabelSlotUIID(uiid: string): SlotCoreInfos {
-    // Cf. getLabelSlotUIID() for the format
+export function parseLabelSlotUID(UID: string): SlotCoreInfos {
+    // Cf. getLabelSlotUID() for the format
     const res: SlotCoreInfos = {frameId: -100, labelSlotsIndex: -1, slotId: "", slotType: SlotType.code };
-    const uiidMatch = uiid.match(labelSlotUIIDRegex);
-    if(uiidMatch){
-        res.frameId = parseInt(uiidMatch[1]);
-        res.labelSlotsIndex = parseInt(uiidMatch[2]);
-        res.slotId = uiidMatch[4];
-        res.slotType = parseInt(uiidMatch[3], 8);
+    const UIDMatch = UID.match(labelSlotUIDRegex);
+    if(UIDMatch){
+        res.frameId = parseInt(UIDMatch[1]);
+        res.labelSlotsIndex = parseInt(UIDMatch[2]);
+        res.slotId = UIDMatch[4];
+        res.slotType = parseInt(UIDMatch[3], 8);
     }
     return res;
 }
@@ -121,15 +128,15 @@ export function isElementLabelSlotInput(element: EventTarget | null): boolean{
     if(!(element instanceof HTMLSpanElement)){
         return false;
     }
-    // Cf. getLabelSlotUIID() for the format
-    return (element as HTMLSpanElement).id.match(labelSlotUIIDRegex) != null;
+    // Cf. getLabelSlotUID() for the format
+    return (element as HTMLSpanElement).id.match(labelSlotUIDRegex) != null;
 }
 
 export function isElementEditableLabelSlotInput(element: EventTarget | null): boolean{
     if(!(element instanceof HTMLSpanElement)){
         return false;
     }
-    // Cf. getLabelSlotUIID() for the format
+    // Cf. getLabelSlotUID() for the format
     const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_\\d+_label_\\d+_slot_000(\\d)_\\d+(,\\d+)*$");
     return regexMatch != null && parseInt(regexMatch[1]) < 8;
 }
@@ -138,11 +145,11 @@ export function isLabelSlotEditable(type: SlotType): boolean {
     return !isSlotBracketType(type) && !isSlotQuoteType(type) && type != SlotType.operator;
 }
 
-export function getACLabelSlotUIID(slotCoreInfos: SlotCoreInfos): string {
-    return getLabelSlotUIID(slotCoreInfos) + "_AutoCompletion";
+export function getACLabelSlotUID(slotCoreInfos: SlotCoreInfos): string {
+    return getLabelSlotUID(slotCoreInfos) + "_AutoCompletion";
 }
 
-export function getAddFrameCmdElementUIID(commandType: string): string {
+export function getAddFrameCmdElementUID(commandType: string): string {
     return "addFrameCmd_" + commandType;
 }
 
@@ -160,7 +167,7 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     return caretPos;
 }
 
-export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: string): {selectionStart: number, selectionEnd: number} {
+export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string): {selectionStart: number, selectionEnd: number} {
     // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boudary values for the given slot
     const focusCursorInfos = useStore().focusSlotCursorInfos;
     const anchorCursorInfos = useStore().anchorSlotCursorInfos;
@@ -179,7 +186,7 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: strin
             }
             else{
                 // the anchor is somewhere after the focus cursor: the selection end is at the end of the slot
-                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUIID) as HTMLSpanElement).textContent?.length??0};
+                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.length??0};
             }
         }
     }
@@ -189,8 +196,8 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUIID: strin
 }
 
 export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCursorInfos: SlotCursorInfos): void{
-    const anchorElement = document.getElementById(getLabelSlotUIID(anchorCursorInfos.slotInfos));
-    const focusElement = document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos));
+    const anchorElement = document.getElementById(getLabelSlotUID(anchorCursorInfos.slotInfos));
+    const focusElement = document.getElementById(getLabelSlotUID(focusCursorInfos.slotInfos));
     if(anchorElement && focusElement){
         // Before doing the selection, we make sure that we can use the given slot cursor infos:
         // when a slot is empty, the span element doesn't have a firstChild attribute. In this case,
@@ -216,28 +223,28 @@ export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCu
     }    
 }
 
-export function getFrameLabelSlotsStructureUIID(frameId: number, labelIndex: number): string{
+export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: number): string{
     return "labelSlotsStruct" + frameId + "_"  + labelIndex;
 }
 
 // Helper method to retrieve the literal python code from a frame label structure UI
 // frameLabelStruct: the HTML element representing the current frame label structure
-// currentSlotUIID: the HTML id for the current editable slot we are in
-// delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UIID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUIID: string, delimiters?: {startSlotUIID: string, stopSlotUIID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
+// currentSlotUID: the HTML id for the current editable slot we are in
+// delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UID and stop is exclusive
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
     frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
-        if(delimiters && (delimiters.startSlotUIID == spanElement.id || delimiters.stopSlotUIID == spanElement.id)){
+        if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
         if(!ignoreSpan) {
             // The code is extracted from the span; if requested, we only transform the string quotes to have a clear context to refer to in the parser, regardless the content of the strings
             // (so for example, if in the string slot a used typed "test\" (without double quotes!), the parsing would not be disturbed by the non terminating escaping "\" at the end)
-            const labelSlotCoreInfos = parseLabelSlotUIID(spanElement.id);
+            const labelSlotCoreInfos = parseLabelSlotUID(spanElement.id);
             if(isSlotQuoteType(labelSlotCoreInfos.slotType)){
                 hasStringSlots = true;
                 switch(spanElement.textContent){
@@ -259,7 +266,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 uiLiteralCode += (spanElement.textContent);
             }
         
-            if(spanElement.id === currentSlotUIID){
+            if(spanElement.id === currentSlotUID){
                 focusSpanPos += (useStore().focusSlotCursorInfos?.cursorPos??0);     
                 foundFocusSpan = true;
             }
@@ -270,7 +277,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
                 const spanElementContentLength = (spanElement.textContent?.length??0);
-                const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUIID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
+                const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
                 if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
                     // Reinsert the spaces in the literal code
@@ -319,15 +326,15 @@ export function checkCanReachAnotherCommentLine(isCommentFrame: boolean, isArrow
     return false;
 }
 
-export function getFrameContextMenuUIID(frameUIID: string): string {
-    return frameUIID + "_frameContextMenu";
+export function getFrameContextMenuUID(frameUID: string): string {
+    return frameUID + "_frameContextMenu";
 }
 
-export function getCodeEditorUIID(): string {
-    return getFrameContainerUIID(useStore().getMainCodeFrameContainerId);
+export function getCodeEditorUID(): string {
+    return getFrameContainerUID(useStore().getMainCodeFrameContainerId);
 }
 
-export function getCaretUIID(caretAssignedPosition: string, frameId: number): string {
+export function getCaretUID(caretAssignedPosition: string, frameId: number): string {
     return "caret_"+caretAssignedPosition+"_"+frameId;
 }
 
@@ -335,15 +342,15 @@ export function getCaretContainerRef(): string {
     return "caretContainer";
 }
 
-export function getCommandsContainerUIID(): string {
+export function getCommandsContainerUID(): string {
     return "editorCommands";
 }
 
-export function getEditorMenuUIID(): string {
+export function getEditorMenuUID(): string {
     return "showHideMenu";
 } 
 
-export function getMenuLeftPaneUIID(): string {
+export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
@@ -359,7 +366,7 @@ export function getSaveAsProjectModalDlg():string {
     return "save-strype-project-modal-dlg";
 }
 
-export function getEditorMiddleUIID(): string {
+export function getEditorMiddleUID(): string {
     return "editorCodeDiv";
 }
 
@@ -417,7 +424,7 @@ export function adjustContextMenuPosition(event: MouseEvent, contextMenu: HTMLEl
             contextMenu.style.top = newMenuTopPosition+"px";
         }
     }
-    else if(event.pageY + contextMenu.getBoundingClientRect().height > (document.getElementById(getEditorMiddleUIID())?.getBoundingClientRect().height??0)){
+    else if(event.pageY + contextMenu.getBoundingClientRect().height > (document.getElementById(getEditorMiddleUID())?.getBoundingClientRect().height??0)){
         const newMenuTopPosition = event.pageY - contextMenu.getBoundingClientRect().height;
         contextMenu.style.top = newMenuTopPosition+"px";
     }
@@ -465,10 +472,21 @@ export function checkEditorCodeErrors(): void{
     const erroneousHTMLElements = [...document.getElementsByClassName("error"), ...document.getElementsByClassName("errorSlot")];
     if(erroneousHTMLElements.length > 0){
         for(const erroneousHTMLElement of erroneousHTMLElements) {
-            if(erroneousHTMLElement.classList.contains("labelSlot-input") || erroneousHTMLElement.classList.contains("frame-header")){
+            if(erroneousHTMLElement.classList.contains("labelSlot-input") || erroneousHTMLElement.classList.contains("frame-header") || erroneousHTMLElement.classList.contains("frameDiv")){
                 errorHTMLElements.push(erroneousHTMLElement as HTMLElement);
             }
         }
+
+        // The elements NEED to be in order so we can navigate through them.
+        // In other words, we sort out the elements based on their vertical position first, then horizontal position.
+        errorHTMLElements.sort((el1, el2) => {
+            if(el1.getBoundingClientRect().y != el2.getBoundingClientRect().y){
+                return el1.getBoundingClientRect().y - el2.getBoundingClientRect().y;
+            }
+            else{
+                return el1.getBoundingClientRect().x - el2.getBoundingClientRect().x;
+            }
+        });
     }
 }
 
@@ -494,10 +512,10 @@ export function hasEditorCodeErrors(): boolean {
 }
 
 export function hasPrecompiledCodeError(): boolean {
-    return hasEditorCodeErrors() && !errorHTMLElements?.some((element) => isElementUIIDFrameHeader(element.id));                                                                    
+    return hasEditorCodeErrors() && !errorHTMLElements?.some((element) => isElementUIDFrameHeader(element.id));                                                                    
 }
 
-// This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot an frame header)
+// This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot in frame header or a frame)
 // We return the "full" index (of the error list) if the current position is ON an error, otherwise "semi" indexes that will allow navigating the errors properly:
 // for example if the current position is before the first error, the index is -0.5 so we can still go down and reach error indexed 0
 export function getNearestErrorIndex(): number {
@@ -509,14 +527,23 @@ export function getNearestErrorIndex(): number {
     const errorsElmtIds = (errorHTMLElements as HTMLElement[]).flatMap((elmt) => elmt.id);
     const isEditing = useStore().isEditing;
 
-    // Get the slot currently being edited: we check first if that's one of the error so it would be a "real" index of the error array
+    // Three situations can happen: we have an error in a slot (the most common case) or we have an error for the whole frame
+    // (this is rare but can happen, for example in the situation of a wrongly constructed "try" structure (TP error)).
+
+    // Get the slot currently being edited OR the current caret position : we check first if that's one of the error so it would be a "real" index of the error array
     // if it's not, then we'll find in between which 2 errors we're in and use a "semi" index
+    const currentFrame = useStore().currentFrame;
     const currentFocusedElementId = (isEditing && useStore().focusSlotCursorInfos != undefined) 
-        ? getLabelSlotUIID(useStore().focusSlotCursorInfos?.slotInfos as SlotCoreInfos) 
-        : getCaretUIID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
+        ? getLabelSlotUID(useStore().focusSlotCursorInfos?.slotInfos as SlotCoreInfos) 
+        : getCaretUID(currentFrame.caretPosition, currentFrame.id);
+    const belowCurrentCaretFrameId = (!isEditing) ? getFrameBelowCaretPosition({frameId: currentFrame.id, caretPosition: currentFrame.caretPosition, isSlotNavigationPosition: false}) : null;
     // Case 1: we are in a slot that is erroneous, or in a slot of an erroneous frame
-    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUIID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number)))){
-        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUIID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number));
+    if(errorsElmtIds.includes(currentFocusedElementId) || (isEditing && errorsElmtIds.includes(getFrameHeaderUID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number)))){
+        return errorsElmtIds.indexOf((errorsElmtIds.includes(currentFocusedElementId)) ? currentFocusedElementId : getFrameHeaderUID(useStore().focusSlotCursorInfos?.slotInfos.frameId as number));
+    }
+    // Case 2: we are not editing and the caret position is above an erroneous frame (by convention)
+    else if(!isEditing && belowCurrentCaretFrameId && errorsElmtIds.includes(getFrameUID(belowCurrentCaretFrameId))) {
+        return errorsElmtIds.indexOf(getFrameUID(belowCurrentCaretFrameId));
     }
     else{
         // Case 2: not in an error, we find out our relative position to the list of errors
@@ -525,23 +552,33 @@ export function getNearestErrorIndex(): number {
         const allPosIndexes:number[] = [];
         [...errorsElmtIds, currentFocusedElementId].forEach((elementId) => {
             const isElementEditableSlot = isElementEditableLabelSlotInput(document.getElementById(elementId));
-            const isElementFrameHeader = isElementUIIDFrameHeader(elementId);
+            const isElementFrameHeader = isElementUIDFrameHeader(elementId);
+            const isElementWholeFrame = isIdAFrameId(elementId);
             // Look the position of a slot (an error or the currently focused slot, or the first slot of an erroneous frame)
             if(isElementEditableSlot || isElementFrameHeader){
                 const slotInfos: SlotCoreInfos = (isElementEditableSlot) 
-                    ? parseLabelSlotUIID(elementId)
-                    : {frameId: parseFrameHeaderUIID(elementId), slotId: "0", labelSlotsIndex: 0, slotType: SlotType.code};
+                    ? parseLabelSlotUID(elementId)
+                    : {frameId: parseFrameHeaderUID(elementId), slotId: "0", labelSlotsIndex: 0, slotType: SlotType.code};
                 allPosIndexes.push(allCaretPositions.findIndex((navPos) => navPos.isSlotNavigationPosition && navPos.frameId == slotInfos.frameId 
-                && navPos.labelSlotsIndex == slotInfos.labelSlotsIndex && navPos.slotId == slotInfos.slotId 
-                && navPos.slotType == slotInfos.slotType));
+                    && navPos.labelSlotsIndex == slotInfos.labelSlotsIndex && navPos.slotId == slotInfos.slotId 
+                    && navPos.slotType == slotInfos.slotType));
+            }
+            else if(isElementWholeFrame){
+                // Get the caret position above the frame - if that frame still exists !
+                // (when deleting it from the body, the frame may be gone but the errors still not updated)
+                const frameId = parseFrameUID(elementId);
+                const caretPosAbove = getAboveFrameCaretPosition(frameId);
+                if(caretPosAbove) {
+                    allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == caretPosAbove.frameId && navPos.caretPosition == caretPosAbove.caretPosition));
+                }
             }
             // Look for the position of the current focused blue caret (because if we have an element that is the caret it can only be the current blue caret, there is no errors on a blue caret...)
             else{
-                allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == useStore().currentFrame.id && navPos.caretPosition == useStore().currentFrame.caretPosition));
+                allPosIndexes.push(allCaretPositions.findIndex((navPos) => !navPos.isSlotNavigationPosition && navPos.frameId == currentFrame.id && navPos.caretPosition == currentFrame.caretPosition));
             }
         });
         
-        // If we are not editing, we add the position of the caret at the end of the array (since we would have skipped pushing a value as currentFocusedElementId would be empty)
+        // Now we can find the relative position of the current position with regards to the errors' positions
         const currentFocusedPosIndex = allPosIndexes.pop() as number;
         if(currentFocusedPosIndex < allPosIndexes[0]){
             return -0.5;
@@ -562,6 +599,25 @@ export function getNearestErrorIndex(): number {
 // unless conflicts are clearly impossible.
 export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
+        " ": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+            description: i18n.t("frame.funccall_desc") as string,
+            shortcuts: [" "],
+            tooltip:i18n.t("frame.funccall_detail") as string,
+            symbol: i18n.t("buttonLabel.spaceBar") as string,
+        }],
+        "=": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.varassign),
+            description: i18n.t("frame.varassign_desc") as string,
+            tooltip:i18n.t("frame.varassign_detail") as string,
+            shortcuts: ["="],
+        }],
+        "g": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.global),
+            description: "global",
+            tooltip: i18n.t("frame.global_detail") as string,
+            shortcuts: ["g"],
+        }],
         "i": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.if),
@@ -619,6 +675,12 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.while_detail") as string,
             shortcuts: ["w"],
         }],
+        "r": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.return),
+            description: "return",
+            tooltip:i18n.t("frame.return_detail") as string,
+            shortcuts: ["r"],
+        }],
         "b" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.break),
             description: "break",
@@ -631,18 +693,11 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.continue_detail") as string,
             shortcuts: ["u"],
         }],
-        "=": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.varassign),
-            description: i18n.t("frame.varassign_desc") as string,
-            tooltip:i18n.t("frame.varassign_detail") as string,
-            shortcuts: ["="],
-        }],
-        " ": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-            description: i18n.t("frame.funccall_desc") as string,
-            shortcuts: [" "],
-            tooltip:i18n.t("frame.funccall_detail") as string,
-            symbol: "⌴",//"␣"
+        "#": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.comment),
+            description: i18n.t("frame.comment_desc") as string,
+            tooltip:i18n.t("frame.comment_detail") as string,
+            shortcuts: ["#"],
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
@@ -651,29 +706,11 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.blank_detail") as string,
             symbol: "↵",
         }],
-        "r": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.return),
-            description: "return",
-            tooltip:i18n.t("frame.return_detail") as string,
-            shortcuts: ["r"],
-        }],
-        "c": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.comment),
-            description: i18n.t("frame.comment_desc") as string,
-            tooltip:i18n.t("frame.comment_detail") as string,
-            shortcuts: ["c", "#"],
-        }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),
             description: "try",
             tooltip:i18n.t("frame.try_detail") as string,
             shortcuts: ["t"],
-        }],
-        "a" : [{
-            type: getFrameDefType(AllFrameTypesIdentifier.raise),
-            description: "raise",
-            tooltip:i18n.t("frame.raise_detail") as string,
-            shortcuts: ["a"],
         }],
         "x": [{
             type: getFrameDefType(AllFrameTypesIdentifier.except),
@@ -687,17 +724,17 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.finally_detail") as string,
             shortcuts: ["n"],
         }],
+        "a" : [{
+            type: getFrameDefType(AllFrameTypesIdentifier.raise),
+            description: "raise",
+            tooltip:i18n.t("frame.raise_detail") as string,
+            shortcuts: ["a"],
+        }],
         "h": [{
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
             tooltip:i18n.t("frame.with_detail") as string,
             shortcuts: ["h"],
-        }],
-        "g": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.global),
-            description: "global",
-            tooltip: i18n.t("frame.global_detail") as string,
-            shortcuts: ["g"],
         }],
     };
 
@@ -768,96 +805,242 @@ export function getFunctionCallDefaultText(frameId: number): string {
         return frameToCheck.frameType.labels[0].defaultText;
     }
     return "\u200b";
-} 
+}
+
+export function getHTML2CanvasFramesSelectionCropOptions(targetFrameId: number): {x: number, y: number, width: number, height: number} {
+    // We look for the position of the first and last selected items to crop the image of the container to the selection
+    const selectionParentFrameX = (document.getElementById(getFrameUID(targetFrameId))?.getBoundingClientRect().x)??0;
+    const selectionParentFrameY = (document.getElementById(getFrameUID(targetFrameId))?.getBoundingClientRect().y)??0;
+    const firstSelectedFrameX = (document.getElementById(getFrameUID(useStore().selectedFrames[0]))?.getBoundingClientRect().x)??0;
+    const firstSelectedFrameY = (document.getElementById(getFrameUID(useStore().selectedFrames[0]))?.getBoundingClientRect().y)??0;
+    const lastSelectedFrameRight = (document.getElementById(getFrameUID(useStore().selectedFrames.at(-1) as number))?.getBoundingClientRect().right)??0;
+    const lastSelectedFrameBottom = (document.getElementById(getFrameUID(useStore().selectedFrames.at(-1) as number))?.getBoundingClientRect().bottom)??0;
+    return {x: (firstSelectedFrameX - selectionParentFrameX),
+        y: (firstSelectedFrameY - selectionParentFrameY), 
+        width: (lastSelectedFrameRight - firstSelectedFrameX),
+        height: (lastSelectedFrameBottom - firstSelectedFrameY)};
+}
 
 /**
  * Used for easing handling events for drag & drop of frames
  **/
-let currentDraggedSingleFrameId = 0;
-export function getDraggedSingleFrameId(): number {
-    return currentDraggedSingleFrameId;
+
+const companionCanvasId = "StrypeFrameCompanionDnDCanvas";
+export function getCompanionDndCanvasId(): string {
+    return companionCanvasId;
 }
 
-// This flag informs if a drag resulted in a change in the frames order
-// (i.e. a drop occured somewhere else, or as if the action had been "cancelled")
-// We need to know that to show the caret as it was if the frames order didn't change
-let isDragChangingOrder = false; 
-export function setIsDraggedChangingOrder(changedOrder: boolean): void{
-    isDragChangingOrder = changedOrder;
-}
+// This variable keeps a reference of the single frame being dragged, if any.
+// When a selection of frames is being dragged, this value is undefined. 
+// This is a crucial variable allowing us to distinguish which situation mentioned above
+// we are in -- we can't rely on the store property "selectedFrames" because it is possible
+// that a frame selection exists, but the user drags a single frame that's not IN the selection.
+let currentDraggedSingleFrameId: number | undefined = undefined;
 
-export function handleDraggingCursor(showDraggingCursor: boolean, isTargetGroupAllowed: boolean):void {
-    // This function assign the cursor we want to be shown while dragging.
-    // It is set to the html element as mentioned here https://github.com/SortableJS/Sortable/issues/246
-    // We use a "shadow" draggable root element at the editor's level so we can handle the cursor when
-    // the dragging is getting outside the code's draggable zones (e.g. frame body). The drawback of that
-    // is that we show a cursor suggesting we can drop somewhere even if the draggable zone isn't able to
-    // receive the frame(s). However, the purple cursor and snapped frame at destination will still not be
-    // be shown if the frame(s) cannot be dropped. That's the best compromise if we cant to override the 
-    // default browser's drag&drop cursors.
-    const htmlElementClassList = document.getElementsByTagName("html")[0].classList;
-    if(!showDraggingCursor){
-        htmlElementClassList.remove("dragging-frame-allowed");
-        htmlElementClassList.remove("dragging-frame-not-allowed");
+// We keep a local variable representing the available caret positions so that we don't need
+// to regenerate that list every time the mouse is moved... The list won't change during a DnD!
+let currentCaretPositionsForDnD: NavigationPosition[] = [];
+let currentCaretDropPosId = "", currentCaretDropPosFrameId: number, currentCaretDropPosCaretPos: CaretPosition, 
+    newCaretDropPosFrameId: number, newCaretDropPosCaretPos: CaretPosition;
+
+const companionImgScalingRatio = 0.75;
+
+const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
+    if(useStore().isDraggingFrame){
+        const caretHeight = Number.parseInt(scssVars.caretHeightValue);
+        // Update the companion "image" (canvas) near the mouse pointer
+        const companionCanvas = document.getElementById(companionCanvasId);
+        if(companionCanvas){
+            companionCanvas.style.left = mouseEvent.clientX + "px";
+            companionCanvas.style.top = mouseEvent.clientY + "px";
+        }
+
+        // If we are outside the bounds of viewport*, we scroll the editor to make sure users can access hidden parts.
+        // (*) actually a vertical distance to the edges + frame caret height
+        if(mouseEvent.clientY < caretHeight){
+            // Scroll up
+            document.getElementById(getEditorMiddleUID())?.scrollBy(0,-20);
+        }
+        else if(mouseEvent.clientY >  (document.getElementsByTagName("body")[0].clientHeight - caretHeight)){
+            // Scroll down
+            document.getElementById(getEditorMiddleUID())?.scrollBy(0,20);
+        }
+
+        // Check which caret position is the nearest to indicate drop position
+        // (which can be allowed or not) on the vertical axis only.
+        let closestCaretPositionIndex = -1, minVerticalDist = Number.MAX_VALUE;
+        currentCaretPositionsForDnD.every((navigationPos, index) => {
+            const caretEl = document.getElementById(getCaretUID(navigationPos.caretPosition as string, navigationPos.frameId));
+            const caretBox = caretEl?.getBoundingClientRect() as DOMRect;
+            const caretYTopPos = (caretBox.height > 0) ? caretBox.y : caretBox.y - Number.parseInt(scssVars.caretHeightValue) / 2;
+            const caretYBottompPos = (caretBox.height > 0) ? caretBox.y + caretBox.height : caretBox.y + Number.parseInt(scssVars.caretHeightValue) / 2;
+            const verticalDist = (mouseEvent.y <= caretYTopPos)
+                ?   caretYTopPos - mouseEvent.y
+                : mouseEvent.y - caretYBottompPos;
+            if(verticalDist < minVerticalDist){
+                minVerticalDist = verticalDist;
+                closestCaretPositionIndex = index;
+                newCaretDropPosFrameId = navigationPos.frameId;
+                newCaretDropPosCaretPos = navigationPos.caretPosition as CaretPosition;
+            }
+            if(verticalDist > minVerticalDist){
+                // We've passed the closest caret, exit..
+                return false;
+            }
+            return true;
+        });
+        if(closestCaretPositionIndex > -1 && (currentCaretDropPosFrameId != newCaretDropPosFrameId || currentCaretDropPosCaretPos != newCaretDropPosCaretPos)){
+            const closestCaretEl = document.getElementById(getCaretUID(currentCaretPositionsForDnD[closestCaretPositionIndex].caretPosition as string, currentCaretPositionsForDnD[closestCaretPositionIndex].frameId));
+            // First remove the drop indicator of the current drop position (if any)
+            if(currentCaretDropPosId.length > 0){
+                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
+                // Not really required but just better to reset things properly
+                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+            }
+            currentCaretDropPosId = closestCaretEl?.id??"";
+            currentCaretDropPosFrameId = newCaretDropPosFrameId;
+            currentCaretDropPosCaretPos = newCaretDropPosCaretPos;
+            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = true;
+            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = 
+                isFrameDropAllowed(newCaretDropPosFrameId, newCaretDropPosCaretPos);
+        }
     }
-    else if(isTargetGroupAllowed&& !htmlElementClassList.contains("dragging-frame-allowed")){
-        htmlElementClassList.add("dragging-frame-allowed");
-        htmlElementClassList.remove("dragging-frame-not-allowed");
+};
+
+// We need to also look for the mouseup event during Drag and Drop as we only let the browser handling "dragstart",
+// there is no "dragend" being raised by the browser consequently.
+const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
+    if(useStore().isDraggingFrame){
+        const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
+        // Notify the drag even is finished
+        notifyDragEnded();
+
+        // Drop the frame at the current drop caret location only if drop is allowed
+        if(areDropFramesAllowed){
+            // We either reorder the frames (most commont drag and drop case) OR add a copy if the drop is made with the ctrl or option keys held.
+            if(event.ctrlKey || event.altKey){
+                if(currentDraggedSingleFrameId){
+                    useStore().doCopyFrame(currentDraggedSingleFrameId);
+                    useStore().pasteFrame({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
+                }
+                else{
+                    useStore().doCopySelection();
+                    useStore().pasteSelection({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
+                }
+            }
+            else {
+                useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
+            }
+        }
+
+        // Reset the caret drop ID
+        currentCaretDropPosId = "";
     }
-    else if(!isTargetGroupAllowed && !htmlElementClassList.contains("dragging-frame-not-allowed")){
-        htmlElementClassList.remove("dragging-frame-allowed");
-        htmlElementClassList.add("dragging-frame-not-allowed");
-    }
+};
+
+function isFrameDropAllowed(destCaretFrameId: number, destCaretPos: CaretPosition): boolean {
+    // We can drop frames at a given caret location if the frame or first level of frames being dragged are allowed at the given position:
+    // if the caret is at body, that's relative to the containing frame, and if it's at below, it's relative to the parent.
+    const topLevelDraggedFrameIds = (currentDraggedSingleFrameId) ? [currentDraggedSingleFrameId] : useStore().selectedFrames;
+    const destinationFrameContainer = useStore().frameObjects[(destCaretPos == CaretPosition.body) ? destCaretFrameId : useStore().frameObjects[destCaretFrameId].parentId]; 
+    return !topLevelDraggedFrameIds.some((topLevelDraggedFrameId) => destinationFrameContainer.frameType.forbiddenChildrenTypes.includes(useStore().frameObjects[topLevelDraggedFrameId].frameType.type));
 }
 
 export function notifyDragStarted(frameId?: number):void {
-    // If the argument "frameId" is set, the drag and drop is done on a single frame
-    // so we set currentDraggedSingleFrameId
+    const renderingCanvas = document.getElementById(companionCanvasId) as HTMLCanvasElement;
+    let html2canvasOptions: Partial<Options> = {backgroundColor: null, canvas: renderingCanvas, scale: companionImgScalingRatio};
+    // If we move a single frame, we keep a reference of it, and set undefinfed if not (see variable definition)
+    currentDraggedSingleFrameId = frameId;
     if(frameId){
-        currentDraggedSingleFrameId = frameId;
+        const frameElRect = document.getElementById(getFrameUID(frameId))?.getBoundingClientRect();
+        if(frameElRect){
+            renderingCanvas.width = frameElRect.width * companionImgScalingRatio;
+            renderingCanvas.height = frameElRect.height * companionImgScalingRatio;
+        } 
+        // Set the "being dragged flag" for this frame -- as the object property is option, we need to use 
+        // Vue.set() to ensure reactivity works on frame objects where isBeingDragged is not definged
+        Vue.set(useStore().frameObjects[frameId],"isBeingDragged",true);
+        // If the we are dragging a single frame and that frame is a comment, there is a small issue with
+        // the companion image: the background will be transparent (as the frame's) so to make it visually
+        // easier to see, we retrieve the dragged frame parent's body background to set it in the companion image.
+        if(useStore().frameObjects[frameId].frameType.type == AllFrameTypesIdentifier.comment){
+            const parentId = useStore().frameObjects[frameId].parentId;
+            const commentBackgroundColor = (parentId == useStore().getImportsFrameContainerId || parentId == useStore().getFuncDefsFrameContainerId)
+                ? scssVars.nonMainCodeContainerBackground
+                : scssVars.mainCodeContainerBackground;
+            html2canvasOptions.backgroundColor = commentBackgroundColor;
+        }
     }
-
-    //Update the handling of the cursor during drag and drop
-    handleDraggingCursor(true, true);
-
-    // Update the store about dragging started
-    useStore().isDraggingFrame = true;
-} 
-export function notifyDragEnded(draggedHTMLElement: HTMLElement):void {
-    // Regardless we moved 1 or several frames at once, we reset currentDraggedSingleFrameId
-    currentDraggedSingleFrameId = 0;
-
-    // Retrieve the id of the frame dragged or of the top frame from the frames dragged.
-    // We find it by retrieving the first frame div id of dragged HTML object given as argument of this function
-    const subHTMLElementIdsMatches = draggedHTMLElement.innerHTML.matchAll(/ id="([^"]*)"/g);
-    let topFrameId = 0, foundFrameID = false;
-    if(subHTMLElementIdsMatches != null){    
-        [...subHTMLElementIdsMatches].forEach((matchBit) => {
-            if(!foundFrameID && isIdAFrameId(matchBit[1])){
-                topFrameId = retrieveFrameIDfromUIID(matchBit[1]);
-                foundFrameID = true;
-            }
+    else{
+        // We move a selection, we need to generate a companion image of that selection.
+        // However, there is no container in the DOM that contains the selection stricto sensu,
+        // so we generate the image of the selection's containing frame cropped to the selection.
+        html2canvasOptions = {...html2canvasOptions, ...getHTML2CanvasFramesSelectionCropOptions(useStore().frameObjects[useStore().selectedFrames[0]].parentId)};
+        renderingCanvas.width = (html2canvasOptions.width as number) * companionImgScalingRatio;
+        renderingCanvas.height = (html2canvasOptions.height as number) * companionImgScalingRatio;
+        useStore().selectedFrames.forEach((selectedFrameId) => {
+            Vue.set(useStore().frameObjects[selectedFrameId],"isBeingDragged", true);
         });
     }
-
-    //Update the handling of the cursor during drag and drop
-    handleDraggingCursor(false, false);
     
-    // Update the store about dragging ended 
+    // Set the app-scoped flag that we are dragging a frame/selection of frames.
+    useStore().isDraggingFrame = true;
+
+    // Get the list of current available caret positions: all caret positions, 
+    // except the positions within a selection or within inside the children of a frame that is dragged.
+    // (The position below the dragged frame (or last selected frame) won't a suggested drop position, which is not needed anyway.)
+    const noCaretDropFrameIds: number[] = [];
+    if(frameId){
+        noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(frameId), frameId);
+    }
+    else{
+        useStore().selectedFrames.forEach((selectedFrameId) => noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(selectedFrameId)));
+        noCaretDropFrameIds.push(...useStore().selectedFrames);
+    }
+    currentCaretPositionsForDnD = getAvailableNavigationPositions()
+        .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
+            && !noCaretDropFrameIds.includes(navigationPosition.frameId));
+    // Change the mouse cursor for the whole app
+    document.getElementsByTagName("body")[0]?.classList.add("dragging-frame");
+    // And assign a mouse event event listen to allow companion "image" to follow cursor and detect when the drop is performed
+    (document.getElementsByTagName("body")[0] as HTMLBodyElement).addEventListener("mousemove", bodyMouseMoveEventHandlerForFrameDnD);
+    (document.getElementsByTagName("body")[0] as HTMLBodyElement).addEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
+
+    // Add companion "image" (canvas) to the cursor - we use HTML2Canvas. 
+    // The element to generate an image of is either the frame passed as argument
+    // or the shadow element containing the current selection.
+    const draggingEl = document.getElementById(getFrameUID(frameId??(useStore().frameObjects[useStore().selectedFrames[0]].parentId)));
+    if(draggingEl){
+        html2canvas(draggingEl, html2canvasOptions);
+    }
+}
+
+export function notifyDragEnded():void {
+    // Update the dragging flag
     useStore().isDraggingFrame = false;
+    // Update the "being dragged" frame flag -- as the information about which frames have been dragged 
+    // is potentially already lost at this stage (see mouseup event above), we look for all frames having
+    // the flag set to true and toggle it.
+    Object.values(useStore().frameObjects)
+        .filter((frame) => frame.isBeingDragged)
+        .forEach((frame) => frame.isBeingDragged = false);
 
-    // If the frames order has changed because of the drag & drop, position the blue caret where *visually* the fake caret was positionned.
-    // If the frames order hasn't changed, we restore the current frame caret saved in the store.
-    // NOTE: at this stage, the UI hasn't yet updated the frame order -- so we do this caret selection at the next Vue tick
+    // Remove the styling on body / companion "image" (that we needed to inferer with since we don't use the native Drag and Drop API)
+    const canvas = (document.getElementById(companionCanvasId) as HTMLCanvasElement);
+    (canvas.getContext("2d") as any).reset();
+    (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mousemove", bodyMouseMoveEventHandlerForFrameDnD);
+    (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
+    document.getElementsByTagName("body")[0]?.classList.remove("dragging-frame");
+    if(currentCaretDropPosId.length > 0){
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
+        // Not really required but just better to reset things properly
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+    }
+    // Reset flags in the next tick to let UI update properly
     Vue.nextTick(() => {
-        const newCaretPosition = (isDragChangingOrder) ? getAboveFrameCaretPosition(topFrameId) : {frameId: useStore().currentFrame.id, caretPosition: useStore().currentFrame.caretPosition};
-        
-        // Set the caret properly in the store which will update the editor UI
-        useStore().toggleCaret({id:newCaretPosition.frameId, caretPosition: newCaretPosition.caretPosition as CaretPosition});
-
-        // reset the flag informing if frames have changed order
-        isDragChangingOrder = false;
-    });
+        currentCaretDropPosId = "", currentCaretDropPosFrameId = 0, currentCaretDropPosCaretPos =  CaretPosition.none, 
+        newCaretDropPosFrameId = 0, newCaretDropPosCaretPos = CaretPosition.none;
+    });    
 }
 
 /**
@@ -987,8 +1170,8 @@ export function getSelectionCursorsComparisonValue(): number | undefined {
 
         // Not same frame, return the frame POSITION difference, we can't use ID as they are not indexes
         // We make it "easy" by checking the top position in the browser: frames can't be on a same level...
-        const anchorElement = document.getElementById(getLabelSlotUIID(anchorCursorInfos.slotInfos)) as HTMLSpanElement;
-        const focusElement = document.getElementById(getLabelSlotUIID(focusCursorInfos.slotInfos)) as HTMLSpanElement;
+        const anchorElement = document.getElementById(getLabelSlotUID(anchorCursorInfos.slotInfos)) as HTMLSpanElement;
+        const focusElement = document.getElementById(getLabelSlotUID(focusCursorInfos.slotInfos)) as HTMLSpanElement;
         return (anchorElement.clientTop - focusElement.clientTop);
     }
     

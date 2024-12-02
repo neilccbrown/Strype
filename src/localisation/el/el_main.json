@@ -1,0 +1,81 @@
+{
+  "localeName": "Ελληνικά",
+  "defaultProjName": "Το πρόγραμμα μου",
+  "messageBannerMessage": {
+    "deleteLargeCode": "Διαγράψατε ένα μεγάλο κομμάτι κώδικα. Έαν έγινε καταλάθος μπορείτε να:",
+    "uploadSuccessMicrobit": "Κωδικας μεταφορτόφηκε στο micro:bit",
+    "uploadFailureMicrobit": "Η μεταφόρτοση κώδικα στο micro:bit απέτυχε με μήνημα λάθους \"{errorMsg}\"",
+    "noUndo": "Μή δυνατή αναίρεση.",
+    "noRedo": "Μη δυνταή η επαναφορά.",
+    "uploadEditorFileError": "Συνέβη λάθος κατά την μεταφόρτοση του κώδικα:{errorMsg}. Ο κώδικας σας δεν άλλαξε.",
+    "uploadEditorFileNotSupported": "Μή συμβατός τύπος αρχείου. Αναμενόταν αρχείο με επέκταση: {list}. Ο κώδικας σας δεν άλλαξε.",
+    "uploadEditorFileSuccess": "Ο κώδικας σας μεταφορτόθηκε επιτυχώς!",
+    "functionFrameCantDelete": "Δε μπορείτε να διαγράψετε μια συνάρτηση  εφόσον είναι άδεια, έχοντας τον οριζόντιο δρομέα σε αυτό το σημείο"
+  },
+  "buttonLabel": {
+    "undo": "Αναίρεση",
+    "yes": "Ναι",
+    "no": "Όχι",
+    "ok": "Εντάξει",
+    "sendToMicrobit": "Αποστόλη στο micro:bit",
+    "startCoding": "Ξεκίνα να προγραμματίζεις!",
+    "addCodeExtract": "&larr; Εισαγωγή στον κόδικα",
+    "showMore": "Περισσότερα",
+    "showLess": "Λιγότερα"
+  },
+  "action": {
+    "uploadingToMicrobit": "Μεταφόρτωση στο micro:bit ...",
+    "feedbackLink": "Προτάσεις Βελτίωσης ..."
+  },
+  "errorMessage": {
+    "wrongDataFormat": "Αυτή η μορφή των δεδομένων δεν μπορει να δαβαστεί από το Strype",
+    "stateDataIntegrity": "Τα περιεχόμενα του αρχείου δεν είναι σωστά",
+    "dataNotObject": "Τα δεδομένα δεν περιγράφουν ένα αντικείμενο",
+    "emptyEditableSlot": "Η θέση κειμένουν δεν μπορεί να είναι άδεια",
+    "errorTitle": "Σφάλμα",
+    "errorUserDefinedFuncMsg": "Οι ορισμοί συναρτήσεων σας περιέχουν κάποιο σφάλμα",
+    "errorUserDefinedVarMsg": "Οι ορισμοί μεταβλητών σας περιέχουν κάποιο σφάλμα"
+  },
+  "appMessage": {
+    "editorFileUpload": "Μεταφόρτωση αρχείου στο Strype",
+    "editorConfirmChangeCode": "Ο κώδικας θα χαθεί.",
+    "editorFileUploadWrongVersion": "Ο εισαγώμενος κώδικας προέρχεται απο παλαιότερη έκδοση του Strype.\nΗ εισαγωγή του μπορεί να προκαλέσει σφάλαματα.\nΕπιθυμείτε να συνεχίσετε?",
+    "enableInnerDisabledFrameConfirm": "Αυτή η ενέργεια θα ενεργοποιείσει όλα τα απενεργοποιημένα πλαίσια του κομματιτού στο οποίο ανήκει αυτό το πλαίσιο.\n Επιθυμείται να συνεχίσετε?",
+    "importsContainer": "Εισαγωγές:",
+    "funcDefsContainer": "Ορισμοί Συναρτήσεων:",
+    "mainContainer": "Ο Κώδικας μου:",
+    "preCompiledErrorNeedFix": "Διορθώστε παρώντα σφάλματα πρώτα.",
+    "noWebUSB": "Ο παρών περιηγητής δεν θποστηρίζει συνδέσεις μέσω webUSB. Παρακαλώ δοκιμάστε με Chrome ή Edge.",
+    "emptyCodeError": "The code cannot be empty."
+  },
+  "contextMenu": {
+    "cut": "Αποκοπή",
+    "copy": "Αντιγραφή",
+    "duplicate": "Αντίτυπο",
+    "paste": "Επικόληση",
+    "enable": "Ενεργοποίηση",
+    "disable": "Απενεργοπίηση",
+    "undo": "Αναίρεση",
+    "redo": "Επαναφορά",
+    "delete": "Διαγραφή"
+  },
+  "appMenu": {
+    "downloadHex": "Μετατροπή σε Εξαδικό αρχείο",
+    "downloadPython": "Μετατροπή σε Αρχείο Python",
+    "prefs": "Ρυθμίσεις",
+    "lang": "Γλώσσα: "
+  },
+  "autoCompletion": {
+    "myFunctions": "Συναρτήσεις μου",
+    "myVariables": "Μεταβλητές μου",
+    "importedModules": "Εισαχθείσες δομές"
+  },
+  "commandTabs": {
+    "0": "Add Frame",
+    "1": "Explore micro:bit"
+  },
+  "console": {
+    "run": "Εκτέλεση",
+    "expand": "Μεγέθυνση"
+  }
+}

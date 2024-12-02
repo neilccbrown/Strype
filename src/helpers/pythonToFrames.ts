@@ -92,7 +92,6 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
         jointFrameIds: [],
         jointParentId: 0,
         labelSlotsDict: slots,
-        multiDragPosition: "",
         parentId: 0,
         runTimeError: "",
     };
