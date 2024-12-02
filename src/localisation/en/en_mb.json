@@ -1,4 +1,22 @@
 {
+  "buttonLabel": {
+    "runOnMicrobit": "Run on micro:bit",
+    "sendToMicrobit": "Send to micro:bit",
+    "addCodeExtract": "&larr; Add to code",
+    "showMore": "show more",
+    "showLess": "show less"
+  },
+  "messageBannerMessage": {
+    "deleteLargeCode": "You just deleted a large piece of code. If you didn't mean to, you can:",
+    "uploadSuccessMicrobit": "Upload to micro:bit completed.",
+    "uploadFailureMicrobit": "Upload to micro:bit failed with error \"{errorMsg}\""
+  },
+  "commandTabs": {
+    "1": "Explore micro:bit"
+  },
+  "action": {
+    "uploadingToMicrobit": "Uploading to micro:bit ..."
+  },
   "apidiscovery" : {
     "v2InfoMsg":"Only works with a micro:bit board v2.",
     "microbitAPI": {

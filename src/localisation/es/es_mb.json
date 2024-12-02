@@ -1,5 +1,17 @@
-{
-  "apidiscovery" : {
-    "microbitAPI": {}
+{ 
+  "buttonLabel": {
+    "runOnMicrobit": "Ejecutar en micro:bit",
+    "sendToMicrobit": "Enviar a micro:bit",
+    "addCodeExtract": "&larr; Añadir al código",
+    "showMore": "Mostrar más",
+    "showLess": "Mostrar menos"
+  },
+  "action": {
+    "uploadingToMicrobit": "Cargando a micro:bit ..."
+  },
+  "messageBannerMessage": {
+    "deleteLargeCode": "Acabas de eliminar un pedazo de código. Si no fue tu intención, tu puedes: ",
+    "uploadSuccessMicrobit": "Cargar a micro:bit completado.",
+    "uploadFailureMicrobit": "Cargar a micro:bit fallo con un error \"{errorMsg}\""
   }
 }

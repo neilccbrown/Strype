@@ -1,6 +1,23 @@
-{
+{  
+  "buttonLabel": {
+    "runOnMicrobit": "Exécuter sur micro:bit",
+    "sendToMicrobit": "Envoyer vers micro:bit",
+    "addCodeExtract": "Ajouter au code",
+    "showMore": "montrer plus",
+    "showLess": "montrer moins"
+  },
+  "messageBannerMessage": {
+    "deleteLargeCode": "Vous venez de supprimer une grande portion de code. Si vous le souhaitiez pas, vous pouvez :",
+    "uploadSuccessMicrobit": "Chargement vers micro:bit terminé.",
+    "uploadFailureMicrobit": "Chargement vers micro:bit échoué avec l'error \"{errorMsg}\""
+  },
+  "action": {
+    "uploadingToMicrobit": "Envoi en cours vers micro:bit ..."
+  },
+  "commandTabs": {
+    "1": "Explore micro:bit"
+  },
   "apidiscovery": {
-    "v2InfoMsg":"Ne fonctionne qu'avec une micro:bit v2.",
-    "microbitAPI": {}
+    "v2InfoMsg":"Ne fonctionne qu'avec une micro:bit v2."
   }
 }

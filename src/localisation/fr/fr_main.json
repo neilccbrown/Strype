@@ -48,8 +48,6 @@
   },
   "messageBannerMessage": {
     "deleteLargeCode": "Vous venez de supprimer une grande portion de code. Si vous le souhaitiez pas, vous pouvez :",
-    "uploadSuccessMicrobit": "Chargement vers micro:bit terminé.",
-    "uploadFailureMicrobit": "Chargement vers micro:bit échoué avec l'error \"{errorMsg}\"",
     "noUndo": "Il n'y a aucune action à annuler.",
     "noRedo": "Il n'y a aucune action à refaire.",
     "uploadEditorFileError": "Un problème est survenu lors du chargement de fichier pour l'éditeur : {errorMsg}. Votre code n'a pas été modifié.",
@@ -70,18 +68,10 @@
     "no": "Non",
     "ok": "OK",
     "cancel": "Annuler",
-    "runOnMicrobit": "Exécuter sur micro:bit",
-    "sendToMicrobit": "Envoyer vers micro:bit",
-    "addCodeExtract": "Ajouter au code",
-    "showMore": "montrer plus",
-    "showLess": "montrer moins",
     "saveDiffLocation": "Enregister ailleurs",
     "overwriteProject": "Remplacer",
     "saveProjectCopy": "Choisir un autre nom",
     "spaceBar": "espace"
-  },
-  "action": {
-    "uploadingToMicrobit": "Envoi en cours vers micro:bit ...",
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être interprété par Strype",
@@ -169,8 +159,7 @@
     "invalidState": "Aucune complétion disponible"
   },
   "commandTabs": {
-    "0": "Ajoute un cadre",
-    "1": "Explore micro:bit"
+    "0": "Ajoute un cadre"
   },
   "PEA": {
     "run": "Exécuter",

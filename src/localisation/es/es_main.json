@@ -49,8 +49,6 @@
   },
   "messageBannerMessage": {
     "deleteLargeCode": "Acabas de eliminar un pedazo de código. Si no fue tu intención, tu puedes: ",
-    "uploadSuccessMicrobit": "Cargar a micro:bit completado.",
-    "uploadFailureMicrobit": "Cargar a micro:bit fallo con un error \"{errorMsg}\"",
     "noUndo": "No hay ninguna accion de deshacer disponible.",
     "noRedo": "No hay ninguna accion de rehacer disponible.",
     "uploadEditorFileError": "Ha occurrió un problema durante la carga del archivo del editor: {errorMsg}. Tu código no ha cambiado.",
@@ -72,18 +70,10 @@
     "no": "No",
     "ok": "OK",
     "cancel": "cancelar",
-    "runOnMicrobit": "Ejecutar en micro:bit",
-    "sendToMicrobit": "Enviar a micro:bit",
-    "addCodeExtract": "&larr; Añadir al código",
-    "showMore": "Mostrar más",
-    "showLess": "Mostrar menos",
     "saveDiffLocation": "Guardar en otro lugar",
     "overwriteProject": "Reemplazar",
     "saveProjectCopy": "Elige un nuewvo nombre",
     "spaceBar": "espacio"
-  },
-  "action": {
-    "uploadingToMicrobit": "Cargando a micro:bit ...",
   },
   "errorMessage": {
     "wrongDataFormat": "el formato de datos no puedo ser interpretado por Strype",

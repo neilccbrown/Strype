@@ -3,8 +3,6 @@
   "defaultProjName": "Το πρόγραμμα μου",
   "messageBannerMessage": {
     "deleteLargeCode": "Διαγράψατε ένα μεγάλο κομμάτι κώδικα. Έαν έγινε καταλάθος μπορείτε να:",
-    "uploadSuccessMicrobit": "Κωδικας μεταφορτόφηκε στο micro:bit",
-    "uploadFailureMicrobit": "Η μεταφόρτοση κώδικα στο micro:bit απέτυχε με μήνημα λάθους \"{errorMsg}\"",
     "noUndo": "Μή δυνατή αναίρεση.",
     "noRedo": "Μη δυνταή η επαναφορά.",
     "uploadEditorFileError": "Συνέβη λάθος κατά την μεταφόρτοση του κώδικα:{errorMsg}. Ο κώδικας σας δεν άλλαξε.",
@@ -16,14 +14,7 @@
     "undo": "Αναίρεση",
     "yes": "Ναι",
     "no": "Όχι",
-    "ok": "Εντάξει",
-    "sendToMicrobit": "Αποστόλη στο micro:bit",
-    "addCodeExtract": "&larr; Εισαγωγή στον κόδικα",
-    "showMore": "Περισσότερα",
-    "showLess": "Λιγότερα"
-  },
-  "action": {
-    "uploadingToMicrobit": "Μεταφόρτωση στο micro:bit ...",
+    "ok": "Εντάξει"
   },
   "errorMessage": {
     "wrongDataFormat": "Αυτή η μορφή των δεδομένων δεν μπορει να δαβαστεί από το Strype",
@@ -66,10 +57,6 @@
     "myFunctions": "Συναρτήσεις μου",
     "myVariables": "Μεταβλητές μου",
     "importedModules": "Εισαχθείσες δομές"
-  },
-  "commandTabs": {
-    "0": "Add Frame",
-    "1": "Explore micro:bit"
   },
   "console": {
     "run": "Εκτέλεση",

@@ -49,8 +49,6 @@
   },
   "messageBannerMessage": {
     "deleteLargeCode": "You just deleted a large piece of code. If you didn't mean to, you can:",
-    "uploadSuccessMicrobit": "Upload to micro:bit completed.",
-    "uploadFailureMicrobit": "Upload to micro:bit failed with error \"{errorMsg}\"",
     "noUndo": "There is no undo action available.",
     "noRedo": "There is no redo action available.",
     "uploadEditorFileError": "Something wrong happened during editor file upload: {errorMsg}. Your code has not changed.",
@@ -71,18 +69,10 @@
     "no": "No",
     "ok": "OK",
     "cancel": "Cancel",
-    "runOnMicrobit": "Run on micro:bit",
-    "sendToMicrobit": "Send to micro:bit",
-    "addCodeExtract": "&larr; Add to code",
-    "showMore": "show more",
-    "showLess": "show less",
     "saveDiffLocation": "Save elsewhere",
     "overwriteProject": "Replace",
     "saveProjectCopy": "Choose new name",
     "spaceBar": "space"
-  },
-  "action": {
-    "uploadingToMicrobit": "Uploading to micro:bit ...",
   },
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be interpreted by Strype",
@@ -172,8 +162,7 @@
     "noDocumentation": "No documentation available"
   },
   "commandTabs": {
-    "0": "Add Frame",
-    "1": "Explore micro:bit"
+    "0": "Add Frame"
   },
   "PEA": {
     "run": "Run",
