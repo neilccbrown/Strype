@@ -12,7 +12,6 @@ const emptyState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-1": {
         id: -1,
@@ -27,7 +26,6 @@ const emptyState: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-2": {
         id: -2,
@@ -42,7 +40,6 @@ const emptyState: EditorFrameObjects = {
         labelSlotsDict: { },
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-3": {
         id: -3,
@@ -57,7 +54,6 @@ const emptyState: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.body,
-        multiDragPosition: "",
     },
 };
 export default emptyState;

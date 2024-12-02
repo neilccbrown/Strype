@@ -13,7 +13,6 @@ const initialPythonState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: { },
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-1": {
         id: -1,
@@ -28,7 +27,6 @@ const initialPythonState: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-2": {
         id: -2,
@@ -43,7 +41,6 @@ const initialPythonState: EditorFrameObjects = {
         labelSlotsDict: { },
         isCollapsed: false,
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
     "-3": {
         id: -3,
@@ -58,7 +55,6 @@ const initialPythonState: EditorFrameObjects = {
         labelSlotsDict: {},
         isCollapsed: false,
         caretVisibility: CaretPosition.body,
-        multiDragPosition: "",
     },
 
     1: {
@@ -75,7 +71,6 @@ const initialPythonState: EditorFrameObjects = {
             0: {slotStructures: {operators: [], fields: [{code: "myString"}]}},
             1: {slotStructures: {operators: [{code: ""}, {code: ""}], fields: [{code: ""}, {code: "Hello from Python!", quote: "\""}, {code: ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 
     2: {
@@ -90,7 +85,6 @@ const initialPythonState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: ""}, {code: ""}], fields: [{code: "print"}, {openingBracketValue: "(", fields:[{code: "myString"}], operators: []}, {code: ""}]}}},
         caretVisibility: CaretPosition.none,
-        multiDragPosition: "",
     },
 
 };

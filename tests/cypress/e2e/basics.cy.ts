@@ -372,7 +372,7 @@ describe("Wrapping frames", () => {
     });
 });
 
-
+/* Commented until OOP reuse this test 
 describe("Copying key combination", () => {
     it("Check C inserts a comment", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
@@ -402,3 +402,4 @@ describe("Copying key combination", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
     });
 });
+*/

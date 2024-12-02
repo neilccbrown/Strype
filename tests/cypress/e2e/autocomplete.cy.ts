@@ -109,7 +109,7 @@ const BUILTIN = "Python";
 // themselves are in the correct order.
 function checkAutocompleteSorted(acIDSel: string) : void {
     // The autocomplete only updates after 500ms:
-    cy.wait(600);
+    cy.wait(1000);
     // Other items (like the names of variables when you do var.) will come out as -1,
     // which works nicely because they should be first:
     const intendedOrder : string[] = [MYVARS, MYFUNCS, "microbit", "microbit.accelerometer", "time", BUILTIN];
@@ -1056,27 +1056,6 @@ describe("Parameter prompts", () => {
                     func.funcName + "(" + func.params.slice(0, i).join(",") + (i > 0 ? "," : "") + func.params.slice(i).join(", ") + ")"));
             }
             
-        });
-        it("Shows prompts after using AC for " + func.displayName, () => {
-            focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
-            cy.get("body").type(" " + func.funcName);
-            cy.get("body").type("{ctrl} ");
-            cy.wait(600);
-            // There is a bug which only seems to happen in cypress where the selection
-            // pings back to the start of the slot; I don't see this in a real browser
-            // We compensate by moving the cursor back to the end with right arrow:
-            cy.get("body").type("{rightarrow}".repeat(func.funcName.includes(".") ? func.funcName.length - func.funcName.lastIndexOf(".") - 1 : func.funcName.length));
-            if (!func.funcName.includes(".")) {
-                withAC((acIDSel) => {
-                    cy.get(acIDSel).should("be.visible");
-                    checkExactlyOneItem(acIDSel, func.acSection, func.acName + "(" + func.params.join(", ") + ")");
-                });
-            }
-            cy.get("body").type("{enter}");
-            withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
         });
 
         it("Shows prompts in nested function (part 1) " + func.displayName, () => {

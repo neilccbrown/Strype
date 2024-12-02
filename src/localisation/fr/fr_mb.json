@@ -1,0 +1,6 @@
+{
+  "apidiscovery": {
+    "v2InfoMsg":"Ne fonctionne qu'avec une micro:bit v2.",
+    "microbitAPI": {}
+  }
+}

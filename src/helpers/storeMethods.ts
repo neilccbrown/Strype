@@ -2,10 +2,11 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, ChangeFramePropInfos, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
-import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUIID, getMatchingBracket, parseLabelSlotUIID } from "./editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
+import { cloneDeep } from "lodash";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -388,8 +389,7 @@ export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, 
     // enable Pass-By-Reference whenever it is increased.
     
     // first copy the current frame
-    // You can also use Lodash's "_.cloneDeep" in case JSON.parse(JSON.stringify()) has a problem on Mac
-    const frame: FrameObject = JSON.parse(JSON.stringify(listOfFrames[currentFrameId])) as FrameObject;
+    const frame: FrameObject = cloneDeep(listOfFrames[currentFrameId]) as FrameObject;
 
     frame.id = nextAvailableId.id;
     frame.caretVisibility = CaretPosition.none;
@@ -504,7 +504,7 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
     // If we have managed to load the state, then we might need to make sure the caret is in view
     if(success){
         setTimeout(() => {
-            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUIID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : ("caret_"+useStore().currentFrame.caretPosition+"_of_frame_"+useStore().currentFrame.id);
+            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : ("caret_"+useStore().currentFrame.caretPosition+"_of_frame_"+useStore().currentFrame.id);
             document.getElementById(htmlElementToShowId)?.scrollIntoView();
         }, 1000);
     }   
@@ -520,23 +520,6 @@ export const getDisabledBlockRootFrameId = function(frameId: number): number {
     else{
         return frameId;
     }
-};
-
-export const checkDisabledStatusOfMovingFrame = function(listOfFrames: EditorFrameObjects, frameSrcId: number, destContainerFrameId: number): ChangeFramePropInfos {
-    // Change the disable property to destination parent state if the source's parent and destination's parent are different
-    const isSrcParentDisabled = (listOfFrames[frameSrcId].jointParentId > 0)
-        ? listOfFrames[listOfFrames[frameSrcId].jointParentId].isDisabled
-        : listOfFrames[listOfFrames[frameSrcId].parentId].isDisabled;
-
-    const isDestParentDisabled = listOfFrames[destContainerFrameId].isDisabled;
-    
-    if(isSrcParentDisabled === isDestParentDisabled){
-        // Nothing to change
-        return {changeDisableProp: false, newBoolPropVal: false};
-    }
-
-    // The source need to be changed to the destination's parent 
-    return {changeDisableProp: true, newBoolPropVal: isDestParentDisabled};
 };
 
 export const getLastSibling= function (frameId: number): number {
@@ -718,6 +701,22 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     return prevCaretPos;
 };
 
+// This method is the opposite of getAboveFrameCaretPosition: it looks for what frame is immediately below a given caret position.
+// Returns: the frameId of the frame below the given position or NULL if there is no frame (case of empty body or end of container)
+export const getFrameBelowCaretPosition = function (caretPosition: NavigationPosition): number | null {
+    if(caretPosition.caretPosition == CaretPosition.body){
+        // In a body, we look at the first child frame of the body (if any)
+        const firstChildId = useStore().frameObjects[caretPosition.frameId].childrenIds.at(0);
+        return firstChildId ?? null;
+    }
+    else{
+        // Below a frame, we need find the position of the frame above (i.e. frame of that caret) in the parent, and get the next
+        // sibling (if any). Note that joint frames (like "else") can't have a caret below.
+        const nextFrameId = getNextSibling(caretPosition.frameId);
+        return (nextFrameId > 0) ? nextFrameId : null;
+    }
+};
+
 // This method returns a boolean value indicating whether the caret (current position) is contained
 // within one of the frame types specified in "containerTypes"
 export const isContainedInFrame = function (currFrameId: number, caretPosition: CaretPosition, containerTypes: string[]): boolean {
@@ -748,8 +747,8 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
         // we extract it from the id of the elements, they are of that form:
         // slots (*) --> "input_frame_<frameId>_label_<labelSlotsIndex>_slot_<slotType>_<slotId>" where <frameId>, <labelSlotsIndex> and <slotType> are numbers and <slotId> a string (we want <slotIndex> and <slotId>)
         // carets --> "caret_<type>_<frameId>" where <type> is one of caretBelow or caretBody, and <frameId> as mentioned above (we want <type>)
-        // (*) cf function getLabelSlotUIID in the helper editor.ts
-        const labelSlotCoreInfos = parseLabelSlotUIID(e.id);
+        // (*) cf function getLabelSlotUID in the helper editor.ts
+        const labelSlotCoreInfos = parseLabelSlotUID(e.id);
         const positionObjIdentifier = (isSlotNavigationPosition) 
             ? {labelSlotsIndex: labelSlotCoreInfos.labelSlotsIndex, slotId: labelSlotCoreInfos.slotId, slotType: labelSlotCoreInfos.slotType}
             : {caretPosition: e.id.includes(CaretPosition.below) ? CaretPosition.below : CaretPosition.body}; 
@@ -797,7 +796,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     if(slotInfos.code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
         if(currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
-            useStore().removePreCompileErrors(getLabelSlotUIID(slotInfos));                
+            useStore().removePreCompileErrors(getLabelSlotUID(slotInfos));                
         }
     }
     else if(!isOptionalSlot){
@@ -807,7 +806,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
                 error: i18n.t("errorMessage.emptyEditableSlot") as string,
             }
         );
-        useStore().addPreCompileErrors(getLabelSlotUIID(slotInfos));
+        useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
     }
 };
 
@@ -850,14 +849,19 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
 }
 
 export function checkCodeErrors(frameIdForPrecompiled?: number): void {
-    // Clear all errors first.
-    // We do this in two pass: 
+    // We check errors in in three passes (all code errors are cleared in 1) and 2)): 
     //   1) check for the UI pre-compiled errors for each frame unless if a specific frame is specified, then we check that frame only
     const frameArray = ((frameIdForPrecompiled) ? [frameIdForPrecompiled.toString()] : Object.keys(useStore().frameObjects));
     for(const frameId of frameArray){
         checkPrecompiledErrorsForFrame(parseInt(frameId));
     } 
-    //  2) check for TP errors for the whole code
+
+    //  2) clear all frame parsing (TP) errors explicitly
+    Object.keys(useStore().frameObjects).forEach((frameId) => {
+        useStore().setFrameErroneous(parseInt(frameId),"");
+    });
+
+    //  3) check for TP errors for the whole code
     // We don't want to crash the application if something isn't handled correctly in TP.
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{

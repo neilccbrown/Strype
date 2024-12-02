@@ -2,6 +2,11 @@
 const MoveAssetsPlugin = require("move-assets-webpack-plugin");
 const RemoveFilePlugin = require("remove-files-webpack-plugin");
 
+// Application environment variable for the built hash.
+// Note: the version number, visible to users, is in package.json
+// and it is updated *MANUALLY* there when needed to be changed.
+process.env.VUE_APP_BUILD_GIT_HASH = require("child_process").execSync("git rev-parse --short=8 HEAD").toString().trim();
+
 const configureWebpackExtraProps = 
     {
         plugins: [(process.env.npm_config_microbit) ?
@@ -51,7 +56,7 @@ module.exports = {
             .options( {
                 // the following are from the library js-conditional-compile-loader https://github.com/hzsrc/js-conditional-compile-loader
                 isPurePython: process.env.npm_config_python,
-                isMicrobit: process.env.npm_config_microbit,              
+                isMicrobit: process.env.npm_config_microbit,
             });
         config.module
             .rule("conditionalCompilerTS")
@@ -76,7 +81,7 @@ module.exports = {
         }
     },
 
-    publicPath: (process.env.npm_config_python)?"/editor/":"/microbit/",
+    publicPath: (process.env.npm_config_githubpages) ? "/Strype/" : ((process.env.npm_config_python)?"/editor/":"/microbit/"),
     pluginOptions: {
         i18n: {
             locale: "en",
@@ -91,7 +96,9 @@ module.exports = {
             scss: {
                 additionalData: `
                     @import "@/assets/style/variables.scss";
-                `,
+                ` + (process.env.npm_config_githubpages ?  `
+                    @import "@/assets/style/test-watermark.scss";
+                ` : ""),
             },
         },
     },
