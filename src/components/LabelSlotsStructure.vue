@@ -57,14 +57,14 @@ export default Vue.extend({
         labelIndex: Number,
         defaultText: String,
         isDisabled: Boolean,
-        prependSelf: Boolean,
+        prependSelfWhenInClass: Boolean,
     },
 
     data: function() {
         return {
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
             isFocused: false,
-            prependText: this.prependSelf ? "self" : "",
+            prependText: "", // This is updated properly in updatePrependText()
         };
     },
 
@@ -444,7 +444,7 @@ export default Vue.extend({
         },
         
         updatePrependText() {
-            if (this.prependSelf) {
+            if (this.prependSelfWhenInClass) {
                 const isInClass = useStore().frameObjects[useStore().frameObjects[this.frameId].parentId].frameType.type == DefIdentifiers.classdef;
                 if (!isInClass) {
                     this.prependText = "";

@@ -136,7 +136,7 @@ export interface FrameLabel {
     defaultText: string;
     optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
     acceptAC?: boolean; //default true
-    appendSelf?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
+    appendSelfWhenInClass?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
 
 }
 
@@ -615,7 +615,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         type: DefIdentifiers.funcdef,
         labels: [
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, appendSelf: true},
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, appendSelfWhenInClass: true},
             { label: ") :", showSlots: false, defaultText: ""},
         ],
         colour: "#ECECC8",
