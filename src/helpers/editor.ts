@@ -694,11 +694,11 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.return_detail") as string,
             shortcuts: ["r"],
         }],
-        "c": [{
+        "#": [{
             type: getFrameDefType(AllFrameTypesIdentifier.comment),
             description: i18n.t("frame.comment_desc") as string,
             tooltip:i18n.t("frame.comment_detail") as string,
-            shortcuts: ["c", "#"],
+            shortcuts: ["#"],
         }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),
