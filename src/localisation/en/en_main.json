@@ -73,7 +73,6 @@
     "cancel": "Cancel",
     "runOnMicrobit": "Run on micro:bit",
     "sendToMicrobit": "Send to micro:bit",
-    "startCoding": "Start Coding!",
     "addCodeExtract": "&larr; Add to code",
     "showMore": "show more",
     "showLess": "show less",
@@ -84,7 +83,6 @@
   },
   "action": {
     "uploadingToMicrobit": "Uploading to micro:bit ...",
-    "feedbackLink": "Give feedback ..."
   },
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be interpreted by Strype",
@@ -111,7 +109,6 @@
     "editorFileUpload": "Uploading your file to the editor...",
     "editorConfirmChangeCode": "Current editor's content will be permanently lost.",
     "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
-    "enableInnerDisabledFrameConfirm": "This action will enable the complete group of disabled frames in which this frame belongs.\nDo you want to continue?",
     "importsContainer": "Imports:",
     "funcDefsContainer": "Function definitions:",
     "mainContainer": "My code:",

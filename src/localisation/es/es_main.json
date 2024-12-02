@@ -74,7 +74,6 @@
     "cancel": "cancelar",
     "runOnMicrobit": "Ejecutar en micro:bit",
     "sendToMicrobit": "Enviar a micro:bit",
-    "startCoding": "Empezar a codificar!",
     "addCodeExtract": "&larr; Añadir al código",
     "showMore": "Mostrar más",
     "showLess": "Mostrar menos",
@@ -85,7 +84,6 @@
   },
   "action": {
     "uploadingToMicrobit": "Cargando a micro:bit ...",
-    "feedbackLink": "Dar retroalimentación ..."
   },
   "errorMessage": {
     "wrongDataFormat": "el formato de datos no puedo ser interpretado por Strype",
@@ -112,7 +110,6 @@
     "editorFileUpload": "Cargando tu archive archiveo al editor...",
     "editorConfirmChangeCode": "El contenido actual del editor se perderá permanentemente",
     "editorFileUploadWrongVersion": "Este código se ha proudcido con una versión diferente del editor.\nLa importación puede generar errores.\n¿Aún quieres continuar?",
-    "enableInnerDisabledFrameConfirm": "Esta acción habilitará el el grupo completo de marcos deshabilitados al que pertence este marcos.\n¿Aún quieres continuar?",
     "importsContainer": "Importaciones:",
     "funcDefsContainer": "Definiciones de funciones:",
     "mainContainer": "Mi código:",

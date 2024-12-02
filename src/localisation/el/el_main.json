@@ -18,14 +18,12 @@
     "no": "Όχι",
     "ok": "Εντάξει",
     "sendToMicrobit": "Αποστόλη στο micro:bit",
-    "startCoding": "Ξεκίνα να προγραμματίζεις!",
     "addCodeExtract": "&larr; Εισαγωγή στον κόδικα",
     "showMore": "Περισσότερα",
     "showLess": "Λιγότερα"
   },
   "action": {
     "uploadingToMicrobit": "Μεταφόρτωση στο micro:bit ...",
-    "feedbackLink": "Προτάσεις Βελτίωσης ..."
   },
   "errorMessage": {
     "wrongDataFormat": "Αυτή η μορφή των δεδομένων δεν μπορει να δαβαστεί από το Strype",
@@ -40,7 +38,6 @@
     "editorFileUpload": "Μεταφόρτωση αρχείου στο Strype",
     "editorConfirmChangeCode": "Ο κώδικας θα χαθεί.",
     "editorFileUploadWrongVersion": "Ο εισαγώμενος κώδικας προέρχεται απο παλαιότερη έκδοση του Strype.\nΗ εισαγωγή του μπορεί να προκαλέσει σφάλαματα.\nΕπιθυμείτε να συνεχίσετε?",
-    "enableInnerDisabledFrameConfirm": "Αυτή η ενέργεια θα ενεργοποιείσει όλα τα απενεργοποιημένα πλαίσια του κομματιτού στο οποίο ανήκει αυτό το πλαίσιο.\n Επιθυμείται να συνεχίσετε?",
     "importsContainer": "Εισαγωγές:",
     "funcDefsContainer": "Ορισμοί Συναρτήσεων:",
     "mainContainer": "Ο Κώδικας μου:",

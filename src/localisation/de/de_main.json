@@ -73,7 +73,6 @@
     "cancel": "Abbrechen",
     "runOnMicrobit": "Auf micro:bit ausführen",
     "sendToMicrobit": "Zum micro:bit senden",
-    "startCoding": "Start Coding!",
     "addCodeExtract": "&larr; Zum Code hinzufügen",
     "showMore": "Mehr anzeigen",
     "showLess": "Weniger anzeigen",
@@ -84,7 +83,6 @@
   },
   "action": {
     "uploadingToMicrobit": "Upload zum micro:bit ...",
-    "feedbackLink": "Feedback geben..."
   },
   "errorMessage": {
     "wrongDataFormat": "Strype kann dieses Datenformat nicht lesen",
@@ -111,7 +109,6 @@
     "editorFileUpload": "Deine Datei wird in den Editor geladen...",
     "editorConfirmChangeCode": "Der Inhalt des Editors wird permanent gelöscht.",
     "editorFileUploadWrongVersion": "Dieser Code wurde mit einer anderen Version des Editors erstellt.\nImportieren kann womöglich Fehler beinhalten.\n\nFortfahren?",
-    "enableInnerDisabledFrameConfirm": "Diese Aktion wird die gesamte Gruppe der Frames aktivieren, in der dieser Frame enthalten ist.\nFortfahren?",
     "importsContainer": "Importe:",
     "funcDefsContainer": "Funktionsdefinitionen:",
     "mainContainer": "Mein Code:",

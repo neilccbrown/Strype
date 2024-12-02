@@ -119,7 +119,6 @@
             <span class="menu-icon-entry menu-icon-centered-entry error-count-span" :title="$t('appMessage.editorErrors')" @mousedown.self.stop.prevent>{{errorCount}}</span>
             <i :class="{'fas fa-chevron-down menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex >= errorCount - 1)}" @mousedown.self.stop.prevent="navigateToErrorRequested=true" @click="goToError($event, true)"/>
         </div>
-        <!--a id="feedbackLink" href="/feedback" target="_blank"><i class="far fa-comment" :title="$t('action.feedbackLink')"></i></a-->
     </div>
 </template>
 
@@ -989,20 +988,6 @@ export default Vue.extend({
 }
 
 .app-menu-footer:hover {
-    color: #2648af;
-}
-
-#feedbackLink {
-    color: #3467FE;
-    width:24px;
-    font-size: 20px;
-    margin-left:10px;
-    display: block;
-    bottom:0px;
-    position:absolute;    
-}
-
-#feedbackLink:hover {
     color: #2648af;
 }
 
