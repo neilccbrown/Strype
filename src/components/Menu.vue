@@ -592,7 +592,7 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, fileHandles[0]);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
@@ -636,7 +636,7 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(

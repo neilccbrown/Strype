@@ -660,6 +660,22 @@ export const useStore = defineStore("app", {
             );
         },
 
+        clearAllFrames() {
+            // An short-hand method to clear all the frames of the editor.
+            // We only keep frames 0 (the root), and -1 to -3 (the frame containers/sections).
+            // For safety, the curent frame (frame cursor) is set to the main code section
+            this.toggleCaret({id: -3, caretPosition: CaretPosition.body});
+            Object.keys(this.frameObjects).forEach((frameId) => {
+                if(parseInt(frameId) > 0) {
+                    Vue.delete(this.frameObjects, frameId);
+                }
+                else if(parseInt(frameId) < 0){
+                    // The frame section containers are not cleared, but their children are!
+                    this.frameObjects[parseInt(frameId)].childrenIds.splice(0);
+                }
+            });
+        },
+
         deleteFrame(payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
             //if delete is pressed
             //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
@@ -1211,6 +1227,10 @@ export const useStore = defineStore("app", {
                 );
             } );
 
+            this.clearNoneFrameRelatedState();
+        },
+
+        clearNoneFrameRelatedState() {
             //undo redo is cleared
             diffToPreviousState.splice(0, diffToPreviousState.length);
             diffToNextState.splice(0, diffToNextState.length);
@@ -1224,6 +1244,7 @@ export const useStore = defineStore("app", {
                 "copiedFrames",
                 {}
             );
+            this.copiedSelectionFrameIds.splice(0);
 
             //context menu indicator is cleared
             this.contextMenuShownId = "";

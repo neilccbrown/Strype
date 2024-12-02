@@ -92,7 +92,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -826,7 +826,7 @@ export default Vue.extend({
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
         
-        setStateFromPythonFile(completeSource: string) : void {
+        setStateFromPythonFile(completeSource: string, fileName: string, fileLocation?: FileSystemFileHandle) : void {
             const allLines = completeSource.split(/\r?\n/);
             // Split can make an extra blank line at the end which we don't want:
             if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
@@ -846,6 +846,9 @@ export default Vue.extend({
                 useStore().showMessage(msg, 10000);
             }
             else {
+                // Clear the current existing code (i.e. frames) of the editor
+                this.appStore.clearAllFrames();
+
                 copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
                 if (useStore().copiedSelectionFrameIds.length > 0) {
                     this.getCaretContainerComponent(this.getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
@@ -860,11 +863,21 @@ export default Vue.extend({
                         this.getCaretContainerComponent(this.getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
                 }
+
+                // Now we can clear other non-frame related elements
+                this.appStore.clearNoneFrameRelatedState();
+             
+                /* IFTRUE_isPython */
+                // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
+                actOnTurtleImport();
+
+                // Clear the Python Execution Area as it could have be run before.
+                ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
+                /* FITRUE_isPython */
+
+                // Finally, we can trigger the notifcation a file has been loaded.
+                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, fileLocation);
             }
-            
-            // Must take ourselves off the clipboard after:
-            useStore().copiedFrames = {};
-            useStore().copiedSelectionFrameIds = [];
         },
     },
 });
