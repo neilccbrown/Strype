@@ -20,6 +20,7 @@
       "modulePart": "function/class ",
       "comment": "your comment "
     },
+    "classdef_desc": "class definition",
     "funcdef_desc": "function definition",
     "varassign_desc": "variable assignment",
     "funccall_desc": "function call",
@@ -30,6 +31,7 @@
     "elif_detail": "Add an 𝐞𝐥𝐢𝐟 (else if) conditional statement at the frame cursor.",
     "else_detail": "Add an 𝐞𝐥𝐬𝐞 conditional statement at the frame cursor.",
     "for_detail": "Add a 𝐟𝐨𝐫 loop at the frame cursor.",
+    "funcdef_detail": "Add a class definition at the frame cursor.",
     "funcdef_detail": "Add a function definition at the frame cursor.",
     "fromimport_detail": "Add a 𝐟𝐫𝐨𝐦...𝐢𝐦𝐩𝐨𝐫𝐭 statement at the frame cursor.",
     "while_detail": "Add a 𝐰𝐡𝐢𝐥𝐞 loop at the frame cursor.",

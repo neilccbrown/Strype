@@ -641,13 +641,6 @@ export function generateAllFrameCommandsDefs():void {
                 tooltip:i18n.t("frame.elif_detail") as string,
                 shortcuts: ["l"],
             },
-            {
-                type: getFrameDefType(AllFrameTypesIdentifier.classdef),
-                description: i18n.t("frame.classdef_desc") as string,
-                shortcuts: ["l"],
-                tooltip:i18n.t("frame.classdef_detail") as string,
-                index: 1,
-            },
         ],
         "e": [{
             type: getFrameDefType(AllFrameTypesIdentifier.else),
@@ -678,6 +671,12 @@ export function generateAllFrameCommandsDefs():void {
                 index:2,
             },
         ],
+        "c": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.classdef),
+            description: i18n.t("frame.classdef_desc") as string,
+            shortcuts: ["c"],
+            tooltip:i18n.t("frame.classdef_detail") as string,
+        }],
         "w": [{
             type: getFrameDefType(AllFrameTypesIdentifier.while),
             description: "while",
