@@ -599,6 +599,25 @@ export function getNearestErrorIndex(): number {
 // unless conflicts are clearly impossible.
 export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
+        " ": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+            description: i18n.t("frame.funccall_desc") as string,
+            shortcuts: [" "],
+            tooltip:i18n.t("frame.funccall_detail") as string,
+            symbol: i18n.t("buttonLabel.spaceBar") as string,
+        }],
+        "=": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.varassign),
+            description: i18n.t("frame.varassign_desc") as string,
+            tooltip:i18n.t("frame.varassign_detail") as string,
+            shortcuts: ["="],
+        }],
+        "g": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.global),
+            description: "global",
+            tooltip: i18n.t("frame.global_detail") as string,
+            shortcuts: ["g"],
+        }],
         "i": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.if),
@@ -656,6 +675,12 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.while_detail") as string,
             shortcuts: ["w"],
         }],
+        "r": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.return),
+            description: "return",
+            tooltip:i18n.t("frame.return_detail") as string,
+            shortcuts: ["r"],
+        }],
         "b" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.break),
             description: "break",
@@ -668,18 +693,11 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.continue_detail") as string,
             shortcuts: ["u"],
         }],
-        "=": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.varassign),
-            description: i18n.t("frame.varassign_desc") as string,
-            tooltip:i18n.t("frame.varassign_detail") as string,
-            shortcuts: ["="],
-        }],
-        " ": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-            description: i18n.t("frame.funccall_desc") as string,
-            shortcuts: [" "],
-            tooltip:i18n.t("frame.funccall_detail") as string,
-            symbol: i18n.t("buttonLabel.spaceBar") as string,
+        "#": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.comment),
+            description: i18n.t("frame.comment_desc") as string,
+            tooltip:i18n.t("frame.comment_detail") as string,
+            shortcuts: ["#"],
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
@@ -688,29 +706,11 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.blank_detail") as string,
             symbol: "↵",
         }],
-        "r": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.return),
-            description: "return",
-            tooltip:i18n.t("frame.return_detail") as string,
-            shortcuts: ["r"],
-        }],
-        "#": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.comment),
-            description: i18n.t("frame.comment_desc") as string,
-            tooltip:i18n.t("frame.comment_detail") as string,
-            shortcuts: ["#"],
-        }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),
             description: "try",
             tooltip:i18n.t("frame.try_detail") as string,
             shortcuts: ["t"],
-        }],
-        "a" : [{
-            type: getFrameDefType(AllFrameTypesIdentifier.raise),
-            description: "raise",
-            tooltip:i18n.t("frame.raise_detail") as string,
-            shortcuts: ["a"],
         }],
         "x": [{
             type: getFrameDefType(AllFrameTypesIdentifier.except),
@@ -724,17 +724,17 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.finally_detail") as string,
             shortcuts: ["n"],
         }],
+        "a" : [{
+            type: getFrameDefType(AllFrameTypesIdentifier.raise),
+            description: "raise",
+            tooltip:i18n.t("frame.raise_detail") as string,
+            shortcuts: ["a"],
+        }],
         "h": [{
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
             tooltip:i18n.t("frame.with_detail") as string,
             shortcuts: ["h"],
-        }],
-        "g": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.global),
-            description: "global",
-            tooltip: i18n.t("frame.global_detail") as string,
-            shortcuts: ["g"],
         }],
     };
 
