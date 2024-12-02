@@ -49,7 +49,7 @@ import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
 import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, hasPrecompiledCodeError,  resetAddFrameCommandContainerHeight, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
-import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotType } from "@/types/types";
+import { PythonExecRunningState } from "@/types/types";
 import { PersistentImage, PersistentImageManager } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
 
