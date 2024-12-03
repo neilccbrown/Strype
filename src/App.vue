@@ -70,7 +70,7 @@
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
-        <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true">
+        <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
             <span style="white-space:pre-wrap">{{ $t('appMessage.resyncToGDAtStartup') }}</span>
         </ModalDlg>
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
@@ -410,29 +410,27 @@ export default Vue.extend({
                 this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
-                        callBack: (loadedSuccesfully) => {
-                            // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
-                            // about reloading the project from Google Drive again
-                            if(loadedSuccesfully && this.appStore.currentGoogleDriveSaveFileId) {
-                                const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
-                                    if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
-                                        // Fetch the Google Drive component
-                                        const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
-                                        // Initiate a connection to Google Drive via loading mechanisms (for resync at startup)
-                                        gdVueComponent.loadFile(true);
-
-                                        this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
-                                    }
-                                };
-                                this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
-                                this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
-                            }
-                        
-                        },
                         showMessage: false,
                         readCompressed: true,
                     }
-                );
+                ).then(() => {
+                    // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
+                    // about reloading the project from Google Drive again
+                    if(this.appStore.currentGoogleDriveSaveFileId) {
+                        const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
+                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
+                                // Fetch the Google Drive component
+                                const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                                // Initiate a connection to Google Drive via loading mechanisms (for resync at startup)
+                                gdVueComponent.loadFile(true);
+
+                                this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
+                            }
+                        };
+                        this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
+                        this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
+                    }
+                }, () => {});
             }
         }
 

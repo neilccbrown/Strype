@@ -48,7 +48,9 @@
     "saveDiffLocation": "Enregister ailleurs",
     "overwriteProject": "Remplacer",
     "saveProjectCopy": "Choisir un autre nom",
-    "spaceBar": "espace"
+    "spaceBar": "espace",
+    "yesSign" : "Oui, se connecter",
+    "noContinueWithout":"Non, continuer sans connexion"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",

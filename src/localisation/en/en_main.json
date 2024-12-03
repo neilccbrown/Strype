@@ -49,7 +49,9 @@
     "saveDiffLocation": "Save elsewhere",
     "overwriteProject": "Replace",
     "saveProjectCopy": "Choose new name",
-    "spaceBar": "space"
+    "spaceBar": "space",
+    "yesSign" : "Yes, sign me in",
+    "noContinueWithout":"No, continue without"
   },
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be read",

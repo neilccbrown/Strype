@@ -597,13 +597,8 @@ export default Vue.extend({
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: reader.result as string,
-                                            callBack: (succceded) => {
-                                                if (succceded) {
-                                                    this.onFileLoaded(fileHandles[0].name, fileHandles[0]);
-                                                }
-                                            },
                                         }
-                                    );
+                                    ).then(() => this.onFileLoaded(fileHandles[0].name, fileHandles[0]), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);  
@@ -641,11 +636,8 @@ export default Vue.extend({
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: content,
-                                            callBack: () => {
-                                                this.onFileLoaded(fileName/*s[0].n*/);
-                                            },
                                         }
-                                    );
+                                    ).then(() => this.onFileLoaded(fileName), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
@@ -654,7 +646,6 @@ export default Vue.extend({
                             (reason) => this.appStore.setStateFromJSONStr( 
                                 {
                                     stateJSONStr: "",
-                                    callBack: () => {},
                                     errorReason: reason,
                                 }
                             )
