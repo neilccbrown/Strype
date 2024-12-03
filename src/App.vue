@@ -412,7 +412,7 @@ export default Vue.extend({
                         stateJSONStr: savedState,
                         callBack: (loadedSuccesfully) => {
                             // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
-                            // about reloading the project from Google Drive again (if the file changed on Google Drive side)
+                            // about reloading the project from Google Drive again
                             if(loadedSuccesfully && this.appStore.currentGoogleDriveSaveFileId) {
                                 const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
                                     if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
