@@ -233,10 +233,13 @@ class Actor:
             return False
         return x < -399 or x > 399 or y < -299 or y > 299
         
-    def is_touching(self, actor):
+    def is_touching(self, actor_or_name):
         """
         Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
         rectangles of their images are overlapping (even if the actor is transparent at that point).
+        
+        You can either pass an actor, or an actor's name to check for collisions.  If you pass a name,
+        it will check whether any actor touching the current actor has that name.
         
         Note that if either this actor or the given actor has had collisions turned off with
         `set_can_touch(false)` then this function will return False even if they touch.
@@ -244,7 +247,12 @@ class Actor:
         :param actor: The actor to check for overlap
         :return: True if this actor overlaps that actor, False if it does not 
         """
-        return _strype_input_internal.checkCollision(self.__id, actor.__id)
+        if isinstance(actor_or_name, Actor):
+            return _strype_input_internal.checkCollision(self.__id, actor_or_name.__id)
+        else:
+            # All other types are assumed to be a name.
+            # We have no way to look up from a name, so we check everything that is touching us:
+            return any(a.get_name() == actor_or_name for a in self.get_all_touching())
     
     def set_can_touch(self, can_touch):
         """
