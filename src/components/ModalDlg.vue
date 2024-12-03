@@ -23,6 +23,8 @@ export default Vue.extend({
         dlgId: String,
         dlgTitle: String,
         okOnly: Boolean,
+        okCustomTitle: String,
+        cancelCustomTitle: String,
         size:  {
             type: String as PropType<BootstrapDlgSize>,
             required: false,
@@ -47,11 +49,11 @@ export default Vue.extend({
         ...mapStores(useStore),
 
         okTitle(): string {
-            return this.$i18n.t((this.useYesNo) ? "buttonLabel.yes" : "buttonLabel.ok") as string;
+            return this.okCustomTitle ?? (this.$i18n.t((this.useYesNo) ? "buttonLabel.yes" : "buttonLabel.ok") as string);
         },
         
         cancelTitle(): string {
-            return this.$i18n.t((this.useYesNo) ? "buttonLabel.no" : "buttonLabel.cancel") as string;
+            return this.cancelCustomTitle ?? (this.$i18n.t((this.useYesNo) ? "buttonLabel.no" : "buttonLabel.cancel") as string);
         },
     },
 

@@ -70,7 +70,7 @@
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
-        <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true">
+        <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
             <span style="white-space:pre-wrap">{{ $t('appMessage.resyncToGDAtStartup') }}</span>
         </ModalDlg>
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
