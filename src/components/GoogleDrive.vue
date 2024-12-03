@@ -49,7 +49,7 @@ export default Vue.extend({
         return {
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
-            currentAction: null as "load" | "save" | null, // flag the request current action for async workflow;
+            currentAction: null as "load" | "loadAsResync" | "save" | null, // flag the request current action for async workflow;
             saveReason: SaveRequestReason.autosave, // flag the reason of the save action
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project (we need to keep it live for autosave)
             isFileLocked: false, // Flag to notify when a file is locked (used for saving);
@@ -165,7 +165,7 @@ export default Vue.extend({
 
                     // In any case, continue the action requested by the user (need to do it in a next tick to make sure the oauthToken is updated in all Vue components)
                     this.$nextTick(() => {
-                        if(this.currentAction == "load"){
+                        if(this.currentAction == "load" || this.currentAction == "loadAsResync"){
                             this.doLoadFile();
                         }
                         else if(this.currentAction == "save"){
@@ -212,11 +212,11 @@ export default Vue.extend({
             xhr.send(null);
         },
 
-        loadFile() {
-            this.currentAction = "load";
+        loadFile(loadAsResync?: boolean) {
+            this.currentAction = (loadAsResync) ? "loadAsResync" : "load";
             // This method is the entry point to load a file from Google Drive. We check or request to sign-in to Google Drive here.
             // (that is redundant with the previous "save" action if we were already syncing, but this method can be called when we were not syncing so it has to be done.)
-            if(this.oauthToken == null){
+            if(this.oauthToken == null){                
                 this.signIn();
                 // We wait for the signing checks are done, the loading mechanism will continue later in doLoadFile()
             }
@@ -254,8 +254,14 @@ export default Vue.extend({
                         this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
                     }
 
-                    // Method called to trigger the file load -- this would be called after we made sure the connection to Google Drive is (still) valid
-                    (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false);
+                    if(this.currentAction == "loadAsResync"){
+                        // When we want to load a file as a resyincing mechanism (when browser is opened/reloaded) we don't use the file picker
+                        this.loadPickedFileId(this.appStore.currentGoogleDriveSaveFileId as string);
+                    }
+                    else {
+                        // Method called to trigger the file load -- this would be called after we made sure the connection to Google Drive is (still) valid
+                        (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false);
+                    }
                 });
             }
         },
@@ -423,7 +429,19 @@ export default Vue.extend({
             }
         },
         
-        loadPickedFileId(id : string, fileName: string) : void {
+        loadPickedFileId(id : string, fileName?: string) : void {
+            if(this.currentAction == "loadAsResync"){
+                // When we resync the file, we can't get the file name from the Drive picker, so we need to find it with another method.
+                gapi.client.request({
+                    path: "https://www.googleapis.com/drive/v3/files/" + id,
+                    method: "GET",
+                    params: {},
+                }).execute((resp) => {
+                    fileName = resp.name;
+                });
+            }
+
+            // Get the file content
             gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files/" + id,
                 method: "GET",
@@ -443,7 +461,8 @@ export default Vue.extend({
                             if(setStateSuccess){
                                 this.saveFileId = id;
                                 // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
-                                const fileNameNoExt = fileName.substring(0, fileName.lastIndexOf("."));
+                                // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
+                                const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : i18n.t("defaultProjName") as string;
                                 this.appStore.projectName = fileNameNoExt;
                                 this.saveFileName = fileNameNoExt;
                                 // Restore the fields we backed up before loading

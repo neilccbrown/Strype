@@ -354,6 +354,10 @@ export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
+export function getGoogleDriveComponentRefId(): string {
+    return "googleDriveComponent";
+}
+
 export function getStrypeCommandComponentRefId(): string {
     return "strypeCommands";
 }
