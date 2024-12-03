@@ -56,14 +56,29 @@ var $builtinmodule = function(name)  {
                 var newImg = new Image();
                 newImg.crossOrigin = "";
                 newImg.onerror = function () {
-                    reject(Error("Failed to load image: " + newImg.src));
+                    reject(Error("Failed to load image (does not exist or server refused permission): " + newImg.src));
                 };
                 newImg.onload = function () {
                     susp.ret = newImg;
                     resolve();
                 };
                 // Actually trigger the load:
-                newImg.src = "./graphics_images/" + filename;
+                // Try to detect if it's a relative path or absolute URL.  We are fairly lenient
+                // and permissive, so our rule is: if it starts with http: or https: or // we 
+                // treat it as absolute, or something.ext/something then we assume it's a URL.
+                // Otherwise we count it as a relative path:
+                if (/^https?:/.test(filename) || /^\/\//.test(filename)) {
+                    // Absolute:
+                    newImg.src = filename;
+                }
+                else if (/^https?:/.test(filename) || /^[^./]+\.[^/]+\/.+/.test(filename)) {
+                    // Absolute partial:
+                    newImg.src = "https://" + filename;
+                }
+                else {
+                    // Relative path:
+                    newImg.src = "./graphics_images/" + filename;
+                }
             }),
         };
         return susp;

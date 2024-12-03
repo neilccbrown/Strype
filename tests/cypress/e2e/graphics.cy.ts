@@ -197,6 +197,37 @@ describe("Basic operation", () => {
     it("Basic cat rotated -60", () => {
         runCodeAndCheckImage("", "cat = Actor('cat-test.jpg')\ncat.set_rotation(-60)\nsleep(1)\n", "graphics-just-cat-rotated-minus-60");
     });
+    it("BlueJ icon fetched via full URL", () => {
+        runCodeAndCheckImage("", `
+            white_rect = EditableImage(800, 600)
+            white_rect.set_fill("white")
+            white_rect.fill()
+            white = Actor(white_rect)
+            bluej = Actor('https://bluej.org/bluej-icon-256-2x.png')
+            sleep(1)
+            `, "graphics-bluej-full-url");
+    });
+    it("BlueJ icon fetched via unqualified URL", () => {
+        runCodeAndCheckImage("", `
+            white_rect = EditableImage(800, 600)
+            white_rect.set_fill("white")
+            white_rect.fill()
+            white = Actor(white_rect)
+            bluej = Actor('bluej.org/bluej-icon-256-2x.png')
+            sleep(1)
+            `, "graphics-bluej-unqual-url");
+    });
+    it("Non-existent image address", () => {
+        runCodeAndCheckImage("", `
+            try:
+                non_exist = Actor('https://bluej.org/does-not-exist.png')
+            except Exception as e:
+                print(e)
+                cat = Actor('cat-test.jpg')
+                cat.set_rotation(180)
+            sleep(1)
+            `, "graphics-no-such-image-load-cat-instead");
+    });
 });
 
 describe("Collision detection", () => {
