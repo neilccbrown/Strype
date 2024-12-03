@@ -456,25 +456,22 @@ export default Vue.extend({
                         // The response from Google Drive would be encoded in UTF-8, so we need to decode it.
                         // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
                         stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp))),
-                        callBack: (setStateSuccess: boolean) => {
-                            // Only update things if we could set the new state
-                            if(setStateSuccess){
-                                this.saveFileId = id;
-                                // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
-                                // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
-                                const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : i18n.t("defaultProjName") as string;
-                                this.appStore.projectName = fileNameNoExt;
-                                this.saveFileName = fileNameNoExt;
-                                // Restore the fields we backed up before loading
-                                this.appStore.strypeProjectLocation = strypeLocation;
-                                this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
-                                // And finally register the correc target flags via the Menu 
-                                // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
-                                (this.$parent as InstanceType<typeof MenuVue>).saveTargetChoice(StrypeSyncTarget.gd);
-                            }
-                        },
                     }                    
-                );
+                ).then(() => {
+                    // Only update things if we could set the new state
+                    this.saveFileId = id;
+                    // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
+                    // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
+                    const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : i18n.t("defaultProjName") as string;
+                    this.appStore.projectName = fileNameNoExt;
+                    this.saveFileName = fileNameNoExt;
+                    // Restore the fields we backed up before loading
+                    this.appStore.strypeProjectLocation = strypeLocation;
+                    this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
+                    // And finally register the correc target flags via the Menu 
+                    // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
+                    (this.$parent as InstanceType<typeof MenuVue>).saveTargetChoice(StrypeSyncTarget.gd);
+                }, () => {});
 
                 // We check that the file has write access. If it doesn't we shouldn't propose the sync anymore.
                 gapi.client.request({
