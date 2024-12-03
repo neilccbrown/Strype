@@ -741,10 +741,10 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     );
     Vue.delete(slot,"errorTitle");
 
-    /* IFTRUE_isPurePython */
+    /* IFTRUE_isPython */
     // If the frame of this slot has a runtime error, we also clear it
     Vue.delete(useStore().frameObjects[slotInfos.frameId], "runTimeError");
-    /* FITRUE_isPurePython */
+    /* FITRUE_isPython */
 
     // Check for precompiled errors (empty slots)
     const frameObject = useStore().frameObjects[slotInfos.frameId];

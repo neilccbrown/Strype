@@ -93,7 +93,8 @@
     "gdriveLocation": "Dossier :",
     "gdriveAllStrypeFiles": "Tous les fichiers Strype",
     "gdriveTab": "Mon Drive",
-    "editorErrors": "Erreurs"
+    "editorErrors": "Erreurs",
+    "resyncToGDAtStartup": "Précédemment, ce projet était enregistré vers Google Drive.\nVoulez-vous vous reconnecter à Google Drive pour synchroniser vos modifications ?\nSans synchronisation, ce projet ne contiendra pas la dernière version de Google Drive et vos modifications n'y seront pas enregistrées."
   },
   "contextMenu": {
     "ctrl": "Ctrl",

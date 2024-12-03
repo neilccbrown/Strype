@@ -95,7 +95,8 @@
     "gdriveLocation": "Folder:",
     "gdriveAllStrypeFiles": "All Strype files",
     "gdriveTab": "My Drive",
-    "editorErrors": "Errors"
+    "editorErrors": "Errors",
+    "resyncToGDAtStartup": "Last time you were editing this project, you were saving to Google Drive.\nDo you want to reconnect to Google Drive in order to synchronise your changes?\nIf you do not, you will not have the latest version from Google Drive and your changes will not be saved back there."
   },
   "contextMenu": {
     "ctrl": "Ctrl",
