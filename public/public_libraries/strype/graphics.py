@@ -250,9 +250,26 @@ class Actor:
         if isinstance(actor_or_name, Actor):
             return _strype_input_internal.checkCollision(self.__id, actor_or_name.__id)
         else:
-            # All other types are assumed to be a name.
-            # We have no way to look up from a name, so we check everything that is touching us:
-            return any(a.get_name() == actor_or_name for a in self.get_all_touching())
+            # All other types are assumed to be a name:
+            # Slightly odd construct but we convert list (implicitly boolean) to explicitly boolean:
+            return True if self.get_all_touching(actor_or_name) else False
+
+    def get_touching(self, name = None):
+        """
+        Gets the actor touching this one.  If you pass a name it will return a touching Actor
+        with that name (or None if there is none).  If you do not pass a name, it will return any
+        touching Actor (or None if there is none).
+        
+        Two actors are deemed to be touching if the
+        rectangles of their images are overlapping (even if the actor is transparent at that point).
+        
+        Note that if either this actor (or the potentially-touching) actor has had collisions turned off with
+        `set_can_touch(false)` then this function will return None even if they appear to touch.
+        
+        :param name: The name of the actor to check for touching, or None to check all actors.
+        :return: The Actor we are touching, if any, otherwise None if we are not touching an Actor. 
+        """
+        return next(iter(self.get_all_touching(name)), None)
     
     def set_can_touch(self, can_touch):
         """
@@ -267,16 +284,32 @@ class Actor:
         """
         _strype_input_internal.setCollidable(self.__id, can_touch)
     
-    def get_all_touching(self):
+    def get_all_touching(self, name = None):
         """
         Gets all the actors that this actor is touching.  If this actor has had `set_can_touch(false)`
         called, the returned list will always be empty.  The list will never feature any actors
         which have had `set_can_touch(false)` called on them.
         
+        If the name is given (i.e. is not None), it will be used to filter the returned list just
+        to actors with that given name.
+        
+        :param name: The name to use to filter the returned actors (or None/omitted if you do not want to filter the actors by name)
         :return: A list of all touching actors.
         """
-        return _strype_input_internal.getAllTouchingAssociated(self.__id)
+        return [a for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if name is None or name == a.get_name()]
     
+    def remove_touching(self, name = None):
+        """
+        Removes all touching actors.  If you pass a name, it will only remove touching actors with the
+        given name.
+        
+        Note that if either this actor (or the potentially-touching) actor has had collisions turned off with
+        `set_can_touch(false)` then this function will not remove the other actor, even if they appear to touch.
+        
+        :param name:  The name to use to filter the removed actors (or None/omitted if you do not want to filter the actors by name)
+        """
+        for a in self.get_all_touching(name):
+            a.remove()
     def edit_image(self):
         """
         Return an EditableImage which can be used to edit this actor's image.  All modifications
