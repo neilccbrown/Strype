@@ -973,7 +973,7 @@ export function notifyDragStarted(frameId?: number):void {
         // easier to see, we retrieve the dragged frame parent's body background to set it in the companion image.
         if(useStore().frameObjects[frameId].frameType.type == AllFrameTypesIdentifier.comment){
             const parentId = useStore().frameObjects[frameId].parentId;
-            const commentBackgroundColor = (parentId == useStore().getImportsFrameContainerId || parentId == useStore().getFuncDefsFrameContainerId)
+            const commentBackgroundColor = (parentId == useStore().getImportsFrameContainerId || parentId == useStore().getDefsFrameContainerId)
                 ? scssVars.nonMainCodeContainerBackground
                 : scssVars.mainCodeContainerBackground;
             html2canvasOptions.backgroundColor = commentBackgroundColor;

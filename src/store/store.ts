@@ -228,7 +228,7 @@ export const useStore = defineStore("app", {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === ImportsContainerDefinition.type)[0].id;
         },
 
-        getFuncDefsFrameContainerId:(state) => {
+        getDefsFrameContainerId:(state) => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
         

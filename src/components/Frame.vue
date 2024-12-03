@@ -930,7 +930,7 @@ export default Vue.extend({
                         // The background is the parent's body's background. That means if the parent is the import container or
                         // the function defs container, the background will be the same as these containers, and every other parent
                         // type will have the normal "body" content yellow background.
-                        const backgroundColor = (targetContainerFrameId == this.appStore.getImportsFrameContainerId || targetContainerFrameId == this.appStore.getFuncDefsFrameContainerId)
+                        const backgroundColor = (targetContainerFrameId == this.appStore.getImportsFrameContainerId || targetContainerFrameId == this.appStore.getDefsFrameContainerId)
                             ? scssVars.nonMainCodeContainerBackground
                             : scssVars.mainCodeContainerBackground;
                         let h2cOptions = {backgroundColor: backgroundColor, removeContainer: false} as {[key: string]: any};
