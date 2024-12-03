@@ -9,7 +9,6 @@
     "uploadingToMicrobit": "Μεταφόρτωση στο micro:bit ..."
   },
   "messageBannerMessage": {
-    "deleteLargeCode": "Διαγράψατε ένα μεγάλο κομμάτι κώδικα. Έαν έγινε καταλάθος μπορείτε να:",
     "uploadSuccessMicrobit": "Κωδικας μεταφορτόφηκε στο micro:bit",
     "uploadFailureMicrobit": "Η μεταφόρτοση κώδικα στο micro:bit απέτυχε με μήνημα λάθους \"{errorMsg}\""
   },

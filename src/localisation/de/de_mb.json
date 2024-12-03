@@ -13,7 +13,6 @@
     "1": "micro:bit-Funktionen"
   },
   "messageBannerMessage": {
-    "deleteLargeCode": "Du hast einen Code-Block gelöscht. Falls dies ein Versehen war, kannst Du es rückgängig machen:",
     "uploadSuccessMicrobit": "Upload zum micro:bit komplett.",
     "uploadFailureMicrobit": "Upload zum micro:bit abgebrochen. Fehler: \"{errorMsg}\""
   }

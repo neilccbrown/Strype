@@ -2,7 +2,7 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -1943,8 +1943,6 @@ export const useStore = defineStore("app", {
             let availablePositions = getAvailableNavigationPositions();
             availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
 
-            let showDeleteMessage = false;
-
             //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
             let framesIdToDelete = [this.currentFrame.id];
 
@@ -1961,10 +1959,6 @@ export const useStore = defineStore("app", {
                 }
                 key = "Backspace";
                 framesIdToDelete = this.selectedFrames.reverse();
-                //this flag to show the delete message is set on a per frame deletion basis,
-                //but here we could have 3+ single frames delete, so we need to also check to selection lengths
-                //unless we are wrapping the frames
-                showDeleteMessage = !this.isWrappingFrame && this.selectedFrames.length > 3;
             }
             else if (this.currentFrame.caretPosition == CaretPosition.below && this.frameObjects[this.currentFrame.id].jointFrameIds.length > 0 && key === "Backspace") {
                 // If they backspace after a joint frame structure that has joint frames (e.g. if +else),
@@ -1972,7 +1966,6 @@ export const useStore = defineStore("app", {
                 framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
             }
             
-            let deleteWithBackspaceInBody = false;
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
                 //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
@@ -2010,7 +2003,6 @@ export const useStore = defineStore("app", {
                             if(currentFrame.childrenIds.length === 0 || currentFrame.frameType.type !== AllFrameTypesIdentifier.funcdef){
                                 //just move the cursor one level up
                                 this.changeCaretWithKeyboard(key);
-                                deleteWithBackspaceInBody = true;
                             }
                             else{
                                 //just show the user a message and do nothing else
@@ -2036,11 +2028,6 @@ export const useStore = defineStore("app", {
 
                 //Delete the frame if a frame to delete has been found
                 if(frameToDelete.frameId > 0){
-                    //before actually deleting the frame(s), we check if the user should be notified of a large deletion
-                    if(!this.isWrappingFrame && !deleteWithBackspaceInBody && countRecursiveChildren(frameToDelete.frameId, 3) >= 3){
-                        showDeleteMessage = true;
-                    }
-
                     this.deleteFrame(
                         {
                             key:key,
@@ -2063,11 +2050,6 @@ export const useStore = defineStore("app", {
             //save state changes
             if(!ignoreBackState){
                 this.saveStateChanges(stateBeforeChanges);
-            }
-
-            //we show the message of large deletion after saving state changes as this is not to be notified.
-            if(showDeleteMessage){
-                this.showMessage(MessageDefinitions.LargeDeletion, 7000);
             }
         },
         
@@ -2362,12 +2344,7 @@ export const useStore = defineStore("app", {
                     // for ease of coding, we register a "one time" event listener on the modal
                     const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
                         if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
-                            this.doSetStateFromJSONStr(
-                                {
-                                    stateJSONStr: newStateStr,
-                                    showMessage: payload.showMessage ?? true,
-                                }
-                            );      
+                            this.doSetStateFromJSONStr(newStateStr);      
                             vm.$root.$off("bv::modal::hide", execSetStateFunction); 
                         }
                         else{
@@ -2378,12 +2355,7 @@ export const useStore = defineStore("app", {
                     vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
                 }
                 else{
-                    this.doSetStateFromJSONStr(
-                        {
-                            stateJSONStr: newStateStr,
-                            showMessage: payload.showMessage ?? true,
-                        }
-                    );   
+                    this.doSetStateFromJSONStr(newStateStr);
                 }                
             }
             else{
@@ -2396,9 +2368,9 @@ export const useStore = defineStore("app", {
             payload.callBack(isStateJSONStrValid);
         },
 
-        doSetStateFromJSONStr(payload: {stateJSONStr: string; showMessage?: boolean}){
+        doSetStateFromJSONStr(stateJSONStr: string){
             this.updateState(
-                JSON.parse(payload.stateJSONStr)
+                JSON.parse(stateJSONStr)
             );
             // If the language has been updated, we need to also update the UI accordingly
             this.setAppLang(this.appLang);
@@ -2410,10 +2382,6 @@ export const useStore = defineStore("app", {
             // Clear the Python Execution Area as it could have be run before.
             ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
             /* FITRUE_isPython */
-
-            if(payload.showMessage) {
-                this.showMessage(MessageDefinitions.UploadEditorFileSuccess, 5000);  
-            }
         },
 
         // This method can be used to copy a frame to a position.
