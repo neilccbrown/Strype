@@ -40,7 +40,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText } from "@/helpers/editor";
-import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {checkCodeErrors, getParentId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 
@@ -445,7 +445,7 @@ export default Vue.extend({
         
         updatePrependText() {
             if (this.prependSelfWhenInClass) {
-                const isInClass = useStore().frameObjects[useStore().frameObjects[this.frameId].parentId].frameType.type == DefIdentifiers.classdef;
+                const isInClass = useStore().frameObjects[getParentId(useStore().frameObjects[this.frameId])]?.frameType.type == DefIdentifiers.classdef;
                 if (!isInClass) {
                     this.prependText = "";
                 }
