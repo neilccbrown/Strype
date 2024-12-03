@@ -36,6 +36,11 @@ class Actor:
         the same EditableImage to multiple Actors, they will all update when you edit it.  If you do not want this
         behaviour then call `make_copy()` on the EditableImage as you pass it in.
         
+        Note: you can pass a filename for the image, which is an image name from Strype's image library,
+        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature
+        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+        you can load the image in a browser yourself.
+        
         :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an EditableImage 
         :param x: The X position at which to add the actor
         :param y: The Y position at which to add the actor
@@ -669,6 +674,11 @@ class FontFamily:
 def load_image(filename):
     """
     Loads the given image file as an EditableImage object.
+    
+    Note: you can pass a filename for the image, which is an image name from Strype's image library,
+        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature
+        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+        you can load the image in a browser yourself.
     
     :param filename: The built-in Strype filename, or URL, of the image to load.
     :return: An EditableImage object with the same image and dimensions as the given file
