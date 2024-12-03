@@ -21,18 +21,18 @@
       "comment": "your comment "
     },
     "funcdef_desc": "function definition",
-    "varassign_desc": "variable assignment",
+    "varassign_desc": "assignment",
     "funccall_desc": "function call",
-    "blank_desc": "blank",
+    "blank_desc": "blank line",
     "comment_desc": "comment"
   },
   "messageBannerMessage": {
     "noUndo": "There is no undo action available.",
     "noRedo": "There is no redo action available.",
-    "uploadEditorFileError": "Something wrong happened during editor file upload: {errorMsg}. Your code has not changed.",
+    "uploadEditorFileError": "An error occurred while loading file: {errorMsg}. Your code has not changed.",
     "uploadEditorFileNotSupported": "This file format is not supported. Expected file extension: {list}. Your code has not changed.",
     "forbiddenFramePaste": "The selected frame(s) cannot be pasted because it results in illegal code.",
-    "functionFrameCantDelete": "A function definition frame cannot be deleted from this caret position when content is not empty.",
+    "functionFrameCantDelete": "A function definition frame cannot be deleted when content is not empty.",
     "gdriveConnectToSaveFailed": "The connection to Google Drive has been lost. The synchronisation with Google Drive is stopped, latest changes may not have been saved.",
     "gdriveCantCreateStrypeFolder": "Strype could not create a default \"Strype\" folder in Google Drive.",
     "invalidPythonParseImport": "Invalid Python code imported: {errorMsg}",
@@ -52,23 +52,23 @@
     "spaceBar": "space"
   },
   "errorMessage": {
-    "wrongDataFormat": "the data format cannot be interpreted by Strype",
-    "stateDataIntegrity": "the data doesn't have integrity to be interpreted by Strype",
+    "wrongDataFormat": "the data format cannot be read",
+    "stateDataIntegrity": "the data seems to be corrupted",
     "dataNotObject": "the data doesn't describe an object",
-    "stateWrongPlatform": "the file was generated from a different Strype platform that the current Strype platform",
-    "stateWrongFrameTypeName": "a problem occurred while retrieving the frames' types",
+    "stateWrongPlatform": "the file was created by an incompatible version of Strype",
+    "stateWrongFrameTypeName": "error reading frames types",
     "emptyEditableSlot": "Slot cannot be empty",
     "errorTitle": "Error",
     "pastFrameErrTitle": "Runtime error at last run",
     "errorUserDefinedFuncMsg": "User-defined function\nthis function definition contains errors",
     "errorUserDefinedVarMsg": "User-defined variable\none of the assignments for this variable contains errors",
     "EOFError": "This frame cannot be empty.",
-    "GDriveSaveFailed": "Strype could not save to Google Drive. Your latest changes may have not been saved, and the sync has been turned off.",
+    "GDriveSaveFailed": "Could not save to Google Drive. Your latest changes may have not have been saved. Auto-save is off.",
     "fileNameError": "Project / File name can only contain letters, numbers, spaces, hyphens or parentheses",
     "gdriveConnectionSaveToLoadProjFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to open another project.",
     "gdriveConnectionSaveToUnloadPageFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to save the current project before leaving Strype.",
-    "gdrivePermissionsNotMet": "Strype requires at least one access permission to use Googe Drive.",
-    "gdriveReadOnly": "This Drive file is read-only, syncing to Drive has been turned off.",
+    "gdrivePermissionsNotMet": "Strype requires at least one access permission to use Google Drive.",
+    "gdriveReadOnly": "This file is read-only. Auto-save is off.",
     "gdriveWrongFile": "Please select a Strype file (extension \".spy\").",
     "unexpectedCharsPython": "unexpected character(s)"
   },
@@ -147,6 +147,6 @@
     "collapse": "Collapse",
     "console": "Console",
     "TurtleGraphics": "Turtle Graphics",
-    "importTurtle": "Import the module 'turtle' in your code to use Turtle Graphics."
+    "importTurtle": "Import the module 'turtle' to use Turtle Graphics."
   }
 }
