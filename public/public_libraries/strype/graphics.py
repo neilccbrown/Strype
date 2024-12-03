@@ -98,6 +98,8 @@ class Actor:
         """
         Gets the current rotation of this Actor.
         
+        Note: returns None if the actor has been removed by a call to remove().
+        
         :return: The rotation of this Actor, in degrees.
         """
         return _strype_graphics_internal.getImageRotation(self.__id)
@@ -106,9 +108,11 @@ class Actor:
         """
         Gets the current scale of this Actor.
         
+        Note: returns None if the actor has been removed by a call to remove().
+        
         :return: The scale of this Actor, where 1.0 is the default scale. 
         """
-        return _strype_graphics_internal.getImageScale(self.__id, scale)
+        return _strype_graphics_internal.getImageScale(self.__id)
     def get_name(self):
         """
         Gets the name of this actor.
@@ -130,6 +134,8 @@ class Actor:
         Removes the actor from the world.  There is no way to re-add the actor to the world.
         """
         _strype_graphics_internal.removeImage(self.__id)
+        # Also remove any speech bubble:
+        self.say("")
         
     def get_x(self):
         """
@@ -137,11 +143,14 @@ class Actor:
         is not a whole number, it is rounded down (towards zero).  If you want the exact position as a potentially
         fractional number, call `get_exact_x()` instead.
         
+        Note: returns None if the actor has been removed by a call to remove().
+        
         :return: The current X position, rounded down to an integer (whole number). 
         """
         
          # Gets X with rounding (towards zero):
-        return int(_strype_graphics_internal.getImageLocation(self.__id)['x'])
+        location = _strype_graphics_internal.getImageLocation(self.__id)
+        return int(location['x']) if location else None
     
     def get_y(self):
         """
@@ -149,30 +158,39 @@ class Actor:
         is not a whole number, it is rounded down (towards zero).  If you want the exact position as a potentially
         fractional number, call `get_exact_y()` instead.
         
+        Note: returns None if the actor has been removed by a call to remove().
+        
         :return: The current Y position, rounded down to an integer (whole number). 
         """
         # Gets Y with rounding (towards zero):
-        return int(_strype_graphics_internal.getImageLocation(self.__id)['y'])
+        location = _strype_graphics_internal.getImageLocation(self.__id)
+        return int(location['y']) if location else None
     
     def get_exact_x(self):
         """
         Gets the exact X position of the actor, which may be a fractional number.  If you do not need this accuracy,
         you may prefer to call `get_x()` instead.
+        
+        Note: returns None if the actor has been removed by a call to remove().
          
         :return: The exact X position
         """
         # Gets X with no rounding:
-        return _strype_graphics_internal.getImageLocation(self.__id)['x']
+        location = _strype_graphics_internal.getImageLocation(self.__id)
+        return location['x'] if location else None
     
     def get_exact_y(self):
         """
         Gets the exact Y position of the actor, which may be a fractional number.  If you do not need this accuracy,
         you may prefer to call `get_y()` instead.
+        
+        Note: returns None if the actor has been removed by a call to remove().
          
         :return: The exact Y position
         """
         # Gets Y with no rounding:
-        return _strype_graphics_internal.getImageLocation(self.__id)['y']
+        location = _strype_graphics_internal.getImageLocation(self.__id)
+        return location['y'] if location else None
     
     def move(self, amount):
         """
@@ -185,16 +203,20 @@ class Actor:
         :param amount: The amount of pixels to move forwards.  Negative amounts move backwards.
         """
         cur = _strype_graphics_internal.getImageLocation(self.__id)
-        rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
-        self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
-        
+        if cur is not None:
+            rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
+            self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
+        # If cur is None, do nothing
     def turn(self, degrees):
         """
         Changes the actor's current rotation by the given amount of degrees.
         
         :param degrees: The change in rotation, in degrees.  Positive amounts turn anti-clockwise, negative amounts turn clockwise.
         """
-        self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
+        rotation = _strype_graphics_internal.getImageRotation(self.__id)
+        if rotation is not None:
+            self.set_rotation(rotation + degrees)
+        # If rotation is None, do nothing
         
     def is_at_edge(self):
         """
@@ -207,6 +229,8 @@ class Actor:
         """
         x = self.get_exact_x()
         y = self.get_exact_y()
+        if x is None or y is None:
+            return False
         return x < -399 or x > 399 or y < -299 or y > 299
         
     def is_touching(self, actor):
@@ -282,8 +306,8 @@ class Actor:
         if self.__say is not None and _strype_graphics_internal.imageExists(self.__say):
             _strype_graphics_internal.removeImage(self.__say)
             self.__say = None
-        # Then add a new one if text is not blank:
-        if text:
+        # Then add a new one if text is not blank and we are in the world:
+        if text and _strype_graphics_internal.imageExists(self.__id):
             padding = 10
             # We first make an image just with the text on, which also tells us the size:
             textOnlyImg = EditableImage(max_width, max_height)
