@@ -236,7 +236,7 @@ export const removeFrameInFrameList = (frameId: number): void => {
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
-export const getParent = (currentFrame: FrameObject): number => {
+export const getParentId = (currentFrame: FrameObject): number => {
     let parentId = 0;
     if(currentFrame.id !== 0){
         parentId = (currentFrame.jointParentId > 0) ? useStore().frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
@@ -260,7 +260,7 @@ export const getFrameSectionIdFromFrameId = (frameId: number): number => {
     // (We know when we reached a frame section when the id of that frame is negative; all frame sections are defined with a negative index.) 
     let parentId = frameId;
     while(parentId > 0){
-        parentId = getParent(useStore().frameObjects[parentId]);
+        parentId = getParentId(useStore().frameObjects[parentId]);
     }    
     return parentId;
 };
@@ -288,7 +288,7 @@ export const childrenListWithJointFrames = (currentFrameId: number, caretPositio
             
     // Create the list of children + joints with which the caret will work with
     let childrenAndJointFramesIds = [] as number[];
-    const parentId = getParent(currentFrame);
+    const parentId = getParentId(currentFrame);
 
     childrenAndJointFramesIds = [...useStore().frameObjects[parentId].childrenIds];    
     
@@ -723,11 +723,11 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
     let isAncestorTypeFound = false;
     let frameToCheckId = (caretPosition === CaretPosition.body) ? 
         currFrameId:
-        getParent(useStore().frameObjects[currFrameId]);
+        getParentId(useStore().frameObjects[currFrameId]);
     
     while(frameToCheckId != 0 && !isAncestorTypeFound){
         isAncestorTypeFound = containerTypes.includes(useStore().frameObjects[frameToCheckId].frameType.type);
-        frameToCheckId = getParent(useStore().frameObjects[frameToCheckId]);
+        frameToCheckId = getParentId(useStore().frameObjects[frameToCheckId]);
     }
 
     return isAncestorTypeFound;

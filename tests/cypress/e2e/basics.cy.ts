@@ -371,34 +371,37 @@ describe("Wrapping frames", () => {
         ]).concat(defaultMyCode));
     });
 });
-
-/* Commented until OOP reuse this test 
+ 
 describe("Copying key combination", () => {
-    it("Check C inserts a comment", () => {
+    it("Check C inserts a class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type("{downArrow}{downArrow}");
+        cy.get("body").type("{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
         cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c"});
-        cy.get("body").type("Hello");
-        checkCodeEquals(defaultImports.concat(defaultMyCode).concat([/# ?Hello/]));
+        // Empty body messes up test so make a body in constructor:
+        cy.get("body").type("Hello{downArrow}{downArrow}r42");
+        checkCodeEquals(defaultImports.concat([{
+            h:/class +Hello *:/,
+            b:[{h:/def *__init__ *\((self,?)? *\) *:/, b:[/return *42/]}]}]).concat(defaultMyCode));
     });
-    it("Does not insert a comment frame on Ctrl+C, when C is released first", () => {
+    it("Does not insert a class frame on Ctrl+C, when C is released first", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type("{shift}{downArrow}{downArrow}");
-        cy.get("body").type("{ctrl}", {release: false});
-        cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
-        cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c"});
-        cy.get("body").type("{ctrl}");
-        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        // Make a function frame and select it:
+        cy.get("body").type("{upArrow}{f}foo{downArrow}r42{downArrow}{downArrow}{shift}{upArrow}");
+        cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
+        cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c", ctrlKey: true});
+        cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c", ctrlKey: true});
+        cy.get("body").trigger("keyup", {keycode: 17, key: "Control", code: "ControlLeft"}); // Release Ctrl
+        checkCodeEquals(defaultImports.concat([{h:/def +foo *\( *\) *:/, b:[/return *42/]}]).concat(defaultMyCode));
     });
-    it("Does not insert a comment frame on Ctrl+C, when C is released second", () => {
+    it("Does not insert a class frame on Ctrl+C, when C is released second", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type("{shift}{downArrow}{downArrow}");
+        // Make a function frame and select it:
+        cy.get("body").type("{upArrow}{f}foo{downArrow}r42{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c", ctrlKey: true});
         cy.get("body").trigger("keyup", {keycode: 17, key: "Control", code: "ControlLeft"}); // Release Ctrl
         cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c", ctrlKey: false}); // Release C
-        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        checkCodeEquals(defaultImports.concat([{h:/def +foo *\( *\) *:/, b:[/return *42/]}]).concat(defaultMyCode));
     });
 });
-*/

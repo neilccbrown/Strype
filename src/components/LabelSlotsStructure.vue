@@ -9,7 +9,7 @@
         @focus="onFocus"
         @blur="blurEditableSlot"
         @paste.prevent.stop="forwardPaste"
-        class="next-to-eachother label-slot-container"
+        :class="{'next-to-eachother label-slot-container':true, 'prepend-self-only': prependText === 'self', 'prepend-self-comma': prependText === 'self,'}"
     >
         <div 
             v-for="(slotItem, slotIndex) in subSlots" 
@@ -34,13 +34,13 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, DefIdentifiers, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText } from "@/helpers/editor";
-import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {checkCodeErrors, getParentId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 
@@ -57,18 +57,26 @@ export default Vue.extend({
         labelIndex: Number,
         defaultText: String,
         isDisabled: Boolean,
+        prependSelfWhenInClass: Boolean,
     },
 
     data: function() {
         return {
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
             isFocused: false,
+            prependText: "", // This is updated properly in updatePrependText()
         };
     },
 
     created(){
         // Register this component on the root, to allow external calls for refactoring the slots
         this.$root.$refs[this.labelSlotsStructDivId] = this;
+    },
+    
+    mounted() {
+        this.$nextTick(() => {
+            this.updatePrependText();
+        });
     },
 
     computed:{
@@ -387,6 +395,7 @@ export default Vue.extend({
 
         onFocus(){
             this.isFocused = true;
+            this.updatePrependText();
             // When the application gains focus again, the browser might try to give the first span of a div the focus (because the div may have been focused)
             // even if we have the blue caret showing. We do not let this happen.
             if(this.appStore.ignoreFocusRequest && this.appStore.focusSlotCursorInfos == undefined){
@@ -397,6 +406,7 @@ export default Vue.extend({
 
         blurEditableSlot(){
             this.isFocused = false;
+            this.updatePrependText();
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){
                 this.appStore.bypassEditableSlotBlurErrorCheck = false;
@@ -432,6 +442,22 @@ export default Vue.extend({
                 }
             }, 200);
         },
+        
+        updatePrependText() {
+            if (this.prependSelfWhenInClass) {
+                const isInClass = useStore().frameObjects[getParentId(useStore().frameObjects[this.frameId])]?.frameType.type == DefIdentifiers.classdef;
+                if (!isInClass) {
+                    this.prependText = "";
+                }
+                else {
+                    const empty = this.subSlots.length == 0 || !this.subSlots.some((s) => s.code !== "");
+                    this.prependText = (this.isFocused || !empty) ? "self," : "self";
+                }
+            }
+            else {
+                this.prependText = "";
+            }
+        },
     },
 });
 </script>
@@ -441,5 +467,17 @@ export default Vue.extend({
     outline: none;
     max-width: 100%;
     flex-wrap: wrap;
+}
+
+.label-slot-container.prepend-self-only::before, .label-slot-container.prepend-self-comma::before {
+    color: rgb(2, 33, 168);
+    font-weight: 600;
+    margin-right: 4px;
+}
+.label-slot-container.prepend-self-only::before {
+    content: "self ";
+}
+.label-slot-container.prepend-self-comma::before {
+    content: "self,";
 }
 </style>

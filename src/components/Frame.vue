@@ -91,7 +91,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
@@ -839,7 +839,7 @@ export default Vue.extend({
                 this.appStore.copySelectedFramesToPosition(
                     {
                         newParentId: (this.isJointFrame)
-                            ? getParent(this.appStore.frameObjects[this.frameId])
+                            ? getParentId(this.appStore.frameObjects[this.frameId])
                             : getParentOrJointParent(this.frameId),
                     }
                 );
@@ -930,7 +930,7 @@ export default Vue.extend({
                         // The background is the parent's body's background. That means if the parent is the import container or
                         // the function defs container, the background will be the same as these containers, and every other parent
                         // type will have the normal "body" content yellow background.
-                        const backgroundColor = (targetContainerFrameId == this.appStore.getImportsFrameContainerId || targetContainerFrameId == this.appStore.getFuncDefsFrameContainerId)
+                        const backgroundColor = (targetContainerFrameId == this.appStore.getImportsFrameContainerId || targetContainerFrameId == this.appStore.getDefsFrameContainerId)
                             ? scssVars.nonMainCodeContainerBackground
                             : scssVars.mainCodeContainerBackground;
                         let h2cOptions = {backgroundColor: backgroundColor, removeContainer: false} as {[key: string]: any};

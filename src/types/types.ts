@@ -136,6 +136,8 @@ export interface FrameLabel {
     defaultText: string;
     optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
     acceptAC?: boolean; //default true
+    appendSelfWhenInClass?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
+
 }
 
 export enum CaretPosition {
@@ -289,7 +291,7 @@ export interface FramesDefinitions {
 export const ContainerTypesIdentifiers = {
     root: "root",
     importsContainer: "importsContainer",
-    funcDefsContainer: "funcDefsContainer",
+    defsContainer: "defsContainer",
     framesMainContainer: "mainContainer",
 };
 
@@ -302,8 +304,9 @@ const ImportFrameTypesIdentifiers = {
     fromimport: "from-import",
 };
 
-const FuncDefIdentifiers = {
+export const DefIdentifiers = {
     funcdef: "funcdef",
+    classdef: "classdef",
 };
 
 export const JointFrameIdentifiers = {
@@ -333,7 +336,7 @@ const StandardFrameTypesIdentifiers = {
 
 export const AllFrameTypesIdentifier = {
     ...ImportFrameTypesIdentifiers,
-    ...FuncDefIdentifiers,
+    ...DefIdentifiers,
     ...StandardFrameTypesIdentifiers,
 };
 
@@ -353,7 +356,7 @@ export const BlockDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     allowChildren: true,
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-        .concat(Object.values(FuncDefIdentifiers))
+        .concat(Object.values(DefIdentifiers))
         .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
 };
 
@@ -380,15 +383,15 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     colour: "#BBC6B6",
 };
 
-export const FuncDefContainerDefinition: FramesDefinitions = {
+export const DefsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: ContainerTypesIdentifiers.funcDefsContainer,
+    type: ContainerTypesIdentifiers.defsContainer,
     labels: [
-        { label: (i18n.t("appMessage.funcDefsContainer") as string), showSlots: false, defaultText: ""},
+        { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: ""},
     ],
     isCollapsed: false,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
-        .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
+        .filter((frameTypeDef: string) => !Object.values(DefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
 };
 
@@ -408,7 +411,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
 export const FrameContainersDefinitions = {
     RootContainerFrameDefinition,
     ImportsContainerDefinition,
-    FuncDefContainerDefinition,
+    FuncDefContainerDefinition: DefsContainerDefinition,
     MainFramesContainerDefinition,
 };
 
@@ -529,7 +532,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
         colour: "#E0DFE4",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-            .concat(Object.values(FuncDefIdentifiers))
+            .concat(Object.values(DefIdentifiers))
             .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
     };
 
@@ -609,13 +612,28 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
 
     const FuncDefDefinition: FramesDefinitions = {
         ...BlockDefinition,
-        type: FuncDefIdentifiers.funcdef,
+        type: DefIdentifiers.funcdef,
         labels: [
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false},
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, appendSelfWhenInClass: true},
             { label: ") :", showSlots: false, defaultText: ""},
         ],
         colour: "#ECECC8",
+    };
+    
+    const ClassDefinition : FramesDefinitions = {
+        ...BlockDefinition,
+        type: DefIdentifiers.classdef,
+        labels: [
+            { label: "class ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        colour: "#baded3",
+        forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+            .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment))
+            .concat([DefIdentifiers.classdef]),
+        defaultChildrenTypes: [{...EmptyFrameObject, frameType: FuncDefDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"__init__"}], operators: []}}, 1: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+
     };
 
     const WithDefinition: FramesDefinitions = {
@@ -643,6 +661,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ExceptDefinition,
         FinallyDefinition,
         FuncDefDefinition,
+        ClassDefinition,
         WithDefinition,
         FuncCallDefinition,
         BlankDefinition,
@@ -664,8 +683,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             case ImportsContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.importsContainer") as string;
                 break;
-            case FuncDefContainerDefinition.type:
-                frameObject.frameType.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
+            case DefsContainerDefinition.type:
+                frameObject.frameType.labels[0].label = i18n.t("appMessage.defsContainer") as string;
                 break;
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
@@ -1117,3 +1136,4 @@ export interface Locale {
     code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
     name: string, // the user-friendly locale's name (e.g.: "English")
 }
+

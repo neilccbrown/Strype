@@ -3,7 +3,7 @@ import { actOnTurtleImport, hasEditorCodeErrors, trimmedKeywordOperators } from 
 import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, DefIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType } from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 
 const INDENT = "    ";
@@ -44,7 +44,7 @@ export default class Parser {
         }
     }
 
-    private parseBlock(block: FrameObject, indentation: string): string {
+    private parseBlock(block: FrameObject, insideAClass : boolean, indentation: string): string {
         let output = "";
         const children = useStore().getFramesForParentId(block.id);
 
@@ -57,7 +57,7 @@ export default class Parser {
         const conditionalIndent = (passBlock) ? "" : INDENT;
 
         output += 
-            ((!passBlock)? this.parseStatement(block, indentation) : "") + 
+            ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") + 
             // We replace an empty block frame content by "pass". We also replace the frame's content if
             // the children are ALL blank or simple comment frames, because Python will see it as a problem. 
             // Any disabled frame (and multi lines comments which are actually transformed to multiple line comments) 
@@ -69,6 +69,7 @@ export default class Parser {
                 ?
                 this.parseFrames(
                     children,
+                    insideAClass,
                     indentation + conditionalIndent
                 ) :
                 // When we replace empty body frames by "pass", if that's because we have only blank or comments, we need to
@@ -79,7 +80,8 @@ export default class Parser {
             ) 
             + 
             this.parseFrames(
-                useStore().getJointFramesForFrameId(block.id), 
+                useStore().getJointFramesForFrameId(block.id),
+                insideAClass,
                 indentation
             );
         
@@ -94,7 +96,7 @@ export default class Parser {
         return (indentation + conditionalIndent +"pass" + "\n").repeat(children.length);
     }
     
-    private parseStatement(statement: FrameObject, indentation = ""): string {
+    private parseStatement(statement: FrameObject, insideAClass : boolean, indentation = ""): string {
         let output = indentation;
         const labelSlotsPositionLengths: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
         
@@ -120,6 +122,11 @@ export default class Parser {
             // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
             if(label.showLabel??true){
                 output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
+                if (label.appendSelfWhenInClass && insideAClass) {
+                    // In Python it's okay to have a trailing comma on the params, so we don't need to check
+                    // whether any actual params follow:
+                    output += "self,";
+                }
             }
             
             //if there are slots
@@ -150,7 +157,7 @@ export default class Parser {
         return output;
     }
 
-    private parseFrames(codeUnits: FrameObject[], indentation = ""): string {
+    private parseFrames(codeUnits: FrameObject[], parentInsideAClass = false, indentation = ""): string {
         let output = "";
         let lineCode = "";
 
@@ -174,18 +181,20 @@ export default class Parser {
                 //it doesn't matter since we will not have errors to show in those anyway)
                 this.line += 1;
             }
+            
+            const insideAClass = parentInsideAClass || frame.frameType.type == DefIdentifiers.classdef;
 
             lineCode = frame.frameType.allowChildren ?
                 // frame with children
                 (Object.values(FrameContainersDefinitions).find((e) => e.type ===frame.frameType.type))?
                     // for containers call parseFrames again on their frames
-                    this.parseFrames(useStore().getFramesForParentId(frame.id), "") 
+                    this.parseFrames(useStore().getFramesForParentId(frame.id), insideAClass, "") 
                     :
                     // for simple block frames (i.e. if) call parseBlock
-                    this.parseBlock(frame, indentation) 
+                    this.parseBlock(frame, insideAClass, indentation) 
                 : 
                 // single line frame
-                this.parseStatement(frame, indentation);
+                this.parseStatement(frame, insideAClass, indentation);
 
             output += disabledFrameBlockFlag + lineCode;
             

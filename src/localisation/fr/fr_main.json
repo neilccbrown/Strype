@@ -111,7 +111,7 @@
     "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
     "enableInnerDisabledFrameConfirm": "Cette action activera le groupe entier de cadres désactivés auquel ce cadre appartient.\nSouhaitez-vous continuer ?",
     "importsContainer": "Imports :",
-    "funcDefsContainer": "Définitions de fonctions :",
+    "defsContainer": "Définitions :",
     "mainContainer": "Mon code :",
     "preCompiledErrorNeedFix": "Veuillez d'abord corriger les erreurs existantes.",
     "noWebUSB": "Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
