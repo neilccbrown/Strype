@@ -35,7 +35,7 @@
     "while_detail": "Add a 𝐰𝐡𝐢𝐥𝐞 loop",
     "break_detail": "Add a 𝐛𝐫𝐞𝐚𝐤 statement",
     "continue_detail": "Add a 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐞 statement",
-    "varassign_detail": "Add aa assignment statement",
+    "varassign_detail": "Add an assignment statement",
     "funccall_detail": "Add a function call",
     "blank_detail": "Add a blank frame",
     "return_detail": "Add a 𝐫𝐞𝐭𝐮𝐫𝐧 statement",
