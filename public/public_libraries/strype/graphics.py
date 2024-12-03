@@ -36,6 +36,11 @@ class Actor:
         the same EditableImage to multiple Actors, they will all update when you edit it.  If you do not want this
         behaviour then call `make_copy()` on the EditableImage as you pass it in.
         
+        Note: you can pass a filename for the image, which is an image name from Strype's image library,
+        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature
+        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+        you can load the image in a browser yourself.
+        
         :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an EditableImage 
         :param x: The X position at which to add the actor
         :param y: The Y position at which to add the actor
@@ -57,6 +62,9 @@ class Actor:
     def set_location(self, x, y):
         """
         Sets the position of the actor to be the given x, y position.
+        
+        If the position is outside the bounds of the world (X: -400 to +400, Y: -300 to +300) the position
+        will be adjusted to the nearest point inside the world.
         
         :param x: The new X position of the actor
         :param y: The new Y position of the actor
@@ -171,6 +179,9 @@ class Actor:
         Move forwards the given amount in the current direction that the actor is heading.  If you want to change
         this direction, you can call `set_rotation()` or `turn()`.
         
+        If the movement would take the actor outside the bounds of the world, the actor is moved to the nearest
+        point within the world; you cannot move outside the world.
+        
         :param amount: The amount of pixels to move forwards.  Negative amounts move backwards.
         """
         cur = _strype_graphics_internal.getImageLocation(self.__id)
@@ -184,6 +195,19 @@ class Actor:
         :param degrees: The change in rotation, in degrees.  Positive amounts turn anti-clockwise, negative amounts turn clockwise.
         """
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
+        
+    def is_at_edge(self):
+        """
+        Checks whether the central point of the actor is at the edge of the screen.
+        
+        An actor is determined to be at the edge if it's position is within one pixel of the edge of the screen.
+        So if its X is less than -399 or greater than 399, or its Y is less than -299 or greater than 299.
+        
+        :return: True if the actor is at the edge of the world, False otherwise. 
+        """
+        x = self.get_exact_x()
+        y = self.get_exact_y()
+        return x < -399 or x > 399 or y < -299 or y > 299
         
     def is_touching(self, actor):
         """
@@ -670,6 +694,11 @@ def load_image(filename):
     """
     Loads the given image file as an EditableImage object.
     
+    Note: you can pass a filename for the image, which is an image name from Strype's image library,
+        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature
+        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+        you can load the image in a browser yourself.
+    
     :param filename: The built-in Strype filename, or URL, of the image to load.
     :return: An EditableImage object with the same image and dimensions as the given file
     """
@@ -677,7 +706,7 @@ def load_image(filename):
     img._EditableImage__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
     return img
 
-def get_and_forget_clicked_actor():
+def get_clicked_actor():
     """
     Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice
     in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function
