@@ -50,7 +50,7 @@ import { mapStores } from "pinia";
 import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, hasPrecompiledCodeError,  resetAddFrameCommandContainerHeight, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { PythonExecRunningState } from "@/types/types";
-import { PersistentImage, PersistentImageManager } from "@/stryperuntime/image_and_collisions";
+import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
 
 const persistentImageManager = new PersistentImageManager();
@@ -68,8 +68,8 @@ const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to
 // This means that if you draw an image say 400x300 pixels it will always take up a quarter of the canvas
 // (well, a half of the canvas in each dimension) no matter what size the user's window is or whether they've
 // expanded the canvas
-const graphicsCanvasLogicalWidth = 800;
-const graphicsCanvasLogicalHeight = 600;
+const graphicsCanvasLogicalWidth = WORLD_WIDTH;
+const graphicsCanvasLogicalHeight = WORLD_HEIGHT;
 
 export default Vue.extend({
     name: "PythonExecutionArea",

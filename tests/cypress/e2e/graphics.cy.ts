@@ -156,7 +156,7 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
 
 function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 5000) {
     cy.get("body").type("{uparrow}{uparrow}");
-    (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\n");
+    (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\nimport math\n");
     cy.wait(2000);
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(functions);
@@ -302,7 +302,7 @@ describe("Image download", () => {
             cat.line(0, 0, cat.get_width(), cat.get_height())
             cat.set_stroke("blue")
             cat.line(cat.get_width(), 0, 0, cat.get_height())
-            cat.download("cat-crossed")`, "cat-crossed", "download-cat-crossed", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
+            cat.download("cat-crossed")`, "cat-crossed", "download-cat-crossed");
     });
     
     it("Rate limits downloads to one every two seconds", () => {
@@ -351,5 +351,47 @@ describe("Image download", () => {
             // Check they were all found in the time range:
             expect(inRangeCount).to.equal(9);
         });
+    });
+});
+
+describe("World bounds", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    it("Cannot set location or move outside corners", () => {
+        runCodeAndCheckImage("", `
+            white_rect = EditableImage(100, 100)
+            white_rect.set_fill("white")
+            white_rect.fill()
+            top_left = Actor(white_rect)
+            top_left.set_location(-500, 500)
+            red_rect = EditableImage(100, 100)
+            red_rect.set_fill("red")
+            red_rect.fill()
+            top_right = Actor(red_rect)
+            top_right.set_location(1000, 500)
+            blue_rect = EditableImage(100, 100)
+            blue_rect.set_fill("blue")
+            blue_rect.fill()
+            bottom_right = Actor(blue_rect)
+            bottom_right.set_location(800, -600)
+            green_rect = EditableImage(100, 100)
+            green_rect.set_fill("green")
+            green_rect.fill()
+            bottom_left = Actor(green_rect)
+            bottom_left.set_location(-1500, -1500)
+            yellow_rect = EditableImage(50, 50)
+            yellow_rect.set_fill("yellow")
+            yellow_rect.fill()
+            mover = Actor(yellow_rect)
+            # We scale so that the diagonal will be 50 in total:
+            mover.set_scale(1/math.sqrt(2))
+            mover.set_rotation(45)
+            # We want to move to 325, 325
+            # It should complete the X move (and thus touch red: 325 + 25 either side) but be constrained in Y dimension: 
+            mover.move(325 * math.sqrt(2))
+            sleep(1)
+            `, "bounds-corners");
     });
 });

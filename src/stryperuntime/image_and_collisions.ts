@@ -12,6 +12,9 @@ export interface PersistentImage {
     associatedObject: any, // The object to remember for this PersistentImage (so far, this is the Actor from the strype.graphics Python module)
 }
 
+export const WORLD_WIDTH = 800;
+export const WORLD_HEIGHT = 600;
+
 export class PersistentImageManager {
     private persistentImages = new Map<number, PersistentImage>();
     private persistentImagesDirty = false; // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
@@ -60,8 +63,8 @@ export class PersistentImageManager {
     public setPersistentImageLocation(id: number, x: number, y: number): void {
         const obj = this.persistentImages.get(id);
         if (obj != undefined && (obj.x != x || obj.y != y)) {
-            obj.x = x;
-            obj.y = y;
+            obj.x = Math.max(-WORLD_WIDTH/2, Math.min(x, WORLD_WIDTH/2));
+            obj.y = Math.max(-WORLD_HEIGHT/2, Math.min(y, WORLD_HEIGHT/2));
             obj.dirty = true;
             obj.collisionBox?.setPosition(x, y);
             obj.collisionBox?.updateBody();

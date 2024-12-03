@@ -63,6 +63,9 @@ class Actor:
         """
         Sets the position of the actor to be the given x, y position.
         
+        If the position is outside the bounds of the world (X: -400 to +400, Y: -300 to +300) the position
+        will be adjusted to the nearest point inside the world.
+        
         :param x: The new X position of the actor
         :param y: The new Y position of the actor
         """
@@ -175,6 +178,9 @@ class Actor:
         """
         Move forwards the given amount in the current direction that the actor is heading.  If you want to change
         this direction, you can call `set_rotation()` or `turn()`.
+        
+        If the movement would take the actor outside the bounds of the world, the actor is moved to the nearest
+        point within the world; you cannot move outside the world.
         
         :param amount: The amount of pixels to move forwards.  Negative amounts move backwards.
         """
