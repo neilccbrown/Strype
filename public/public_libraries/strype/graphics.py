@@ -196,6 +196,19 @@ class Actor:
         """
         self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
         
+    def is_at_edge(self):
+        """
+        Checks whether the central point of the actor is at the edge of the screen.
+        
+        An actor is determined to be at the edge if it's position is within one pixel of the edge of the screen.
+        So if its X is less than -399 or greater than 399, or its Y is less than -299 or greater than 299.
+        
+        :return: True if the actor is at the edge of the world, False otherwise. 
+        """
+        x = self.get_exact_x()
+        y = self.get_exact_y()
+        return x < -399 or x > 399 or y < -299 or y > 299
+        
     def is_touching(self, actor):
         """
         Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
