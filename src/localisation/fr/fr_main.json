@@ -20,18 +20,18 @@
       "comment": "ton commentaire "
     },
     "funcdef_desc": "définition de fonction",
-    "varassign_desc": "affectation de variable",
+    "varassign_desc": "affectation",
     "funccall_desc": "appel de fonction",
-    "blank_desc": "vide",
+    "blank_desc": "ligne vide",
     "comment_desc": "commentaire"
    },
   "messageBannerMessage": {
     "noUndo": "Il n'y a aucune action à annuler.",
     "noRedo": "Il n'y a aucune action à refaire.",
-    "uploadEditorFileError": "Un problème est survenu lors du chargement de fichier pour l'éditeur : {errorMsg}. Votre code n'a pas été modifié.",
+    "uploadEditorFileError": "Une erreur est survenu lors du chargement de fichier : {errorMsg}. Votre code n'a pas été modifié.",
     "uploadEditorFileNotSupported": "Ce format de fichier n'est pas supporté. Extension de fichier attendue: {list}. Votre code n'a pas été modifié.",
     "forbiddenFramePaste": "Le ou les cadres sélectionnés ne peuvent pas être collés car ils produiraient un code erroné.",
-    "functionFrameCantDelete": "Un cadre de définition de fonction ne peut pas être supprimé à partir de cette position du curseur si celui ni n'est pas vide.",
+    "functionFrameCantDelete": "Un cadre de définition de fonction ne peut pas être supprimé si celui ni n'est pas vide.",
     "gdriveConnectToSaveFailed": "La connexion à Google Drive a été perdue. La synchronisation avec Google Drive est interrompue, les dernières modifications n'ont peut-être pas été sauvegardées.",
     "gdriveCantCreateStrypeFolder": "Strype n'a pas pu créer un dossier par défaut \"Strype\" dans Google Drive.",
     "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
@@ -51,23 +51,23 @@
     "spaceBar": "espace"
   },
   "errorMessage": {
-    "wrongDataFormat": "le format de données ne peut pas être interprété par Strype",
-    "stateDataIntegrity": "les données ne sont pas intègres pour être interprétées par Strype",
+    "wrongDataFormat": "le format de données ne peut pas être lu",
+    "stateDataIntegrity": "les données semblent être corrompues",
     "dataNotObject": "les données de décrivent pas un object",
-    "stateWrongPlatform": "le fichier a été créé à partir d'une differente plateforme Strype que la plateforme Strype actuelle",
-    "stateWrongFrameTypeName": "un problème est survenu lors de la récupération des types de cadres",
+    "stateWrongPlatform": "le fichier a été créé à partir d'une version de Strype incompatible",
+    "stateWrongFrameTypeName": "erreur lors de la lecture des types de cadres",
     "emptyEditableSlot": "Le champ ne peut pas être vide",
     "errorTitle": "Erreur",
     "pastFrameErrTitle": "Erreur d'exécution lors de la dernière exécution",
     "errorUserDefinedFuncMsg": "Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
     "errorUserDefinedVarMsg": "Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
     "EOFError": "Ce cadre ne peut pas être vide.",
-    "GDriveSaveFailed": "Strype n'a pas pu enregister le fichier sur Google Drive. Les dernières modifications n'ont peut-être pas été enregistrées et la synchronisation a peut-être été desactivée.",
+    "GDriveSaveFailed": "Enregistrement vers Googde Drive impossible. Les dernières modifications n'ont peut-être pas été enregistrées et l'enregistrement automatique est desactivé.",
     "fileNameError": "Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
     "gdriveConnectionSaveToLoadProjFailed": "Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour ouvrir un autre projet.",
     "gdriveConnectionSaveToUnloadPageFailed": "Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour sauvegarder le project actuel avant de quitter Strype.",
     "gdrivePermissionsNotMet": "Strype nécessite au moins une permission d'accès pour utiliser Google Drive.",
-    "gdriveReadOnly": "Ce fichier Drive est en lecture seule. La synchronisation a été désactivée.",
+    "gdriveReadOnly": "Ce fichier Drive est en lecture seule. L'enregistrement automatique a été désactivé.",
     "gdriveWrongFile": "Veullez sélectionner un ficher Strype (extension \".spy\")."
   },
   "appMessage": {
@@ -144,6 +144,6 @@
     "collapse": "Réduire",
     "console": "Console",
     "TurtleGraphics": "Turtle Graphics",
-    "importTurtle": "Importe le module 'turtle' dans ton code pour utiliser Turtle Graphics"
+    "importTurtle": "Importe le module 'turtle' pour utiliser Turtle Graphics"
   }
 }
