@@ -586,6 +586,9 @@ export default Vue.extend({
             // When the graphics tab has never been selected, the off-screen image can be empty
             // which gives an error:
             if (c.width > 0 && c.height > 0) {
+                // Important on Safari to clear the canvas first, otherwise the new frame
+                // gets blended on top.  Firefox and Chrome don't do this by default (different alpha blending mode?):
+                domContext?.clearRect(0, 0, c.width, c.height);
                 domContext?.drawImage(c, 0, 0);
             }
         },
