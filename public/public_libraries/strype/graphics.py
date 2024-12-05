@@ -22,12 +22,12 @@ class Actor:
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
     # __editable_image: the editable image of this actor, if the user has ever called edit_image() on us.
-    # __name: the user-supplied name of the actor.  Useful to leave the type flexible, we just pass it in and out.
+    # __tag: the user-supplied tag of the actor.  Useful to leave the type flexible, we just pass it in and out.
     # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
     # whenever we use it, we should check it's still actually present.
     
-    def __init__(self, image_or_filename, x = 0, y = 0, name = None):
+    def __init__(self, image_or_filename, x = 0, y = 0, tag = None):
         """
         Construct an Actor with a given image and position and an optional name.
         
@@ -44,7 +44,7 @@ class Actor:
         :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an EditableImage 
         :param x: The X position at which to add the actor
         :param y: The Y position at which to add the actor
-        :param name: The name to give the actor
+        :param tag: The tag to give the actor (for use in detecting touching actors)
         """
         if isinstance(image_or_filename, EditableImage):
             self.__id = _strype_graphics_internal.addImage(image_or_filename._EditableImage__image, self)
@@ -55,7 +55,7 @@ class Actor:
         else:
             raise TypeError("Actor constructor parameter must be string or EditableImage")
         self.__say = None
-        self.__name = name
+        self.__tag = tag
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         _strype_graphics_internal.setImageRotation(self.__id, 0)
         
@@ -113,13 +113,13 @@ class Actor:
         :return: The scale of this Actor, where 1.0 is the default scale. 
         """
         return _strype_graphics_internal.getImageScale(self.__id)
-    def get_name(self):
+    def get_tag(self):
         """
-        Gets the name of this actor.
+        Gets the tag of this actor.
         
-        :return: The name of this actor, as passed to the constructor or `set_name()` call.
+        :return: The tag of this actor, as passed to the constructor of the object.
         """
-        return self.__name
+        return self.__tag
     
     def remove(self):
         """
@@ -225,32 +225,33 @@ class Actor:
             return False
         return x < -399 or x > 399 or y < -299 or y > 299
         
-    def is_touching(self, actor_or_name):
+    def is_touching(self, actor_or_tag):
         """
         Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
         rectangles of their images are overlapping (even if the actor is transparent at that point).
         
-        You can either pass an actor, or an actor's name to check for collisions.  If you pass a name,
-        it will check whether any actor touching the current actor has that name.
+        You can either pass an actor, or an actor's tag to check for collisions.  If you pass a tag,
+        it will check whether any actor touching the current actor has that tag.
         
         Note that if either this actor or the given actor has had collisions turned off with
         `set_can_touch(false)` then this function will return False even if they touch.
         
-        :param actor: The actor to check for overlap
+        :param actor_or_tag: The actor (or tag of an actor) to check for overlap
         :return: True if this actor overlaps that actor, False if it does not 
         """
-        if isinstance(actor_or_name, Actor):
-            return _strype_input_internal.checkCollision(self.__id, actor_or_name.__id)
+        if isinstance(actor_or_tag, Actor):
+            return _strype_input_internal.checkCollision(self.__id, actor_or_tag.__id)
         else:
-            # All other types are assumed to be a name:
+            # All other types are assumed to be a tag:
             # Slightly odd construct but we convert list (implicitly boolean) to explicitly boolean:
-            return True if self.get_all_touching(actor_or_name) else False
+            return True if self.get_all_touching(actor_or_tag) else False
 
-    def get_touching(self, name = None):
+    def get_touching(self, tag = None):
         """
-        Gets the actor touching this one.  If you pass a name it will return a touching Actor
-        with that name (or None if there is none).  If you do not pass a name, it will return any
-        touching Actor (or None if there is none).
+        Gets the actor touching this one.  If you pass a tag it will return a touching Actor
+        with that tag (or None if there is none) -- if there are many actors with that
+        tag it will return an arbitrary actor from the set.  If you do not pass a tag, it will return an
+        arbitrary touching Actor (or None if there is none).
         
         Two actors are deemed to be touching if the
         rectangles of their images are overlapping (even if the actor is transparent at that point).
@@ -258,10 +259,10 @@ class Actor:
         Note that if either this actor (or the potentially-touching) actor has had collisions turned off with
         `set_can_touch(false)` then this function will return None even if they appear to touch.
         
-        :param name: The name of the actor to check for touching, or None to check all actors.
+        :param tag: The tag of the actor to check for touching, or None to check all actors.
         :return: The Actor we are touching, if any, otherwise None if we are not touching an Actor. 
         """
-        return next(iter(self.get_all_touching(name)), None)
+        return next(iter(self.get_all_touching(tag)), None)
     
     def set_can_touch(self, can_touch):
         """
@@ -276,32 +277,34 @@ class Actor:
         """
         _strype_input_internal.setCollidable(self.__id, can_touch)
     
-    def get_all_touching(self, name = None):
+    def get_all_touching(self, tag = None):
         """
         Gets all the actors that this actor is touching.  If this actor has had `set_can_touch(false)`
         called, the returned list will always be empty.  The list will never feature any actors
         which have had `set_can_touch(false)` called on them.
         
-        If the name is given (i.e. is not None), it will be used to filter the returned list just
-        to actors with that given name.
+        If the tag is given (i.e. is not None), it will be used to filter the returned list just
+        to actors with that given tag.
         
-        :param name: The name to use to filter the returned actors (or None/omitted if you do not want to filter the actors by name)
+        :param tag: The tag to use to filter the returned actors (or None/omitted if you do not want to filter the actors by tag)
         :return: A list of all touching actors.
         """
-        return [a for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if name is None or name == a.get_name()]
+        return [a for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if tag is None or tag == a.get_tag()]
     
-    def remove_touching(self, name = None):
+    def remove_touching(self, tag = None):
         """
-        Removes all touching actors.  If you pass a name, it will only remove touching actors with the
-        given name.
+        Removes one arbitrary touching actor.  If you pass a tag, it will only remove touching actors with the
+        given tag.
         
         Note that if either this actor (or the potentially-touching) actor has had collisions turned off with
         `set_can_touch(false)` then this function will not remove the other actor, even if they appear to touch.
         
-        :param name:  The name to use to filter the removed actors (or None/omitted if you do not want to filter the actors by name)
+        :param tag:  The name to use to filter the removed actor (or None/omitted if you do not want to filter the actors by tag)
         """
-        for a in self.get_all_touching(name):
+        a = self.get_touching(tag)
+        if a is not None:
             a.remove()
+
     def edit_image(self):
         """
         Return an EditableImage which can be used to edit this actor's image.  All modifications
