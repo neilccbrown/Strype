@@ -539,12 +539,14 @@ export default Vue.extend({
             
             // The HTML canvas has 0,0 in the top left and 800, 600 in the bottom right (i.e. positive Y downward)
             // Our actors have positions where 0,0 is in the middle, and positive Y upward
+            // with a bounds from -399, -299 to 400, 300.  0,0 in actor coordinates is actually 399, 300 in the canvas
+            // because of this translation.
             // We can't do this by using translate etc on targetContent because to flip the Y axis we'd need to
             // use scale() which would flip the Y axis and thus mirror all the images vertically.  So we need to
             // translate ourselves.  All the examples here assume a width of 800 but we don't hardcode it.
             const mapX = function(x : number) : number {
-                // Maps e.g. -50 to 350, 0 to 400, 50 to 450,
-                return x + graphicsCanvasLogicalWidth / 2;
+                // Maps e.g. -50 to 349, 0 to 399, 50 to 449,
+                return x + graphicsCanvasLogicalWidth / 2 - 1;
             };
             const mapY = function(y : number) : number {
                 // Maps e.g. -50 to 450, 0 to 400, 50 to 350,
@@ -637,9 +639,9 @@ export default Vue.extend({
             // The canvas might be e.g. 200 x 160 (with positive Y down) and we need to translate to the 800x600
             // logical canvas (with 0, 0 centre) and positive U upwards.
             // So we first divide by the width or height to get to a 0->1 value (where 0, 0 is top-left), then
-            // we subtract 0.5 to get to -0.5->0.5.  We multiply by 800 or 600 to get us to -400 to 400 (or -300 to 300),
+            // we subtract 0.5 to get to -0.5->0.5.  We multiply by 800 or 600 to get us to -399 to 400 (or -299 to 300),
             // and for Y we also multiply by -1 to flip it:
-            const adjustedX = ((event.offsetX / domCanvas.getBoundingClientRect().width) - 0.5) * graphicsCanvasLogicalWidth;
+            const adjustedX = ((event.offsetX / domCanvas.getBoundingClientRect().width) - 0.5) * graphicsCanvasLogicalWidth + 1;
             // We have to invert the Y axis because positive is up there, hence * -1 on the end:
             const adjustedY = ((event.offsetY / domCanvas.getBoundingClientRect().height) - 0.5) * graphicsCanvasLogicalHeight * -1;
             mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);

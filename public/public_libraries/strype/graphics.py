@@ -6,13 +6,13 @@ import time as _time
 
 def in_bounds(x, y):
     """
-    Checks if the given X, Y position is in the visible bounds of (-400,-300) inclusive to (400, 300) exclusive.
+    Checks if the given X, Y position is in the visible bounds of (-399,-299) inclusive to (400, 300) exclusive.
     
     :param x: The x position to check
     :param y: The y position to check
     :return: A boolean indicating whether it is in the visible bounds: True if it is in bounds, False if it is not.
     """
-    return -400 <= x < 400 and -300 <= y < 300
+    return -399 <= x < 400 and -299 <= y < 300
 
 class Actor:
     """
@@ -63,7 +63,7 @@ class Actor:
         """
         Sets the position of the actor to be the given x, y position.
         
-        If the position is outside the bounds of the world (X: -400 to +400, Y: -300 to +300) the position
+        If the position is outside the bounds of the world (X: -399 to +400, Y: -299 to +300) the position
         will be adjusted to the nearest point inside the world.
         
         :param x: The new X position of the actor
