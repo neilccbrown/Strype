@@ -991,7 +991,7 @@ export function notifyDragStarted(frameId?: number):void {
 
     // Add companion "image" (canvas) to the cursor - we use HTML2Canvas. 
     // The element to generate an image of is either the frame passed as argument
-    // or the shadow element containing the current selection.
+    // or the selected frame's parent which will be cropped.
     const draggingEl = document.getElementById(getFrameUID(frameId??(useStore().frameObjects[useStore().selectedFrames[0]].parentId)));
     if(draggingEl){
         html2canvas(draggingEl, html2canvasOptions);
