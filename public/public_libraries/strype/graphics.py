@@ -120,14 +120,6 @@ class Actor:
         :return: The name of this actor, as passed to the constructor or `set_name()` call.
         """
         return self.__name
-    def set_name(self, name):
-        """
-        Sets the name of this actor.  Actor names are typically strings, but they do not
-        have to be.
-        
-        :param name: The new name of the actor
-        """
-        self.__name = name
     
     def remove(self):
         """
