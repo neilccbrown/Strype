@@ -419,13 +419,14 @@ export default Vue.extend({
                 // However, with Firefox, there is an issue* if we also call that to go from one frame's slot to another frame's slot directly.
                 // We can know we are in this situation by comparing the current document selection and our focus infos: if they match,
                 // we are leaving a slot to be in non-edition mode, if they don't we are going from one slot to another frame's slot.
+                // In the case we don't have a selection (in an empty slot) we can still dispatch the event.
                 // (*) it seems that with Firefox, the actual document selection is already changed before we blurred.
                 const documentNodeSelectedId = (document.getSelection()?.focusNode?.parentElement?.id) ?? "";
                 const documentNodeSelectedSlotInfos = (documentNodeSelectedId.length > 0) ? parseLabelSlotUID(documentNodeSelectedId) : null;
                 const documentNodeSelectionFocusOffset = (document.getSelection()?.focusOffset) ?? -1;
-                if(documentNodeSelectedSlotInfos != null && documentNodeSelectionFocusOffset > -1 
+                if(documentNodeSelectedSlotInfos == null || (documentNodeSelectedSlotInfos != null && documentNodeSelectionFocusOffset > -1 
                     && areSlotCoreInfosEqual(this.appStore.focusSlotCursorInfos.slotInfos, documentNodeSelectedSlotInfos) 
-                    && this.appStore.focusSlotCursorInfos.cursorPos == documentNodeSelectionFocusOffset){
+                    && this.appStore.focusSlotCursorInfos.cursorPos == documentNodeSelectionFocusOffset)){
                     document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                         ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
                 }
