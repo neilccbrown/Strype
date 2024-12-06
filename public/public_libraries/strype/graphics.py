@@ -6,13 +6,13 @@ import time as _time
 
 def in_bounds(x, y):
     """
-    Checks if the given X, Y position is in the visible bounds of (-400,-300) inclusive to (400, 300) exclusive.
+    Checks if the given X, Y position is in the visible bounds of (-399,-299) inclusive to (400, 300) exclusive.
     
     :param x: The x position to check
     :param y: The y position to check
     :return: A boolean indicating whether it is in the visible bounds: True if it is in bounds, False if it is not.
     """
-    return -400 <= x < 400 and -300 <= y < 300
+    return -399 <= x < 400 and -299 <= y < 300
 
 class Actor:
     """
@@ -22,12 +22,12 @@ class Actor:
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
     # __editable_image: the editable image of this actor, if the user has ever called edit_image() on us.
-    # __name: the user-supplied name of the actor.  Useful to leave the type flexible, we just pass it in and out.
+    # __tag: the user-supplied tag of the actor.  Useful to leave the type flexible, we just pass it in and out.
     # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
     # whenever we use it, we should check it's still actually present.
     
-    def __init__(self, image_or_filename, x = 0, y = 0, name = None):
+    def __init__(self, image_or_filename, x = 0, y = 0, tag = None):
         """
         Construct an Actor with a given image and position and an optional name.
         
@@ -44,7 +44,7 @@ class Actor:
         :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an EditableImage 
         :param x: The X position at which to add the actor
         :param y: The Y position at which to add the actor
-        :param name: The name to give the actor
+        :param tag: The tag to give the actor (for use in detecting touching actors)
         """
         if isinstance(image_or_filename, EditableImage):
             self.__id = _strype_graphics_internal.addImage(image_or_filename._EditableImage__image, self)
@@ -55,7 +55,7 @@ class Actor:
         else:
             raise TypeError("Actor constructor parameter must be string or EditableImage")
         self.__say = None
-        self.__name = name
+        self.__tag = tag
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         _strype_graphics_internal.setImageRotation(self.__id, 0)
         
@@ -63,7 +63,7 @@ class Actor:
         """
         Sets the position of the actor to be the given x, y position.
         
-        If the position is outside the bounds of the world (X: -400 to +400, Y: -300 to +300) the position
+        If the position is outside the bounds of the world (X: -399 to +400, Y: -299 to +300) the position
         will be adjusted to the nearest point inside the world.
         
         :param x: The new X position of the actor
@@ -98,6 +98,8 @@ class Actor:
         """
         Gets the current rotation of this Actor.
         
+        Note: returns None if the actor has been removed by a call to remove().
+        
         :return: The rotation of this Actor, in degrees.
         """
         return _strype_graphics_internal.getImageRotation(self.__id)
@@ -106,30 +108,26 @@ class Actor:
         """
         Gets the current scale of this Actor.
         
+        Note: returns None if the actor has been removed by a call to remove().
+        
         :return: The scale of this Actor, where 1.0 is the default scale. 
         """
-        return _strype_graphics_internal.getImageScale(self.__id, scale)
-    def get_name(self):
+        return _strype_graphics_internal.getImageScale(self.__id)
+    def get_tag(self):
         """
-        Gets the name of this actor.
+        Gets the tag of this actor.
         
-        :return: The name of this actor, as passed to the constructor or `set_name()` call.
+        :return: The tag of this actor, as passed to the constructor of the object.
         """
-        return self.__name
-    def set_name(self, name):
-        """
-        Sets the name of this actor.  Actor names are typically strings, but they do not
-        have to be.
-        
-        :param name: The new name of the actor
-        """
-        self.__name = name
+        return self.__tag
     
     def remove(self):
         """
         Removes the actor from the world.  There is no way to re-add the actor to the world.
         """
         _strype_graphics_internal.removeImage(self.__id)
+        # Also remove any speech bubble:
+        self.say("")
         
     def get_x(self):
         """
@@ -137,11 +135,14 @@ class Actor:
         is not a whole number, it is rounded down (towards zero).  If you want the exact position as a potentially
         fractional number, call `get_exact_x()` instead.
         
+        Note: returns None if the actor has been removed by a call to remove().
+        
         :return: The current X position, rounded down to an integer (whole number). 
         """
         
          # Gets X with rounding (towards zero):
-        return int(_strype_graphics_internal.getImageLocation(self.__id)['x'])
+        location = _strype_graphics_internal.getImageLocation(self.__id)
+        return int(location['x']) if location else None
     
     def get_y(self):
         """
@@ -149,30 +150,39 @@ class Actor:
         is not a whole number, it is rounded down (towards zero).  If you want the exact position as a potentially
         fractional number, call `get_exact_y()` instead.
         
+        Note: returns None if the actor has been removed by a call to remove().
+        
         :return: The current Y position, rounded down to an integer (whole number). 
         """
         # Gets Y with rounding (towards zero):
-        return int(_strype_graphics_internal.getImageLocation(self.__id)['y'])
+        location = _strype_graphics_internal.getImageLocation(self.__id)
+        return int(location['y']) if location else None
     
     def get_exact_x(self):
         """
         Gets the exact X position of the actor, which may be a fractional number.  If you do not need this accuracy,
         you may prefer to call `get_x()` instead.
+        
+        Note: returns None if the actor has been removed by a call to remove().
          
         :return: The exact X position
         """
         # Gets X with no rounding:
-        return _strype_graphics_internal.getImageLocation(self.__id)['x']
+        location = _strype_graphics_internal.getImageLocation(self.__id)
+        return location['x'] if location else None
     
     def get_exact_y(self):
         """
         Gets the exact Y position of the actor, which may be a fractional number.  If you do not need this accuracy,
         you may prefer to call `get_y()` instead.
+        
+        Note: returns None if the actor has been removed by a call to remove().
          
         :return: The exact Y position
         """
         # Gets Y with no rounding:
-        return _strype_graphics_internal.getImageLocation(self.__id)['y']
+        location = _strype_graphics_internal.getImageLocation(self.__id)
+        return location['y'] if location else None
     
     def move(self, amount):
         """
@@ -185,16 +195,20 @@ class Actor:
         :param amount: The amount of pixels to move forwards.  Negative amounts move backwards.
         """
         cur = _strype_graphics_internal.getImageLocation(self.__id)
-        rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
-        self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
-        
+        if cur is not None:
+            rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
+            self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
+        # If cur is None, do nothing
     def turn(self, degrees):
         """
         Changes the actor's current rotation by the given amount of degrees.
         
         :param degrees: The change in rotation, in degrees.  Positive amounts turn anti-clockwise, negative amounts turn clockwise.
         """
-        self.set_rotation(_strype_graphics_internal.getImageRotation(self.__id) + degrees)
+        rotation = _strype_graphics_internal.getImageRotation(self.__id)
+        if rotation is not None:
+            self.set_rotation(rotation + degrees)
+        # If rotation is None, do nothing
         
     def is_at_edge(self):
         """
@@ -207,20 +221,48 @@ class Actor:
         """
         x = self.get_exact_x()
         y = self.get_exact_y()
+        if x is None or y is None:
+            return False
         return x < -399 or x > 399 or y < -299 or y > 299
         
-    def is_touching(self, actor):
+    def is_touching(self, actor_or_tag):
         """
         Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
         rectangles of their images are overlapping (even if the actor is transparent at that point).
         
+        You can either pass an actor, or an actor's tag to check for collisions.  If you pass a tag,
+        it will check whether any actor touching the current actor has that tag.
+        
         Note that if either this actor or the given actor has had collisions turned off with
         `set_can_touch(false)` then this function will return False even if they touch.
         
-        :param actor: The actor to check for overlap
+        :param actor_or_tag: The actor (or tag of an actor) to check for overlap
         :return: True if this actor overlaps that actor, False if it does not 
         """
-        return _strype_input_internal.checkCollision(self.__id, actor.__id)
+        if isinstance(actor_or_tag, Actor):
+            return _strype_input_internal.checkCollision(self.__id, actor_or_tag.__id)
+        else:
+            # All other types are assumed to be a tag:
+            # Slightly odd construct but we convert list (implicitly boolean) to explicitly boolean:
+            return True if self.get_all_touching(actor_or_tag) else False
+
+    def get_touching(self, tag = None):
+        """
+        Gets the actor touching this one.  If you pass a tag it will return a touching Actor
+        with that tag (or None if there is none) -- if there are many actors with that
+        tag it will return an arbitrary actor from the set.  If you do not pass a tag, it will return an
+        arbitrary touching Actor (or None if there is none).
+        
+        Two actors are deemed to be touching if the
+        rectangles of their images are overlapping (even if the actor is transparent at that point).
+        
+        Note that if either this actor (or the potentially-touching) actor has had collisions turned off with
+        `set_can_touch(false)` then this function will return None even if they appear to touch.
+        
+        :param tag: The tag of the actor to check for touching, or None to check all actors.
+        :return: The Actor we are touching, if any, otherwise None if we are not touching an Actor. 
+        """
+        return next(iter(self.get_all_touching(tag)), None)
     
     def set_can_touch(self, can_touch):
         """
@@ -235,16 +277,34 @@ class Actor:
         """
         _strype_input_internal.setCollidable(self.__id, can_touch)
     
-    def get_all_touching(self):
+    def get_all_touching(self, tag = None):
         """
         Gets all the actors that this actor is touching.  If this actor has had `set_can_touch(false)`
         called, the returned list will always be empty.  The list will never feature any actors
         which have had `set_can_touch(false)` called on them.
         
+        If the tag is given (i.e. is not None), it will be used to filter the returned list just
+        to actors with that given tag.
+        
+        :param tag: The tag to use to filter the returned actors (or None/omitted if you do not want to filter the actors by tag)
         :return: A list of all touching actors.
         """
-        return _strype_input_internal.getAllTouchingAssociated(self.__id)
+        return [a for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if tag is None or tag == a.get_tag()]
     
+    def remove_touching(self, tag = None):
+        """
+        Removes one arbitrary touching actor.  If you pass a tag, it will only remove touching actors with the
+        given tag.
+        
+        Note that if either this actor (or the potentially-touching) actor has had collisions turned off with
+        `set_can_touch(false)` then this function will not remove the other actor, even if they appear to touch.
+        
+        :param tag:  The name to use to filter the removed actor (or None/omitted if you do not want to filter the actors by tag)
+        """
+        a = self.get_touching(tag)
+        if a is not None:
+            a.remove()
+
     def edit_image(self):
         """
         Return an EditableImage which can be used to edit this actor's image.  All modifications
@@ -282,8 +342,8 @@ class Actor:
         if self.__say is not None and _strype_graphics_internal.imageExists(self.__say):
             _strype_graphics_internal.removeImage(self.__say)
             self.__say = None
-        # Then add a new one if text is not blank:
-        if text:
+        # Then add a new one if text is not blank and we are in the world:
+        if text and _strype_graphics_internal.imageExists(self.__id):
             padding = 10
             # We first make an image just with the text on, which also tells us the size:
             textOnlyImg = EditableImage(max_width, max_height)

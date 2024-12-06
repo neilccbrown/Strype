@@ -63,8 +63,8 @@ export class PersistentImageManager {
     public setPersistentImageLocation(id: number, x: number, y: number): void {
         const obj = this.persistentImages.get(id);
         if (obj != undefined && (obj.x != x || obj.y != y)) {
-            obj.x = Math.max(-WORLD_WIDTH/2, Math.min(x, WORLD_WIDTH/2));
-            obj.y = Math.max(-WORLD_HEIGHT/2, Math.min(y, WORLD_HEIGHT/2));
+            obj.x = Math.max(-WORLD_WIDTH/2 + 1, Math.min(x, WORLD_WIDTH/2));
+            obj.y = Math.max(-WORLD_HEIGHT/2 + 1, Math.min(y, WORLD_HEIGHT/2));
             obj.dirty = true;
             obj.collisionBox?.setPosition(x, y);
             obj.collisionBox?.updateBody();
