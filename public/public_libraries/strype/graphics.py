@@ -840,3 +840,8 @@ def set_background(image_or_filename):
 
     _strype_graphics_internal.setBackground(bk_image._EditableImage__image)        
     
+def stop():
+    """
+    Stops the whole execution immediately.  Will not return.
+    """
+    raise SystemExit()

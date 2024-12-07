@@ -228,6 +228,15 @@ describe("Basic operation", () => {
             sleep(1)
             `, "graphics-no-such-image-load-cat-instead");
     });
+    it("Stops", () => {
+        // Add image, stop then move; we should not see the move:
+        runCodeAndCheckImage("", `
+            a = Actor("cat-test.jpg")
+            a.turn(90)
+            stop()
+            a.move(100)
+        `, "stops");
+    });
 });
 
 describe("Collision detection", () => {
