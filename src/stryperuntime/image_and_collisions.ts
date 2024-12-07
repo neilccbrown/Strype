@@ -16,6 +16,8 @@ export const WORLD_WIDTH = 800;
 export const WORLD_HEIGHT = 600;
 
 export class PersistentImageManager {
+    // Special case: 0 is always the background, and inserted first in the map to make it
+    // first in the iteration order.  By default it is an 800x600 white image.
     private persistentImages = new Map<number, PersistentImage>();
     private persistentImagesDirty = false; // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
     private nextPersistentImageId = 0;
@@ -23,10 +25,37 @@ export class PersistentImageManager {
     // A map to be able to look up the PersistentImage when we find an intersecting Box during collision detection:
     private boxToImageMap = new Map<Box, PersistentImage>();
     
+    constructor() {
+        const white_800_600 = new OffscreenCanvas(800, 600);
+        const ctx = white_800_600.getContext("2d");
+        if (ctx != null) {
+            (ctx as OffscreenCanvasRenderingContext2D).fillStyle = "white";
+            (ctx as OffscreenCanvasRenderingContext2D).fillRect(0, 0, 800, 600);
+        }
+        this.persistentImages.set(0, {
+            id: 0,
+            img: white_800_600,
+            x: 0,
+            y: 0,
+            rotation: 0,
+            scale: 1.0,
+            collisionBox: null,
+            dirty: true,
+            associatedObject: null,
+        });
+    }
+    
     public clear() : void {
         this.persistentImages.clear();
         this.persistentImagesDirty = false;
         this.collisionSystem.clear();
+    }
+    
+    public setBackground(imageOrCanvas : OffscreenCanvas) : void {
+        const bk = this.persistentImages.get(0);
+        if (bk) {
+            bk.img = imageOrCanvas;
+        }
     }
 
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types

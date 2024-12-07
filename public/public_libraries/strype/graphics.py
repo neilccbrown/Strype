@@ -2,6 +2,7 @@ import strype_graphics_internal as _strype_graphics_internal
 import strype_graphics_input_internal as _strype_input_internal
 import math as _math
 import collections as _collections
+import re as _re
 import time as _time
 
 def in_bounds(x, y):
@@ -785,3 +786,51 @@ def key_pressed(keyname):
     :return: Either True or False depending on whether the key is currently pressed.
     """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
+
+def set_background(image_or_filename):
+    """
+    Sets the current background image.
+    
+    The parameter can be an EditableImage, a colour, a filename of an image in Strype's image library, or a URL.
+    Using a URL requires the server to allow remote image loading from Javascript via a feature
+        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+        you can load the image in a browser yourself.
+     
+    If the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
+    The background image is always copied, so later changes to an EditableImage will not be shown in the background;
+    you should call set_background() again to update it.
+    
+    :param image_or_filename: An EditableImage, an image filename or URL.
+    """
+        
+    # Note we always take a copy, even if the size is fine, because
+    # we don't want later changes to affect the background:
+    def background_800_600(image):
+        dest = EditableImage(800, 600)
+        w = image.get_width()
+        h = image.get_height()
+        horiz_copies = _math.ceil(w / 800)
+        vert_copies = _math.ceil(h / 600)
+        # We want one copy bang in the centre, so we need to work out the offset:
+        # These offsets can be negative if the image is larger than 800x600
+        x_offset = (800 - w) / 2
+        y_offset = (600 - h) / 2
+        for i in range(0, horiz_copies):
+            for j in range(0, vert_copies):
+                dest.draw_image(image, x_offset + i * w, y_offset + j * h)
+        return dest
+        
+    if isinstance(image_or_filename, EditableImage):
+        bk_image = background_800_600(image_or_filename)
+    elif isinstance(image_or_filename, str):
+        # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
+        # otherwise it's a color name/value.
+        if _re.search(r"[.:/]", image_or_filename):
+            bk_image = background_800_600(load_image(image_or_filename))
+        else:
+            bk_image = EditableImage(800, 600)
+            bk_image.set_fill(image_or_filename)
+            bk_image.fill()
+
+    _strype_graphics_internal.setBackground(bk_image._EditableImage__image)        
+    
