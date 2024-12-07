@@ -802,37 +802,41 @@ def set_background(image_or_filename):
     
     :param image_or_filename: An EditableImage, an image filename or URL.
     """
+
+    # We use an oversize image to avoid slivers of other colour appearing at the edges
+    # due to the size not being perfectly 800 x 600 on the actual webpage,
+    # which means we are scaling and using anti-aliased sub-pixel rendering:
         
     # Note we always take a copy, even if the size is fine, because
     # we don't want later changes to affect the background:
-    def background_800_600(image):
-        dest = EditableImage(800, 600)
+    def background_808_606(image):
+        dest = EditableImage(808, 606)
         w = image.get_width()
         h = image.get_height()
         # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
         # each side of the centre.  So just always draw one more than we need:
-        horiz_copies = _math.ceil(800 / w) + 1
-        vert_copies = _math.ceil(600 / h) +1
+        horiz_copies = _math.ceil(808 / w) + 1
+        vert_copies = _math.ceil(606 / h) +1
         # We want one copy bang in the centre, so we need to work out the offset:
         # These offsets will either be zero or negative because we start by drawing
         # the far left or far top image.  We work out the position of the central
         # image then subtract the width/height of half of the copies we need: 
-        x_offset = (800 - w) / 2 - (horiz_copies - 1) / 2 * w
-        y_offset = (600 - h) / 2 - (vert_copies - 1) / 2 * h
+        x_offset = (808 - w) / 2 - (horiz_copies - 1) / 2 * w
+        y_offset = (606 - h) / 2 - (vert_copies - 1) / 2 * h
         for i in range(0, horiz_copies):
             for j in range(0, vert_copies):
                 dest.draw_image(image, x_offset + i * w, y_offset + j * h)
         return dest
         
     if isinstance(image_or_filename, EditableImage):
-        bk_image = background_800_600(image_or_filename)
+        bk_image = background_808_606(image_or_filename)
     elif isinstance(image_or_filename, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
         # otherwise it's a color name/value.
         if _re.search(r"[.:/]", image_or_filename):
-            bk_image = background_800_600(load_image(image_or_filename))
+            bk_image = background_808_606(load_image(image_or_filename))
         else:
-            bk_image = EditableImage(800, 600)
+            bk_image = EditableImage(808, 606)
             bk_image.set_fill(image_or_filename)
             bk_image.fill()
     else:

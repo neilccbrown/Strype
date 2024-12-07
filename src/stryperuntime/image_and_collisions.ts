@@ -31,12 +31,15 @@ export class PersistentImageManager {
     
     public clear() : void {
         this.persistentImages.clear();
-        // Set background to plain white image:
-        const black_800_600 = new OffscreenCanvas(800, 600);
+        // Set background to plain black image:
+        // We use an oversize image to avoid slivers of other colour appearing at the edges
+        // due to the size not being perfectly 800 x 600 on the actual webpage,
+        // which means we are scaling and using anti-aliased sub-pixel rendering: 
+        const black_800_600 = new OffscreenCanvas(808, 606);
         const ctx = black_800_600.getContext("2d");
         if (ctx != null) {
             (ctx as OffscreenCanvasRenderingContext2D).fillStyle = "black";
-            (ctx as OffscreenCanvasRenderingContext2D).fillRect(0, 0, 800, 600);
+            (ctx as OffscreenCanvasRenderingContext2D).fillRect(0, 0, 808, 606);
         }
         this.persistentImages.set(0, {
             id: 0,
