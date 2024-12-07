@@ -41,8 +41,9 @@ export class PersistentImageManager {
         this.persistentImages.set(0, {
             id: 0,
             img: black_800_600,
-            x: 0,
-            y: 0,
+            // Since we go from -399 to 400, -299 to 300, the actual centre is 0.5, 0.5:
+            x: 0.5,
+            y: 0.5,
             rotation: 0,
             scale: 1.0,
             collisionBox: null,
