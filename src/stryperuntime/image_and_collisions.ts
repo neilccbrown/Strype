@@ -20,21 +20,27 @@ export class PersistentImageManager {
     // first in the iteration order.  By default it is an 800x600 white image.
     private persistentImages = new Map<number, PersistentImage>();
     private persistentImagesDirty = false; // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
-    private nextPersistentImageId = 0;
+    private nextPersistentImageId = 1;
     private collisionSystem = new System();
     // A map to be able to look up the PersistentImage when we find an intersecting Box during collision detection:
     private boxToImageMap = new Map<Box, PersistentImage>();
     
     constructor() {
-        const white_800_600 = new OffscreenCanvas(800, 600);
-        const ctx = white_800_600.getContext("2d");
+        this.clear();
+    }
+    
+    public clear() : void {
+        this.persistentImages.clear();
+        // Set background to plain white image:
+        const black_800_600 = new OffscreenCanvas(800, 600);
+        const ctx = black_800_600.getContext("2d");
         if (ctx != null) {
-            (ctx as OffscreenCanvasRenderingContext2D).fillStyle = "white";
+            (ctx as OffscreenCanvasRenderingContext2D).fillStyle = "black";
             (ctx as OffscreenCanvasRenderingContext2D).fillRect(0, 0, 800, 600);
         }
         this.persistentImages.set(0, {
             id: 0,
-            img: white_800_600,
+            img: black_800_600,
             x: 0,
             y: 0,
             rotation: 0,
@@ -43,11 +49,7 @@ export class PersistentImageManager {
             dirty: true,
             associatedObject: null,
         });
-    }
-    
-    public clear() : void {
-        this.persistentImages.clear();
-        this.persistentImagesDirty = false;
+        this.persistentImagesDirty = true;
         this.collisionSystem.clear();
     }
     

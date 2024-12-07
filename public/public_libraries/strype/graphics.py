@@ -809,12 +809,16 @@ def set_background(image_or_filename):
         dest = EditableImage(800, 600)
         w = image.get_width()
         h = image.get_height()
-        horiz_copies = _math.ceil(w / 800)
-        vert_copies = _math.ceil(h / 600)
+        # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
+        # each side of the centre.  So just always draw one more than we need:
+        horiz_copies = _math.ceil(800 / w) + 1
+        vert_copies = _math.ceil(600 / h) +1
         # We want one copy bang in the centre, so we need to work out the offset:
-        # These offsets can be negative if the image is larger than 800x600
-        x_offset = (800 - w) / 2
-        y_offset = (600 - h) / 2
+        # These offsets will either be zero or negative because we start by drawing
+        # the far left or far top image.  We work out the position of the central
+        # image then subtract the width/height of half of the copies we need: 
+        x_offset = (800 - w) / 2 - (horiz_copies - 1) / 2 * w
+        y_offset = (600 - h) / 2 - (vert_copies - 1) / 2 * h
         for i in range(0, horiz_copies):
             for j in range(0, vert_copies):
                 dest.draw_image(image, x_offset + i * w, y_offset + j * h)
@@ -831,6 +835,8 @@ def set_background(image_or_filename):
             bk_image = EditableImage(800, 600)
             bk_image.set_fill(image_or_filename)
             bk_image.fill()
+    else:
+        raise TypeError("image_or_filename must be an EditableImage or a string")
 
     _strype_graphics_internal.setBackground(bk_image._EditableImage__image)        
     
