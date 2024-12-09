@@ -167,7 +167,7 @@ export default class Parser {
             if(frame.isDisabled ? !this.isDisabledFramesTriggered : this.isDisabledFramesTriggered) {
                 this.isDisabledFramesTriggered = !this.isDisabledFramesTriggered;
                 if(frame.isDisabled) {
-                    this.disabledBlockIndent = (indentation + (frame.frameType.isJointFrame) ? INDENT : "");
+                    this.disabledBlockIndent = (indentation + ((frame.frameType.isJointFrame) ? INDENT : ""));
                 }
                 disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG +"\n";
                 //and also increment the line number that we use for mapping frames and code lines (even if the disabled frames don't map exactly, 

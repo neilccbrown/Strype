@@ -348,41 +348,6 @@ export const childrenListWithJointFrames = (currentFrameId: number, caretPositio
     return childrenAndJointFramesIds;
 };
 
-export const countRecursiveChildren = function(frameId: number, countLimit?: number): number {
-    // This method counts all recursive children (i.e. children, grand children, ...) of a frame.
-    // The countLimit is a threshold to reach where we can stop recursion. Therefore the number of children returned IS NOT guaranted
-    // to be less than the limit: it just means we don't look at any more siblings/sub children if we reached this limit.
-    // If this argument isn't passed in the method, all recursive children are counted until we reach the end of the tree.
-    
-    const currentChildrenIds = useStore().frameObjects[frameId].childrenIds;
-    const currentJointFramesIds = useStore().frameObjects[frameId].jointFrameIds;
-    
-    let childrenCount = currentChildrenIds.length;
-    if(countLimit === undefined || childrenCount < countLimit){
-        //if there is no limit set, or if we haven't reached it, we look at the subchildren
-        currentChildrenIds.forEach((childId: number) => childrenCount += countRecursiveChildren(
-            childId, 
-            countLimit
-        ));
-        //if there is no limit set, or if we haven't reached it, we look at the children of the joint frames
-        if(countLimit === undefined || childrenCount < countLimit){
-            //for the joint frame structure, if a joint frame has at least one child, we count is as its parent 
-            //child to give it a count.
-            currentJointFramesIds.forEach((jointFrameId: number) => {
-                if(useStore().frameObjects[jointFrameId].childrenIds.length > 0){
-                    childrenCount++;
-                }
-                childrenCount += countRecursiveChildren(
-                    jointFrameId, 
-                    countLimit
-                );
-            });
-        }
-    }
-
-    return childrenCount;
-};
-
 export const cloneFrameAndChildren = function(listOfFrames: EditorFrameObjects, currentFrameId: number, parentId: number,  nextAvailableId: { id: number}, framesToReturn: EditorFrameObjects): void {
     // This method recursively clones a frame and all its children.
     // `nextAvailableId` is used to store the id that each cloned frame will take. It is an Object in order to
@@ -776,10 +741,10 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     );
     Vue.delete(slot,"errorTitle");
 
-    /* IFTRUE_isPurePython */
+    /* IFTRUE_isPython */
     // If the frame of this slot has a runtime error, we also clear it
     Vue.delete(useStore().frameObjects[slotInfos.frameId], "runTimeError");
-    /* FITRUE_isPurePython */
+    /* FITRUE_isPython */
 
     // Check for precompiled errors (empty slots)
     const frameObject = useStore().frameObjects[slotInfos.frameId];

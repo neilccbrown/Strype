@@ -55,7 +55,7 @@ module.exports = {
             .loader("js-conditional-compile-loader")
             .options( {
                 // the following are from the library js-conditional-compile-loader https://github.com/hzsrc/js-conditional-compile-loader
-                isPurePython: process.env.npm_config_python,
+                isPython: process.env.npm_config_python,
                 isMicrobit: process.env.npm_config_microbit,
             });
         config.module
@@ -64,7 +64,7 @@ module.exports = {
             .use("vue-loader")
             .loader("js-conditional-compile-loader")
             .options( {
-                isPurePython: process.env.npm_config_python,
+                isPython: process.env.npm_config_python,
                 isMicrobit: process.env.npm_config_microbit,
             });
         config.plugin("copy").tap(([options]) => {

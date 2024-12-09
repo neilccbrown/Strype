@@ -29,7 +29,6 @@
                                                     : addFrameCommand[0].shortcuts[0]
                                             "
                                             :description="addFrameCommand[0].description"
-                                            :tooltip="addFrameCommand[0].tooltip"
                                             :index="
                                                 addFrameCommand[0].index!==undefined
                                                 ? addFrameCommand[0].index
@@ -51,10 +50,10 @@
             <text id="userCode"></text>
             <span id="keystrokeSpan"></span>
         </div>
-        /* IFTRUE_isPurePython
+        /* IFTRUE_isPython
         <div class="flex-padding"/>
         <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId"/>
-        FITRUE_isPurePython */
+        FITRUE_isPython */
         /* IFTRUE_isMicrobit      
         <div class="python-exec-area-container">  
             <div v-if="showProgress" class="progress cmd-progress-container">
@@ -87,10 +86,10 @@ import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
-/* IFTRUE_isPurePython */
+/* IFTRUE_isPython */
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
-/* FITRUE_isPurePython */
+/* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
@@ -105,9 +104,9 @@ export default Vue.extend({
         /* IFTRUE_isMicrobit */
         APIDiscovery,
         /* FITRUE_isMicrobit */
-        /* IFTRUE_isPurePython */
+        /* IFTRUE_isPython */
         PythonExecutionArea, 
-        /* FITRUE_isPurePython */
+        /* FITRUE_isPython */
     },
 
     data: function () {
@@ -148,11 +147,11 @@ export default Vue.extend({
             return this.$i18n.t("appMessage.autoSaveGDriveTooltip", {freq: autoSaveFreqMins}) as string;
         },
 
-        /* IFTRUE_isPurePython */
+        /* IFTRUE_isPython */
         peaComponentRefId(): string {
             return getStrypePEAComponentRefId();
         },
-        /* FITRUE_isPurePython */
+        /* FITRUE_isPython */
         /* IFTRUE_isMicrobit */
         tabIndex: {
             get(): number{
@@ -527,7 +526,7 @@ export default Vue.extend({
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
             
-        /* IFTRUE_isPurePython */
+        /* IFTRUE_isPython */
         // Listen to the Python execution area size change events (as the other commands max height need to be ammended)
         document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
             this.isExpandedPEA = (event as CustomEvent).detail;
@@ -544,7 +543,7 @@ export default Vue.extend({
                 }
             });
         });
-        /* FITRUE_isPurePython */
+        /* FITRUE_isPython */
     },
 
     mounted() {
@@ -688,9 +687,9 @@ export default Vue.extend({
 }
 
 .python-exec-area-container {
-    /* IFTRUE_isPurePython */
+    /* IFTRUE_isPython */
     margin: 0px 5px 5px 5px;
-    /* FITRUE_isPurePython */
+    /* FITRUE_isPython */
     /* IFTRUE_isMicrobit */
     margin-bottom: 90px;
     overflow: hidden; // that is used to keep the margin https://stackoverflow.com/questions/44165725/flexbox-preventing-margins-from-being-respected
