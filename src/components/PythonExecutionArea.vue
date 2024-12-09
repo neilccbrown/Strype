@@ -522,6 +522,7 @@ export default Vue.extend({
         
         getPersistentImageManager() : PersistentImageManager {
             this.isRunningStrypeGraphics = true;
+            this.peaDisplayTabIndex = 1;
             return persistentImageManager;
         },
         
