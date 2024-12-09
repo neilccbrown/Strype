@@ -2,6 +2,7 @@ import strype_graphics_internal as _strype_graphics_internal
 import strype_graphics_input_internal as _strype_input_internal
 import math as _math
 import collections as _collections
+import re as _re
 import time as _time
 
 def in_bounds(x, y):
@@ -197,7 +198,7 @@ class Actor:
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         if cur is not None:
             rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
-            self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
+            self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] + amount * _math.sin(rot))
         # If cur is None, do nothing
     def turn(self, degrees):
         """
@@ -214,8 +215,8 @@ class Actor:
         """
         Checks whether the central point of the actor is at the edge of the screen.
         
-        An actor is determined to be at the edge if it's position is within one pixel of the edge of the screen.
-        So if its X is less than -399 or greater than 399, or its Y is less than -299 or greater than 299.
+        An actor is determined to be at the edge if it's position is within two pixels of the edge of the screen.
+        So if its X is less than -397 or greater than 398, or its Y is less than -297 or greater than 298.
         
         :return: True if the actor is at the edge of the world, False otherwise. 
         """
@@ -223,7 +224,7 @@ class Actor:
         y = self.get_exact_y()
         if x is None or y is None:
             return False
-        return x < -399 or x > 399 or y < -299 or y > 299
+        return x < -397 or x > 398 or y < -297 or y > 298
         
     def is_touching(self, actor_or_tag):
         """
@@ -785,3 +786,66 @@ def key_pressed(keyname):
     :return: Either True or False depending on whether the key is currently pressed.
     """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
+
+def set_background(image_or_filename):
+    """
+    Sets the current background image.
+    
+    The parameter can be an EditableImage, a colour, a filename of an image in Strype's image library, or a URL.
+    Using a URL requires the server to allow remote image loading from Javascript via a feature
+        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+        you can load the image in a browser yourself.
+     
+    If the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
+    The background image is always copied, so later changes to an EditableImage will not be shown in the background;
+    you should call set_background() again to update it.
+    
+    :param image_or_filename: An EditableImage, an image filename or URL.
+    """
+
+    # We use an oversize image to avoid slivers of other colour appearing at the edges
+    # due to the size not being perfectly 800 x 600 on the actual webpage,
+    # which means we are scaling and using anti-aliased sub-pixel rendering:
+        
+    # Note we always take a copy, even if the size is fine, because
+    # we don't want later changes to affect the background:
+    def background_808_606(image):
+        dest = EditableImage(808, 606)
+        w = image.get_width()
+        h = image.get_height()
+        # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
+        # each side of the centre.  So just always draw one more than we need:
+        horiz_copies = _math.ceil(808 / w) + 1
+        vert_copies = _math.ceil(606 / h) + 1
+        # We want one copy bang in the centre, so we need to work out the offset:
+        # These offsets will either be zero or negative because we start by drawing
+        # the far left or far top image.  We work out the position of the central
+        # image then subtract the width/height of half of the copies we need: 
+        x_offset = (808 - w) / 2 - (horiz_copies - 1) / 2 * w
+        y_offset = (606 - h) / 2 - (vert_copies - 1) / 2 * h
+        for i in range(0, horiz_copies):
+            for j in range(0, vert_copies):
+                dest.draw_image(image, x_offset + i * w, y_offset + j * h)
+        return dest
+        
+    if isinstance(image_or_filename, EditableImage):
+        bk_image = background_808_606(image_or_filename)
+    elif isinstance(image_or_filename, str):
+        # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
+        # otherwise it's a color name/value.
+        if _re.search(r"[.:/]", image_or_filename):
+            bk_image = background_808_606(load_image(image_or_filename))
+        else:
+            bk_image = EditableImage(808, 606)
+            bk_image.set_fill(image_or_filename)
+            bk_image.fill()
+    else:
+        raise TypeError("image_or_filename must be an EditableImage or a string")
+
+    _strype_graphics_internal.setBackground(bk_image._EditableImage__image)        
+    
+def stop():
+    """
+    Stops the whole execution immediately.  Will not return.
+    """
+    raise SystemExit()

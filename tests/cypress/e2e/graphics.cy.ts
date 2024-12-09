@@ -186,13 +186,16 @@ describe("Basic operation", () => {
         return;
     }
     it("Blank canvas", () => {
-        runCodeAndCheckImage("", "print('Hello')\n", "graphics-blank");
+        runCodeAndCheckImage("", "print('Hello')\n", "graphics-blank", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
     });
     it("Basic cat", () => {
         runCodeAndCheckImage("", "Actor('cat-test.jpg')\nsleep(1)\n", "graphics-just-cat");
     });
     it("Basic cat rotated +45", () => {
         runCodeAndCheckImage("", "cat = Actor('cat-test.jpg')\ncat.set_rotation(45)\nsleep(1)\n", "graphics-just-cat-rotated-45");
+    });
+    it("Basic cat rotated +45 and moved forward", () => {
+        runCodeAndCheckImage("", "cat = Actor('cat-test.jpg')\ncat.turn(45)\ncat.move(100)\nsleep(1)\n", "graphics-cat-turn-45-and-move");
     });
     it("Basic cat rotated -60", () => {
         runCodeAndCheckImage("", "cat = Actor('cat-test.jpg')\ncat.set_rotation(-60)\nsleep(1)\n", "graphics-just-cat-rotated-minus-60");
@@ -227,6 +230,15 @@ describe("Basic operation", () => {
                 cat.set_rotation(180)
             sleep(1)
             `, "graphics-no-such-image-load-cat-instead");
+    });
+    it("Stops", () => {
+        // Add image, stop then move; we should not see the move:
+        runCodeAndCheckImage("", `
+            a = Actor("cat-test.jpg")
+            a.turn(90)
+            stop()
+            a.move(100)
+        `, "stops");
     });
 });
 
@@ -393,5 +405,68 @@ describe("World bounds", () => {
             mover.move(325 * math.sqrt(2))
             sleep(1)
             `, "bounds-corners");
+    });
+
+    it("Registers is_at_edge correctly", () => {
+        runCodeAndCheckImage("", `
+            for i in range(0, 360):
+                img = EditableImage(10, 10)
+                img.set_fill("white")
+                img.fill()
+                a = Actor(img)
+                a.turn(i)
+                a.move(410)
+                if a.is_at_edge():
+                    img.set_fill("red")
+                    img.fill()
+            sleep(1)
+            `, "bounds-is-at-edge");
+    });
+
+    it("Registers not is_at_edge correctly", () => {
+        runCodeAndCheckImage("", `
+            for i in range(0, 360):
+                img = EditableImage(10, 10)
+                img.set_fill("white")
+                img.fill()
+                a = Actor(img)
+                a.turn(i)
+                a.move(410)
+                a.turn(180)
+                # 3 pixels should take us away from the edge enough:
+                a.move(3)
+                if a.is_at_edge():
+                    img.set_fill("red")
+                    img.fill()
+            sleep(1)
+            `, "bounds-not-is-at-edge");
+    });
+});
+
+describe("World background", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    it("Tiles smaller backgrounds 1", () => {
+        runCodeAndCheckImage("", `
+            set_background("cat-test.jpg")
+            Actor("mouse-test.jpg")
+            sleep(1)
+        `, "background-tiled-1");
+    });
+    it("Tiles smaller backgrounds 2", () => {
+        runCodeAndCheckImage("", `
+            set_background(load_image("mouse-test.jpg"))
+            Actor("cat-test.jpg")
+            sleep(1)
+        `, "background-tiled-2");
+    });
+    it("Accepts colour background", () => {
+        runCodeAndCheckImage("", `
+            set_background("red")
+            Actor("cat-test.jpg")
+            sleep(1)
+        `, "background-colour");
     });
 });
