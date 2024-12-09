@@ -194,6 +194,9 @@ describe("Basic operation", () => {
     it("Basic cat rotated +45", () => {
         runCodeAndCheckImage("", "cat = Actor('cat-test.jpg')\ncat.set_rotation(45)\nsleep(1)\n", "graphics-just-cat-rotated-45");
     });
+    it("Basic cat rotated +45 and moved forward", () => {
+        runCodeAndCheckImage("", "cat = Actor('cat-test.jpg')\ncat.turn(45)\ncat.move(100)\nsleep(1)\n", "graphics-cat-turn-45-and-move");
+    });
     it("Basic cat rotated -60", () => {
         runCodeAndCheckImage("", "cat = Actor('cat-test.jpg')\ncat.set_rotation(-60)\nsleep(1)\n", "graphics-just-cat-rotated-minus-60");
     });

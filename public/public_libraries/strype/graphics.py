@@ -198,7 +198,7 @@ class Actor:
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         if cur is not None:
             rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
-            self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] - amount * _math.sin(rot))
+            self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] + amount * _math.sin(rot))
         # If cur is None, do nothing
     def turn(self, degrees):
         """
@@ -816,7 +816,7 @@ def set_background(image_or_filename):
         # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
         # each side of the centre.  So just always draw one more than we need:
         horiz_copies = _math.ceil(808 / w) + 1
-        vert_copies = _math.ceil(606 / h) +1
+        vert_copies = _math.ceil(606 / h) + 1
         # We want one copy bang in the centre, so we need to work out the offset:
         # These offsets will either be zero or negative because we start by drawing
         # the far left or far top image.  We work out the position of the central
