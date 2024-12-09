@@ -433,7 +433,7 @@ export default Vue.extend({
             // There is a bug with how Firefox handles editable text HTML elements contained in a draggable div.
             // We need to detect when the mouse is entering/leaving the text element to disable/enable the div's
             // draggable attribute. 
-            // Because the frames are imbricated, we need to do that for all the frames hierarchy up ot the frames container.
+            // Because the frames are nested, we need to do that for all the frames hierarchy up ot the frames container.
             // see https://stackoverflow.com/questions/21680363/prevent-drag-event-to-interfere-with-input-elements-in-firefox-using-html5-drag
             let frameId = this.frameId;
             do{
