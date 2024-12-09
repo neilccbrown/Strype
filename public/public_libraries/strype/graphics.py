@@ -215,8 +215,8 @@ class Actor:
         """
         Checks whether the central point of the actor is at the edge of the screen.
         
-        An actor is determined to be at the edge if it's position is within one pixel of the edge of the screen.
-        So if its X is less than -399 or greater than 399, or its Y is less than -299 or greater than 299.
+        An actor is determined to be at the edge if it's position is within two pixels of the edge of the screen.
+        So if its X is less than -397 or greater than 398, or its Y is less than -297 or greater than 298.
         
         :return: True if the actor is at the edge of the world, False otherwise. 
         """
@@ -224,7 +224,7 @@ class Actor:
         y = self.get_exact_y()
         if x is None or y is None:
             return False
-        return x < -399 or x > 399 or y < -299 or y > 299
+        return x < -397 or x > 398 or y < -297 or y > 298
         
     def is_touching(self, actor_or_tag):
         """

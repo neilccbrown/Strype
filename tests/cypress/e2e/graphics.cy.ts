@@ -406,6 +406,41 @@ describe("World bounds", () => {
             sleep(1)
             `, "bounds-corners");
     });
+
+    it("Registers is_at_edge correctly", () => {
+        runCodeAndCheckImage("", `
+            for i in range(0, 360):
+                img = EditableImage(10, 10)
+                img.set_fill("white")
+                img.fill()
+                a = Actor(img)
+                a.turn(i)
+                a.move(410)
+                if a.is_at_edge():
+                    img.set_fill("red")
+                    img.fill()
+            sleep(1)
+            `, "bounds-is-at-edge");
+    });
+
+    it("Registers not is_at_edge correctly", () => {
+        runCodeAndCheckImage("", `
+            for i in range(0, 360):
+                img = EditableImage(10, 10)
+                img.set_fill("white")
+                img.fill()
+                a = Actor(img)
+                a.turn(i)
+                a.move(410)
+                a.turn(180)
+                # 3 pixels should take us away from the edge enough:
+                a.move(3)
+                if a.is_at_edge():
+                    img.set_fill("red")
+                    img.fill()
+            sleep(1)
+            `, "bounds-not-is-at-edge");
+    });
 });
 
 describe("World background", () => {
