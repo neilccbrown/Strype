@@ -515,6 +515,9 @@ export default Vue.extend({
             }
             this.isRunningStrypeGraphics = false;
             pressedKeys.clear();
+            // Important not to use the accessor here as that will switch to the tab:
+            persistentImageManager.clear();
+            this.redrawCanvas();
         },
         
         getPersistentImageManager() : PersistentImageManager {
