@@ -1,5 +1,5 @@
 <template>
-    <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting}" @click="onClick" :title=tooltip>
+    <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting}" @click="onClick">
         <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled=isPythonExecuting>{{ symbol }}</button>
         <span>{{ description }}</span>
     </div>
@@ -26,7 +26,6 @@ export default Vue.extend({
         shortcut: String, //the keyboard shortcut to add the frame 
         symbol: String, //the displayed shortcut in the UI, it can be a symbolic representation
         description: String, //the description of the frame
-        tooltip:String, //the tooltip showing details of the frame
         index: Number, //when more than 1 frame is assigned to a shortcut, the index tells which frame definition should be used
     },
 

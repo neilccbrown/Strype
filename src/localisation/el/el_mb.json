@@ -1,4 +1,17 @@
-{
+{ 
+  "buttonLabel": {
+    "sendToMicrobit": "Αποστόλη στο micro:bit",
+    "addCodeExtract": "&larr; Εισαγωγή στον κόδικα",
+    "showMore": "Περισσότερα",
+    "showLess": "Λιγότερα"
+  },
+  "action": {
+    "uploadingToMicrobit": "Μεταφόρτωση στο micro:bit ..."
+  },
+  "messageBannerMessage": {
+    "uploadSuccessMicrobit": "Κωδικας μεταφορτόφηκε στο micro:bit",
+    "uploadFailureMicrobit": "Η μεταφόρτοση κώδικα στο micro:bit απέτυχε με μήνημα λάθους \"{errorMsg}\""
+  },
   "apidiscovery": {
     "microbitAPI": {
       "led_label": "Οθόνη Λέντ",

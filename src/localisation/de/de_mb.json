@@ -1,0 +1,19 @@
+{
+  "buttonLabel": {
+    "runOnMicrobit": "Auf micro:bit ausführen",
+    "sendToMicrobit": "Zum micro:bit senden",
+    "addCodeExtract": "&larr; Zum Code hinzufügen",
+    "showMore": "Mehr anzeigen",
+    "showLess": "Weniger anzeigen"
+  },
+  "action": {
+    "uploadingToMicrobit": "Upload zum micro:bit ..."
+  },
+  "commandTabs": {
+    "1": "micro:bit-Funktionen"
+  },
+  "messageBannerMessage": {
+    "uploadSuccessMicrobit": "Upload zum micro:bit komplett.",
+    "uploadFailureMicrobit": "Upload zum micro:bit abgebrochen. Fehler: \"{errorMsg}\""
+  }
+}

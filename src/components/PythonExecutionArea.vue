@@ -509,6 +509,10 @@ export default Vue.extend({
             this.isTurtleListeningMouseEvents = false;
             this.isTurtleListeningTimerEvents = false;
             this.stopTurtleUIEventListeners = undefined;
+
+            if(useStore().pythonExecRunningState) {
+                useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;              
+            }
             this.isRunningStrypeGraphics = false;
             pressedKeys.clear();
         },

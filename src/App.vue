@@ -70,6 +70,9 @@
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
+        <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
+            <span style="white-space:pre-wrap">{{ $t('appMessage.resyncToGDAtStartup') }}</span>
+        </ModalDlg>
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
     </div>
@@ -92,7 +95,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -100,10 +103,12 @@ import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import CaretContainer from "./components/CaretContainer.vue";
+import CaretContainer from "@/components/CaretContainer.vue";
 import { VueContextConstructor } from "vue-context";
-import { BACKEND_SKULPT_DIV_ID } from "./autocompletion/ac-skulpt";
+import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
+import GoogleDrive from "@/components/GoogleDrive.vue";
+import { BvModalEvent } from "bootstrap-vue";
 
 let autoSaveTimerId = -1;
 let autoSaveState : AutoSaveFunction[] = [];
@@ -186,6 +191,10 @@ export default Vue.extend({
 
         importDiffVersionModalDlgId(): string {
             return getImportDiffVersionModalDlgId();
+        },
+
+        resyncGDAtStartupModalDlgId(): string {
+            return "resyncGDAtStartupModalDlg";
         },
 
         getSkulptBackendTurtleDivId(): string {
@@ -340,12 +349,12 @@ export default Vue.extend({
             }
         });
 
-        /* IFTRUE_isPurePython */
+        /* IFTRUE_isPython */
         // Listen to the Python execution area size change events (as the editor needs to be resized too)
         document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
             this.isExpandedPythonExecArea = (event as CustomEvent).detail;
         });
-        /* FITRUE_isPurePython */
+        /* FITRUE_isPython */
 
         /* IFTRUE_isMicrobit */
         // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
@@ -401,11 +410,27 @@ export default Vue.extend({
                 this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
-                        callBack: () => {},
                         showMessage: false,
                         readCompressed: true,
                     }
-                );
+                ).then(() => {
+                    // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
+                    // about reloading the project from Google Drive again
+                    if(this.appStore.currentGoogleDriveSaveFileId) {
+                        const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
+                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
+                                // Fetch the Google Drive component
+                                const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                                // Initiate a connection to Google Drive via loading mechanisms (for resync at startup)
+                                gdVueComponent.loadFile(true);
+
+                                this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
+                            }
+                        };
+                        this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
+                        this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
+                    }
+                }, () => {});
             }
         }
 
@@ -826,7 +851,7 @@ export default Vue.extend({
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
         
-        setStateFromPythonFile(completeSource: string) : void {
+        setStateFromPythonFile(completeSource: string, fileName: string, fileLocation?: FileSystemFileHandle) : void {
             const allLines = completeSource.split(/\r?\n/);
             // Split can make an extra blank line at the end which we don't want:
             if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
@@ -846,6 +871,9 @@ export default Vue.extend({
                 useStore().showMessage(msg, 10000);
             }
             else {
+                // Clear the current existing code (i.e. frames) of the editor
+                this.appStore.clearAllFrames();
+
                 copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
                 if (useStore().copiedSelectionFrameIds.length > 0) {
                     this.getCaretContainerComponent(this.getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
@@ -860,11 +888,21 @@ export default Vue.extend({
                         this.getCaretContainerComponent(this.getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
                 }
+
+                // Now we can clear other non-frame related elements
+                this.appStore.clearNoneFrameRelatedState();
+             
+                /* IFTRUE_isPython */
+                // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
+                actOnTurtleImport();
+
+                // Clear the Python Execution Area as it could have be run before.
+                ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
+                /* FITRUE_isPython */
+
+                // Finally, we can trigger the notifcation a file has been loaded.
+                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, fileLocation);
             }
-            
-            // Must take ourselves off the clipboard after:
-            useStore().copiedFrames = {};
-            useStore().copiedSelectionFrameIds = [];
         },
     },
 });
@@ -1081,6 +1119,7 @@ $divider-grey: darken($background-grey, 15%);
     z-index: 20;
     border-radius: 8px;
     border: 1px solid #8e8e8e;
+    background-color: #BBB;
 }
 
 /* 

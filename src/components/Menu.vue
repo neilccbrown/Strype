@@ -20,7 +20,7 @@
             <div class="menu-separator-div"></div>
             <!-- load/save section -->
             <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg 
-                    :title="$t('appMenu.loadProjectTooltip')" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
+                @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" :autoFocusButton="'ok'">
                 <div v-if="changesNotSavedOnLoad">
                     <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
@@ -34,8 +34,8 @@
                     </b-button-group> 
                 </div>
             </ModalDlg>
-            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick" v-b-modal="saveLinkModalName" :title="$t('appMenu.saveProjectTooltip')">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
-            <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'" :title="$t('appMenu.saveAsProjectTooltip')"/>
+            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick" v-b-modal="saveLinkModalName">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
+            <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
                 <label v-t="'appMessage.fileName'" class="load-save-label"/>
                 <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off"/>
@@ -119,7 +119,6 @@
             <span class="menu-icon-entry menu-icon-centered-entry error-count-span" :title="$t('appMessage.editorErrors')" @mousedown.self.stop.prevent>{{errorCount}}</span>
             <i :class="{'fas fa-chevron-down menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex >= errorCount - 1)}" @mousedown.self.stop.prevent="navigateToErrorRequested=true" @click="goToError($event, true)"/>
         </div>
-        <!--a id="feedbackLink" href="/feedback" target="_blank"><i class="far fa-comment" :title="$t('action.feedbackLink')"></i></a-->
     </div>
 </template>
 
@@ -131,7 +130,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -246,7 +245,7 @@ export default Vue.extend({
         },
 
         googleDriveComponentId(): string {
-            return "googleDriveComponent";
+            return getGoogleDriveComponentRefId();
         },
 
         isSynced(): boolean {
@@ -447,7 +446,7 @@ export default Vue.extend({
             // In case there is a Google Drive file ID or other Drive related info are handling when we are saving as a file on the FS, we make sure we remove that
             if(target == StrypeSyncTarget.fs){
                 this.appStore.currentGoogleDriveSaveFileId = undefined;
-                this.appStore.strypeProjectLocationAlias = "";            
+                this.appStore.strypeProjectLocationAlias = "";
             }
         },
 
@@ -592,19 +591,14 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, fileHandles[0]);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: reader.result as string,
-                                            callBack: (succceded) => {
-                                                if (succceded) {
-                                                    this.onFileLoaded(fileHandles[0].name, fileHandles[0]);
-                                                }
-                                            },
                                         }
-                                    );
+                                    ).then(() => this.onFileLoaded(fileHandles[0].name, fileHandles[0]), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);  
@@ -636,17 +630,14 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: content,
-                                            callBack: () => {
-                                                this.onFileLoaded(fileName/*s[0].n*/);
-                                            },
                                         }
-                                    );
+                                    ).then(() => this.onFileLoaded(fileName), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
@@ -655,7 +646,6 @@ export default Vue.extend({
                             (reason) => this.appStore.setStateFromJSONStr( 
                                 {
                                     stateJSONStr: "",
-                                    callBack: () => {},
                                     errorReason: reason,
                                 }
                             )
@@ -989,20 +979,6 @@ export default Vue.extend({
 }
 
 .app-menu-footer:hover {
-    color: #2648af;
-}
-
-#feedbackLink {
-    color: #3467FE;
-    width:24px;
-    font-size: 20px;
-    margin-left:10px;
-    display: block;
-    bottom:0px;
-    position:absolute;    
-}
-
-#feedbackLink:hover {
     color: #2648af;
 }
 

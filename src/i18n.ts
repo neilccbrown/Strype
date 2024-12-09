@@ -1,3 +1,4 @@
+import { merge } from "lodash";
 import Vue from "vue";
 import VueI18n, { LocaleMessages } from "vue-i18n";
 
@@ -21,7 +22,8 @@ function loadLocaleMessages (): LocaleMessages {
         const matched = key.match(/\.\/[A-Za-z]{2}\/([A-Za-z]{2})_/i);
         if (matched && matched.length > 1) {
             const locale = matched[1];
-            messages[locale] = {...messages[locale], ...locales(key)};
+            // We use merge to combine any nested keys that spans across several localisation files (for a locale)
+            messages[locale] = merge(messages[locale], locales(key));            
         }
     });
     return messages;
