@@ -16,7 +16,7 @@ export const WORLD_WIDTH = 800;
 export const WORLD_HEIGHT = 600;
 
 export class PersistentImageManager {
-    // Special case: 0 is always the background, and inserted first in the map to make it
+    // Special case: ID 0 is always the background persistent image, and inserted first in the map to make it
     // first in the iteration order.  By default it is an 800x600 white image.
     private persistentImages = new Map<number, PersistentImage>();
     private persistentImagesDirty = false; // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
@@ -35,15 +35,15 @@ export class PersistentImageManager {
         // We use an oversize image to avoid slivers of other colour appearing at the edges
         // due to the size not being perfectly 800 x 600 on the actual webpage,
         // which means we are scaling and using anti-aliased sub-pixel rendering: 
-        const black_800_600 = new OffscreenCanvas(808, 606);
-        const ctx = black_800_600.getContext("2d");
+        const black_808_606 = new OffscreenCanvas(808, 606);
+        const ctx = black_808_606.getContext("2d");
         if (ctx != null) {
             (ctx as OffscreenCanvasRenderingContext2D).fillStyle = "black";
             (ctx as OffscreenCanvasRenderingContext2D).fillRect(0, 0, 808, 606);
         }
         this.persistentImages.set(0, {
             id: 0,
-            img: black_800_600,
+            img: black_808_606,
             // Since we go from -399 to 400, -299 to 300, the actual centre is 0.5, 0.5:
             x: 0.5,
             y: 0.5,
@@ -81,6 +81,11 @@ export class PersistentImageManager {
     }
     
     public removePersistentImage(id: number): void {
+        if (id <= 0) {
+            // Don't remove the background image:
+            return;
+        }
+        
         this.persistentImagesDirty = true;
         const box = this.persistentImages.get(id)?.collisionBox;
         if (box != undefined) {
