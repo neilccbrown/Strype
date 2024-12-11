@@ -461,6 +461,10 @@ class Dimension:
         self.height = height
 
 class EditableImage:
+    """
+    An editable image of fixed width and height.
+    """
+    
     # Attributes:
     # __image: A Javascript OffscreenCanvas, but from the Python end it is only
     #          passed back to Javascript calls.
@@ -468,9 +472,7 @@ class EditableImage:
     # Tracks the rate limiting for downloads:
     __last_download = _time.time()
         
-    """
-    An editable image of fixed width and height.
-    """
+    
     def __init__(self, width, height):
         """
         Creates an editable image with the given dimensions, with transparent content. 

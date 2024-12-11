@@ -1547,7 +1547,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x105980a90>"
+                    "defaultValue": "<unittest.loader.TestLoader object at 0x10357ea90>"
                 },
                 {
                     "name": "failfast",
@@ -1673,7 +1673,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x1055111c0>"
+                    "defaultValue": "<object object at 0x1030011c0>"
                 },
                 {
                     "name": "timeout",
@@ -2280,7 +2280,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1060d9b80>"
+                    "defaultValue": "<function deepcopy at 0x1038a5af0>"
                 }
             ]
         },
@@ -2322,7 +2322,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1060d9b80>"
+                    "defaultValue": "<function deepcopy at 0x1038a5af0>"
                 }
             ]
         },
@@ -2350,7 +2350,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x1060d9b80>"
+                    "defaultValue": "<function deepcopy at 0x1038a5af0>"
                 }
             ]
         },
@@ -2392,7 +2392,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x1060d9b80>"
+                    "defaultValue": "<function deepcopy at 0x1038a5af0>"
                 },
                 {
                     "name": "listiter",
@@ -14068,7 +14068,7 @@
     "strype.graphics": [
         {
             "acResult": "Actor",
-            "documentation": "",
+            "documentation": "\n    An Actor is an item in the world with a specific image, position, rotation and scale.  Everything you want to show up\n    in your graphics must be an Actor.  \n    ",
             "type": [
                 "function",
                 "type"
@@ -14086,7 +14086,7 @@
         },
         {
             "acResult": "Dimension",
-            "documentation": "",
+            "documentation": "\n    A dimension value indicating a width and a height, for example the size of an image.\n    ",
             "type": [
                 "function",
                 "type"
@@ -14104,7 +14104,7 @@
         },
         {
             "acResult": "FontFamily",
-            "documentation": "",
+            "documentation": "\n    A font family is a particular font type, e.g. Arial or Courier.\n    ",
             "type": [
                 "function",
                 "type"
@@ -14156,7 +14156,21 @@
             "version": 0
         },
         {
+            "acResult": "_last_frame",
+            "documentation": "Convert a string or number to a floating point number, if possible.",
+            "type": [],
+            "version": 0
+        },
+        {
             "acResult": "_math",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_re",
             "documentation": "",
             "type": [
                 "module"
@@ -14188,8 +14202,16 @@
             "version": 0
         },
         {
-            "acResult": "get_and_forget_clicked_actor",
-            "documentation": "\n    Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice\n    in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function\n    to several other things, assign it to a variable first.\n    :return: The most recently clicked Actor, or None if nothing was clicked since you last called this function.\n    ",
+            "acResult": "_time",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_clicked_actor",
+            "documentation": "\n    Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice\n    in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function\n    to several other things, assign it to a variable first.\n    \n    :return: The most recently clicked Actor, or None if nothing was clicked since you last called this function.\n    ",
             "type": [
                 "function"
             ],
@@ -14197,7 +14219,7 @@
         },
         {
             "acResult": "in_bounds",
-            "documentation": "\n    Checks if the given X, Y position is in the visible bounds of (-400,-300) inclusive to (400, 300) exclusive \n    :param x: \n    :param y: \n    :return: A boolean indicating whether it is in the visible bounds\n    ",
+            "documentation": "\n    Checks if the given X, Y position is in the visible bounds of (-399,-299) inclusive to (400, 300) exclusive.\n    \n    :param x: The x position to check\n    :param y: The y position to check\n    :return: A boolean indicating whether it is in the visible bounds: True if it is in bounds, False if it is not.\n    ",
             "type": [
                 "function"
             ],
@@ -14213,7 +14235,31 @@
         },
         {
             "acResult": "load_image",
-            "documentation": "\n    Loads the given image file as an EditableImage object.\n    :param filename: The built-in Strype filename, or URL, of the image to load.\n    :return: An EditableImage object with the same image and dimensions as the given file\n    ",
+            "documentation": "\n    Loads the given image file as an EditableImage object.\n    \n    Note: you can pass a filename for the image, which is an image name from Strype's image library,\n        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the image in a browser yourself.\n    \n    :param filename: The built-in Strype filename, or URL, of the image to load.\n    :return: An EditableImage object with the same image and dimensions as the given file\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pause",
+            "documentation": "\n    Waits for a suitable amount of time since the last call to pause() to allow you to take\n    the given number of actions per second.  This is almost always used like follows:\n    \n    ```\n    while True:\n        # Do all the actions you want to do in one go\n        pause(30)\n    ```\n    \n    Where 30 is the number of times you want to do those actions per second.  It is like sleeping\n    for 1/30th of a second, but it accounts for the fact that your actions may have taken some time,\n    so it aims to keep you executing the actions 30 times per second (or whatever value you pass\n    for actions_per_second).\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "set_background",
+            "documentation": "\n    Sets the current background image.\n    \n    The parameter can be an EditableImage, a colour, a filename of an image in Strype's image library, or a URL.\n    Using a URL requires the server to allow remote image loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the image in a browser yourself.\n     \n    If the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.\n    The background image is always copied, so later changes to an EditableImage will not be shown in the background;\n    you should call set_background() again to update it.\n    \n    :param image_or_filename: An EditableImage, an image filename or URL.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "stop",
+            "documentation": "\n    Stops the whole execution immediately.  Will not return.\n    ",
             "type": [
                 "function"
             ],
@@ -14276,7 +14322,7 @@
         },
         {
             "acResult": "play_sound",
-            "documentation": "\n    Starts playing the given sound, returning immediately without waiting for it to finish.\n    :param filename: The filename of the sound \n    ",
+            "documentation": "\n    Starts playing the given sound, returning immediately without waiting for it to finish.\n    \n    :param filename: The filename of the sound \n    ",
             "type": [
                 "function"
             ],
