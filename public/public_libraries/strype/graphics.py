@@ -854,10 +854,9 @@ def stop():
 
 _last_frame = _time.time()
 
-def pause(actions_per_second):
+def pause(actions_per_second = 25):
     """
-    Waits for a suitable amount of time since the last call to pause() to allow you to take
-    the given number of actions per second.  This is almost always used like follows:
+    Waits for a suitable amount of time since the last call to pause().  This is almost always used as follows:
     
     ```
     while True:
@@ -869,6 +868,8 @@ def pause(actions_per_second):
     for 1/30th of a second, but it accounts for the fact that your actions may have taken some time,
     so it aims to keep you executing the actions 30 times per second (or whatever value you pass
     for actions_per_second).
+    
+    :param actions_per_second: The amount of times you want to call pause() per second, 25 by default.
     """
     global _last_frame
     now = _time.time()
