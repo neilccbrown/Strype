@@ -149,11 +149,15 @@ var $builtinmodule = function(name)  {
     });
     mod.canvas_setFill = new Sk.builtin.func(function(img, color) {
         const ctx = img.getContext("2d");
-        ctx.fillStyle = Sk.ffi.remapToJs(color);
+        let colorJs = Sk.ffi.remapToJs(color);
+        // Note 8 zeroes: this is fully transparent, not black:
+        ctx.fillStyle = colorJs == null ? "#00000000" : colorJs;
     });
     mod.canvas_setStroke = new Sk.builtin.func(function(img, color) {
         const ctx = img.getContext("2d");
-        ctx.strokeStyle = Sk.ffi.remapToJs(color);
+        let colorJs = Sk.ffi.remapToJs(color);
+        // Note 8 zeroes: this is fully transparent, not black:
+        ctx.strokeStyle = colorJs == null ? "#00000000" : colorJs;
     });
     mod.canvas_getPixel = new Sk.builtin.func(function(img, x, y) {
         const ctx = img.getContext("2d");

@@ -461,6 +461,10 @@ class Dimension:
         self.height = height
 
 class EditableImage:
+    """
+    An editable image of fixed width and height.
+    """
+    
     # Attributes:
     # __image: A Javascript OffscreenCanvas, but from the Python end it is only
     #          passed back to Javascript calls.
@@ -468,9 +472,7 @@ class EditableImage:
     # Tracks the rate limiting for downloads:
     __last_download = _time.time()
         
-    """
-    An editable image of fixed width and height.
-    """
+    
     def __init__(self, width, height):
         """
         Creates an editable image with the given dimensions, with transparent content. 
@@ -849,3 +851,31 @@ def stop():
     Stops the whole execution immediately.  Will not return.
     """
     raise SystemExit()
+
+_last_frame = _time.time()
+
+def pause(actions_per_second = 25):
+    """
+    Waits for a suitable amount of time since the last call to pause().  This is almost always used as follows:
+    
+    ```
+    while True:
+        # Do all the actions you want to do in one go
+        pause(30)
+    ```
+    
+    Where 30 is the number of times you want to do those actions per second.  It is like sleeping
+    for 1/30th of a second, but it accounts for the fact that your actions may have taken some time,
+    so it aims to keep you executing the actions 30 times per second (or whatever value you pass
+    for actions_per_second).
+    
+    :param actions_per_second: The amount of times you want to call pause() per second, 25 by default.
+    """
+    global _last_frame
+    now = _time.time()
+    # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep
+    # up that frame rate), we just "sleep" for 0, so go as fast as we can:
+    sleep_for = max(0, 1 / actions_per_second - (now - _last_frame))
+    _last_frame = now
+    _time.sleep(sleep_for)
+    
