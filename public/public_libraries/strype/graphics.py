@@ -849,3 +849,30 @@ def stop():
     Stops the whole execution immediately.  Will not return.
     """
     raise SystemExit()
+
+_last_frame = _time.time()
+
+def pause(actions_per_second):
+    """
+    Waits for a suitable amount of time since the last call to pause() to allow you to take
+    the given number of actions per second.  This is almost always used like follows:
+    
+    ```
+    while True:
+        # Do all the actions you want to do in one go
+        pause(30)
+    ```
+    
+    Where 30 is the number of times you want to do those actions per second.  It is like sleeping
+    for 1/30th of a second, but it accounts for the fact that your actions may have taken some time,
+    so it aims to keep you executing the actions 30 times per second (or whatever value you pass
+    for actions_per_second).
+    """
+    global _last_frame
+    now = _time.time()
+    # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep
+    # up that frame rate), we just "sleep" for 0, so go as fast as we can:
+    sleep_for = max(0, 1 / actions_per_second - (now - _last_frame))
+    _last_frame = now
+    _time.sleep(sleep_for)
+    
