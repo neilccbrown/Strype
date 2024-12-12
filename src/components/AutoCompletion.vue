@@ -78,11 +78,9 @@ import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
-import { configureSkulptForAutoComplete, getPythonCodeForNamesInContext, getPythonCodeForTypeAndDocumentation } from "@/autocompletion/ac-skulpt";
 import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
-
-declare const Sk: any;
+import {TPyParser} from "tigerpython-parser";
 
 //////////////////////
 export default Vue.extend({
@@ -103,11 +101,6 @@ export default Vue.extend({
 
     data: function() {
         return {
-            // We must keep track of whether our request is still the latest one
-            // If it is not, we should not record our results, because they are now "stale"
-            // and inapplicable.  So we put a number in here that we increment each time
-            // we update:
-            acRequestIndex : 0,
             acResults: {} as AcResultsWithCategory,
             resultsToShow: {} as IndexedAcResultWithCategory,
             documentation: [] as string[],
@@ -195,7 +188,6 @@ export default Vue.extend({
         },
       
         updateACForModuleImport(token: string) : void {
-            this.acRequestIndex += 1;
             this.acResults = getAvailableModulesForImport();
             this.showFunctionBrackets = false;
             // Only show imports if the slot isn't following "as" (so we need to check the operator)
@@ -206,7 +198,6 @@ export default Vue.extend({
         },
 
         updateACForImportFrom(token: string, module: string) : void {
-            this.acRequestIndex += 1;
             this.acResults = {"": getAvailableItemsForImportFromModule(module)};
             this.showFunctionBrackets = false;
             this.showSuggestionsAC(token);
@@ -218,7 +209,7 @@ export default Vue.extend({
         async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
-            const userCode = parser.getCodeWithoutErrorsAndLoops(frameId);
+            const userCode = parser.getCodeWithoutErrors(frameId);
             
             // If nothing relevant changed, no need to recalculate, just update based on latest token:
             if (this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&
@@ -236,8 +227,6 @@ export default Vue.extend({
             }
             
             this.showFunctionBrackets = true;
-            this.acRequestIndex += 1;
-            const ourAcRequest = this.acRequestIndex;
             const imported = getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token === null) {
@@ -249,43 +238,28 @@ export default Vue.extend({
                 this.showSuggestionsAC(token);
             }
             else if (context !== "") {
-                // There is context, ask Skulpt for a dir() of that context
-                const codeToRun = getPythonCodeForNamesInContext(userCode, context);
-                configureSkulptForAutoComplete();
-                try {
-                    await Sk.misceval.asyncToPromise(function () {
-                        return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
-                    });
-                    // We need to make sure we clear the TurtleGraphics property after Skulpt has run to avoid undesired effects in future Skulpt runs.
-                    Sk.TurtleGraphics = {};
-                    if (ourAcRequest == this.acRequestIndex) {
-                        // If the context is given and that's a first level context (i.e. module) we retrieve the a/c content from our generated API Json file.
-                        // Otherwise, we get the content via Skulpt.
-                        const items = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).filter((s) => !s.startsWith("_") || token.startsWith("_")).map((s) => ({
-                            acResult: s,
-                            documentation: "",
-                            type: [],
-                            version: 0,
-                        })) as AcResultType[];                       
-                              
-                        for (const item of items) {
-                            const codeForDocs = getPythonCodeForTypeAndDocumentation(userCode, context + "." + item.acResult);
-                            await Sk.misceval.asyncToPromise(function () {
-                                return Sk.importMainWithBody("<stdin>", false, codeForDocs, true);
-                            });
-                            item.type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
-                            item.documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
-                        }                      
-
-                        if (ourAcRequest == this.acRequestIndex) {
-                            this.acResults = {[context]: items};
-                            this.showSuggestionsAC(token);
-                        }
-                    }
+                // When we generate the user code we leave off the actual frame where we want
+                // the autocompletion because it won't be syntactically valid and thus would be
+                // get tangled in our check for errors (plus we can't easily determine the exact
+                // position we're completing at once the slots are turned into plain Python).
+                //
+                // To give TigerPython's autocomplete a place to examine to do the autocompletion
+                // we actually generate a dummy extra line of code with the context that we want
+                // plus a dot, then ask TigerPython to complete at the very end: 
+                let totalCode = userCode + "\n" + parser.getStoppedIndentation() + context + ".";
+                let tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
+                if (tppCompletions == null) {
+                    tppCompletions = [];
                 }
-                catch (err) {
-                    console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
-                }
+                const items =  tppCompletions.filter((s) => !s.acResult.startsWith("_") || token.startsWith("_")).map((s) => ({
+                    acResult: s.acResult,
+                    documentation: s.documentation,
+                    params: s.params == null ? [] : s.params.map((p) => ({name: p})),
+                    type: ["function", "module", "variable", "type"].includes(s.type) ? [s.type] : [],
+                    version: 0,
+                } as AcResultType));
+                this.acResults = {[context]: items};
+                this.showSuggestionsAC(token);
             }
             else {
                 // No context, just ask for all built-ins, user-defined functions, user-defined variables and everything explicitly imported with "from...import...":
