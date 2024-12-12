@@ -48,19 +48,6 @@ function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedC
     });
 }
 
-function withFrameId(inner : (frameId: number) => void) : void {
-    // We need a delay to make sure last DOM update has occurred:
-    cy.wait(600);
-    cy.get("#editor").then((eds) => {
-        const ed = eds.get()[0];
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const frameId = parseInt(new RegExp("input_frame_(\\d+)").exec(ed.getAttribute("data-slot-focus-id"))[1]);
-        // Call the inner function:
-        inner(frameId);
-    });
-}
-
 function focusEditorAC(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
@@ -228,9 +215,16 @@ describe("Built-ins", () => {
     });
 });
 
+// This is the Python version:
+//const UPPER_DOC = "Return a copy of the string converted to uppercase.";
+// but TigerPython has its own:
+const UPPER_DOC = "Return a copy of the string with all the cased characters converted to uppercase.";
+
 describe("Behaviour with operators, brackets and complex expressions", () => {
     const prefixesWhichShouldShowBuiltins = ["0+", "1.6-", "not ", "1**(2+6)", "[a,", "array[", "~", "(1*", "{3:"];
-    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "(\"a\").", "(\"a\".upper()).", "myString.", "[\"a\"][0]."];
+    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "myString."];
+    // TODO restore these when TigerPython supports them in future:
+    // "(\"a\").", "(\"a\".upper()).", "[\"a\"][0]."
     const prefixesWhichShouldShowNone = ["z..", "123", "123.", "\"", "\"abc", "\"abc.", "'", "totally_unique_stem", "nonexistentvariable."];
 
     for (const prefix of prefixesWhichShouldShowBuiltins) {
@@ -295,7 +289,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkAutocompleteSorted(acIDSel);
                 // Check docs show:
                 cy.get("body").type("pper");
-                cy.get(acIDSel).contains("Return a copy of the string converted to uppercase.");
+                cy.get(acIDSel).contains(UPPER_DOC);
             });
         });
     }
@@ -685,7 +679,7 @@ describe("User-defined items", () => {
             checkAutocompleteSorted(acIDSel);
             // Check docs show:
             cy.get("body").type("pper");
-            cy.get(acIDSel).contains("Return a copy of the string converted to uppercase.");
+            cy.get(acIDSel).contains(UPPER_DOC);
         });
     });
 
@@ -939,6 +933,7 @@ describe("Underscore handling", () => {
             cy.get("body").type("{backspace}{backspace}");
         });
     });
+    /* TODO restore once TigerPython supports these items:
     it("Does not offer underscore items on object until typed", () => {
         focusEditorAC();
         // Add a string variable named myVar:
@@ -966,6 +961,7 @@ describe("Underscore handling", () => {
             cy.get(acIDSel).contains("Default dir() implementation.");
         });
     });
+     */
     it("Offers user's own definitions, even if they start with underscores", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "__myFunction" then come back down:
