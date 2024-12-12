@@ -66,7 +66,6 @@ export default Vue.extend({
     color: rgb(180, 180, 180);
 }
 
-
 .frame-cmd-btn {
     margin-right: 5px;
     cursor: pointer;
@@ -84,5 +83,6 @@ export default Vue.extend({
 
 .frame-cmd-btn:disabled {
     cursor: default;
+    color: rgb(180, 180, 180);
 }
 </style>
