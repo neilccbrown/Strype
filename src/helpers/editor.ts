@@ -894,15 +894,26 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 
 // Helpers for adding or removing the "duplicate" action on a drag an drop frames
 export function addDuplicateActionOnFramesDnD(): void {
+    // Add the "+" symbol
     if(currentCaretDropPosFrameId > 0){
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = true;
     }
+
+    // Do not blur the source frame(s)
+    const sourceFrameIds = (currentDraggedSingleFrameId) ?  [currentDraggedSingleFrameId] : [...useStore().selectedFrames];
+    sourceFrameIds.forEach((frameId) => useStore().frameObjects[frameId].isBeingDragged = false);
 }
 
 export function removeDuplicateActionOnFramesDnD(): void {
     // Remove the "+" symbol on the destination caret
     if(currentCaretDropPosFrameId > 0){
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = false;
+    }
+
+    // Restore the blur on the source frame(s) only if we are still dragging 
+    if(useStore().isDraggingFrame){
+        const sourceFrameIds = (currentDraggedSingleFrameId) ?  [currentDraggedSingleFrameId] : [...useStore().selectedFrames];
+        sourceFrameIds.forEach((frameId) => useStore().frameObjects[frameId].isBeingDragged = true);
     }
 }
 
