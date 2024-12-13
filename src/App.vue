@@ -95,7 +95,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -346,6 +346,33 @@ export default Vue.extend({
             // Case for Windows context menu key   
             if(event.key.toLowerCase() == "contextmenu"){
                 this.appStore.isContextMenuKeyboardShortcutUsed  = true;
+            }
+
+            // Handling the notification for doing duplication with drag and drop.
+            // We don't really care if another key is hit along ctrl/option, we only look that
+            // we are currently in a drag and drop action, and notify the current caret candidate for drop that
+            // the action requires frame duplication.
+            if(this.appStore.isDraggingFrame && (event.ctrlKey || event.altKey)){
+                addDuplicateActionOnFramesDnD();
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;
+            }
+        });
+
+        // There are only a few cases when we need to handle key up events
+        window.addEventListener("keyup", (event) => {
+            // Handling the notification for not doing duplication anymore with drag and drop.
+            // We don't really care if another key is hit along ctrl/option, we only look that
+            // we are currently in a drag and drop action, and notify the current caret candidate for drop that
+            // the action doesn't require frame duplication.
+            if(this.appStore.isDraggingFrame && (event.key == "Control" || event.key == "Alt")){
+                removeDuplicateActionOnFramesDnD();
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;
             }
         });
 
