@@ -222,9 +222,7 @@ const UPPER_DOC = "Return a copy of the string with all the cased characters con
 
 describe("Behaviour with operators, brackets and complex expressions", () => {
     const prefixesWhichShouldShowBuiltins = ["0+", "1.6-", "not ", "1**(2+6)", "[a,", "array[", "~", "(1*", "{3:"];
-    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "myString."];
-    // TODO restore these when TigerPython supports them in future:
-    // "(\"a\").", "(\"a\".upper()).", "[\"a\"][0]."
+    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "myString.", "(\"a\").", "(\"a\".upper()).", "[\"a\"][0]."];
     const prefixesWhichShouldShowNone = ["z..", "123", "123.", "\"", "\"abc", "\"abc.", "'", "totally_unique_stem", "nonexistentvariable."];
 
     for (const prefix of prefixesWhichShouldShowBuiltins) {
