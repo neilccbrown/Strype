@@ -1,6 +1,6 @@
 <template>
     <div 
-        :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer}"
+        :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer, 'dragging-frames': areFramesDraggedOver}"
         @click.exact.prevent.stop="toggleCaret()"
         @contextmenu.prevent.stop="handleClick($event)"
         :key="UID"
@@ -341,7 +341,7 @@ export default Vue.extend({
     height: $caret-height-value + px;
 }
 
-.caret-container:hover{
+.caret-container:not(.dragging-frames):hover{
     cursor: pointer;
 }
 </style>
