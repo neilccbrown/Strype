@@ -349,10 +349,10 @@ export default Vue.extend({
             }
 
             // Handling the notification for doing duplication with drag and drop.
-            // We don't really care if another key is hit along ctrl/meta, we only look that
+            // We don't really care if another key is hit along ctrl/option, we only look that
             // we are currently in a drag and drop action, and notify the current caret candidate for drop that
             // the action requires frame duplication.
-            if(this.appStore.isDraggingFrame && (event.ctrlKey || event.metaKey)){
+            if(this.appStore.isDraggingFrame && (event.ctrlKey || event.altKey)){
                 addDuplicateActionOnFramesDnD();
                 event.preventDefault();
                 event.stopImmediatePropagation();
@@ -364,10 +364,10 @@ export default Vue.extend({
         // There are only a few cases when we need to handle key up events
         window.addEventListener("keyup", (event) => {
             // Handling the notification for not doing duplication anymore with drag and drop.
-            // We don't really care if another key is hit along ctrl/meta, we only look that
+            // We don't really care if another key is hit along ctrl/option, we only look that
             // we are currently in a drag and drop action, and notify the current caret candidate for drop that
             // the action doesn't require frame duplication.
-            if(this.appStore.isDraggingFrame){
+            if(this.appStore.isDraggingFrame && (event.key == "Control" || event.key == "Alt")){
                 removeDuplicateActionOnFramesDnD();
                 event.preventDefault();
                 event.stopImmediatePropagation();
