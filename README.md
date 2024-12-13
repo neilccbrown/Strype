@@ -74,7 +74,6 @@ Other contributors:
 
 Translators:
 - Greek: Babis Kyfonidis
-- French: Pierre Weill-Tessier
 - Spanish: Emma Dodoo and Nolgie Oquendo-Colon
 - Chinese: Rongkun Liu
 
@@ -83,7 +82,6 @@ Roadmap
 
 Strype is currently under very active development.  A rough roadmap of some major planned features (beyond the general bugfixing and polishing):
 
- - Improved editor features (including copy-as-image): Q4 2024
  - Add class frames (for object-oriented programming): Q1 2025
  - Add a graphics and sound API: Q1 2025
  - Add support for third-party library import: Q2 2025
