@@ -73,9 +73,11 @@ Other contributors:
 - Aleksandr Voronstov
 
 Translators:
+- Chinese: Rongkun Liu
+- French: Pierre Weill-Tessier
+- German: Michael Kölling
 - Greek: Babis Kyfonidis
 - Spanish: Emma Dodoo and Nolgie Oquendo-Colon
-- Chinese: Rongkun Liu
 
 Roadmap
 ---
