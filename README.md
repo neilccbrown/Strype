@@ -67,6 +67,7 @@ Current team:
 - Pierre Weill-Tessier (King's College London)
 
 Other contributors:
+- Tobias Kohn (<a href="https://github.com/Tobias-Kohn/TigerPython-Parser" target="_blank">TigerPython parser<a>)
 - Babis Kyfonidis
 - Zak Singh
 - Aleksandr Voronstov
