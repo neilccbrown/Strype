@@ -76,6 +76,7 @@ Translators:
 - Greek: Babis Kyfonidis
 - French: Pierre Weill-Tessier
 - Spanish: Emma Dodoo and Nolgie Oquendo-Colon
+- Chinese: Rongkun Liu
 
 Roadmap
 ---
