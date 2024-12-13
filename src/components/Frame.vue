@@ -91,7 +91,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
@@ -1059,12 +1059,23 @@ export default Vue.extend({
 
         delete(): void {
             if(this.isPartOfSelection){
-                //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
+                // For deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
                 this.appStore.deleteFrames("Delete");
             }
             else{
-                //when deleting the specific frame, we place the caret below and simulate "backspace"
-                this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below});
+                // When deleting the specific frame, we place the caret below and simulate "backspace"
+                // (special case for joint frames: we go inside the body's next joint sibling, or below root if no next joint sibling)
+                const newCurrentFrame = {id: this.frameId, caretPosition: CaretPosition.below};
+                if(this.isJointFrame) {
+                    if(isLastInParent(this.frameId)){
+                        newCurrentFrame.id = getParentOrJointParent(this.frameId);
+                    }
+                    else{
+                        newCurrentFrame.id = getNextSibling(this.frameId);
+                        newCurrentFrame.caretPosition = CaretPosition.body;
+                    }
+                }
+                this.appStore.setCurrentFrame(newCurrentFrame);
                 this.appStore.deleteFrames("Backspace");
             }       
         },
