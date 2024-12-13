@@ -879,6 +879,8 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
                 (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
                 // Not really required but just better to reset things properly
                 (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+                // We make sure that we remove the "drag and d&d" flag on this caret since it's no longer a candidate for dropping the frames at this position...
+                removeDuplicateActionOnFramesDnD();
             }
             currentCaretDropPosId = closestCaretEl?.id??"";
             currentCaretDropPosFrameId = newCaretDropPosFrameId;
@@ -890,6 +892,20 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
     }
 };
 
+// Helpers for adding or removing the "duplicate" action on a drag an drop frames
+export function addDuplicateActionOnFramesDnD(): void {
+    if(currentCaretDropPosFrameId > 0){
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = true;
+    }
+}
+
+export function removeDuplicateActionOnFramesDnD(): void {
+    // Remove the "+" symbol on the destination caret
+    if(currentCaretDropPosFrameId > 0){
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = false;
+    }
+}
+
 // We need to also look for the mouseup event during Drag and Drop as we only let the browser handling "dragstart",
 // there is no "dragend" being raised by the browser consequently.
 const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
@@ -897,6 +913,9 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
         const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
         // Notify the drag even is finished
         notifyDragEnded();
+
+        // Make sure we remove the "duplicate" flag as it may have been used
+        removeDuplicateActionOnFramesDnD();
 
         // Drop the frame at the current drop caret location only if drop is allowed
         if(areDropFramesAllowed){

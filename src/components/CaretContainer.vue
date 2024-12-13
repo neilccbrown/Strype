@@ -27,6 +27,7 @@
             v-blur="isCaretBlurred"
             :areFramesDraggedOver="areFramesDraggedOver"
             :areDropFramesAllowed="areDropFramesAllowed"
+            :isDuplicateDnDAction="isDuplicateDnDAction"
         />
     </div>
 </template>
@@ -127,6 +128,7 @@ export default Vue.extend({
             insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
             areFramesDraggedOver: false,
             areDropFramesAllowed: true,
+            isDuplicateDnDAction: false,
         };
     },
 
