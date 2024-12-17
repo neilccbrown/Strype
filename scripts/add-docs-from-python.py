@@ -10,6 +10,9 @@ import re
 import sys
 from operator import attrgetter
 
+sys.path.append("../public/public_libraries")
+sys.path.append("./stubs")
+
 def parse_arguments(text, func_name):
     # Split the text into lines
     lines = text.splitlines()
