@@ -392,6 +392,14 @@ export const useStore = defineStore("app", {
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = cloneDeep(addCommandsDefs);
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {};
 
+            // If frames are selected, we only show the frames commands that can be used for wrapping.
+            // That can be done in a systematic rule below, but for the case being inside the definitions section,
+            // we will need to check things a bit differently: making sure there are only comments selected as 
+            // functions or classes cannot be wrapped around.
+            const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getFuncDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getFuncDefsFrameContainerId) 
+                && state.selectedFrames.length > 0);
+            const areSelectedFramesAllComments = state.selectedFrames.every((frameId) => state.frameObjects[frameId].frameType.type == AllFrameTypesIdentifier.comment);
+
             // for each shortcut we get a list of the corresponding commands
             for (const frameShortcut in addCommandsDefs) {
 
@@ -400,10 +408,19 @@ export const useStore = defineStore("app", {
                 
                 // filtered = filtered - forbidden - allJoints
                 // all joints need to be removed here as they may overlap with the forbiden and the allowed ones. Allowed will be added on the next step.
-                // unless we are checking for a target position, if some frames are currently selected, we do not allow statement type frames to appear in the list of commands (we can only wrap the selection)
-                filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
-                    && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
-
+                // unless we are checking for a target position, if some frames are currently selected, we do not allow statement type frames to appear 
+                // in the list of commands (we can only wrap the selection).
+                // We need a special case for when we are directly inside the definitions section, and some frames are selected, to not allow wrapping
+                // a function, or a class, with another function or a class.
+                if(isSelectingInsideDefsSection) {
+                    filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
+                    && (lookingForTargetPos || (areSelectedFramesAllComments && x.type.allowChildren)));
+                }
+                else{
+                    filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
+                        && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
+                }
+                
                 // filtered = filtered + allowed
                 filteredCommands[frameShortcut].push(...allowedJointCommand[frameShortcut]);
                 
