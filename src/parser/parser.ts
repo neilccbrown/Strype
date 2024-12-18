@@ -37,11 +37,16 @@ export default class Parser {
     private disabledBlockIndent = "";
     private excludeLoopsAndCommentsAndCloseTry = false;
     private ignoreCheckErrors = false;
+    private stoppedIndentation = ""; // The indentation level when we encountered the stop frame.
 
     constructor(ignoreCheckErrors?: boolean){
         if(ignoreCheckErrors != undefined){
             this.ignoreCheckErrors = ignoreCheckErrors;
         }
+    }
+    
+    public getStoppedIndentation() : string {
+        return this.stoppedIndentation;
     }
 
     private parseBlock(block: FrameObject, indentation: string): string {
@@ -159,6 +164,9 @@ export default class Parser {
         for (const frame of codeUnits) {
             if(frame.id === this.stopAtFrameId || this.exitFlag){
                 this.exitFlag = true; // this is used in case we are inside a recursion
+                if (frame.id === this.stopAtFrameId) {
+                    this.stoppedIndentation = indentation;
+                }
                 break;
             }
             //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
@@ -310,7 +318,7 @@ export default class Parser {
         return errorString;
     }
 
-    public getCodeWithoutErrorsAndLoops(endFrameId: number): string {
+    public getCodeWithoutErrors(endFrameId: number): string {
         const code = this.parse(undefined, endFrameId, true);
 
         const errors = this.getErrors(code);
@@ -361,83 +369,7 @@ export default class Parser {
 
         });
         
-        let output = "";                     // the code that will go to Skulpt for autocomplete
-        let prevIndentation = 0;             // holds the indentation of the previous line
-        const openedTryMap = [] as string[]; // For each try opened, we store the white spaces in front of it.
-        let tryFromTheUser = false;          // When the except is open no need to add try catch in it.
-
-        // Now add try/except statements around each statement and block
-        // This cannot be done on the previous stage (error removal) as 
-        // There may be some blocks with potentially unhandled errors by 
-        // try/except, like `for:` or `import 3 from x`
-        filteredCode.split(/\r?\n/g).forEach( (line) => {
-
-            // get all the spaces at the beginning of a line
-            const spaces = line.match(/^([\s]*[?!\s]){1}/g)??[""];
-            // now count the number or indentations at the beginning of the line
-            const indentationsInLine = (spaces[0]?.match(regExp) || []).length; 
-
-            // Whenever the indentation count in the line is reduced, we are exiting a block statement
-            // At that incidence (and since it is not a compound AND there has been an opened try earlier)
-            // we need to close the trys with excepts
-            if( indentationsInLine < prevIndentation && !this.isCompoundStatement(line,spaces) && openedTryMap.length>0 && !this.isExcept(line,spaces)) {
-
-                // How many indentations we went left?
-                const indentsDiff = prevIndentation - indentationsInLine;
-
-                // For every indentation close the try and remove it from the map
-                for (let i = 0; i < indentsDiff; i++) {
-                    const tryIndent = openedTryMap.pop();
-
-                    // This case is only for exiting a function, where there is an indent diff
-                    // but there is no try opened!
-                    if(tryIndent === undefined) { 
-                        break;
-                    }
-                    output += tryIndent + "except:\n" + tryIndent + INDENT + "pass" + "\n";
-                }
-            }
-
-            // if the line is not empty and not comprised only from white spaces
-            if(line && (/\S/.test(line))) {
-                // Compound statements do not get an indentation, every other statement in the block does
-                const conditionalIndent = (!this.isCompoundStatement(line,spaces) && !this.isTryOrExcept(line,spaces) && !tryFromTheUser ) ? INDENT : "";
-                // If we add a try, we need to know how far in we are already from previous trys
-                const tryIndentation = INDENT.repeat(openedTryMap.length);
-                
-                if ( this.isTry(line,spaces) ) {
-                    tryFromTheUser = true;
-                }
-
-                // Add the try only if it's not a compound nor func def nor an except nor a try
-                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !this.isTryOrExcept(line,spaces) && !tryFromTheUser) {
-                    output += (spaces + tryIndentation + "try:\n");
-                    openedTryMap.push(spaces + tryIndentation);
-                }
-                
-                // Add the line -- we add indent only if we're not in function declaration line
-                output += 
-                    ((!this.isFunctionDef(line,spaces)) ? 
-                        (tryIndentation + conditionalIndent)
-                        :
-                        "") 
-                    + line + "\n"; // `line` includes `spaces` at its beginning
-
-                // Add the except if the line is not a compound AND not a func def AND not the starting of a block nor an except
-                if(!this.isCompoundStatement(line,spaces) && !this.isFunctionDef(line,spaces) && !line.endsWith(":") && !this.isTryOrExcept(line,spaces) && !tryFromTheUser){
-                    output += spaces + tryIndentation + "except:\n" + spaces + tryIndentation + INDENT + "pass" + "\n";
-                    openedTryMap.pop();
-                }
-                
-                if( tryFromTheUser && !this.isTry(line,spaces) ) {
-                    tryFromTheUser = false;
-                }
-            }
-            // Before going to the new line, we need to store the indentation of this lines
-            prevIndentation = indentationsInLine;
-        });
-
-        return output;
+        return filteredCode;
     }
 
     public getFullCode(): string {
