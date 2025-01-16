@@ -393,12 +393,9 @@ export const useStore = defineStore("app", {
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {};
 
             // If frames are selected, we only show the frames commands that can be used for wrapping.
-            // That can be done in a systematic rule below, but for the case being inside the definitions section,
-            // we will need to check things a bit differently: making sure there are only comments selected as 
-            // functions or classes cannot be wrapped around.
+            // (For the definitions section, we won't allow any wrapping.)
             const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getFuncDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getFuncDefsFrameContainerId) 
                 && state.selectedFrames.length > 0);
-            const areSelectedFramesAllComments = state.selectedFrames.every((frameId) => state.frameObjects[frameId].frameType.type == AllFrameTypesIdentifier.comment);
 
             // for each shortcut we get a list of the corresponding commands
             for (const frameShortcut in addCommandsDefs) {
@@ -413,8 +410,7 @@ export const useStore = defineStore("app", {
                 // We need a special case for when we are directly inside the definitions section, and some frames are selected, to not allow wrapping
                 // a function, or a class, with another function or a class.
                 if(isSelectingInsideDefsSection) {
-                    filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
-                    && (lookingForTargetPos || (areSelectedFramesAllComments && x.type.allowChildren)));
+                    filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => false);
                 }
                 else{
                     filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
