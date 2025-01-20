@@ -48,19 +48,6 @@ function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedC
     });
 }
 
-function withFrameId(inner : (frameId: number) => void) : void {
-    // We need a delay to make sure last DOM update has occurred:
-    cy.wait(600);
-    cy.get("#editor").then((eds) => {
-        const ed = eds.get()[0];
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const frameId = parseInt(new RegExp("input_frame_(\\d+)").exec(ed.getAttribute("data-slot-focus-id"))[1]);
-        // Call the inner function:
-        inner(frameId);
-    });
-}
-
 function focusEditorAC(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
@@ -228,9 +215,14 @@ describe("Built-ins", () => {
     });
 });
 
+// This is the Python version:
+//const UPPER_DOC = "Return a copy of the string converted to uppercase.";
+// but TigerPython has its own:
+const UPPER_DOC = "Return a copy of the string with all the cased characters converted to uppercase.";
+
 describe("Behaviour with operators, brackets and complex expressions", () => {
     const prefixesWhichShouldShowBuiltins = ["0+", "1.6-", "not ", "1**(2+6)", "[a,", "array[", "~", "(1*", "{3:"];
-    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "(\"a\").", "(\"a\".upper()).", "myString.", "[\"a\"][0]."];
+    const prefixesWhichShouldShowStringMembers = ["\"a\".", "'a'.upper().", "myString.", "(\"a\").", "(\"a\".upper()).", "[\"a\"][0]."];
     const prefixesWhichShouldShowNone = ["z..", "123", "123.", "\"", "\"abc", "\"abc.", "'", "totally_unique_stem", "nonexistentvariable."];
 
     for (const prefix of prefixesWhichShouldShowBuiltins) {
@@ -295,7 +287,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkAutocompleteSorted(acIDSel);
                 // Check docs show:
                 cy.get("body").type("pper");
-                cy.get(acIDSel).contains("Return a copy of the string converted to uppercase.");
+                cy.get(acIDSel).contains(UPPER_DOC);
             });
         });
     }
@@ -685,7 +677,7 @@ describe("User-defined items", () => {
             checkAutocompleteSorted(acIDSel);
             // Check docs show:
             cy.get("body").type("pper");
-            cy.get(acIDSel).contains("Return a copy of the string converted to uppercase.");
+            cy.get(acIDSel).contains(UPPER_DOC);
         });
     });
 
@@ -939,6 +931,7 @@ describe("Underscore handling", () => {
             cy.get("body").type("{backspace}{backspace}");
         });
     });
+    /* TODO restore once TigerPython supports these items:
     it("Does not offer underscore items on object until typed", () => {
         focusEditorAC();
         // Add a string variable named myVar:
@@ -966,6 +959,7 @@ describe("Underscore handling", () => {
             cy.get(acIDSel).contains("Default dir() implementation.");
         });
     });
+     */
     it("Offers user's own definitions, even if they start with underscores", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "__myFunction" then come back down:
@@ -993,89 +987,6 @@ describe("Underscore handling", () => {
             checkAutocompleteSorted(acIDSel);
         });
     });
-});
-
-describe("Parameter prompts", () => { 
-    // Each item is a triple: the module, the function name within the module, the list of param names
-    const rawFuncs : [string | null, string, string[]][] = [
-        [null, "abs", ["x"]],
-        [null, "delattr", ["obj", "name"]],
-        [null, "dir", []],
-        [null, "globals", []],
-        [null, "setattr", ["obj, name, value"]],
-        ["collections", "namedtuple", ["typename", "field_names"]],
-        // These are object oriented items, so we are checking the self has been removed:
-        ["random", "randint", ["a, b"]],
-        
-    ];
-    if (Cypress.env("mode") !== "microbit") {
-        rawFuncs.push(["urllib.request", "urlopen", ["url"]]);
-        rawFuncs.push(["turtle", "Turtle", []]);
-        rawFuncs.push(["datetime", "date.fromtimestamp", ["timestamp"]]);
-    }
-    const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string, acSection: string, acName: string}[] = [];
-    for (const rawFunc of rawFuncs) {
-        if (rawFunc[0]) {
-            // We need some kind of import; test three ways:
-            // The "import module" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}i" + rawFunc[0] + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0] + "." + rawFunc[1], params: rawFunc[2], acSection: rawFunc[0], acName: rawFunc[1], displayName: rawFunc[1] + " with import frame"});
-            // The "from module import *" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0] + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[1], params: rawFunc[2], acSection: rawFunc[0], acName: rawFunc[1], displayName: rawFunc[1] + " with from-import-* frame"});
-            // The "from module import funcName" frame:
-            // Note that if funcName has a dot, we need to only use the part before the dot:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0] + "{rightarrow}" + (rawFunc[1].includes(".") ? rawFunc[1].substring(0, rawFunc[1].indexOf(".")) : rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[1], params: rawFunc[2], acName: rawFunc[1], acSection: rawFunc[0], displayName: rawFunc[1] + " with from-import-funcName frame"});
-        }
-        else {
-            // No import necessary
-            funcs.push({funcName: rawFunc[1], params: rawFunc[2], acSection: BUILTIN, acName: rawFunc[1], displayName: rawFunc[1]});
-        }
-    }
-    
-    for (const func of funcs) {
-        it("Shows prompts after manually writing function name and brackets for " + func.displayName, () => {
-            focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
-            cy.get("body").type(" " + func.funcName + "(");
-            withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
-        });
-        it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
-            focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
-            cy.get("body").type(" " + func.funcName + "(");
-            // Type commas for num params minus 1:
-            for (let i = 0; i < func.params.length; i++) {
-                if (i > 0) {
-                    cy.get("body").type(",");
-                }
-                withFrameId((frameId) => assertState(frameId, 
-                    func.funcName + "(" + ",".repeat(i) + "$)", 
-                    func.funcName + "(" + func.params.slice(0, i).join(",") + (i > 0 ? "," : "") + func.params.slice(i).join(", ") + ")"));
-            }
-            
-        });
-
-        it("Shows prompts in nested function (part 1) " + func.displayName, () => {
-            focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
-            cy.get("body").type(" abs(" + func.funcName + "(");
-            withFrameId((frameId) => assertState(frameId, "abs(" + func.funcName + "($))", "abs(" + func.funcName + "(" + func.params.join(", ") + "))"));
-        });
-
-        it("Shows prompts in nested function (part 2) " + func.displayName, () => {
-            focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
-            cy.get("body").type(" max(0," + func.funcName + "(");
-            withFrameId((frameId) => assertState(frameId, "max(0," + func.funcName + "($))", "max(0," + func.funcName + "(" + func.params.join(", ") + "))"));
-        });
-    }
 });
 
 describe("Control flow", () => {

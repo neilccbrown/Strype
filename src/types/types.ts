@@ -257,7 +257,6 @@ export interface AddFrameCommandDef {
     description: string; // The label that shown next to the key shortcut button
     shortcuts: [string, string?]; // The keyboard key shortcuts to be used to add a frame (eg "i" for an if frame), usually that's a single value array, but we can have 1 hidden shortcut as well
     symbol?: string; // The symbol to show in the key shortcut button when the key it's not easily reprenstable (e.g. "⌴" for space)
-    tooltip: string; // If needed, the tooltip content that explains the role of a frame - localised
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
@@ -783,14 +782,12 @@ export interface MessageDefinition {
 
 export const MessageTypes = {
     noMessage: "none",
-    largeDeletion: "largeDeletion",
     imageDisplay: "imageDisplay",
     uploadSuccessMicrobit:"uploadSuccessMicrobit",
     noUndo: "noUndo",
     noRedo: "noRedo",
     uploadEditorFileError: "uploadEditorFileError",
     uploadEditorFileNotSupported: "uploadEditorFileNotSupported",
-    uploadEditorFileSucces: "uploadEditorFileSuccess",
     forbiddenFramePaste: "forbiddenFramePaste",
     functionFrameCantDelete: "functionFrameCantDelete",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
@@ -806,14 +803,6 @@ const NoMessage: MessageDefinition = {
     message: "",
     buttons: [],
     path: imagePaths.empty,
-};
-
-//message for large deletation (undo)
-const LargeDeletion: MessageDefinition = {
-    ...NoMessage,
-    type: MessageTypes.largeDeletion,
-    message: "messageBannerMessage.deleteLargeCode",
-    buttons:[{label: "buttonLabel.undo", action:MessageDefinedActions.undo}],
 };
 
 //download hex message
@@ -880,12 +869,6 @@ const UploadEditorFileNotSupported: MessageDefinition = {
     path: imagePaths.empty,
 };
 
-const UploadEditorFileSuccess: MessageDefinition = {
-    ...NoMessage,
-    type: MessageTypes.noRedo,
-    message: "messageBannerMessage.uploadEditorFileSuccess",
-};
-
 const ForbiddenFramePaste: MessageDefinition = {
     ...NoMessage,
     type: MessageTypes.forbiddenFramePaste,
@@ -936,7 +919,6 @@ const InvalidPythonParsePaste: MessageDefinition = {
 
 export const MessageDefinitions = {
     NoMessage,
-    LargeDeletion,
     UploadSuccessMicrobit,
     UploadFailureMicrobit,
     DownloadHex,
@@ -944,7 +926,6 @@ export const MessageDefinitions = {
     NoRedo,
     UploadEditorFileError,
     UploadEditorFileNotSupported,
-    UploadEditorFileSuccess,
     ForbiddenFramePaste,
     FunctionFrameCantDelete,
     GDriveConnectToSaveFailed,

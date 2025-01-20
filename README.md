@@ -67,13 +67,16 @@ Current team:
 - Pierre Weill-Tessier (King's College London)
 
 Other contributors:
+- Tobias Kohn (<a href="https://github.com/Tobias-Kohn/TigerPython-Parser" target="_blank">TigerPython parser<a>)
 - Babis Kyfonidis
 - Zak Singh
 - Aleksandr Voronstov
 
 Translators:
-- Greek: Babis Kyfonidis
+- Chinese: Rongkun Liu
 - French: Pierre Weill-Tessier
+- German: Michael Kölling
+- Greek: Babis Kyfonidis
 - Spanish: Emma Dodoo and Nolgie Oquendo-Colon
 
 Roadmap
@@ -81,7 +84,6 @@ Roadmap
 
 Strype is currently under very active development.  A rough roadmap of some major planned features (beyond the general bugfixing and polishing):
 
- - Improved editor features (including copy-as-image): Q4 2024
  - Add class frames (for object-oriented programming): Q1 2025
  - Add a graphics and sound API: Q1 2025
  - Add support for third-party library import: Q2 2025
