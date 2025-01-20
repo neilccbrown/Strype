@@ -667,7 +667,6 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.classdef),
             description: i18n.t("frame.classdef_desc") as string,
             shortcuts: ["c"],
-            tooltip:i18n.t("frame.classdef_detail") as string,
         }],
         "w": [{
             type: getFrameDefType(AllFrameTypesIdentifier.while),
