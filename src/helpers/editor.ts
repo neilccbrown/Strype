@@ -28,7 +28,7 @@ export enum CustomEventTypes {
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     noneStrypeFilePicked = "nonStrypeFilePicked",
     acItemHovered="acItemHovered",
-    /* IFTRUE_isPurePython */
+    /* IFTRUE_isPython */
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
@@ -36,7 +36,7 @@ export enum CustomEventTypes {
     pythonExecAreaSizeChanged = "peaSizeChanged",
     skulptMouseEventListenerOff = "skMouseEventsOff",
     skulptTimerEventListenerOff = "skTimerEventsOff",
-    /* FITRUE_isPurePython */
+    /* FITRUE_isPython */
 }
 
 export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
@@ -354,6 +354,10 @@ export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
+export function getGoogleDriveComponentRefId(): string {
+    return "googleDriveComponent";
+}
+
 export function getStrypeCommandComponentRefId(): string {
     return "strypeCommands";
 }
@@ -603,19 +607,16 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.funccall),
             description: i18n.t("frame.funccall_desc") as string,
             shortcuts: [" "],
-            tooltip:i18n.t("frame.funccall_detail") as string,
             symbol: i18n.t("buttonLabel.spaceBar") as string,
         }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
             description: i18n.t("frame.varassign_desc") as string,
-            tooltip:i18n.t("frame.varassign_detail") as string,
             shortcuts: ["="],
         }],
         "g": [{
             type: getFrameDefType(AllFrameTypesIdentifier.global),
             description: "global",
-            tooltip: i18n.t("frame.global_detail") as string,
             shortcuts: ["g"],
         }],
         "i": [
@@ -623,29 +624,23 @@ export function generateAllFrameCommandsDefs():void {
                 type: getFrameDefType(AllFrameTypesIdentifier.if),
                 description: "if",
                 shortcuts: ["i"],
-                tooltip:i18n.t("frame.if_detail") as string,
                 index: 0,
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.import),
                 description: "import",
                 shortcuts: ["i"],
-                tooltip:i18n.t("frame.import_detail") as string,
                 index:1,
             },
         ],
-        "l": [
-            {
-                type: getFrameDefType(AllFrameTypesIdentifier.elif),
-                description: "elif",
-                tooltip:i18n.t("frame.elif_detail") as string,
-                shortcuts: ["l"],
-            },
-        ],
+        "l": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.elif),
+            description: "elif",
+            shortcuts: ["l"],
+        }],
         "e": [{
             type: getFrameDefType(AllFrameTypesIdentifier.else),
             description: "else",
-            tooltip:i18n.t("frame.else_detail") as string,
             shortcuts: ["e"],
         }],
         "f": [
@@ -653,20 +648,17 @@ export function generateAllFrameCommandsDefs():void {
                 type: getFrameDefType(AllFrameTypesIdentifier.for),
                 description: "for",
                 shortcuts: ["f"],
-                tooltip:i18n.t("frame.for_detail") as string,
                 index: 0,
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
                 description: i18n.t("frame.funcdef_desc") as string,
                 shortcuts: ["f"],
-                tooltip:i18n.t("frame.funcdef_detail") as string,
                 index: 1,
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.fromimport),
                 description: "from...import",
-                tooltip:i18n.t("frame.fromimport_detail") as string,
                 shortcuts: ["f"],
                 index:2,
             },
@@ -680,68 +672,57 @@ export function generateAllFrameCommandsDefs():void {
         "w": [{
             type: getFrameDefType(AllFrameTypesIdentifier.while),
             description: "while",
-            tooltip:i18n.t("frame.while_detail") as string,
             shortcuts: ["w"],
         }],
         "r": [{
             type: getFrameDefType(AllFrameTypesIdentifier.return),
             description: "return",
-            tooltip:i18n.t("frame.return_detail") as string,
             shortcuts: ["r"],
         }],
         "b" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.break),
             description: "break",
-            tooltip:i18n.t("frame.break_detail") as string,
             shortcuts: ["b"],
         }],
         "u" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.continue),
             description: "continue",
-            tooltip:i18n.t("frame.continue_detail") as string,
             shortcuts: ["u"],
         }],
         "#": [{
             type: getFrameDefType(AllFrameTypesIdentifier.comment),
             description: i18n.t("frame.comment_desc") as string,
-            tooltip:i18n.t("frame.comment_detail") as string,
             shortcuts: ["#"],
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
             description: i18n.t("frame.blank_desc") as string,
             shortcuts: ["\x13"],
-            tooltip:i18n.t("frame.blank_detail") as string,
             symbol: "↵",
         }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),
             description: "try",
-            tooltip:i18n.t("frame.try_detail") as string,
             shortcuts: ["t"],
         }],
         "x": [{
             type: getFrameDefType(AllFrameTypesIdentifier.except),
             description: "except",
-            tooltip:i18n.t("frame.except_detail") as string,
             shortcuts: ["x"],
         }],
         "n": [{
             type: getFrameDefType(AllFrameTypesIdentifier.finally),
             description: "finally",
-            tooltip:i18n.t("frame.finally_detail") as string,
             shortcuts: ["n"],
         }],
         "a" : [{
             type: getFrameDefType(AllFrameTypesIdentifier.raise),
             description: "raise",
-            tooltip:i18n.t("frame.raise_detail") as string,
             shortcuts: ["a"],
         }],
         "h": [{
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
-            tooltip:i18n.t("frame.with_detail") as string,
             shortcuts: ["h"],
         }],
     };
@@ -904,6 +885,8 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
                 (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
                 // Not really required but just better to reset things properly
                 (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+                // We make sure that we remove the "drag and d&d" flag on this caret since it's no longer a candidate for dropping the frames at this position...
+                removeDuplicateActionOnFramesDnD();
             }
             currentCaretDropPosId = closestCaretEl?.id??"";
             currentCaretDropPosFrameId = newCaretDropPosFrameId;
@@ -915,6 +898,31 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
     }
 };
 
+// Helpers for adding or removing the "duplicate" action on a drag an drop frames
+export function addDuplicateActionOnFramesDnD(): void {
+    // Add the "+" symbol
+    if(currentCaretDropPosFrameId > 0){
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = true;
+    }
+
+    // Do not blur the source frame(s)
+    const sourceFrameIds = (currentDraggedSingleFrameId) ?  [currentDraggedSingleFrameId] : [...useStore().selectedFrames];
+    sourceFrameIds.forEach((frameId) => useStore().frameObjects[frameId].isBeingDragged = false);
+}
+
+export function removeDuplicateActionOnFramesDnD(): void {
+    // Remove the "+" symbol on the destination caret
+    if(currentCaretDropPosFrameId > 0){
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = false;
+    }
+
+    // Restore the blur on the source frame(s) only if we are still dragging 
+    if(useStore().isDraggingFrame){
+        const sourceFrameIds = (currentDraggedSingleFrameId) ?  [currentDraggedSingleFrameId] : [...useStore().selectedFrames];
+        sourceFrameIds.forEach((frameId) => useStore().frameObjects[frameId].isBeingDragged = true);
+    }
+}
+
 // We need to also look for the mouseup event during Drag and Drop as we only let the browser handling "dragstart",
 // there is no "dragend" being raised by the browser consequently.
 const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
@@ -922,6 +930,9 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
         const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
         // Notify the drag even is finished
         notifyDragEnded();
+
+        // Make sure we remove the "duplicate" flag as it may have been used
+        removeDuplicateActionOnFramesDnD();
 
         // Drop the frame at the current drop caret location only if drop is allowed
         if(areDropFramesAllowed){
@@ -1016,11 +1027,16 @@ export function notifyDragStarted(frameId?: number):void {
 
     // Add companion "image" (canvas) to the cursor - we use HTML2Canvas. 
     // The element to generate an image of is either the frame passed as argument
-    // or the shadow element containing the current selection.
-    const draggingEl = document.getElementById(getFrameUID(frameId??(useStore().frameObjects[useStore().selectedFrames[0]].parentId)));
-    if(draggingEl){
-        html2canvas(draggingEl, html2canvasOptions);
-    }
+    // or the selected frame's parent which will be cropped.
+    // HTML2Canvas has a few performance issues, we try to help the fluidity of the interaction during drag and drop by having a setTimeout
+    // to let Javascript renderning the grey blank companion image first and force the generation of the actual companion image later.
+    setTimeout(() => {
+        const draggingEl = document.getElementById(getFrameUID(frameId??(useStore().frameObjects[useStore().selectedFrames[0]].parentId)));
+        if(draggingEl){
+            html2canvas(draggingEl, html2canvasOptions);
+        }
+    }, 10);
+    
 }
 
 export function notifyDragEnded():void {

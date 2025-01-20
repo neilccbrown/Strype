@@ -2,7 +2,7 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, countRecursiveChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -623,7 +623,7 @@ export const useStore = defineStore("app", {
             i18n.locale = lang;
 
             // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
-            const tpLangs = TPyParser.getLanguages();
+            const tpLangs = TPyParser.getLanguages as any as string[]; // TODO remove this casting once TigerPython's type for getLanguages is fixed
             this.tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
 
             // Change all frame definition types to update the localised bits
@@ -658,6 +658,22 @@ export const useStore = defineStore("app", {
                 "stateBeforeChanges",
                 (release) ? {} : cloneDeep(this.$state)
             );
+        },
+
+        clearAllFrames() {
+            // An short-hand method to clear all the frames of the editor.
+            // We only keep frames 0 (the root), and -1 to -3 (the frame containers/sections).
+            // For safety, the curent frame (frame cursor) is set to the main code section
+            this.toggleCaret({id: -3, caretPosition: CaretPosition.body});
+            Object.keys(this.frameObjects).forEach((frameId) => {
+                if(parseInt(frameId) > 0) {
+                    Vue.delete(this.frameObjects, frameId);
+                }
+                else if(parseInt(frameId) < 0){
+                    // The frame section containers are not cleared, but their children are!
+                    this.frameObjects[parseInt(frameId)].childrenIds.splice(0);
+                }
+            });
         },
 
         deleteFrame(payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
@@ -1211,6 +1227,10 @@ export const useStore = defineStore("app", {
                 );
             } );
 
+            this.clearNoneFrameRelatedState();
+        },
+
+        clearNoneFrameRelatedState() {
             //undo redo is cleared
             diffToPreviousState.splice(0, diffToPreviousState.length);
             diffToNextState.splice(0, diffToNextState.length);
@@ -1224,6 +1244,7 @@ export const useStore = defineStore("app", {
                 "copiedFrames",
                 {}
             );
+            this.copiedSelectionFrameIds.splice(0);
 
             //context menu indicator is cleared
             this.contextMenuShownId = "";
@@ -1943,8 +1964,6 @@ export const useStore = defineStore("app", {
             let availablePositions = getAvailableNavigationPositions();
             availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
 
-            let showDeleteMessage = false;
-
             //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
             let framesIdToDelete = [this.currentFrame.id];
 
@@ -1961,10 +1980,6 @@ export const useStore = defineStore("app", {
                 }
                 key = "Backspace";
                 framesIdToDelete = this.selectedFrames.reverse();
-                //this flag to show the delete message is set on a per frame deletion basis,
-                //but here we could have 3+ single frames delete, so we need to also check to selection lengths
-                //unless we are wrapping the frames
-                showDeleteMessage = !this.isWrappingFrame && this.selectedFrames.length > 3;
             }
             else if (this.currentFrame.caretPosition == CaretPosition.below && this.frameObjects[this.currentFrame.id].jointFrameIds.length > 0 && key === "Backspace") {
                 // If they backspace after a joint frame structure that has joint frames (e.g. if +else),
@@ -1972,7 +1987,6 @@ export const useStore = defineStore("app", {
                 framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
             }
             
-            let deleteWithBackspaceInBody = false;
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
                 //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
@@ -2010,7 +2024,6 @@ export const useStore = defineStore("app", {
                             if(currentFrame.childrenIds.length === 0 || currentFrame.frameType.type !== AllFrameTypesIdentifier.funcdef){
                                 //just move the cursor one level up
                                 this.changeCaretWithKeyboard(key);
-                                deleteWithBackspaceInBody = true;
                             }
                             else{
                                 //just show the user a message and do nothing else
@@ -2036,11 +2049,6 @@ export const useStore = defineStore("app", {
 
                 //Delete the frame if a frame to delete has been found
                 if(frameToDelete.frameId > 0){
-                    //before actually deleting the frame(s), we check if the user should be notified of a large deletion
-                    if(!this.isWrappingFrame && !deleteWithBackspaceInBody && countRecursiveChildren(frameToDelete.frameId, 3) >= 3){
-                        showDeleteMessage = true;
-                    }
-
                     this.deleteFrame(
                         {
                             key:key,
@@ -2063,11 +2071,6 @@ export const useStore = defineStore("app", {
             //save state changes
             if(!ignoreBackState){
                 this.saveStateChanges(stateBeforeChanges);
-            }
-
-            //we show the message of large deletion after saving state changes as this is not to be notified.
-            if(showDeleteMessage){
-                this.showMessage(MessageDefinitions.LargeDeletion, 7000);
             }
         },
         
@@ -2292,113 +2295,109 @@ export const useStore = defineStore("app", {
         },
        
         
-        setStateFromJSONStr(payload: {stateJSONStr: string; callBack: (setStateSucceeded: boolean) => void,  errorReason?: string, showMessage?: boolean, readCompressed?: boolean}){
-            let isStateJSONStrValid = (payload.errorReason === undefined);
-            let errorDetailMessage = payload.errorReason ?? "unknown reason";
-            let isVersionCorrect = false;
-            let newStateObj = {} as {[id: string]: any};
+        setStateFromJSONStr(payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}): Promise<void>{
+            return new Promise((resolve, reject) => {
+                let isStateJSONStrValid = (payload.errorReason === undefined);
+                let errorDetailMessage = payload.errorReason ?? "unknown reason";
+                let isVersionCorrect = false;
+                let newStateObj = {} as {[id: string]: any};
 
-            // If there is an error set because the file couldn't be retrieved
-            // we don't check anything, just get to the error display.
-            if(isStateJSONStrValid){
+                // If there is an error set because the file couldn't be retrieved
+                // we don't check anything, just get to the error display.
+                if(isStateJSONStrValid){
                 // If the string we read was compressed, we need to uncompress it first
-                if(payload.readCompressed){
-                    this.setStateFromJSONStr({stateJSONStr: LZString.decompress(payload.stateJSONStr) as string, callBack: payload.callBack, showMessage: payload.showMessage});
-                    return;
-                }
+                    if(payload.readCompressed){
+                        this.setStateFromJSONStr({stateJSONStr: LZString.decompress(payload.stateJSONStr) as string, showMessage: payload.showMessage})
+                            .then(resolve).catch(reject);
+                        return;
+                    }
 
-                // We need to check the JSON string is:
-                // 1) a valid JSON description of an object --> easy, we can just try to convert
-                // 2) an object that matches the state (checksum checker)
-                // 3) contains frame type names that are valid, and if so, replace the type names by the equivalent JS object (we replace the objects by the type name string to save space)    
-                // 4) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
-                try {
+                    // We need to check the JSON string is:
+                    // 1) a valid JSON description of an object --> easy, we can just try to convert
+                    // 2) an object that matches the state (checksum checker)
+                    // 3) contains frame type names that are valid, and if so, replace the type names by the equivalent JS object (we replace the objects by the type name string to save space)    
+                    // 4) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
+                    try {
                     //Check 1)
-                    newStateObj = JSON.parse(payload.stateJSONStr);
-                    if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
+                        newStateObj = JSON.parse(payload.stateJSONStr);
+                        if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                         //no need to go further
-                        isStateJSONStrValid=false;
-                        errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
-                    }
-                    else{
-                        // Check 2) as 1) is validated
-                        if(!checkStateDataIntegrity(newStateObj)) {
-                            isStateJSONStrValid = false;
-                            errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
-                        } 
-                        else {
-                            // Check 3) as 2) is validated
-                            isVersionCorrect = (newStateObj["version"] == AppVersion);
-                            if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
-                                isStateJSONStrValid = false;
-                                errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
-                            }
-                            else{
-                                // Check 4) as 3) is validated
-                                if(!restoreSavedStateFrameTypes(newStateObj)){
-                                    // There was something wrong with the type name (it should not happen, but better check anyway)
-                                    isStateJSONStrValid = false;
-                                    errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
-                                }
-                            }
-                            delete newStateObj["version"];
-                            delete newStateObj["platform"];
-                        }          
-                    }
-                }
-                catch(err){
-                    //we cannot use the string arguemnt to retrieve a valid state --> inform the users
-                    isStateJSONStrValid = false;
-                    errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
-                }
-            }
-            
-            // Apply the change and indicate it to the user if we detected a valid JSON string
-            // or alert the user we couldn't if we detected a faulty JSON string to represent the state
-            if(isStateJSONStrValid){  
-                const newStateStr = JSON.stringify(newStateObj);     
-                if(!isVersionCorrect) {
-                    // If the version isn't correct, we ask confirmation to the user before continuing 
-                    // for ease of coding, we register a "one time" event listener on the modal
-                    const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
-                        if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
-                            this.doSetStateFromJSONStr(
-                                {
-                                    stateJSONStr: newStateStr,
-                                    showMessage: payload.showMessage ?? true,
-                                }
-                            );      
-                            vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                            isStateJSONStrValid=false;
+                            errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
                         }
                         else{
-                            isStateJSONStrValid = false;
+                        // Check 2) as 1) is validated
+                            if(!checkStateDataIntegrity(newStateObj)) {
+                                isStateJSONStrValid = false;
+                                errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
+                            } 
+                            else {
+                            // Check 3) as 2) is validated
+                                isVersionCorrect = (newStateObj["version"] == AppVersion);
+                                if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
+                                    isStateJSONStrValid = false;
+                                    errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
+                                }
+                                else{
+                                // Check 4) as 3) is validated
+                                    if(!restoreSavedStateFrameTypes(newStateObj)){
+                                    // There was something wrong with the type name (it should not happen, but better check anyway)
+                                        isStateJSONStrValid = false;
+                                        errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
+                                    }
+                                }
+                                delete newStateObj["version"];
+                                delete newStateObj["platform"];
+                            }          
                         }
-                    };
-                    vm.$root.$on("bv::modal::hide", execSetStateFunction); 
-                    vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
+                    }
+                    catch(err){
+                    //we cannot use the string arguemnt to retrieve a valid state --> inform the users
+                        isStateJSONStrValid = false;
+                        errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
+                    }
+                }
+            
+                // Apply the change and indicate it to the user if we detected a valid JSON string
+                // or alert the user we couldn't if we detected a faulty JSON string to represent the state
+                if(isStateJSONStrValid){  
+                    const newStateStr = JSON.stringify(newStateObj);     
+                    if(!isVersionCorrect) {
+                    // If the version isn't correct, we ask confirmation to the user before continuing 
+                    // for ease of coding, we register a "one time" event listener on the modal
+                        const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
+                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
+                                this.doSetStateFromJSONStr(newStateStr);      
+                                vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                                resolve();
+                            }
+                            else{
+                                isStateJSONStrValid = false;
+                                reject();
+                            }
+                        };
+                        vm.$root.$on("bv::modal::hide", execSetStateFunction); 
+                        vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
+                    //
+                    }
+                    else{
+                        this.doSetStateFromJSONStr(newStateStr);
+                        resolve();
+                    }                
                 }
                 else{
-                    this.doSetStateFromJSONStr(
-                        {
-                            stateJSONStr: newStateStr,
-                            showMessage: payload.showMessage ?? true,
-                        }
-                    );   
-                }                
-            }
-            else{
-                const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
-                const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
-                this.showMessage(message, null);
-            }
-
-            payload.callBack(isStateJSONStrValid);
+                    const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
+                    const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
+                    this.showMessage(message, null);
+                    reject();
+                }
+            });
         },
 
-        doSetStateFromJSONStr(payload: {stateJSONStr: string; showMessage?: boolean}){
+        doSetStateFromJSONStr(stateJSONStr: string){
             this.updateState(
-                JSON.parse(payload.stateJSONStr)
+                JSON.parse(stateJSONStr)
             );
             // If the language has been updated, we need to also update the UI accordingly
             this.setAppLang(this.appLang);
@@ -2410,10 +2409,6 @@ export const useStore = defineStore("app", {
             // Clear the Python Execution Area as it could have be run before.
             ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
             /* FITRUE_isPython */
-
-            if(payload.showMessage) {
-                this.showMessage(MessageDefinitions.UploadEditorFileSuccess, 5000);  
-            }
         },
 
         // This method can be used to copy a frame to a position.

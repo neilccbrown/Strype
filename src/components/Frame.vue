@@ -91,7 +91,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
@@ -273,12 +273,6 @@ export default Vue.extend({
 
         isVisible(): boolean {
             return this.appStore.isFrameVisible(this.frameId);
-        },
-        
-        isDragging(): boolean{
-            // Contrary to isDragTop, this property is set whenever dragging is happening, not just for the 
-            // dragged elements. We need that to control some CSS rendering of the cursors.
-            return this.appStore.isDraggingFrame;
         },   
 
         isInFrameWithKeyboard(): boolean {            
@@ -365,7 +359,11 @@ export default Vue.extend({
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
         
         // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
+        // ONLY if the frame is really removed from the state (because for a very strange reason, when reloading
+        // a page and overwriting the frames with a state, the initial state's frame are destroyed after registered).
+        if(this.appStore.frameObjects[this.frameId] == undefined){
+            delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
+        }
     },
 
     methods: {
@@ -685,7 +683,7 @@ export default Vue.extend({
 
         toggleCaret(event: MouseEvent): void {
             // When a mouseup event happens during drag and drop, we ignore the caret change, we handle with the D&D mechanism.
-            if(event.type == "mouseup" && this.isDragging){
+            if(event.type == "mouseup" && this.appStore.isDraggingFrame){
                 return;
             }
 
@@ -1055,12 +1053,23 @@ export default Vue.extend({
 
         delete(): void {
             if(this.isPartOfSelection){
-                //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
+                // For deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
                 this.appStore.deleteFrames("Delete");
             }
             else{
-                //when deleting the specific frame, we place the caret below and simulate "backspace"
-                this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below});
+                // When deleting the specific frame, we place the caret below and simulate "backspace"
+                // (special case for joint frames: we go inside the body's next joint sibling, or below root if no next joint sibling)
+                const newCurrentFrame = {id: this.frameId, caretPosition: CaretPosition.below};
+                if(this.isJointFrame) {
+                    if(isLastInParent(this.frameId)){
+                        newCurrentFrame.id = getParentOrJointParent(this.frameId);
+                    }
+                    else{
+                        newCurrentFrame.id = getNextSibling(this.frameId);
+                        newCurrentFrame.caretPosition = CaretPosition.body;
+                    }
+                }
+                this.appStore.setCurrentFrame(newCurrentFrame);
                 this.appStore.deleteFrames("Backspace");
             }       
         },
