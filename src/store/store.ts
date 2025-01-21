@@ -410,7 +410,7 @@ export const useStore = defineStore("app", {
                 // We need a special case for when we are directly inside the definitions section, and some frames are selected, to not allow wrapping
                 // a function, or a class, with another function or a class.
                 if(isSelectingInsideDefsSection) {
-                    filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => false);
+                    filteredCommands[frameShortcut] = [];
                 }
                 else{
                     filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
