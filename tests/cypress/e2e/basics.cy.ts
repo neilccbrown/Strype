@@ -282,6 +282,21 @@ describe("Adding frames", () => {
     });
 });
 
+describe("Classes", () => {
+    it("Lets you add a class frame", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        cy.get("body").type("{uparrow}cFoo");
+        cy.get("body").type("{rightarrow}{downarrow} foo()");
+        checkCodeEquals(defaultImports.concat([
+            {h: /class\s+Foo\s*:/, b: [
+                {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
+                    "foo()",
+                ]},
+            ]},
+        ]).concat(defaultMyCode));
+    });
+});
+
 // Test that selecting and deleting frames using keyboard works properly:
 describe("Deleting frames", () => {
     it("Lets you delete a frame with delete", () => {
