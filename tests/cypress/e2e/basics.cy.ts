@@ -282,6 +282,60 @@ describe("Adding frames", () => {
     });
 });
 
+describe("Classes", () => {
+    it("Lets you add a class frame", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        cy.get("body").type("{uparrow}cFoo");
+        cy.get("body").type("{rightarrow}{downarrow} foo()");
+        checkCodeEquals(defaultImports.concat([
+            {h: /class\s+Foo\s*:/, b: [
+                {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
+                    "foo()",
+                ]},
+            ]},
+        ]).concat(defaultMyCode));
+    });
+    it("Lets you add a class frame with a parent class", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        cy.get("body").type("{uparrow}cFoo(Bar");
+        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
+        checkCodeEquals(defaultImports.concat([
+            {h: /class\s+Foo\(Bar\)\s*:/, b: [
+                {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
+                    "foo()",
+                ]},
+            ]},
+        ]).concat(defaultMyCode));
+    });
+
+    it("Lets you add a class frame with class attributes and methods", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        // Class header:
+        cy.get("body").type("{uparrow}cFoo");
+        // Constructor body:
+        cy.get("body").type("{rightarrow}{downarrow} foo()");
+        // Attribute:
+        cy.get("body").type("{rightarrow}{downarrow}=myattr=5");
+        // Methods:
+        cy.get("body").type("{rightarrow}ffoo{downarrow}r6");
+        cy.get("body").type("{rightarrow}{downarrow}fbar(x,y{downarrow}r7");
+        checkCodeEquals(defaultImports.concat([
+            {h: /class\s+Foo\s*:/, b: [
+                {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
+                    "foo()",
+                ]},
+                /myattr\s*[⇐=]\s*5/,
+                {h: /def\s+foo\s*\((self,?)?\s*\)\s*:/, b: [
+                    /return\s+6/,
+                ]},
+                {h: /def\s+bar\s*\((self,)?\s*x,y\s*\)\s*:/, b: [
+                    /return\s+7/,
+                ]},
+            ]},
+        ]).concat(defaultMyCode));
+    });
+});
+
 // Test that selecting and deleting frames using keyboard works properly:
 describe("Deleting frames", () => {
     it("Lets you delete a frame with delete", () => {
