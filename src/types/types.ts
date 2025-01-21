@@ -629,7 +629,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ],
         colour: "#baded3",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-            .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment & f != StandardFrameTypesIdentifiers.varassign))
+            .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment && f != StandardFrameTypesIdentifiers.varassign))
             .concat([DefIdentifiers.classdef]),
         defaultChildrenTypes: [{...EmptyFrameObject, frameType: FuncDefDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"__init__"}], operators: []}}, 1: {slotStructures:{fields:[{code:""}], operators: []}}}}],
 
