@@ -315,11 +315,11 @@ export default Vue.extend({
         },
 
         isUndoDisabled(): boolean {
-            return this.appStore.isUndoRedoEmpty("undo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
+            return this.appStore.isUndoRedoEmpty("undo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning) || this.appStore.isDraggingFrame;
         },
 
         isRedoDisabled(): boolean {
-            return this.appStore.isUndoRedoEmpty("redo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
+            return this.appStore.isUndoRedoEmpty("redo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning) || this.appStore.isDraggingFrame;
         },
 
         undoImagePath(): string {

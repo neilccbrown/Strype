@@ -1274,7 +1274,7 @@ $divider-grey: darken($background-grey, 15%);
 
 .strype-split-theme.splitpanes--horizontal>.splitpanes__splitter,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter {
-	height: 7px;
+	height: 14px;
 	border-top: 1px solid transparent;
 	margin-top: -1px
 }
