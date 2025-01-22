@@ -70,7 +70,7 @@
         </div>
         <div>
             <CaretContainer
-                v-if="!isJointFrame"
+                v-if="!isJointFrame && !isInnerDisabled"
                 :frameId="frameId"
                 :ref="getCaretContainerRef"
                 :caretVisibility="caretVisibility"
@@ -297,6 +297,12 @@ export default Vue.extend({
 
         getFrameContextMenuUID(): string {
             return getFrameContextMenuUID(this.UID);
+        },
+
+        isInnerDisabled(): boolean {
+            // This computed property indicates whether a frame is disabled as a descendant of a disabled frame.
+            // When that's the case, the whole most outer frame acts as a unit and actions/caret are for that unit.
+            return this.isDisabled && this.appStore.frameObjects[getParentOrJointParent(this.frameId)].isDisabled;
         },
     },
 
