@@ -7,7 +7,7 @@
         <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
         <div 
             :style="frameStyle" 
-            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, error: hasParsingError}"
+            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, error: hasParsingError, disabled: isDisabled}"
             :id="UID"
             @click="toggleCaret($event)"
             @contextmenu="handleClick($event)"
@@ -1145,7 +1145,7 @@ export default Vue.extend({
     border-color: #8e8e8e;
 }
 
-.statementFrameDiv:hover {
+.statementFrameDiv:not(.disabled):hover {
     border-color: #d6d6d6;
 }
 
