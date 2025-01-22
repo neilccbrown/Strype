@@ -91,8 +91,8 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions } from "@/helpers/editor";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
@@ -443,6 +443,14 @@ export default Vue.extend({
                 return;
             }
 
+            // In the case we've right-clicked on an *inner* disabled frame, the click should be related to the outmost disabled ancestor of that frame
+            const frameParentId = getParentOrJointParent(this.frameId);
+            if(this.appStore.frameObjects[frameParentId].isDisabled){
+                // We don't need to look for the outmost disabled frame: the click event propagates to the containing frame already (we stop the propagation
+                // ourself when showing the context menu) so it will already get back to the outmost disabled frame naturally.
+                return;
+            }
+
             // Remove all the potential deletable frames
             this.appStore.potentialDeleteFrameIds.splice(0);
             
@@ -587,13 +595,16 @@ export default Vue.extend({
             // already part of the clicked selection
             if(this.appStore.selectedFrames.length == 0 || !this.isPartOfSelection) {
                 if(this.frameType.isJointFrame) {
-                    // For a joint frame, if there is a sibling after that frame we go in its body, if that's the last then we go below the root frame
+                    // For a joint frame, if there is a non disabled sibling after that frame we go in its body, if that's the last then we go below the root frame
                     const jointRootFrame = this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].jointParentId];
                     const indexOfJointFrame = jointRootFrame.jointFrameIds.indexOf(this.frameId);
                     const isJointFrameLast = (indexOfJointFrame == (jointRootFrame.jointFrameIds.length - 1));
-                    const newFramePos = (isJointFrameLast)
+                    const nextEnabledJointSiblingFrameId = (isJointFrameLast) 
+                        ? -1
+                        : jointRootFrame.jointFrameIds.findIndex((jointFrameId, index) => index > indexOfJointFrame  && !this.appStore.frameObjects[jointFrameId].isDisabled);
+                    const newFramePos = (isJointFrameLast || nextEnabledJointSiblingFrameId == -1)
                         ? {id: jointRootFrame.id, caretPosition: CaretPosition.below}
-                        : {id: jointRootFrame.jointFrameIds[indexOfJointFrame + 1], caretPosition: CaretPosition.body};
+                        : {id: jointRootFrame.jointFrameIds[nextEnabledJointSiblingFrameId], caretPosition: CaretPosition.body};
                     this.appStore.setCurrentFrame(newFramePos);
                 }
                 else{
@@ -695,7 +706,8 @@ export default Vue.extend({
 
             const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
 
-            // This checks the propagated click events, and prevents the parent frame to handle the event as well. 
+            // This checks the propagated click events, and prevents the parent frame to handle the event as well, EXCEPt in the case of disabled frames:
+            // if the clicked frame is disabled AND it is inside a disabled ancestor, we want to consider that ancestor instead, as the disabled block works as an unit.
             // Stop and Prevent do not work in this case, as the event needs to be propagated 
             // (for the context menu to close) but it does not need to trigger always a caret change.
             // Note: previous version checked the id, but that's not reliable as the div triggering the click may not have an id (or as formatted for the frame div)
@@ -703,8 +715,14 @@ export default Vue.extend({
             let frameDivParent = clickedDiv;
             while(!isIdAFrameId(frameDivParent.id)){
                 frameDivParent = frameDivParent.parentElement as HTMLDivElement;
-            }            
-            if(frameDivParent.id !== this.UID){
+            }
+            // Check the case of an inner disabled frame here:
+            const clickedFrameId = parseFrameUID(frameDivParent.id);
+            const isClickedFrameDisabled = this.appStore.frameObjects[clickedFrameId].isDisabled;
+            const handleClickForFrameUID = (isClickedFrameDisabled) ? getFrameUID(getOutmostDisabledAncestorFrameId(clickedFrameId)) : this.UID;            
+            
+            // Now check we can call the rest of the method for the frame we want to trigger the caret toggle for.
+            if((!isClickedFrameDisabled && frameDivParent.id !== this.UID) || (isClickedFrameDisabled && handleClickForFrameUID !== this.UID)){
                 return;
             }
 
@@ -712,23 +730,26 @@ export default Vue.extend({
         },
 
         changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement, selectClick?: boolean): void{
-            const frameRect = frameClickedDiv.getBoundingClientRect();
+            // We distinguish 2 cases: when the frame is enabled, and when the frame is disabled.
+            // Disabled frames behaves as "unit": if a frame is disabled all inner positions aren't accessible (no caret),
+            // therefore, a click inside a disabled block frame should place the frame caret either before or after, but not inside.
+            const frameRect = (this.isDisabled) ? document.getElementById(this.UID)?.getBoundingClientRect() : frameClickedDiv.getBoundingClientRect();
             const headerRect = document.querySelector("#"+this.UID+ " .frame-header")?.getBoundingClientRect();
-            if(headerRect){            
+            if(frameRect && headerRect){            
                 let newCaretPosition: NavigationPosition = {frameId: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
                 // The following logic applies to select a caret position based on the frame and the location of the click:
-                // if a click occurs between the top of a frame and its header top mid half
+                // if a click occurs between the top of a frame and *its header top mid half (for enabled frames) or *the middle of the frame (for disabled frames)
                 //    --> get the cursor visually above the frame
-                // if a click occurs within the frame header bottom mid half
+                // for enabled frames: if a click occurs within the frame header bottom mid half
                 //    --> get the cursor below the frame (if statement) or top of body (if block)
-                // if a click occurs below the header mid half
-                //    --> get the cursor below the frame (if statement) or at the nearest above/below position (if block)
+                // if a click occurs below the header mid half (enabled frames) OR below the middle of the frame (disabled frames)
+                //    --> get the cursor below the frame (if statement or disabled frame) or at the nearest above/below position (if block)
                 //Note: joint frames overlap their root parent, they get the click as a standalone frame
-                if(clickY <= (frameRect.top + headerRect.height/2)){
+                if(clickY <= (frameRect.top + ((this.isDisabled) ? frameRect.height : headerRect.height)/2)){
                     newCaretPosition = getAboveFrameCaretPosition(this.frameId);
                 }
                 else{
-                    if(this.isBlockFrame){
+                    if(!this.isDisabled && this.isBlockFrame){
                         // When we are here, we try to find the nearest above or below position of the block's child (if any)
                         // We get all the mid frame positions that will decided whether we are targetting above or below a frame.
                         // We traverse each positions until we found where the click (vertically) occured, if nothing is found, we

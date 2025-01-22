@@ -64,16 +64,15 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID } from "@/helpers/editor";
+import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep, debounce } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
-import App from "@/App.vue";
 import Frame from "@/components/Frame.vue";
 
 export default Vue.extend({
@@ -342,10 +341,12 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
                 event.stopPropagation();
                 event.preventDefault();
-                // Call the method which handles a click on the frame instead, we need to find the associated frame object
-                const frameDiv = document.getElementById(getFrameUID(this.frameId)) as HTMLDivElement;
+                // Call the method which handles a click on the frame instead, we need to find the associated frame object:
+                // the corresponding frame div under that click in the general case, or the outmost disabled ancester frame if the frame is disabled.
+                const outmostDisabledFrameAncestorId = getOutmostDisabledAncestorFrameId(this.frameId);
+                const frameDiv = document.getElementById(getFrameUID((this.isDisabled) ? outmostDisabledFrameAncestorId : this.frameId)) as HTMLDivElement;
                 if(frameDiv){
-                    const frameComponent = (this.$root.$children[0] as InstanceType<typeof App>).getFrameComponent(this.frameId);
+                    const frameComponent = getFrameComponent((this.isDisabled) ? outmostDisabledFrameAncestorId: this.frameId);
                     if(frameComponent){
                         // The frame component can only be a frame (and not a frame container) since we've clicked on a slot...
                         (frameComponent as InstanceType<typeof Frame>).changeToggledCaretPosition(event.clientY, frameDiv);
