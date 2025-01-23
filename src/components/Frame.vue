@@ -687,9 +687,16 @@ export default Vue.extend({
             if(!this.isPythonExecuting) { 
                 // The value to give to frameId in notifyDragStarted() depends on the situation:
                 // when it's a selection of frames, we don't provide it, when it's a frame itself,
-                // the value is the id of that dragged frame unless it's a joint frame: we use the
-                // while frame structure and therefore us the id of the structure's root.
-                notifyDragStarted((this.isPartOfSelection)? undefined : ((this.isJointFrame) ? getParentOrJointParent(this.frameId) : this.frameId));
+                // the value is the id of that dragged frame unless A) it's a joint frame: we use the
+                // while frame structure and therefore us the id of the structure's root - or B) it's
+                // a disabled frame: we need to check the outmost disabled ancestor to that frame ("unit")
+                notifyDragStarted((this.isPartOfSelection)
+                    ? undefined 
+                    : ((this.isJointFrame) 
+                        ? getParentOrJointParent(this.frameId) 
+                        : ((this.isDisabled)
+                            ? getOutmostDisabledAncestorFrameId(this.frameId)
+                            : this.frameId)));
 
                 // If the frame is being dragged (i.e. NOT part of a selection) then we should reposition the frame caret below.
                 if(!this.isPartOfSelection){
