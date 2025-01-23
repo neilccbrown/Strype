@@ -560,7 +560,7 @@ class Actor:
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         if cur is not None:
             rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
-            self.set_location(cur['x'] + amount * _math.cos(rot), cur['y'] + amount * _math.sin(rot))
+            self.set_location(cur['x'] + distance * _math.cos(rot), cur['y'] + distance * _math.sin(rot))
         # If cur is None, do nothing
     def turn(self, degrees):
         """
