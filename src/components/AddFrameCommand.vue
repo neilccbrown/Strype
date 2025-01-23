@@ -1,6 +1,6 @@
 <template>
-    <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting}" @click="onClick">
-        <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled=isPythonExecuting>{{ symbol }}</button>
+    <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting || appStore.isDraggingFrame}" @click="onClick">
+        <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled="isPythonExecuting || appStore.isDraggingFrame">{{ symbol }}</button>
         <span>{{ description }}</span>
     </div>
 </template>

@@ -205,11 +205,11 @@ export default Vue.extend({
             // Returns the class name for a span type (i.e. distinction between operators, string and the rest)
             // Comments are treated differently as they have their own specific colour
             let codeTypeCSS = "";
-            let boldClass = "";
+            let boldClass = "";               
             switch(this.slotType){
             case SlotType.operator:
-                // For commas, we do not show the operator style but the text style
-                codeTypeCSS = (this.code==",") ? "code-slot" : "operator-slot";
+                // For commas, we do not show the operator style but the text style and we allow a right margin
+                codeTypeCSS = (this.code==",") ? "code-slot slot-right-margin" : "operator-slot";
                 break;
             case SlotType.string:
             case SlotType.openingQuote:
@@ -1534,6 +1534,10 @@ export default Vue.extend({
 
 .comment-slot {
     color: #97971E !important;
+    margin-right: 2px;
+}
+
+.slot-right-margin {
     margin-right: 2px;
 }
 // end classes for slot type

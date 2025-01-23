@@ -1,7 +1,7 @@
 
 <template>
     <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA}" ref="peaComponent">
-        <div id="peaControlsDiv">           
+        <div id="peaControlsDiv" :class="{'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
                 <b-tab :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
@@ -705,6 +705,10 @@ export default Vue.extend({
 
     #peaControlsDiv button:hover {
         border-color: lightgray !important;
+    }
+
+    .expanded-PEA-controls {
+        border-top: black 1px solid;
     }
 
     .python-running {
