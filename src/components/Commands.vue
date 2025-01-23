@@ -250,6 +250,7 @@ export default Vue.extend({
                 const eventKeyLowCase = event.key.toLowerCase();
                 const isPythonExecuting = ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning);
                 const isEditing = this.appStore.isEditing;
+                const isDraggingFrames = this.appStore.isDraggingFrame;
                 
                 //if we requested to log keystroke, display the keystroke event in an unobtrusive location
                 //when editing, we don't show the keystroke for basic keys (like [a-zA-Z0-1]), only those whose key value is longer than 1
@@ -264,7 +265,7 @@ export default Vue.extend({
                     return;
                 }
 
-                if(event.ctrlKey || event.metaKey) {
+                if(!isDraggingFrames && (event.ctrlKey || event.metaKey)) {
                     // Undo-redo
                     if(eventKeyLowCase === "z" || eventKeyLowCase === "y"){
                         if(!isPythonExecuting) {
@@ -372,8 +373,8 @@ export default Vue.extend({
                 }
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
-                // (then we jus leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isEditing && !(isPythonExecuting && ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                // (then we just leave the PEA handling it, see at the end of these conditions for related code)
+                if (!isDraggingFrames && !isEditing && !(isPythonExecuting && ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -416,7 +417,7 @@ export default Vue.extend({
                 const ignoreKeyEvent = this.appStore.ignoreKeyEvent;
 
                 if(event.key != "Escape"){
-                    if(!isEditing && !this.appStore.isAppMenuOpened && !isPythonExecuting){
+                    if(!isEditing && !this.appStore.isAppMenuOpened && !isPythonExecuting && !isDraggingFrames){
                         // Cases when there is no editing:
                         const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined 
                             && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));

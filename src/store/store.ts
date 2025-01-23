@@ -392,6 +392,11 @@ export const useStore = defineStore("app", {
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = cloneDeep(addCommandsDefs);
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {};
 
+            // If frames are selected, we only show the frames commands that can be used for wrapping.
+            // (For the definitions section, we won't allow any wrapping.)
+            const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getFuncDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getFuncDefsFrameContainerId) 
+                && state.selectedFrames.length > 0);
+
             // for each shortcut we get a list of the corresponding commands
             for (const frameShortcut in addCommandsDefs) {
 
@@ -400,10 +405,18 @@ export const useStore = defineStore("app", {
                 
                 // filtered = filtered - forbidden - allJoints
                 // all joints need to be removed here as they may overlap with the forbiden and the allowed ones. Allowed will be added on the next step.
-                // unless we are checking for a target position, if some frames are currently selected, we do not allow statement type frames to appear in the list of commands (we can only wrap the selection)
-                filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
-                    && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
-
+                // unless we are checking for a target position, if some frames are currently selected, we do not allow statement type frames to appear 
+                // in the list of commands (we can only wrap the selection).
+                // We need a special case for when we are directly inside the definitions section, and some frames are selected, to not allow wrapping
+                // a function, or a class, with another function or a class.
+                if(isSelectingInsideDefsSection) {
+                    filteredCommands[frameShortcut] = [];
+                }
+                else{
+                    filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
+                        && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
+                }
+                
                 // filtered = filtered + allowed
                 filteredCommands[frameShortcut].push(...allowedJointCommand[frameShortcut]);
                 
@@ -623,7 +636,7 @@ export const useStore = defineStore("app", {
             i18n.locale = lang;
 
             // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
-            const tpLangs = TPyParser.getLanguages();
+            const tpLangs = TPyParser.getLanguages as any as string[]; // TODO remove this casting once TigerPython's type for getLanguages is fixed
             this.tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
 
             // Change all frame definition types to update the localised bits

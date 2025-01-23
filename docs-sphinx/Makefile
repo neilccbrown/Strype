@@ -1,5 +1,12 @@
 # Minimal makefile for Sphinx documentation
 #
+# Note: you will need make and sphinx.
+# On Windows you can use Chocolatey:
+#   choco install make
+#   choco install sphinx
+# On Mac you can use Homebrew:
+#   brew install make
+#   brew install sphinx-doc
 
 # You can set these variables from the command line, and also
 # from the environment for the first two.

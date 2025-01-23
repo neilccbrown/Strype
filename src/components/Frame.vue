@@ -273,12 +273,6 @@ export default Vue.extend({
 
         isVisible(): boolean {
             return this.appStore.isFrameVisible(this.frameId);
-        },
-        
-        isDragging(): boolean{
-            // Contrary to isDragTop, this property is set whenever dragging is happening, not just for the 
-            // dragged elements. We need that to control some CSS rendering of the cursors.
-            return this.appStore.isDraggingFrame;
         },   
 
         isInFrameWithKeyboard(): boolean {            
@@ -689,7 +683,7 @@ export default Vue.extend({
 
         toggleCaret(event: MouseEvent): void {
             // When a mouseup event happens during drag and drop, we ignore the caret change, we handle with the D&D mechanism.
-            if(event.type == "mouseup" && this.isDragging){
+            if(event.type == "mouseup" && this.appStore.isDraggingFrame){
                 return;
             }
 

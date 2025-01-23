@@ -1,6 +1,6 @@
 <template>
     <div 
-        :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer}"
+        :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer, 'dragging-frames': areFramesDraggedOver}"
         @click.exact.prevent.stop="toggleCaret()"
         @contextmenu.prevent.stop="handleClick($event)"
         :key="UID"
@@ -27,6 +27,7 @@
             v-blur="isCaretBlurred"
             :areFramesDraggedOver="areFramesDraggedOver"
             :areDropFramesAllowed="areDropFramesAllowed"
+            :isDuplicateDnDAction="isDuplicateDnDAction"
         />
     </div>
 </template>
@@ -127,6 +128,7 @@ export default Vue.extend({
             insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
             areFramesDraggedOver: false,
             areDropFramesAllowed: true,
+            isDuplicateDnDAction: false,
         };
     },
 
@@ -339,7 +341,7 @@ export default Vue.extend({
     height: $caret-height-value + px;
 }
 
-.caret-container:hover{
+.caret-container:not(.dragging-frames):hover{
     cursor: pointer;
 }
 </style>
