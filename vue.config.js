@@ -49,7 +49,7 @@ module.exports = {
                 {
                     test: /\.py$/,
                     use: "raw-loader",
-                }
+                },
             ],
         },
     },
