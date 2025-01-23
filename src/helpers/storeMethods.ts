@@ -477,10 +477,10 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
 };
 
 // Finds out what is the root frame Id of a "block" of disabled frames
-export const getDisabledBlockRootFrameId = function(frameId: number): number {
-    const frameParentId = (useStore().frameObjects[frameId].jointParentId > 0) ? useStore().frameObjects[frameId].jointParentId : useStore().frameObjects[frameId].parentId;
+export const getOutmostDisabledAncestorFrameId = function(frameId: number): number {
+    const frameParentId = getParentOrJointParent(frameId);
     if(useStore().frameObjects[frameParentId].isDisabled){
-        return getDisabledBlockRootFrameId(frameParentId);
+        return getOutmostDisabledAncestorFrameId(frameParentId);
     }
     else{
         return frameId;
@@ -653,11 +653,12 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     // step 1 --> get all the caret position (meaning all navigation positions minus the editable slot ones)   
     const availablePositions = getAvailableNavigationPositions().filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition);
    
-    // step 2 --> find the index of the dragged top frame caret based on this logic:
-    // if we had moved an block frame, we look for the caret position before the that block frame "body" position (which is the first position for that block frames)
-    // if we had moved a statement frame, we look for the caret position before the statement frame "below" position (which is the first position for that statemen frame)
+    // step 2 --> find the index of given frame caret based on this logic:
+    // if we deal with a block frame which is NOT disabled*, we look for the caret position before that block frame "body" position (which is the first position for that block frames)
+    // if we deal with a statement frame or a disabled block frame*, we look for the caret position before the statement frame "below" position (which is the first position for that statement frame)
+    // (*) that is because a disabled block frame is seen as a "unit", no caret position exist within that disabled block frame
     const referenceFramePosIndex = availablePositions.findIndex((navPos) => navPos.frameId == frameId
-        && navPos.caretPosition == ((useStore().frameObjects[frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below));
+        && navPos.caretPosition == ((useStore().frameObjects[frameId].frameType.allowChildren && !useStore().frameObjects[frameId].isDisabled) ? CaretPosition.body : CaretPosition.below));
     
     // step 3 --> get the position before that (a frame is at least contained in a frame container, so position index can't be 0)
     const prevCaretPos = availablePositions[referenceFramePosIndex - 1];

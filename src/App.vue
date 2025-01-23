@@ -86,8 +86,6 @@ import Vue from "vue";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Frame from "@/components/Frame.vue";
-import FrameBody from "@/components/FrameBody.vue";
-import JointFrames from "@/components/JointFrames.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
@@ -95,15 +93,14 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 /* FITRUE_isMicrobit */
 import { mapStores } from "pinia";
-import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
+import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import CaretContainer from "@/components/CaretContainer.vue";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
@@ -467,9 +464,9 @@ export default Vue.extend({
         // Register a listener for a request to close a caret context menu (used by Frame.vue)
         this.$root.$on(CustomEventTypes.requestCaretContextMenuClose, () => {
             // We find the CaretContainer component currently active to properly close the menu using the component close() method.
-            const currentFrameComponent = this.getFrameComponent(this.appStore.currentFrame.id);
+            const currentFrameComponent = getFrameComponent(this.appStore.currentFrame.id);
             if(currentFrameComponent){
-                const currentCaretContainerComponent = this.getCaretContainerComponent(currentFrameComponent);
+                const currentCaretContainerComponent = getCaretContainerComponent(currentFrameComponent);
                 ((currentCaretContainerComponent.$refs.menu as unknown) as VueContextConstructor).close();
             }
         });
@@ -629,14 +626,14 @@ export default Vue.extend({
                             const menuPosition = this.ensureFrameKBShortcutContextMenu(areFramesSelected);
                             // We retrieve the element on which we need to call the menu: the first frame of the selection if some frames are selected,
                             // the current blue caret otherwise
-                            const frameComponent = this.getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
+                            const frameComponent = getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
                             if(frameComponent) {
                                 if(areFramesSelected){
                                     (frameComponent as InstanceType<typeof Frame>).handleClick(event, menuPosition);
                                 }
                                 else{
                                     // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
-                                    const caretContainerComponent = this.getCaretContainerComponent(frameComponent);
+                                    const caretContainerComponent = getCaretContainerComponent(frameComponent);
                                     caretContainerComponent.handleClick(event, menuPosition);
                                 }
                             }
@@ -731,63 +728,6 @@ export default Vue.extend({
                         caretPosition: (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below});
                 }
             });     
-        },
-
-        getFrameComponent(frameId: number, innerLookDetails?: {frameParentComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | InstanceType<typeof FrameBody> | InstanceType<typeof JointFrames>, listOfFrameIdToCheck: number[]}): InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | undefined {
-            // This methods gets the (Vue) reference of a frame based on its ID, or undefined if we could not find it.
-            // The logic to retrieve the reference relies on the implementation of the editor, as we look in 
-            // the frame containers which are supposed to hold the frames, and within frame body/joint when a frame can have children/joint frames.
-            // If no root is provided, we assume we search the frame reference everywhere in the editor, meaning we look into the frame containers of App (this)
-            // IMPORTANT NOTE: we are getting arrays of refs here when retrieving the refs, because the referenced elements are within a v-for
-            // https://laracasts.com/discuss/channels/vue/ref-is-an-array 
-            let result = undefined;
-            if(innerLookDetails){                
-                for(const childFrameId of innerLookDetails.listOfFrameIdToCheck){
-                    const childFrameComponent = ((innerLookDetails.frameParentComponent.$refs[getFrameUID(childFrameId)] as (Vue|Element)[])[0] as InstanceType<typeof Frame>);
-                    if(childFrameId == frameId){
-                        // Found the frame directly inside this list of frames
-                        result =  childFrameComponent;
-                        break;
-                    }
-                    else if(this.appStore.frameObjects[childFrameId].childrenIds.length > 0 || this.appStore.frameObjects[childFrameId].jointFrameIds.length > 0){
-                        // That frame isn't the one we want, but maybe it contains the one we want so we look into it.
-                        // We first look into the children, the joint frames (which may have children as well)
-                        const frameBodyComponent = (childFrameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>); // There is 1 body in a frame, no v-for is used, we have 1 element
-                        result = this.getFrameComponent(frameId, {frameParentComponent: frameBodyComponent, listOfFrameIdToCheck: this.appStore.frameObjects[childFrameId].childrenIds});
-
-                        if(!result){
-                            // Check joints if we didn't find anything in the children
-                            const jointFramesComponent = (childFrameComponent.$refs[getJointFramesRef()] as InstanceType<typeof FrameBody>); // There is 1 joint frames strcut in a frame, no v-for is used, we have 1 element
-                            result = this.getFrameComponent(frameId, {frameParentComponent: jointFramesComponent, listOfFrameIdToCheck: this.appStore.frameObjects[childFrameId].jointFrameIds});
-                        }
-
-                        if(result){
-                            break;
-                        }
-                    }
-                }
-            }
-            else{
-                // When we look for the frame from the whole editor, we need to find in wich frame container that frame lives.
-                // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
-                // And if we are already in the container (body), then we just return this component 
-                const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId); 
-                const containerElementRefs = this.$refs[getFrameContainerUID(frameContainerId)] as (Vue|Element)[];
-                if(containerElementRefs) {
-                    result = (frameId < 0) 
-                        ? containerElementRefs[0] as InstanceType<typeof FrameContainer>
-                        : this.getFrameComponent(frameId,{frameParentComponent: containerElementRefs[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: this.appStore.frameObjects[frameContainerId].childrenIds});
-                }
-            }
-
-            return result;
-        },
-
-        getCaretContainerComponent(frameComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer>): InstanceType<typeof CaretContainer> {
-            const caretContainerComponent = (this.appStore.currentFrame.id < 0 || this.appStore.currentFrame.caretPosition == CaretPosition.below)
-                ? (frameComponent.$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>)
-                : ((frameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>).$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>); 
-            return caretContainerComponent;                              
         },
 
         ensureFrameKBShortcutContextMenu(isTargetFrames: boolean): Position {
@@ -903,16 +843,16 @@ export default Vue.extend({
 
                 copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
                 if (useStore().copiedSelectionFrameIds.length > 0) {
-                    this.getCaretContainerComponent(this.getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
+                    getCaretContainerComponent(getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
                 }
                 copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
                 if (useStore().copiedSelectionFrameIds.length > 0) {
-                    this.getCaretContainerComponent(this.getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
+                    getCaretContainerComponent(getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
                 }
                 if (s.main.length > 0) {
                     copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
-                        this.getCaretContainerComponent(this.getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        getCaretContainerComponent(getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
                 }
 
