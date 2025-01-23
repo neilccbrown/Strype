@@ -798,6 +798,10 @@ export default Vue.extend({
                     const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
                     this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
                     const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
+                    if (errorElement == null) {
+                        // If there's no longer an error, don't do anything:
+                        return;
+                    }
                     // The error can be in a slot or it can be for a whole frame. By convention, the location for a frame error is the caret above it.
                     // For errors in a slot: we focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
                     // we put the focus in the first slot that is editable.
