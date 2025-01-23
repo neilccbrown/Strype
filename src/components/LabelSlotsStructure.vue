@@ -63,7 +63,6 @@ export default Vue.extend({
     data: function() {
         return {
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
-            isFocused: false,
             prependText: "", // This is updated properly in updatePrependText()
         };
     },
@@ -101,7 +100,7 @@ export default Vue.extend({
             if (this.subSlots.length == 1) {
                 // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
                 const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??false) && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
-                if(isOptionalEmpty && !this.isFocused){
+                if(isOptionalEmpty && !this.isFocused()){
                     return [" "];
                 }
                 return [(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText];
@@ -394,7 +393,6 @@ export default Vue.extend({
         },
 
         onFocus(){
-            this.isFocused = true;
             this.updatePrependText();
             // When the application gains focus again, the browser might try to give the first span of a div the focus (because the div may have been focused)
             // even if we have the blue caret showing. We do not let this happen.
@@ -405,7 +403,6 @@ export default Vue.extend({
         },
 
         blurEditableSlot(){
-            this.isFocused = false;
             this.updatePrependText();
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){
@@ -456,6 +453,18 @@ export default Vue.extend({
             }, 200);
         },
         
+        isFocused() {
+            // We check if we are the parent of the currently focused element, as it may be a contenteditable item within us:
+            var selectedElement = window.getSelection()?.focusNode;
+            while (selectedElement != null) {
+                if (selectedElement instanceof Element && selectedElement.id === this.labelSlotsStructDivId) {
+                    return true;
+                }
+                selectedElement = selectedElement.parentNode;
+            }
+            return false;
+        },
+        
         updatePrependText() {
             if (this.prependSelfWhenInClass) {
                 const isInClass = useStore().frameObjects[getParentId(useStore().frameObjects[this.frameId])]?.frameType.type == DefIdentifiers.classdef;
@@ -464,7 +473,7 @@ export default Vue.extend({
                 }
                 else {
                     const empty = this.subSlots.length == 0 || !this.subSlots.some((s) => s.code !== "");
-                    this.prependText = (this.isFocused || !empty) ? "self," : "self";
+                    this.prependText = (this.isFocused() || !empty) ? "self," : "self";
                 }
             }
             else {

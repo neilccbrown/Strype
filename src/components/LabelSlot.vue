@@ -234,11 +234,7 @@ export default Vue.extend({
         },
 
         focused(): boolean {
-            // We need to keep update of the label slots structure's "isFocused" flag, because using the keyboard to navigate will not
-            // update this flag -- but we always end up here when the focus (for slots) is updated.
-            const isSlotFocused = this.appStore.isEditableFocused(this.coreSlotInfo);
-            (this.$parent as InstanceType<typeof LabelSlotsStructure>).isFocused = isSlotFocused;
-            return isSlotFocused;
+            return this.appStore.isEditableFocused(this.coreSlotInfo);
         },
 
         UID(): string {
@@ -337,6 +333,9 @@ export default Vue.extend({
         // Event callback equivalent to what would happen for a focus event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onGetCaret(event: MouseEvent): void {
+            let parent = this.$parent as InstanceType<typeof LabelSlotsStructure>;
+            Vue.nextTick(() => parent.updatePrependText());
+            
             // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
             if(this.isPythonExecuting || this.isDisabled){
                 event.stopImmediatePropagation();
@@ -508,6 +507,9 @@ export default Vue.extend({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(keepIgnoreKeyEventFlagOn?: boolean): void {
+            let parent = this.$parent as InstanceType<typeof LabelSlotsStructure>;
+            Vue.nextTick(() => parent.updatePrependText());
+            
             // Before anything, we make sure that the current frame still exists.
             if(this.appStore.frameObjects[this.frameId] != undefined){
                 if(!this.debugAC) {
