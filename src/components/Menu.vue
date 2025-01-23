@@ -68,7 +68,7 @@
                 </div> 
             </div>
             <div class="app-menu-footer">
-                <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.version') + '&nbsp;' + getAppVersion}}</a>
+                <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.version') + '&nbsp;' + getAppVersion +' (' + getLocaleBuildDate +')'}}</a>
                 <span class="hidden">{{ getBuildHash }}</span>
             </div>
         </Slide>
@@ -143,6 +143,7 @@ import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import { getLocaleBuildDate } from "@/main";
 
 //////////////////////
 //     Component    //
@@ -350,6 +351,10 @@ export default Vue.extend({
 
         getAppVersion(): string {
             return appPackageJson.version;
+        },
+        
+        getLocaleBuildDate(): string {
+            return getLocaleBuildDate();
         },
 
         getBuildHash(): string {
