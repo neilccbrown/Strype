@@ -1547,7 +1547,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x103bf1a90>"
+                    "defaultValue": "<unittest.loader.TestLoader object at 0x1059afb50>"
                 },
                 {
                     "name": "failfast",
@@ -1673,7 +1673,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x102e791c0>"
+                    "defaultValue": "<object object at 0x1055481c0>"
                 },
                 {
                     "name": "timeout",
@@ -2280,7 +2280,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x103f19af0>"
+                    "defaultValue": "<function deepcopy at 0x10613db80>"
                 }
             ]
         },
@@ -2322,7 +2322,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x103f19af0>"
+                    "defaultValue": "<function deepcopy at 0x10613db80>"
                 }
             ]
         },
@@ -2350,7 +2350,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x103f19af0>"
+                    "defaultValue": "<function deepcopy at 0x10613db80>"
                 }
             ]
         },
@@ -2392,7 +2392,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x103f19af0>"
+                    "defaultValue": "<function deepcopy at 0x10613db80>"
                 },
                 {
                     "name": "listiter",
@@ -14073,7 +14073,28 @@
                 "function",
                 "type"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "self",
+                    "hide": true
+                },
+                {
+                    "name": "image_or_filename"
+                },
+                {
+                    "name": "x",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "y",
+                    "defaultValue": "0"
+                },
+                {
+                    "name": "tag",
+                    "defaultValue": "0"
+                }
+            ]
         },
         {
             "acResult": "Color",
@@ -14082,7 +14103,26 @@
                 "function",
                 "type"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "self",
+                    "hide": true
+                },
+                {
+                    "name": "red"
+                },
+                {
+                    "name": "green"
+                },
+                {
+                    "name": "blue"
+                },
+                {
+                    "name": "alpha",
+                    "defaultValue": "255"
+                }
+            ]
         },
         {
             "acResult": "Dimension",
@@ -14091,7 +14131,19 @@
                 "function",
                 "type"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "self",
+                    "hide": true
+                },
+                {
+                    "name": "width"
+                },
+                {
+                    "name": "height"
+                }
+            ]
         },
         {
             "acResult": "EditableImage",
@@ -14100,7 +14152,19 @@
                 "function",
                 "type"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "self",
+                    "hide": true
+                },
+                {
+                    "name": "width"
+                },
+                {
+                    "name": "height"
+                }
+            ]
         },
         {
             "acResult": "FontFamily",
@@ -14109,7 +14173,19 @@
                 "function",
                 "type"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "self",
+                    "hide": true
+                },
+                {
+                    "name": "font_provider"
+                },
+                {
+                    "name": "font_name"
+                }
+            ]
         },
         {
             "acResult": "__doc__",
@@ -14125,7 +14201,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -14143,13 +14219,13 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
         {
             "acResult": "_collections",
-            "documentation": "",
+            "documentation": "This module implements specialized container datatypes providing\nalternatives to Python's general purpose built-in containers, dict,\nlist, set, and tuple.\n\n* namedtuple   factory function for creating tuple subclasses with named fields\n* deque        list-like container with fast appends and pops on either end\n* ChainMap     dict-like class for creating a single view of multiple mappings\n* Counter      dict subclass for counting hashable objects\n* OrderedDict  dict subclass that remembers the order entries were added\n* defaultdict  dict subclass that calls a factory function to supply missing values\n* UserDict     wrapper around dictionary objects for easier dict subclassing\n* UserList     wrapper around list objects for easier list subclassing\n* UserString   wrapper around string objects for easier string subclassing",
             "type": [
                 "module"
             ],
@@ -14163,7 +14239,7 @@
         },
         {
             "acResult": "_math",
-            "documentation": "",
+            "documentation": "This module provides access to the mathematical functions\ndefined by the C standard.",
             "type": [
                 "module"
             ],
@@ -14171,7 +14247,7 @@
         },
         {
             "acResult": "_re",
-            "documentation": "",
+            "documentation": "Support for regular expressions (RE).\n\nThis module provides regular expression matching operations similar to\nthose found in Perl.  It supports both 8-bit and Unicode strings; both\nthe pattern and the strings being processed can contain null bytes and\ncharacters outside the US ASCII range.\n\nRegular expressions can contain both special and ordinary characters.\nMost ordinary characters, like \"A\", \"a\", or \"0\", are the simplest\nregular expressions; they simply match themselves.  You can\nconcatenate ordinary characters, so last matches the string 'last'.\n\nThe special characters are:\n    \".\"      Matches any character except a newline.\n    \"^\"      Matches the start of the string.\n    \"$\"      Matches the end of the string or just before the newline at\n             the end of the string.\n    \"*\"      Matches 0 or more (greedy) repetitions of the preceding RE.\n             Greedy means that it will match as many repetitions as possible.\n    \"+\"      Matches 1 or more (greedy) repetitions of the preceding RE.\n    \"?\"      Matches 0 or 1 (greedy) of the preceding RE.\n    *?,+?,?? Non-greedy versions of the previous three special characters.\n    {m,n}    Matches from m to n repetitions of the preceding RE.\n    {m,n}?   Non-greedy version of the above.\n    \"\\\\\"     Either escapes special characters or signals a special sequence.\n    []       Indicates a set of characters.\n             A \"^\" as the first character indicates a complementing set.\n    \"|\"      A|B, creates an RE that will match either A or B.\n    (...)    Matches the RE inside the parentheses.\n             The contents can be retrieved or matched later in the string.\n    (?aiLmsux) The letters set the corresponding flags defined below.\n    (?:...)  Non-grouping version of regular parentheses.\n    (?P<name>...) The substring matched by the group is accessible by name.\n    (?P=name)     Matches the text matched earlier by the group named name.\n    (?#...)  A comment; ignored.\n    (?=...)  Matches if ... matches next, but doesn't consume the string.\n    (?!...)  Matches if ... doesn't match next.\n    (?<=...) Matches if preceded by ... (must be fixed length).\n    (?<!...) Matches if not preceded by ... (must be fixed length).\n    (?(id/name)yes|no) Matches yes pattern if the group with id/name matched,\n                       the (optional) no pattern otherwise.\n\nThe special sequences consist of \"\\\\\" and a character from the list\nbelow.  If the ordinary character is not on the list, then the\nresulting RE will match the second character.\n    \\number  Matches the contents of the group of the same number.\n    \\A       Matches only at the start of the string.\n    \\Z       Matches only at the end of the string.\n    \\b       Matches the empty string, but only at the start or end of a word.\n    \\B       Matches the empty string, but not at the start or end of a word.\n    \\d       Matches any decimal digit; equivalent to the set [0-9] in\n             bytes patterns or string patterns with the ASCII flag.\n             In string patterns without the ASCII flag, it will match the whole\n             range of Unicode digits.\n    \\D       Matches any non-digit character; equivalent to [^\\d].\n    \\s       Matches any whitespace character; equivalent to [ \\t\\n\\r\\f\\v] in\n             bytes patterns or string patterns with the ASCII flag.\n             In string patterns without the ASCII flag, it will match the whole\n             range of Unicode whitespace characters.\n    \\S       Matches any non-whitespace character; equivalent to [^\\s].\n    \\w       Matches any alphanumeric character; equivalent to [a-zA-Z0-9_]\n             in bytes patterns or string patterns with the ASCII flag.\n             In string patterns without the ASCII flag, it will match the\n             range of Unicode alphanumeric characters (letters plus digits\n             plus underscore).\n             With LOCALE, it will match the set [0-9_] plus characters defined\n             as letters for the current locale.\n    \\W       Matches the complement of \\w.\n    \\\\       Matches a literal backslash.\n\nThis module exports the following functions:\n    match     Match a regular expression pattern to the beginning of a string.\n    fullmatch Match a regular expression pattern to all of a string.\n    search    Search a string for the presence of a pattern.\n    sub       Substitute occurrences of a pattern found in a string.\n    subn      Same as sub, but also return the number of substitutions made.\n    split     Split a string by the occurrences of a pattern.\n    findall   Find all occurrences of a pattern in a string.\n    finditer  Return an iterator yielding a Match object for each match.\n    compile   Compile a pattern into a Pattern object.\n    purge     Clear the regular expression cache.\n    escape    Backslash all non-alphanumerics in a string.\n\nEach function other than purge and escape can take an optional 'flags' argument\nconsisting of one or more of the following module constants, joined by \"|\".\nA, L, and U are mutually exclusive.\n    A  ASCII       For string patterns, make \\w, \\W, \\b, \\B, \\d, \\D\n                   match the corresponding ASCII character categories\n                   (rather than the whole Unicode categories, which is the\n                   default).\n                   For bytes patterns, this flag is the only available\n                   behaviour and needn't be specified.\n    I  IGNORECASE  Perform case-insensitive matching.\n    L  LOCALE      Make \\w, \\W, \\b, \\B, dependent on the current locale.\n    M  MULTILINE   \"^\" matches the beginning of lines (after a newline)\n                   as well as the string.\n                   \"$\" matches the end of lines (before a newline) as well\n                   as the end of the string.\n    S  DOTALL      \".\" matches any character at all, including the newline.\n    X  VERBOSE     Ignore whitespace and comments for nicer looking RE's.\n    U  UNICODE     For compatibility only. Ignored for string patterns (it\n                   is the default), and forbidden for bytes patterns.\n\nThis module also defines an exception 'error'.",
             "type": [
                 "module"
             ],
@@ -14183,7 +14259,12 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "number"
+                }
+            ]
         },
         {
             "acResult": "_strype_graphics_internal",
@@ -14203,7 +14284,7 @@
         },
         {
             "acResult": "_time",
-            "documentation": "",
+            "documentation": "This module provides various functions to manipulate time values.\n\nThere are two standard representations of time.  One is the number\nof seconds since the Epoch, in UTC (a.k.a. GMT).  It may be an integer\nor a floating point number (to represent fractions of seconds).\nThe Epoch is system-defined; on Unix, it is generally January 1st, 1970.\nThe actual value can be retrieved by calling gmtime(0).\n\nThe other representation is a tuple of 9 integers giving local time.\nThe tuple items are:\n  year (including century, e.g. 1998)\n  month (1-12)\n  day (1-31)\n  hours (0-23)\n  minutes (0-59)\n  seconds (0-59)\n  weekday (0-6, Monday is 0)\n  Julian day (day in the year, 1-366)\n  DST (Daylight Savings Time) flag (-1, 0 or 1)\nIf the DST flag is 0, the time is given in the regular time zone;\nif it is 1, the time is given in the DST time zone;\nif it is -1, mktime() should guess based on the date and time.",
             "type": [
                 "module"
             ],
@@ -14223,7 +14304,15 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y"
+                }
+            ]
         },
         {
             "acResult": "key_pressed",
@@ -14231,7 +14320,12 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "keyname"
+                }
+            ]
         },
         {
             "acResult": "load_image",
@@ -14239,7 +14333,12 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "filename"
+                }
+            ]
         },
         {
             "acResult": "pause",
@@ -14247,7 +14346,13 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "actions_per_second",
+                    "defaultValue": "25"
+                }
+            ]
         },
         {
             "acResult": "set_background",
@@ -14255,7 +14360,12 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "image_or_filename"
+                }
+            ]
         },
         {
             "acResult": "stop",
@@ -14274,7 +14384,20 @@
                 "function",
                 "type"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "self",
+                    "hide": true
+                },
+                {
+                    "name": "source_or_seconds"
+                },
+                {
+                    "name": "samples_per_second",
+                    "defaultValue": "44100"
+                }
+            ]
         },
         {
             "acResult": "__doc__",
@@ -14290,7 +14413,7 @@
         },
         {
             "acResult": "__loader__",
-            "documentation": "",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
             "type": [],
             "version": 0
         },
@@ -14308,7 +14431,7 @@
         },
         {
             "acResult": "__spec__",
-            "documentation": "",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
             "type": [],
             "version": 0
         },
@@ -14326,7 +14449,12 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "filename"
+                }
+            ]
         }
     ],
     "strype.mediacomp": [

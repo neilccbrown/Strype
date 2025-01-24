@@ -34,6 +34,9 @@ const configureWebpackExtraProps =
 module.exports = {
     configureWebpack: {
         devtool: "source-map",
+        resolve: {
+            extensions: [ ".ts", ".js", ".py" ],
+        },
         ...configureWebpackExtraProps,
         // allows pinia to compile fine (https://github.com/vuejs/pinia/issues/675)
         module: {
@@ -42,6 +45,10 @@ module.exports = {
                     test: /\.mjs$/,
                     include: /node_modules/,
                     type: "javascript/auto",
+                },
+                {
+                    test: /\.py$/,
+                    use: "raw-loader",
                 },
             ],
         },
