@@ -92,7 +92,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
@@ -108,7 +108,7 @@ import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvModalEvent } from "bootstrap-vue";
 
 let autoSaveTimerId = -1;
-let autoSaveState : AutoSaveFunction[] = [];
+let projectSaveFunctionsState : ProjectSaveFunction[] = [];
 
 //////////////////////
 //     Component    //
@@ -208,7 +208,7 @@ export default Vue.extend({
     },
 
     created() {
-        autoSaveState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
+        projectSaveFunctionsState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -229,7 +229,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                autoSaveState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
+                projectSaveFunctionsState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -471,34 +471,34 @@ export default Vue.extend({
             }
         });
 
-        this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (asf: AutoSaveFunction) => {
+        this.$root.$on(CustomEventTypes.addFunctionToEditorProjectSave, (psf: ProjectSaveFunction) => {
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
             window.clearInterval(autoSaveTimerId);
-            const asfEntry = autoSaveState.find((asfEntry) => (asfEntry.name == asf.name));
-            if(asfEntry){
-                // There is already some function set for that type of autosave, we just update the function
-                asfEntry.function = asf.function;
+            const psfEntry = projectSaveFunctionsState.find((psfEntry) => (psfEntry.name == psf.name));
+            if(psfEntry){
+                // There is already some function set for that type of project save, we just update the function
+                psfEntry.function = psf.function;
             }
             else{
-                // Nothing yet set for this type of autosave, we add the entry autoSaveState
-                autoSaveState.push(asf);
+                // Nothing yet set for this type of project save, we add the entry in projectSaveFunctionsState
+                projectSaveFunctionsState.push(psf);
             }
             this.setAutoSaveState();
         });
 
-        this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (asfName: string) => {           
-            const toDeleteIndex = autoSaveState.findIndex((asf) => asf.name == asfName);
+        this.$root.$on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfName: string) => {           
+            const toDeleteIndex = projectSaveFunctionsState.findIndex((psf) => psf.name == psfName);
             if(toDeleteIndex > -1){
                 window.clearInterval(autoSaveTimerId);
-                autoSaveState.splice(toDeleteIndex, 1);
+                projectSaveFunctionsState.splice(toDeleteIndex, 1);
                 this.setAutoSaveState();
             }            
         });
 
-        // Listen to event for requesting the autosave now
-        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => autoSaveState.forEach((asf) => asf.function(saveReason)));
+        // Listen to event for requesting the project save now
+        this.$root.$on(CustomEventTypes.requestEditorProjectSaveNow, (saveReason: SaveRequestReason) => projectSaveFunctionsState.forEach((psf) => psf.function(saveReason)));
 
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
@@ -507,8 +507,13 @@ export default Vue.extend({
 
     methods: {
         setAutoSaveState() {
+            // The autosave is only performed on the webstore
             autoSaveTimerId = window.setInterval(() => {
-                autoSaveState.forEach((asf) => asf.function(SaveRequestReason.autosave));
+                projectSaveFunctionsState.forEach((psf) => {
+                    if(psf.name == "WS") {
+                        psf.function(SaveRequestReason.autosave);
+                    }
+                });
             }, autoSaveFreqMins * 60000);
         },
         
@@ -516,8 +521,8 @@ export default Vue.extend({
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
-                // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                if(reason==SaveRequestReason.loadProject && autoSaveState.length == 1){
+                // Then we can notify we're done when we save for loading
+                if(reason==SaveRequestReason.loadProject){
                     this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }
             }

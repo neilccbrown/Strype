@@ -1041,8 +1041,8 @@ export interface SaveExistingGDProjectInfos {
     resumeProcessCallback: VoidFunction,
 }
 
-export interface AutoSaveFunction {
-    name: "WS" | "GD", // The autosave destination: "WS" for the webstore, or "GD" for Google Drive.
+export interface ProjectSaveFunction {
+    name: "WS" | "GD", // The save destination: "WS" for the webstore, or "GD" for Google Drive.
     function: (saveReason: SaveRequestReason) => void;
 }
 

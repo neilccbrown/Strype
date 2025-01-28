@@ -50,8 +50,8 @@ export default Vue.extend({
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
             currentAction: null as "load" | "loadAsResync" | "save" | null, // flag the request current action for async workflow;
-            saveReason: SaveRequestReason.autosave, // flag the reason of the save action
-            saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project (we need to keep it live for autosave)
+            saveReason: SaveRequestReason.unloadPage, // flag the reason of the save action
+            saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project
             isFileLocked: false, // Flag to notify when a file is locked (used for saving);
             Actions, // this is required to be accessible in the template
             saveExistingGDProjectInfos: {} as SaveExistingGDProjectInfos,
@@ -184,12 +184,12 @@ export default Vue.extend({
         // After signing in or signed out:
         updateSignInStatus(signed: boolean) {
             if(signed){
-                this.$root.$emit(CustomEventTypes.addFunctionToEditorAutoSave, {name: "GD", function: (saveReason: SaveRequestReason) => this.saveFile(saveReason)});
+                this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {name: "GD", function: (saveReason: SaveRequestReason) => this.saveFile(saveReason)});
             }  
             else{
                 // If signing fails, reset to no sync
                 this.appStore.syncTarget = StrypeSyncTarget.none; 
-                this.$root.$emit(CustomEventTypes.removeFunctionToEditorAutoSave, "GD");
+                this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, "GD");
             }            
         },
 
@@ -307,8 +307,8 @@ export default Vue.extend({
                         this.appStore.strypeProjectLocationAlias = "Strype";
                     }
 
-                    // The autosave method may not exist (the case when a user has loaded a read-only Drive project, then wants to save: sync is off, but connection probably still maintained)
-                    this.$root.$emit(CustomEventTypes.addFunctionToEditorAutoSave, {name: "GD", function: (saveReason: SaveRequestReason) => this.saveFile(saveReason)});
+                    // The project save method may not exist (the case when a user has loaded a read-only Drive project, then wants to save: sync is off, but connection probably still maintained)
+                    this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {name: "GD", function: (saveReason: SaveRequestReason) => this.saveFile(saveReason)});
 
                     if(saveReason == SaveRequestReason.saveProjectAtOtherLocation){
                         (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(true);
@@ -405,27 +405,19 @@ export default Vue.extend({
         proceedFailedConnectionCheckOnSave(){
             // Do something in case of connection failure depending on the reason for saving
             // normal saving: --> try to reconnect, if failed, then we stop synchronising to Google Drive
-            // auto-save: --> show banner message and stop synchronising
             // save to load + unload --> try to reconnect, if failed, stop sync + modal message
             // Even if the user may signing again, we first make sure everything shows as "not syncing" in case the signing process is not completed
             // (because if the user just drop the signing action, we have no way to get events on that...)
             this.oauthToken = null; 
             this.updateSignInStatus(false);
-            if(this.saveReason != SaveRequestReason.autosave){
-                if(this.saveReason == SaveRequestReason.loadProject || this.saveReason == SaveRequestReason.unloadPage){
-                    const modalMsg = (this.saveReason == SaveRequestReason.loadProject) ? this.$i18n.t("errorMessage.gdriveConnectionSaveToLoadProjFailed") : this.$i18n.t("errorMessage.gdriveConnectionSaveToUnloadPageFailed") ;
-                    this.appStore.simpleModalDlgMsg = modalMsg as string;
-                    this.$root.$emit("bv::show::modal", this.loginErrorModalDlgId);
-                    // The signIn method will be called when the modal is dismissed
-                }
-                else{
-                    this.signIn();
-                }
+            if(this.saveReason == SaveRequestReason.loadProject || this.saveReason == SaveRequestReason.unloadPage){
+                const modalMsg = (this.saveReason == SaveRequestReason.loadProject) ? this.$i18n.t("errorMessage.gdriveConnectionSaveToLoadProjFailed") : this.$i18n.t("errorMessage.gdriveConnectionSaveToUnloadPageFailed") ;
+                this.appStore.simpleModalDlgMsg = modalMsg as string;
+                this.$root.$emit("bv::show::modal", this.loginErrorModalDlgId);
+                // The signIn method will be called when the modal is dismissed
             }
             else{
-                this.updateSignInStatus(false);
-                const message = MessageDefinitions.GDriveConnectToSaveFailed;
-                this.appStore.showMessage(message, null);
+                this.signIn();
             }
         },
         
@@ -491,7 +483,6 @@ export default Vue.extend({
 
         savePickedFolder(){
             // Doesn't matter the extact nature of the reason for saving, as long as we specify one of the 2 values for explicit saving.
-            // (necessary as autosave may have been triggered in between)
             this.saveReason = SaveRequestReason.saveProjectAtLocation;
             this.lookForAvailableProjectFileName(this.doSaveFile);
         },

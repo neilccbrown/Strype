@@ -505,7 +505,7 @@ export default Vue.extend({
                 if(dlgId == this.loadProjectModalDlgId){
                     this.currentModalButtonGroupIDInAction = this.loadProjectTargetButtonGpId;
                     // We force saving the current project anyway just in case
-                    this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.loadProject);
+                    this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.loadProject);
                     // The remaining parts of the loading process will be only done once saving is complete (cf loadProject())                    
                 }
                 // Case of "save file"
@@ -549,7 +549,7 @@ export default Vue.extend({
                     else {          
                         // If we were already syncing to Google Drive, we save the current file now.
                         if(this.isSyncingToGoogleDrive){
-                            this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.autosave);
+                            this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
                         // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
                         if(forcedProjectName){
