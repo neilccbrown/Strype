@@ -144,6 +144,8 @@ export const useStore = defineStore("app", {
 
             currentGoogleDriveSaveFileId: undefined as undefined|string,
 
+            googleDriveLastSaveDate: -1, // Date ticks
+
             selectedFrames: [] as number[],
 
             appLang: "en",

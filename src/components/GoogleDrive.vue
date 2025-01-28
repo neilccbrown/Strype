@@ -422,16 +422,22 @@ export default Vue.extend({
         },
         
         loadPickedFileId(id : string, fileName?: string) : void {
-            if(this.currentAction == "loadAsResync"){
-                // When we resync the file, we can't get the file name from the Drive picker, so we need to find it with another method.
-                gapi.client.request({
-                    path: "https://www.googleapis.com/drive/v3/files/" + id,
-                    method: "GET",
-                    params: {},
-                }).execute((resp) => {
+            // The file name is either already set in the call of this method (case of choosing from the Drive Picker for example),
+            // or we need to check it directly against Google Drive. 
+            // In any case, we retrieve the last saved date on Google Drive directly.
+            let lastSaveDate = -1; // Need to be kept on a temporary var as the file content will overwrite this.
+            gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files/" + id,
+                method: "GET",
+                params: {fields: "name, modifiedTime"},
+            }).execute((resp) => {
+                if(this.currentAction == "loadAsResync"){
                     fileName = resp.name;
-                });
-            }
+                }
+                // The date conversion works fine because Google Drive API uses RFC 3339 date format
+                lastSaveDate = Date.parse(resp.modifiedTime);
+                console.log(resp.modifiedTime);
+            });
 
             // Get the file content
             gapi.client.request({
@@ -460,6 +466,7 @@ export default Vue.extend({
                     // Restore the fields we backed up before loading
                     this.appStore.strypeProjectLocation = strypeLocation;
                     this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
+                    this.appStore.googleDriveLastSaveDate = lastSaveDate;
                     // And finally register the correc target flags via the Menu 
                     // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
                     (this.$parent as InstanceType<typeof MenuVue>).saveTargetChoice(StrypeSyncTarget.gd);
