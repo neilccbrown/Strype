@@ -921,11 +921,11 @@ def key_pressed(keyname):
     """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
 
-def set_background(image_or_filename):
+def set_background(image_or_filename_or_color):
     """
     Sets the current background image.
     
-    The parameter can be an EditableImage, a colour, a filename of an image in Strype's image library, or a URL.
+    The parameter can be an EditableImage, a color, a filename of an image in Strype's image library, or a URL.
     Using a URL requires the server to allow remote image loading from Javascript via a feature
         called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
         you can load the image in a browser yourself.
@@ -934,7 +934,7 @@ def set_background(image_or_filename):
     The background image is always copied, so later changes to an EditableImage will not be shown in the background;
     you should call set_background() again to update it.
     
-    :param image_or_filename: An EditableImage, an image filename or URL.
+    :param image_or_filename_or_color: An EditableImage, an image filename or URL, or a color name or hex string.
     """
 
     # We use an oversize image to avoid slivers of other colour appearing at the edges
@@ -962,16 +962,16 @@ def set_background(image_or_filename):
                 dest.draw_image(image, x_offset + i * w, y_offset + j * h)
         return dest
         
-    if isinstance(image_or_filename, EditableImage):
-        bk_image = background_808_606(image_or_filename)
-    elif isinstance(image_or_filename, str):
+    if isinstance(image_or_filename_or_color, EditableImage):
+        bk_image = background_808_606(image_or_filename_or_color)
+    elif isinstance(image_or_filename_or_color, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
         # otherwise it's a color name/value.
-        if _re.search(r"[.:/]", image_or_filename):
-            bk_image = background_808_606(load_image(image_or_filename))
+        if _re.search(r"[.:/]", image_or_filename_or_color):
+            bk_image = background_808_606(load_image(image_or_filename_or_color))
         else:
             bk_image = EditableImage(808, 606)
-            bk_image.set_fill(image_or_filename)
+            bk_image.set_fill(image_or_filename_or_color)
             bk_image.fill()
     else:
         raise TypeError("image_or_filename must be an EditableImage or a string")
