@@ -229,7 +229,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                projectSaveFunctionsState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
+                this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -521,8 +521,8 @@ export default Vue.extend({
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
-                // Then we can notify we're done when we save for loading
-                if(reason==SaveRequestReason.loadProject){
+                // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
                     this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }
             }
