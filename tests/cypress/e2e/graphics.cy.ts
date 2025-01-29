@@ -242,6 +242,32 @@ describe("Basic operation", () => {
     });
 });
 
+describe("Image manipulation", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    it("Setting pixels using string colors", () => {
+        runCodeAndCheckImage("", `
+            img = EditableImage(100, 100)
+            img.set_fill("white")
+            img.fill()
+            for x in range(100):
+                for y in range(100):
+                    if x + y < 50:
+                        img.set_pixel(x, y, "red")
+                    elif x + y < 100:
+                        img.set_pixel(x, y, "#fFffFF80")
+                    elif x + y < 150:
+                        img.set_pixel(x, y, "#0080FF")
+                    else:
+                        img.set_pixel(x, y, "YELLOW")
+            a = Actor(img)
+            a.set_scale(6)
+        `, "image-set-pixel-string-colors");
+    });
+});
+
 describe("Collision detection", () => {
     if (Cypress.env("mode") == "microbit") {
         // Graphics tests can't run in microbit
