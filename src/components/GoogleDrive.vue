@@ -223,7 +223,10 @@ export default Vue.extend({
             else{
                 // We test the connection to make sure it's still valid: if so, we continue with the loading, and if not we reset the token and
                 // call this method again so signing will be requested
-                this.testGoogleDriveConnection(() => this.doLoadFile(), () => {
+                this.testGoogleDriveConnection(() => {
+                    this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {name: "GD", function: (saveReason: SaveRequestReason) => this.saveFile(saveReason)});
+                    this.doLoadFile();
+                }, () => {
                     this.oauthToken = null;
                     this.signIn();
                 });
@@ -326,7 +329,7 @@ export default Vue.extend({
                 }
                 else{
                     // Notify the application that if we were saving for loading now we are done
-                    if(this.saveReason == SaveRequestReason.loadProject)                     {
+                    if(this.saveReason == SaveRequestReason.loadProject) {
                         this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                     }      
                 }

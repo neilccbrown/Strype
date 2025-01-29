@@ -476,12 +476,15 @@ export default Vue.extend({
                 this.appStore.currentGoogleDriveSaveFileId = undefined;
                 this.appStore.strypeProjectLocationAlias = "";
             }
+            // If we have swapped target, we should remove the other target in the list of saving functions.
+            // (It doesn't really matter if there is one or not, the remove method will take care of that.)
+            this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, (target == StrypeSyncTarget.fs) ? "GD" : "FS");
         },
 
-        saveCurrentProject(){
+        saveCurrentProject(saveReason?: SaveRequestReason){
             // This method is called when sync is activated, and bypass the "save as" dialog we show to change the project name/location.
             // (note that the @click event in the template already checks if we are synced)
-            this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.saveProjectModalDlgId, this.appStore.projectName);
+            this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.saveProjectModalDlgId, this.appStore.projectName, saveReason);
             this.showMenu = false;
         },
 
@@ -509,7 +512,7 @@ export default Vue.extend({
             }
         },
 
-        onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string) {
+        onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string, saveReason ?: SaveRequestReason) {
             // This method handles the workflow after acting on any modal dialog of the Strype menu entries.
             // For most cases, if there is no confirmation, nothing special happens.
             // Only exception: if the user cancelled or proceeded to save a file copy following an clash with an existing project name on Google Drive,
@@ -569,6 +572,9 @@ export default Vue.extend({
                                 this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
                                 this.appStore.googleDriveLastSaveDate = -1;
                                 this.saveTargetChoice(StrypeSyncTarget.fs);
+                                if(saveReason == SaveRequestReason.loadProject) {
+                                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                                }
                             });
                         }
                         else{
@@ -578,6 +584,7 @@ export default Vue.extend({
                             this.appStore.projectName = saveFileName.trim();
                             this.appStore.googleDriveLastSaveDate = -1;
                             this.saveTargetChoice(StrypeSyncTarget.fs);
+                            this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                         }
                     }
                     else {          
@@ -706,6 +713,7 @@ export default Vue.extend({
 
         onFileLoaded(fileName: string, fileLocation?: FileSystemFileHandle):void {
             this.saveTargetChoice(StrypeSyncTarget.fs);
+            this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {name: "FS", function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
 
             // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
             const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;

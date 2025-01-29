@@ -1042,7 +1042,7 @@ export interface SaveExistingGDProjectInfos {
 }
 
 export interface ProjectSaveFunction {
-    name: "WS" | "GD", // The save destination: "WS" for the webstore, or "GD" for Google Drive.
+    name: "WS" | "FS" | "GD", // The save destination: "WS" for the webstore, "FS" for the file system or "GD" for Google Drive.
     function: (saveReason: SaveRequestReason) => void;
 }
 

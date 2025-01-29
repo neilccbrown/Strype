@@ -488,7 +488,7 @@ export default Vue.extend({
             this.setAutoSaveState();
         });
 
-        this.$root.$on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfName: string) => {           
+        this.$root.$on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfName: string) => {
             const toDeleteIndex = projectSaveFunctionsState.findIndex((psf) => psf.name == psfName);
             if(toDeleteIndex > -1){
                 window.clearInterval(autoSaveTimerId);
