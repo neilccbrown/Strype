@@ -356,6 +356,18 @@ class EditableImage:
         """
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
 
+    def circle(self, centre_x, centre_y, radius):
+        """
+        Draws a circle with a given centre position and width and height.
+        
+        The circle will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
+        
+        :param centre_x: The centre X position of the circle.
+        :param centre_y: The centre Y position of the circle.
+        :param width: The radius (distance from centre to the edge) of the circle.
+        """
+        self.arc(centre_x, centre_y, radius, radius, 0, 360)
+
     #@@ EditableImage
     def make_copy(self):
         """

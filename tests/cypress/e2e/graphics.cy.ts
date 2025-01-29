@@ -266,6 +266,22 @@ describe("Image manipulation", () => {
             a.set_scale(6)
         `, "image-set-pixel-string-colors");
     });
+    it("Draws circles", () => {
+        runCodeAndCheckImage("", `
+            img = EditableImage(800, 600)
+            img.set_fill("white")
+            img.set_stroke("red")
+            img.circle(200,200,150)
+            img.set_fill(None)
+            img.set_stroke("#ff00ff")
+            img.circle(300, 500, 300)
+            img.set_fill("LIMEGREEN")
+            img.set_stroke(None)
+            img.circle(600, 200, 100)
+            
+            Actor(img)
+        `, "image-draw-circles");
+    });
 });
 
 describe("Collision detection", () => {
