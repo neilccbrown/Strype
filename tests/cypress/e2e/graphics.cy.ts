@@ -282,6 +282,23 @@ describe("Image manipulation", () => {
             Actor(img)
         `, "image-draw-circles");
     });
+
+    it("Draws polygons", () => {
+        runCodeAndCheckImage("", `
+            img = EditableImage(800, 600)
+            img.set_fill("white")
+            img.set_stroke("red")
+            img.polygon([(100, 100), (400, 300), (100, 300)])
+            img.set_stroke(None)
+            img.set_fill("#ffff00")
+            points = []
+            for p in range(5):
+                points = points + [(500 + 200*math.cos(math.radians(p * 360 / 5)), 300 + 200*math.sin(math.radians(p * 360 / 5)))] 
+            img.polygon(points)
+            
+            Actor(img)
+        `, "image-draw-polygons");
+    });
 });
 
 describe("Collision detection", () => {

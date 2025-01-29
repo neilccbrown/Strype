@@ -215,6 +215,18 @@ var $builtinmodule = function(name)  {
         ctx.fill();
         ctx.stroke();
     });
+    mod.polygon_xy_pairs = new Sk.builtin.func(function(img, xy_pairs_py) {
+        let xys = Sk.ffi.remapToJs(xy_pairs_py);
+        const ctx = img.getContext("2d");
+        ctx.beginPath();
+        // If we move to the last point, we can lineTo the rest and have the right behaviour:
+        ctx.moveTo(xys[xys.length - 1][0], xys[xys.length - 1][1]);
+        xys.forEach((xy) => {
+            ctx.lineTo(xy[0], xy[1]);
+        });
+        ctx.fill();
+        ctx.stroke();
+    });
     
     mod.canvas_loadFont = new Sk.builtin.func(function(provider, fontName) {
         provider = Sk.ffi.remapToJs(provider);

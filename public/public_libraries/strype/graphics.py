@@ -368,6 +368,20 @@ class EditableImage:
         """
         self.arc(centre_x, centre_y, radius, radius, 0, 360)
 
+    def polygon(self, points):
+        """
+        Draws a polygon with the given X, Y point locations.
+        
+        The last point will automatically be connected to the first point to convert the polygon.
+        
+        The polygon will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
+        
+        The polygon should be convex, otherwise the visual behaviour is undefined.
+        
+        :param points: A list of pairs of (X, Y) positions
+        """
+        _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
+
     #@@ EditableImage
     def make_copy(self):
         """
