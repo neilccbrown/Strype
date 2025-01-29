@@ -186,7 +186,7 @@ describe("Basic operation", () => {
         return;
     }
     it("Blank canvas", () => {
-        runCodeAndCheckImage("", "print('Hello')\n", "graphics-blank", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
+        runCodeAndCheckImage("", "print('Hello')\n", "graphics-blank");
     });
     it("Basic cat", () => {
         runCodeAndCheckImage("", "Actor('cat-test.jpg')\nsleep(1)\n", "graphics-just-cat");
