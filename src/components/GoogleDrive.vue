@@ -291,6 +291,7 @@ export default Vue.extend({
                     if(reason.status == 404){
                         this.appStore.strypeProjectLocation = undefined;
                         this.appStore.strypeProjectLocationAlias = "";
+                        this.appStore.googleDriveLastSaveDate = -1;
                     }
                 });
             }            
@@ -378,7 +379,9 @@ export default Vue.extend({
                     // Set the project name when we have made an explicit saving
                     if(isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject){
                         this.appStore.projectName = this.saveFileName;
-                    }                    
+                    }               
+                    // The saving date is updated in any cases
+                    this.appStore.googleDriveLastSaveDate = Date.now();     
                     // Notify the application that if we were saving for loading now we are done
                     if(this.saveReason == SaveRequestReason.loadProject)                     {
                         this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
@@ -436,7 +439,6 @@ export default Vue.extend({
                 }
                 // The date conversion works fine because Google Drive API uses RFC 3339 date format
                 lastSaveDate = Date.parse(resp.modifiedTime);
-                console.log(resp.modifiedTime);
             });
 
             // Get the file content

@@ -51,7 +51,9 @@
     "saveProjectCopy": "选择新名称",
     "spaceBar": "空格",
     "yesSign" : "是，请登录",
-    "noContinueWithout":"否，无需登录继续"
+    "noContinueWithout":"否，无需登录继续",
+    "saveChanges": "保存更改",
+    "discardChanges": "撤销更改"
   },
   "errorMessage": {
     "wrongDataFormat": "无法读取数据格式",
@@ -77,6 +79,7 @@
   "appMessage": {
     "editorFileUpload": "正在将文件上传到编辑器...",
     "editorConfirmChangeCode": "当前编辑器的内容将永久丢失。",
+    "editorAskSaveChangedCode": "你的项目含有更改内容。你要先保存再创建另一个项目吗？",
     "editorFileUploadWrongVersion": "此代码由其他版本的编辑器生成。\n导入可能会导致错误。\n\n您还想继续吗？",
     "importsContainer": "导入：",
     "funcDefsContainer": "函数定义：",
@@ -91,6 +94,16 @@
     "gdriveFileAlreadyExists": "Drive 位置中已存在同名项目。\n是否要替换它？",
     "gdriveLockedFileAlreadyExists": "此项目已锁定在 Drive 位置。\n无法使用此名称保存。",
     "savedGDrive": "已保存",
+    "modifGDrive": "已更改",
+    "lastSavedOn": "上次保存日期:{lastSavedDate}",
+    "lastSavedOnNDays": "上次保存于:{nbLastSave}天之前",
+    "lastSavedOn1Day": "上次保存于:昨天",
+    "lastSavedOnNHours": "上次保存于:{nbLastSave}小时之前",
+    "lastSavedOn1Hour": "上次保存于:1小时之前",
+    "lastSavedOnNMins": "上次保存于:{nbLastSave}分钟之前",
+    "lastSavedOn1Min": "上次保存于:1分钟之前",
+    "lastSavedOnNSecs": "上次保存于:{nbLastSave}秒之前",
+    "lastSavedOn1Sec": "上次保存于:1秒之前",
     "selectFolder": "选择一个文件夹",
     "selectStrypeFile": "选择一个 Strype 项目",
     "gdriveLocation": "文件夹：",
