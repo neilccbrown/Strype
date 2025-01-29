@@ -756,6 +756,27 @@ class Actor:
         if a is not None:
             a.remove()
 
+    #@@ list
+    def get_all_nearby(self, distance, tag = None):
+        """
+        Gets all the actors that are within the current distance of this actor. There is an imaginary circle drawn at
+        the centre of this actor with radius of "distance", and any actors that touch this circle will be returned
+        (even if their centres are not within this circle; only one corner needs to be).  
+        
+        If this actor has had `set_can_touch(false)`
+        called, the returned list will always be empty.  The list will never feature any actors
+        which have had `set_can_touch(false)` called on them.
+        
+        If the tag is given (i.e. is not None), it will be used to filter the returned list just
+        to actors with that given tag.
+        
+        :param distance: The radius to look for nearby actors, from the centre of this actor
+        :param tag: The tag to use to filter the returned actors (or None/omitted if you do not want to filter the actors by tag)
+        :return: A list of all nearby actors.
+        """
+        return [a for a in _strype_input_internal.getAllNearbyAssociated(self.__id, distance) if tag is None or tag == a.get_tag()]
+
+
     #@@ EditableImage
     def edit_image(self):
         """

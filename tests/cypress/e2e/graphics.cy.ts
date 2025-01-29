@@ -352,6 +352,30 @@ describe("Collision detection", () => {
                 sq.edit_image().fill()
             `, "graphics-colliding-every-other-square-cat-minus-75");
     });
+    it("Collisions in a radius", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones in a radius and colour them red
+        runCodeAndCheckImage("", `
+            circle_guide = EditableImage(800, 600)
+            circle_guide.set_stroke(None)
+            circle_guide.set_fill("#555555")
+            circle_guide.circle(400, 300, 200)
+            set_background(circle_guide)
+            cat = Actor('cat-test.jpg')
+            cat.set_scale(0.2)
+            white_square = EditableImage(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    squares.append(Actor(white_square.make_copy(), x*spacing, y*spacing))
+            for sq in cat.get_all_nearby(200):
+                sq.edit_image().set_fill("red")
+                sq.edit_image().fill()
+            `, "graphics-colliding-radius");
+    });
 });
 
 describe("Image download", () => {
