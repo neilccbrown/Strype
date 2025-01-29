@@ -552,4 +552,14 @@ describe("World background", () => {
             sleep(1)
         `, "background-colour");
     });
+    it("Centres larger backgrounds", () => {
+        runCodeAndCheckImage("", `
+            big = EditableImage(1000, 1000)
+            big.set_fill("white")
+            big.set_stroke(None)
+            big.circle(500, 500, 450)
+            set_background(big)
+            Actor("cat-test.jpg")
+        `, "background-large-centred");
+    });
 });
