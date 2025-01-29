@@ -181,9 +181,9 @@ var $builtinmodule = function(name)  {
         const ctx = img.getContext("2d");
         ctx.putImageData(new ImageData(new Uint8ClampedArray(Sk.ffi.remapToJs(pixels)), img.width, img.height), 0, 0);
     });
-    mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
+    mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh, scale) {
         const ctx = dest.getContext("2d");
-        ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
+        ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw * scale, sh * scale);
     });
     mod.canvas_line = new Sk.builtin.func(function(dest, x, y, ex, ey) {
         const ctx = dest.getContext("2d");

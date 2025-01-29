@@ -246,9 +246,9 @@ class EditableImage:
         :param y: The top Y coordinate to draw the image at.
         """
         dim = _strype_graphics_internal.getCanvasDimensions(image._EditableImage__image)
-        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1])
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1], 1.0)
 
-    def draw_part_of_image(self, image, x, y, sx, sy, width, height):
+    def draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
         """
         Draws part of the given image into this image.
         
@@ -259,8 +259,9 @@ class EditableImage:
         :param sy: The top Y coordinate within the source image to draw from.
         :param width: The width of the area to draw from.
         :param height: The height of the area to draw from.
+        :param scale: The scale of the image (1.0 is original size, higher values result in drawing a larger version).
         """
-        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, sx, sy, width, height)
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, sx, sy, width, height, scale)
 
     #@@ float
     def get_width(self):
@@ -921,7 +922,7 @@ def key_pressed(keyname):
     """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
 
-def set_background(image_or_filename_or_color):
+def set_background(image_or_filename_or_color, tile_to_fit = True):
     """
     Sets the current background image.
     
@@ -929,12 +930,16 @@ def set_background(image_or_filename_or_color):
     Using a URL requires the server to allow remote image loading from Javascript via a feature
         called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
         you can load the image in a browser yourself.
-     
-    If the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
+    
+    If tile_to_fit is True and the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
+    If tile_to_fit is True and background image is larger than 800x600, it will be centered, and the extra regions will be cut off.
+    If tile_to_fit is False, the background image will be scaled (preserving its aspect ratio) to fit into 800x600, and centered.    
+    
     The background image is always copied, so later changes to an EditableImage will not be shown in the background;
     you should call set_background() again to update it.
     
     :param image_or_filename_or_color: An EditableImage, an image filename or URL, or a color name or hex string.
+    :param tile_to_fit: Whether to tile the background image to fit (True), or to stretch the image to Fit (False) 
     """
 
     # We use an oversize image to avoid slivers of other colour appearing at the edges
@@ -947,19 +952,23 @@ def set_background(image_or_filename_or_color):
         dest = EditableImage(808, 606)
         w = image.get_width()
         h = image.get_height()
-        # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
-        # each side of the centre.  So just always draw one more than we need:
-        horiz_copies = (_math.ceil(808 / w) if w < 808 else 0) + 1
-        vert_copies = (_math.ceil(606 / h) if h < 606 else 0) + 1
-        # We want one copy bang in the centre, so we need to work out the offset:
-        # These offsets will either be zero or negative because we start by drawing
-        # the far left or far top image.  We work out the position of the central
-        # image then subtract the width/height of half of the copies we need: 
-        x_offset = (808 - w) / 2 - (horiz_copies - 1) / 2 * w
-        y_offset = (606 - h) / 2 - (vert_copies - 1) / 2 * h
-        for i in range(0, horiz_copies):
-            for j in range(0, vert_copies):
-                dest.draw_image(image, x_offset + i * w, y_offset + j * h)
+        if tile_to_fit:
+            # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
+            # each side of the centre.  So just always draw one more than we need:
+            horiz_copies = (_math.ceil(808 / w) if w < 808 else 0) + 1
+            vert_copies = (_math.ceil(606 / h) if h < 606 else 0) + 1
+            # We want one copy bang in the centre, so we need to work out the offset:
+            # These offsets will either be zero or negative because we start by drawing
+            # the far left or far top image.  We work out the position of the central
+            # image then subtract the width/height of half of the copies we need: 
+            x_offset = (808 - w) / 2 - (horiz_copies - 1) / 2 * w
+            y_offset = (606 - h) / 2 - (vert_copies - 1) / 2 * h
+            for i in range(0, horiz_copies):
+                for j in range(0, vert_copies):
+                    dest.draw_image(image, x_offset + i * w, y_offset + j * h)
+        else:
+            scale = min(808 / w, 606 / h)
+            dest.draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
     if isinstance(image_or_filename_or_color, EditableImage):
