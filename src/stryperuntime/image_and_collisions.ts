@@ -1,4 +1,4 @@
-import {System, Box, Point} from "detect-collisions";
+import {System, Box, Point, Circle} from "detect-collisions";
 
 export interface PersistentImage {
     id: number,
@@ -234,6 +234,25 @@ export class PersistentImageManager {
             });
         }
         return r;
+    }
+
+    // Gets the associatedObject of all items which overlap the given persistent image id.
+    public getAllNearby(id: number, radius: number) : any[] {
+        const us = this.persistentImages.get(id);
+        const all: PersistentImage[] = [];
+        if (us) {
+            const collisionCircle = new Circle({x: us.x, y: us.y}, radius);
+            this.collisionSystem.insert(collisionCircle);
+            
+            this.collisionSystem.checkOne(collisionCircle, (found) => {
+                const pimg = this.boxToImageMap.get(found.b as Box);
+                if (pimg) {
+                    all.push(pimg.associatedObject);
+                }
+            });
+            this.collisionSystem.remove(collisionCircle);
+        }
+        return all;
     }
     
     // If this PersistentImage is not already editable, makes an OffScreenCanvas for editing, draws on the existing

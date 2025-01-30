@@ -181,9 +181,9 @@ var $builtinmodule = function(name)  {
         const ctx = img.getContext("2d");
         ctx.putImageData(new ImageData(new Uint8ClampedArray(Sk.ffi.remapToJs(pixels)), img.width, img.height), 0, 0);
     });
-    mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh) {
+    mod.canvas_drawImagePart = new Sk.builtin.func(function(dest, src, dx, dy, sx, sy, sw, sh, scale) {
         const ctx = dest.getContext("2d");
-        ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
+        ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw * scale, sh * scale);
     });
     mod.canvas_line = new Sk.builtin.func(function(dest, x, y, ex, ey) {
         const ctx = dest.getContext("2d");
@@ -212,6 +212,18 @@ var $builtinmodule = function(name)  {
         const ctx = img.getContext("2d");
         ctx.beginPath();
         ctx.ellipse(x, y, width, height, 0, toRadians(angleStart), toRadians(angleStart + angleDelta), false);
+        ctx.fill();
+        ctx.stroke();
+    });
+    mod.polygon_xy_pairs = new Sk.builtin.func(function(img, xy_pairs_py) {
+        let xys = Sk.ffi.remapToJs(xy_pairs_py);
+        const ctx = img.getContext("2d");
+        ctx.beginPath();
+        // If we move to the last point, we can lineTo the rest and have the right behaviour:
+        ctx.moveTo(xys[xys.length - 1][0], xys[xys.length - 1][1]);
+        xys.forEach((xy) => {
+            ctx.lineTo(xy[0], xy[1]);
+        });
         ctx.fill();
         ctx.stroke();
     });

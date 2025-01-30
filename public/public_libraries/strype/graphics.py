@@ -9,9 +9,60 @@ import time as _time
 # Any function with a return type should be preceded at the
 # same indent level by a comment beginning "#@@" followed by the type
 
+# This thread https://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
+# has various slow (round-trip to Javascript, plus either creating
+# a div or a canvas) ways to convert color names to RGB, but this is the simplest
+# solution:
+_color_map = {"aliceblue":"#f0f8ff","antiquewhite":"#faebd7","aqua":"#00ffff","aquamarine":"#7fffd4","azure":"#f0ffff",
+                "beige":"#f5f5dc","bisque":"#ffe4c4","black":"#000000","blanchedalmond":"#ffebcd","blue":"#0000ff","blueviolet":"#8a2be2","brown":"#a52a2a","burlywood":"#deb887",
+                "cadetblue":"#5f9ea0","chartreuse":"#7fff00","chocolate":"#d2691e","coral":"#ff7f50","cornflowerblue":"#6495ed","cornsilk":"#fff8dc","crimson":"#dc143c","cyan":"#00ffff",
+                "darkblue":"#00008b","darkcyan":"#008b8b","darkgoldenrod":"#b8860b","darkgray":"#a9a9a9","darkgreen":"#006400","darkkhaki":"#bdb76b","darkmagenta":"#8b008b","darkolivegreen":"#556b2f", "darkorange":"#ff8c00","darkorchid":"#9932cc","darkred":"#8b0000","darksalmon":"#e9967a","darkseagreen":"#8fbc8f","darkslateblue":"#483d8b","darkslategray":"#2f4f4f","darkturquoise":"#00ced1", "darkviolet":"#9400d3","deeppink":"#ff1493","deepskyblue":"#00bfff","dimgray":"#696969","dodgerblue":"#1e90ff",
+                "firebrick":"#b22222","floralwhite":"#fffaf0","forestgreen":"#228b22","fuchsia":"#ff00ff",
+                "gainsboro":"#dcdcdc","ghostwhite":"#f8f8ff","gold":"#ffd700","goldenrod":"#daa520","gray":"#808080","green":"#008000","greenyellow":"#adff2f",
+                "honeydew":"#f0fff0","hotpink":"#ff69b4",
+                "indianred ":"#cd5c5c","indigo":"#4b0082","ivory":"#fffff0","khaki":"#f0e68c",
+                "lavender":"#e6e6fa","lavenderblush":"#fff0f5","lawngreen":"#7cfc00","lemonchiffon":"#fffacd","lightblue":"#add8e6","lightcoral":"#f08080","lightcyan":"#e0ffff","lightgoldenrodyellow":"#fafad2", "lightgrey":"#d3d3d3","lightgreen":"#90ee90","lightpink":"#ffb6c1","lightsalmon":"#ffa07a","lightseagreen":"#20b2aa","lightskyblue":"#87cefa","lightslategray":"#778899","lightsteelblue":"#b0c4de", "lightyellow":"#ffffe0","lime":"#00ff00","limegreen":"#32cd32","linen":"#faf0e6",
+                "magenta":"#ff00ff","maroon":"#800000","mediumaquamarine":"#66cdaa","mediumblue":"#0000cd","mediumorchid":"#ba55d3","mediumpurple":"#9370d8","mediumseagreen":"#3cb371","mediumslateblue":"#7b68ee", "mediumspringgreen":"#00fa9a","mediumturquoise":"#48d1cc","mediumvioletred":"#c71585","midnightblue":"#191970","mintcream":"#f5fffa","mistyrose":"#ffe4e1","moccasin":"#ffe4b5",
+                "navajowhite":"#ffdead","navy":"#000080",
+                "oldlace":"#fdf5e6","olive":"#808000","olivedrab":"#6b8e23","orange":"#ffa500","orangered":"#ff4500","orchid":"#da70d6",
+                "palegoldenrod":"#eee8aa","palegreen":"#98fb98","paleturquoise":"#afeeee","palevioletred":"#d87093","papayawhip":"#ffefd5","peachpuff":"#ffdab9","peru":"#cd853f","pink":"#ffc0cb","plum":"#dda0dd","powderblue":"#b0e0e6","purple":"#800080",
+                "rebeccapurple":"#663399","red":"#ff0000","rosybrown":"#bc8f8f","royalblue":"#4169e1",
+                "saddlebrown":"#8b4513","salmon":"#fa8072","sandybrown":"#f4a460","seagreen":"#2e8b57","seashell":"#fff5ee","sienna":"#a0522d","silver":"#c0c0c0","skyblue":"#87ceeb","slateblue":"#6a5acd","slategray":"#708090","snow":"#fffafa","springgreen":"#00ff7f","steelblue":"#4682b4",
+                "tan":"#d2b48c","teal":"#008080","thistle":"#d8bfd8","tomato":"#ff6347","turquoise":"#40e0d0",
+                "violet":"#ee82ee",
+                "wheat":"#f5deb3","white":"#ffffff","whitesmoke":"#f5f5f5",
+                "yellow":"#ffff00","yellowgreen":"#9acd32"}
 
 def _round_and_clamp_0_255(number):
     return min(max(int(round(number)), 0), 255)
+
+#@@ Color
+def color_from_string(html_string):
+    """
+    Converts a string that is either a color name (e.g. "red") or a hex string (e.g. "#ff0000") to
+    a Color object.  The hex string can either be 6 hex digits (in which case alpha is assumed to be 255)
+    or 8 hex digits (which includes the alpha)
+    
+    :param html_string: A string as described above.
+    :raises ValueError: If the string is not recognised as a color name or valid 6 or 8 digit hex string.
+    :return: A Color object.
+    """
+    if html_string.lower() in _color_map:
+        html_string = _color_map[html_string.lower()]
+    # Now it's hex or unrecognised:
+    if not html_string.startswith("#"):
+        raise ValueError(f"Color \"{html_string} is not a known color name and does not start with a \"#\"")
+    html_string = html_string.lstrip('#')
+
+    if len(html_string) == 6:  # RGB format (without alpha)
+        r, g, b = (int(html_string[i:i+2], 16) for i in (0, 2, 4))
+        a = 255  # Default alpha if omitted
+    elif len(html_string) == 8:  # RGBA format
+        r, g, b, a = (int(html_string[i:i+2], 16) for i in (0, 2, 4, 6))
+    else:
+        raise ValueError("Hex string should have either 6 or 8 digits")
+
+    return Color(r, g, b, a)
 
 class Color:
     """
@@ -142,8 +193,11 @@ class EditableImage:
          
         :param x: The x position of the pixel (must be an integer) 
         :param y: The y position of the pixel (must be an integer)
-        :param color: The color to set.  This must be a :class:`Color` object.
+        :param color: The color to set: either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), or a :class:`Color` object.
         """
+        if isinstance(color, str):
+            color = color_from_string(color)
+        
         _strype_graphics_internal.canvas_setPixel(self.__image, x, y, (color.red, color.green, color.blue, color.alpha))
 
     #@@ list
@@ -188,9 +242,9 @@ class EditableImage:
         :param y: The top Y coordinate to draw the image at.
         """
         dim = _strype_graphics_internal.getCanvasDimensions(image._EditableImage__image)
-        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1])
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1], 1.0)
 
-    def draw_part_of_image(self, image, x, y, sx, sy, width, height):
+    def draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
         """
         Draws part of the given image into this image.
         
@@ -201,8 +255,9 @@ class EditableImage:
         :param sy: The top Y coordinate within the source image to draw from.
         :param width: The width of the area to draw from.
         :param height: The height of the area to draw from.
+        :param scale: The scale of the image (1.0 is original size, higher values result in drawing a larger version).
         """
-        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, sx, sy, width, height)
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, sx, sy, width, height, scale)
 
     #@@ float
     def get_width(self):
@@ -297,6 +352,32 @@ class EditableImage:
         :param angle_amount: The amount of degrees to travel (positive goes clockwise).
         """
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
+
+    def circle(self, centre_x, centre_y, radius):
+        """
+        Draws a circle with a given centre position and width and height.
+        
+        The circle will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
+        
+        :param centre_x: The centre X position of the circle.
+        :param centre_y: The centre Y position of the circle.
+        :param width: The radius (distance from centre to the edge) of the circle.
+        """
+        self.arc(centre_x, centre_y, radius, radius, 0, 360)
+
+    def polygon(self, points):
+        """
+        Draws a polygon with the given X, Y point locations.
+        
+        The last point will automatically be connected to the first point to convert the polygon.
+        
+        The polygon will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
+        
+        The polygon should be convex, otherwise the visual behaviour is undefined.
+        
+        :param points: A list of pairs of (X, Y) positions
+        """
+        _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
 
     #@@ EditableImage
     def make_copy(self):
@@ -672,6 +753,27 @@ class Actor:
         if a is not None:
             a.remove()
 
+    #@@ list
+    def get_all_nearby(self, distance, tag = None):
+        """
+        Gets all the actors that are within the current distance of this actor. There is an imaginary circle drawn at
+        the centre of this actor with radius of "distance", and any actors that touch this circle will be returned
+        (even if their centres are not within this circle; only one corner needs to be).  
+        
+        If this actor has had `set_can_touch(false)`
+        called, the returned list will always be empty.  The list will never feature any actors
+        which have had `set_can_touch(false)` called on them.
+        
+        If the tag is given (i.e. is not None), it will be used to filter the returned list just
+        to actors with that given tag.
+        
+        :param distance: The radius to look for nearby actors, from the centre of this actor
+        :param tag: The tag to use to filter the returned actors (or None/omitted if you do not want to filter the actors by tag)
+        :return: A list of all nearby actors.
+        """
+        return [a for a in _strype_input_internal.getAllNearbyAssociated(self.__id, distance) if tag is None or tag == a.get_tag()]
+
+
     #@@ EditableImage
     def edit_image(self):
         """
@@ -816,20 +918,24 @@ def key_pressed(keyname):
     """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
 
-def set_background(image_or_filename):
+def set_background(image_or_filename_or_color, tile_to_fit = True):
     """
     Sets the current background image.
     
-    The parameter can be an EditableImage, a colour, a filename of an image in Strype's image library, or a URL.
+    The parameter can be an EditableImage, a color, a filename of an image in Strype's image library, or a URL.
     Using a URL requires the server to allow remote image loading from Javascript via a feature
         called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
         you can load the image in a browser yourself.
-     
-    If the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
+    
+    If tile_to_fit is True and the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
+    If tile_to_fit is True and background image is larger than 800x600, it will be centered, and the extra regions will be cut off.
+    If tile_to_fit is False, the background image will be scaled (preserving its aspect ratio) to fit into 800x600, and centered.    
+    
     The background image is always copied, so later changes to an EditableImage will not be shown in the background;
     you should call set_background() again to update it.
     
-    :param image_or_filename: An EditableImage, an image filename or URL.
+    :param image_or_filename_or_color: An EditableImage, an image filename or URL, or a color name or hex string.
+    :param tile_to_fit: Whether to tile the background image to fit (True), or to stretch the image to Fit (False) 
     """
 
     # We use an oversize image to avoid slivers of other colour appearing at the edges
@@ -842,31 +948,35 @@ def set_background(image_or_filename):
         dest = EditableImage(808, 606)
         w = image.get_width()
         h = image.get_height()
-        # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
-        # each side of the centre.  So just always draw one more than we need:
-        horiz_copies = _math.ceil(808 / w) + 1
-        vert_copies = _math.ceil(606 / h) + 1
-        # We want one copy bang in the centre, so we need to work out the offset:
-        # These offsets will either be zero or negative because we start by drawing
-        # the far left or far top image.  We work out the position of the central
-        # image then subtract the width/height of half of the copies we need: 
-        x_offset = (808 - w) / 2 - (horiz_copies - 1) / 2 * w
-        y_offset = (606 - h) / 2 - (vert_copies - 1) / 2 * h
-        for i in range(0, horiz_copies):
-            for j in range(0, vert_copies):
-                dest.draw_image(image, x_offset + i * w, y_offset + j * h)
+        if tile_to_fit:
+            # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
+            # each side of the centre.  So just always draw one more than we need:
+            horiz_copies = (_math.ceil(808 / w) if w < 808 else 0) + 1
+            vert_copies = (_math.ceil(606 / h) if h < 606 else 0) + 1
+            # We want one copy bang in the centre, so we need to work out the offset:
+            # These offsets will either be zero or negative because we start by drawing
+            # the far left or far top image.  We work out the position of the central
+            # image then subtract the width/height of half of the copies we need: 
+            x_offset = (808 - w) / 2 - (horiz_copies - 1) / 2 * w
+            y_offset = (606 - h) / 2 - (vert_copies - 1) / 2 * h
+            for i in range(0, horiz_copies):
+                for j in range(0, vert_copies):
+                    dest.draw_image(image, x_offset + i * w, y_offset + j * h)
+        else:
+            scale = min(808 / w, 606 / h)
+            dest.draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
-    if isinstance(image_or_filename, EditableImage):
-        bk_image = background_808_606(image_or_filename)
-    elif isinstance(image_or_filename, str):
+    if isinstance(image_or_filename_or_color, EditableImage):
+        bk_image = background_808_606(image_or_filename_or_color)
+    elif isinstance(image_or_filename_or_color, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
         # otherwise it's a color name/value.
-        if _re.search(r"[.:/]", image_or_filename):
-            bk_image = background_808_606(load_image(image_or_filename))
+        if _re.search(r"[.:/]", image_or_filename_or_color):
+            bk_image = background_808_606(load_image(image_or_filename_or_color))
         else:
             bk_image = EditableImage(808, 606)
-            bk_image.set_fill(image_or_filename)
+            bk_image.set_fill(image_or_filename_or_color)
             bk_image.fill()
     else:
         raise TypeError("image_or_filename must be an EditableImage or a string")

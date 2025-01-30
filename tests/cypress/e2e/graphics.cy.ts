@@ -186,7 +186,7 @@ describe("Basic operation", () => {
         return;
     }
     it("Blank canvas", () => {
-        runCodeAndCheckImage("", "print('Hello')\n", "graphics-blank", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
+        runCodeAndCheckImage("", "print('Hello')\n", "graphics-blank");
     });
     it("Basic cat", () => {
         runCodeAndCheckImage("", "Actor('cat-test.jpg')\nsleep(1)\n", "graphics-just-cat");
@@ -242,6 +242,65 @@ describe("Basic operation", () => {
     });
 });
 
+describe("Image manipulation", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    it("Setting pixels using string colors", () => {
+        runCodeAndCheckImage("", `
+            img = EditableImage(100, 100)
+            img.set_fill("white")
+            img.fill()
+            for x in range(100):
+                for y in range(100):
+                    if x + y < 50:
+                        img.set_pixel(x, y, "red")
+                    elif x + y < 100:
+                        img.set_pixel(x, y, "#fFffFF80")
+                    elif x + y < 150:
+                        img.set_pixel(x, y, "#0080FF")
+                    else:
+                        img.set_pixel(x, y, "YELLOW")
+            a = Actor(img)
+            a.set_scale(6)
+        `, "image-set-pixel-string-colors");
+    });
+    it("Draws circles", () => {
+        runCodeAndCheckImage("", `
+            img = EditableImage(800, 600)
+            img.set_fill("white")
+            img.set_stroke("red")
+            img.circle(200,200,150)
+            img.set_fill(None)
+            img.set_stroke("#ff00ff")
+            img.circle(300, 500, 300)
+            img.set_fill("LIMEGREEN")
+            img.set_stroke(None)
+            img.circle(600, 200, 100)
+            
+            Actor(img)
+        `, "image-draw-circles");
+    });
+
+    it("Draws polygons", () => {
+        runCodeAndCheckImage("", `
+            img = EditableImage(800, 600)
+            img.set_fill("white")
+            img.set_stroke("red")
+            img.polygon([(100, 100), (400, 300), (100, 300)])
+            img.set_stroke(None)
+            img.set_fill("#ffff00")
+            points = []
+            for p in range(5):
+                points = points + [(500 + 200*math.cos(math.radians(p * 360 / 5)), 300 + 200*math.sin(math.radians(p * 360 / 5)))] 
+            img.polygon(points)
+            
+            Actor(img)
+        `, "image-draw-polygons");
+    });
+});
+
 describe("Collision detection", () => {
     if (Cypress.env("mode") == "microbit") {
         // Graphics tests can't run in microbit
@@ -292,6 +351,30 @@ describe("Collision detection", () => {
                 sq.edit_image().set_fill("red")
                 sq.edit_image().fill()
             `, "graphics-colliding-every-other-square-cat-minus-75");
+    });
+    it("Collisions in a radius", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones in a radius and colour them red
+        runCodeAndCheckImage("", `
+            circle_guide = EditableImage(800, 600)
+            circle_guide.set_stroke(None)
+            circle_guide.set_fill("#555555")
+            circle_guide.circle(400, 300, 200)
+            set_background(circle_guide)
+            cat = Actor('cat-test.jpg')
+            cat.set_scale(0.2)
+            white_square = EditableImage(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    squares.append(Actor(white_square.make_copy(), x*spacing, y*spacing))
+            for sq in cat.get_all_nearby(200):
+                sq.edit_image().set_fill("red")
+                sq.edit_image().fill()
+            `, "graphics-colliding-radius");
     });
 });
 
@@ -468,5 +551,33 @@ describe("World background", () => {
             Actor("cat-test.jpg")
             sleep(1)
         `, "background-colour");
+    });
+    it("Centres larger backgrounds", () => {
+        runCodeAndCheckImage("", `
+            big = EditableImage(1000, 1000)
+            big.set_fill("white")
+            big.set_stroke(None)
+            big.circle(500, 500, 450)
+            set_background(big)
+            Actor("cat-test.jpg")
+        `, "background-large-centred");
+    });
+
+    it("Stretches smaller backgrounds", () => {
+        runCodeAndCheckImage("", `
+            set_background("cat-test.jpg", False)
+            Actor("cat-test.jpg")
+        `, "background-small-scaled");
+    });
+
+    it("Stretches larger backgrounds", () => {
+        runCodeAndCheckImage("", `
+            big = EditableImage(1000, 1000)
+            big.set_fill("white")
+            big.set_stroke(None)
+            big.circle(500, 500, 450)
+            set_background(big, False)
+            Actor("cat-test.jpg")
+        `, "background-large-scaled");
     });
 });
