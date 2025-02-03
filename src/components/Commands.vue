@@ -608,7 +608,7 @@ export default Vue.extend({
             }
             else {
             // Less than a minute ago (we will use min 1 seconde even if less than a second, which is unlikely)
-                const nbSecs = lastSaveDateTickDiff / 60000;
+                const nbSecs = lastSaveDateTickDiff / 1000;
                 toolTipVal = (nbSecs > 1)
                     ? this.$i18n.t("appMessage.lastSavedOnNSecs", {nbLastSave: Math.round(nbSecs)}) as string
                     : this.$i18n.t("appMessage.lastSavedOn1Sec") as string;
