@@ -102,6 +102,8 @@
     "lastSavedOn1Min": "Dernier enregistrement : il y a une minute",
     "lastSavedOnNSecs": "Dernier enregistrement : il y a {nbLastSave} secondes",
     "lastSavedOn1Sec": "Dernier enregistrement : il y a une seconde",
+    "lastSavedDateUnknown": "Date du dernier enregistrement inconnue",
+    "notSaved": "Pas enregistré",
     "selectFolder":"Sélectionnez un dossier",
     "selectStrypeFile": "Sélectionnez un projet Strype",
     "gdriveLocation": "Dossier :",

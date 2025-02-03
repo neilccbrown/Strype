@@ -570,7 +570,8 @@ export default Vue.extend({
                             saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, this.appStore.generateStateJSONStrWithCheckpoint(), (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;
                                 this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
-                                this.appStore.googleDriveLastSaveDate = -1;
+                                this.appStore.projectLastSaveDate = Date.now();
+                                this.appStore.isEditorContentModified = false;
                                 this.saveTargetChoice(StrypeSyncTarget.fs);
                                 if(saveReason == SaveRequestReason.loadProject) {
                                     this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
@@ -582,7 +583,8 @@ export default Vue.extend({
                             // We cannot retrieve the file name ultimately set by the user or the browser when it's being saved with a click,
                             // however we should still at least update the project name with what the user set in our own save as dialog
                             this.appStore.projectName = saveFileName.trim();
-                            this.appStore.googleDriveLastSaveDate = -1;
+                            this.appStore.projectLastSaveDate = Date.now();
+                            this.appStore.isEditorContentModified = false;
                             this.saveTargetChoice(StrypeSyncTarget.fs);
                             this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                         }
@@ -637,14 +639,14 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, fileHandles[0]);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, fileHandles[0]);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: reader.result as string,
                                         }
-                                    ).then(() => this.onFileLoaded(fileHandles[0].name, fileHandles[0]), () => {});
+                                    ).then(() => fileHandles[0].getFile().then((file)=> this.onFileLoaded(fileHandles[0].name, file.lastModified, fileHandles[0])), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);  
@@ -670,20 +672,21 @@ export default Vue.extend({
                     this.$emit("app-showprogress", emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
+                    const lastModified = files[0].lastModified;
                     readFileContent(files[0])
                         .then(
                             (content) => {
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName, lastModified);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: content,
                                         }
-                                    ).then(() => this.onFileLoaded(fileName), () => {});
+                                    ).then(() => this.onFileLoaded(fileName, lastModified), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
@@ -711,7 +714,7 @@ export default Vue.extend({
             }
         },
 
-        onFileLoaded(fileName: string, fileLocation?: FileSystemFileHandle):void {
+        onFileLoaded(fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle):void {
             this.saveTargetChoice(StrypeSyncTarget.fs);
             this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {name: "FS", function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
 
@@ -721,7 +724,7 @@ export default Vue.extend({
             if(fileLocation){
                 this.appStore.strypeProjectLocation = fileLocation;
             }
-            this.appStore.googleDriveLastSaveDate = -1;
+            this.appStore.projectLastSaveDate = lastSaveDate;
         },
 
         resetProject(): void {

@@ -294,7 +294,7 @@ export default Vue.extend({
                     if(reason.status == 404){
                         this.appStore.strypeProjectLocation = undefined;
                         this.appStore.strypeProjectLocationAlias = "";
-                        this.appStore.googleDriveLastSaveDate = -1;
+                        this.appStore.projectLastSaveDate = -1;
                     }
                 });
             }            
@@ -384,7 +384,7 @@ export default Vue.extend({
                         this.appStore.projectName = this.saveFileName;
                     }               
                     // The saving date is updated in any cases
-                    this.appStore.googleDriveLastSaveDate = Date.now();     
+                    this.appStore.projectLastSaveDate = Date.now();     
                     // Notify the application that if we were saving for loading now we are done
                     if(this.saveReason == SaveRequestReason.loadProject)                     {
                         this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
@@ -471,7 +471,7 @@ export default Vue.extend({
                     // Restore the fields we backed up before loading
                     this.appStore.strypeProjectLocation = strypeLocation;
                     this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
-                    this.appStore.googleDriveLastSaveDate = lastSaveDate;
+                    this.appStore.projectLastSaveDate = lastSaveDate;
                     // And finally register the correc target flags via the Menu 
                     // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
                     (this.$parent as InstanceType<typeof MenuVue>).saveTargetChoice(StrypeSyncTarget.gd);

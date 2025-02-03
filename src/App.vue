@@ -823,7 +823,7 @@ export default Vue.extend({
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
         
-        setStateFromPythonFile(completeSource: string, fileName: string, fileLocation?: FileSystemFileHandle) : void {
+        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : void {
             const allLines = completeSource.split(/\r?\n/);
             // Split can make an extra blank line at the end which we don't want:
             if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
@@ -873,7 +873,7 @@ export default Vue.extend({
                 /* FITRUE_isPython */
 
                 // Finally, we can trigger the notifcation a file has been loaded.
-                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, fileLocation);
+                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
             }
         },
     },

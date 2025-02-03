@@ -144,7 +144,7 @@ export const useStore = defineStore("app", {
 
             currentGoogleDriveSaveFileId: undefined as undefined|string,
 
-            googleDriveLastSaveDate: -1, // Date ticks
+            projectLastSaveDate: -1, // Date ticks
 
             selectedFrames: [] as number[],
 
@@ -1285,6 +1285,7 @@ export const useStore = defineStore("app", {
             // If the sync target property did not exist in the saved stated, we set it up to the default value
             this.syncTarget = StrypeSyncTarget.none;
             this.isEditorContentModified = false;
+            this.projectLastSaveDate = -1;
 
             // We check the errors in the code applied to the that new state
             nextTick().then(() => {

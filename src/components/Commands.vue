@@ -3,10 +3,12 @@
         <div :class="{'no-PEA-commands': true, 'cropped': isExpandedPEA}" @wheel.stop>
             <div class="project-name-container">
                 <span class="project-name">{{projectName}}</span>
-                <div v-if="isSyncingInGoogleDrive" @mouseover="getLastGDriveSavedDateTooltip" :title="lastGDriveSavedDateTooltip">
-                    <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="gdrive-logo"/>   
-                    <span class="gdrive-sync-label" v-if="isSyncingInGoogleDrive && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
-                    <span class="gdrive-sync-label" v-else-if="isSyncingInGoogleDrive" v-t="'appMessage.modifGDrive'" />
+                <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
+                    <img v-if="isProjectFromGoogleDrive" :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="project-target-logo"/> 
+                    <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" alt="Google Drive" class="project-target-logo"/> 
+                    <img v-else :src="require('@/assets/images/empty.png')" alt="Google Drive" class="project-target-logo"/>   
+                    <span class="gdrive-sync-label" v-if=" (isProjectFromGoogleDrive || isProjectFromFS) && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
+                    <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" />
                 </div>
             </div>     
             <div @mousedown.prevent.stop @mouseup.prevent.stop>
@@ -117,7 +119,7 @@ export default Vue.extend({
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
             isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to fit the other parts of the commands)
-            lastGDriveSavedDateTooltip: "", // update on a mouse over event (in getLastGDriveSavedDateTooltip)
+            lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
         };
     },
 
@@ -141,8 +143,12 @@ export default Vue.extend({
             return (this.appStore.isEditorContentModified);
         },
 
-        isSyncingInGoogleDrive(): boolean {
+        isProjectFromGoogleDrive(): boolean {
             return this.appStore.syncTarget == StrypeSyncTarget.gd;
+        },
+
+        isProjectFromFS(): boolean {
+            return this.appStore.syncTarget == StrypeSyncTarget.fs;
         },
 
         /* IFTRUE_isPython */
@@ -573,16 +579,30 @@ export default Vue.extend({
             }          
         },
 
-        getLastGDriveSavedDateTooltip() {
+        getLastProjectSavedDateTooltip() {
             // We show an indication about the last saved date of the document.
+            // There shouldn't be a case when we get a date that is no set, but to prevent weird behaviour            
+           
+            // If we are in a new project, or a browser loaded project (from localStorage) we show "not saved"
+            if(this.appStore.syncTarget == StrypeSyncTarget.none){
+                this.lastProjectSavedDateTooltip = this.$i18n.t("appMessage.notSaved") as string;
+                return;
+            }
+            
+            // we associate the default value -1 to "unknown".
+            if(this.appStore.projectLastSaveDate == -1){
+                this.lastProjectSavedDateTooltip = this.$i18n.t("appMessage.lastSavedDateUnknown") as string;
+                return;
+            } 
+
             // The format of that indication depends on how long the last saved date was.
-            // If it was within a week (that is, less than 24*7 hours ago), we show "last saved about <xxx>",
+            // If it was within a week (that is, less than 24*7 hours ago), we show "last saved <xxx> ago",
             // otherwise, we show "last saved on <yyy>".
             let toolTipVal = "";
-            const lastSaveDateTickDiff = Date.now() - this.appStore.googleDriveLastSaveDate;
+            const lastSaveDateTickDiff = Date.now() - this.appStore.projectLastSaveDate;
             if(lastSaveDateTickDiff > 604800000 ){
                 // More than a week ago (7 days * 24 h * 60 min * 60 s * 1000 ms)
-                toolTipVal = this.$i18n.t("appMessage.lastSavedOn", {lastSavedDate: new Date(this.appStore.googleDriveLastSaveDate).toLocaleString()}) as string; 
+                toolTipVal = this.$i18n.t("appMessage.lastSavedOn", {lastSavedDate: new Date(this.appStore.projectLastSaveDate).toLocaleString()}) as string; 
             }
             else if(lastSaveDateTickDiff > 86400000){
                 // Less than a week but more than a day ago (24 h * 60 min * 60 s * 1000 ms)
@@ -613,7 +633,7 @@ export default Vue.extend({
                     ? this.$i18n.t("appMessage.lastSavedOnNSecs", {nbLastSave: Math.round(nbSecs)}) as string
                     : this.$i18n.t("appMessage.lastSavedOn1Sec") as string;
             }
-            this.lastGDriveSavedDateTooltip = toolTipVal;
+            this.lastProjectSavedDateTooltip = toolTipVal;
         },
 
         /* IFTRUE_isMicrobit */
@@ -653,7 +673,7 @@ export default Vue.extend({
     color: #274D19;
 }
 
-.gdrive-logo {
+.project-target-logo {
     width: 16px;
     height: 16px;
     margin-left: 5px;
