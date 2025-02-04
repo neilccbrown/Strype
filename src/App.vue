@@ -44,7 +44,8 @@
                             <div class="col">
                                 <div 
                                     :id="editorUID" 
-                                    :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
+                                    :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}"
+                                    @mousedown="handleWholeEditorMouseDown"
                                 >
                                     <FrameContainer
                                         v-for="container in containerFrames"
@@ -573,6 +574,11 @@ export default Vue.extend({
 
         messageTop(): boolean {
             return this.appStore.currentMessage.type !== MessageTypes.imageDisplay;
+        },
+
+        handleWholeEditorMouseDown(){
+            // Force the Strype menu to close in case it was opened
+            (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
         },
 
         handleDocumentSelectionChange(){
