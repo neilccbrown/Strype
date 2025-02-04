@@ -75,7 +75,6 @@
   },
   "appMessage": {
     "editorFileUpload": "Cargando tu archive archiveo al editor...",
-    "editorConfirmChangeCode": "El contenido actual del editor se perderá permanentemente",
     "editorFileUploadWrongVersion": "Este código se ha proudcido con una versión diferente del editor.\nLa importación puede generar errores.\n¿Aún quieres continuar?",
     "importsContainer": "Importaciones:",
     "funcDefsContainer": "Definiciones de funciones:",

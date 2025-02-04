@@ -21,10 +21,6 @@
             <!-- load/save section -->
             <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" :autoFocusButton="'ok'">
-                <div v-if="changesNotSavedOnLoad">
-                    <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
-                    <br/>
-                </div>
                 <div>
                     <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
                     <b-button-group :ref="loadProjectTargetButtonGpId" size="sm">
@@ -273,10 +269,6 @@ export default Vue.extend({
             return this.appStore.syncTarget == StrypeSyncTarget.gd;
         },
 
-        isProjectSyncedModified(): boolean {
-            return this.appStore.syncTarget != StrypeSyncTarget.none && this.appStore.isEditorContentModified;
-        },
-
         currentDriveLocation(): string {
             const currentLocation = this.appStore.strypeProjectLocationAlias??"";
             return (currentLocation.length > 0) ? currentLocation : "Strype";
@@ -324,11 +316,6 @@ export default Vue.extend({
         
         saveFileNameInputId(): string {
             return "saveStrypeFileNameInput";
-        },
-
-        changesNotSavedOnLoad(): boolean {
-            // For Google Drive, we will attempt saving anyway when loading so we don't need to care.
-            return this.appStore.syncTarget != StrypeSyncTarget.gd && (this.appStore.isProjectUnsaved ?? true);
         },
 
         isUndoDisabled(): boolean {

@@ -74,7 +74,6 @@
   },
   "appMessage": {
     "editorFileUpload": "Deine Datei wird in den Editor geladen...",
-    "editorConfirmChangeCode": "Der Inhalt des Editors wird permanent gelöscht.",
     "editorFileUploadWrongVersion": "Dieser Code wurde mit einer anderen Version des Editors erstellt.\nImportieren kann womöglich Fehler beinhalten.\n\nFortfahren?",
     "importsContainer": "Importe:",
     "funcDefsContainer": "Funktionsdefinitionen:",

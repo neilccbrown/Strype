@@ -78,7 +78,6 @@
   },
   "appMessage": {
     "editorFileUpload": "正在将文件上传到编辑器...",
-    "editorConfirmChangeCode": "当前编辑器的内容将永久丢失。",
     "editorAskSaveChangedCode": "你的项目含有更改内容。你要先保存再创建另一个项目吗？",
     "editorFileUploadWrongVersion": "此代码由其他版本的编辑器生成。\n导入可能会导致错误。\n\n您还想继续吗？",
     "importsContainer": "导入：",
