@@ -185,6 +185,9 @@ export default Vue.extend({
             // the right button group value when the dialog is opened, and cleared when the dialog is explicitly closed by the user
             // or when the actions that follow the validation of the dialog (if any) are done.
             currentModalButtonGroupIDInAction: "",
+            // Request opening a project flag we need to use when a user wanted to open another project from a modified project
+            // that wasn't initially a FS or GD project (because at this stage we can't know what the target will be...)
+            requestOpenProjectLater: false,
         };
     },
 
@@ -208,9 +211,7 @@ export default Vue.extend({
         this.$root.$on("bv::modal::hide", this.onStrypeMenuHideModalDlg);      
         
         // Event listener for saving project action completion
-        this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, () => {
-            this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
-        });
+        this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
 
         // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
         // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
@@ -230,7 +231,7 @@ export default Vue.extend({
         this.$root.$off("bv::modal::hide", this.onStrypeMenuHideModalDlg);
 
         // And for the saving project action completion too
-        this.$root.$off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.loadProject);
+        this.$root.$off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
     },
 
     computed: {
@@ -410,8 +411,8 @@ export default Vue.extend({
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
-            // We might need to check, first that a project was opened and have been modified and need to be saved.
-            if(this.isProjectSyncedModified){
+            // We might need to check, first that a project has been modified and needs to be saved.
+            if(this.appStore.isEditorContentModified){
                 // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
                 this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
@@ -421,7 +422,7 @@ export default Vue.extend({
             }
         },
 
-        handleSaveMenuClick(): void {
+        handleSaveMenuClick(saveReason?: SaveRequestReason): void {
             // Some problem, like for the load project menu, happens because of changing v-if to v-show (it works first time, but not second time).
             // So again, we handle things manually for the menu entry click
             if(this.isSynced){
@@ -429,7 +430,15 @@ export default Vue.extend({
             }
             else{
                 this.$root.$emit("bv::show::modal", this.saveProjectModalDlgId);
+                // When we are saving a "browser" project (that is, not from FS or GD) we need to be able to trigger the "Open" later, so we set a flag
+                this.requestOpenProjectLater = (saveReason == SaveRequestReason.loadProject);
             }
+        },
+
+        openLoadProjectDlgAfterSaved(): void {
+            // Reset the flag to request opening the project later (see flag definition)
+            this.requestOpenProjectLater = false;
+            this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);            
         },
 
         changeTempSyncTarget(target: StrypeSyncTarget, isSaveAction?: boolean) {
@@ -573,7 +582,7 @@ export default Vue.extend({
                                 this.appStore.projectLastSaveDate = Date.now();
                                 this.appStore.isEditorContentModified = false;
                                 this.saveTargetChoice(StrypeSyncTarget.fs);
-                                if(saveReason == SaveRequestReason.loadProject) {
+                                if(saveReason == SaveRequestReason.loadProject || this.requestOpenProjectLater) {
                                     this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                                 }
                             });
@@ -586,7 +595,9 @@ export default Vue.extend({
                             this.appStore.projectLastSaveDate = Date.now();
                             this.appStore.isEditorContentModified = false;
                             this.saveTargetChoice(StrypeSyncTarget.fs);
-                            this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                            if(saveReason == SaveRequestReason.loadProject || this.requestOpenProjectLater) {
+                                this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                            }
                         }
                     }
                     else {          

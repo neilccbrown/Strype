@@ -26,7 +26,7 @@ import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import MenuVue from "./Menu.vue";
+import Menu from "@/components/Menu.vue";
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -386,7 +386,7 @@ export default Vue.extend({
                     // The saving date is updated in any cases
                     this.appStore.projectLastSaveDate = Date.now();     
                     // Notify the application that if we were saving for loading now we are done
-                    if(this.saveReason == SaveRequestReason.loadProject)                     {
+                    if(this.saveReason == SaveRequestReason.loadProject || (this.$parent as InstanceType<typeof Menu>).requestOpenProjectLater) {
                         this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                     }                
                 },
@@ -474,7 +474,7 @@ export default Vue.extend({
                     this.appStore.projectLastSaveDate = lastSaveDate;
                     // And finally register the correc target flags via the Menu 
                     // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
-                    (this.$parent as InstanceType<typeof MenuVue>).saveTargetChoice(StrypeSyncTarget.gd);
+                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.gd);
                 }, () => {});
 
                 // We check that the file has write access. If it doesn't we shouldn't propose the sync anymore.
