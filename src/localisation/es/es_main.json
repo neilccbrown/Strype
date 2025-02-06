@@ -75,7 +75,6 @@
   },
   "appMessage": {
     "editorFileUpload": "Cargando tu archive archiveo al editor...",
-    "editorConfirmChangeCode": "El contenido actual del editor se perderá permanentemente",
     "editorFileUploadWrongVersion": "Este código se ha proudcido con una versión diferente del editor.\nLa importación puede generar errores.\n¿Aún quieres continuar?",
     "importsContainer": "Importaciones:",
     "funcDefsContainer": "Definiciones de funciones:",
@@ -89,8 +88,7 @@
     "fileName": "Nombre del archivo:",
     "gdriveFileAlreadyExists": "Ya existe un proyecto con este nombre en la ubicación de Google Drive.\n/¿Quieres reemplazarlo?",
     "gdriveLockedFileAlreadyExists": "Este proyecto está bloqueado en la unicación de Google Drive.\nNo se puede guardar con este nombre.",
-    "autosaveGDrive": "Guardardo",
-    "autoSaveGDriveTooltip": "Este proyecto se guardará automáticamente en Google Drive cada {frecuencia} minutos.",
+    "savedGDrive": "Guardardo",
     "selectFolder": "Seleccione una carpeta",
     "selectStrypeFile": "Seleccione un proyecto Strype",
     "gdriveLocation": "Carpeta:",

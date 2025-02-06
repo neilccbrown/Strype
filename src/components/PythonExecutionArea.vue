@@ -1,6 +1,6 @@
 
 <template>
-    <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA}" ref="peaComponent">
+    <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div id="peaControlsDiv" :class="{'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
@@ -191,6 +191,11 @@ export default Vue.extend({
     },
 
     methods: {
+        handlePEAMouseDown() {
+            // Force the Strype menu to close in case it was opened
+            (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
+        },
+
         runClicked() {
             // The Python code execution has a 3-ways states:
             // - not running when nothing happens, click will trigger "running"

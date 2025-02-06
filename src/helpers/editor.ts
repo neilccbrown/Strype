@@ -26,9 +26,9 @@ export enum CustomEventTypes {
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
-    addFunctionToEditorAutoSave = "addToAutoSaveFunction",
-    removeFunctionToEditorAutoSave = "rmToAutoSaveFunction",
-    requestEditorAutoSaveNow = "requestAutoSaveNow",
+    addFunctionToEditorProjectSave = "addToProjectSaveFunction",
+    removeFunctionToEditorProjectSave = "rmToProjectSaveFunction",
+    requestEditorProjectSaveNow = "requestProjectSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     noneStrypeFilePicked = "nonStrypeFilePicked",
     acItemHovered="acItemHovered",
@@ -958,7 +958,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 // Helpers for adding or removing the "duplicate" action on a drag an drop frames
 export function addDuplicateActionOnFramesDnD(): void {
     // Add the "+" symbol
-    if(currentCaretDropPosFrameId > 0){
+    if(currentCaretDropPosFrameId != 0){
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = true;
     }
 
@@ -969,7 +969,7 @@ export function addDuplicateActionOnFramesDnD(): void {
 
 export function removeDuplicateActionOnFramesDnD(): void {
     // Remove the "+" symbol on the destination caret
-    if(currentCaretDropPosFrameId > 0){
+    if(currentCaretDropPosFrameId != 0){
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = false;
     }
 

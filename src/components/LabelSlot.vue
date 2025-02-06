@@ -433,12 +433,12 @@ export default Vue.extend({
         handleMouseEnterLeave(isEntering: boolean) {
             // There is a bug with how Firefox handles editable text HTML elements contained in a draggable div.
             // We need to detect when the mouse is entering/leaving the text element to disable/enable the div's
-            // draggable attribute. 
+            // draggable attribute (disabled frames should show draggable since text can't be edited). 
             // Because the frames are nested, we need to do that for all the frames hierarchy up ot the frames container.
             // see https://stackoverflow.com/questions/21680363/prevent-drag-event-to-interfere-with-input-elements-in-firefox-using-html5-drag
             let frameId = this.frameId;
             do{
-                (document.getElementById(getFrameUID(frameId)) as HTMLDivElement).draggable = !isEntering;
+                (document.getElementById(getFrameUID(frameId)) as HTMLDivElement).draggable = this.isDisabled || (!isEntering && !this.isDisabled);
                 frameId = this.appStore.frameObjects[frameId].parentId;
             } 
             while(frameId > 0);
@@ -1504,7 +1504,7 @@ export default Vue.extend({
 }
 
 .labelSlot-input.readonly {
-    cursor: pointer;
+    cursor: default;
     user-select: none;
 }
 

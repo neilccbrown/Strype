@@ -74,7 +74,6 @@
   },
   "appMessage": {
     "editorFileUpload": "Deine Datei wird in den Editor geladen...",
-    "editorConfirmChangeCode": "Der Inhalt des Editors wird permanent gelöscht.",
     "editorFileUploadWrongVersion": "Dieser Code wurde mit einer anderen Version des Editors erstellt.\nImportieren kann womöglich Fehler beinhalten.\n\nFortfahren?",
     "importsContainer": "Importe:",
     "funcDefsContainer": "Funktionsdefinitionen:",
@@ -88,8 +87,7 @@
     "fileName": "Dateiname:",
     "gdriveFileAlreadyExists": "Es existiert schon ein Projekt mit diesem Namen.\nMöchtest Du es ersetzen?",
     "gdriveLockedFileAlreadyExists": "Dieses Projekt existiert und ist schreibgeschützt.\nEs kann nicht unter diesem Namen gespeichert werden.",
-    "autosaveGDrive": "Gespeichert",
-    "autoSaveGDriveTooltip": "Das Projekt wird automatisch alle {freq} Minuten zum Google Drive gespeichert.",
+    "savedGDrive": "Gespeichert",
     "selectFolder": "Wähle einen Ordner",
     "selectStrypeFile": "Wähle ein Strype-Projekt",
     "gdriveLocation": "Ordner:",
