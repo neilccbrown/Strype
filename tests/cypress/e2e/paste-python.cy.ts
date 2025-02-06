@@ -101,6 +101,10 @@ function testRoundTripImportAndDownload(filepath: string, expected?: string) {
 
         cy.get("#showHideMenu").click();
         cy.get("#loadProjectLink").click();
+        // If the current state of the project is modified,
+        // we first need to discard the changes (we check the button is available)
+        cy.get("button").contains("Discard changes").should("exist").click();
+        cy.wait(2000);
         cy.get("button").contains("This device").click();
         cy.get("button").contains("OK").click();
         // Must force because the <input> is hidden:

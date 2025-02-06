@@ -5,8 +5,8 @@
                 <span class="project-name">{{projectName}}</span>
                 <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
                     <img v-if="isProjectFromGoogleDrive" :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="project-target-logo"/> 
-                    <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" alt="Google Drive" class="project-target-logo"/> 
-                    <img v-else :src="require('@/assets/images/empty.png')" alt="Google Drive" class="project-target-logo"/>   
+                    <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')" class="project-target-logo"/> 
+                    <img v-else :src="require('@/assets/images/empty.png')" class="project-target-logo"/>   
                     <span class="gdrive-sync-label" v-if=" (isProjectFromGoogleDrive || isProjectFromFS) && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
                     <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" />
                 </div>
@@ -581,7 +581,6 @@ export default Vue.extend({
 
         getLastProjectSavedDateTooltip() {
             // We show an indication about the last saved date of the document.
-            // There shouldn't be a case when we get a date that is no set, but to prevent weird behaviour            
            
             // If we are in a new project, or a browser loaded project (from localStorage) we show "not saved"
             if(this.appStore.syncTarget == StrypeSyncTarget.none){
@@ -589,7 +588,8 @@ export default Vue.extend({
                 return;
             }
             
-            // we associate the default value -1 to "unknown".
+            // There shouldn't be a case when we get a date that is no set to a proper value, but to prevent
+            // weird and invalid date display, we associate the default value -1 to "unknown".
             if(this.appStore.projectLastSaveDate == -1){
                 this.lastProjectSavedDateTooltip = this.$i18n.t("appMessage.lastSavedDateUnknown") as string;
                 return;
