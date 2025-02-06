@@ -78,7 +78,7 @@
   },
   "appMessage": {
     "editorFileUpload": "Uploading your file to the editor...",
-    "editorAskSaveChangedCode": "Your project contains changes. Should it be saved before opening another project?",
+    "editorAskSaveChangedCode": "Your project contains unsaved changes.\nSave before closing?",
     "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
     "importsContainer": "Imports:",
     "funcDefsContainer": "Function definitions:",

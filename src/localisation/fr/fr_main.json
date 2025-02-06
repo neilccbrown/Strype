@@ -76,7 +76,7 @@
   },
   "appMessage": {
     "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",
-    "editorAskSaveChangedCode": "Votre projet contient des modifications. Doit-il être enregistré avant d'ouvrir un autre project?",
+    "editorAskSaveChangedCode": "Votre projet contient des modifications non-enregistrées. Enregister avant de quitter le projet actuel ?",
     "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
     "importsContainer": "Imports :",
     "funcDefsContainer": "Définitions de fonctions :",
