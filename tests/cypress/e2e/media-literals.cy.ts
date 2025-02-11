@@ -146,4 +146,19 @@ describe("Paste image literals", () => {
             checkGraphicsCanvasContent("paste-and-show");
         });
     });
+
+    it("Can call method on pasted image", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" set_background(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(1000);
+            // A yellowy-greeny colour from his eye:
+            cy.get("body").type(".get_pixel(270, 150");
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-color-pick");
+        });
+    });
 });

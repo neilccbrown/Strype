@@ -1124,6 +1124,9 @@ export default Vue.extend({
                 // We currently only allow image paste if it will occupy whole slot:
                 if (selectionStart == 0 && selectionEnd == (inputSpanField.textContent?.length ?? 0)) {
                     this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, "", "", SlotType.media, false, content);
+                    this.$nextTick(() => {
+                        this.appStore.leftRightKey({key: "ArrowRight"});
+                    });
                 }
                 return;
             }
