@@ -31,8 +31,10 @@
             @input="onSlotSpanChange"
             @dragstart.prevent
             v-text="code"
+            v-if="!isMediaSlot"
         >
         </span>
+        <img :src="getMediaSrc()" v-if="isMediaSlot" class="labelSlot-image limited-height-inline-image" alt="User image" :data-code="code" :data-mediaType="getMediaType()">
                
         <b-popover
             v-if="erroneous()"
@@ -65,7 +67,7 @@ import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -176,6 +178,10 @@ export default Vue.extend({
                 return (retrieveSlotFromSlotInfos(this.coreSlotInfo) as StringSlot).quote;
             }
             return "";
+        },
+        
+        isMediaSlot(): boolean {
+            return this.slotType == SlotType.media;
         },
         
         frameType(): string{
@@ -1097,10 +1103,10 @@ export default Vue.extend({
         },
 
         onCodePaste(event: CustomEvent) {
-            this.onCodePasteImpl(event.detail);
+            this.onCodePasteImpl(event.detail.content, event.detail.type);
         },
         
-        onCodePasteImpl(content : string) {
+        onCodePasteImpl(content : string, type : string) {
             // Save the current state
             const stateBeforeChanges = cloneDeep(this.appStore.$state);
 
@@ -1114,7 +1120,15 @@ export default Vue.extend({
             const isCommentFrame = (this.frameType == AllFrameTypesIdentifier.comment);
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
-            if(inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
+            if (type.startsWith("image")) {
+                // We currently only allow image paste if it will occupy whole slot:
+                if (selectionStart == 0 && selectionEnd == (inputSpanField.textContent?.length ?? 0)) {
+                    this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, "", "", SlotType.media, false, content);
+                }
+                return;
+            }
+            
+            if (inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
                 // part 0 : the code copied from the interface contains unwanted CRLF added by the browser between the spans
                 // We want to clear that, we replace them by spaces to avoid issues with keyword operators, except for
                 // - before/after the content (we trime before doing anything)
@@ -1443,7 +1457,7 @@ export default Vue.extend({
             this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
             setDocumentSelection(slotCursorInfo, slotCursorInfo);
             // Then "paste" in the completion:
-            this.onCodePasteImpl(newCode);
+            this.onCodePasteImpl(newCode, "text");
 
             if(!isInSubModuleImportPathPart) {
                 // Slight hack; if it ended in a bracket, go left one place to end up back in the bracket:
@@ -1474,6 +1488,15 @@ export default Vue.extend({
    
         isImportFrame(): boolean {
             return this.appStore.isImportFrame(this.frameId);
+        },
+        
+        getMediaSrc(): string {
+            let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
+            return "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0];
+        },
+        getMediaType(): string {
+            let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
+            return slot.mediaType;
         },
     },
 });
@@ -1552,5 +1575,9 @@ export default Vue.extend({
     position: absolute;
     left: 0px;
     z-index: 10;
+}
+
+.limited-height-inline-image {
+    max-height: 2em;
 }
 </style>

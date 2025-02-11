@@ -128,6 +128,19 @@ export function readFileAsync(file: Blob): Promise<BufferSource>  {
     });
 }
 
+export function readFileAsyncAsData(file: File): Promise<string>  {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+            resolve(reader.result as string);
+        };
+
+        reader.onerror = reject;
+
+        reader.readAsDataURL(file);
+    });
+}
 
 export const readFileContent = async (file: File): Promise<string>  => {
     // from https://stackoverflow.com/questions/17068610/read-a-file-synchronously-in-javascript

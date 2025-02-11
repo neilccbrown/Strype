@@ -59,6 +59,10 @@ export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) 
         const ss = item as StringSlot;
         return ss.quote + ss.code + ss.quote;
     }
+    else if ("mediaType" in item) {
+        // It's an image literal; no completion
+        return "";
+    }
     else if ("code" in item) {
         const basic = item as BaseSlot;
         return basic.code;

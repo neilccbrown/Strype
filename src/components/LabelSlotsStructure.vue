@@ -43,6 +43,7 @@ import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getS
 import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
+import {readFileAsyncAsData} from "@/helpers/common";
 
 
 export default Vue.extend({
@@ -201,8 +202,8 @@ export default Vue.extend({
             if(labelDiv){ // keep TS happy
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
-                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
-                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots});
+                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, imageLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
+                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: imageLiterals});
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
@@ -339,11 +340,25 @@ export default Vue.extend({
             // Paste events need to be handled on the parent contenteditable div because FF will not accept
             // forwarded (untrusted) events to be hooked by the children spans. 
             this.appStore.ignoreKeyEvent = true;
-            if (event.clipboardData && this.appStore.focusSlotCursorInfos) {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if (event.clipboardData && focusSlotCursorInfos) {
+                const items = event.clipboardData.items;
+                for (let item of items) {
+                    let file = item.getAsFile();
+                    if (file && item.type.startsWith("image")) {
+                        readFileAsyncAsData(file).then((base64) => {
+                            const code = "load_image(\"data:" + item.type + ";" + base64 + "\")";
+                            document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code}}));
+                        });
+                        return;
+                    }
+                }
+
                 // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
                 const content = event.clipboardData.getData("Text");
-                document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
-                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: content}));
+                document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: content}}));
             }
         },        
 

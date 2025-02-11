@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, MediaSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -882,6 +882,31 @@ export const useStore = defineStore("app", {
                 const otherOperandSlotIndex = addOperatorBefore ? slotIndex : (slotIndex + 1);
                 (parentFieldSlot.fields[slotIndex] as BaseSlot).code = codeForCurrentSlot;
                 parentFieldSlot.fields.splice(otherOperandSlotIndex, 0, {code: codeForOtherOperandSlot});                
+            }
+            else if (addingSlotType==SlotType.media){
+                // We are adding a media item. In this context, the function arguments have this meaning:
+                // operatorOrBracket: the mediaType
+                // lhsCode: the code on the slot that precedes the structured slot [resp. string slot] we insert
+                // rhsCode: the code on the slot that follows the structured slot [resp. string slot] we insert
+                // midCode: if provided, the code that should be added as a base field within the structured slot [the string quote] we insert 
+                //          this makes sense when we highlight a text and wrap it with brackets [resp. quotes]
+                // Adding a new bracketed slot means we also add the empty operators "around" it:
+                // we replace the slot where we add the brackets into this:
+                // <base slot (LHS)><empty operator><bracket [resp. string] slot><empty operator><basic slot (RHS)>
+
+                // Create the fields first
+                const newFields: FieldSlot[] = [];
+                // the LHS part
+                newFields[0] = {code: lhsCode};
+                // the new bracketed structure or string slot depending what we are adding
+                newFields[1] = {mediaType: operatorOrBracket, code: midCode} as MediaSlot;
+                // the RHS part
+                newFields[2] = {code: rhsCode};
+                // now we can replace the existing slot
+                parentFieldSlot.fields.splice(slotIndex, 1, ...newFields);
+
+                // Create the operators
+                parentFieldSlot.operators.splice(slotIndex, 0, ...[{code: ""}, {code: ""}]);
             }
             else{
                 // We are adding a bracketed structure or a string slot. In this context, the function arguments have this meaning:
