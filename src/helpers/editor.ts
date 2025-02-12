@@ -239,13 +239,15 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     let hasStringSlots = false;
     const imageLiterals : {code: string, mediaType: string}[] = [];
     frameLabelStruct.querySelectorAll(".labelSlot-input,.labelSlot-image").forEach((spanElement) => {
-        if (spanElement instanceof HTMLImageElement) {
+        if (spanElement.classList.contains("labelSlot-image")) {
             const code = spanElement.getAttribute("data-code");
             // We add the code, but also record the image literal for later manipulation:
             if (code) {
                 uiLiteralCode += code;
                 imageLiterals.push({code: code, mediaType: spanElement.getAttribute("data-mediaType") ?? ""});
             }
+            // Media literals are considered to be one character wise:
+            focusSpanPos += 1;
             return;
         }
         if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
@@ -1424,11 +1426,35 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
     
     // Reverse replacement of image literals:
     imageLiterals.forEach((imageLiteral, i) => {
+        const target = IMAGE_PLACERHOLDER + i + "$";
         for (let j = 0; j < resStructSlot.fields.length; j++) {
             if (isFieldBaseSlot(resStructSlot.fields[j])) {
-                if ((resStructSlot.fields[j] as BaseSlot).code.trim() == IMAGE_PLACERHOLDER + i + "$") {
-                    // Replace with image literal:
+                const code = (resStructSlot.fields[j] as BaseSlot).code;
+                const pos = code.indexOf(target);
+                if (pos != -1) {
+                    const before = code.substring(0, pos).trim();
+                    const after = code.substring(pos + target.length).trim();
+                    
+                    // Replace field with image literal:
                     resStructSlot.fields[j] = {...resStructSlot.fields[j], code: imageLiteral.code, mediaType: imageLiteral.mediaType } as MediaSlot;
+                    // Image literals must be surrounded by a plain field before and after, with blank operator, so that you can position
+                    // the cursor next to them to edit (either adding content next to them, or deleting the literal itself)
+                    // Without this, for example, if you put a media literal in a bracket, you can't put the cursor anywhere inside the
+                    // bracket because there will be a single field (for the media literal) and no actual possible cursor positions.
+                    if (before.length > 0 || j == 0 || !isFieldBaseSlot(resStructSlot.fields[j-1]) || resStructSlot.operators[j-1].code != "") {
+                        // If there's no plain slot before or the operator isn't blank, we need to add a blank operator and blank field:
+                        resStructSlot.operators.splice(j, 0, {code: ""});
+                        resStructSlot.fields.splice(j, 0, {code: before} as BaseSlot);
+                        // Need to compensate for what we just added:
+                        j += 1;
+                    }
+                    if (after.length > 0 || j == resStructSlot.fields.length || !isFieldBaseSlot(resStructSlot.fields[j+1]) || resStructSlot.operators[j].code != "") {
+                        // If there's no plain slot after or the operator isn't blank, we need to add a blank operator and blank field:
+                        resStructSlot.operators.splice(j, 0, {code: ""});
+                        resStructSlot.fields.splice(j+1, 0, {code: after} as BaseSlot);
+                    }
+                    // Note: this returns the forEach part and looks for the next media literal
+                    return;
                 }
             }
         }

@@ -191,7 +191,28 @@ describe("Paste image literals", () => {
             checkGraphicsCanvasContent("paste-and-delete");
         });
     });
+
+    it("Can delete and retype operator after pasted image", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" set_background(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(1000);
+            // A yellowy-greeny colour from his eye:
+            cy.get("body").type(".get_pixel(270,150");
+            for (let i = 0; i < ".get_pixel(270,150".length; i++) {
+                cy.get("body").type("{leftarrow}");
+            }
+            cy.wait(1000);
+            cy.get("body").type("{del}");
+            cy.wait(1000);
+            cy.get("body").type(".");
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-color-pick-with-delete");
+        });
+    });
     
-    // TODO more deletion tests
-    // TODO check the downloaded Python file (and check for double data: item)
+    // TODO check the downloaded Python file (and check for double data: item) (and ideally re-load the images as images from the .py)
 });
