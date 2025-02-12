@@ -580,12 +580,9 @@ export default Vue.extend({
         },
 
         getLastProjectSavedDateTooltip() {
-            // We show an indication about the last saved date of the document.
-           
-            // If we are in a new project, or a browser loaded project (from localStorage) we show "not saved"
-            if(this.appStore.syncTarget == StrypeSyncTarget.none){
-                this.lastProjectSavedDateTooltip = this.$i18n.t("appMessage.notSaved") as string;
-                return;
+            // We show an indication about the last saved date of the document (unless there is no select source yet)
+            if(this.appStore.syncTarget == StrypeSyncTarget.none) {
+                return "";
             }
             
             // There shouldn't be a case when we get a date that is no set to a proper value, but to prevent
@@ -676,7 +673,7 @@ export default Vue.extend({
 .project-target-logo {
     width: 16px;
     height: 16px;
-    margin-left: 5px;
+    margin-left: 15px;
     margin-right: 2px;
 }
 

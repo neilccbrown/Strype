@@ -104,7 +104,6 @@
     "lastSavedOnNSecs": "Last saved: {nbLastSave} seconds ago",
     "lastSavedOn1Sec": "Last saved: a second ago",
     "lastSavedDateUnknown": "Unknown last saved date",
-    "notSaved": "Not saved",
     "selectFolder": "Select a folder",
     "selectStrypeFile": "Select a Strype project",
     "gdriveLocation": "Folder:",
