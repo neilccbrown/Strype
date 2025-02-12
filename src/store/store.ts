@@ -979,6 +979,7 @@ export const useStore = defineStore("app", {
                         // de facto in a bracket.
                         const isRemovingBrackets = (parentId != slotToDeleteParentId);
                         const isRemovingString = (slotToDeleteInfos.slotType == SlotType.string) || (currentSlotInfos.slotType == SlotType.string);
+                        const isRemovingMedia = (slotToDeleteInfos.slotType == SlotType.media);
 
                         // Deal with bracket / string partial deletion as a particular case
                         if(isRemovingBrackets || isRemovingString){
@@ -1071,13 +1072,15 @@ export const useStore = defineStore("app", {
                             }
                         }                    
 
-                        // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
-                        // Now we merge the 2 fields surrouding the deleted operator:
-                        // when forward deleting, that means appening the next field content to the current slot's content,
-                        // when backward deleting, that means prepending the previous field content to the current's slot content.
-                        const slotToDeleteCode = (slotToDelete as BaseSlot).code;
-                        const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
-                        (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode); 
+                        if (!isRemovingMedia) {
+                            // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
+                            // Now we merge the 2 fields surrouding the deleted operator:
+                            // when forward deleting, that means appening the next field content to the current slot's content,
+                            // when backward deleting, that means prepending the previous field content to the current's slot content.
+                            const slotToDeleteCode = (slotToDelete as BaseSlot).code;
+                            const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
+                            (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode);
+                        }
 
                         // Now we do the fields/operator deletion:
                                 

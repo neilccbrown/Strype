@@ -161,4 +161,37 @@ describe("Paste image literals", () => {
             checkGraphicsCanvasContent("paste-and-color-pick");
         });
     });
+
+    it("Can delete pasted image with backspace", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" set_background(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(1000);
+            // A yellowy-greeny colour from his eye:
+            cy.get("body").type("{backspace}\"red");
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-backspace");
+        });
+    });
+
+    it("Can delete pasted image with delete", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" set_background(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(1000);
+            // A yellowy-greeny colour from his eye:
+            cy.get("body").type("{leftarrow}{del}\"red");
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-delete");
+        });
+    });
+    
+    // TODO more deletion tests
+    // TODO check the downloaded Python file (and check for double data: item)
 });
