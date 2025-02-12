@@ -1121,13 +1121,10 @@ export default Vue.extend({
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             if (type.startsWith("image")) {
-                // We currently only allow image paste if it will occupy whole slot:
-                if (selectionStart == 0 && selectionEnd == (inputSpanField.textContent?.length ?? 0)) {
-                    this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, "", "", SlotType.media, false, content);
-                    this.$nextTick(() => {
-                        this.appStore.leftRightKey({key: "ArrowRight"});
-                    });
-                }
+                this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, inputSpanField.textContent?.substring(0, selectionStart) ?? "", inputSpanField.textContent?.substring(selectionEnd) ?? "", SlotType.media, false, content);
+                this.$nextTick(() => {
+                    this.appStore.leftRightKey({key: "ArrowRight"});
+                });
                 return;
             }
             

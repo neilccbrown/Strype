@@ -213,6 +213,30 @@ describe("Paste image literals", () => {
             checkGraphicsCanvasContent("paste-and-color-pick-with-delete");
         });
     });
+
+    it("Can paste image in existing slot", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" set_background(dontget_pixel(270,150");
+            cy.wait(1000);
+            // Then we go back to between "dont" and "get":
+            for (let i = 0; i < "get_pixel(270,150".length; i++) {
+                cy.get("body").type("{leftarrow}");
+            }
+            // Then we paste:
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(1000);
+            // Then we type a dot:
+            cy.get("body").type(".");
+            // Then we go back to before the image and delete the "dont":
+            cy.get("body").type("{leftarrow}{leftarrow}{backspace}{backspace}{backspace}{backspace}");
+            cy.wait(1000);
+            
+            executeCode();
+            checkGraphicsCanvasContent("paste-in-text");
+        });
+    });
     
     // TODO check the downloaded Python file (and check for double data: item) (and ideally re-load the images as images from the .py)
 });

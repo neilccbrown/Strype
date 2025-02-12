@@ -247,7 +247,9 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 imageLiterals.push({code: code, mediaType: spanElement.getAttribute("data-mediaType") ?? ""});
             }
             // Media literals are considered to be one character wise:
-            focusSpanPos += 1;
+            if (!foundFocusSpan) {
+                focusSpanPos += 1;
+            }
             return;
         }
         if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
