@@ -32,7 +32,7 @@ class Sound:
         elif isinstance(source_or_seconds, str):
             self.__buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source_or_seconds)
         else:
-            raise TypeError("Sound source must be a number or a string")
+            raise TypeError(f"Sound source must be a number or a string, but was: {type(source_or_seconds)}")
     
     def get_num_samples(self):
         """
