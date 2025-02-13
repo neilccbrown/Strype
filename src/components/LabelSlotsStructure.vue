@@ -352,6 +352,7 @@ export default Vue.extend({
                 // First we need to check if it's a media item on the clipboard, because that needs
                 // to become a media literal rather than plain text:
                 const items = event.clipboardData.items;
+                /* IFTRUE_isPython */
                 for (let item of items) {
                     let file = item.getAsFile();
                     if (file && item.type.startsWith("image")) {
@@ -364,6 +365,7 @@ export default Vue.extend({
                         return;
                     }
                 }
+                /* FITRUE_isPython */
 
                 // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
                 const content = event.clipboardData.getData("Text");
