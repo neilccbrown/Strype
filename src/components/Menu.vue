@@ -20,13 +20,21 @@
             <div class="menu-separator-div"></div>
             <!-- load/save section -->
             <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
-            <ModalDlg :dlgId="loadProjectModalDlgId" :autoFocusButton="'ok'">
+            <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
                 <div>
-                    <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
-                    <b-button-group :ref="loadProjectTargetButtonGpId" size="sm">
-                        <b-button :value="syncGDValue" :variant="(getSyncTargetStatus(syncGDValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)">Google Drive</b-button>
-                        <b-button :value="syncFSValue" :variant="(getSyncTargetStatus(syncFSValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)" v-t="'appMessage.targetFS'"></b-button>
-                    </b-button-group> 
+                    <div :ref="loadProjectTargetButtonGpId" class="open-project-target-button-container">
+                        <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
+                        <div :id="loadGDProjectButtonId" class="open-project-target-button" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                            <span>Google Drive</span>
+                        </div>
+                        <div :id="loadFSProjectButtonId" class="open-project-target-button" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                            <span v-t="'appMessage.targetFS'"></span>
+                        </div>
+                    </div>
                 </div>
             </ModalDlg>
             <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
@@ -290,6 +298,14 @@ export default Vue.extend({
             return "loadProjectProjectSelect";
         },
 
+        loadGDProjectButtonId(): string {
+            return "loadGDStrypeButton";
+        },
+
+        loadFSProjectButtonId(): string {
+            return "loadFSStrypeButton";
+        },
+
         saveOnLoadModalDlgId(): string {
             return "save-on-load-project-modal-dlg";
         },
@@ -428,10 +444,25 @@ export default Vue.extend({
             this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);            
         },
 
+        changeTargetFocusOnMouseOver(event: MouseEvent) {
+            // When a target is hovered, we show a cue that the button can be "clicked".
+            // A focused button will show the same behaviour.
+            // Therefore, we need to make sure that the focus (of the button) aligns with the hovering.
+            if(event.target){
+                (event.target as HTMLDivElement).focus();
+            }
+        },
+
         changeTempSyncTarget(target: StrypeSyncTarget, isSaveAction?: boolean) {
             this.tempSyncTarget = target;
             if(isSaveAction){
                 this.onSaveTargetChanged();
+            }
+            else {
+                // There is no intermediate steps when the target is selected for opening a project
+                // (we first close the target selector modal, then validate)
+                this.$root.$emit("bv::hide::modal", this.loadProjectModalDlgId);
+                this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.loadProjectModalDlgId);
             }
         },
 
@@ -506,6 +537,17 @@ export default Vue.extend({
                     saveFileNameInputElement.click();
                 }, 500);           
             }
+            else if(dlgId == this.loadProjectModalDlgId){
+                // When the load project dialog is opened, we focus the Google Drive selector by default
+                setTimeout(() => {
+                    const gdButton =[...document.querySelectorAll(".open-project-target-button")].find((targetButton) => {
+                        return targetButton.querySelector("span")?.textContent?.includes("Google");
+                    });
+                    if(gdButton){
+                        (gdButton as HTMLDivElement).focus();
+                    }
+                }, 100);                
+            } 
         },
 
         onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string, saveReason ?: SaveRequestReason) {
@@ -529,7 +571,7 @@ export default Vue.extend({
                 this.currentModalButtonGroupIDInAction = "";
 
             }
-            else if(event.trigger == "ok" || event.trigger == "event"){
+            else if(event.trigger == "ok" || (event.trigger == "event" && event.type != "hide")){
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){
                     this.currentModalButtonGroupIDInAction = this.loadProjectTargetButtonGpId;
@@ -813,7 +855,31 @@ export default Vue.extend({
                         event.preventDefault();
                     }
                 }
-
+            }
+            else if(!isSaveAction){
+                // For the loading project dialog, enter should act as a button validation, if one of the target is focused.
+                if(event.key.toLowerCase() == "enter"){
+                    const focusedTarget = document.activeElement;
+                    if(focusedTarget && focusedTarget.classList.contains("open-project-target-button")){
+                        (focusedTarget as HTMLDivElement).click();
+                    }
+                    return;
+                }
+                // Left/right arrows should trigger a change of target
+                if(event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
+                    const currentFocusedElementID = document.activeElement?.id??"";
+                    const targetButtons = [...document.querySelectorAll(".open-project-target-button")];
+                    const focusedButtonIndex = targetButtons.findIndex((target) => {
+                        return target.id == currentFocusedElementID;
+                    });
+                    if(focusedButtonIndex > -1){
+                        const newFocousedButtonIndex = (event.key.toLowerCase() == "arrowleft") 
+                            ? (((focusedButtonIndex - 1) >= 0) ? focusedButtonIndex - 1 : targetButtons.length - 1)
+                            : (((focusedButtonIndex + 1) < targetButtons.length) ? focusedButtonIndex + 1 : 0); 
+                        (targetButtons[newFocousedButtonIndex] as HTMLDivElement).focus();
+                    }
+                    return;
+                }
             }
         },
 
@@ -991,6 +1057,39 @@ export default Vue.extend({
     color: white;
     background-color: #d66;
     border-radius: 50%;
+}
+
+.open-project-target-button-container {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 20px;
+    justify-content: space-around;
+    align-items: center;
+    margin-top: 5px;
+}
+
+.open-project-target-button {
+    border-radius: 8px;
+    border: #c5c4c1 1px solid;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    padding: 5px;
+    align-items: center;
+    justify-content: space-between;
+    width: 120px;
+}
+
+.open-project-target-button:focus
+ {
+    border-color: #007bff;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px rgb(141, 140, 140);
+    outline: none;
+}
+
+.open-project-target-button-container img {
+    width: 64px;
 }
 
 .toggle-button {

@@ -82,7 +82,7 @@
     "preCompiledErrorNeedFix": "Primero corrija los erroes existentes.",
     "noWebUSB": "Este navegador no admite conexiones webUSB. Por favor utilice otro navegador (como Google Chrome).",
     "emptyCodeError": "El códdigo no puede estar vacío.",
-    "loadToTarget": "Abierto desde",
+    "loadToTarget": "Abierto desde:",
     "saveToTarget": "Guardar en",
     "targetFS": "Este dispositivo",
     "fileName": "Nombre del archivo:",

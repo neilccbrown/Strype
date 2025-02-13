@@ -84,7 +84,7 @@
     "preCompiledErrorNeedFix": "Veuillez d'abord corriger les erreurs existantes.",
     "noWebUSB": "Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
     "emptyCodeError": "Le code ne peut pas être vide.",
-    "loadToTarget": "Ouvrir à partir de",
+    "loadToTarget": "Ouvrir à partir de :",
     "saveToTarget": "Enregister vers",
     "targetFS": "Cet ordinateur",
     "fileName": "Nom de fichier :",

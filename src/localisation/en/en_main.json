@@ -86,7 +86,7 @@
     "preCompiledErrorNeedFix": "Please fix existing errors first.",
     "noWebUSB": "This browser does not support webUSB connections. Please use a browser such as Google Chrome.",
     "emptyCodeError": "The code cannot be empty.",
-    "loadToTarget": "Open from",
+    "loadToTarget": "Open from:",
     "saveToTarget": "Save to",
     "targetFS": "This device",
     "fileName": "File Name:",
