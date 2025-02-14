@@ -63,7 +63,7 @@
     "errorUserDefinedFuncMsg": "Benutzerdefinierte Function\nDiese Funktionsdefinition enthält Fehler",
     "errorUserDefinedVarMsg": "Benutzerdefinierte Variable\nEine Zuweisung zu dieser Variablen enthält einen Fehler",
     "EOFError": "Dieser Frame kann nicht leer sein.",
-    "GDriveSaveFailed": "Strype konnte nicht auf Google Drive speichern. Automatische Speicherung ist abgeschaltet.",
+    "GDriveSaveFailed": "Strype konnte nicht auf Google Drive speichern.",
     "fileNameError": "Projekt- / Dateiname kann nur Buchstaben, Zahlen, Leerzeichen, Bindestrich oder Klammern beinhalten.",
     "gdriveConnectionSaveToLoadProjFailed": "Fehler beim Versuch, dass offene Projekt auf Google Drive zu speichern. Bitte wieder anmelden, um ein anderes Projekt zu laden.",
     "gdriveConnectionSaveToUnloadPageFailed": "Fehler beim Versuch, dass offene Projekt auf Google Drive zu speichern. Bitte wieder anmelden, um das Projekt zu speichern bevor Strype geschlossen wird.",

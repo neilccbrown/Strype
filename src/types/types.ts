@@ -1032,6 +1032,7 @@ export enum SaveRequestReason {
     overwriteExistingProject, // explicit save overwerwriting an existing file/project (used for Google Drive only)
     loadProject,
     unloadPage,
+    reloadBrowser, // for Google Drive: when a project was previously saved in GD and the browser is reloaded and the user requested to save the local changes to GD.
 }
 
 export interface SaveExistingGDProjectInfos {

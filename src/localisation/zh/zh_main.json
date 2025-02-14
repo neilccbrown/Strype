@@ -67,7 +67,7 @@
     "errorUserDefinedFuncMsg": "用户定义函数\n此函数定义包含错误",
     "errorUserDefinedVarMsg": "用户定义变量\n此变量的一个赋值包含错误",
     "EOFError": "此框架不能为空。",
-    "GDriveSaveFailed": "无法保存到 Google Drive。您的最新更改可能尚未保存。自动保存已关闭。",
+    "GDriveSaveFailed": "无法保存到 Google Drive。",
     "fileNameError": "项目/文件名只能包含字母、数字、空格、连字符或括号",
     "gdriveConnectionSaveToLoadProjFailed": "尝试保存当前项目时无法连接到 Google Drive。请尝试重新登录以打开另一个项目。",
     "gdriveConnectionSaveToUnloadPageFailed": "尝试保存当前项目时无法连接到 Google Drive。请在离开Strype前尝试重新登录以保存当前项目 。",

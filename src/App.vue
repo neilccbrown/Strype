@@ -72,7 +72,7 @@
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
         <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
-            <span style="white-space:pre-wrap">{{ $t('appMessage.resyncToGDAtStartup') }}</span>
+            <span style="white-space:pre-wrap" v-html="$t('appMessage.resyncToGDAtStartup')"></span>
         </ModalDlg>
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
@@ -446,8 +446,8 @@ export default Vue.extend({
                             if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
                                 // Fetch the Google Drive component
                                 const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
-                                // Initiate a connection to Google Drive via loading mechanisms (for resync at startup)
-                                gdVueComponent.loadFile(true);
+                                // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
+                                gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
 
                                 this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
                             }
