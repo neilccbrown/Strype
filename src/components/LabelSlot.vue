@@ -1569,6 +1569,15 @@ export default Vue.extend({
             return slot.mediaType;
         },
     },
+    watch: {
+        slotType: function() {
+            if (this.isMediaSlot) {
+                this.loadMediaPreview().then((m) => {
+                    this.mediaPreview = m;
+                });
+            }
+        },
+    },
 });
 </script>
 
