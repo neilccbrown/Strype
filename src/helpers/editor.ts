@@ -238,8 +238,8 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
     const imageLiterals : {code: string, mediaType: string}[] = [];
-    frameLabelStruct.querySelectorAll(".labelSlot-input,.labelSlot-image").forEach((spanElement) => {
-        if (spanElement.classList.contains("labelSlot-image")) {
+    frameLabelStruct.querySelectorAll(".labelSlot-input,.labelSlot-media").forEach((spanElement) => {
+        if (spanElement.classList.contains("labelSlot-media")) {
             const code = spanElement.getAttribute("data-code");
             // We add the code, but also record the image literal for later manipulation:
             if (code) {

@@ -34,7 +34,7 @@
             v-if="!isMediaSlot"
         >
         </span>
-        <img :src="getMediaSrc()" v-if="isMediaSlot" class="labelSlot-image limited-height-inline-image" alt="User image" :data-code="code" :data-mediaType="getMediaType()">
+        <img :src="mediaPreview" v-if="isMediaSlot" class="labelSlot-media limited-height-inline-image" alt="Media literal" :data-code="code" :data-mediaType="getMediaType()">
                
         <b-popover
             v-if="erroneous()"
@@ -64,6 +64,7 @@
 
 <script lang="ts">
 import Vue, { PropType } from "vue";
+import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID } from "@/helpers/editor";
@@ -77,6 +78,57 @@ import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import App from "@/App.vue";
 import Frame from "@/components/Frame.vue";
+
+// Default time to keep in cache: 5 minutes.
+const soundPreviewImages = new Cache({ defaultTtl: 5 * 60 * 1000 });
+
+// Adapted from https://stackoverflow.com/questions/66776487/how-to-convert-mp3-to-the-sound-wave-image-using-javascript
+// Returns base64 version of PNG of image
+function drawSoundOnCanvas(audioBuffer : AudioBuffer) : string {
+    const float32Arrays : Float32Array[] = [];
+    for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+        float32Arrays.push(audioBuffer.getChannelData(ch));
+    }
+    const targetWidth = 200;
+    const targetHeight = 50;
+    const array = [];
+
+    let i = 0;
+    const length = audioBuffer.length;
+    const chunkSize = Math.floor(length / targetWidth);
+    while (i < length) {
+        let max = 0;
+        // We take the max out of all values in the chunk, across all channels:
+        for (const arr of float32Arrays) {
+            max = Math.max(arr.slice(i, i + chunkSize).reduce(function (total, value) {
+                return Math.max(total, Math.abs(value));
+            }));
+        }
+        array.push(max);
+        i += chunkSize;
+    }
+    
+    const img = document.createElement("canvas");
+    img.width = targetWidth;
+    img.height = targetHeight;
+    const ctx = img.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
+    if (ctx == null) {
+        // Shouldn't happen:
+        return "";
+    }
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+    for (let index = 0; index < array.length; index++) {
+        ctx.strokeStyle = "green";
+        ctx.beginPath();
+        // Most sounds don't reach max volume so we rescale to 0.65 to give a more indicative preview:
+        ctx.moveTo(index, targetHeight/2 - Math.min(0.65, Math.abs(array[index]))/0.65 * targetHeight/2);
+        ctx.lineTo(index, targetHeight/2 + Math.min(0.65, Math.abs(array[index]))/0.65 * targetHeight/2);
+        ctx.stroke();
+    }
+    return img.toDataURL("image/png");
+}
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -120,6 +172,11 @@ export default Vue.extend({
         if(spanH && acElement){
             acElement.style.top = (spanH + "px");
         }
+        if (this.isMediaSlot) {
+            this.loadMediaPreview().then((m) => {
+                this.mediaPreview = m;
+            });
+        }
     },
 
     beforeDestroy() {
@@ -153,6 +210,8 @@ export default Vue.extend({
             tabDownTriggered: false,
             //we need to track the key.down events for the bracket/quote closing method (cf details there)
             keyDownStr: "",
+            //the preview for media literal (blank string if not media literal):
+            mediaPreview: "",
         };
     },
     
@@ -1120,7 +1179,7 @@ export default Vue.extend({
             const isCommentFrame = (this.frameType == AllFrameTypesIdentifier.comment);
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
-            if (type.startsWith("image")) {
+            if (type.startsWith("image") || type.startsWith("audio")) {
                 this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, inputSpanField.textContent?.substring(0, selectionStart) ?? "", inputSpanField.textContent?.substring(selectionEnd) ?? "", SlotType.media, false, content);
                 this.$nextTick(() => {
                     this.appStore.leftRightKey({key: "ArrowRight"});
@@ -1490,9 +1549,20 @@ export default Vue.extend({
             return this.appStore.isImportFrame(this.frameId);
         },
         
-        getMediaSrc(): string {
+        async loadMediaPreview(): Promise<string> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
-            return "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0];
+            if (slot.mediaType.startsWith("image")) {
+                return "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0];
+            }
+            else if (slot.mediaType.startsWith("audio")) {
+                let val : string | null = soundPreviewImages.get(slot.code) as string | null;
+                if (val == null) {
+                    val = drawSoundOnCanvas(await new OfflineAudioContext(1, 1, 48000).decodeAudioData(Uint8Array.from(atob(/base64,([^"']+)/.exec(slot.code)?.[1] ?? ""), (char) => char.charCodeAt(0)).buffer));
+                    soundPreviewImages.put(slot.code, val);
+                }
+                return val;
+            }
+            return "";
         },
         getMediaType(): string {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;

@@ -214,9 +214,9 @@ export default Vue.extend({
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
                     // Reposition the cursor now
-                    labelDiv.querySelectorAll(".labelSlot-input,.labelSlot-image").forEach((spanElement) => {
+                    labelDiv.querySelectorAll(".labelSlot-input,.labelSlot-media").forEach((spanElement) => {
                         if(!foundPos){
-                            if (spanElement.classList.contains("labelSlot-image")) {
+                            if (spanElement.classList.contains("labelSlot-media")) {
                                 // Media literals are considered to be one character wide:
                                 newUICodeLiteralLength += 1;
                                 // Go on to the next selector item:
@@ -355,10 +355,12 @@ export default Vue.extend({
                 /* IFTRUE_isPython */
                 for (let item of items) {
                     let file = item.getAsFile();
-                    if (file && item.type.startsWith("image")) {
+                    let isImage = item.type.startsWith("image");
+                    let isAudio = item.type.startsWith("audio");
+                    if (file && (isImage || isAudio)) {
                         readFileAsyncAsData(file).then((base64) => {
                             // The code is the code to load the literal from its base64 string representation:
-                            const code = "load_image(\"data:" + item.type + ";" + base64 + "\")";
+                            const code = (isImage ? "load_image" : "Sound") + "(\"data:" + item.type + ";" + base64 + "\")";
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
                                 ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code}}));
                         });
