@@ -1,6 +1,6 @@
 <!-- this acts as a wrapper around the bootstrap modals, to have centralised control and customisation -->
 <template>
-    <b-modal no-close-on-backdrop :hide-header-close="!showCloseBtn" :id="dlgId" :title="dlgTitle" hid :ok-only="okOnly" 
+    <b-modal no-close-on-backdrop :hide-header-close="!showCloseBtn" :id="dlgId" :title="dlgTitle" :ok-only="okOnly" 
         :ok-title="okTitle" :cancel-title="cancelTitle" :size="size" :auto-focus-button="autoFocusButton">
         <slot/>
         <!-- the footer part is entirely optional if other buttons than the default OK/Cancel or Yes/No are required -->
