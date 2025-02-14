@@ -884,15 +884,14 @@ export const useStore = defineStore("app", {
                 parentFieldSlot.fields.splice(otherOperandSlotIndex, 0, {code: codeForOtherOperandSlot});                
             }
             else if (addingSlotType==SlotType.media){
-                // We are adding a media item. In this context, the function arguments have this meaning:
+                // We are adding a media literal. In this context, the function arguments have this meaning:
                 // operatorOrBracket: the mediaType
-                // lhsCode: the code on the slot that precedes the structured slot [resp. string slot] we insert
-                // rhsCode: the code on the slot that follows the structured slot [resp. string slot] we insert
-                // midCode: if provided, the code that should be added as a base field within the structured slot [the string quote] we insert 
-                //          this makes sense when we highlight a text and wrap it with brackets [resp. quotes]
-                // Adding a new bracketed slot means we also add the empty operators "around" it:
-                // we replace the slot where we add the brackets into this:
-                // <base slot (LHS)><empty operator><bracket [resp. string] slot><empty operator><basic slot (RHS)>
+                // lhsCode: the code on the slot that precedes the media literal we insert
+                // rhsCode: the code on the slot that follows the media literal we insert
+                // midCode: the code that should be added for the media literal we insert 
+                // Adding a new media literal means we also add the empty operators "around" it:
+                // we replace the slot where we add the literal into this:
+                // <base slot (LHS)><empty operator><media literal slot><empty operator><basic slot (RHS)>
 
                 // Create the fields first
                 const newFields: FieldSlot[] = [];

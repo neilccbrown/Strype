@@ -246,7 +246,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 uiLiteralCode += code;
                 imageLiterals.push({code: code, mediaType: spanElement.getAttribute("data-mediaType") ?? ""});
             }
-            // Media literals are considered to be one character wise:
+            // Media literals are considered to be one character wide:
             if (!foundFocusSpan) {
                 focusSpanPos += 1;
             }
@@ -1454,6 +1454,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                         // If there's no plain slot after or the operator isn't blank, we need to add a blank operator and blank field:
                         resStructSlot.operators.splice(j, 0, {code: ""});
                         resStructSlot.fields.splice(j+1, 0, {code: after} as BaseSlot);
+                        // No need to compensate because we're about to return from this whole code segment:
                     }
                     // Note: this returns the forEach part and looks for the next media literal
                     return;

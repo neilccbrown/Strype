@@ -170,7 +170,7 @@ describe("Paste image literals", () => {
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
-            // A yellowy-greeny colour from his eye:
+            // Delete the image and write "red" instead:
             cy.get("body").type("{backspace}\"red");
             executeCode();
             checkGraphicsCanvasContent("paste-and-backspace");
@@ -185,7 +185,7 @@ describe("Paste image literals", () => {
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
-            // A yellowy-greeny colour from his eye:
+            // Delete the image and write "red" instead:
             cy.get("body").type("{leftarrow}{del}\"red");
             executeCode();
             checkGraphicsCanvasContent("paste-and-delete");

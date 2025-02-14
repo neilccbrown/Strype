@@ -349,11 +349,14 @@ export default Vue.extend({
             this.appStore.ignoreKeyEvent = true;
             const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if (event.clipboardData && focusSlotCursorInfos) {
+                // First we need to check if it's a media item on the clipboard, because that needs
+                // to become a media literal rather than plain text:
                 const items = event.clipboardData.items;
                 for (let item of items) {
                     let file = item.getAsFile();
                     if (file && item.type.startsWith("image")) {
                         readFileAsyncAsData(file).then((base64) => {
+                            // The code is the code to load the literal from its base64 string representation:
                             const code = "load_image(\"data:" + item.type + ";" + base64 + "\")";
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
                                 ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code}}));
