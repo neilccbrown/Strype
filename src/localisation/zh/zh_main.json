@@ -87,7 +87,7 @@
     "noWebUSB": "此浏览器不支持 webUSB 连接。请使用 Google Chrome 等浏览器。",
     "emptyCodeError": "代码不能为空。",
     "loadToTarget": "打开自:",
-    "saveToTarget": "保存至",
+    "saveToTarget": "保存至:",
     "targetFS": "此设备",
     "fileName": "文件名：",
     "gdriveFileAlreadyExists": "Drive 位置中已存在同名项目。\n是否要替换它？",

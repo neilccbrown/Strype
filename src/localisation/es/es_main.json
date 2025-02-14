@@ -83,7 +83,7 @@
     "noWebUSB": "Este navegador no admite conexiones webUSB. Por favor utilice otro navegador (como Google Chrome).",
     "emptyCodeError": "El códdigo no puede estar vacío.",
     "loadToTarget": "Abierto desde:",
-    "saveToTarget": "Guardar en",
+    "saveToTarget": "Guardar en:",
     "targetFS": "Este dispositivo",
     "fileName": "Nombre del archivo:",
     "gdriveFileAlreadyExists": "Ya existe un proyecto con este nombre en la ubicación de Google Drive.\n/¿Quieres reemplazarlo?",
