@@ -1648,6 +1648,7 @@ export default Vue.extend({
 }
 
 .limited-height-inline-image {
-    max-height: 2em;
+    max-height: 1.5em;
+    border:1px solid #333;
 }
 </style>
