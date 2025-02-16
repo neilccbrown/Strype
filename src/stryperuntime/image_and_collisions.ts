@@ -246,7 +246,8 @@ export class PersistentImageManager {
             
             this.collisionSystem.checkOne(collisionCircle, (found) => {
                 const pimg = this.boxToImageMap.get(found.b as Box);
-                if (pimg) {
+                // Don't include ourselves in the results:
+                if (pimg && pimg.id != id) {
                     all.push(pimg.associatedObject);
                 }
             });

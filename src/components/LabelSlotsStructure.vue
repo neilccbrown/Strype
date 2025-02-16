@@ -43,6 +43,7 @@ import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getS
 import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
+import {readFileAsyncAsData} from "@/helpers/common";
 
 
 export default Vue.extend({
@@ -201,8 +202,8 @@ export default Vue.extend({
             if(labelDiv){ // keep TS happy
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
-                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
-                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots});
+                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, imageLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
+                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: imageLiterals});
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
@@ -213,8 +214,15 @@ export default Vue.extend({
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
                     // Reposition the cursor now
-                    labelDiv.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
+                    labelDiv.querySelectorAll(".labelSlot-input,.labelSlot-image").forEach((spanElement) => {
                         if(!foundPos){
+                            if (spanElement.classList.contains("labelSlot-image")) {
+                                // Media literals are considered to be one character wide:
+                                newUICodeLiteralLength += 1;
+                                // Go on to the next selector item:
+                                return;
+                            }
+                            
                             const spanContentLength = (spanElement.textContent?.length??0);
                             if(setInsideNextSlot || (focusCursorAbsPos <= (newUICodeLiteralLength + spanContentLength) && focusCursorAbsPos >= newUICodeLiteralLength)){
                                 if(!setInsideNextSlot && !isElementEditableLabelSlotInput(spanElement)){
@@ -339,11 +347,28 @@ export default Vue.extend({
             // Paste events need to be handled on the parent contenteditable div because FF will not accept
             // forwarded (untrusted) events to be hooked by the children spans. 
             this.appStore.ignoreKeyEvent = true;
-            if (event.clipboardData && this.appStore.focusSlotCursorInfos) {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if (event.clipboardData && focusSlotCursorInfos) {
+                // First we need to check if it's a media item on the clipboard, because that needs
+                // to become a media literal rather than plain text:
+                const items = event.clipboardData.items;
+                for (let item of items) {
+                    let file = item.getAsFile();
+                    if (file && item.type.startsWith("image")) {
+                        readFileAsyncAsData(file).then((base64) => {
+                            // The code is the code to load the literal from its base64 string representation:
+                            const code = "load_image(\"data:" + item.type + ";" + base64 + "\")";
+                            document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code}}));
+                        });
+                        return;
+                    }
+                }
+
                 // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
                 const content = event.clipboardData.getData("Text");
-                document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
-                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: content}));
+                document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: content}}));
             }
         },        
 

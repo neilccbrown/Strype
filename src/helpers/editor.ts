@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -231,13 +231,27 @@ export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: numb
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUID: the HTML id for the current editable slot we are in
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean, imageLiterals: {code: string, mediaType: string}[]}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
-    frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
+    const imageLiterals : {code: string, mediaType: string}[] = [];
+    frameLabelStruct.querySelectorAll(".labelSlot-input,.labelSlot-image").forEach((spanElement) => {
+        if (spanElement.classList.contains("labelSlot-image")) {
+            const code = spanElement.getAttribute("data-code");
+            // We add the code, but also record the image literal for later manipulation:
+            if (code) {
+                uiLiteralCode += code;
+                imageLiterals.push({code: code, mediaType: spanElement.getAttribute("data-mediaType") ?? ""});
+            }
+            // Media literals are considered to be one character wide:
+            if (!foundFocusSpan) {
+                focusSpanPos += 1;
+            }
+            return;
+        }
         if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
@@ -298,7 +312,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
         }
     });    
-    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots};
+    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, imageLiterals: imageLiterals};
 }
 
 
@@ -1208,11 +1222,14 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
 };
 
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
+export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
 export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
 export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
-export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string,}): {slots: SlotsStructure, cursorOffset: number} => {
+
+export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string, imageLiterals?: {code: string, mediaType: string}[]}): {slots: SlotsStructure, cursorOffset: number} => {
+    const imageLiterals : { code: string, mediaType: string }[] = flags?.imageLiterals ?? [];
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
     //  {fields: {"", s1, "", "", s2, ""}, operators: ["", "", "+", "", ""] }}
@@ -1229,6 +1246,11 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         const escapedQuote = "\\" + codeLiteral.charAt(0);
         codeLiteral = codeLiteral.substring(1, codeLiteral.length - 1).replaceAll(escapedQuote, (match) => match.charAt(1));
     }
+    
+    // Start by replacing image literals with placeholders to avoid them getting processed like normal code:
+    imageLiterals.forEach((imageLiteral, i) => {
+        codeLiteral = codeLiteral.replace(imageLiteral.code, IMAGE_PLACERHOLDER + i + "$");
+    });
 
     // First we look for string literals, as their content should not generate "subslot":
     // We simply use an equivalent size placeholder so it wont interfere the parsing later.
@@ -1314,9 +1336,10 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         if(afterBracketCode.length > 0){
             afterBracketCode = FIELD_PLACERHOLDER + afterBracketCode;
         }
-        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
+        // Note: we need to pass (all) imageLiterals to the recursive calls because they might reverse our replacement:
+        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape});
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
             // First scan and find all the comma-separated parameters that are a single field:
             let lastParamStart = -1;
@@ -1352,7 +1375,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             actualCodeClosingBracketPos -= (placeholder.length - 1);
         });
 
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
@@ -1383,10 +1406,10 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                 afterStringCode = FIELD_PLACERHOLDER + afterStringCode;
             }
             // When we construct the parts before and after the string, we need to internally set the cursor "fake" position, that is, the cursor offset by the bits we are evaluating
-            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
+            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += beforeStringCursortOffset;
             const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
-            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + FIELD_PLACERHOLDER.length, skipStringEscape: flags?.skipStringEscape});
+            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + FIELD_PLACERHOLDER.length, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += afterStringCursorOffset;
             if((structAfterString.fields[0] as BaseSlot).code.startsWith(FIELD_PLACERHOLDER)){
                 (structAfterString.fields[0] as BaseSlot).code = (structAfterString.fields[0] as BaseSlot).code.substring(FIELD_PLACERHOLDER.length);
@@ -1402,6 +1425,43 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             resStructSlot.operators = operatorSplitsStruct.operators;
         }
     }
+    
+    // Reverse replacement of image literals:
+    imageLiterals.forEach((imageLiteral, i) => {
+        const target = IMAGE_PLACERHOLDER + i + "$";
+        for (let j = 0; j < resStructSlot.fields.length; j++) {
+            if (isFieldBaseSlot(resStructSlot.fields[j])) {
+                const code = (resStructSlot.fields[j] as BaseSlot).code;
+                const pos = code.indexOf(target);
+                if (pos != -1) {
+                    const before = code.substring(0, pos).trim();
+                    const after = code.substring(pos + target.length).trim();
+                    
+                    // Replace field with image literal:
+                    resStructSlot.fields[j] = {...resStructSlot.fields[j], code: imageLiteral.code, mediaType: imageLiteral.mediaType } as MediaSlot;
+                    // Image literals must be surrounded by a plain field before and after, with blank operator, so that you can position
+                    // the cursor next to them to edit (either adding content next to them, or deleting the literal itself)
+                    // Without this, for example, if you put a media literal in a bracket, you can't put the cursor anywhere inside the
+                    // bracket because there will be a single field (for the media literal) and no actual possible cursor positions.
+                    if (before.length > 0 || j == 0 || !isFieldBaseSlot(resStructSlot.fields[j-1]) || resStructSlot.operators[j-1].code != "") {
+                        // If there's no plain slot before or the operator isn't blank, we need to add a blank operator and blank field:
+                        resStructSlot.operators.splice(j, 0, {code: ""});
+                        resStructSlot.fields.splice(j, 0, {code: before} as BaseSlot);
+                        // Need to compensate for what we just added:
+                        j += 1;
+                    }
+                    if (after.length > 0 || j == resStructSlot.fields.length || !isFieldBaseSlot(resStructSlot.fields[j+1]) || resStructSlot.operators[j].code != "") {
+                        // If there's no plain slot after or the operator isn't blank, we need to add a blank operator and blank field:
+                        resStructSlot.operators.splice(j, 0, {code: ""});
+                        resStructSlot.fields.splice(j+1, 0, {code: after} as BaseSlot);
+                        // No need to compensate because we're about to return from this whole code segment:
+                    }
+                    // Note: this returns the forEach part and looks for the next media literal
+                    return;
+                }
+            }
+        }
+    });
 
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };

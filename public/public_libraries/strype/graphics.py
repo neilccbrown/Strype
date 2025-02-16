@@ -978,8 +978,12 @@ def set_background(image_or_filename_or_color, tile_to_fit = True):
             bk_image = EditableImage(808, 606)
             bk_image.set_fill(image_or_filename_or_color)
             bk_image.fill()
+    elif isinstance(image_or_filename_or_color, Color):
+        bk_image = EditableImage(808, 606)
+        bk_image.set_fill(image_or_filename_or_color)
+        bk_image.fill()
     else:
-        raise TypeError("image_or_filename must be an EditableImage or a string")
+        raise TypeError("image_or_filename_or_color must be an EditableImage or a string or a Color")
 
     _strype_graphics_internal.setBackground(bk_image._EditableImage__image)        
     
