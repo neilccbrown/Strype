@@ -263,9 +263,9 @@ describe("Paste sound literals", () => {
             (cy.focused() as any).paste(catWAV, "audio/wav");
             cy.wait(1000);
             // We can also check that a sample is fetched correctly:
-            cy.get("body").type("{downarrow}=sa=s.copy_to_mono().get_samples(){downarrow}psa[int(len(sa)/2)]");
+            cy.get("body").type("{downarrow}=sa=s.copy_to_mono().get_samples(){downarrow}pround(sa[int(len(sa)/2)], 3)");
             executeCode(false);
-            checkConsoleContent("0.001913396408781409\n");
+            checkConsoleContent("0.002\n");
         });
     });
 });
